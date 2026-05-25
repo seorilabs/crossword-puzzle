@@ -1,0 +1,283 @@
+#root {
+  width: 100%;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.appShell {
+  min-height: 100vh;
+  background: #f7f8fa;
+  color: #191f28;
+  padding-bottom: 28px;
+}
+
+.metricsBar {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0 20px 16px;
+  overflow: hidden;
+  border: 1px solid #e5e8eb;
+  border-radius: 8px;
+  background: #e5e8eb;
+}
+
+.metricsBar div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 4px;
+  background: #ffffff;
+}
+
+.metricsBar strong {
+  font-size: 17px;
+  line-height: 22px;
+}
+
+.metricsBar span {
+  color: #6b7684;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.puzzleBoard {
+  display: grid;
+  grid-template-columns: repeat(var(--board-cols), minmax(0, 1fr));
+  gap: 3px;
+  width: min(calc(100vw - 32px), 430px);
+  margin: 0 auto 18px;
+  padding: 6px;
+  border: 1px solid #d6dee6;
+  border-radius: 8px;
+  background: #d6dee6;
+}
+
+.cell {
+  position: relative;
+  display: grid;
+  aspect-ratio: 1;
+  min-width: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #191f28;
+  font: inherit;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cellBlock {
+  background: #4e5968;
+  cursor: default;
+}
+
+.cellSelected {
+  background: #dff6f0;
+  box-shadow: inset 0 0 0 2px #00a88f;
+}
+
+.cellCross:not(.cellSelected) {
+  background: #f2fbff;
+}
+
+.cellFilled {
+  color: #00866f;
+}
+
+.cellNumber {
+  position: absolute;
+  top: 3px;
+  left: 4px;
+  color: #8b95a1;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.cellLetter {
+  transform: translateY(1px);
+}
+
+.answerPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0 20px 18px;
+}
+
+.selectedClue {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.selectedClue span {
+  color: #6b7684;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.selectedClue strong {
+  font-size: 18px;
+  line-height: 25px;
+}
+
+.answerInput {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #d6dee6;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #191f28;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 28px;
+  outline: none;
+  padding: 14px 16px;
+}
+
+.answerInput:focus {
+  border-color: #00a88f;
+  box-shadow: 0 0 0 3px rgba(0, 168, 143, 0.12);
+}
+
+.actionRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.toolButton,
+.primaryButton {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 22px;
+  padding: 12px 10px;
+  cursor: pointer;
+}
+
+.toolButton {
+  background: #e8f3ff;
+  color: #1b64da;
+}
+
+.clueSection {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0 20px;
+}
+
+.segmentedControl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border-radius: 8px;
+  background: #e5e8eb;
+}
+
+.segmentedControl button {
+  min-width: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #4e5968;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 22px;
+  padding: 9px 8px;
+}
+
+.segmentedControl .segmentActive {
+  background: #ffffff;
+  color: #191f28;
+}
+
+.clueList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.clueItem {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #e5e8eb;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #191f28;
+  font: inherit;
+  padding: 12px;
+  text-align: left;
+}
+
+.clueSelected {
+  border-color: #00a88f;
+  background: #f2fbf8;
+}
+
+.clueIndex {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border-radius: 50%;
+  background: #eef2f4;
+  color: #4e5968;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.clueText {
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 21px;
+}
+
+.clueMeta {
+  color: #6b7684;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.bottomAction {
+  margin: 18px 20px 0;
+}
+
+.primaryButton {
+  width: 100%;
+  background: #00a88f;
+  color: #ffffff;
+}
+
+@media (min-width: 481px) {
+  #root {
+    max-width: 480px;
+    margin: 0 auto;
+    background-color: #ffffff !important;
+  }
+}

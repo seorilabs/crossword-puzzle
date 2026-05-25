@@ -1,0 +1,291 @@
+{
+  "puzzleId": "2026-05-25-normal-01",
+  "date": "2026-05-25",
+  "difficulty": "normal",
+  "gridSize": 8,
+  "grid": [
+    [
+      "",
+      "",
+      "",
+      "송",
+      "고",
+      "",
+      "최",
+      "상"
+    ],
+    [
+      "미",
+      "장",
+      "이",
+      "",
+      "생",
+      "",
+      "대",
+      "상"
+    ],
+    [
+      "",
+      "안",
+      "전",
+      "지",
+      "대",
+      "",
+      "한",
+      ""
+    ],
+    [
+      "",
+      "",
+      "",
+      "진",
+      "",
+      "의",
+      "도",
+      ""
+    ],
+    [
+      "",
+      "동",
+      "남",
+      "아",
+      "시",
+      "아",
+      "",
+      ""
+    ],
+    [
+      "안",
+      "전",
+      "도",
+      "",
+      "내",
+      "심",
+      "",
+      ""
+    ],
+    [
+      "",
+      "",
+      "",
+      "",
+      "버",
+      "",
+      "",
+      ""
+    ],
+    [
+      "",
+      "피",
+      "아",
+      "니",
+      "스",
+      "트",
+      "",
+      ""
+    ]
+  ],
+  "entries": [
+    {
+      "id": "a1",
+      "answer": "송고",
+      "clue": "기자나 작가 등이 원고를 편집 담당자에게 보냄",
+      "direction": "across",
+      "row": 0,
+      "col": 3,
+      "generatedBy": "placed"
+    },
+    {
+      "id": "a2",
+      "answer": "최상",
+      "clue": "가장 높은 정도나 등급",
+      "direction": "across",
+      "row": 0,
+      "col": 6,
+      "generatedBy": "auto"
+    },
+    {
+      "id": "a3",
+      "answer": "미장이",
+      "clue": "건축 공사에서 벽, 천장, 바닥에 흙이나 시멘트를 바르는 일을 직업으로 하는 사람",
+      "direction": "across",
+      "row": 1,
+      "col": 0,
+      "generatedBy": "placed"
+    },
+    {
+      "id": "a4",
+      "answer": "대상",
+      "clue": "어떤 일이나 행동의 상대나 목표가 되는 사람이나 물건",
+      "direction": "across",
+      "row": 1,
+      "col": 6,
+      "generatedBy": "auto"
+    },
+    {
+      "id": "a5",
+      "answer": "안전지대",
+      "clue": "재해나 사고의 위험이 없는 지대",
+      "direction": "across",
+      "row": 2,
+      "col": 1,
+      "generatedBy": "placed"
+    },
+    {
+      "id": "a6",
+      "answer": "의도",
+      "clue": "무엇을 하고자 하는 생각이나 계획",
+      "direction": "across",
+      "row": 3,
+      "col": 5,
+      "generatedBy": "auto"
+    },
+    {
+      "id": "a7",
+      "answer": "동남아시아",
+      "clue": "아시아의 동남부. 말레이시아, 미얀마, 베트남, 인도네시아, 타이, 필리핀 등의 나라가 포함된다",
+      "direction": "across",
+      "row": 4,
+      "col": 1,
+      "generatedBy": "placed"
+    },
+    {
+      "id": "a8",
+      "answer": "안전도",
+      "clue": "사고가 나거나 위험이 생길 염려가 없는 정도",
+      "direction": "across",
+      "row": 5,
+      "col": 0,
+      "generatedBy": "placed"
+    },
+    {
+      "id": "a9",
+      "answer": "내심",
+      "clue": "겉으로 드러나지 않은 실제의 마음",
+      "direction": "across",
+      "row": 5,
+      "col": 4,
+      "generatedBy": "auto"
+    },
+    {
+      "id": "a10",
+      "answer": "피아니스트",
+      "clue": "피아노를 연주하는 일을 직업으로 하는 사람",
+      "direction": "across",
+      "row": 7,
+      "col": 1,
+      "generatedBy": "placed"
+    },
+    {
+      "id": "d11",
+      "answer": "고생대",
+      "clue": "지질 시대의 구분에서, 지금부터 5억 7000만 년 전부터 2억 4000만 년 전까지의 시기",
+      "direction": "down",
+      "row": 0,
+      "col": 4,
+      "generatedBy": "placed"
+    },
+    {
+      "id": "d12",
+      "answer": "최대한도",
+      "clue": "일정한 조건에서 가장 크거나 많은 한도",
+      "direction": "down",
+      "row": 0,
+      "col": 6,
+      "generatedBy": "placed"
+    },
+    {
+      "id": "d13",
+      "answer": "상상",
+      "clue": "실제로 없는 것이나 경험하지 않은 것을 머릿속으로 그려 봄",
+      "direction": "down",
+      "row": 0,
+      "col": 7,
+      "generatedBy": "placed"
+    },
+    {
+      "id": "d14",
+      "answer": "장안",
+      "clue": "한 나라의 중앙 정부가 있는 곳",
+      "direction": "down",
+      "row": 1,
+      "col": 1,
+      "generatedBy": "auto"
+    },
+    {
+      "id": "d15",
+      "answer": "이전",
+      "clue": "지금보다 앞",
+      "direction": "down",
+      "row": 1,
+      "col": 2,
+      "generatedBy": "auto"
+    },
+    {
+      "id": "d16",
+      "answer": "지진아",
+      "clue": "학습이나 지능의 발달이 보통 아이들보다 느린 아이",
+      "direction": "down",
+      "row": 2,
+      "col": 3,
+      "generatedBy": "placed"
+    },
+    {
+      "id": "d17",
+      "answer": "의아심",
+      "clue": "의심스럽고 이상하게 생각하는 마음",
+      "direction": "down",
+      "row": 3,
+      "col": 5,
+      "generatedBy": "placed"
+    },
+    {
+      "id": "d18",
+      "answer": "동전",
+      "clue": "구리 등으로 동그랗게 만든 돈",
+      "direction": "down",
+      "row": 4,
+      "col": 1,
+      "generatedBy": "auto"
+    },
+    {
+      "id": "d19",
+      "answer": "남도",
+      "clue": "남과 북으로 되어 있는 도에서, 남쪽에 있는 도",
+      "direction": "down",
+      "row": 4,
+      "col": 2,
+      "generatedBy": "auto"
+    },
+    {
+      "id": "d20",
+      "answer": "시내버스",
+      "clue": "도시 안에서 정해진 노선을 따라 운행하는 버스",
+      "direction": "down",
+      "row": 4,
+      "col": 4,
+      "generatedBy": "placed"
+    }
+  ],
+  "metrics": {
+    "autoRunCount": 8,
+    "bboxDensity": 0.531,
+    "crossCells": 23,
+    "crossRatio": 0.676,
+    "filledCells": 34,
+    "multiCrossEntries": 18,
+    "placedWordCount": 12,
+    "wordCount": 20
+  },
+  "wordBank": {
+    "sourceName": "국립국어원 한국어기초사전 XML",
+    "sourceUrl": "https://github.com/spellcheck-ko/korean-dict-nikl-krdict",
+    "license": {
+      "name": "Creative Commons Attribution-ShareAlike 2.0 Korea",
+      "spdx": "CC-BY-SA-2.0-KR",
+      "url": "https://creativecommons.org/licenses/by-sa/2.0/kr/"
+    },
+    "wordCount": 24963
+  },
+  "generatedAt": "2026-05-24T15:24:21.634Z"
+}

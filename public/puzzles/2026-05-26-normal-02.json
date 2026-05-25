@@ -1,0 +1,309 @@
+{
+  "puzzleId": "2026-05-26-normal-02",
+  "date": "2026-05-26",
+  "difficulty": "normal",
+  "gridSize": 8,
+  "grid": [
+    [
+      "",
+      "괴",
+      "벽",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ],
+    [
+      "",
+      "발",
+      "화",
+      "",
+      "무",
+      "전",
+      "",
+      ""
+    ],
+    [
+      "체",
+      "개",
+      "",
+      "",
+      "정",
+      "시",
+      "",
+      ""
+    ],
+    [
+      "재",
+      "발",
+      "견",
+      "",
+      "부",
+      "품",
+      "",
+      ""
+    ],
+    [
+      "",
+      "",
+      "과",
+      "실",
+      "주",
+      "",
+      "",
+      "동"
+    ],
+    [
+      "",
+      "",
+      "",
+      "",
+      "의",
+      "외",
+      "",
+      "족"
+    ],
+    [
+      "",
+      "기",
+      "소",
+      "장",
+      "",
+      "손",
+      "님",
+      "상"
+    ],
+    [
+      "",
+      "",
+      "통",
+      "치",
+      "권",
+      "자",
+      "",
+      "잔"
+    ]
+  ],
+  "entries": [
+    {
+      "id": "a1",
+      "answer": "괴벽",
+      "clue": "매우 이상한 버릇",
+      "direction": "across",
+      "row": 0,
+      "col": 1,
+      "generatedBy": "auto"
+    },
+    {
+      "id": "a2",
+      "answer": "발화",
+      "clue": "불이 붙어 타기 시작함",
+      "direction": "across",
+      "row": 1,
+      "col": 1,
+      "generatedBy": "auto"
+    },
+    {
+      "id": "a3",
+      "answer": "무전",
+      "clue": "돈이 없음",
+      "direction": "across",
+      "row": 1,
+      "col": 4,
+      "generatedBy": "auto"
+    },
+    {
+      "id": "a4",
+      "answer": "체개",
+      "clue": "관원을 다른 사람으로 바꿔 새로 들임",
+      "direction": "across",
+      "row": 2,
+      "col": 0,
+      "generatedBy": "auto"
+    },
+    {
+      "id": "a5",
+      "answer": "정시",
+      "clue": "정해진 때나 시간",
+      "direction": "across",
+      "row": 2,
+      "col": 4,
+      "generatedBy": "auto"
+    },
+    {
+      "id": "a6",
+      "answer": "재발견",
+      "clue": "잘 알려지지 않았거나 잊혀진 사실, 가치 등을 다시 새롭게 발견함",
+      "direction": "across",
+      "row": 3,
+      "col": 0,
+      "generatedBy": "placed"
+    },
+    {
+      "id": "a7",
+      "answer": "부품",
+      "clue": "기계 등의 전체 중 어느 한 부분을 이루는 물건",
+      "direction": "across",
+      "row": 3,
+      "col": 4,
+      "generatedBy": "auto"
+    },
+    {
+      "id": "a8",
+      "answer": "과실주",
+      "clue": "포도주와 같이 과일로 만든 술",
+      "direction": "across",
+      "row": 4,
+      "col": 2,
+      "generatedBy": "placed"
+    },
+    {
+      "id": "a9",
+      "answer": "의외",
+      "clue": "전혀 예상하거나 생각하지 못한 것",
+      "direction": "across",
+      "row": 5,
+      "col": 4,
+      "generatedBy": "auto"
+    },
+    {
+      "id": "a10",
+      "answer": "기소장",
+      "clue": "검사가 법원에 재판을 요청할 때 내는 문서",
+      "direction": "across",
+      "row": 6,
+      "col": 1,
+      "generatedBy": "placed"
+    },
+    {
+      "id": "a11",
+      "answer": "손님상",
+      "clue": "손님에게 대접하기 위해서 차린 밥상",
+      "direction": "across",
+      "row": 6,
+      "col": 5,
+      "generatedBy": "placed"
+    },
+    {
+      "id": "a12",
+      "answer": "통치권자",
+      "clue": "국민과 국토를 다스리는 권리를 가진 사람",
+      "direction": "across",
+      "row": 7,
+      "col": 2,
+      "generatedBy": "placed"
+    },
+    {
+      "id": "d13",
+      "answer": "괴발개발",
+      "clue": "글씨를 알아보기 어려울 만큼 아무렇게나 써 놓은 모양",
+      "direction": "down",
+      "row": 0,
+      "col": 1,
+      "generatedBy": "placed"
+    },
+    {
+      "id": "d14",
+      "answer": "벽화",
+      "clue": "건물이나 동굴, 무덤 등의 벽에 그린 그림",
+      "direction": "down",
+      "row": 0,
+      "col": 2,
+      "generatedBy": "placed"
+    },
+    {
+      "id": "d15",
+      "answer": "무정부주의",
+      "clue": "개인을 지배하는 정치 권력이나 공공의 강제를 부정하고 개인의 자유를 최고의 가치로 내세우는 사상",
+      "direction": "down",
+      "row": 1,
+      "col": 4,
+      "generatedBy": "placed"
+    },
+    {
+      "id": "d16",
+      "answer": "전시품",
+      "clue": "전시해 놓은 물품",
+      "direction": "down",
+      "row": 1,
+      "col": 5,
+      "generatedBy": "placed"
+    },
+    {
+      "id": "d17",
+      "answer": "체재",
+      "clue": "생기거나 이루어진 모양이나 형식",
+      "direction": "down",
+      "row": 2,
+      "col": 0,
+      "generatedBy": "placed"
+    },
+    {
+      "id": "d18",
+      "answer": "견과",
+      "clue": "밤, 호두, 은행 등과 같이 단단한 껍데기 안에 한 개의 씨가 들어 있는 나무 열매",
+      "direction": "down",
+      "row": 3,
+      "col": 2,
+      "generatedBy": "auto"
+    },
+    {
+      "id": "d19",
+      "answer": "동족상잔",
+      "clue": "같은 민족끼리 서로 싸우고 죽임",
+      "direction": "down",
+      "row": 4,
+      "col": 7,
+      "generatedBy": "placed"
+    },
+    {
+      "id": "d20",
+      "answer": "외손자",
+      "clue": "딸이 낳은 아들",
+      "direction": "down",
+      "row": 5,
+      "col": 5,
+      "generatedBy": "placed"
+    },
+    {
+      "id": "d21",
+      "answer": "소통",
+      "clue": "막히지 않고 서로 잘 통함",
+      "direction": "down",
+      "row": 6,
+      "col": 2,
+      "generatedBy": "auto"
+    },
+    {
+      "id": "d22",
+      "answer": "장치",
+      "clue": "어떤 목적에 따라 일을 해낼 수 있도록 기계나 도구 등을 설치함. 또는 그 기계나 도구",
+      "direction": "down",
+      "row": 6,
+      "col": 3,
+      "generatedBy": "auto"
+    }
+  ],
+  "metrics": {
+    "autoRunCount": 10,
+    "bboxDensity": 0.516,
+    "crossCells": 26,
+    "crossRatio": 0.788,
+    "filledCells": 33,
+    "multiCrossEntries": 21,
+    "placedWordCount": 12,
+    "wordCount": 22
+  },
+  "wordBank": {
+    "sourceName": "국립국어원 한국어기초사전 XML",
+    "sourceUrl": "https://github.com/spellcheck-ko/korean-dict-nikl-krdict",
+    "license": {
+      "name": "Creative Commons Attribution-ShareAlike 2.0 Korea",
+      "spdx": "CC-BY-SA-2.0-KR",
+      "url": "https://creativecommons.org/licenses/by-sa/2.0/kr/"
+    },
+    "wordCount": 24963
+  },
+  "generatedAt": "2026-05-24T15:24:29.131Z"
+}

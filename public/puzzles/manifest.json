@@ -1,0 +1,63 @@
+{
+  "generatedAt": "2026-05-24T15:24:37.090Z",
+  "startDate": "2026-05-25",
+  "days": 3,
+  "wordBank": {
+    "path": "data/lexicon/krdict-puzzle-wordbank.json",
+    "sourceName": "국립국어원 한국어기초사전 XML",
+    "sourceUrl": "https://github.com/spellcheck-ko/korean-dict-nikl-krdict",
+    "license": {
+      "name": "Creative Commons Attribution-ShareAlike 2.0 Korea",
+      "spdx": "CC-BY-SA-2.0-KR",
+      "url": "https://creativecommons.org/licenses/by-sa/2.0/kr/"
+    },
+    "wordCount": 24963
+  },
+  "puzzles": [
+    {
+      "date": "2026-05-25",
+      "puzzleId": "2026-05-25-normal-01",
+      "path": "/puzzles/2026-05-25-normal-01.json",
+      "metrics": {
+        "autoRunCount": 8,
+        "bboxDensity": 0.531,
+        "crossCells": 23,
+        "crossRatio": 0.676,
+        "filledCells": 34,
+        "multiCrossEntries": 18,
+        "placedWordCount": 12,
+        "wordCount": 20
+      }
+    },
+    {
+      "date": "2026-05-26",
+      "puzzleId": "2026-05-26-normal-02",
+      "path": "/puzzles/2026-05-26-normal-02.json",
+      "metrics": {
+        "autoRunCount": 10,
+        "bboxDensity": 0.516,
+        "crossCells": 26,
+        "crossRatio": 0.788,
+        "filledCells": 33,
+        "multiCrossEntries": 21,
+        "placedWordCount": 12,
+        "wordCount": 22
+      }
+    },
+    {
+      "date": "2026-05-27",
+      "puzzleId": "2026-05-27-normal-03",
+      "path": "/puzzles/2026-05-27-normal-03.json",
+      "metrics": {
+        "autoRunCount": 10,
+        "bboxDensity": 0.554,
+        "crossCells": 26,
+        "crossRatio": 0.839,
+        "filledCells": 31,
+        "multiCrossEntries": 21,
+        "placedWordCount": 12,
+        "wordCount": 22
+      }
+    }
+  ]
+}

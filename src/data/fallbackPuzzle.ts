@@ -1,0 +1,174 @@
+export type PuzzleEntry = {
+  id: string;
+  answer: string;
+  clue: string;
+  direction: "across" | "down";
+  row: number;
+  col: number;
+  generatedBy: "placed" | "auto";
+};
+
+export type Puzzle = {
+  puzzleId: string;
+  date: string;
+  difficulty: "easy" | "normal" | "hard";
+  gridSize: number;
+  grid: string[][];
+  entries: PuzzleEntry[];
+  metrics: {
+    autoRunCount: number;
+    bboxDensity: number;
+    crossCells: number;
+    crossRatio: number;
+    filledCells: number;
+    multiCrossEntries: number;
+    placedWordCount: number;
+    wordCount: number;
+  };
+};
+
+export const fallbackPuzzle: Puzzle = {
+  puzzleId: "2026-05-25-normal-01",
+  date: "2026-05-25",
+  difficulty: "normal",
+  gridSize: 8,
+  grid: [
+    ["차", "", "", "가", "방", "", "다", ""],
+    ["표", "지", "판", "", "울", "타", "리", ""],
+    ["", "우", "", "", "", "자", "", ""],
+    ["", "개", "미", "", "일", "기", "", ""],
+    ["", "", "소", "나", "기", "", "", ""],
+    ["", "", "", "", "", "", "", ""],
+    ["", "", "", "", "", "", "", ""],
+    ["", "", "", "", "", "", "", ""],
+  ],
+  entries: [
+    {
+      id: "a1",
+      answer: "가방",
+      clue: "물건을 넣어 들고 다니는 것",
+      direction: "across",
+      row: 0,
+      col: 3,
+      generatedBy: "placed",
+    },
+    {
+      id: "a2",
+      answer: "표지판",
+      clue: "길 안내나 주의를 알리는 판",
+      direction: "across",
+      row: 1,
+      col: 0,
+      generatedBy: "placed",
+    },
+    {
+      id: "a3",
+      answer: "울타리",
+      clue: "둘레를 막는 경계",
+      direction: "across",
+      row: 1,
+      col: 4,
+      generatedBy: "placed",
+    },
+    {
+      id: "a4",
+      answer: "개미",
+      clue: "작고 부지런한 곤충",
+      direction: "across",
+      row: 3,
+      col: 1,
+      generatedBy: "placed",
+    },
+    {
+      id: "a5",
+      answer: "일기",
+      clue: "하루 일을 적은 글",
+      direction: "across",
+      row: 3,
+      col: 4,
+      generatedBy: "placed",
+    },
+    {
+      id: "a6",
+      answer: "소나기",
+      clue: "갑자기 세게 내리는 비",
+      direction: "across",
+      row: 4,
+      col: 2,
+      generatedBy: "placed",
+    },
+    {
+      id: "d7",
+      answer: "차표",
+      clue: "차를 탈 때 필요한 표",
+      direction: "down",
+      row: 0,
+      col: 0,
+      generatedBy: "placed",
+    },
+    {
+      id: "d8",
+      answer: "방울",
+      clue: "작고 둥근 물방울 모양",
+      direction: "down",
+      row: 0,
+      col: 4,
+      generatedBy: "placed",
+    },
+    {
+      id: "d9",
+      answer: "다리",
+      clue: "건너가게 만든 구조물",
+      direction: "down",
+      row: 0,
+      col: 6,
+      generatedBy: "placed",
+    },
+    {
+      id: "d10",
+      answer: "지우개",
+      clue: "글씨를 지우는 도구",
+      direction: "down",
+      row: 1,
+      col: 1,
+      generatedBy: "placed",
+    },
+    {
+      id: "d11",
+      answer: "타자기",
+      clue: "글자를 찍어 내던 기계",
+      direction: "down",
+      row: 1,
+      col: 5,
+      generatedBy: "placed",
+    },
+    {
+      id: "d12",
+      answer: "미소",
+      clue: "살짝 웃는 표정",
+      direction: "down",
+      row: 3,
+      col: 2,
+      generatedBy: "placed",
+    },
+    {
+      id: "d13",
+      answer: "일기",
+      clue: "하루 일을 적은 글",
+      direction: "down",
+      row: 3,
+      col: 4,
+      generatedBy: "auto",
+    },
+  ],
+  metrics: {
+    autoRunCount: 1,
+    bboxDensity: 0.543,
+    crossCells: 12,
+    crossRatio: 0.632,
+    filledCells: 19,
+    multiCrossEntries: 10,
+    placedWordCount: 12,
+    wordCount: 13,
+  },
+};

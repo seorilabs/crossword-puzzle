@@ -1,0 +1,309 @@
+{
+  "puzzleId": "2026-05-27-normal-03",
+  "date": "2026-05-27",
+  "difficulty": "normal",
+  "gridSize": 8,
+  "grid": [
+    [
+      "진",
+      "부",
+      "",
+      "",
+      "",
+      "군",
+      "대",
+      ""
+    ],
+    [
+      "국",
+      "정",
+      "",
+      "사",
+      "실",
+      "주",
+      "의",
+      ""
+    ],
+    [
+      "",
+      "문",
+      "어",
+      "발",
+      "",
+      "제",
+      "명",
+      ""
+    ],
+    [
+      "",
+      "",
+      "",
+      "",
+      "에",
+      "",
+      "분",
+      "유"
+    ],
+    [
+      "",
+      "엄",
+      "살",
+      "꾸",
+      "러",
+      "기",
+      "",
+      "선"
+    ],
+    [
+      "",
+      "",
+      "집",
+      "중",
+      "",
+      "관",
+      "형",
+      "형"
+    ],
+    [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "총",
+      "상",
+      ""
+    ],
+    [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ]
+  ],
+  "entries": [
+    {
+      "id": "a1",
+      "answer": "진부",
+      "clue": "참과 거짓. 또는 진짜와 가짜",
+      "direction": "across",
+      "row": 0,
+      "col": 0,
+      "generatedBy": "auto"
+    },
+    {
+      "id": "a2",
+      "answer": "군대",
+      "clue": "일정한 규율과 질서가 있는 군인들의 집단",
+      "direction": "across",
+      "row": 0,
+      "col": 5,
+      "generatedBy": "auto"
+    },
+    {
+      "id": "a3",
+      "answer": "국정",
+      "clue": "국민의 생활을 돌보고 사회의 질서를 유지하는 일 등 나라를 다스리는 일",
+      "direction": "across",
+      "row": 1,
+      "col": 0,
+      "generatedBy": "auto"
+    },
+    {
+      "id": "a4",
+      "answer": "사실주의",
+      "clue": "문학이나 예술에서 현실이나 사물을 있는 그대로 묘사하고 표현하려는 태도",
+      "direction": "across",
+      "row": 1,
+      "col": 3,
+      "generatedBy": "placed"
+    },
+    {
+      "id": "a5",
+      "answer": "문어발",
+      "clue": "문어의 발",
+      "direction": "across",
+      "row": 2,
+      "col": 1,
+      "generatedBy": "placed"
+    },
+    {
+      "id": "a6",
+      "answer": "제명",
+      "clue": "타고난 자기의 목숨",
+      "direction": "across",
+      "row": 2,
+      "col": 5,
+      "generatedBy": "auto"
+    },
+    {
+      "id": "a7",
+      "answer": "분유",
+      "clue": "우유의 물기를 없애고 만든 가루",
+      "direction": "across",
+      "row": 3,
+      "col": 6,
+      "generatedBy": "auto"
+    },
+    {
+      "id": "a8",
+      "answer": "엄살꾸러기",
+      "clue": "엄살을 잘 부리는 사람",
+      "direction": "across",
+      "row": 4,
+      "col": 1,
+      "generatedBy": "placed"
+    },
+    {
+      "id": "a9",
+      "answer": "집중",
+      "clue": "한 가지 일에 모든 힘을 쏟아부음",
+      "direction": "across",
+      "row": 5,
+      "col": 2,
+      "generatedBy": "placed"
+    },
+    {
+      "id": "a10",
+      "answer": "관형형",
+      "clue": "관형사처럼 뒤에 오는 체언의 내용을 꾸며 주는 기능을 하는 용언의 활용형",
+      "direction": "across",
+      "row": 5,
+      "col": 5,
+      "generatedBy": "placed"
+    },
+    {
+      "id": "a11",
+      "answer": "총상",
+      "clue": "총알에 맞아 생긴 상처",
+      "direction": "across",
+      "row": 6,
+      "col": 5,
+      "generatedBy": "placed"
+    },
+    {
+      "id": "d12",
+      "answer": "진국",
+      "clue": "오랫동안 푹 고아서 진하게 우린 국물",
+      "direction": "down",
+      "row": 0,
+      "col": 0,
+      "generatedBy": "placed"
+    },
+    {
+      "id": "d13",
+      "answer": "부정문",
+      "clue": "부정의 뜻을 나타내는 문장",
+      "direction": "down",
+      "row": 0,
+      "col": 1,
+      "generatedBy": "placed"
+    },
+    {
+      "id": "d14",
+      "answer": "군주제",
+      "clue": "왕이 나라를 다스리는 정치 제도",
+      "direction": "down",
+      "row": 0,
+      "col": 5,
+      "generatedBy": "placed"
+    },
+    {
+      "id": "d15",
+      "answer": "대의명분",
+      "clue": "떳떳이 내세울 만한 도덕적 원칙이나 이유",
+      "direction": "down",
+      "row": 0,
+      "col": 6,
+      "generatedBy": "placed"
+    },
+    {
+      "id": "d16",
+      "answer": "사발",
+      "clue": "위는 넓고 아래는 좁으며 굽이 있는 사기 그릇",
+      "direction": "down",
+      "row": 1,
+      "col": 3,
+      "generatedBy": "auto"
+    },
+    {
+      "id": "d17",
+      "answer": "에러",
+      "clue": "컴퓨터의 잘못된 처리로 생기는 오차",
+      "direction": "down",
+      "row": 3,
+      "col": 4,
+      "generatedBy": "placed"
+    },
+    {
+      "id": "d18",
+      "answer": "유선형",
+      "clue": "부드러운 곡선으로 된 물건의 겉모양. 또는 그런 모양의 물건",
+      "direction": "down",
+      "row": 3,
+      "col": 7,
+      "generatedBy": "placed"
+    },
+    {
+      "id": "d19",
+      "answer": "살집",
+      "clue": "몸에 살이 붙어 있는 정도나 부피",
+      "direction": "down",
+      "row": 4,
+      "col": 2,
+      "generatedBy": "auto"
+    },
+    {
+      "id": "d20",
+      "answer": "꾸중",
+      "clue": "윗사람이 아랫사람의 잘못을 꾸짖음",
+      "direction": "down",
+      "row": 4,
+      "col": 3,
+      "generatedBy": "auto"
+    },
+    {
+      "id": "d21",
+      "answer": "기관총",
+      "clue": "총알이 연속적으로 발사되는 총",
+      "direction": "down",
+      "row": 4,
+      "col": 5,
+      "generatedBy": "auto"
+    },
+    {
+      "id": "d22",
+      "answer": "형상",
+      "clue": "사물의 생긴 모양이나 상태",
+      "direction": "down",
+      "row": 5,
+      "col": 6,
+      "generatedBy": "auto"
+    }
+  ],
+  "metrics": {
+    "autoRunCount": 10,
+    "bboxDensity": 0.554,
+    "crossCells": 26,
+    "crossRatio": 0.839,
+    "filledCells": 31,
+    "multiCrossEntries": 21,
+    "placedWordCount": 12,
+    "wordCount": 22
+  },
+  "wordBank": {
+    "sourceName": "국립국어원 한국어기초사전 XML",
+    "sourceUrl": "https://github.com/spellcheck-ko/korean-dict-nikl-krdict",
+    "license": {
+      "name": "Creative Commons Attribution-ShareAlike 2.0 Korea",
+      "spdx": "CC-BY-SA-2.0-KR",
+      "url": "https://creativecommons.org/licenses/by-sa/2.0/kr/"
+    },
+    "wordCount": 24963
+  },
+  "generatedAt": "2026-05-24T15:24:37.089Z"
+}
