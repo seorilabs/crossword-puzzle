@@ -9,8 +9,17 @@
     "deploy": "ait deploy",
     "lint": "eslint .",
     "format": "prettier --write .",
+    "mobile:install": "npm ci --prefix apps/mobile",
+    "mobile:start": "npm --prefix apps/mobile run start",
+    "mobile:android": "npm --prefix apps/mobile run android",
+    "mobile:ios": "npm --prefix apps/mobile run ios",
+    "check:mobile": "npm --prefix apps/mobile run lint && npm --prefix apps/mobile test -- --watchAll=false",
+    "build:android": "cd apps/mobile/android && ./gradlew :app:bundleRelease --no-daemon",
+    "check:play": "node scripts/check-google-play-readiness.mjs",
+    "play:upload:internal": "python3 scripts/upload-google-play-internal.py",
     "batch:puzzles": "node server/batch/generate-puzzle-pack.mjs",
     "prototype:crossword": "node scripts/crossword-generator-prototype.mjs",
+    "validate:puzzles": "node scripts/validate-puzzle-pack.mjs",
     "wordbank:krdict": "node scripts/build-krdict-wordbank.mjs"
   },
   "dependencies": {

@@ -9,6 +9,15 @@ build/
 # Apps in Toss / Granite outputs
 .granite/
 .ait/
+*.ait
+
+# Google Play signing/API local files
+play-store/secrets/
+android/key.properties
+apps/mobile/android/key.properties
+gha-creds-*.json
+*.jks
+*.keystore
 
 # Logs
 logs/
@@ -43,5 +52,3 @@ coverage/
 # Temporary files
 tmp/
 temp/
-
-*.ait

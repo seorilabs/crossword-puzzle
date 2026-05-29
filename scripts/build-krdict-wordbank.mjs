@@ -22,6 +22,7 @@ const SOURCE_FILES = [
 
 const DEFAULT_OPTIONS = {
   limit: 25000,
+  filterPath: "data/lexicon/puzzle-word-filter.json",
   maxClueLength: 54,
   maxLength: 5,
   minLength: 2,
@@ -50,6 +51,7 @@ function parseArgs(argv) {
     const numberValue = Number(rawValue);
 
     if (key === "source" && rawValue) options.sources = rawValue.split(",");
+    if (key === "filter" && rawValue) options.filterPath = rawValue;
     if (key === "out" && rawValue) options.out = rawValue;
     if (key === "limit" && Number.isFinite(numberValue)) options.limit = numberValue;
     if (key === "minLength" && Number.isFinite(numberValue)) options.minLength = numberValue;
@@ -142,6 +144,71 @@ function isPuzzleClue(clue, answer, options) {
   );
 }
 
+async function loadFilter(filePath) {
+  if (filePath == null || filePath === "none") {
+    return {};
+  }
+
+  try {
+    return JSON.parse(await readFile(path.resolve(filePath), "utf8"));
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return {};
+    }
+
+    throw error;
+  }
+}
+
+function inferDifficulty(level, length) {
+  if (level === "초급" && length <= 3) {
+    return "easy";
+  }
+
+  if (level === "고급" || (level === "없음" && length >= 4)) {
+    return "hard";
+  }
+
+  return "normal";
+}
+
+function getBlockReason(candidate, filter) {
+  if (filter.blockedAnswers?.includes(candidate.answer)) {
+    return "blocked-answer";
+  }
+
+  if (filter.blockedSourceIds?.includes(candidate.sourceId)) {
+    return "blocked-source-id";
+  }
+
+  const blockedClueTerm = filter.blockedClueIncludes?.find((term) =>
+    candidate.definition.includes(term)
+  );
+  if (blockedClueTerm != null) {
+    return `blocked-clue:${blockedClueTerm}`;
+  }
+
+  return null;
+}
+
+function applyCuration(candidate, filter) {
+  const blockedReason = getBlockReason(candidate, filter);
+  const manualClue = filter.cluesByAnswer?.[candidate.answer];
+
+  return {
+    ...candidate,
+    allowForPuzzle: blockedReason == null,
+    blockedReason,
+    clue: manualClue ?? candidate.definition,
+    clueSource: manualClue == null ? "krdict-definition" : "manual",
+    difficulty:
+      filter.difficultyByAnswer?.[candidate.answer] ??
+      inferDifficulty(candidate.level, candidate.length),
+    needsManualClue: manualClue == null,
+    themeTags: filter.themeTagsByAnswer?.[candidate.answer] ?? [],
+  };
+}
+
 function pickClue(entry, answer, options) {
   const senses = asArray(entry.Sense);
 
@@ -175,14 +242,17 @@ function parseEntries(xmlDocuments, options) {
       if (clue == null) continue;
 
       const level = normalizeText(getFeat(entry, "vocabularyLevel")) || "없음";
-      const candidate = {
-        answer,
-        clue,
-        length: [...answer].length,
-        level,
-        pos,
-        sourceId: String(entry.val ?? ""),
-      };
+      const candidate = applyCuration(
+        {
+          answer,
+          definition: clue,
+          length: [...answer].length,
+          level,
+          pos,
+          sourceId: String(entry.val ?? ""),
+        },
+        options.filter
+      );
       const existing = byAnswer.get(answer);
 
       if (
@@ -211,8 +281,11 @@ function parseEntries(xmlDocuments, options) {
 
 async function run() {
   const options = parseArgs(process.argv.slice(2));
+  options.filter = await loadFilter(options.filterPath);
   const xmlDocuments = await Promise.all(options.sources.map((source) => readSource(source)));
   const words = parseEntries(xmlDocuments, options);
+  const allowedCount = words.filter((word) => word.allowForPuzzle).length;
+  const blockedCount = words.length - allowedCount;
   const output = {
     metadata: {
       sourceName: "국립국어원 한국어기초사전 XML",
@@ -221,6 +294,11 @@ async function run() {
       sourceMirror: "spellcheck-ko/korean-dict-nikl-krdict",
       license: LICENSE,
       generatedAt: new Date().toISOString(),
+      curation: {
+        allowedCount,
+        blockedCount,
+        filterPath: options.filterPath,
+      },
       filters: {
         partOfSpeech: "명사",
         minLength: options.minLength,
@@ -241,7 +319,7 @@ async function run() {
   await mkdir(path.dirname(outPath), { recursive: true });
   await writeFile(outPath, `${JSON.stringify(output, null, 2)}\n`);
 
-  console.log(`Wrote ${words.length} words to ${outPath}`);
+  console.log(`Wrote ${words.length} words to ${outPath} (${allowedCount} allowed)`);
 }
 
 run().catch((error) => {

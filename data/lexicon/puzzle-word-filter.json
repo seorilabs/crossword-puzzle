@@ -1,0 +1,12 @@
+{
+  "metadata": {
+    "description": "Manual curation rules for crossword puzzle words.",
+    "updated": "2026-05-25"
+  },
+  "blockedAnswers": [],
+  "blockedSourceIds": [],
+  "blockedClueIncludes": [],
+  "cluesByAnswer": {},
+  "difficultyByAnswer": {},
+  "themeTagsByAnswer": {}
+}

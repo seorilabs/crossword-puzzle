@@ -1,31 +1,4 @@
-export type PuzzleEntry = {
-  id: string;
-  answer: string;
-  clue: string;
-  direction: "across" | "down";
-  row: number;
-  col: number;
-  generatedBy: "placed" | "auto";
-};
-
-export type Puzzle = {
-  puzzleId: string;
-  date: string;
-  difficulty: "easy" | "normal" | "hard";
-  gridSize: number;
-  grid: string[][];
-  entries: PuzzleEntry[];
-  metrics: {
-    autoRunCount: number;
-    bboxDensity: number;
-    crossCells: number;
-    crossRatio: number;
-    filledCells: number;
-    multiCrossEntries: number;
-    placedWordCount: number;
-    wordCount: number;
-  };
-};
+import type { Puzzle } from "../../packages/crossword-core/src";
 
 export const fallbackPuzzle: Puzzle = {
   puzzleId: "2026-05-25-normal-01",

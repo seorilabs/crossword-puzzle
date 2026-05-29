@@ -1,0 +1,136 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1932" height="828" viewBox="0 0 1932 828" role="img" aria-labelledby="title desc">
+  <title id="title">가로세로낱말퍼즐 앱 썸네일</title>
+  <desc id="desc">오늘의 한글 가로세로 퍼즐판과 힌트, 교차 정답 타일을 보여주는 와이드 썸네일</desc>
+  <rect width="1932" height="828" fill="#F7F8FA"/>
+  <rect x="96" y="72" width="1740" height="684" fill="#FFFFFF"/>
+  <rect x="96" y="72" width="18" height="684" fill="#00A88F"/>
+
+  <g font-family="Apple SD Gothic Neo, Pretendard, system-ui, sans-serif">
+    <text x="174" y="178" fill="#191F28" font-size="76" font-weight="800">가로세로낱말퍼즐</text>
+    <text x="178" y="246" fill="#4E5968" font-size="34" font-weight="700">오늘 한 판, 교차된 낱말을 하나씩 풀어요</text>
+
+    <g transform="translate(174 322)">
+      <text x="0" y="0" fill="#00866F" font-size="28" font-weight="800">오늘의 힌트</text>
+      <text x="0" y="58" fill="#191F28" font-size="38" font-weight="800">글씨를 지우는 도구</text>
+      <text x="0" y="114" fill="#6B7684" font-size="28" font-weight="700">한 글자가 다른 낱말의 단서가 돼요</text>
+
+      <g transform="translate(0 150)" font-size="44" font-weight="800" text-anchor="middle" dominant-baseline="central">
+        <rect x="0" y="0" width="80" height="80" fill="#FFFFFF" stroke="#D6DEE6" stroke-width="4"/>
+        <text x="40" y="40" fill="#191F28">표</text>
+        <rect x="92" y="0" width="80" height="80" fill="#DFF6F0"/>
+        <text x="132" y="40" fill="#00866F">지</text>
+        <rect x="184" y="0" width="80" height="80" fill="#FFFFFF" stroke="#D6DEE6" stroke-width="4"/>
+        <text x="224" y="40" fill="#191F28">판</text>
+
+        <rect x="92" y="92" width="80" height="80" fill="#DFF6F0"/>
+        <text x="132" y="132" fill="#00866F">우</text>
+        <rect x="92" y="184" width="80" height="80" fill="#DFF6F0"/>
+        <text x="132" y="224" fill="#00866F">개</text>
+
+        <rect x="296" y="0" width="80" height="80" fill="#FFFFFF" stroke="#D6DEE6" stroke-width="4"/>
+        <text x="336" y="40" fill="#191F28">울</text>
+        <rect x="388" y="0" width="80" height="80" fill="#FFFFFF" stroke="#D6DEE6" stroke-width="4"/>
+        <text x="428" y="40" fill="#191F28">타</text>
+        <rect x="480" y="0" width="80" height="80" fill="#FFFFFF" stroke="#D6DEE6" stroke-width="4"/>
+        <text x="520" y="40" fill="#191F28">리</text>
+      </g>
+    </g>
+
+    <g transform="translate(936 130)">
+      <rect x="0" y="0" width="652" height="652" fill="#D6DEE6"/>
+      <g font-size="38" font-weight="800" text-anchor="middle" dominant-baseline="central">
+        <rect x="8" y="8" width="72" height="72" fill="#FFFFFF"/>
+        <text x="44" y="44" fill="#191F28">차</text>
+        <rect x="88" y="8" width="72" height="72" fill="#4E5968"/>
+        <rect x="168" y="8" width="72" height="72" fill="#4E5968"/>
+        <rect x="248" y="8" width="72" height="72" fill="#FFFFFF"/>
+        <text x="284" y="44" fill="#191F28">가</text>
+        <rect x="328" y="8" width="72" height="72" fill="#FFFFFF"/>
+        <text x="364" y="44" fill="#191F28">방</text>
+        <rect x="408" y="8" width="72" height="72" fill="#4E5968"/>
+        <rect x="488" y="8" width="72" height="72" fill="#FFFFFF"/>
+        <text x="524" y="44" fill="#191F28">다</text>
+        <rect x="568" y="8" width="76" height="72" fill="#4E5968"/>
+
+        <rect x="8" y="88" width="72" height="72" fill="#FFFFFF"/>
+        <text x="44" y="124" fill="#191F28">표</text>
+        <rect x="88" y="88" width="72" height="72" fill="#DFF6F0"/>
+        <text x="124" y="124" fill="#00866F">지</text>
+        <rect x="168" y="88" width="72" height="72" fill="#FFFFFF"/>
+        <text x="204" y="124" fill="#191F28">판</text>
+        <rect x="248" y="88" width="72" height="72" fill="#4E5968"/>
+        <rect x="328" y="88" width="72" height="72" fill="#FFFFFF"/>
+        <text x="364" y="124" fill="#191F28">울</text>
+        <rect x="408" y="88" width="72" height="72" fill="#FFFFFF"/>
+        <text x="444" y="124" fill="#191F28">타</text>
+        <rect x="488" y="88" width="72" height="72" fill="#FFFFFF"/>
+        <text x="524" y="124" fill="#191F28">리</text>
+        <rect x="568" y="88" width="76" height="72" fill="#4E5968"/>
+
+        <rect x="8" y="168" width="72" height="72" fill="#4E5968"/>
+        <rect x="88" y="168" width="72" height="72" fill="#DFF6F0"/>
+        <text x="124" y="204" fill="#00866F">우</text>
+        <rect x="168" y="168" width="72" height="72" fill="#4E5968"/>
+        <rect x="248" y="168" width="72" height="72" fill="#4E5968"/>
+        <rect x="328" y="168" width="72" height="72" fill="#4E5968"/>
+        <rect x="408" y="168" width="72" height="72" fill="#FFFFFF"/>
+        <text x="444" y="204" fill="#191F28">자</text>
+        <rect x="488" y="168" width="72" height="72" fill="#4E5968"/>
+        <rect x="568" y="168" width="76" height="72" fill="#4E5968"/>
+
+        <rect x="8" y="248" width="72" height="72" fill="#4E5968"/>
+        <rect x="88" y="248" width="72" height="72" fill="#DFF6F0"/>
+        <text x="124" y="284" fill="#00866F">개</text>
+        <rect x="168" y="248" width="72" height="72" fill="#FFFFFF"/>
+        <text x="204" y="284" fill="#191F28">미</text>
+        <rect x="248" y="248" width="72" height="72" fill="#4E5968"/>
+        <rect x="328" y="248" width="72" height="72" fill="#FFFFFF"/>
+        <text x="364" y="284" fill="#191F28">일</text>
+        <rect x="408" y="248" width="72" height="72" fill="#FFFFFF"/>
+        <text x="444" y="284" fill="#191F28">기</text>
+        <rect x="488" y="248" width="72" height="72" fill="#4E5968"/>
+        <rect x="568" y="248" width="76" height="72" fill="#4E5968"/>
+
+        <rect x="8" y="328" width="72" height="72" fill="#4E5968"/>
+        <rect x="88" y="328" width="72" height="72" fill="#4E5968"/>
+        <rect x="168" y="328" width="72" height="72" fill="#FFFFFF"/>
+        <text x="204" y="364" fill="#191F28">소</text>
+        <rect x="248" y="328" width="72" height="72" fill="#FFFFFF"/>
+        <text x="284" y="364" fill="#191F28">나</text>
+        <rect x="328" y="328" width="72" height="72" fill="#FFFFFF"/>
+        <text x="364" y="364" fill="#191F28">기</text>
+        <rect x="408" y="328" width="72" height="72" fill="#4E5968"/>
+        <rect x="488" y="328" width="72" height="72" fill="#4E5968"/>
+        <rect x="568" y="328" width="76" height="72" fill="#4E5968"/>
+
+        <rect x="8" y="408" width="72" height="72" fill="#4E5968"/>
+        <rect x="88" y="408" width="72" height="72" fill="#4E5968"/>
+        <rect x="168" y="408" width="72" height="72" fill="#4E5968"/>
+        <rect x="248" y="408" width="72" height="72" fill="#4E5968"/>
+        <rect x="328" y="408" width="72" height="72" fill="#4E5968"/>
+        <rect x="408" y="408" width="72" height="72" fill="#4E5968"/>
+        <rect x="488" y="408" width="72" height="72" fill="#4E5968"/>
+        <rect x="568" y="408" width="76" height="72" fill="#4E5968"/>
+
+        <rect x="8" y="488" width="72" height="72" fill="#4E5968"/>
+        <rect x="88" y="488" width="72" height="72" fill="#4E5968"/>
+        <rect x="168" y="488" width="72" height="72" fill="#4E5968"/>
+        <rect x="248" y="488" width="72" height="72" fill="#4E5968"/>
+        <rect x="328" y="488" width="72" height="72" fill="#4E5968"/>
+        <rect x="408" y="488" width="72" height="72" fill="#4E5968"/>
+        <rect x="488" y="488" width="72" height="72" fill="#4E5968"/>
+        <rect x="568" y="488" width="76" height="72" fill="#4E5968"/>
+
+        <rect x="8" y="568" width="72" height="76" fill="#4E5968"/>
+        <rect x="88" y="568" width="72" height="76" fill="#4E5968"/>
+        <rect x="168" y="568" width="72" height="76" fill="#4E5968"/>
+        <rect x="248" y="568" width="72" height="76" fill="#4E5968"/>
+        <rect x="328" y="568" width="72" height="76" fill="#4E5968"/>
+        <rect x="408" y="568" width="72" height="76" fill="#4E5968"/>
+        <rect x="488" y="568" width="72" height="76" fill="#4E5968"/>
+        <rect x="568" y="568" width="76" height="76" fill="#4E5968"/>
+      </g>
+      <rect x="87" y="87" width="74" height="234" fill="none" stroke="#00A88F" stroke-width="6"/>
+    </g>
+  </g>
+</svg>

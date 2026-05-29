@@ -23,15 +23,29 @@ npm run dev
 
 모든 명령은 repo 루트에서 실행합니다.
 
-| 명령 | 용도 |
-| --- | --- |
-| `npm run dev` | 로컬 개발 서버 실행 |
-| `npm run lint` | ESLint 검사 |
-| `npm run build` | AppsInToss `.ait` 빌드 |
-| `npm run deploy` | AppsInToss 배포 |
-| `npm run wordbank:krdict` | 한국어기초사전 XML에서 퍼즐용 단어장 생성 |
-| `npm run prototype:crossword` | 콘솔에서 퍼즐판 생성 알고리즘 샘플 출력 |
-| `npm run batch:puzzles` | 날짜별 puzzle JSON pack 생성 |
+| 명령                          | 용도                                      |
+| ----------------------------- | ----------------------------------------- |
+| `npm run dev`                 | 로컬 개발 서버 실행                       |
+| `npm run lint`                | ESLint 검사                               |
+| `npm run build`               | AppsInToss `.ait` 빌드                    |
+| `npm run deploy`              | AppsInToss 배포                           |
+| `npm run mobile:install`      | `apps/mobile` RN 의존성 설치              |
+| `npm run check:mobile`        | `apps/mobile` lint/test                   |
+| `npm run build:android`       | Google Play용 Android App Bundle 빌드     |
+| `npm run wordbank:krdict`     | 한국어기초사전 XML에서 퍼즐용 단어장 생성 |
+| `npm run prototype:crossword` | 콘솔에서 퍼즐판 생성 알고리즘 샘플 출력   |
+| `npm run batch:puzzles`       | 날짜별 puzzle JSON pack 생성              |
+| `npm run validate:puzzles`    | 격자 슬롯과 entry/clue 매칭 검증          |
+
+## 구조
+
+현재 앱은 AppsInToss WebView 타깃을 유지합니다. Google Play / App Store 확장은 React Native `apps/mobile` 타깃으로 준비합니다.
+
+공통 퍼즐 타입, 순수 helper, repository 계약은 `packages/crossword-core`에 둡니다. 현재 WebView 앱은 `src/adapters`의 `fetch` / `localStorage` 어댑터로 이 계약을 구현합니다. `apps/mobile`은 Android/iOS 네이티브 프로젝트가 포함된 RN skeleton이며, 실제 퍼즐 UI 포팅은 core contract와 market adapter를 연결한 뒤 진행합니다.
+
+사용자 기본 동선은 홈(`/`) -> 오늘 풀기(`/today`) -> 결과(`/result`) / 기록(`/history`)입니다. 생성 보드 검수용 시뮬레이터는 개발 환경에서만 `/dev/simulator`로 접근합니다.
+
+자세한 경계와 Supabase 전환 순서는 `docs/architecture.md`를 참고합니다.
 
 ## 퍼즐판 생성
 
@@ -53,19 +67,36 @@ data/lexicon/krdict-puzzle-wordbank.json
 
 주요 옵션:
 
-| 옵션 | 기본값 | 설명 |
-| --- | ---: | --- |
-| `--out=...` | `data/lexicon/krdict-puzzle-wordbank.json` | 출력 파일 |
-| `--limit=25000` | `25000` | 최대 단어 수 |
-| `--minLength=2` | `2` | 최소 글자 수 |
-| `--maxLength=5` | `5` | 최대 글자 수 |
-| `--maxClueLength=54` | `54` | 힌트로 쓸 뜻풀이 최대 길이 |
+| 옵션                 |                                     기본값 | 설명                            |
+| -------------------- | -----------------------------------------: | ------------------------------- |
+| `--out=...`          | `data/lexicon/krdict-puzzle-wordbank.json` | 출력 파일                       |
+| `--filter=...`       |     `data/lexicon/puzzle-word-filter.json` | 수동 차단/난이도/태그 규칙 파일 |
+| `--limit=25000`      |                                    `25000` | 최대 단어 수                    |
+| `--minLength=2`      |                                        `2` | 최소 글자 수                    |
+| `--maxLength=5`      |                                        `5` | 최대 글자 수                    |
+| `--maxClueLength=54` |                                       `54` | 힌트로 쓸 뜻풀이 최대 길이      |
 
 예시:
 
 ```bash
 npm run wordbank:krdict -- --limit=5000 --maxLength=6 --out=tmp/wordbank.json
 ```
+
+단어장 항목에는 batch와 검수에 필요한 정제 필드가 포함됩니다.
+
+| 필드              | 설명                                                        |
+| ----------------- | ----------------------------------------------------------- |
+| `difficulty`      | `easy`, `normal`, `hard` 중 하나                            |
+| `themeTags`       | 주제 태그 배열                                              |
+| `allowForPuzzle`  | 퍼즐 생성 후보로 사용할 수 있는지                           |
+| `blockedReason`   | 제외 사유. 허용 단어는 `null`                               |
+| `definition`      | 한국어기초사전 뜻풀이 원문                                  |
+| `clue`            | 앱에서 보여줄 힌트. 수동 힌트가 없으면 임시로 뜻풀이를 사용 |
+| `clueSource`      | `manual` 또는 `krdict-definition`                           |
+| `needsManualClue` | 출시 전 자체 힌트 재작성이 필요한지                         |
+
+수동 차단이나 태깅은 `data/lexicon/puzzle-word-filter.json`에서 관리합니다.
+출시용 힌트는 `cluesByAnswer`에 직접 작성합니다.
 
 주의: 현재 단어장은 한국어기초사전 뜻풀이를 힌트로 사용합니다. 출시 전에는 `CC-BY-SA-2.0-KR` 출처 표시와 동일조건변경허락 의무를 검토하거나, 힌트를 자체 문장으로 재작성해야 합니다.
 
@@ -89,28 +120,28 @@ npm run prototype:crossword -- \
 
 주요 옵션:
 
-| 옵션 | 설명 |
-| --- | --- |
-| `--wordbank=...` | 사용할 단어장 JSON |
-| `--samples=1` | 출력할 최종 후보 수 |
-| `--attempts=8` | 생성 시도 횟수 |
-| `--size=8` | 퍼즐판 한 변 크기 |
-| `--words=12` | 직접 배치할 최대 단어 수 |
-| `--beam=10` | 유지할 중간 후보 판 수 |
-| `--branch=10` | 후보 판 하나에서 확장할 배치 수 |
-| `--dense=96` | 조밀 배치 후보 탐색 수 |
-| `--candidates=600` | seed별 탐색 후보 단어 수 |
-| `--seed=20260525` | 재현 가능한 난수 seed |
+| 옵션               | 설명                            |
+| ------------------ | ------------------------------- |
+| `--wordbank=...`   | 사용할 단어장 JSON              |
+| `--samples=1`      | 출력할 최종 후보 수             |
+| `--attempts=8`     | 생성 시도 횟수                  |
+| `--size=8`         | 퍼즐판 한 변 크기               |
+| `--words=12`       | 직접 배치할 최대 단어 수        |
+| `--beam=10`        | 유지할 중간 후보 판 수          |
+| `--branch=10`      | 후보 판 하나에서 확장할 배치 수 |
+| `--dense=96`       | 조밀 배치 후보 탐색 수          |
+| `--candidates=600` | seed별 탐색 후보 단어 수        |
+| `--seed=20260525`  | 재현 가능한 난수 seed           |
 
 출력에서 먼저 볼 지표:
 
-| 지표 | 의미 |
-| --- | --- |
-| `entries` | 최종 가로/세로 단어 수 |
-| `auto` | 인접 배치로 자동 생성된 유효 단어 수 |
-| `crossRatio` | 채워진 칸 중 교차 칸 비율 |
-| `bboxDensity` | 글자가 들어간 최소 직사각형의 밀도 |
-| `multiCrossEntries` | 2개 이상 교차하는 단어 수 |
+| 지표                | 의미                                 |
+| ------------------- | ------------------------------------ |
+| `entries`           | 최종 가로/세로 단어 수               |
+| `auto`              | 인접 배치로 자동 생성된 유효 단어 수 |
+| `crossRatio`        | 채워진 칸 중 교차 칸 비율            |
+| `bboxDensity`       | 글자가 들어간 최소 직사각형의 밀도   |
+| `multiCrossEntries` | 2개 이상 교차하는 단어 수            |
 
 ### 3. 날짜별 puzzle pack 생성
 
@@ -128,6 +159,7 @@ npm run batch:puzzles -- \
   --branch=12 \
   --dense=96 \
   --candidates=600 \
+  --samples=5 \
   --retries=10
 ```
 
@@ -136,21 +168,35 @@ npm run batch:puzzles -- \
 ```text
 public/puzzles/manifest.json
 public/puzzles/YYYY-MM-DD-normal-NN.json
+public/puzzles/generation-report.json
 ```
 
 배치 옵션:
 
-| 옵션 | 기본값 | 설명 |
-| --- | ---: | --- |
-| `--days=7` | `7` | 생성할 날짜 수 |
-| `--start=2026-05-25` | `2026-05-25` | 시작 날짜 |
-| `--seed=20260525` | `20260525` | 시작 seed |
-| `--size=8` | `8` | 퍼즐판 한 변 크기 |
-| `--words=12` | `12` | 직접 배치할 최대 단어 수 |
-| `--attempts=30` | `30` | 날짜별 생성 시도 수 |
-| `--retries=8` | `8` | 실패 시 seed를 바꿔 재시도하는 횟수 |
-| `--wordbank=...` | `data/lexicon/krdict-puzzle-wordbank.json` | 사용할 단어장 |
-| `--outDir=...` | `public/puzzles` | 출력 폴더 |
+| 옵션                 |                                     기본값 | 설명                                    |
+| -------------------- | -----------------------------------------: | --------------------------------------- |
+| `--days=7`           |                                        `7` | 생성할 날짜 수                          |
+| `--start=2026-05-25` |                               `2026-05-25` | 시작 날짜                               |
+| `--seed=20260525`    |                                 `20260525` | 시작 seed                               |
+| `--size=8`           |                                        `8` | 퍼즐판 한 변 크기                       |
+| `--words=12`         |                                       `12` | 직접 배치할 최대 단어 수                |
+| `--attempts=30`      |                                       `30` | 날짜별 생성 시도 수                     |
+| `--samples=5`        |                                        `5` | retry마다 품질 게이트에 올릴 후보 판 수 |
+| `--retries=8`        |                                        `8` | 실패 시 seed를 바꿔 재시도하는 횟수     |
+| `--wordbank=...`     | `data/lexicon/krdict-puzzle-wordbank.json` | 사용할 단어장                           |
+| `--outDir=...`       |                           `public/puzzles` | 출력 폴더                               |
+
+품질 게이트 옵션:
+
+| 옵션               | 기본값 | 설명                     |
+| ------------------ | -----: | ------------------------ |
+| `--minEntries=12`  |   `12` | 최소 최종 단어 수        |
+| `--minCross=0.55`  | `0.55` | 최소 교차율              |
+| `--minDensity=0.5` |  `0.5` | 최소 bbox 밀도           |
+| `--minMulti=0.65`  | `0.65` | 최소 다중 교차 단어 비율 |
+| `--maxAuto=0.5`    |  `0.5` | 최대 자동 단어 비율      |
+
+`generation-report.json`에는 날짜별 retry, 후보별 실패 사유, 최종 채택된 판의 품질 게이트 결과가 기록됩니다.
 
 생성 후 `npm run dev`를 켜고 앱에서 `manifest.json`과 오늘 날짜 puzzle JSON을 확인합니다.
 

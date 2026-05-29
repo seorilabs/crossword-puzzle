@@ -1,0 +1,390 @@
+{
+  "generatedAt": "2026-05-25T10:37:37.148Z",
+  "report": [
+    {
+      "date": "2026-05-25",
+      "accepted": true,
+      "failureReasonCounts": {},
+      "selected": {
+        "puzzleId": "2026-05-25-normal-01",
+        "quality": {
+          "pass": true,
+          "checks": [
+            {
+              "key": "minWordCount",
+              "pass": true,
+              "actual": 20,
+              "expected": 12
+            },
+            {
+              "key": "minCrossRatio",
+              "pass": true,
+              "actual": 0.676,
+              "expected": 0.55
+            },
+            {
+              "key": "minBboxDensity",
+              "pass": true,
+              "actual": 0.531,
+              "expected": 0.5
+            },
+            {
+              "key": "minMultiCrossRatio",
+              "pass": true,
+              "actual": 0.9,
+              "expected": 0.65
+            },
+            {
+              "key": "maxAutoRunRatio",
+              "pass": true,
+              "actual": 0.4,
+              "expected": 0.5
+            }
+          ],
+          "ratios": {
+            "autoRunRatio": 0.4,
+            "multiCrossRatio": 0.9
+          },
+          "thresholds": {
+            "maxAutoRunRatio": 0.5,
+            "minBboxDensity": 0.5,
+            "minCrossRatio": 0.55,
+            "minMultiCrossRatio": 0.65,
+            "minWordCount": 12
+          }
+        },
+        "metrics": {
+          "autoRunCount": 8,
+          "bboxDensity": 0.531,
+          "crossCells": 23,
+          "crossRatio": 0.676,
+          "filledCells": 34,
+          "multiCrossEntries": 18,
+          "placedWordCount": 12,
+          "wordCount": 20
+        }
+      },
+      "attempts": [
+        {
+          "retryIndex": 0,
+          "seed": 20260525,
+          "candidateCount": 0,
+          "candidates": []
+        },
+        {
+          "retryIndex": 1,
+          "seed": 20260526,
+          "candidateCount": 3,
+          "candidates": [
+            {
+              "candidateIndex": 0,
+              "failureReasons": [],
+              "metrics": {
+                "autoRunCount": 8,
+                "bboxDensity": 0.531,
+                "crossRatio": 0.676,
+                "multiCrossEntries": 18,
+                "wordCount": 20
+              },
+              "pass": true,
+              "ratios": {
+                "autoRunRatio": 0.4,
+                "multiCrossRatio": 0.9
+              }
+            },
+            {
+              "candidateIndex": 1,
+              "failureReasons": [],
+              "metrics": {
+                "autoRunCount": 7,
+                "bboxDensity": 0.646,
+                "crossRatio": 0.71,
+                "multiCrossEntries": 17,
+                "wordCount": 19
+              },
+              "pass": true,
+              "ratios": {
+                "autoRunRatio": 0.368,
+                "multiCrossRatio": 0.895
+              }
+            },
+            {
+              "candidateIndex": 2,
+              "failureReasons": [],
+              "metrics": {
+                "autoRunCount": 6,
+                "bboxDensity": 0.531,
+                "crossRatio": 0.588,
+                "multiCrossEntries": 15,
+                "wordCount": 18
+              },
+              "pass": true,
+              "ratios": {
+                "autoRunRatio": 0.333,
+                "multiCrossRatio": 0.833
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-05-26",
+      "accepted": true,
+      "failureReasonCounts": {},
+      "selected": {
+        "puzzleId": "2026-05-26-normal-02",
+        "quality": {
+          "pass": true,
+          "checks": [
+            {
+              "key": "minWordCount",
+              "pass": true,
+              "actual": 22,
+              "expected": 12
+            },
+            {
+              "key": "minCrossRatio",
+              "pass": true,
+              "actual": 0.788,
+              "expected": 0.55
+            },
+            {
+              "key": "minBboxDensity",
+              "pass": true,
+              "actual": 0.516,
+              "expected": 0.5
+            },
+            {
+              "key": "minMultiCrossRatio",
+              "pass": true,
+              "actual": 0.955,
+              "expected": 0.65
+            },
+            {
+              "key": "maxAutoRunRatio",
+              "pass": true,
+              "actual": 0.455,
+              "expected": 0.5
+            }
+          ],
+          "ratios": {
+            "autoRunRatio": 0.455,
+            "multiCrossRatio": 0.955
+          },
+          "thresholds": {
+            "maxAutoRunRatio": 0.5,
+            "minBboxDensity": 0.5,
+            "minCrossRatio": 0.55,
+            "minMultiCrossRatio": 0.65,
+            "minWordCount": 12
+          }
+        },
+        "metrics": {
+          "autoRunCount": 10,
+          "bboxDensity": 0.516,
+          "crossCells": 26,
+          "crossRatio": 0.788,
+          "filledCells": 33,
+          "multiCrossEntries": 21,
+          "placedWordCount": 12,
+          "wordCount": 22
+        }
+      },
+      "attempts": [
+        {
+          "retryIndex": 0,
+          "seed": 20260625,
+          "candidateCount": 4,
+          "candidates": [
+            {
+              "candidateIndex": 0,
+              "failureReasons": [],
+              "metrics": {
+                "autoRunCount": 10,
+                "bboxDensity": 0.516,
+                "crossRatio": 0.788,
+                "multiCrossEntries": 21,
+                "wordCount": 22
+              },
+              "pass": true,
+              "ratios": {
+                "autoRunRatio": 0.455,
+                "multiCrossRatio": 0.955
+              }
+            },
+            {
+              "candidateIndex": 1,
+              "failureReasons": [],
+              "metrics": {
+                "autoRunCount": 9,
+                "bboxDensity": 0.554,
+                "crossRatio": 0.774,
+                "multiCrossEntries": 18,
+                "wordCount": 21
+              },
+              "pass": true,
+              "ratios": {
+                "autoRunRatio": 0.429,
+                "multiCrossRatio": 0.857
+              }
+            },
+            {
+              "candidateIndex": 2,
+              "failureReasons": [],
+              "metrics": {
+                "autoRunCount": 8,
+                "bboxDensity": 0.554,
+                "crossRatio": 0.742,
+                "multiCrossEntries": 18,
+                "wordCount": 20
+              },
+              "pass": true,
+              "ratios": {
+                "autoRunRatio": 0.4,
+                "multiCrossRatio": 0.9
+              }
+            },
+            {
+              "candidateIndex": 3,
+              "failureReasons": [],
+              "metrics": {
+                "autoRunCount": 6,
+                "bboxDensity": 0.536,
+                "crossRatio": 0.7,
+                "multiCrossEntries": 17,
+                "wordCount": 18
+              },
+              "pass": true,
+              "ratios": {
+                "autoRunRatio": 0.333,
+                "multiCrossRatio": 0.944
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "date": "2026-05-27",
+      "accepted": true,
+      "failureReasonCounts": {},
+      "selected": {
+        "puzzleId": "2026-05-27-normal-03",
+        "quality": {
+          "pass": true,
+          "checks": [
+            {
+              "key": "minWordCount",
+              "pass": true,
+              "actual": 22,
+              "expected": 12
+            },
+            {
+              "key": "minCrossRatio",
+              "pass": true,
+              "actual": 0.839,
+              "expected": 0.55
+            },
+            {
+              "key": "minBboxDensity",
+              "pass": true,
+              "actual": 0.554,
+              "expected": 0.5
+            },
+            {
+              "key": "minMultiCrossRatio",
+              "pass": true,
+              "actual": 0.955,
+              "expected": 0.65
+            },
+            {
+              "key": "maxAutoRunRatio",
+              "pass": true,
+              "actual": 0.455,
+              "expected": 0.5
+            }
+          ],
+          "ratios": {
+            "autoRunRatio": 0.455,
+            "multiCrossRatio": 0.955
+          },
+          "thresholds": {
+            "maxAutoRunRatio": 0.5,
+            "minBboxDensity": 0.5,
+            "minCrossRatio": 0.55,
+            "minMultiCrossRatio": 0.65,
+            "minWordCount": 12
+          }
+        },
+        "metrics": {
+          "autoRunCount": 10,
+          "bboxDensity": 0.554,
+          "crossCells": 26,
+          "crossRatio": 0.839,
+          "filledCells": 31,
+          "multiCrossEntries": 21,
+          "placedWordCount": 12,
+          "wordCount": 22
+        }
+      },
+      "attempts": [
+        {
+          "retryIndex": 0,
+          "seed": 20260725,
+          "candidateCount": 3,
+          "candidates": [
+            {
+              "candidateIndex": 0,
+              "failureReasons": [],
+              "metrics": {
+                "autoRunCount": 10,
+                "bboxDensity": 0.554,
+                "crossRatio": 0.839,
+                "multiCrossEntries": 21,
+                "wordCount": 22
+              },
+              "pass": true,
+              "ratios": {
+                "autoRunRatio": 0.455,
+                "multiCrossRatio": 0.955
+              }
+            },
+            {
+              "candidateIndex": 1,
+              "failureReasons": [],
+              "metrics": {
+                "autoRunCount": 8,
+                "bboxDensity": 0.554,
+                "crossRatio": 0.774,
+                "multiCrossEntries": 20,
+                "wordCount": 20
+              },
+              "pass": true,
+              "ratios": {
+                "autoRunRatio": 0.4,
+                "multiCrossRatio": 1
+              }
+            },
+            {
+              "candidateIndex": 2,
+              "failureReasons": [],
+              "metrics": {
+                "autoRunCount": 8,
+                "bboxDensity": 0.518,
+                "crossRatio": 0.793,
+                "multiCrossEntries": 19,
+                "wordCount": 20
+              },
+              "pass": true,
+              "ratios": {
+                "autoRunRatio": 0.4,
+                "multiCrossRatio": 0.95
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

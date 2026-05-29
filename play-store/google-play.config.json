@@ -1,0 +1,58 @@
+{
+  "packageName": "확정 필요",
+  "suggestedPackageName": "com.seorilabs.crosswordpuzzle",
+  "defaultLanguage": "ko-KR",
+  "appType": "game",
+  "freeOrPaid": "free",
+  "contactEmail": "cs@seorilabs.com",
+  "privacyPolicyUrl": "확정 필요",
+  "suggestedPrivacyPolicyUrl": "https://www.seorilabs.com/privacy",
+  "contactWebsite": "https://www.seorilabs.com",
+  "targetTrack": "internal",
+  "release": {
+    "name": "0.1.0-internal",
+    "aabPath": "apps/mobile/android/app/build/outputs/bundle/release/app-release.aab",
+    "notes": {
+      "ko-KR": "초기 내부 테스트 빌드입니다."
+    }
+  },
+  "storeListing": {
+    "appName": {
+      "ko-KR": "가로세로낱말퍼즐"
+    },
+    "shortDescription": {
+      "ko-KR": "매일 한 판씩 푸는 한글 가로세로 낱말 퍼즐"
+    },
+    "fullDescription": {
+      "ko-KR": "가로세로낱말퍼즐은 여러 한글 낱말이 서로 글자를 공유하며 교차하는 날짜별 퍼즐을 제공하는 게임입니다.\n\n홈 화면에서 날짜별 퍼즐을 선택하고, 각 날짜마다 정해진 도전 횟수 안에서 낱말을 완성합니다. 퍼즐판의 칸이나 힌트 목록을 누르면 가로 또는 세로 단어가 선택되고, 사용자는 힌트를 읽은 뒤 정답을 입력합니다.\n\n막히는 경우 선택한 단어의 다음 글자를 힌트로 확인할 수 있고, 풀이가 끝나면 완료 단어 수, 사용한 힌트 횟수, 남은 도전 횟수를 확인할 수 있습니다.\n\n현재 앱은 로그인, 결제, 서버 저장을 사용하지 않습니다. 날짜별 미션 상태, 퍼즐 진행 상태, 힌트 사용 횟수는 사용자의 기기에 저장됩니다."
+    }
+  },
+  "contentDeclarations": {
+    "dataSafety": "확정 필요",
+    "contentRating": "확정 필요",
+    "targetAudience": "확정 필요",
+    "ads": "no",
+    "koreaDistribution": "yes",
+    "koreaGameRating": "확정 필요"
+  },
+  "assets": {
+    "playIcon": "play-store/assets/icon-512.png",
+    "featureGraphic": "play-store/assets/feature-graphic-1024x500.png",
+    "phoneScreenshots": [
+      "play-store/screenshots/phone/phone-1.png",
+      "play-store/screenshots/phone/phone-2.png",
+      "play-store/screenshots/phone/phone-3.png"
+    ],
+    "sevenInchTabletScreenshots": [],
+    "tenInchTabletScreenshots": []
+  },
+  "automation": {
+    "developerApiAuth": "GitHub Actions OIDC + Google Cloud Workload Identity Federation",
+    "workflow": ".github/workflows/build-google-play.yml",
+    "uploadScript": "scripts/upload-google-play-internal.py",
+    "wifSetupScript": "scripts/setup-google-play-wif.sh",
+    "workloadIdentityProviderVariable": "GOOGLE_WORKLOAD_IDENTITY_PROVIDER",
+    "serviceAccountEmailVariable": "GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL",
+    "firstTarget": "signed AAB uploaded to internal testing as draft"
+  }
+}

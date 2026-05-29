@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-24T15:24:37.090Z",
+  "generatedAt": "2026-05-25T10:37:37.145Z",
   "startDate": "2026-05-25",
   "days": 3,
   "wordBank": {
@@ -11,13 +11,67 @@
       "spdx": "CC-BY-SA-2.0-KR",
       "url": "https://creativecommons.org/licenses/by-sa/2.0/kr/"
     },
+    "rawWordCount": 24963,
     "wordCount": 24963
+  },
+  "qualityThresholds": {
+    "maxAutoRunRatio": 0.5,
+    "minBboxDensity": 0.5,
+    "minCrossRatio": 0.55,
+    "minMultiCrossRatio": 0.65,
+    "minWordCount": 12
   },
   "puzzles": [
     {
       "date": "2026-05-25",
       "puzzleId": "2026-05-25-normal-01",
       "path": "/puzzles/2026-05-25-normal-01.json",
+      "quality": {
+        "pass": true,
+        "checks": [
+          {
+            "key": "minWordCount",
+            "pass": true,
+            "actual": 20,
+            "expected": 12
+          },
+          {
+            "key": "minCrossRatio",
+            "pass": true,
+            "actual": 0.676,
+            "expected": 0.55
+          },
+          {
+            "key": "minBboxDensity",
+            "pass": true,
+            "actual": 0.531,
+            "expected": 0.5
+          },
+          {
+            "key": "minMultiCrossRatio",
+            "pass": true,
+            "actual": 0.9,
+            "expected": 0.65
+          },
+          {
+            "key": "maxAutoRunRatio",
+            "pass": true,
+            "actual": 0.4,
+            "expected": 0.5
+          }
+        ],
+        "ratios": {
+          "autoRunRatio": 0.4,
+          "multiCrossRatio": 0.9
+        },
+        "thresholds": {
+          "maxAutoRunRatio": 0.5,
+          "minBboxDensity": 0.5,
+          "minCrossRatio": 0.55,
+          "minMultiCrossRatio": 0.65,
+          "minWordCount": 12
+        }
+      },
       "metrics": {
         "autoRunCount": 8,
         "bboxDensity": 0.531,
@@ -33,6 +87,52 @@
       "date": "2026-05-26",
       "puzzleId": "2026-05-26-normal-02",
       "path": "/puzzles/2026-05-26-normal-02.json",
+      "quality": {
+        "pass": true,
+        "checks": [
+          {
+            "key": "minWordCount",
+            "pass": true,
+            "actual": 22,
+            "expected": 12
+          },
+          {
+            "key": "minCrossRatio",
+            "pass": true,
+            "actual": 0.788,
+            "expected": 0.55
+          },
+          {
+            "key": "minBboxDensity",
+            "pass": true,
+            "actual": 0.516,
+            "expected": 0.5
+          },
+          {
+            "key": "minMultiCrossRatio",
+            "pass": true,
+            "actual": 0.955,
+            "expected": 0.65
+          },
+          {
+            "key": "maxAutoRunRatio",
+            "pass": true,
+            "actual": 0.455,
+            "expected": 0.5
+          }
+        ],
+        "ratios": {
+          "autoRunRatio": 0.455,
+          "multiCrossRatio": 0.955
+        },
+        "thresholds": {
+          "maxAutoRunRatio": 0.5,
+          "minBboxDensity": 0.5,
+          "minCrossRatio": 0.55,
+          "minMultiCrossRatio": 0.65,
+          "minWordCount": 12
+        }
+      },
       "metrics": {
         "autoRunCount": 10,
         "bboxDensity": 0.516,
@@ -48,6 +148,52 @@
       "date": "2026-05-27",
       "puzzleId": "2026-05-27-normal-03",
       "path": "/puzzles/2026-05-27-normal-03.json",
+      "quality": {
+        "pass": true,
+        "checks": [
+          {
+            "key": "minWordCount",
+            "pass": true,
+            "actual": 22,
+            "expected": 12
+          },
+          {
+            "key": "minCrossRatio",
+            "pass": true,
+            "actual": 0.839,
+            "expected": 0.55
+          },
+          {
+            "key": "minBboxDensity",
+            "pass": true,
+            "actual": 0.554,
+            "expected": 0.5
+          },
+          {
+            "key": "minMultiCrossRatio",
+            "pass": true,
+            "actual": 0.955,
+            "expected": 0.65
+          },
+          {
+            "key": "maxAutoRunRatio",
+            "pass": true,
+            "actual": 0.455,
+            "expected": 0.5
+          }
+        ],
+        "ratios": {
+          "autoRunRatio": 0.455,
+          "multiCrossRatio": 0.955
+        },
+        "thresholds": {
+          "maxAutoRunRatio": 0.5,
+          "minBboxDensity": 0.5,
+          "minCrossRatio": 0.55,
+          "minMultiCrossRatio": 0.65,
+          "minWordCount": 12
+        }
+      },
       "metrics": {
         "autoRunCount": 10,
         "bboxDensity": 0.554,
