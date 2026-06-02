@@ -35,11 +35,13 @@ npm run dev
 | `npm run wordbank:krdict`     | 한국어기초사전 XML에서 퍼즐용 단어장 생성 |
 | `npm run prototype:crossword` | 콘솔에서 퍼즐판 생성 알고리즘 샘플 출력   |
 | `npm run batch:puzzles`       | 날짜별 puzzle JSON pack 생성              |
+| `npm run job:puzzle-pack`     | 생성/검증/publish를 묶은 배치잡 entrypoint |
+| `npm run publish:puzzles`     | Firebase Hosting publish                   |
 | `npm run validate:puzzles`    | 격자 슬롯과 entry/clue 매칭 검증          |
 
 ## 구조
 
-현재 앱은 AppsInToss WebView 타깃을 유지합니다. Google Play / App Store 확장은 React Native `apps/mobile` 타깃으로 준비합니다.
+현재 1차 론칭 목표는 AppsInToss WebView입니다. Google Play / App Store 확장은 AIT 출시 이후 React Native `apps/mobile` 타깃으로 이어갑니다.
 
 공통 퍼즐 타입, 순수 helper, repository 계약은 `packages/crossword-core`에 둡니다. 현재 WebView 앱은 `src/adapters`의 `fetch` / `localStorage` 어댑터로 이 계약을 구현합니다. `apps/mobile`은 Android/iOS 네이티브 프로젝트가 포함된 RN skeleton이며, 실제 퍼즐 UI 포팅은 core contract와 market adapter를 연결한 뒤 진행합니다.
 
@@ -167,7 +169,7 @@ npm run batch:puzzles -- \
 
 ```text
 public/puzzles/manifest.json
-public/puzzles/YYYY-MM-DD-normal-NN.json
+public/puzzles/pack-YYYYMMDDHHMMSS-seed.json
 public/puzzles/generation-report.json
 ```
 
@@ -175,9 +177,13 @@ public/puzzles/generation-report.json
 
 | 옵션                 |                                     기본값 | 설명                                    |
 | -------------------- | -----------------------------------------: | --------------------------------------- |
-| `--days=7`           |                                        `7` | 생성할 날짜 수                          |
+| `--days=1`           |                                        `1` | 한 번에 생성할 퍼즐 슬롯 수             |
+| `--append`           |                                      false | 기존 manifest에 새 퍼즐을 append        |
+| `--keep=84`          |                                       `84` | append 시 유지할 최근 퍼즐 수           |
+| `--intervalHours=2`  |                                        `2` | `slotId` 계산에 사용하는 발행 간격      |
 | `--start=2026-05-25` |                               `2026-05-25` | 시작 날짜                               |
 | `--seed=20260525`    |                                 `20260525` | 시작 seed                               |
+| `--publishedAt=...`  |                                  현재 시각 | 발행 시각 override                      |
 | `--size=8`           |                                        `8` | 퍼즐판 한 변 크기                       |
 | `--words=12`         |                                       `12` | 직접 배치할 최대 단어 수                |
 | `--attempts=30`      |                                       `30` | 날짜별 생성 시도 수                     |
@@ -198,7 +204,29 @@ public/puzzles/generation-report.json
 
 `generation-report.json`에는 날짜별 retry, 후보별 실패 사유, 최종 채택된 판의 품질 게이트 결과가 기록됩니다.
 
+2시간마다 1개씩 운영할 때는 `--append --keep=84`를 사용합니다. 각 퍼즐은 `packId`, `puzzleId`, `slotId`, `publishedAt`를 가지며, 앱의 로컬 진행 상태는 `puzzleId` 기준으로 저장됩니다.
+
+Cloud Run Job wrapper는 `PUZZLE_SEED`를 지정하지 않으면 `publishedAt`까지 포함해 기본 seed를 만들기 때문에, 같은 날짜에 생성되는 2시간 슬롯도 서로 다른 퍼즐이 됩니다. 같은 퍼즐을 재현해야 할 때만 `--seed` 또는 `PUZZLE_SEED`를 고정합니다.
+
 생성 후 `npm run dev`를 켜고 앱에서 `manifest.json`과 오늘 날짜 puzzle JSON을 확인합니다.
+
+임시 폴더에서 생성 결과를 검증할 때는 manifest의 `/puzzles/...` 경로를 해석할 public root를 넘깁니다.
+
+```bash
+npm run validate:puzzles -- \
+  --manifest=/tmp/crossword-puzzle-public/puzzles/manifest.json \
+  --assetRoot=/tmp/crossword-puzzle-public
+```
+
+Cloud Run Job / Firebase Hosting 구성은 `docs/puzzle-pack-cloud-run.md`를 참고합니다.
+
+AIT 빌드가 Firebase Hosting의 puzzle pack을 읽게 하려면 빌드 환경에 base URL을 지정합니다. 지정하지 않으면 기존처럼 번들에 포함된 `public/puzzles`를 읽습니다.
+
+```bash
+VITE_PUZZLE_PACK_BASE_URL=https://crossword-puzzle-79ae0.web.app npm run build
+```
+
+GitHub Actions 배포에서는 repository variable `PUZZLE_PACK_BASE_URL`로 운영 Hosting URL을 바꿀 수 있습니다.
 
 ## 배포하기
 

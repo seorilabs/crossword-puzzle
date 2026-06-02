@@ -2,6 +2,7 @@ import type { Puzzle, PuzzleManifestItem, SavedProgress } from "./types";
 
 export type PuzzleRepository = {
   listPuzzleSummaries(): Promise<PuzzleManifestItem[]>;
+  getPuzzleById(puzzleId: string): Promise<Puzzle | null>;
   getPuzzleForDate(date: string): Promise<Puzzle | null>;
 };
 

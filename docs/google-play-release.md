@@ -2,9 +2,9 @@
 
 ## 현재 판정
 
-현재 `crossword-puzzle`은 AppsInToss WebView/Vite 앱을 유지하면서 Google Play/App Store용 React Native `apps/mobile` skeleton을 함께 둔다.
+현재 `crossword-puzzle`의 1차 론칭 목표는 AppsInToss WebView다. Google Play/App Store용 React Native `apps/mobile` skeleton은 후속 출시 트랙으로 유지한다.
 
-`apps/mobile`에는 Android/iOS 네이티브 프로젝트가 생성되어 있지만, 아직 실제 퍼즐 UI 포팅과 release upload key 설정이 끝나지 않았다. 따라서 지금 단계의 목표는 internal testing draft release를 만들 수 있는 빌드/업로드 체계를 유지하면서 남은 blocker를 명시하는 것이다.
+`apps/mobile`에는 Android/iOS 네이티브 프로젝트가 생성되어 있지만, 아직 실제 퍼즐 UI 포팅과 release upload key 설정이 끝나지 않았다. AIT 론칭 전에는 Play internal testing draft release를 필수 blocker로 보지 않고, 빌드/업로드 체계와 남은 blocker를 문서로 유지한다.
 
 ```mermaid
 flowchart TD

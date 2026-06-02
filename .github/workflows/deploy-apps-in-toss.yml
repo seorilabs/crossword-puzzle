@@ -32,6 +32,7 @@ jobs:
       APPS_IN_TOSS_API_KEY: ${{ secrets.APPS_IN_TOSS_API_KEY }}
       APPS_IN_TOSS_INPUT_MEMO: ${{ github.event.inputs.memo || '' }}
       CREATE_RELEASE_TAG_INPUT: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.create_release_tag != 'false' }}
+      VITE_PUZZLE_PACK_BASE_URL: ${{ vars.PUZZLE_PACK_BASE_URL || 'https://crossword-puzzle-79ae0.web.app' }}
 
     steps:
       - name: Checkout

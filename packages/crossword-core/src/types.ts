@@ -60,7 +60,10 @@ export type Puzzle = {
   grid: string[][];
   entries: PuzzleEntry[];
   metrics: PuzzleMetrics;
+  packId?: string;
+  publishedAt?: string;
   quality?: PuzzleQuality;
+  slotId?: string;
 };
 
 export type PuzzleSlot = {
@@ -97,14 +100,18 @@ export type PuzzleManifestItem = {
   date: string;
   difficulty?: Puzzle["difficulty"];
   metrics?: PuzzleMetrics;
+  packId?: string;
   path: string;
+  publishedAt?: string;
   puzzleId: string;
   quality?: PuzzleQuality;
+  slotId?: string;
 };
 
 export type PuzzleManifest = {
   days?: number;
   generatedAt?: string;
+  keep?: number;
   qualityThresholds?: Record<string, number>;
   puzzles: PuzzleManifestItem[];
   startDate?: string;

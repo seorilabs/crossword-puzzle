@@ -22,7 +22,11 @@ function getDefaultStorage(): KeyValueStorage | null {
   }
 }
 
-function getMissionKey(keyPrefix: string, date: string) {
+function getMissionKey(keyPrefix: string, date: string, puzzleId: string) {
+  return `${keyPrefix}:${date}:${puzzleId}`;
+}
+
+function getLegacyMissionKey(keyPrefix: string, date: string) {
   return `${keyPrefix}:${date}`;
 }
 
@@ -62,7 +66,9 @@ export function createLocalMissionRepository({
       }
 
       try {
-        const raw = storage.getItem(getMissionKey(keyPrefix, date));
+        const raw =
+          storage.getItem(getMissionKey(keyPrefix, date, puzzleId)) ??
+          storage.getItem(getLegacyMissionKey(keyPrefix, date));
         if (raw == null) {
           return createDailyMissionState(date, puzzleId, maxAttempts);
         }
@@ -85,7 +91,7 @@ export function createLocalMissionRepository({
 
       try {
         storage.setItem(
-          getMissionKey(keyPrefix, mission.date),
+          getMissionKey(keyPrefix, mission.date, mission.puzzleId),
           JSON.stringify(mission),
         );
       } catch {

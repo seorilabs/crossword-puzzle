@@ -1,6 +1,6 @@
-import { Top } from "@toss/tds-mobile";
-import type { CSSProperties } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Button, Paragraph, TextField, Top } from "@toss/tds-mobile";
+import type { CSSProperties, ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import {
   buildCellEntries,
@@ -30,7 +30,10 @@ import {
 } from "../packages/crossword-core/src";
 import { createLocalMissionRepository } from "./adapters/localMissionRepository";
 import { createLocalProgressRepository } from "./adapters/localProgressRepository";
-import { createStaticPuzzleRepository } from "./adapters/staticPuzzleRepository";
+import {
+  createFallbackPuzzleRepository,
+  createStaticPuzzleRepository,
+} from "./adapters/staticPuzzleRepository";
 import { fallbackPuzzle } from "./data/fallbackPuzzle";
 
 type AppRoute = "home" | "today" | "result" | "history" | "dev-simulator";
@@ -63,8 +66,8 @@ type DateCardState = {
 type DateSelectionProps = {
   dateCardStates: Record<string, DateCardState>;
   puzzleSummaries: PuzzleManifestItem[];
-  selectedDate: string;
-  selectPuzzleDate: (date: string) => void;
+  selectedPuzzleId: string;
+  selectPuzzle: (puzzleId: string) => void;
 };
 
 type PuzzleSession = {
@@ -75,13 +78,33 @@ type PuzzleSession = {
 
 const DAILY_ATTEMPT_LIMIT = 3;
 
-const puzzleRepository = createStaticPuzzleRepository();
+const puzzlePackBaseUrl = import.meta.env.VITE_PUZZLE_PACK_BASE_URL?.trim();
+const puzzleManifestUrl = import.meta.env.VITE_PUZZLE_MANIFEST_URL?.trim();
+const hasRemotePuzzlePack =
+  (puzzlePackBaseUrl != null && puzzlePackBaseUrl !== "") ||
+  (puzzleManifestUrl != null && puzzleManifestUrl !== "");
+const localPuzzleRepository = createStaticPuzzleRepository();
+const remotePuzzleRepository = createStaticPuzzleRepository({
+  assetBaseUrl: puzzlePackBaseUrl,
+  manifestUrl: puzzleManifestUrl,
+});
+const puzzleRepository = hasRemotePuzzlePack
+  ? createFallbackPuzzleRepository(
+      remotePuzzleRepository,
+      localPuzzleRepository,
+    )
+  : localPuzzleRepository;
 const progressRepository = createLocalProgressRepository();
 const missionRepository = createLocalMissionRepository();
 
 const directionLabels: Record<Direction, string> = {
   across: "가로",
   down: "세로",
+};
+
+const directionOrder: Record<Direction, number> = {
+  across: 0,
+  down: 1,
 };
 
 const qualityLabels: Record<string, string> = {
@@ -155,21 +178,24 @@ function createPuzzleSummary(puzzle: Puzzle): PuzzleManifestItem {
     date: puzzle.date,
     difficulty: puzzle.difficulty,
     metrics: puzzle.metrics,
+    packId: puzzle.packId,
     path: "",
+    publishedAt: puzzle.publishedAt,
     puzzleId: puzzle.puzzleId,
     quality: puzzle.quality,
+    slotId: puzzle.slotId,
   };
 }
 
-function getInitialPuzzleDate(
+function getInitialPuzzleId(
   puzzleSummaries: PuzzleManifestItem[],
   today: string,
 ) {
   return (
-    puzzleSummaries.find((item) => item.date === today)?.date ??
-    puzzleSummaries.find((item) => item.date <= today)?.date ??
-    puzzleSummaries[puzzleSummaries.length - 1]?.date ??
-    fallbackPuzzle.date
+    puzzleSummaries.find((item) => item.date === today)?.puzzleId ??
+    puzzleSummaries.find((item) => item.date <= today)?.puzzleId ??
+    puzzleSummaries[puzzleSummaries.length - 1]?.puzzleId ??
+    fallbackPuzzle.puzzleId
   );
 }
 
@@ -213,6 +239,19 @@ function formatEntryReference(
   return `${prefix}${directionLabels[entry.direction]} · ${entry.answer.length}글자`;
 }
 
+function getEntryStartCellKey(entry?: PuzzleEntry) {
+  return entry == null ? "" : getCellKey(entry.row, entry.col);
+}
+
+function getInitialEntryStartCellKey(puzzle: Puzzle) {
+  const initialEntryId = getInitialEntryId(puzzle);
+  const initialEntry =
+    puzzle.entries.find((entry) => entry.id === initialEntryId) ??
+    puzzle.entries[0];
+
+  return getEntryStartCellKey(initialEntry);
+}
+
 function App() {
   const [route, setRoute] = useState<AppRoute>(() =>
     getRouteFromPathname(window.location.pathname),
@@ -223,6 +262,9 @@ function App() {
     useState<Direction>("across");
   const [selectedEntryId, setSelectedEntryId] = useState(
     getInitialEntryId(fallbackPuzzle),
+  );
+  const [selectedCellKey, setSelectedCellKey] = useState(() =>
+    getInitialEntryStartCellKey(fallbackPuzzle),
   );
   const [loadState, setLoadState] = useState<LoadState>("fallback");
   const [hintCount, setHintCount] = useState(0);
@@ -244,8 +286,8 @@ function App() {
     return () => window.removeEventListener("popstate", syncRoute);
   }, []);
 
-  const loadPuzzleSession = useCallback(async (date: string) => {
-    const nextPuzzle = await puzzleRepository.getPuzzleForDate(date);
+  const loadPuzzleSession = useCallback(async (puzzleId: string) => {
+    const nextPuzzle = await puzzleRepository.getPuzzleById(puzzleId);
 
     if (nextPuzzle == null) {
       return null;
@@ -277,10 +319,11 @@ function App() {
     setHintCount(session.savedProgress.hintCount);
     setSelectedDirection("across");
     setSelectedEntryId(getInitialEntryId(session.nextPuzzle));
+    setSelectedCellKey(getInitialEntryStartCellKey(session.nextPuzzle));
     setMission(session.savedMission);
     setDateCardStates((prev) => ({
       ...prev,
-      [session.savedMission.date]: createDateCardState(
+      [session.nextPuzzle.puzzleId]: createDateCardState(
         session.savedMission,
         session.savedProgress,
       ),
@@ -303,7 +346,7 @@ function App() {
           ]);
 
           return [
-            summary.date,
+            summary.puzzleId,
             createDateCardState(savedMission, savedProgress),
           ] as const;
         }),
@@ -325,10 +368,10 @@ function App() {
             ? loadedSummaries
             : [createPuzzleSummary(fallbackPuzzle)];
         const today = getTodayDateKey();
-        const initialDate = getInitialPuzzleDate(nextSummaries, today);
+        const initialPuzzleId = getInitialPuzzleId(nextSummaries, today);
         const [nextDateCardStates, session] = await Promise.all([
           loadDateCardStates(nextSummaries),
-          loadPuzzleSession(initialDate),
+          loadPuzzleSession(initialPuzzleId),
         ]);
 
         if (!isCancelled) {
@@ -351,10 +394,10 @@ function App() {
     };
   }, [applyPuzzleSession, loadDateCardStates, loadPuzzleSession]);
 
-  const selectPuzzleDate = useCallback(
-    async (date: string) => {
+  const selectPuzzle = useCallback(
+    async (puzzleId: string) => {
       try {
-        const session = await loadPuzzleSession(date);
+        const session = await loadPuzzleSession(puzzleId);
         applyPuzzleSession(session);
         setLoadState(session == null ? "fallback" : "remote");
       } catch {
@@ -374,9 +417,12 @@ function App() {
   useEffect(() => {
     setDateCardStates((prev) => ({
       ...prev,
-      [mission.date]: createDateCardState(mission, { cellValues, hintCount }),
+      [puzzle.puzzleId]: createDateCardState(mission, {
+        cellValues,
+        hintCount,
+      }),
     }));
-  }, [cellValues, hintCount, mission]);
+  }, [cellValues, hintCount, mission, puzzle.puzzleId]);
 
   const viewModel = usePuzzleViewModel(
     puzzle,
@@ -423,9 +469,10 @@ function App() {
     setRoute(nextRoute);
   }
 
-  function selectEntry(entry: PuzzleEntry) {
+  function selectEntry(entry: PuzzleEntry, cellKey = getEntryStartCellKey(entry)) {
     setSelectedEntryId(entry.id);
     setSelectedDirection(entry.direction);
+    setSelectedCellKey(cellKey);
   }
 
   function selectCell(row: number, col: number) {
@@ -440,7 +487,7 @@ function App() {
       entries?.[0];
 
     if (nextEntry != null) {
-      selectEntry(nextEntry);
+      selectEntry(nextEntry, key);
     }
   }
 
@@ -463,6 +510,24 @@ function App() {
           next[key] = nextLetter;
         }
       });
+
+      // Smart Input: 단어가 완성되었는지 확인
+      const isWordFilled = nextLetters.length === [...entry.answer].length;
+      if (isWordFilled) {
+        // 약간의 지연 후 다음 미완료 단어로 이동 (UX 자연스러움 위해)
+        setTimeout(() => {
+          const nextUncompleted = puzzle.entries.find(
+            (e) =>
+              !getCompletedEntries(puzzle.entries, next).some(
+                (ce) => ce.id === e.id,
+              ),
+          );
+          if (nextUncompleted != null) {
+            selectEntry(nextUncompleted);
+          }
+        }, 150);
+      }
+
       return next;
     });
   }
@@ -515,6 +580,7 @@ function App() {
     setHintCount(0);
     setSelectedDirection("across");
     setSelectedEntryId(getInitialEntryId(puzzle));
+    setSelectedCellKey(getInitialEntryStartCellKey(puzzle));
     void progressRepository.clearProgress(puzzle.puzzleId);
   }
 
@@ -560,6 +626,7 @@ function App() {
     remainingAttempts,
     revealLetter,
     selectedAnswer: viewModel.selectedAnswer,
+    selectedCellKey,
     selectedDirection,
     selectedEntry: viewModel.selectedEntry,
     setSelectedDirection,
@@ -571,8 +638,8 @@ function App() {
   const dateSelectionProps = {
     dateCardStates,
     puzzleSummaries,
-    selectedDate: mission.date,
-    selectPuzzleDate,
+    selectedPuzzleId: puzzle.puzzleId,
+    selectPuzzle,
   };
 
   if (route === "dev-simulator") {
@@ -587,7 +654,6 @@ function App() {
         navigate={navigate}
         revealAll={revealAll}
         revealSelected={revealSelected}
-        restartMissionAttempt={restartMissionAttempt}
         startOrResumeMission={startOrResumeMission}
       />
     );
@@ -602,7 +668,6 @@ function App() {
           hasStarted={hasStarted}
           isCompleted={isCompleted}
           navigate={navigate}
-          restartMissionAttempt={restartMissionAttempt}
           startOrResumeMission={startOrResumeMission}
         />
       ) : route === "result" ? (
@@ -766,8 +831,8 @@ function HomeScreen({
   puzzleSummaries,
   remainingAttempts,
   selectedEntry,
-  selectedDate,
-  selectPuzzleDate,
+  selectedPuzzleId,
+  selectPuzzle,
   startLabels,
   startOrResumeMission,
 }: HomeScreenProps) {
@@ -783,58 +848,61 @@ function HomeScreen({
 
   return (
     <>
-      <header className="appHeader homeHeader">
-        <div>
-          <span>{mission.date}</span>
-          <h1>가로세로낱말퍼즐</h1>
-        </div>
-        <button
-          className="ghostButton"
-          type="button"
-          onClick={() => navigate("history")}
-        >
-          기록
-        </button>
-      </header>
+      <Top
+        title="가로세로낱말퍼즐"
+        subtitleBottom={`${mission.date} · 🔥 5일째 도전 중`}
+      />
 
       <DateCarousel
         dateCardStates={dateCardStates}
         puzzleSummaries={puzzleSummaries}
-        selectedDate={selectedDate}
-        selectPuzzleDate={selectPuzzleDate}
+        selectedPuzzleId={selectedPuzzleId}
+        selectPuzzle={selectPuzzle}
       />
 
       <section className="todayMission" aria-label="선택한 미션">
         <div className="missionLead">
-          <span>선택한 미션</span>
-          <strong>{puzzle.entries.length}개 낱말</strong>
-          <p>
+          <Paragraph typography="t5" color="#00866f" fontWeight="bold">
+            선택한 미션
+          </Paragraph>
+          <Paragraph typography="t2" fontWeight="bold">
+            {puzzle.entries.length}개 낱말
+          </Paragraph>
+          <Paragraph typography="t6" color="#4e5968">
             {isCompleted
               ? "완료"
               : hasStarted
                 ? `${progressPercent}% 진행 중`
                 : "도전 준비 완료"}
-          </p>
+          </Paragraph>
         </div>
 
         <MiniPuzzlePreview puzzle={puzzle} />
 
         <div className="attemptStrip" aria-label="도전 상태">
           <div>
-            <span>남은 도전</span>
-            <strong>
+            <Paragraph typography="t7" color="#6b7684">
+              남은 도전
+            </Paragraph>
+            <Paragraph typography="t5" fontWeight="bold">
               {remainingAttempts}/{mission.maxAttempts}
-            </strong>
+            </Paragraph>
           </div>
           <div>
-            <span>완료</span>
-            <strong>
+            <Paragraph typography="t7" color="#6b7684">
+              완료
+            </Paragraph>
+            <Paragraph typography="t5" fontWeight="bold">
               {completedEntries.length}/{puzzle.entries.length}
-            </strong>
+            </Paragraph>
           </div>
           <div>
-            <span>힌트</span>
-            <strong>{hintCount}</strong>
+            <Paragraph typography="t7" color="#6b7684">
+              힌트
+            </Paragraph>
+            <Paragraph typography="t5" fontWeight="bold">
+              {hintCount}
+            </Paragraph>
           </div>
         </div>
 
@@ -844,17 +912,6 @@ function HomeScreen({
         >
           <span style={{ width: `${progressPercent}%` }} />
         </div>
-
-        <button
-          className="primaryButton missionCta"
-          type="button"
-          disabled={isPrimaryDisabled}
-          onClick={
-            isCompleted ? () => navigate("result") : startOrResumeMission
-          }
-        >
-          {primaryLabel}
-        </button>
       </section>
 
       <button
@@ -892,112 +949,21 @@ function HomeScreen({
           <em>보기</em>
         </button>
       </section>
-    </>
-  );
-}
 
-function formatDateCardDay(date: string) {
-  const [, month, day] = date.split("-");
-  if (month == null || day == null) {
-    return date;
-  }
-
-  return `${Number(month)}.${Number(day)}`;
-}
-
-function formatDateCardWeekday(date: string) {
-  const value = new Date(`${date}T00:00:00`);
-  if (Number.isNaN(value.getTime())) {
-    return "";
-  }
-
-  return new Intl.DateTimeFormat("ko-KR", { weekday: "short" }).format(value);
-}
-
-function getDateCardStatus(state?: DateCardState) {
-  if (state?.completedAt != null) {
-    return "완료";
-  }
-
-  if (state?.hasProgress) {
-    return "진행";
-  }
-
-  return "대기";
-}
-
-function DateCarousel({
-  dateCardStates,
-  puzzleSummaries,
-  selectedDate,
-  selectPuzzleDate,
-}: DateSelectionProps) {
-  return (
-    <section className="dateRail" aria-label="퍼즐 날짜 선택">
-      <div className="dateScroller">
-        {puzzleSummaries.map((summary) => {
-          const state = dateCardStates[summary.date];
-          const isSelected = summary.date === selectedDate;
-
-          return (
-            <button
-              key={summary.puzzleId}
-              className={[
-                "dateCard",
-                isSelected ? "dateSelected" : "",
-                state?.completedAt != null ? "dateCompleted" : "",
-              ].join(" ")}
-              type="button"
-              aria-pressed={isSelected}
-              onClick={() => void selectPuzzleDate(summary.date)}
-            >
-              <span>{formatDateCardWeekday(summary.date)}</span>
-              <strong>{formatDateCardDay(summary.date)}</strong>
-              <em>
-                {getDateCardStatus(state)} · {summary.metrics?.wordCount ?? "-"}
-                개
-              </em>
-            </button>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-type AppHeaderProps = {
-  eyebrow?: string;
-  title: string;
-  onBack?: () => void;
-  action?: {
-    label: string;
-    onClick: () => void;
-  };
-};
-
-function AppHeader({ action, eyebrow, onBack, title }: AppHeaderProps) {
-  return (
-    <header className="appHeader screenHeader">
-      {onBack == null ? null : (
-        <button
-          className="backButton"
+      <div className="fixedBottom homeBottomAction">
+        <Button
+          size="large"
+          display="full"
           type="button"
-          onClick={onBack}
-          aria-label="뒤로"
+          disabled={isPrimaryDisabled}
+          onClick={
+            isCompleted ? () => navigate("result") : startOrResumeMission
+          }
         >
-          ‹
-        </button>
-      )}
-      <div>
-        {eyebrow == null ? null : <span>{eyebrow}</span>}
-        <h1>{title}</h1>
+          {primaryLabel}
+        </Button>
       </div>
-      {action == null ? null : (
-        <button className="ghostButton" type="button" onClick={action.onClick}>
-          {action.label}
-        </button>
-      )}
-    </header>
+    </>
   );
 }
 
@@ -1024,6 +990,165 @@ function MiniPuzzlePreview({ puzzle }: MiniPuzzlePreviewProps) {
   );
 }
 
+function formatDateCardDay(date: string) {
+  const [, month, day] = date.split("-");
+  if (month == null || day == null) {
+    return date;
+  }
+
+  return `${Number(month)}.${Number(day)}`;
+}
+
+function formatDateCardWeekday(date: string) {
+  const value = new Date(`${date}T00:00:00`);
+  if (Number.isNaN(value.getTime())) {
+    return "";
+  }
+
+  return new Intl.DateTimeFormat("ko-KR", { weekday: "short" }).format(value);
+}
+
+function formatGameHeaderDate(date: string) {
+  const dayLabel = formatDateCardDay(date);
+  const value = new Date(`${date}T00:00:00`);
+
+  if (Number.isNaN(value.getTime())) {
+    return dayLabel;
+  }
+
+  const weekday = new Intl.DateTimeFormat("ko-KR", {
+    weekday: "long",
+  }).format(value);
+
+  return `${dayLabel} ${weekday}`;
+}
+
+function formatPuzzleCardSlot(summary: PuzzleManifestItem) {
+  if (summary.publishedAt == null) {
+    return "";
+  }
+
+  const value = new Date(summary.publishedAt);
+  if (Number.isNaN(value.getTime())) {
+    return "";
+  }
+
+  const hour = new Intl.DateTimeFormat("ko-KR", {
+    hour: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Seoul",
+  })
+    .formatToParts(value)
+    .find((part) => part.type === "hour")?.value;
+
+  return hour == null ? "" : `${Number(hour) % 24}시`;
+}
+
+function getDateCardStatus(state?: DateCardState) {
+  if (state?.completedAt != null) {
+    return "완료";
+  }
+
+  if (state?.hasProgress) {
+    return "진행";
+  }
+
+  return "대기";
+}
+
+function DateCarousel({
+  dateCardStates,
+  puzzleSummaries,
+  selectedPuzzleId,
+  selectPuzzle,
+}: DateSelectionProps) {
+  return (
+    <section className="dateRail" aria-label="퍼즐 날짜 선택">
+      <div className="dateScroller">
+        {puzzleSummaries.map((summary) => {
+          const state = dateCardStates[summary.puzzleId];
+          const isSelected = summary.puzzleId === selectedPuzzleId;
+          const slotLabel = formatPuzzleCardSlot(summary);
+          const statusLabel = getDateCardStatus(state);
+          const wordCountLabel = `${summary.metrics?.wordCount ?? "-"}개`;
+          const metaLabel =
+            slotLabel === ""
+              ? `${statusLabel} · ${wordCountLabel}`
+              : `${slotLabel} · ${wordCountLabel}`;
+
+          return (
+            <button
+              key={summary.puzzleId}
+              className={[
+                "dateCard",
+                isSelected ? "dateSelected" : "",
+                state?.completedAt != null ? "dateCompleted" : "",
+              ].join(" ")}
+              type="button"
+              aria-label={`${formatGameHeaderDate(summary.date)} ${slotLabel} ${statusLabel}`}
+              aria-pressed={isSelected}
+              onClick={() => void selectPuzzle(summary.puzzleId)}
+            >
+              <span>{formatDateCardWeekday(summary.date)}</span>
+              <strong>{formatDateCardDay(summary.date)}</strong>
+              <em>{metaLabel}</em>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+type AppHeaderProps = {
+  eyebrow?: string;
+  title: string;
+  onBack?: () => void;
+  action?: {
+    label: string;
+    onClick: () => void;
+  };
+  right?: ReactNode;
+  compact?: boolean;
+};
+
+function AppHeader({
+  action,
+  compact = false,
+  eyebrow,
+  onBack,
+  right,
+  title,
+}: AppHeaderProps) {
+  return (
+    <header
+      className={["appHeader", "screenHeader", compact ? "compactHeader" : ""]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      {onBack == null ? null : (
+        <button
+          className="backButton"
+          type="button"
+          onClick={onBack}
+          aria-label="뒤로"
+        >
+          ‹
+        </button>
+      )}
+      <div>
+        {eyebrow == null ? null : <span>{eyebrow}</span>}
+        <h1>{title}</h1>
+      </div>
+      {right ?? (action == null ? null : (
+        <button className="ghostButton" type="button" onClick={action.onClick}>
+          {action.label}
+        </button>
+      ))}
+    </header>
+  );
+}
+
 type TodayScreenProps = DateSelectionProps & {
   applyAnswer: (entry: PuzzleEntry, value: string) => void;
   cellValues: Record<string, string>;
@@ -1036,15 +1161,15 @@ type TodayScreenProps = DateSelectionProps & {
   navigate: (route: AppRoute) => void;
   puzzle: Puzzle;
   remainingAttempts: number;
-  restartMissionAttempt: () => void;
   revealLetter: () => void;
   selectedAnswer: string;
+  selectedCellKey: string;
   selectedDirection: Direction;
   selectedEntry?: PuzzleEntry;
   startLabels: Map<string, number>;
   setSelectedDirection: (direction: Direction) => void;
   selectCell: (row: number, col: number) => void;
-  selectEntry: (entry: PuzzleEntry) => void;
+  selectEntry: (entry: PuzzleEntry, cellKey?: string) => void;
   startOrResumeMission: () => void;
   viewModel: PuzzleViewModel;
 };
@@ -1052,35 +1177,78 @@ type TodayScreenProps = DateSelectionProps & {
 function TodayScreen({
   applyAnswer,
   cellValues,
-  clueEntries,
   completedEntries,
   dateCardStates,
   hasStarted,
-  hintCount,
   isCompleted,
   mission,
   navigate,
   puzzle,
   puzzleSummaries,
   remainingAttempts,
-  restartMissionAttempt,
   revealLetter,
   selectedAnswer,
-  selectedDate,
-  selectedDirection,
+  selectedCellKey,
+  selectedPuzzleId,
   selectedEntry,
-  selectPuzzleDate,
+  selectPuzzle,
   startLabels,
-  setSelectedDirection,
   selectCell,
   selectEntry,
   startOrResumeMission,
   viewModel,
 }: TodayScreenProps) {
-  const progressPercent = getProgressPercent(
-    completedEntries.length,
-    puzzle.entries.length,
-  );
+  const [isClueListOpen, setIsClueListOpen] = useState(false);
+  const [answerDraft, setAnswerDraft] = useState(selectedAnswer);
+  const [isAnswerComposing, setIsAnswerComposing] = useState(false);
+  const compositionEndValueRef = useRef<string | null>(null);
+  const selectedCellEntries = useMemo(() => {
+    const entries =
+      selectedCellKey === ""
+        ? []
+        : (viewModel.cellEntries.get(selectedCellKey) ?? []);
+    const entriesWithSelected =
+      selectedEntry == null ||
+      entries.some((entry) => entry.id === selectedEntry.id)
+        ? entries
+        : [...entries, selectedEntry];
+
+    return [...entriesWithSelected].sort(
+      (a, b) => directionOrder[a.direction] - directionOrder[b.direction],
+    );
+  }, [selectedCellKey, selectedEntry, viewModel.cellEntries]);
+
+  useEffect(() => {
+    if (isAnswerComposing) {
+      return;
+    }
+
+    compositionEndValueRef.current = null;
+    setAnswerDraft(selectedAnswer);
+  }, [isAnswerComposing, selectedAnswer, selectedEntry?.id]);
+
+  function selectClueAndClose(entry: PuzzleEntry) {
+    selectEntry(entry);
+    setIsClueListOpen(false);
+  }
+
+  function clearSelectedAnswer() {
+    if (selectedEntry == null) {
+      return;
+    }
+
+    setAnswerDraft("");
+    compositionEndValueRef.current = null;
+    applyAnswer(selectedEntry, "");
+  }
+
+  function focusPuzzleBoard() {
+    requestAnimationFrame(() => {
+      document.querySelector<HTMLElement>(".puzzleBoard")?.focus({
+        preventScroll: true,
+      });
+    });
+  }
 
   if (!hasStarted && !isCompleted) {
     return (
@@ -1093,23 +1261,26 @@ function TodayScreen({
         <DateCarousel
           dateCardStates={dateCardStates}
           puzzleSummaries={puzzleSummaries}
-          selectedDate={selectedDate}
-          selectPuzzleDate={selectPuzzleDate}
+          selectedPuzzleId={selectedPuzzleId}
+          selectPuzzle={selectPuzzle}
         />
         <section className="startPanel" aria-label="미션 시작">
-          <strong>도전 {mission.attemptsUsed + 1}</strong>
-          <span>
+          <Paragraph typography="t2" fontWeight="bold">
+            도전 {mission.attemptsUsed + 1}
+          </Paragraph>
+          <Paragraph typography="t6" color="#6b7684">
             {puzzle.entries.length}개 단어 · 교차율{" "}
             {formatRatio(puzzle.metrics.crossRatio)}
-          </span>
-          <button
-            className="primaryButton"
+          </Paragraph>
+          <Button
+            size="large"
+            display="full"
             type="button"
             disabled={remainingAttempts === 0}
             onClick={startOrResumeMission}
           >
             시작
-          </button>
+          </Button>
         </section>
       </>
     );
@@ -1118,35 +1289,41 @@ function TodayScreen({
   return (
     <>
       <AppHeader
-        eyebrow={`도전 ${mission.attemptsUsed}/${mission.maxAttempts} · ${progressPercent}%`}
-        title="퍼즐 풀기"
+        compact
+        title={formatGameHeaderDate(puzzle.date)}
         onBack={() => navigate("home")}
-        action={{ label: "기록", onClick: () => navigate("history") }}
+        right={
+          <div className="headerActions">
+            <button
+              className="iconButton"
+              type="button"
+              aria-label="힌트"
+              title="힌트"
+              disabled={selectedEntry == null}
+              onClick={revealLetter}
+            >
+              ?
+            </button>
+            <button
+              className="iconButton"
+              type="button"
+              aria-label="지우기"
+              title="지우기"
+              disabled={selectedEntry == null}
+              onClick={clearSelectedAnswer}
+            >
+              X
+            </button>
+            <button
+              className="ghostButton"
+              type="button"
+              onClick={() => setIsClueListOpen(true)}
+            >
+              전체 문제
+            </button>
+          </div>
+        }
       />
-
-      <DateCarousel
-        dateCardStates={dateCardStates}
-        puzzleSummaries={puzzleSummaries}
-        selectedDate={selectedDate}
-        selectPuzzleDate={selectPuzzleDate}
-      />
-
-      <section className="missionCompact" aria-label="진행 상태">
-        <div>
-          <strong>
-            {completedEntries.length}/{puzzle.entries.length}
-          </strong>
-          <span>완료</span>
-        </div>
-        <div>
-          <strong>{hintCount}</strong>
-          <span>힌트</span>
-        </div>
-        <div>
-          <strong>{remainingAttempts}</strong>
-          <span>남은 도전</span>
-        </div>
-      </section>
 
       <PuzzleBoard
         cellEntries={viewModel.cellEntries}
@@ -1160,52 +1337,91 @@ function TodayScreen({
       />
 
       {selectedEntry != null ? (
-        <section className="answerPanel">
-          <div className="selectedClue">
-            <span>{formatEntryReference(selectedEntry, startLabels)}</span>
-            <strong>{selectedEntry.clue}</strong>
+        <div className="fixedBottom answerDock">
+          <div className="answerPanel">
+            <div className="selectedClueList">
+              {selectedCellEntries.map((entry) => (
+                <button
+                  key={entry.id}
+                  className={[
+                    "selectedClue",
+                    entry.id === selectedEntry.id ? "selectedClueActive" : "",
+                  ].join(" ")}
+                  type="button"
+                  aria-pressed={entry.id === selectedEntry.id}
+                  onClick={() =>
+                    selectEntry(
+                      entry,
+                      selectedCellKey || getEntryStartCellKey(entry),
+                    )
+                  }
+                >
+                  <span>{formatEntryReference(entry, startLabels)}</span>
+                  <strong>{entry.clue}</strong>
+                </button>
+              ))}
+            </div>
+            <TextField
+              variant="box"
+              inputMode="text"
+              maxLength={selectedEntry.answer.length}
+              placeholder={`${selectedEntry.answer.length}글자 입력`}
+              value={answerDraft}
+              onCompositionStart={() => setIsAnswerComposing(true)}
+              onCompositionEnd={(event) => {
+                const nextValue = event.currentTarget.value;
+                setIsAnswerComposing(false);
+                setAnswerDraft(nextValue);
+                compositionEndValueRef.current = nextValue;
+                applyAnswer(selectedEntry, nextValue);
+              }}
+              onChange={(event) => {
+                const nextValue = event.target.value;
+                const nativeEvent = event.nativeEvent as InputEvent;
+                setAnswerDraft(nextValue);
+
+                if (isAnswerComposing || nativeEvent.isComposing) {
+                  return;
+                }
+
+                if (compositionEndValueRef.current === nextValue) {
+                  compositionEndValueRef.current = null;
+                  return;
+                }
+
+                applyAnswer(selectedEntry, nextValue);
+              }}
+              onKeyDown={(event) => {
+                const nativeEvent = event.nativeEvent as KeyboardEvent;
+                if (
+                  event.key !== "Enter" ||
+                  isAnswerComposing ||
+                  nativeEvent.isComposing
+                ) {
+                  return;
+                }
+
+                event.preventDefault();
+                applyAnswer(selectedEntry, answerDraft);
+                event.currentTarget.blur();
+                focusPuzzleBoard();
+              }}
+            />
           </div>
-          <input
-            className="answerInput"
-            inputMode="text"
-            maxLength={selectedEntry.answer.length}
-            placeholder={`${selectedEntry.answer.length}글자 입력`}
-            value={selectedAnswer}
-            onChange={(event) => applyAnswer(selectedEntry, event.target.value)}
-          />
-          <div className="actionRow actionRowUser">
-            <button className="toolButton" type="button" onClick={revealLetter}>
-              힌트
-            </button>
-            <button
-              className="toolButton"
-              type="button"
-              onClick={() => applyAnswer(selectedEntry, "")}
-            >
-              지우기
-            </button>
-            <button
-              className="toolButton dangerButton"
-              type="button"
-              disabled={remainingAttempts === 0}
-              onClick={restartMissionAttempt}
-            >
-              새 도전
-            </button>
-          </div>
-        </section>
+        </div>
       ) : null}
 
-      <ClueSection
-        clueEntries={clueEntries}
-        completedEntries={completedEntries}
-        puzzle={puzzle}
-        selectedDirection={selectedDirection}
-        selectedEntry={selectedEntry}
-        startLabels={startLabels}
-        setSelectedDirection={setSelectedDirection}
-        selectEntry={selectEntry}
-      />
+      {isClueListOpen ? (
+        <AllCluesOverlay
+          completedEntries={completedEntries}
+          entries={puzzle.entries}
+          onClose={() => setIsClueListOpen(false)}
+          onSelect={selectClueAndClose}
+          puzzle={puzzle}
+          selectedEntry={selectedEntry}
+          startLabels={startLabels}
+        />
+      ) : null}
     </>
   );
 }
@@ -1232,8 +1448,8 @@ function ResultScreen({
   puzzleSummaries,
   remainingAttempts,
   restartMissionAttempt,
-  selectedDate,
-  selectPuzzleDate,
+  selectedPuzzleId,
+  selectPuzzle,
 }: ResultScreenProps) {
   const isComplete = completedEntries.length === puzzle.entries.length;
 
@@ -1248,8 +1464,8 @@ function ResultScreen({
       <DateCarousel
         dateCardStates={dateCardStates}
         puzzleSummaries={puzzleSummaries}
-        selectedDate={selectedDate}
-        selectPuzzleDate={selectPuzzleDate}
+        selectedPuzzleId={selectedPuzzleId}
+        selectPuzzle={selectPuzzle}
       />
 
       <section className="resultPanel" aria-label="미션 결과">
@@ -1304,8 +1520,8 @@ function HistoryScreen({
   puzzle,
   puzzleSummaries,
   remainingAttempts,
-  selectedDate,
-  selectPuzzleDate,
+  selectedPuzzleId,
+  selectPuzzle,
   startOrResumeMission,
 }: HistoryScreenProps) {
   return (
@@ -1319,8 +1535,8 @@ function HistoryScreen({
       <DateCarousel
         dateCardStates={dateCardStates}
         puzzleSummaries={puzzleSummaries}
-        selectedDate={selectedDate}
-        selectPuzzleDate={selectPuzzleDate}
+        selectedPuzzleId={selectedPuzzleId}
+        selectPuzzle={selectPuzzle}
       />
 
       <section className="historyList" aria-label="미션 기록">
@@ -1606,6 +1822,7 @@ function PuzzleBoard({
     <section
       className="puzzleBoard"
       style={{ "--board-cols": cols.length } as CSSProperties}
+      tabIndex={-1}
       aria-label="가로세로 퍼즐판"
     >
       {rows.flatMap((row) =>
@@ -1644,6 +1861,81 @@ function PuzzleBoard({
   );
 }
 
+type AllCluesOverlayProps = {
+  completedEntries: PuzzleEntry[];
+  entries: PuzzleEntry[];
+  onClose: () => void;
+  onSelect: (entry: PuzzleEntry) => void;
+  puzzle: Puzzle;
+  selectedEntry?: PuzzleEntry;
+  startLabels: Map<string, number>;
+};
+
+function AllCluesOverlay({
+  completedEntries,
+  entries,
+  onClose,
+  onSelect,
+  puzzle,
+  selectedEntry,
+  startLabels,
+}: AllCluesOverlayProps) {
+  const completedIds = new Set(completedEntries.map((entry) => entry.id));
+
+  return (
+    <div className="clueOverlay" role="dialog" aria-modal="true">
+      <div className="clueOverlayHeader">
+        <div>
+          <Paragraph typography="t7" color="#6b7684">
+            전체 문제
+          </Paragraph>
+          <Paragraph typography="t4" fontWeight="bold">
+            {entries.length}개 단서
+          </Paragraph>
+        </div>
+        <button className="ghostButton" type="button" onClick={onClose}>
+          닫기
+        </button>
+      </div>
+
+      <div className="clueOverlayList">
+        {(["across", "down"] as Direction[]).map((direction) => (
+          <section key={direction} className="clueGroup">
+            <h2>{directionLabels[direction]}</h2>
+            {entries
+              .filter((entry) => entry.direction === direction)
+              .map((entry) => {
+                const isComplete = completedIds.has(entry.id);
+                return (
+                  <button
+                    key={entry.id}
+                    className={[
+                      "clueItem",
+                      entry.id === selectedEntry?.id ? "clueSelected" : "",
+                    ].join(" ")}
+                    type="button"
+                    onClick={() => onSelect(entry)}
+                  >
+                    <span className="clueIndex">
+                      {getEntryStartLabel(entry, startLabels) ??
+                        puzzle.entries.findIndex(
+                          (candidate) => candidate.id === entry.id,
+                        ) + 1}
+                    </span>
+                    <span className="clueText">{entry.clue}</span>
+                    <span className="clueMeta">
+                      {entry.answer.length}자{isComplete ? " · 완료" : ""}
+                    </span>
+                  </button>
+                );
+              })}
+          </section>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 type ClueSectionProps = {
   clueEntries: PuzzleEntry[];
   completedEntries: PuzzleEntry[];
@@ -1651,6 +1943,7 @@ type ClueSectionProps = {
   selectedDirection: Direction;
   selectedEntry?: PuzzleEntry;
   startLabels: Map<string, number>;
+  style?: CSSProperties;
   setSelectedDirection: (direction: Direction) => void;
   selectEntry: (entry: PuzzleEntry) => void;
 };
@@ -1662,11 +1955,12 @@ function ClueSection({
   selectedDirection,
   selectedEntry,
   startLabels,
+  style,
   setSelectedDirection,
   selectEntry,
 }: ClueSectionProps) {
   return (
-    <section className="clueSection">
+    <section className="clueSection" style={style}>
       <div className="segmentedControl" role="tablist" aria-label="힌트 방향">
         {(["across", "down"] as Direction[]).map((direction) => (
           <button

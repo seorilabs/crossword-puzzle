@@ -1,0 +1,8 @@
+.ait
+.git
+apps/mobile/android/build
+apps/mobile/ios/Pods
+apps/mobile/node_modules
+dist
+node_modules
+npm-debug.log

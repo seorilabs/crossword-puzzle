@@ -1,85 +1,85 @@
 {
-  "puzzleId": "2026-05-26-normal-02",
-  "date": "2026-05-26",
+  "puzzleId": "2026-05-28-normal-04",
+  "date": "2026-05-28",
   "difficulty": "normal",
   "gridSize": 8,
   "grid": [
     [
       "",
-      "말",
-      "실",
-      "수",
-      "",
-      "",
-      "",
-      ""
-    ],
-    [
-      "",
-      "",
-      "장",
-      "난",
-      "꾸",
-      "러",
-      "기",
-      ""
-    ],
-    [
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "소",
-      ""
-    ],
-    [
-      "",
-      "본",
-      "고",
+      "위",
       "장",
       "",
+      "만",
       "성",
-      "장",
-      "기"
+      "적",
+      ""
     ],
     [
       "",
-      "무",
       "정",
-      "부",
+      "면",
+      "충",
+      "돌",
+      "",
+      "막",
+      "내"
+    ],
+    [
+      "",
+      "",
+      "",
+      "",
+      "린",
+      "",
+      "강",
+      "력"
+    ],
+    [
+      "",
+      "자",
+      "연",
+      "사",
+      "",
+      "합",
+      "산",
+      ""
+    ],
+    [
+      "",
+      "반",
+      "말",
+      "지",
+      "거",
+      "리",
+      "",
+      ""
+    ],
+    [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "주",
+      "관",
+      "적"
+    ],
+    [
+      "",
+      "초",
+      "현",
+      "실",
       "주",
       "의",
       "",
-      "말"
-    ],
-    [
-      "인",
-      "",
-      "",
-      "",
-      "색",
-      "",
-      "포",
-      "고"
-    ],
-    [
-      "정",
-      "신",
-      "병",
-      "",
-      "잡",
-      "",
-      "장",
-      "사"
+      ""
     ],
     [
       "",
-      "구",
-      "석",
-      "빼",
-      "기",
+      "",
+      "자",
+      "의",
+      "식",
       "",
       "",
       ""
@@ -88,8 +88,8 @@
   "entries": [
     {
       "id": "a1",
-      "answer": "말실수",
-      "clue": "말을 조심하지 않아서 저지르는 실수. 또는 그 말",
+      "answer": "위장",
+      "clue": "위와 창자",
       "clueSource": "krdict-definition",
       "direction": "across",
       "row": 0,
@@ -99,41 +99,74 @@
     },
     {
       "id": "a2",
-      "answer": "장난꾸러기",
-      "clue": "장난이 심한 아이",
+      "answer": "만성적",
+      "clue": "병의 증세가 심하지 않으면서 천천히 진행되고 잘 낫지 않는 것",
       "clueSource": "krdict-definition",
       "direction": "across",
-      "row": 1,
-      "col": 2,
+      "row": 0,
+      "col": 4,
       "generatedBy": "placed",
       "needsManualClue": true
     },
     {
       "id": "a3",
-      "answer": "본고장",
-      "clue": "태어나서 자란 지역. 또는 원래부터 살아온 지역",
+      "answer": "정면충돌",
+      "clue": "두 물체가 정면으로 부딪침",
       "clueSource": "krdict-definition",
       "direction": "across",
-      "row": 3,
+      "row": 1,
       "col": 1,
       "generatedBy": "placed",
       "needsManualClue": true
     },
     {
       "id": "a4",
-      "answer": "성장기",
-      "clue": "성장하는 시기",
+      "answer": "막내",
+      "clue": "조직이나 모임에서 나이가 가장 어린 사람",
       "clueSource": "krdict-definition",
       "direction": "across",
-      "row": 3,
-      "col": 5,
-      "generatedBy": "placed",
+      "row": 1,
+      "col": 6,
+      "generatedBy": "auto",
       "needsManualClue": true
     },
     {
       "id": "a5",
-      "answer": "무정부주의",
-      "clue": "개인을 지배하는 정치 권력이나 공공의 강제를 부정하고 개인의 자유를 최고의 가치로 내세우는 사상",
+      "answer": "강력",
+      "clue": "힘이나 영향이 강함",
+      "clueSource": "krdict-definition",
+      "direction": "across",
+      "row": 2,
+      "col": 6,
+      "generatedBy": "auto",
+      "needsManualClue": true
+    },
+    {
+      "id": "a6",
+      "answer": "자연사",
+      "clue": "늙고 힘이 약해져 자연히 죽음",
+      "clueSource": "krdict-definition",
+      "direction": "across",
+      "row": 3,
+      "col": 1,
+      "generatedBy": "placed",
+      "needsManualClue": true
+    },
+    {
+      "id": "a7",
+      "answer": "합산",
+      "clue": "둘 이상을 더하여 계산함",
+      "clueSource": "krdict-definition",
+      "direction": "across",
+      "row": 3,
+      "col": 5,
+      "generatedBy": "auto",
+      "needsManualClue": true
+    },
+    {
+      "id": "a8",
+      "answer": "반말지거리",
+      "clue": "반말로 함부로 지껄이는 일. 또는 그런 말투",
       "clueSource": "krdict-definition",
       "direction": "across",
       "row": 4,
@@ -142,97 +175,108 @@
       "needsManualClue": true
     },
     {
-      "id": "a6",
-      "answer": "포고",
-      "clue": "세상 사람들에게 널리 알림",
+      "id": "a9",
+      "answer": "주관적",
+      "clue": "자신의 생각이나 관점을 기준으로 하는 것",
       "clueSource": "krdict-definition",
       "direction": "across",
       "row": 5,
-      "col": 6,
-      "generatedBy": "auto",
-      "needsManualClue": true
-    },
-    {
-      "id": "a7",
-      "answer": "정신병",
-      "clue": "정신의 이상으로 인격이나 판단력 등에 결함이 생겨 정상을 벗어난 말이나 행동을 하는 상태",
-      "clueSource": "krdict-definition",
-      "direction": "across",
-      "row": 6,
-      "col": 0,
+      "col": 5,
       "generatedBy": "placed",
       "needsManualClue": true
     },
     {
-      "id": "a8",
-      "answer": "장사",
-      "clue": "이익을 얻으려고 물건을 사서 팖. 또는 그런 일",
+      "id": "a10",
+      "answer": "초현실주의",
+      "clue": "현실과 이성의 제약을 벗어나 자유롭게 표현하며, 매우 주관적인 특성을 지닌 예술의 경향",
       "clueSource": "krdict-definition",
       "direction": "across",
       "row": 6,
-      "col": 6,
-      "generatedBy": "auto",
-      "needsManualClue": true
-    },
-    {
-      "id": "a9",
-      "answer": "구석빼기",
-      "clue": "한쪽 구석에 있는 자리",
-      "clueSource": "krdict-definition",
-      "direction": "across",
-      "row": 7,
       "col": 1,
       "generatedBy": "placed",
       "needsManualClue": true
     },
     {
-      "id": "d10",
-      "answer": "실장",
-      "clue": "관청이나 기관, 회사에서 ‘실’자가 붙은 일정한 부서의 책임자",
+      "id": "a11",
+      "answer": "자의식",
+      "clue": "자신이 처한 상황이나 자신의 행동, 성격 등에 대해 깨닫는 일",
       "clueSource": "krdict-definition",
-      "direction": "down",
-      "row": 0,
+      "direction": "across",
+      "row": 7,
       "col": 2,
-      "generatedBy": "auto",
-      "needsManualClue": true
-    },
-    {
-      "id": "d11",
-      "answer": "수난",
-      "clue": "견디기 힘든 어려운 일을 당함",
-      "clueSource": "krdict-definition",
-      "direction": "down",
-      "row": 0,
-      "col": 3,
-      "generatedBy": "auto",
+      "generatedBy": "placed",
       "needsManualClue": true
     },
     {
       "id": "d12",
-      "answer": "기소장",
-      "clue": "검사가 법원에 재판을 요청할 때 내는 문서",
+      "answer": "위정",
+      "clue": "나라의 정치를 맡아 함",
       "clueSource": "krdict-definition",
       "direction": "down",
-      "row": 1,
-      "col": 6,
-      "generatedBy": "placed",
+      "row": 0,
+      "col": 1,
+      "generatedBy": "auto",
       "needsManualClue": true
     },
     {
       "id": "d13",
-      "answer": "본무",
-      "clue": "어떤 직책이나 직업과 관련하여 가장 중심이 되는 일",
+      "answer": "장면",
+      "clue": "영화나 연극의 순간, 광경",
       "clueSource": "krdict-definition",
       "direction": "down",
-      "row": 3,
-      "col": 1,
+      "row": 0,
+      "col": 2,
       "generatedBy": "auto",
       "needsManualClue": true
     },
     {
       "id": "d14",
-      "answer": "고정",
-      "clue": "한번 정한 내용을 변경하지 않음",
+      "answer": "만돌린",
+      "clue": "달걀을 세로로 가른 듯한 불룩한 몸통에 여덟 개의 현이 있는 현악기",
+      "clueSource": "krdict-definition",
+      "direction": "down",
+      "row": 0,
+      "col": 4,
+      "generatedBy": "placed",
+      "needsManualClue": true
+    },
+    {
+      "id": "d15",
+      "answer": "적막강산",
+      "clue": "매우 조용하고 쓸쓸한 풍경",
+      "clueSource": "krdict-definition",
+      "direction": "down",
+      "row": 0,
+      "col": 6,
+      "generatedBy": "placed",
+      "needsManualClue": true
+    },
+    {
+      "id": "d16",
+      "answer": "내력",
+      "clue": "지금까지 지내온 과정이나 경력",
+      "clueSource": "krdict-definition",
+      "direction": "down",
+      "row": 1,
+      "col": 7,
+      "generatedBy": "placed",
+      "needsManualClue": true
+    },
+    {
+      "id": "d17",
+      "answer": "자반",
+      "clue": "조금 짭짤하게 졸이거나 무쳐서 만든 반찬",
+      "clueSource": "krdict-definition",
+      "direction": "down",
+      "row": 3,
+      "col": 1,
+      "generatedBy": "auto",
+      "needsManualClue": true
+    },
+    {
+      "id": "d18",
+      "answer": "연말",
+      "clue": "한 해의 끝 무렵",
       "clueSource": "krdict-definition",
       "direction": "down",
       "row": 3,
@@ -241,9 +285,9 @@
       "needsManualClue": true
     },
     {
-      "id": "d15",
-      "answer": "장부",
-      "clue": "다 자란 씩씩한 남자",
+      "id": "d19",
+      "answer": "사지",
+      "clue": "사람의 두 팔과 두 다리",
       "clueSource": "krdict-definition",
       "direction": "down",
       "row": 3,
@@ -252,92 +296,59 @@
       "needsManualClue": true
     },
     {
-      "id": "d16",
-      "answer": "성의",
-      "clue": "정성스러운 뜻",
+      "id": "d20",
+      "answer": "합리주의",
+      "clue": "논리나 이치에 알맞게 생각하고 판단하는 태도나 사고방식",
       "clueSource": "krdict-definition",
       "direction": "down",
       "row": 3,
       "col": 5,
-      "generatedBy": "auto",
-      "needsManualClue": true
-    },
-    {
-      "id": "d17",
-      "answer": "기말고사",
-      "clue": "한 학기의 마지막에 보는 시험",
-      "clueSource": "krdict-definition",
-      "direction": "down",
-      "row": 3,
-      "col": 7,
-      "generatedBy": "placed",
-      "needsManualClue": true
-    },
-    {
-      "id": "d18",
-      "answer": "주색잡기",
-      "clue": "생활을 방탕하게 만드는 술과 여자와 노름",
-      "clueSource": "krdict-definition",
-      "direction": "down",
-      "row": 4,
-      "col": 4,
-      "generatedBy": "placed",
-      "needsManualClue": true
-    },
-    {
-      "id": "d19",
-      "answer": "인정",
-      "clue": "세상 사람들의 마음",
-      "clueSource": "krdict-definition",
-      "direction": "down",
-      "row": 5,
-      "col": 0,
-      "generatedBy": "placed",
-      "needsManualClue": true
-    },
-    {
-      "id": "d20",
-      "answer": "포장",
-      "clue": "겉으로만 그럴듯하게 꾸밈",
-      "clueSource": "krdict-definition",
-      "direction": "down",
-      "row": 5,
-      "col": 6,
       "generatedBy": "placed",
       "needsManualClue": true
     },
     {
       "id": "d21",
-      "answer": "신구",
-      "clue": "새것과 헌것",
-      "clueSource": "krdict-definition",
-      "direction": "down",
-      "row": 6,
-      "col": 1,
-      "generatedBy": "auto",
-      "needsManualClue": true
-    },
-    {
-      "id": "d22",
-      "answer": "병석",
-      "clue": "병에 걸린 사람이 앓아누워 있는 자리",
+      "answer": "현자",
+      "clue": "지혜롭고 현명한 사람",
       "clueSource": "krdict-definition",
       "direction": "down",
       "row": 6,
       "col": 2,
       "generatedBy": "auto",
       "needsManualClue": true
+    },
+    {
+      "id": "d22",
+      "answer": "실의",
+      "clue": "뜻이나 의욕을 잃음",
+      "clueSource": "krdict-definition",
+      "direction": "down",
+      "row": 6,
+      "col": 3,
+      "generatedBy": "auto",
+      "needsManualClue": true
+    },
+    {
+      "id": "d23",
+      "answer": "주식",
+      "clue": "밥이나 빵과 같이 끼니에 주가 되는 음식",
+      "clueSource": "krdict-definition",
+      "direction": "down",
+      "row": 6,
+      "col": 4,
+      "generatedBy": "auto",
+      "needsManualClue": true
     }
   ],
   "metrics": {
-    "autoRunCount": 10,
-    "bboxDensity": 0.547,
-    "crossCells": 26,
-    "crossRatio": 0.743,
+    "autoRunCount": 11,
+    "bboxDensity": 0.625,
+    "crossCells": 28,
+    "crossRatio": 0.8,
     "filledCells": 35,
-    "multiCrossEntries": 21,
+    "multiCrossEntries": 22,
     "placedWordCount": 12,
-    "wordCount": 22
+    "wordCount": 23
   },
   "wordBank": {
     "sourceName": "국립국어원 한국어기초사전 XML",
@@ -355,37 +366,37 @@
       {
         "key": "minWordCount",
         "pass": true,
-        "actual": 22,
+        "actual": 23,
         "expected": 12
       },
       {
         "key": "minCrossRatio",
         "pass": true,
-        "actual": 0.743,
+        "actual": 0.8,
         "expected": 0.55
       },
       {
         "key": "minBboxDensity",
         "pass": true,
-        "actual": 0.547,
+        "actual": 0.625,
         "expected": 0.5
       },
       {
         "key": "minMultiCrossRatio",
         "pass": true,
-        "actual": 0.955,
+        "actual": 0.957,
         "expected": 0.65
       },
       {
         "key": "maxAutoRunRatio",
         "pass": true,
-        "actual": 0.455,
+        "actual": 0.478,
         "expected": 0.5
       }
     ],
     "ratios": {
-      "autoRunRatio": 0.455,
-      "multiCrossRatio": 0.955
+      "autoRunRatio": 0.478,
+      "multiCrossRatio": 0.957
     },
     "thresholds": {
       "maxAutoRunRatio": 0.5,
@@ -395,5 +406,5 @@
       "minWordCount": 12
     }
   },
-  "generatedAt": "2026-05-30T15:13:58.107Z"
+  "generatedAt": "2026-05-30T15:14:46.978Z"
 }

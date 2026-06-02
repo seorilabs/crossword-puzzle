@@ -3,10 +3,14 @@ import path from "node:path";
 
 function parseArgs(argv) {
   const options = {
+    assetRoot: "public",
     manifest: "public/puzzles/manifest.json",
   };
 
   for (const arg of argv) {
+    if (arg.startsWith("--assetRoot=")) {
+      options.assetRoot = arg.slice("--assetRoot=".length);
+    }
     if (arg.startsWith("--manifest=")) {
       options.manifest = arg.slice("--manifest=".length);
     }
@@ -132,9 +136,9 @@ function formatSlot(slot) {
   return `${slot.direction} (${slot.row},${slot.col}) ${slot.answer}`;
 }
 
-function resolvePuzzlePath(manifestPath, puzzlePath) {
+function resolvePuzzlePath(manifestPath, puzzlePath, assetRoot) {
   if (puzzlePath.startsWith("/")) {
-    return path.resolve("public", puzzlePath.replace(/^\//, ""));
+    return path.resolve(assetRoot, puzzlePath.replace(/^\//, ""));
   }
 
   return path.resolve(path.dirname(manifestPath), puzzlePath);
@@ -143,11 +147,12 @@ function resolvePuzzlePath(manifestPath, puzzlePath) {
 async function run() {
   const options = parseArgs(process.argv.slice(2));
   const manifestPath = path.resolve(options.manifest);
+  const assetRoot = path.resolve(options.assetRoot);
   const manifest = await readJson(manifestPath);
   const failures = [];
 
   for (const item of manifest.puzzles) {
-    const puzzlePath = resolvePuzzlePath(manifestPath, item.path);
+    const puzzlePath = resolvePuzzlePath(manifestPath, item.path, assetRoot);
     const puzzle = await readJson(puzzlePath);
     const validation = validatePuzzle(puzzle);
 
