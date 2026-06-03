@@ -4,6 +4,8 @@ export type LaunchConfig = {
   visiblePuzzleCount: number;
   puzzleGenerationIntervalHours: number;
   puzzleKeepCount: number;
+  completionStatsEnabled: boolean;
+  completionStatsMinDisplayCount: number;
   rewardedHintAdsEnabled: boolean;
   resultInterstitialAdsEnabled: boolean;
   leaderboardEnabled: boolean;
@@ -15,6 +17,8 @@ export const launchConfigKeys = {
   visiblePuzzleCount: "visible_puzzle_count",
   puzzleGenerationIntervalHours: "puzzle_generation_interval_hours",
   puzzleKeepCount: "puzzle_keep_count",
+  completionStatsEnabled: "completion_stats_enabled",
+  completionStatsMinDisplayCount: "completion_stats_min_display_count",
   rewardedHintAdsEnabled: "rewarded_hint_ads_enabled",
   resultInterstitialAdsEnabled: "result_interstitial_ads_enabled",
   leaderboardEnabled: "leaderboard_enabled",
@@ -26,6 +30,8 @@ export const defaultLaunchConfig: LaunchConfig = {
   visiblePuzzleCount: 7,
   puzzleGenerationIntervalHours: 2,
   puzzleKeepCount: 84,
+  completionStatsEnabled: false,
+  completionStatsMinDisplayCount: 10,
   rewardedHintAdsEnabled: true,
   resultInterstitialAdsEnabled: true,
   leaderboardEnabled: false,
@@ -79,6 +85,16 @@ export function normalizeLaunchConfig(
       1,
       365,
     ),
+    completionStatsEnabled:
+      value.completionStatsEnabled ??
+      defaultLaunchConfig.completionStatsEnabled,
+    completionStatsMinDisplayCount: clampInteger(
+      value.completionStatsMinDisplayCount ??
+        defaultLaunchConfig.completionStatsMinDisplayCount,
+      defaultLaunchConfig.completionStatsMinDisplayCount,
+      1,
+      100,
+    ),
     rewardedHintAdsEnabled:
       value.rewardedHintAdsEnabled ??
       defaultLaunchConfig.rewardedHintAdsEnabled,
@@ -101,6 +117,10 @@ export function getLaunchConfigDefaultsForRemoteConfig() {
     [launchConfigKeys.puzzleGenerationIntervalHours]:
       defaultLaunchConfig.puzzleGenerationIntervalHours,
     [launchConfigKeys.puzzleKeepCount]: defaultLaunchConfig.puzzleKeepCount,
+    [launchConfigKeys.completionStatsEnabled]:
+      defaultLaunchConfig.completionStatsEnabled,
+    [launchConfigKeys.completionStatsMinDisplayCount]:
+      defaultLaunchConfig.completionStatsMinDisplayCount,
     [launchConfigKeys.rewardedHintAdsEnabled]:
       defaultLaunchConfig.rewardedHintAdsEnabled,
     [launchConfigKeys.resultInterstitialAdsEnabled]:

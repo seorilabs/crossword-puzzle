@@ -36,6 +36,20 @@
       "description": "사용자 안내용 원격 퍼즐팩 보관 개수",
       "valueType": "NUMBER"
     },
+    "completion_stats_enabled": {
+      "defaultValue": {
+        "value": "false"
+      },
+      "description": "퍼즐별 완료자 수 UI 노출 여부",
+      "valueType": "BOOLEAN"
+    },
+    "completion_stats_min_display_count": {
+      "defaultValue": {
+        "value": "10"
+      },
+      "description": "완료자 수를 정확한 숫자로 표시하기 위한 최소 집계 수",
+      "valueType": "NUMBER"
+    },
     "rewarded_hint_ads_enabled": {
       "defaultValue": {
         "value": "true"

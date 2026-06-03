@@ -21,6 +21,7 @@ import {
   type DailyMissionState,
   type Direction,
   type Puzzle,
+  type PuzzleCompletionStats,
   type PuzzleEntry,
   type PuzzleManifestItem,
   type PuzzleQualityCheck,
@@ -39,6 +40,7 @@ import {
   defaultLaunchConfig,
   type LaunchConfig,
 } from "./adapters/launchConfig";
+import { createPuzzleCompletionStatsRepository } from "./adapters/puzzleCompletionStatsRepository";
 import {
   createFallbackPuzzleRepository,
   createStaticPuzzleRepository,
@@ -73,7 +75,11 @@ type DateCardState = {
   hintCount: number;
 };
 
+type CompletionStatsByPuzzleId = Record<string, PuzzleCompletionStats>;
+
 type DateSelectionProps = {
+  completionStatsByPuzzleId: CompletionStatsByPuzzleId;
+  completionStatsMinDisplayCount: number;
   dateCardStates: Record<string, DateCardState>;
   puzzleSummaries: PuzzleManifestItem[];
   selectedPuzzleId: string;
@@ -104,6 +110,13 @@ const DAILY_ATTEMPT_LIMIT = 3;
 
 const puzzlePackBaseUrl = import.meta.env.VITE_PUZZLE_PACK_BASE_URL?.trim();
 const puzzleManifestUrl = import.meta.env.VITE_PUZZLE_MANIFEST_URL?.trim();
+const configuredPuzzleStatsUrl = import.meta.env.VITE_PUZZLE_STATS_URL?.trim();
+const puzzleStatsUrl =
+  configuredPuzzleStatsUrl != null && configuredPuzzleStatsUrl !== ""
+    ? configuredPuzzleStatsUrl
+    : puzzlePackBaseUrl != null && puzzlePackBaseUrl !== ""
+      ? `${puzzlePackBaseUrl.replace(/\/+$/, "")}/puzzle-stats/completions.json`
+      : undefined;
 const hasRemotePuzzlePack =
   (puzzlePackBaseUrl != null && puzzlePackBaseUrl !== "") ||
   (puzzleManifestUrl != null && puzzleManifestUrl !== "");
@@ -120,6 +133,9 @@ const puzzleRepository = hasRemotePuzzlePack
   : localPuzzleRepository;
 const progressRepository = createLocalProgressRepository();
 const missionRepository = createLocalMissionRepository();
+const puzzleCompletionStatsRepository = createPuzzleCompletionStatsRepository({
+  statsUrl: puzzleStatsUrl,
+});
 
 const directionLabels: Record<Direction, string> = {
   across: "가로",
@@ -306,6 +322,8 @@ function App() {
   const [dateCardStates, setDateCardStates] = useState<
     Record<string, DateCardState>
   >({});
+  const [completionStatsByPuzzleId, setCompletionStatsByPuzzleId] =
+    useState<CompletionStatsByPuzzleId>({});
   const shownResultInterstitialRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -500,6 +518,33 @@ function App() {
     () => puzzleSummaries.slice(0, launchConfig.visiblePuzzleCount),
     [launchConfig.visiblePuzzleCount, puzzleSummaries],
   );
+  useEffect(() => {
+    if (!launchConfig.completionStatsEnabled) {
+      setCompletionStatsByPuzzleId({});
+      return;
+    }
+
+    let isCancelled = false;
+    const puzzleIds = visiblePuzzleSummaries.map((summary) => summary.puzzleId);
+
+    puzzleCompletionStatsRepository
+      .loadStats(puzzleIds)
+      .then((nextStats) => {
+        if (!isCancelled) {
+          setCompletionStatsByPuzzleId(nextStats);
+        }
+      })
+      .catch(() => {
+        if (!isCancelled) {
+          setCompletionStatsByPuzzleId({});
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [launchConfig.completionStatsEnabled, visiblePuzzleSummaries]);
+
   const totalHintCredits = Math.max(
     0,
     launchConfig.defaultHintCredits + earnedHintCredits,
@@ -533,8 +578,12 @@ function App() {
     setMission(nextMission);
     void missionRepository.saveMission(nextMission);
     telemetry.impression("mission_complete", {
+      completed_at: nextMission.completedAt,
       hint_count: hintCount,
+      pack_id: puzzle.packId,
       puzzle_id: puzzle.puzzleId,
+      remaining_attempts: getRemainingAttempts(nextMission),
+      slot_id: puzzle.slotId,
       word_count: puzzle.entries.length,
     });
 
@@ -545,7 +594,9 @@ function App() {
     hintCount,
     mission,
     puzzle.entries.length,
+    puzzle.packId,
     puzzle.puzzleId,
+    puzzle.slotId,
     route,
     viewModel.isComplete,
   ]);
@@ -844,6 +895,8 @@ function App() {
     viewModel,
   };
   const dateSelectionProps = {
+    completionStatsByPuzzleId,
+    completionStatsMinDisplayCount: launchConfig.completionStatsMinDisplayCount,
     dateCardStates,
     puzzleSummaries: visiblePuzzleSummaries,
     selectedPuzzleId: puzzle.puzzleId,
@@ -1032,6 +1085,8 @@ type HomeScreenProps = DateSelectionProps & {
 
 function HomeScreen({
   completedEntries,
+  completionStatsByPuzzleId,
+  completionStatsMinDisplayCount,
   dateCardStates,
   hasStarted,
   hintBalance,
@@ -1058,6 +1113,15 @@ function HomeScreen({
       : remainingAttempts > 0
         ? "미션 시작"
         : "내일 다시";
+  const missionStatusLabel = isCompleted
+    ? "완료"
+    : hasStarted
+      ? `${progressPercent}% 진행 중`
+      : "도전 준비 완료";
+  const completionStatsLabel = formatCompletionStatsLabel(
+    completionStatsByPuzzleId[puzzle.puzzleId],
+    completionStatsMinDisplayCount,
+  );
   const isPrimaryDisabled =
     !isCompleted && !hasStarted && remainingAttempts === 0;
 
@@ -1069,6 +1133,8 @@ function HomeScreen({
       />
 
       <DateCarousel
+        completionStatsByPuzzleId={completionStatsByPuzzleId}
+        completionStatsMinDisplayCount={completionStatsMinDisplayCount}
         dateCardStates={dateCardStates}
         puzzleSummaries={puzzleSummaries}
         selectedPuzzleId={selectedPuzzleId}
@@ -1110,11 +1176,8 @@ function HomeScreen({
             {puzzle.entries.length}개 낱말
           </Paragraph>
           <Paragraph typography="t6" color="#4e5968">
-            {isCompleted
-              ? "완료"
-              : hasStarted
-                ? `${progressPercent}% 진행 중`
-                : "도전 준비 완료"}
+            {missionStatusLabel}
+            {completionStatsLabel === "" ? "" : ` · ${completionStatsLabel}`}
           </Paragraph>
         </div>
 
@@ -1363,7 +1426,24 @@ function getDateCardStatus(state?: DateCardState) {
   return "대기";
 }
 
+function formatCompletionStatsLabel(
+  stats: PuzzleCompletionStats | undefined,
+  minDisplayCount: number,
+) {
+  if (stats == null || stats.completionCount === 0) {
+    return "";
+  }
+
+  if (stats.completionCount < minDisplayCount) {
+    return `${minDisplayCount}명 미만 완료`;
+  }
+
+  return `${new Intl.NumberFormat("ko-KR").format(stats.completionCount)}명 완료`;
+}
+
 function DateCarousel({
+  completionStatsByPuzzleId,
+  completionStatsMinDisplayCount,
   dateCardStates,
   puzzleSummaries,
   selectedPuzzleId,
@@ -1378,10 +1458,18 @@ function DateCarousel({
           const slotLabel = formatPuzzleCardSlot(summary);
           const statusLabel = getDateCardStatus(state);
           const wordCountLabel = `${summary.metrics?.wordCount ?? "-"}개`;
+          const completionStatsLabel = formatCompletionStatsLabel(
+            completionStatsByPuzzleId[summary.puzzleId],
+            completionStatsMinDisplayCount,
+          );
           const metaLabel =
-            slotLabel === ""
-              ? `${statusLabel} · ${wordCountLabel}`
-              : `${slotLabel} · ${wordCountLabel}`;
+            completionStatsLabel !== ""
+              ? slotLabel === ""
+                ? completionStatsLabel
+                : `${slotLabel} · ${completionStatsLabel}`
+              : slotLabel === ""
+                ? `${statusLabel} · ${wordCountLabel}`
+                : `${slotLabel} · ${wordCountLabel}`;
 
           return (
             <button
@@ -1493,6 +1581,8 @@ function TodayScreen({
   applyAnswer,
   cellValues,
   completedEntries,
+  completionStatsByPuzzleId,
+  completionStatsMinDisplayCount,
   dateCardStates,
   hasStarted,
   hintBalance,
@@ -1576,6 +1666,8 @@ function TodayScreen({
           onBack={() => navigate("home")}
         />
         <DateCarousel
+          completionStatsByPuzzleId={completionStatsByPuzzleId}
+          completionStatsMinDisplayCount={completionStatsMinDisplayCount}
           dateCardStates={dateCardStates}
           puzzleSummaries={puzzleSummaries}
           selectedPuzzleId={selectedPuzzleId}
@@ -1770,6 +1862,8 @@ type ResultScreenProps = DateSelectionProps & {
 
 function ResultScreen({
   completedEntries,
+  completionStatsByPuzzleId,
+  completionStatsMinDisplayCount,
   dateCardStates,
   hintCount,
   mission,
@@ -1793,6 +1887,8 @@ function ResultScreen({
       />
 
       <DateCarousel
+        completionStatsByPuzzleId={completionStatsByPuzzleId}
+        completionStatsMinDisplayCount={completionStatsMinDisplayCount}
         dateCardStates={dateCardStates}
         puzzleSummaries={puzzleSummaries}
         selectedPuzzleId={selectedPuzzleId}
@@ -1842,6 +1938,8 @@ type HistoryScreenProps = DateSelectionProps & {
 
 function HistoryScreen({
   completedEntries,
+  completionStatsByPuzzleId,
+  completionStatsMinDisplayCount,
   dateCardStates,
   hintCount,
   isCompleted,
@@ -1864,6 +1962,8 @@ function HistoryScreen({
       />
 
       <DateCarousel
+        completionStatsByPuzzleId={completionStatsByPuzzleId}
+        completionStatsMinDisplayCount={completionStatsMinDisplayCount}
         dateCardStates={dateCardStates}
         puzzleSummaries={puzzleSummaries}
         selectedPuzzleId={selectedPuzzleId}

@@ -158,6 +158,14 @@ export async function loadFirebaseLaunchConfig(): Promise<LaunchConfig> {
         remoteConfig,
         launchConfigKeys.puzzleKeepCount,
       ),
+      completionStatsEnabled: getBoolean(
+        remoteConfig,
+        launchConfigKeys.completionStatsEnabled,
+      ),
+      completionStatsMinDisplayCount: getNumber(
+        remoteConfig,
+        launchConfigKeys.completionStatsMinDisplayCount,
+      ),
       rewardedHintAdsEnabled: getBoolean(
         remoteConfig,
         launchConfigKeys.rewardedHintAdsEnabled,

@@ -40,6 +40,7 @@ jobs:
       VITE_FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID || '' }}
       VITE_FIREBASE_STORAGE_BUCKET: ${{ vars.FIREBASE_STORAGE_BUCKET || '' }}
       VITE_PUZZLE_PACK_BASE_URL: ${{ vars.PUZZLE_PACK_BASE_URL || 'https://crossword-puzzle-79ae0.web.app' }}
+      VITE_PUZZLE_STATS_URL: ${{ vars.PUZZLE_STATS_URL || '' }}
 
     steps:
       - name: Checkout

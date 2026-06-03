@@ -129,6 +129,22 @@ export type PuzzleManifest = {
   };
 };
 
+export type PuzzleCompletionStats = {
+  completionCount: number;
+  lastAggregatedAt?: string;
+  puzzleId: string;
+};
+
+export type PuzzleCompletionStatsPayload = {
+  generatedAt?: string;
+  stats:
+    | PuzzleCompletionStats[]
+    | Record<
+        string,
+        Omit<PuzzleCompletionStats, "puzzleId"> & { puzzleId?: string }
+      >;
+};
+
 export type SavedProgress = {
   cellValues: Record<string, string>;
   earnedHintCredits: number;
