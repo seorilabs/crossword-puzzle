@@ -1,0 +1,61 @@
+{
+  "conditions": [],
+  "parameters": {
+    "default_hint_credits": {
+      "defaultValue": {
+        "value": "3"
+      },
+      "description": "퍼즐별 기본 무료 힌트 개수",
+      "valueType": "NUMBER"
+    },
+    "rewarded_hint_credits": {
+      "defaultValue": {
+        "value": "2"
+      },
+      "description": "보상형 광고 1회 완료 시 지급할 힌트 개수",
+      "valueType": "NUMBER"
+    },
+    "visible_puzzle_count": {
+      "defaultValue": {
+        "value": "7"
+      },
+      "description": "홈 날짜 캐러셀에 보여줄 최신 퍼즐 개수",
+      "valueType": "NUMBER"
+    },
+    "puzzle_generation_interval_hours": {
+      "defaultValue": {
+        "value": "2"
+      },
+      "description": "사용자 안내용 퍼즐 생성 주기",
+      "valueType": "NUMBER"
+    },
+    "puzzle_keep_count": {
+      "defaultValue": {
+        "value": "84"
+      },
+      "description": "사용자 안내용 원격 퍼즐팩 보관 개수",
+      "valueType": "NUMBER"
+    },
+    "rewarded_hint_ads_enabled": {
+      "defaultValue": {
+        "value": "true"
+      },
+      "description": "힌트 보상형 광고 CTA 노출 여부",
+      "valueType": "BOOLEAN"
+    },
+    "result_interstitial_ads_enabled": {
+      "defaultValue": {
+        "value": "true"
+      },
+      "description": "결과 화면 진입 후 전면 광고 노출 여부",
+      "valueType": "BOOLEAN"
+    },
+    "leaderboard_enabled": {
+      "defaultValue": {
+        "value": "false"
+      },
+      "description": "게임센터/스토어 리더보드 UI 노출 여부",
+      "valueType": "BOOLEAN"
+    }
+  }
+}

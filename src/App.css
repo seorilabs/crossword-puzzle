@@ -5,7 +5,11 @@
 }
 
 .appShell {
+  width: 100%;
+  max-width: 100vw;
+  box-sizing: border-box;
   min-height: 100vh;
+  overflow-x: hidden;
   background: #ffffff;
   color: #191f28;
   padding: 0 0 96px;
@@ -156,6 +160,65 @@ button:disabled {
   border-color: #c9eee6;
 }
 
+.packInfoRow {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: -2px 20px 12px;
+}
+
+.packInfoRow span {
+  color: #6b7684;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 18px;
+}
+
+.infoButton {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid #d6dee6;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #4e5968;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.packInfoPanel {
+  display: flex;
+  width: calc(100% - 40px);
+  max-width: calc(100vw - 40px);
+  box-sizing: border-box;
+  flex-direction: column;
+  gap: 4px;
+  margin: -4px 20px 14px;
+  padding: 12px 14px;
+  border: 1px solid #d6e9ff;
+  border-radius: 8px;
+  background: #f5faff;
+}
+
+.packInfoPanel strong {
+  color: #1b64da;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.packInfoPanel span {
+  color: #4e5968;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 19px;
+}
+
 .ghostButton,
 .backButton {
   border: 0;
@@ -185,6 +248,9 @@ button:disabled {
 
 .todayMission {
   display: grid;
+  width: calc(100% - 40px);
+  max-width: calc(100vw - 40px);
+  box-sizing: border-box;
   grid-template-columns: minmax(0, 1fr) 112px;
   gap: 18px 16px;
   margin: 0 20px 18px;
@@ -331,6 +397,80 @@ button:disabled {
 .cluePeek strong {
   font-size: 17px;
   line-height: 24px;
+}
+
+.hintRewardPanel {
+  display: grid;
+  width: calc(100% - 40px);
+  max-width: calc(100vw - 40px);
+  box-sizing: border-box;
+  grid-template-columns: minmax(0, 1fr) 132px;
+  gap: 12px;
+  align-items: center;
+  margin: 0 20px 18px;
+  padding: 14px;
+  border: 1px solid #d6e9ff;
+  border-radius: 8px;
+  background: #f5faff;
+}
+
+.hintRewardPanel > div:first-child {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hintRewardPanel span {
+  color: #1b64da;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 17px;
+}
+
+.hintRewardPanel strong {
+  color: #191f28;
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 28px;
+  white-space: nowrap;
+}
+
+.hintRewardPanel em,
+.hintRewardPanel p {
+  margin: 0;
+  color: #4e5968;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 17px;
+}
+
+.hintRewardPanel p {
+  grid-column: 1 / 3;
+}
+
+.hintRewardActions {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+
+.hintRewardPanelCompact {
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  margin: 0;
+  padding: 12px;
+}
+
+.hintRewardPanelCompact .hintRewardActions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.hintRewardPanelCompact p {
+  grid-column: 1;
 }
 
 .progressTrack {

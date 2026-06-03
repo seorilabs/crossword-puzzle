@@ -31,9 +31,19 @@ import {
 import { createLocalMissionRepository } from "./adapters/localMissionRepository";
 import { createLocalProgressRepository } from "./adapters/localProgressRepository";
 import {
+  showResultInterstitialAd,
+  showRewardedHintAd,
+} from "./adapters/appsInTossAds";
+import { loadFirebaseLaunchConfig } from "./adapters/firebaseClient";
+import {
+  defaultLaunchConfig,
+  type LaunchConfig,
+} from "./adapters/launchConfig";
+import {
   createFallbackPuzzleRepository,
   createStaticPuzzleRepository,
 } from "./adapters/staticPuzzleRepository";
+import { telemetry } from "./adapters/telemetry";
 import { fallbackPuzzle } from "./data/fallbackPuzzle";
 
 type AppRoute = "home" | "today" | "result" | "history" | "dev-simulator";
@@ -74,6 +84,20 @@ type PuzzleSession = {
   nextPuzzle: Puzzle;
   savedMission: DailyMissionState;
   savedProgress: SavedProgress;
+};
+
+type RewardedAdStatus = "idle" | "loading";
+
+type HintBalance = {
+  adsEnabled: boolean;
+  defaultCredits: number;
+  earnedCredits: number;
+  isAdBusy: boolean;
+  notice: string;
+  remaining: number;
+  rewardedCredits: number;
+  total: number;
+  used: number;
 };
 
 const DAILY_ATTEMPT_LIMIT = 3;
@@ -268,6 +292,12 @@ function App() {
   );
   const [loadState, setLoadState] = useState<LoadState>("fallback");
   const [hintCount, setHintCount] = useState(0);
+  const [earnedHintCredits, setEarnedHintCredits] = useState(0);
+  const [launchConfig, setLaunchConfig] =
+    useState<LaunchConfig>(defaultLaunchConfig);
+  const [rewardedAdStatus, setRewardedAdStatus] =
+    useState<RewardedAdStatus>("idle");
+  const [hintNotice, setHintNotice] = useState("");
   const [mission, setMission] =
     useState<DailyMissionState>(createInitialMission);
   const [puzzleSummaries, setPuzzleSummaries] = useState<PuzzleManifestItem[]>(
@@ -276,6 +306,7 @@ function App() {
   const [dateCardStates, setDateCardStates] = useState<
     Record<string, DateCardState>
   >({});
+  const shownResultInterstitialRef = useRef<string | null>(null);
 
   useEffect(() => {
     function syncRoute() {
@@ -284,6 +315,26 @@ function App() {
 
     window.addEventListener("popstate", syncRoute);
     return () => window.removeEventListener("popstate", syncRoute);
+  }, []);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    loadFirebaseLaunchConfig()
+      .then((nextConfig) => {
+        if (!isCancelled) {
+          setLaunchConfig(nextConfig);
+        }
+      })
+      .catch(() => {
+        if (!isCancelled) {
+          setLaunchConfig(defaultLaunchConfig);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
   }, []);
 
   const loadPuzzleSession = useCallback(async (puzzleId: string) => {
@@ -316,6 +367,7 @@ function App() {
 
     setPuzzle(session.nextPuzzle);
     setCellValues(session.savedProgress.cellValues);
+    setEarnedHintCredits(session.savedProgress.earnedHintCredits);
     setHintCount(session.savedProgress.hintCount);
     setSelectedDirection("across");
     setSelectedEntryId(getInitialEntryId(session.nextPuzzle));
@@ -410,19 +462,21 @@ function App() {
   useEffect(() => {
     void progressRepository.saveProgress(puzzle.puzzleId, {
       cellValues,
+      earnedHintCredits,
       hintCount,
     });
-  }, [cellValues, hintCount, puzzle.puzzleId]);
+  }, [cellValues, earnedHintCredits, hintCount, puzzle.puzzleId]);
 
   useEffect(() => {
     setDateCardStates((prev) => ({
       ...prev,
       [puzzle.puzzleId]: createDateCardState(mission, {
         cellValues,
+        earnedHintCredits,
         hintCount,
       }),
     }));
-  }, [cellValues, hintCount, mission, puzzle.puzzleId]);
+  }, [cellValues, earnedHintCredits, hintCount, mission, puzzle.puzzleId]);
 
   const viewModel = usePuzzleViewModel(
     puzzle,
@@ -437,10 +491,38 @@ function App() {
   const remainingAttempts = getRemainingAttempts(mission);
   const hasProgress =
     Object.keys(cellValues).length > 0 ||
+    earnedHintCredits > 0 ||
     hintCount > 0 ||
     viewModel.completedEntries.length > 0;
   const hasStarted = mission.attemptsUsed > 0 || hasProgress;
   const isCompleted = viewModel.isComplete || mission.completedAt != null;
+  const visiblePuzzleSummaries = useMemo(
+    () => puzzleSummaries.slice(0, launchConfig.visiblePuzzleCount),
+    [launchConfig.visiblePuzzleCount, puzzleSummaries],
+  );
+  const totalHintCredits = Math.max(
+    0,
+    launchConfig.defaultHintCredits + earnedHintCredits,
+  );
+  const remainingHintCredits = Math.max(0, totalHintCredits - hintCount);
+  const hintBalance: HintBalance = {
+    adsEnabled: launchConfig.rewardedHintAdsEnabled,
+    defaultCredits: launchConfig.defaultHintCredits,
+    earnedCredits: earnedHintCredits,
+    isAdBusy: rewardedAdStatus === "loading",
+    notice: hintNotice,
+    remaining: remainingHintCredits,
+    rewardedCredits: launchConfig.rewardedHintCredits,
+    total: totalHintCredits,
+    used: hintCount,
+  };
+
+  useEffect(() => {
+    telemetry.screen(route, {
+      date: puzzle.date,
+      puzzle_id: puzzle.puzzleId,
+    });
+  }, [puzzle.date, puzzle.puzzleId, route]);
 
   useEffect(() => {
     if (!viewModel.isComplete || mission.completedAt != null) {
@@ -450,11 +532,57 @@ function App() {
     const nextMission = completeMission(mission);
     setMission(nextMission);
     void missionRepository.saveMission(nextMission);
+    telemetry.impression("mission_complete", {
+      hint_count: hintCount,
+      puzzle_id: puzzle.puzzleId,
+      word_count: puzzle.entries.length,
+    });
 
     if (route === "today") {
       navigate("result", { replace: true });
     }
-  }, [mission, route, viewModel.isComplete]);
+  }, [
+    hintCount,
+    mission,
+    puzzle.entries.length,
+    puzzle.puzzleId,
+    route,
+    viewModel.isComplete,
+  ]);
+
+  useEffect(() => {
+    if (
+      route !== "result" ||
+      !isCompleted ||
+      !launchConfig.resultInterstitialAdsEnabled ||
+      shownResultInterstitialRef.current === puzzle.puzzleId
+    ) {
+      return;
+    }
+
+    shownResultInterstitialRef.current = puzzle.puzzleId;
+    const timerId = window.setTimeout(() => {
+      void showResultInterstitialAd((event) => {
+        telemetry.impression("result_interstitial_ad_event", {
+          phase: event.phase,
+          puzzle_id: puzzle.puzzleId,
+          type: event.type,
+        });
+      }).then((result) => {
+        telemetry.impression("result_interstitial_ad_result", {
+          puzzle_id: puzzle.puzzleId,
+          status: result.status,
+        });
+      });
+    }, 800);
+
+    return () => window.clearTimeout(timerId);
+  }, [
+    isCompleted,
+    launchConfig.resultInterstitialAdsEnabled,
+    puzzle.puzzleId,
+    route,
+  ]);
 
   function navigate(nextRoute: AppRoute, options: { replace?: boolean } = {}) {
     const path = getPathForRoute(nextRoute);
@@ -469,7 +597,10 @@ function App() {
     setRoute(nextRoute);
   }
 
-  function selectEntry(entry: PuzzleEntry, cellKey = getEntryStartCellKey(entry)) {
+  function selectEntry(
+    entry: PuzzleEntry,
+    cellKey = getEntryStartCellKey(entry),
+  ) {
     setSelectedEntryId(entry.id);
     setSelectedDirection(entry.direction);
     setSelectedCellKey(cellKey);
@@ -535,7 +666,14 @@ function App() {
   function revealLetter() {
     const selectedEntry = viewModel.selectedEntry;
     if (selectedEntry == null) {
-      return;
+      return false;
+    }
+
+    if (remainingHintCredits === 0) {
+      setHintNotice(
+        "무료 힌트를 모두 썼어요. 광고를 보면 힌트를 더 받을 수 있어요.",
+      );
+      return false;
     }
 
     const cells = getEntryCells(selectedEntry);
@@ -546,7 +684,8 @@ function App() {
     );
 
     if (targetIndex === -1) {
-      return;
+      setHintNotice("선택한 단어는 이미 모두 채워졌어요.");
+      return false;
     }
 
     const targetCell = cells[targetIndex];
@@ -555,6 +694,70 @@ function App() {
       ...prev,
       [getCellKey(targetCell.row, targetCell.col)]: answerLetters[targetIndex],
     }));
+    setHintNotice(
+      `힌트 1개를 사용했어요. 남은 힌트 ${remainingHintCredits - 1}개`,
+    );
+    telemetry.click("hint_reveal", {
+      hint_remaining_after: remainingHintCredits - 1,
+      hint_used: hintCount + 1,
+      puzzle_id: puzzle.puzzleId,
+    });
+    return true;
+  }
+
+  async function requestRewardedHint() {
+    if (!launchConfig.rewardedHintAdsEnabled) {
+      setHintNotice("지금은 광고 힌트를 사용할 수 없어요.");
+      telemetry.click("rewarded_hint_ad_disabled", {
+        puzzle_id: puzzle.puzzleId,
+      });
+      return;
+    }
+
+    if (rewardedAdStatus === "loading") {
+      return;
+    }
+
+    setRewardedAdStatus("loading");
+    setHintNotice("광고를 준비하는 중이에요.");
+    telemetry.click("rewarded_hint_ad_request", {
+      puzzle_id: puzzle.puzzleId,
+      rewarded_hint_credits: launchConfig.rewardedHintCredits,
+    });
+
+    const result = await showRewardedHintAd((event) => {
+      telemetry.impression("rewarded_hint_ad_event", {
+        phase: event.phase,
+        puzzle_id: puzzle.puzzleId,
+        type: event.type,
+      });
+    });
+
+    if (result.status === "rewarded") {
+      setEarnedHintCredits((prev) => prev + launchConfig.rewardedHintCredits);
+      setHintNotice(`힌트 ${launchConfig.rewardedHintCredits}개가 추가됐어요.`);
+      telemetry.impression("rewarded_hint_ad_reward", {
+        puzzle_id: puzzle.puzzleId,
+        rewarded_hint_credits: launchConfig.rewardedHintCredits,
+      });
+    } else if (result.status === "unsupported") {
+      setHintNotice("현재 환경에서는 광고 힌트를 사용할 수 없어요.");
+    } else if (result.status === "dismissed") {
+      setHintNotice("광고 시청이 완료되지 않아 힌트가 추가되지 않았어요.");
+    } else {
+      setHintNotice("광고를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.");
+    }
+
+    setRewardedAdStatus("idle");
+  }
+
+  function useHintOrRequestReward() {
+    if (remainingHintCredits > 0) {
+      revealLetter();
+      return;
+    }
+
+    void requestRewardedHint();
   }
 
   function revealSelected() {
@@ -577,7 +780,9 @@ function App() {
 
   function clearProgress() {
     setCellValues({});
+    setEarnedHintCredits(0);
     setHintCount(0);
+    setHintNotice("");
     setSelectedDirection("across");
     setSelectedEntryId(getInitialEntryId(puzzle));
     setSelectedCellKey(getInitialEntryStartCellKey(puzzle));
@@ -620,10 +825,12 @@ function App() {
     cellValues,
     clueEntries: viewModel.clueEntries,
     completedEntries: viewModel.completedEntries,
+    hintBalance,
     hintCount,
     mission,
     puzzle,
     remainingAttempts,
+    requestRewardedHint,
     revealLetter,
     selectedAnswer: viewModel.selectedAnswer,
     selectedCellKey,
@@ -633,11 +840,12 @@ function App() {
     selectCell,
     selectEntry,
     startLabels: viewModel.startLabels,
+    useHint: useHintOrRequestReward,
     viewModel,
   };
   const dateSelectionProps = {
     dateCardStates,
-    puzzleSummaries,
+    puzzleSummaries: visiblePuzzleSummaries,
     selectedPuzzleId: puzzle.puzzleId,
     selectPuzzle,
   };
@@ -700,13 +908,15 @@ function App() {
           {...dateSelectionProps}
           completedEntries={viewModel.completedEntries}
           hasStarted={hasStarted}
-          hintCount={hintCount}
+          hintBalance={hintBalance}
           isCompleted={isCompleted}
+          launchConfig={launchConfig}
           mission={mission}
           navigate={navigate}
           progressPercent={progressPercent}
           puzzle={puzzle}
           remainingAttempts={remainingAttempts}
+          requestRewardedHint={requestRewardedHint}
           selectedEntry={viewModel.selectedEntry}
           startLabels={viewModel.startLabels}
           startOrResumeMission={startOrResumeMission}
@@ -806,13 +1016,15 @@ function usePuzzleViewModel(
 type HomeScreenProps = DateSelectionProps & {
   completedEntries: PuzzleEntry[];
   hasStarted: boolean;
-  hintCount: number;
+  hintBalance: HintBalance;
   isCompleted: boolean;
+  launchConfig: LaunchConfig;
   mission: DailyMissionState;
   navigate: (route: AppRoute) => void;
   progressPercent: number;
   puzzle: Puzzle;
   remainingAttempts: number;
+  requestRewardedHint: () => void;
   selectedEntry?: PuzzleEntry;
   startLabels: Map<string, number>;
   startOrResumeMission: () => void;
@@ -822,20 +1034,23 @@ function HomeScreen({
   completedEntries,
   dateCardStates,
   hasStarted,
-  hintCount,
+  hintBalance,
   isCompleted,
+  launchConfig,
   mission,
   navigate,
   progressPercent,
   puzzle,
   puzzleSummaries,
   remainingAttempts,
+  requestRewardedHint,
   selectedEntry,
   selectedPuzzleId,
   selectPuzzle,
   startLabels,
   startOrResumeMission,
 }: HomeScreenProps) {
+  const [isPackInfoOpen, setIsPackInfoOpen] = useState(false);
   const primaryLabel = isCompleted
     ? "결과 보기"
     : hasStarted
@@ -859,6 +1074,32 @@ function HomeScreen({
         selectedPuzzleId={selectedPuzzleId}
         selectPuzzle={selectPuzzle}
       />
+
+      <div className="packInfoRow">
+        <span>최근 {puzzleSummaries.length}개 퍼즐</span>
+        <button
+          className="infoButton"
+          type="button"
+          aria-expanded={isPackInfoOpen}
+          aria-label="퍼즐 생성 주기 안내"
+          onClick={() => setIsPackInfoOpen((prev) => !prev)}
+        >
+          i
+        </button>
+      </div>
+
+      {isPackInfoOpen ? (
+        <section className="packInfoPanel" aria-label="퍼즐 생성 주기">
+          <strong>
+            {launchConfig.puzzleGenerationIntervalHours}시간마다 새 퍼즐
+          </strong>
+          <span>
+            자동 생성된 퍼즐은 최근 {launchConfig.puzzleKeepCount}개까지
+            유지하고, 홈에는 최신 {launchConfig.visiblePuzzleCount}개를
+            보여줘요.
+          </span>
+        </section>
+      ) : null}
 
       <section className="todayMission" aria-label="선택한 미션">
         <div className="missionLead">
@@ -898,10 +1139,10 @@ function HomeScreen({
           </div>
           <div>
             <Paragraph typography="t7" color="#6b7684">
-              힌트
+              힌트 남음
             </Paragraph>
             <Paragraph typography="t5" fontWeight="bold">
-              {hintCount}
+              {hintBalance.remaining}/{hintBalance.total}
             </Paragraph>
           </div>
         </div>
@@ -927,6 +1168,11 @@ function HomeScreen({
         </span>
         <strong>{selectedEntry?.clue ?? "단서 준비 중"}</strong>
       </button>
+
+      <HintRewardPanel
+        hintBalance={hintBalance}
+        requestRewardedHint={requestRewardedHint}
+      />
 
       <section className="homeList" aria-label="진행 정보">
         <button
@@ -964,6 +1210,67 @@ function HomeScreen({
         </Button>
       </div>
     </>
+  );
+}
+
+type HintRewardPanelProps = {
+  compact?: boolean;
+  hintBalance: HintBalance;
+  requestRewardedHint: () => void;
+  useHint?: () => void;
+};
+
+function HintRewardPanel({
+  compact = false,
+  hintBalance,
+  requestRewardedHint,
+  useHint,
+}: HintRewardPanelProps) {
+  const adButtonLabel = hintBalance.isAdBusy
+    ? "광고 준비 중"
+    : `광고 보고 +${hintBalance.rewardedCredits}`;
+
+  return (
+    <section
+      className={["hintRewardPanel", compact ? "hintRewardPanelCompact" : ""]
+        .filter(Boolean)
+        .join(" ")}
+      aria-label="힌트 보유량"
+    >
+      <div>
+        <span>힌트 보유</span>
+        <strong>
+          {hintBalance.remaining}/{hintBalance.total}개
+        </strong>
+        <em>
+          기본 {hintBalance.defaultCredits}개
+          {hintBalance.earnedCredits > 0
+            ? ` · 광고 보상 ${hintBalance.earnedCredits}개`
+            : ""}
+        </em>
+      </div>
+      <div className="hintRewardActions">
+        {useHint == null ? null : (
+          <button
+            className="secondaryButton"
+            type="button"
+            disabled={hintBalance.remaining === 0}
+            onClick={useHint}
+          >
+            힌트 쓰기
+          </button>
+        )}
+        <button
+          className="primaryButton"
+          type="button"
+          disabled={!hintBalance.adsEnabled || hintBalance.isAdBusy}
+          onClick={requestRewardedHint}
+        >
+          {adButtonLabel}
+        </button>
+      </div>
+      {hintBalance.notice === "" ? null : <p>{hintBalance.notice}</p>}
+    </section>
   );
 }
 
@@ -1140,11 +1447,16 @@ function AppHeader({
         {eyebrow == null ? null : <span>{eyebrow}</span>}
         <h1>{title}</h1>
       </div>
-      {right ?? (action == null ? null : (
-        <button className="ghostButton" type="button" onClick={action.onClick}>
-          {action.label}
-        </button>
-      ))}
+      {right ??
+        (action == null ? null : (
+          <button
+            className="ghostButton"
+            type="button"
+            onClick={action.onClick}
+          >
+            {action.label}
+          </button>
+        ))}
     </header>
   );
 }
@@ -1155,12 +1467,14 @@ type TodayScreenProps = DateSelectionProps & {
   clueEntries: PuzzleEntry[];
   completedEntries: PuzzleEntry[];
   hasStarted: boolean;
+  hintBalance: HintBalance;
   hintCount: number;
   isCompleted: boolean;
   mission: DailyMissionState;
   navigate: (route: AppRoute) => void;
   puzzle: Puzzle;
   remainingAttempts: number;
+  requestRewardedHint: () => void;
   revealLetter: () => void;
   selectedAnswer: string;
   selectedCellKey: string;
@@ -1171,6 +1485,7 @@ type TodayScreenProps = DateSelectionProps & {
   selectCell: (row: number, col: number) => void;
   selectEntry: (entry: PuzzleEntry, cellKey?: string) => void;
   startOrResumeMission: () => void;
+  useHint: () => void;
   viewModel: PuzzleViewModel;
 };
 
@@ -1180,13 +1495,14 @@ function TodayScreen({
   completedEntries,
   dateCardStates,
   hasStarted,
+  hintBalance,
   isCompleted,
   mission,
   navigate,
   puzzle,
   puzzleSummaries,
   remainingAttempts,
-  revealLetter,
+  requestRewardedHint,
   selectedAnswer,
   selectedCellKey,
   selectedPuzzleId,
@@ -1196,6 +1512,7 @@ function TodayScreen({
   selectCell,
   selectEntry,
   startOrResumeMission,
+  useHint,
   viewModel,
 }: TodayScreenProps) {
   const [isClueListOpen, setIsClueListOpen] = useState(false);
@@ -1297,10 +1614,18 @@ function TodayScreen({
             <button
               className="iconButton"
               type="button"
-              aria-label="힌트"
-              title="힌트"
+              aria-label={
+                hintBalance.remaining > 0
+                  ? `힌트 ${hintBalance.remaining}개 남음`
+                  : "광고 보고 힌트 받기"
+              }
+              title={
+                hintBalance.remaining > 0
+                  ? `힌트 ${hintBalance.remaining}개 남음`
+                  : "광고 보고 힌트 받기"
+              }
               disabled={selectedEntry == null}
-              onClick={revealLetter}
+              onClick={useHint}
             >
               ?
             </button>
@@ -1339,6 +1664,12 @@ function TodayScreen({
       {selectedEntry != null ? (
         <div className="fixedBottom answerDock">
           <div className="answerPanel">
+            <HintRewardPanel
+              compact
+              hintBalance={hintBalance}
+              requestRewardedHint={requestRewardedHint}
+              useHint={useHint}
+            />
             <div className="selectedClueList">
               {selectedCellEntries.map((entry) => (
                 <button

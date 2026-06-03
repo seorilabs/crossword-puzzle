@@ -30,6 +30,7 @@
     "@toss/tds-colors": "^0.1.0",
     "@toss/tds-mobile": "^2.3.0",
     "@toss/tds-mobile-ait": "^2.3.0",
+    "firebase": "^12.14.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

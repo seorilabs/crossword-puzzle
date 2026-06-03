@@ -60,9 +60,9 @@ npm run job:puzzle-pack -- \
 
 현재 dev 환경:
 
-| 환경 | Firebase project ID | Hosting site ID | Hosting URL |
-| --- | --- | --- | --- |
-| dev | `crossword-puzzle-79ae0` | `crossword-puzzle-79ae0` | `https://crossword-puzzle-79ae0.web.app` |
+| 환경 | Firebase project ID      | Hosting site ID          | Hosting URL                              |
+| ---- | ------------------------ | ------------------------ | ---------------------------------------- |
+| dev  | `crossword-puzzle-79ae0` | `crossword-puzzle-79ae0` | `https://crossword-puzzle-79ae0.web.app` |
 
 설정:
 
@@ -103,19 +103,19 @@ gcloud run jobs execute crossword-puzzle-pack-generator \
 
 Cloud Run Job은 다음 환경 변수를 사용한다.
 
-| 변수 | 기본값 | 설명 |
-| --- | ---: | --- |
-| `FIREBASE_PROJECT_ID` | 필수 | Firebase Hosting project |
-| `FIREBASE_HOSTING_SITE` | 필수 | Firebase Hosting site ID |
-| `PUZZLE_DAYS` | `1` | 한 번에 생성할 퍼즐 슬롯 수 |
-| `PUZZLE_TIME_ZONE` | `Asia/Seoul` | 동적 시작 날짜 계산 timezone |
-| `PUZZLE_SEED` | 자동 | 재현용 고정 seed. 지정하지 않으면 `PUZZLE_TIME_ZONE`, 시작 날짜, `PUZZLE_PUBLISHED_AT`을 섞어 실행마다 다른 seed를 만든다 |
-| `PUZZLE_OUT_DIR` | `public/puzzles` | 생성 결과 출력 폴더 |
-| `PUZZLE_HOSTING_BASE_URL` | `https://<site>.web.app` | 앱/운영자가 참조할 base URL |
-| `PUZZLE_APPEND` | `true` | 기존 manifest를 불러와 새 퍼즐을 append할지 여부 |
-| `PUZZLE_KEEP` | `84` | manifest에 유지할 최근 퍼즐 수. 2시간 주기 기준 7일치 |
-| `PUZZLE_INTERVAL_HOURS` | `2` | `slotId` 계산에 사용하는 퍼즐 발행 간격 |
-| `PUZZLE_CORS_ORIGIN` | `*` | AIT WebView에서 JSON을 fetch할 수 있도록 `/puzzles/**` 응답에 넣을 CORS origin |
+| 변수                      |                   기본값 | 설명                                                                                                                      |
+| ------------------------- | -----------------------: | ------------------------------------------------------------------------------------------------------------------------- |
+| `FIREBASE_PROJECT_ID`     |                     필수 | Firebase Hosting project                                                                                                  |
+| `FIREBASE_HOSTING_SITE`   |                     필수 | Firebase Hosting site ID                                                                                                  |
+| `PUZZLE_DAYS`             |                      `1` | 한 번에 생성할 퍼즐 슬롯 수                                                                                               |
+| `PUZZLE_TIME_ZONE`        |             `Asia/Seoul` | 동적 시작 날짜 계산 timezone                                                                                              |
+| `PUZZLE_SEED`             |                     자동 | 재현용 고정 seed. 지정하지 않으면 `PUZZLE_TIME_ZONE`, 시작 날짜, `PUZZLE_PUBLISHED_AT`을 섞어 실행마다 다른 seed를 만든다 |
+| `PUZZLE_OUT_DIR`          |         `public/puzzles` | 생성 결과 출력 폴더                                                                                                       |
+| `PUZZLE_HOSTING_BASE_URL` | `https://<site>.web.app` | 앱/운영자가 참조할 base URL                                                                                               |
+| `PUZZLE_APPEND`           |                   `true` | 기존 manifest를 불러와 새 퍼즐을 append할지 여부                                                                          |
+| `PUZZLE_KEEP`             |                     `84` | manifest에 유지할 최근 퍼즐 수. 2시간 주기 기준 7일치                                                                     |
+| `PUZZLE_INTERVAL_HOURS`   |                      `2` | `slotId` 계산에 사용하는 퍼즐 발행 간격                                                                                   |
+| `PUZZLE_CORS_ORIGIN`      |                      `*` | AIT WebView에서 JSON을 fetch할 수 있도록 `/puzzles/**` 응답에 넣을 CORS origin                                            |
 
 생성 옵션은 `PUZZLE_ATTEMPTS`, `PUZZLE_BEAM`, `PUZZLE_BRANCH`, `PUZZLE_CANDIDATES`, `PUZZLE_DENSE`, `PUZZLE_MIN_CROSS`, `PUZZLE_MIN_DENSITY`, `PUZZLE_MIN_ENTRIES`, `PUZZLE_MIN_MULTI`, `PUZZLE_MAX_AUTO`, `PUZZLE_RETRIES`, `PUZZLE_SAMPLES`, `PUZZLE_SIZE`, `PUZZLE_WORDS`, `PUZZLE_WORDBANK`, `PUZZLE_PUBLISHED_AT`, `PUZZLE_EXISTING_MANIFEST_URL`로 override할 수 있다. `PUZZLE_SEED`를 지정하면 같은 입력에서 같은 퍼즐이 다시 생성될 수 있으므로, 운영 스케줄에서는 보통 비워 둔다.
 
@@ -133,7 +133,7 @@ Cloud Run Job은 다음 환경 변수를 사용한다.
 
 ## AIT 앱 연결
 
-AIT WebView 앱은 Firebase SDK를 초기화하지 않고 공개 Hosting JSON을 `fetch`한다. Firebase Auth, Firestore, Storage를 쓰는 단계가 아니므로 `firebase` npm 패키지는 필요 없다.
+AIT WebView 앱은 퍼즐 데이터를 읽을 때 Firebase SDK를 사용하지 않고 공개 Hosting JSON을 `fetch`한다. Firebase Auth, Firestore, Storage를 쓰는 단계는 아니며, 현재 `firebase` Web SDK는 Analytics와 Remote Config에만 선택적으로 사용한다.
 
 운영 빌드에서 Firebase Hosting pack을 읽게 하려면 앱 빌드 환경에 base URL을 넣는다.
 

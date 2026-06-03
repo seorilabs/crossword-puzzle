@@ -13,5 +13,5 @@ export type ProgressRepository = {
 };
 
 export function createEmptyProgress(): SavedProgress {
-  return { cellValues: {}, hintCount: 0 };
+  return { cellValues: {}, earnedHintCredits: 0, hintCount: 0 };
 }

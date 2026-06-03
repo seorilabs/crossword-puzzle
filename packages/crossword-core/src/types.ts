@@ -131,6 +131,7 @@ export type PuzzleManifest = {
 
 export type SavedProgress = {
   cellValues: Record<string, string>;
+  earnedHintCredits: number;
   hintCount: number;
 };
 

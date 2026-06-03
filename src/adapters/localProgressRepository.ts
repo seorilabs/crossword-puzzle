@@ -33,6 +33,10 @@ function normalizeProgress(progress: Partial<SavedProgress>): SavedProgress {
       progress.cellValues != null && typeof progress.cellValues === "object"
         ? progress.cellValues
         : {},
+    earnedHintCredits:
+      typeof progress.earnedHintCredits === "number"
+        ? Math.max(0, progress.earnedHintCredits)
+        : 0,
     hintCount: typeof progress.hintCount === "number" ? progress.hintCount : 0,
   };
 }

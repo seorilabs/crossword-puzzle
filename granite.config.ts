@@ -5,7 +5,7 @@ export default defineConfig({
   brand: {
     displayName: "가로세로낱말퍼즐",
     primaryColor: "#00A88F",
-    icon: "", // 화면에 노출될 앱의 아이콘 이미지 주소로 바꿔주세요.
+    icon: "https://static.toss.im/appsintoss/38345/15757b74-afc5-4f91-acc9-19602ffb73e6.png",
   },
   web: {
     host: "localhost",
