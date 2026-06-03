@@ -317,7 +317,19 @@ async function getAccessToken() {
   );
 }
 
-async function requestJson(url, { method = "GET", token, body } = {}) {
+function parseJsonText(text) {
+  if (!text) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
+
+async function requestJsonResponse(url, { method = "GET", token, body } = {}) {
   const response = await fetch(url, {
     method,
     headers: {
@@ -328,11 +340,174 @@ async function requestJson(url, { method = "GET", token, body } = {}) {
   });
   const text = await response.text();
 
+  return {
+    data: parseJsonText(text),
+    ok: response.ok,
+    status: response.status,
+    text,
+  };
+}
+
+async function requestJson(url, { method = "GET", token, body } = {}) {
+  const response = await requestJsonResponse(url, { body, method, token });
+
   if (!response.ok) {
-    throw new Error(`${method} ${url} failed with ${response.status}: ${text}`);
+    throw new Error(
+      `${method} ${url} failed with ${response.status}: ${response.text}`,
+    );
   }
 
-  return text ? JSON.parse(text) : null;
+  return response.data;
+}
+
+function getTableSuffix(tableId, tablePattern) {
+  const wildcardIndex = tablePattern.indexOf("*");
+
+  if (wildcardIndex === -1) {
+    return tableId === tablePattern ? "" : null;
+  }
+
+  const prefix = tablePattern.slice(0, wildcardIndex);
+  const suffix = tablePattern.slice(wildcardIndex + 1);
+
+  if (!tableId.startsWith(prefix) || !tableId.endsWith(suffix)) {
+    return null;
+  }
+
+  return tableId.slice(prefix.length, tableId.length - suffix.length);
+}
+
+function getTableDateSuffix(tableId, tablePattern) {
+  const suffix = getTableSuffix(tableId, tablePattern);
+
+  if (suffix == null) {
+    return null;
+  }
+
+  if (/^\d{8}$/.test(suffix)) {
+    return suffix;
+  }
+
+  return /^intraday_(\d{8})$/.exec(suffix)?.[1] ?? null;
+}
+
+async function listBigQueryTables(options, token) {
+  const tableIds = [];
+  let pageToken = "";
+
+  do {
+    const url = new URL(
+      `https://bigquery.googleapis.com/bigquery/v2/projects/${encodeURIComponent(
+        options.sourceProject,
+      )}/datasets/${encodeURIComponent(options.analyticsDataset)}/tables`,
+    );
+    url.searchParams.set("maxResults", "1000");
+
+    if (pageToken) {
+      url.searchParams.set("pageToken", pageToken);
+    }
+
+    const response = await requestJsonResponse(url.toString(), { token });
+
+    if (response.status === 404) {
+      return null;
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        `GET ${url.toString()} failed with ${response.status}: ${response.text}`,
+      );
+    }
+
+    for (const table of response.data?.tables ?? []) {
+      const tableId = table.tableReference?.tableId;
+
+      if (typeof tableId === "string") {
+        tableIds.push(tableId);
+      }
+    }
+
+    pageToken = response.data?.nextPageToken ?? "";
+  } while (pageToken);
+
+  return tableIds;
+}
+
+async function getBigQueryReadiness(options, token) {
+  if (options.skipQuery) {
+    return { ready: true, reason: "BigQuery query skipped." };
+  }
+
+  if (options.project == null) {
+    throw new Error("Missing --project or FIREBASE_PROJECT_ID.");
+  }
+
+  if (options.analyticsDataset == null) {
+    throw new Error(
+      "Missing --analyticsDataset or FIREBASE_ANALYTICS_DATASET.",
+    );
+  }
+
+  assertIdentifier(options.sourceProject, "sourceProject");
+  assertIdentifier(options.analyticsDataset, "analyticsDataset");
+  assertIdentifier(options.analyticsTablePattern, "analyticsTablePattern");
+
+  const datasetUrl = `https://bigquery.googleapis.com/bigquery/v2/projects/${encodeURIComponent(
+    options.sourceProject,
+  )}/datasets/${encodeURIComponent(options.analyticsDataset)}`;
+  const datasetResponse = await requestJsonResponse(datasetUrl, { token });
+
+  if (datasetResponse.status === 404) {
+    return {
+      ready: false,
+      reason: `BigQuery dataset is not available yet: ${options.sourceProject}.${options.analyticsDataset}`,
+    };
+  }
+
+  if (!datasetResponse.ok) {
+    throw new Error(
+      `GET ${datasetUrl} failed with ${datasetResponse.status}: ${datasetResponse.text}`,
+    );
+  }
+
+  const tableIds = await listBigQueryTables(options, token);
+
+  if (tableIds == null) {
+    return {
+      ready: false,
+      reason: `BigQuery dataset is not available yet: ${options.sourceProject}.${options.analyticsDataset}`,
+    };
+  }
+
+  const { fromSuffix, toSuffix } = getSuffixRange(options);
+  const matchingTableIds = tableIds.filter((tableId) => {
+    const dateSuffix = getTableDateSuffix(
+      tableId,
+      options.analyticsTablePattern,
+    );
+
+    return dateSuffix != null && dateSuffix >= fromSuffix && dateSuffix <= toSuffix;
+  });
+
+  if (matchingTableIds.length === 0) {
+    return {
+      ready: false,
+      reason: `No GA4 export tables match ${options.analyticsDataset}.${options.analyticsTablePattern} between ${fromSuffix} and ${toSuffix}.`,
+    };
+  }
+
+  return {
+    ready: true,
+    reason: `Found ${matchingTableIds.length} GA4 export table(s): ${matchingTableIds
+      .slice(0, 5)
+      .join(", ")}`,
+  };
+}
+
+function isBigQueryUnavailableError(error) {
+  return /Not found: Dataset|Not found: Table|Wildcard table .* did not match any table/i.test(
+    error.message,
+  );
 }
 
 function getQuery(options, puzzleIds) {
@@ -357,7 +532,10 @@ WITH event_base AS (
       LIMIT 1
     ) AS puzzle_id
   FROM ${table}
-  WHERE _TABLE_SUFFIX BETWEEN @from_suffix AND @to_suffix
+  WHERE (
+      _TABLE_SUFFIX BETWEEN @from_suffix AND @to_suffix
+      OR REGEXP_EXTRACT(_TABLE_SUFFIX, r'^intraday_(\\d{8})$') BETWEEN @from_suffix AND @to_suffix
+    )
     AND event_name IN ('mission_start', 'mission_complete')
 ),
 filtered AS (
@@ -484,7 +662,7 @@ function parseBigQueryRows({ rows, schema }) {
     .filter((entry) => entry.puzzleId !== "null");
 }
 
-async function queryCompletionStats(options, puzzleIds) {
+async function queryCompletionStats(options, puzzleIds, token) {
   if (options.skipQuery) {
     return [];
   }
@@ -499,7 +677,7 @@ async function queryCompletionStats(options, puzzleIds) {
     );
   }
 
-  const token = await getAccessToken();
+  const accessToken = token ?? (await getAccessToken());
   const initialResult = await requestJson(
     `https://bigquery.googleapis.com/bigquery/v2/projects/${encodeURIComponent(
       options.project,
@@ -513,10 +691,14 @@ async function queryCompletionStats(options, puzzleIds) {
         useLegacySql: false,
       },
       method: "POST",
-      token,
+      token: accessToken,
     },
   );
-  const result = await getQueryResults({ initialResult, options, token });
+  const result = await getQueryResults({
+    initialResult,
+    options,
+    token: accessToken,
+  });
   return parseBigQueryRows(result);
 }
 
@@ -577,7 +759,28 @@ async function run() {
   const options = parseArgs(process.argv.slice(2));
   const manifest = await hydrateRemotePuzzleFiles(options);
   const puzzleIds = getPuzzleIds(manifest);
-  const stats = await queryCompletionStats(options, puzzleIds);
+  const token = options.skipQuery ? null : await getAccessToken();
+  const readiness = await getBigQueryReadiness(options, token);
+
+  if (!readiness.ready) {
+    console.log(`Completion stats skipped: ${readiness.reason}`);
+    return;
+  }
+
+  console.log(`Completion stats BigQuery ready: ${readiness.reason}`);
+
+  let stats;
+
+  try {
+    stats = await queryCompletionStats(options, puzzleIds, token);
+  } catch (error) {
+    if (isBigQueryUnavailableError(error)) {
+      console.log(`Completion stats skipped: ${error.message}`);
+      return;
+    }
+
+    throw error;
+  }
 
   await writeStats(options, stats, puzzleIds);
   await runPublish(options);

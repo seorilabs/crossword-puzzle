@@ -118,6 +118,13 @@ scripts/setup-completion-stats-cloud-run-job.sh \
 - runtime service account에 `roles/firebasehosting.admin`, `roles/bigquery.jobUser`, `roles/bigquery.dataViewer` 부여
 - scheduler service account에 Cloud Run Job `roles/run.invoker` 부여
 
+BigQuery export 준비 전 동작:
+
+- Scheduler는 켜둬도 된다.
+- Job 시작 시 `FIREBASE_ANALYTICS_DATASET` 존재 여부와 `events_*` / `events_intraday_*` 테이블 존재 여부를 먼저 확인한다.
+- dataset 또는 이벤트 테이블이 아직 없으면 통계 파일을 쓰지 않고 정상 종료한다.
+- GA4 BigQuery export가 실제 이벤트 테이블을 만들면 같은 Scheduler 실행에서 자동으로 집계를 시작한다.
+
 운영 환경 변수:
 
 | 변수                               | 기본값                                            | 설명                                   |
