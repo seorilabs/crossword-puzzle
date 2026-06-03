@@ -50,7 +50,7 @@ GitHub Actions AIT 배포는 같은 값을 GitHub Variables에서 읽는다. 미
 | `result_interstitial_ads_enabled`    |  `true` | 결과 화면 진입 후 전면 광고 노출 여부     |
 | `leaderboard_enabled`                | `false` | 리더보드 UI 노출 여부                     |
 
-Remote Config는 보안 결정이나 정답 검증의 source가 아니다. UI 노출 개수, 힌트 지급량, 광고 on/off 같은 운영 튜닝에만 사용한다.
+Remote Config는 보안 결정이나 정답 검증의 source가 아니다. UI 노출 개수, 힌트 지급량, 광고 on/off 같은 운영 튜닝에만 사용한다. 힌트 출처/라이선스 표시는 Remote Config 대상이 아니며 앱 안에서 항상 접근 가능한 정적 고지로 둔다.
 
 ## Analytics Events
 

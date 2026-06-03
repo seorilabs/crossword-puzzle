@@ -4,7 +4,8 @@
 
 - 1차 론칭 목표는 AppsInToss WebView다.
 - Google Play / App Store 출시는 AIT 론칭 이후 후속 트랙으로 진행한다.
-- 현재 등록/검수 blocker는 콘솔 필드 확정, 게임 등급/카테고리 확인, 힌트 라이선스 또는 자체 힌트 검수, AIT 광고 라이브 QA다.
+- 콘솔 등록 필드는 이 문서의 진행 blocker로 보지 않는다.
+- 현재 검수 blocker는 AIT 라이브 광고 QA와 Firebase Analytics 이벤트 QA다. 힌트 출처/라이선스는 앱 내 상시 고지 방식으로 처리했다.
 
 ## 검증 기준
 
@@ -14,7 +15,7 @@
 | appName               | `crossword-puzzle`                       | `granite.config.ts`, `package.json`                                      |
 | 대표 색상             | `#00A88F`                                | `granite.config.ts`의 `brand.primaryColor`                               |
 | 앱 유형               | 게임 / 퍼즐 후보                         | 기획서와 현재 구현이 낱말 퍼즐 앱                                        |
-| 실제 구현 라우팅      | `/`, `/today`, `/history`, `/result`     | 홈, 퍼즐 풀기, 기록, 결과 화면                                           |
+| 실제 구현 라우팅      | `/`, `/today`, `/history`, `/result`, `/license` | 홈, 퍼즐 풀기, 기록, 결과, 출처/라이선스 화면                            |
 | 권한                  | 없음                                     | `granite.config.ts`의 `permissions: []`                                  |
 | 저장 방식             | 기기 로컬 저장                           | `localStorage`에 날짜별 미션, 퍼즐별 진행 상태, 힌트 사용/보상 횟수 저장 |
 | 광고                  | 결과 전면, 힌트 보상형                   | AppsInToss 인앱 광고 2.0 ver2                                            |
@@ -25,6 +26,7 @@
 
 - `index.html`의 `<title>`은 `가로세로낱말퍼즐`로 맞춘다.
 - `brand.icon`은 AppsInToss Console 업로드 로고 HTTPS URL로 설정했다.
+- 힌트 출처/라이선스는 홈 하단 고지와 `/license` 화면에서 확인한다. 이 표시는 Remote Config로 숨기지 않는다.
 - 개발용 시뮬레이터는 개발 환경에서만 `/dev/simulator`로 접근한다. 앱 내 기능 URL에는 등록하지 않는다.
 
 ## 콘솔 앱 기본정보
@@ -72,7 +74,7 @@
 
 ### 앱 내 기능
 
-현재 코드 기준으로 실제 열리는 사용자용 기능만 등록한다. 개발용 `/dev/simulator`는 제외한다.
+현재 코드 기준으로 실제 열리는 주요 사용자용 기능만 등록한다. 출처/라이선스 화면(`/license`)은 홈에서 접근 가능한 고지 화면이므로 앱 내 기능 딥링크 등록 대상에서 제외한다. 개발용 `/dev/simulator`도 제외한다.
 
 | 한국어 기능 이름 | 영어 기능 이름 | 이동 URL                            | 검증 메모                                      |
 | ---------------- | -------------- | ----------------------------------- | ---------------------------------------------- |
@@ -116,16 +118,13 @@
 - 로고와 썸네일은 Toss 제공 아이콘, 이미지 리소스, 외부 저작물 없이 자체 SVG로 제작했다.
 - 세로 스크린샷 3장은 로컬 앱을 실행해 실제 UI에서 캡처했다.
 - `brand.icon`에는 로컬 경로를 넣지 않는다. AppsInToss Console에 업로드한 로고 HTTPS URL을 `granite.config.ts`의 `brand.icon`에 반영했다.
-- 현재 퍼즐 힌트는 한국어기초사전 뜻풀이 기반이다. 출시 전에는 `CC-BY-SA-2.0-KR` 출처 표시와 동일조건변경허락 의무를 검토하거나 힌트를 자체 문장으로 재작성해야 한다. 검수 대상 문장은 `docs/hint-license-review.md`에 정리했다.
+- 현재 퍼즐 힌트는 한국어기초사전 뜻풀이 기반이다. 앱 홈과 `/license` 화면에서 출처와 `CC-BY-SA-2.0-KR` 조건을 상시 표시한다. 검수 대상 문장은 `docs/hint-license-review.md`에 정리했다.
 - 광고 그룹 ID는 결과 전면 `ait.v2.live.a1439d344fa34821`, 힌트 보상형 `ait.v2.live.434bcf7cff1d462e`를 사용한다.
 - Firebase Analytics / Remote Config 설정과 QA는 `docs/firebase-analytics-remote-config.md`를 기준으로 한다. Firebase Web app 값은 GitHub Variables에 등록해 AIT 배포 워크플로에서 읽는다.
 - 퍼즐별 참여자/완료율은 `docs/puzzle-completion-stats.md`의 공개 JSON 계약과 Remote Config gate를 기준으로 한다.
 
-## 미확정 등록 필드
+## 남은 QA
 
-- 고객 문의 전화번호
-- 채팅 상담 주소
-- 콘솔 카테고리 실제 선택값
-- 사용 연령/게임 등급분류 값
-- 한국어기초사전 기반 힌트의 라이선스 표시/동일조건변경허락 처리 또는 자체 힌트 재작성
 - AIT 라이브 광고 로드/보상/전면 노출 QA
+- Firebase Analytics 이벤트 수집 QA
+- 참여자/완료율 집계 JSON 최초 생성 후 Remote Config gate 전환 QA

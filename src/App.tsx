@@ -48,7 +48,13 @@ import {
 import { telemetry } from "./adapters/telemetry";
 import { fallbackPuzzle } from "./data/fallbackPuzzle";
 
-type AppRoute = "home" | "today" | "result" | "history" | "dev-simulator";
+type AppRoute =
+  | "home"
+  | "today"
+  | "result"
+  | "history"
+  | "license"
+  | "dev-simulator";
 
 type LoadState = "fallback" | "loading" | "remote";
 
@@ -156,6 +162,14 @@ const qualityLabels: Record<string, string> = {
   minWordCount: "단어 수",
 };
 
+const contentSourceNotice =
+  "일부 힌트는 국립국어원 한국어기초사전 뜻풀이를 바탕으로 구성했습니다.";
+const contentSourceLicense =
+  "한국어기초사전 자료는 Creative Commons Attribution-ShareAlike 2.0 Korea(CC BY-SA 2.0 KR) 조건으로 제공됩니다.";
+const krdictCopyrightUrl =
+  "https://krdict.korean.go.kr/kor/kboardPolicy/copyRightTermsInfo";
+const ccBySaKrUrl = "https://creativecommons.org/licenses/by-sa/2.0/kr/";
+
 function getPuzzleTelemetryParams(puzzle: Puzzle) {
   return {
     difficulty: puzzle.difficulty,
@@ -200,6 +214,10 @@ function getRouteFromPathname(pathname: string): AppRoute {
     return "history";
   }
 
+  if (pathname === "/license") {
+    return "license";
+  }
+
   if (pathname === "/dev/simulator" && import.meta.env.DEV) {
     return "dev-simulator";
   }
@@ -215,6 +233,8 @@ function getPathForRoute(route: AppRoute) {
       return "/result";
     case "history":
       return "/history";
+    case "license":
+      return "/license";
     case "dev-simulator":
       return "/dev/simulator";
     case "home":
@@ -1095,6 +1115,8 @@ function App() {
           remainingAttempts={remainingAttempts}
           startOrResumeMission={startOrResumeMission}
         />
+      ) : route === "license" ? (
+        <LicenseScreen navigate={navigate} />
       ) : (
         <HomeScreen
           {...dateSelectionProps}
@@ -1427,6 +1449,13 @@ function HomeScreen({
         </button>
       </section>
 
+      <section className="sourceNotice" aria-label="힌트 출처 안내">
+        <span>{contentSourceNotice}</span>
+        <button type="button" onClick={() => navigate("license")}>
+          출처/라이선스
+        </button>
+      </section>
+
       <div className="fixedBottom homeBottomAction">
         <Button
           size="large"
@@ -1440,6 +1469,49 @@ function HomeScreen({
           {primaryLabel}
         </Button>
       </div>
+    </>
+  );
+}
+
+type LicenseScreenProps = {
+  navigate: (route: AppRoute) => void;
+};
+
+function LicenseScreen({ navigate }: LicenseScreenProps) {
+  return (
+    <>
+      <AppHeader
+        eyebrow="콘텐츠 출처"
+        title="출처/라이선스"
+        onBack={() => navigate("home")}
+      />
+
+      <section className="licensePanel" aria-label="힌트 출처 및 라이선스">
+        <div>
+          <span>힌트 출처</span>
+          <p>{contentSourceNotice}</p>
+        </div>
+        <div>
+          <span>라이선스</span>
+          <p>{contentSourceLicense}</p>
+        </div>
+        <div>
+          <span>퍼즐 구성</span>
+          <p>
+            퍼즐 격자와 날짜별 미션 구성은 앱에서 자체 생성하며, 기존 퍼즐
+            문제나 격자를 복제하지 않습니다.
+          </p>
+        </div>
+      </section>
+
+      <section className="licenseLinks" aria-label="라이선스 링크">
+        <a href={krdictCopyrightUrl} target="_blank" rel="noreferrer">
+          한국어기초사전 저작권 정책
+        </a>
+        <a href={ccBySaKrUrl} target="_blank" rel="noreferrer">
+          CC BY-SA 2.0 KR
+        </a>
+      </section>
     </>
   );
 }

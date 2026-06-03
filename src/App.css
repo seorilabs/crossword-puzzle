@@ -552,6 +552,36 @@ button:disabled {
   line-height: 18px;
 }
 
+.sourceNotice {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  margin: -2px 20px 20px;
+  padding: 12px 0 0;
+  border-top: 1px solid #eef2f4;
+}
+
+.sourceNotice span {
+  min-width: 0;
+  color: #6b7684;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 17px;
+}
+
+.sourceNotice button {
+  border: 0;
+  background: transparent;
+  color: #00866f;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 17px;
+  padding: 4px 0;
+  white-space: nowrap;
+}
+
 .startPanel,
 .resultPanel {
   display: flex;
@@ -622,6 +652,61 @@ button:disabled {
   flex-direction: column;
   gap: 10px;
   margin: 0 20px 18px;
+}
+
+.licensePanel {
+  display: flex;
+  width: calc(100% - 40px);
+  max-width: calc(100vw - 40px);
+  box-sizing: border-box;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0 20px 16px;
+  padding: 16px;
+  border: 1px solid #e5e8eb;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.licensePanel div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.licensePanel span {
+  color: #00866f;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 17px;
+}
+
+.licensePanel p {
+  margin: 0;
+  color: #4e5968;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 21px;
+  overflow-wrap: anywhere;
+}
+
+.licenseLinks {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0 20px 18px;
+  padding-top: 12px;
+  border-top: 1px solid #eef2f4;
+}
+
+.licenseLinks a {
+  color: #00866f;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+  text-decoration: none;
 }
 
 .metricsBar {
