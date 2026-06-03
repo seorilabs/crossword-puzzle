@@ -50,7 +50,7 @@ import { fallbackPuzzle } from "./data/fallbackPuzzle";
 
 type AppRoute = "home" | "today" | "result" | "history" | "dev-simulator";
 
-type LoadState = "fallback" | "remote";
+type LoadState = "fallback" | "loading" | "remote";
 
 type PuzzleViewModel = {
   bounds: ReturnType<typeof getBounds>;
@@ -81,6 +81,7 @@ type DateSelectionProps = {
   completionStatsByPuzzleId: CompletionStatsByPuzzleId;
   completionStatsMinDisplayCount: number;
   dateCardStates: Record<string, DateCardState>;
+  loadState: LoadState;
   puzzleSummaries: PuzzleManifestItem[];
   selectedPuzzleId: string;
   selectPuzzle: (puzzleId: string) => void;
@@ -155,6 +156,37 @@ const qualityLabels: Record<string, string> = {
   minWordCount: "단어 수",
 };
 
+function getPuzzleTelemetryParams(puzzle: Puzzle) {
+  return {
+    difficulty: puzzle.difficulty,
+    grid_size: puzzle.gridSize,
+    pack_id: puzzle.packId,
+    published_at: puzzle.publishedAt,
+    puzzle_id: puzzle.puzzleId,
+    slot_id: puzzle.slotId,
+    word_count: puzzle.entries.length,
+  };
+}
+
+function getElapsedSeconds(startedAt?: string, endedAt?: string) {
+  if (startedAt == null) {
+    return undefined;
+  }
+
+  const startTime = new Date(startedAt).getTime();
+  const endTime = endedAt == null ? Date.now() : new Date(endedAt).getTime();
+
+  if (
+    !Number.isFinite(startTime) ||
+    !Number.isFinite(endTime) ||
+    endTime < startTime
+  ) {
+    return undefined;
+  }
+
+  return Math.round((endTime - startTime) / 1000);
+}
+
 function getRouteFromPathname(pathname: string): AppRoute {
   if (pathname === "/today") {
     return "today";
@@ -225,6 +257,18 @@ function createPuzzleSummary(puzzle: Puzzle): PuzzleManifestItem {
     quality: puzzle.quality,
     slotId: puzzle.slotId,
   };
+}
+
+function isRemotePuzzlePackSummary(summary: PuzzleManifestItem) {
+  return (
+    summary.packId != null ||
+    summary.publishedAt != null ||
+    summary.slotId != null
+  );
+}
+
+function getPuzzlePackLoadState(summaries: PuzzleManifestItem[]): LoadState {
+  return summaries.some(isRemotePuzzlePackSummary) ? "remote" : "fallback";
 }
 
 function getInitialPuzzleId(
@@ -306,7 +350,9 @@ function App() {
   const [selectedCellKey, setSelectedCellKey] = useState(() =>
     getInitialEntryStartCellKey(fallbackPuzzle),
   );
-  const [loadState, setLoadState] = useState<LoadState>("fallback");
+  const [loadState, setLoadState] = useState<LoadState>(
+    hasRemotePuzzlePack ? "loading" : "fallback",
+  );
   const [hintCount, setHintCount] = useState(0);
   const [earnedHintCredits, setEarnedHintCredits] = useState(0);
   const [launchConfig, setLaunchConfig] =
@@ -325,6 +371,7 @@ function App() {
   const [completionStatsByPuzzleId, setCompletionStatsByPuzzleId] =
     useState<CompletionStatsByPuzzleId>({});
   const shownResultInterstitialRef = useRef<string | null>(null);
+  const firstAnswerInputKeysRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     function syncRoute() {
@@ -448,7 +495,7 @@ function App() {
           setPuzzleSummaries(nextSummaries);
           setDateCardStates(nextDateCardStates);
           applyPuzzleSession(session);
-          setLoadState("remote");
+          setLoadState(getPuzzlePackLoadState(nextSummaries));
         }
       } catch {
         if (!isCancelled) {
@@ -466,15 +513,33 @@ function App() {
 
   const selectPuzzle = useCallback(
     async (puzzleId: string) => {
+      if (loadState === "loading") {
+        return;
+      }
+
       try {
         const session = await loadPuzzleSession(puzzleId);
         applyPuzzleSession(session);
-        setLoadState(session == null ? "fallback" : "remote");
+        if (session == null) {
+          setLoadState("fallback");
+        }
+        telemetry.click("puzzle_select", {
+          ...(session == null
+            ? { puzzle_id: puzzleId, status: "missing" }
+            : {
+                ...getPuzzleTelemetryParams(session.nextPuzzle),
+                status: "loaded",
+              }),
+        });
       } catch {
         setLoadState("fallback");
+        telemetry.click("puzzle_select", {
+          puzzle_id: puzzleId,
+          status: "error",
+        });
       }
     },
-    [applyPuzzleSession, loadPuzzleSession],
+    [applyPuzzleSession, loadPuzzleSession, loadState],
   );
 
   useEffect(() => {
@@ -505,6 +570,10 @@ function App() {
   const progressPercent = getProgressPercent(
     viewModel.completedEntries.length,
     puzzle.entries.length,
+  );
+  const puzzleTelemetryParams = useMemo(
+    () => getPuzzleTelemetryParams(puzzle),
+    [puzzle],
   );
   const remainingAttempts = getRemainingAttempts(mission);
   const hasProgress =
@@ -578,26 +647,30 @@ function App() {
     setMission(nextMission);
     void missionRepository.saveMission(nextMission);
     telemetry.impression("mission_complete", {
+      ...puzzleTelemetryParams,
+      attempt_number: nextMission.attemptsUsed,
+      completed_word_count: viewModel.completedEntries.length,
       completed_at: nextMission.completedAt,
+      elapsed_seconds: getElapsedSeconds(
+        nextMission.lastStartedAt,
+        nextMission.completedAt,
+      ),
+      earned_hint_credits: earnedHintCredits,
       hint_count: hintCount,
-      pack_id: puzzle.packId,
-      puzzle_id: puzzle.puzzleId,
       remaining_attempts: getRemainingAttempts(nextMission),
-      slot_id: puzzle.slotId,
-      word_count: puzzle.entries.length,
     });
 
     if (route === "today") {
       navigate("result", { replace: true });
     }
   }, [
+    earnedHintCredits,
     hintCount,
     mission,
-    puzzle.entries.length,
-    puzzle.packId,
+    puzzleTelemetryParams,
     puzzle.puzzleId,
-    puzzle.slotId,
     route,
+    viewModel.completedEntries.length,
     viewModel.isComplete,
   ]);
 
@@ -673,12 +746,34 @@ function App() {
     }
   }
 
-  function applyAnswer(entry: PuzzleEntry, value: string) {
+  function applyAnswer(
+    entry: PuzzleEntry,
+    value: string,
+    source: "debug" | "manual" = "manual",
+  ) {
     const nextLetters = [...value.replace(/\s/g, "")].slice(
       0,
       [...entry.answer].length,
     );
     const cells = getEntryCells(entry);
+
+    if (source === "manual" && nextLetters.length > 0) {
+      const firstInputKey = `${puzzle.puzzleId}:${mission.attemptsUsed}`;
+
+      if (!firstAnswerInputKeysRef.current.has(firstInputKey)) {
+        firstAnswerInputKeysRef.current.add(firstInputKey);
+        telemetry.impression("first_answer_input", {
+          ...puzzleTelemetryParams,
+          answer_length: entry.answer.length,
+          attempt_number: mission.attemptsUsed,
+          elapsed_seconds: getElapsedSeconds(mission.lastStartedAt),
+          entry_direction: entry.direction,
+          entry_id: entry.id,
+          hint_count: hintCount,
+          remaining_attempts: remainingAttempts,
+        });
+      }
+    }
 
     setCellValues((prev) => {
       const next = { ...prev };
@@ -813,7 +908,11 @@ function App() {
 
   function revealSelected() {
     if (viewModel.selectedEntry != null) {
-      applyAnswer(viewModel.selectedEntry, viewModel.selectedEntry.answer);
+      applyAnswer(
+        viewModel.selectedEntry,
+        viewModel.selectedEntry.answer,
+        "debug",
+      );
     }
   }
 
@@ -840,7 +939,41 @@ function App() {
     void progressRepository.clearProgress(puzzle.puzzleId);
   }
 
+  function trackMissionStart(nextMission: DailyMissionState) {
+    telemetry.impression("mission_start", {
+      ...puzzleTelemetryParams,
+      attempt_number: nextMission.attemptsUsed,
+      earned_hint_credits: earnedHintCredits,
+      hint_count: hintCount,
+      remaining_attempts: getRemainingAttempts(nextMission),
+      started_at: nextMission.lastStartedAt,
+    });
+  }
+
+  function trackAttemptStart(
+    nextMission: DailyMissionState,
+    attemptKind: "first" | "retry",
+    progressSnapshot = {
+      earnedHintCredits,
+      hintCount,
+    },
+  ) {
+    telemetry.impression("attempt_start", {
+      ...puzzleTelemetryParams,
+      attempt_kind: attemptKind,
+      attempt_number: nextMission.attemptsUsed,
+      earned_hint_credits: progressSnapshot.earnedHintCredits,
+      hint_count: progressSnapshot.hintCount,
+      remaining_attempts: getRemainingAttempts(nextMission),
+      started_at: nextMission.lastStartedAt,
+    });
+  }
+
   function startOrResumeMission() {
+    if (loadState === "loading") {
+      return;
+    }
+
     if (isCompleted) {
       navigate("result");
       return;
@@ -854,6 +987,8 @@ function App() {
       const nextMission = startMissionAttempt(mission);
       setMission(nextMission);
       void missionRepository.saveMission(nextMission);
+      trackMissionStart(nextMission);
+      trackAttemptStart(nextMission, "first");
     }
 
     navigate("today");
@@ -868,6 +1003,10 @@ function App() {
     const nextMission = startMissionAttempt(mission);
     setMission(nextMission);
     void missionRepository.saveMission(nextMission);
+    trackAttemptStart(nextMission, "retry", {
+      earnedHintCredits: 0,
+      hintCount: 0,
+    });
     navigate("today");
   }
 
@@ -898,6 +1037,7 @@ function App() {
     completionStatsByPuzzleId,
     completionStatsMinDisplayCount: launchConfig.completionStatsMinDisplayCount,
     dateCardStates,
+    loadState,
     puzzleSummaries: visiblePuzzleSummaries,
     selectedPuzzleId: puzzle.puzzleId,
     selectPuzzle,
@@ -911,7 +1051,6 @@ function App() {
         clearProgress={clearProgress}
         hasStarted={hasStarted}
         isCompleted={isCompleted}
-        loadState={loadState}
         navigate={navigate}
         revealAll={revealAll}
         revealSelected={revealSelected}
@@ -1092,6 +1231,7 @@ function HomeScreen({
   hintBalance,
   isCompleted,
   launchConfig,
+  loadState,
   mission,
   navigate,
   progressPercent,
@@ -1106,43 +1246,69 @@ function HomeScreen({
   startOrResumeMission,
 }: HomeScreenProps) {
   const [isPackInfoOpen, setIsPackInfoOpen] = useState(false);
-  const primaryLabel = isCompleted
-    ? "결과 보기"
-    : hasStarted
-      ? "이어 풀기"
-      : remainingAttempts > 0
-        ? "미션 시작"
-        : "내일 다시";
-  const missionStatusLabel = isCompleted
-    ? "완료"
-    : hasStarted
-      ? `${progressPercent}% 진행 중`
-      : "도전 준비 완료";
+  const isLoadingPuzzlePack = loadState === "loading";
+  const primaryLabel = isLoadingPuzzlePack
+    ? "불러오는 중"
+    : isCompleted
+      ? "결과 보기"
+      : hasStarted
+        ? "이어 풀기"
+        : remainingAttempts > 0
+          ? "미션 시작"
+          : "내일 다시";
+  const missionStatusLabel = isLoadingPuzzlePack
+    ? "퍼즐팩을 확인하고 있어요"
+    : isCompleted
+      ? "완료"
+      : hasStarted
+        ? `${progressPercent}% 진행 중`
+        : "도전 준비 완료";
   const completionStatsLabel = formatCompletionStatsLabel(
     completionStatsByPuzzleId[puzzle.puzzleId],
     completionStatsMinDisplayCount,
   );
   const isPrimaryDisabled =
-    !isCompleted && !hasStarted && remainingAttempts === 0;
+    isLoadingPuzzlePack ||
+    (!isCompleted && !hasStarted && remainingAttempts === 0);
+  const missionLeadLabel = isLoadingPuzzlePack ? "원격 퍼즐팩" : "선택한 미션";
+  const missionHeadline = isLoadingPuzzlePack
+    ? "불러오는 중"
+    : `${puzzle.entries.length}개 낱말`;
+  const missionDescription = isLoadingPuzzlePack
+    ? "최신 퍼즐 목록을 가져오는 중이에요"
+    : missionStatusLabel;
+  const packInfoPanelTitle =
+    loadState === "remote"
+      ? `${launchConfig.puzzleGenerationIntervalHours}시간마다 새 퍼즐`
+      : loadState === "loading"
+        ? "원격 퍼즐팩 확인 중"
+        : "기기저장 기본 퍼즐";
+  const packInfoPanelDescription =
+    loadState === "remote"
+      ? `자동 생성된 퍼즐은 최근 ${launchConfig.puzzleKeepCount}개까지 유지하고, 홈에는 최신 ${launchConfig.visiblePuzzleCount}개를 보여줘요.`
+      : loadState === "loading"
+        ? "원격 퍼즐팩이 준비되면 최신 퍼즐 목록으로 바뀝니다."
+        : "원격 퍼즐팩을 사용할 수 없을 때 기기에 포함된 기본 퍼즐을 보여줘요.";
 
   return (
     <>
       <Top
         title="가로세로낱말퍼즐"
-        subtitleBottom={`${mission.date} · 🔥 5일째 도전 중`}
+        subtitleBottom={`${formatMissionDateLabel(mission.date, loadState)} · 🔥 5일째 도전 중`}
       />
 
       <DateCarousel
         completionStatsByPuzzleId={completionStatsByPuzzleId}
         completionStatsMinDisplayCount={completionStatsMinDisplayCount}
         dateCardStates={dateCardStates}
+        loadState={loadState}
         puzzleSummaries={puzzleSummaries}
         selectedPuzzleId={selectedPuzzleId}
         selectPuzzle={selectPuzzle}
       />
 
       <div className="packInfoRow">
-        <span>최근 {puzzleSummaries.length}개 퍼즐</span>
+        <span>{formatPackInfoLabel(loadState, puzzleSummaries.length)}</span>
         <button
           className="infoButton"
           type="button"
@@ -1156,28 +1322,24 @@ function HomeScreen({
 
       {isPackInfoOpen ? (
         <section className="packInfoPanel" aria-label="퍼즐 생성 주기">
-          <strong>
-            {launchConfig.puzzleGenerationIntervalHours}시간마다 새 퍼즐
-          </strong>
-          <span>
-            자동 생성된 퍼즐은 최근 {launchConfig.puzzleKeepCount}개까지
-            유지하고, 홈에는 최신 {launchConfig.visiblePuzzleCount}개를
-            보여줘요.
-          </span>
+          <strong>{packInfoPanelTitle}</strong>
+          <span>{packInfoPanelDescription}</span>
         </section>
       ) : null}
 
       <section className="todayMission" aria-label="선택한 미션">
         <div className="missionLead">
           <Paragraph typography="t5" color="#00866f" fontWeight="bold">
-            선택한 미션
+            {missionLeadLabel}
           </Paragraph>
           <Paragraph typography="t2" fontWeight="bold">
-            {puzzle.entries.length}개 낱말
+            {missionHeadline}
           </Paragraph>
           <Paragraph typography="t6" color="#4e5968">
-            {missionStatusLabel}
-            {completionStatsLabel === "" ? "" : ` · ${completionStatsLabel}`}
+            {missionDescription}
+            {isLoadingPuzzlePack || completionStatsLabel === ""
+              ? ""
+              : ` · ${completionStatsLabel}`}
           </Paragraph>
         </div>
 
@@ -1225,11 +1387,17 @@ function HomeScreen({
         disabled={isPrimaryDisabled}
       >
         <span>
-          {selectedEntry == null
-            ? "대표 단서"
-            : formatEntryReference(selectedEntry, startLabels)}
+          {isLoadingPuzzlePack
+            ? "원격 퍼즐팩"
+            : selectedEntry == null
+              ? "대표 단서"
+              : formatEntryReference(selectedEntry, startLabels)}
         </span>
-        <strong>{selectedEntry?.clue ?? "단서 준비 중"}</strong>
+        <strong>
+          {isLoadingPuzzlePack
+            ? "불러오는 중"
+            : (selectedEntry?.clue ?? "단서 준비 중")}
+        </strong>
       </button>
 
       <HintRewardPanel
@@ -1393,6 +1561,54 @@ function formatGameHeaderDate(date: string) {
   return `${dayLabel} ${weekday}`;
 }
 
+function formatPuzzleSourceLabel(loadState: LoadState) {
+  switch (loadState) {
+    case "remote":
+      return "원격 퍼즐팩";
+    case "loading":
+      return "원격 퍼즐팩 확인 중";
+    case "fallback":
+      return "기기저장 기본 퍼즐";
+  }
+}
+
+function formatMissionDateLabel(date: string, loadState: LoadState) {
+  switch (loadState) {
+    case "remote":
+      return date;
+    case "loading":
+      return "불러오는 중";
+    case "fallback":
+      return "기기저장";
+  }
+}
+
+function formatPuzzleHeaderLabel(date: string, loadState: LoadState) {
+  switch (loadState) {
+    case "remote":
+      return formatGameHeaderDate(date);
+    case "loading":
+      return "불러오는 중";
+    case "fallback":
+      return "기기저장 퍼즐";
+  }
+}
+
+function formatPackInfoLabel(loadState: LoadState, puzzleCount: number) {
+  switch (loadState) {
+    case "remote":
+      return `최근 ${puzzleCount}개 퍼즐`;
+    case "loading":
+      return "원격 퍼즐팩 불러오는 중";
+    case "fallback":
+      return `기기저장 기본 퍼즐 ${puzzleCount}개`;
+  }
+}
+
+function formatFallbackCardTitle(index: number, puzzleCount: number) {
+  return puzzleCount > 1 ? `기본 ${index + 1}` : "기본";
+}
+
 function formatPuzzleCardSlot(summary: PuzzleManifestItem) {
   if (summary.publishedAt == null) {
     return "";
@@ -1429,8 +1645,51 @@ function getDateCardStatus(state?: DateCardState) {
 function formatCompletionStatsLabel(
   stats: PuzzleCompletionStats | undefined,
   minDisplayCount: number,
+  variant: "compact" | "detail" = "detail",
 ) {
-  if (stats == null || stats.completionCount === 0) {
+  if (stats == null) {
+    return "";
+  }
+
+  const numberFormatter = new Intl.NumberFormat("ko-KR");
+  const participantCount = stats.participantCount;
+
+  if (participantCount != null) {
+    if (participantCount === 0) {
+      return "";
+    }
+
+    if (participantCount < minDisplayCount) {
+      return `${minDisplayCount}명 미만 참여`;
+    }
+
+    if (stats.completionCount === 0) {
+      return variant === "compact"
+        ? "완료 전"
+        : `${numberFormatter.format(participantCount)}명 참여 · 완료 전`;
+    }
+
+    if (stats.completionCount < minDisplayCount) {
+      return variant === "compact"
+        ? `${minDisplayCount}명 미만 완료`
+        : `${numberFormatter.format(participantCount)}명 참여 · ${minDisplayCount}명 미만 완료`;
+    }
+
+    const completionRate =
+      stats.completionRate ??
+      Math.max(0, Math.min(1, stats.completionCount / participantCount));
+    const completionRateLabel = `${Math.round(completionRate * 100)}%`;
+
+    if (variant === "compact") {
+      return `${completionRateLabel} 완료`;
+    }
+
+    return `${numberFormatter.format(participantCount)}명 참여 · ${numberFormatter.format(
+      stats.completionCount,
+    )}명 완료(${completionRateLabel})`;
+  }
+
+  if (stats.completionCount === 0) {
     return "";
   }
 
@@ -1438,32 +1697,58 @@ function formatCompletionStatsLabel(
     return `${minDisplayCount}명 미만 완료`;
   }
 
-  return `${new Intl.NumberFormat("ko-KR").format(stats.completionCount)}명 완료`;
+  return `${numberFormatter.format(stats.completionCount)}명 완료`;
 }
 
 function DateCarousel({
   completionStatsByPuzzleId,
   completionStatsMinDisplayCount,
   dateCardStates,
+  loadState,
   puzzleSummaries,
   selectedPuzzleId,
   selectPuzzle,
 }: DateSelectionProps) {
+  if (loadState === "loading") {
+    return (
+      <section className="dateRail" aria-label="퍼즐팩 로딩" aria-busy="true">
+        <div className="dateScroller">
+          {["원격", "퍼즐팩", "확인"].map((label) => (
+            <div key={label} className="dateCard dateLoading">
+              <span>{label}</span>
+              <strong>불러오는 중</strong>
+              <em>잠시만요</em>
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  const isFallbackPack = loadState === "fallback";
+
   return (
     <section className="dateRail" aria-label="퍼즐 날짜 선택">
       <div className="dateScroller">
-        {puzzleSummaries.map((summary) => {
+        {puzzleSummaries.map((summary, index) => {
           const state = dateCardStates[summary.puzzleId];
           const isSelected = summary.puzzleId === selectedPuzzleId;
-          const slotLabel = formatPuzzleCardSlot(summary);
+          const slotLabel = isFallbackPack ? "" : formatPuzzleCardSlot(summary);
           const statusLabel = getDateCardStatus(state);
           const wordCountLabel = `${summary.metrics?.wordCount ?? "-"}개`;
           const completionStatsLabel = formatCompletionStatsLabel(
             completionStatsByPuzzleId[summary.puzzleId],
             completionStatsMinDisplayCount,
+            "compact",
           );
+          const eyebrowLabel = isFallbackPack
+            ? "기기저장"
+            : formatDateCardWeekday(summary.date);
+          const titleLabel = isFallbackPack
+            ? formatFallbackCardTitle(index, puzzleSummaries.length)
+            : formatDateCardDay(summary.date);
           const metaLabel =
-            completionStatsLabel !== ""
+            !isFallbackPack && completionStatsLabel !== ""
               ? slotLabel === ""
                 ? completionStatsLabel
                 : `${slotLabel} · ${completionStatsLabel}`
@@ -1480,12 +1765,16 @@ function DateCarousel({
                 state?.completedAt != null ? "dateCompleted" : "",
               ].join(" ")}
               type="button"
-              aria-label={`${formatGameHeaderDate(summary.date)} ${slotLabel} ${statusLabel}`}
+              aria-label={
+                isFallbackPack
+                  ? `${eyebrowLabel} ${titleLabel} ${statusLabel}`
+                  : `${formatGameHeaderDate(summary.date)} ${slotLabel} ${statusLabel}`
+              }
               aria-pressed={isSelected}
               onClick={() => void selectPuzzle(summary.puzzleId)}
             >
-              <span>{formatDateCardWeekday(summary.date)}</span>
-              <strong>{formatDateCardDay(summary.date)}</strong>
+              <span>{eyebrowLabel}</span>
+              <strong>{titleLabel}</strong>
               <em>{metaLabel}</em>
             </button>
           );
@@ -1587,6 +1876,7 @@ function TodayScreen({
   hasStarted,
   hintBalance,
   isCompleted,
+  loadState,
   mission,
   navigate,
   puzzle,
@@ -1669,6 +1959,7 @@ function TodayScreen({
           completionStatsByPuzzleId={completionStatsByPuzzleId}
           completionStatsMinDisplayCount={completionStatsMinDisplayCount}
           dateCardStates={dateCardStates}
+          loadState={loadState}
           puzzleSummaries={puzzleSummaries}
           selectedPuzzleId={selectedPuzzleId}
           selectPuzzle={selectPuzzle}
@@ -1685,10 +1976,10 @@ function TodayScreen({
             size="large"
             display="full"
             type="button"
-            disabled={remainingAttempts === 0}
+            disabled={loadState === "loading" || remainingAttempts === 0}
             onClick={startOrResumeMission}
           >
-            시작
+            {loadState === "loading" ? "불러오는 중" : "시작"}
           </Button>
         </section>
       </>
@@ -1699,7 +1990,7 @@ function TodayScreen({
     <>
       <AppHeader
         compact
-        title={formatGameHeaderDate(puzzle.date)}
+        title={formatPuzzleHeaderLabel(puzzle.date, loadState)}
         onBack={() => navigate("home")}
         right={
           <div className="headerActions">
@@ -1866,6 +2157,7 @@ function ResultScreen({
   completionStatsMinDisplayCount,
   dateCardStates,
   hintCount,
+  loadState,
   mission,
   navigate,
   progressPercent,
@@ -1881,7 +2173,7 @@ function ResultScreen({
   return (
     <>
       <AppHeader
-        eyebrow={`${mission.date} · 도전 ${mission.attemptsUsed}/${mission.maxAttempts}`}
+        eyebrow={`${formatMissionDateLabel(mission.date, loadState)} · 도전 ${mission.attemptsUsed}/${mission.maxAttempts}`}
         title="미션 결과"
         onBack={() => navigate("home")}
       />
@@ -1890,6 +2182,7 @@ function ResultScreen({
         completionStatsByPuzzleId={completionStatsByPuzzleId}
         completionStatsMinDisplayCount={completionStatsMinDisplayCount}
         dateCardStates={dateCardStates}
+        loadState={loadState}
         puzzleSummaries={puzzleSummaries}
         selectedPuzzleId={selectedPuzzleId}
         selectPuzzle={selectPuzzle}
@@ -1943,6 +2236,7 @@ function HistoryScreen({
   dateCardStates,
   hintCount,
   isCompleted,
+  loadState,
   mission,
   navigate,
   progressPercent,
@@ -1956,7 +2250,7 @@ function HistoryScreen({
   return (
     <>
       <AppHeader
-        eyebrow={`${mission.date} · ${isCompleted ? "완료" : `${progressPercent}%`}`}
+        eyebrow={`${formatMissionDateLabel(mission.date, loadState)} · ${isCompleted ? "완료" : `${progressPercent}%`}`}
         title="기록"
         onBack={() => navigate("home")}
       />
@@ -1965,6 +2259,7 @@ function HistoryScreen({
         completionStatsByPuzzleId={completionStatsByPuzzleId}
         completionStatsMinDisplayCount={completionStatsMinDisplayCount}
         dateCardStates={dateCardStates}
+        loadState={loadState}
         puzzleSummaries={puzzleSummaries}
         selectedPuzzleId={selectedPuzzleId}
         selectPuzzle={selectPuzzle}
@@ -1978,7 +2273,7 @@ function HistoryScreen({
             isCompleted ? () => navigate("result") : startOrResumeMission
           }
         >
-          <span>{mission.date}</span>
+          <span>{formatMissionDateLabel(mission.date, loadState)}</span>
           <strong>{isCompleted ? "완료" : "진행 중"}</strong>
           <em>
             {completedEntries.length}/{puzzle.entries.length} 단어 · 힌트{" "}
@@ -1992,7 +2287,6 @@ function HistoryScreen({
 
 type DevSimulatorScreenProps = TodayScreenProps & {
   clearProgress: () => void;
-  loadState: LoadState;
   revealAll: () => void;
   revealSelected: () => void;
 };
@@ -2018,6 +2312,11 @@ function DevSimulatorScreen({
   selectEntry,
   viewModel,
 }: DevSimulatorScreenProps) {
+  const devPuzzleSourceLabel =
+    loadState === "remote"
+      ? `${puzzle.date} · ${formatPuzzleSourceLabel(loadState)}`
+      : formatPuzzleSourceLabel(loadState);
+
   return (
     <main className="appShell">
       <Top
@@ -2026,8 +2325,8 @@ function DevSimulatorScreen({
         }
         subtitleBottom={
           <Top.SubtitleParagraph size={15}>
-            {puzzle.date} · {loadState === "remote" ? "원격 pack" : "fallback"}{" "}
-            · 교차율 {Math.round(puzzle.metrics.crossRatio * 100)}%
+            {devPuzzleSourceLabel} · 교차율{" "}
+            {Math.round(puzzle.metrics.crossRatio * 100)}%
           </Top.SubtitleParagraph>
         }
       />

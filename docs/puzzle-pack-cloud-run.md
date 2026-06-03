@@ -135,7 +135,7 @@ Cloud Run Job은 다음 환경 변수를 사용한다.
 
 AIT WebView 앱은 퍼즐 데이터를 읽을 때 Firebase SDK를 사용하지 않고 공개 Hosting JSON을 `fetch`한다. Firebase Auth, Firestore, Storage를 쓰는 단계는 아니며, 현재 `firebase` Web SDK는 Analytics와 Remote Config에만 선택적으로 사용한다.
 
-퍼즐별 완료자 수는 퍼즐 데이터 JSON과 별도로 `/puzzle-stats/completions.json`을 읽는다. 이 파일은 퍼즐 생성 Job이 아니라 Analytics 지연 집계 Job이 갱신한다. 자세한 계약은 `docs/puzzle-completion-stats.md`를 따른다.
+퍼즐별 참여자/완료자/완료율은 퍼즐 데이터 JSON과 별도로 `/puzzle-stats/completions.json`을 읽는다. 이 파일은 퍼즐 생성 Job이 아니라 Analytics 지연 집계 Job(`npm run job:completion-stats`)이 갱신한다. 자세한 계약은 `docs/puzzle-completion-stats.md`를 따른다.
 
 운영 빌드에서 Firebase Hosting pack을 읽게 하려면 앱 빌드 환경에 base URL을 넣는다.
 

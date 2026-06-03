@@ -131,7 +131,9 @@ export type PuzzleManifest = {
 
 export type PuzzleCompletionStats = {
   completionCount: number;
+  completionRate?: number;
   lastAggregatedAt?: string;
+  participantCount?: number;
   puzzleId: string;
 };
 

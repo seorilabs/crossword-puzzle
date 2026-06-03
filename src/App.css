@@ -109,8 +109,9 @@ button:disabled {
 
 .dateCard {
   display: flex;
-  width: 86px;
-  min-width: 86px;
+  width: 98px;
+  min-width: 98px;
+  min-height: 92px;
   flex-direction: column;
   gap: 2px;
   scroll-snap-align: start;
@@ -137,12 +138,14 @@ button:disabled {
 }
 
 .dateCard em {
+  display: block;
+  min-height: 30px;
   color: #6b7684;
   font-size: 11px;
   font-style: normal;
   font-weight: 800;
-  line-height: 16px;
-  white-space: nowrap;
+  line-height: 15px;
+  overflow: hidden;
 }
 
 .dateSelected {
@@ -158,6 +161,20 @@ button:disabled {
 
 .dateCompleted:not(.dateSelected) {
   border-color: #c9eee6;
+}
+
+.dateLoading {
+  pointer-events: none;
+}
+
+.dateLoading strong {
+  font-size: 14px;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.dateLoading em {
+  color: #1b64da;
 }
 
 .packInfoRow {

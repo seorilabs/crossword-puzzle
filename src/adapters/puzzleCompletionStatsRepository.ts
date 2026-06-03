@@ -35,6 +35,22 @@ function getNonNegativeInteger(value: unknown) {
   return Math.max(0, Math.round(numberValue));
 }
 
+function getOptionalRatio(value: unknown) {
+  const numberValue =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? Number(value)
+        : Number.NaN;
+
+  if (!Number.isFinite(numberValue)) {
+    return undefined;
+  }
+
+  const normalizedValue = numberValue > 1 ? numberValue / 100 : numberValue;
+  return Math.max(0, Math.min(1, normalizedValue));
+}
+
 function getOptionalString(value: unknown) {
   return typeof value === "string" && value.trim() !== ""
     ? value.trim()
@@ -51,14 +67,23 @@ function normalizeStatsEntry(
 
   const puzzleId = getOptionalString(value.puzzleId) ?? fallbackPuzzleId;
   const completionCount = getNonNegativeInteger(value.completionCount);
+  const participantCount = getNonNegativeInteger(value.participantCount);
 
   if (puzzleId == null || completionCount == null) {
     return null;
   }
 
+  const completionRate =
+    getOptionalRatio(value.completionRate) ??
+    (participantCount == null || participantCount === 0
+      ? undefined
+      : Math.max(0, Math.min(1, completionCount / participantCount)));
+
   return {
     completionCount,
+    completionRate,
     lastAggregatedAt: getOptionalString(value.lastAggregatedAt),
+    participantCount,
     puzzleId,
   };
 }
@@ -95,9 +120,7 @@ export function createPuzzleCompletionStatsRepository({
   const configuredStatsUrl = getConfiguredStatsUrl(statsUrl);
 
   return {
-    async loadStats(
-      puzzleIds: string[],
-    ): Promise<PuzzleCompletionStatsById> {
+    async loadStats(puzzleIds: string[]): Promise<PuzzleCompletionStatsById> {
       if (configuredStatsUrl == null || puzzleIds.length === 0) {
         return {};
       }

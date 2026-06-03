@@ -116,7 +116,7 @@ Supabase는 puzzle pack 운영이 Firebase Hosting으로 안정화된 뒤, 검�
 | `content_packs` | 앱별 puzzle pack manifest와 publish 상태       | `app_id = 'crossword-puzzle'`이고 `status = 'published'` | 서버/관리자 작업만 |
 | `puzzles`       | 날짜별 puzzle payload JSON과 검색용 메타데이터 | 연결된 pack이 published                                  | 서버/관리자 작업만 |
 
-초기에는 `user_progress`를 만들지 않는다. 현재 진행 상태는 기기 로컬 저장이 제품 동작과 개인정보 범위를 단순하게 유지한다. 퍼즐별 완료자 수는 사용자별 진행 저장이 아니라 Firebase Analytics `mission_complete` 이벤트의 지연 집계 JSON으로만 노출한다.
+초기에는 `user_progress`를 만들지 않는다. 현재 진행 상태는 기기 로컬 저장이 제품 동작과 개인정보 범위를 단순하게 유지한다. 퍼즐별 참여자/완료자/완료율은 사용자별 진행 저장이 아니라 Firebase Analytics `mission_start`와 `mission_complete` 이벤트의 지연 집계 JSON으로만 노출한다.
 
 ## 데이터 계약
 

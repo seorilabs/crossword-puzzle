@@ -69,6 +69,10 @@ function getPuzzleHostingHeaders(options) {
       glob: "/puzzles/**",
       headers,
     },
+    {
+      glob: "/puzzle-stats/**",
+      headers,
+    },
   ];
 }
 
@@ -207,7 +211,9 @@ async function uploadHostingFile(uploadUrl, file, token) {
   const text = await response.text();
 
   if (!response.ok) {
-    throw new Error(`Hosting upload failed for ${file.path}: ${response.status} ${text}`);
+    throw new Error(
+      `Hosting upload failed for ${file.path}: ${response.status} ${text}`,
+    );
   }
 }
 
@@ -248,7 +254,9 @@ async function deployHosting({ options, token }) {
       `https://firebasehosting.googleapis.com/v1beta1/${versionName}:populateFiles`,
       {
         body: {
-          files: Object.fromEntries(filesChunk.map((file) => [file.path, file.hash])),
+          files: Object.fromEntries(
+            filesChunk.map((file) => [file.path, file.hash]),
+          ),
         },
         method: "POST",
         token,
@@ -301,7 +309,9 @@ async function run() {
     console.log("Dry run: puzzle pack publish plan");
     console.log(`Project: ${options.project ?? "(not set)"}`);
     console.log(`Hosting site: ${options.site ?? "(not set)"}`);
-    console.log(`Hosting files: ${files.length} from ${path.resolve(options.publicDir)}`);
+    console.log(
+      `Hosting files: ${files.length} from ${path.resolve(options.publicDir)}`,
+    );
     console.log(`CORS origin: ${options.corsOrigin || "(not set)"}`);
     console.log(`Puzzle count: ${manifest.puzzles?.length ?? 0}`);
     return;
