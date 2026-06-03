@@ -100,6 +100,24 @@ Cloud Run Job entrypoint:
 npm run job:completion-stats
 ```
 
+Cloud Run Job 등록:
+
+```bash
+scripts/setup-completion-stats-cloud-run-job.sh \
+  --project-id crossword-puzzle-79ae0 \
+  --firebase-hosting-site crossword-puzzle-79ae0 \
+  --analytics-dataset analytics_<property_id> \
+  --bigquery-location asia-northeast3
+```
+
+등록 스크립트가 수행하는 일:
+
+- `Dockerfile.completion-stats-job` 이미지 build/push
+- `crossword-puzzle-completion-stats-aggregator` Cloud Run Job 생성/업데이트
+- `crossword-puzzle-completion-stats-every-30m` Cloud Scheduler 생성/업데이트
+- runtime service account에 `roles/firebasehosting.admin`, `roles/bigquery.jobUser`, `roles/bigquery.dataViewer` 부여
+- scheduler service account에 Cloud Run Job `roles/run.invoker` 부여
+
 운영 환경 변수:
 
 | 변수                               | 기본값                                            | 설명                                   |
