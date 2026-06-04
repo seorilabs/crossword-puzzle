@@ -353,7 +353,7 @@ function App() {
             <View style={styles.header}>
               <View>
                 <Text style={styles.eyebrow}>{puzzle.date}</Text>
-                <Text style={styles.title}>가로세로낱말퍼즐</Text>
+                <Text style={styles.title}>가로세로 낱말 퍼즐</Text>
               </View>
               <View style={styles.progressBadge}>
                 <Text style={styles.progressValue}>{progressPercent}%</Text>

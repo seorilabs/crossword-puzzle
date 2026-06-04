@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1932" height="828" viewBox="0 0 1932 828" role="img" aria-labelledby="title desc">
-  <title id="title">가로세로낱말퍼즐 앱 썸네일</title>
+  <title id="title">가로세로 낱말 퍼즐 앱 썸네일</title>
   <desc id="desc">오늘의 한글 가로세로 퍼즐판과 힌트, 교차 정답 타일을 보여주는 와이드 썸네일</desc>
   <rect width="1932" height="828" fill="#F7F8FA"/>
   <rect x="96" y="72" width="1740" height="684" fill="#FFFFFF"/>
   <rect x="96" y="72" width="18" height="684" fill="#00A88F"/>
 
   <g font-family="Apple SD Gothic Neo, Pretendard, system-ui, sans-serif">
-    <text x="174" y="178" fill="#191F28" font-size="76" font-weight="800">가로세로낱말퍼즐</text>
+    <text x="174" y="178" fill="#191F28" font-size="76" font-weight="800">가로세로 낱말 퍼즐</text>
     <text x="178" y="246" fill="#4E5968" font-size="34" font-weight="700">오늘 한 판, 교차된 낱말을 하나씩 풀어요</text>
 
     <g transform="translate(174 322)">

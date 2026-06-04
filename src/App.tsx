@@ -1417,7 +1417,7 @@ function HomeScreen({
   return (
     <>
       <Top
-        title="가로세로낱말퍼즐"
+        title="가로세로 낱말 퍼즐"
         subtitleBottom={`${formatMissionDateLabel(mission.date, loadState)} · 🔥 5일째 도전 중`}
       />
 

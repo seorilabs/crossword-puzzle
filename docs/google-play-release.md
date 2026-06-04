@@ -93,7 +93,7 @@ Google 공식 문서 기준으로 service account는 Google Cloud에서 만들�
 입력해야 할 값:
 
 - 기본 언어: `ko-KR`
-- 앱 이름: `가로세로낱말퍼즐`
+- 앱 이름: `가로세로 낱말 퍼즐`
 - 앱/게임: `게임`
 - 무료/유료: `무료`
 - 고객 문의 이메일: `cs@seorilabs.com`
