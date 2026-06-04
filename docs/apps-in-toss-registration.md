@@ -5,22 +5,22 @@
 - 1차 론칭 목표는 AppsInToss WebView다.
 - Google Play / App Store 출시는 AIT 론칭 이후 후속 트랙으로 진행한다.
 - 콘솔 등록 필드는 이 문서의 진행 blocker로 보지 않는다.
-- 현재 검수 blocker는 AIT 라이브 광고 QA와 Firebase Analytics 이벤트 QA다. 힌트 출처/라이선스는 앱 내 상시 고지 방식으로 처리했다.
+- 현재 검수 blocker는 AIT 라이브 광고 QA다. Firebase Analytics 이벤트 QA와 힌트 출처/라이선스 고지는 확인 완료했다.
 
 ## 검증 기준
 
-| 항목                  | 확인값                                   | 근거                                                                     |
-| --------------------- | ---------------------------------------- | ------------------------------------------------------------------------ |
-| 한국어 앱 이름        | `가로세로낱말퍼즐`                       | `granite.config.ts`의 `brand.displayName`, 앱 상단 제목                  |
-| appName               | `crossword-puzzle`                       | `granite.config.ts`, `package.json`                                      |
-| 대표 색상             | `#00A88F`                                | `granite.config.ts`의 `brand.primaryColor`                               |
-| 앱 유형               | 게임 / 퍼즐 후보                         | 기획서와 현재 구현이 낱말 퍼즐 앱                                        |
+| 항목                  | 확인값                                           | 근거                                                                     |
+| --------------------- | ------------------------------------------------ | ------------------------------------------------------------------------ |
+| 한국어 앱 이름        | `가로세로낱말퍼즐`                               | `granite.config.ts`의 `brand.displayName`, 앱 상단 제목                  |
+| appName               | `crossword-puzzle`                               | `granite.config.ts`, `package.json`                                      |
+| 대표 색상             | `#00A88F`                                        | `granite.config.ts`의 `brand.primaryColor`                               |
+| 앱 유형               | 게임 / 퍼즐 후보                                 | 기획서와 현재 구현이 낱말 퍼즐 앱                                        |
 | 실제 구현 라우팅      | `/`, `/today`, `/history`, `/result`, `/license` | 홈, 퍼즐 풀기, 기록, 결과, 출처/라이선스 화면                            |
-| 권한                  | 없음                                     | `granite.config.ts`의 `permissions: []`                                  |
-| 저장 방식             | 기기 로컬 저장                           | `localStorage`에 날짜별 미션, 퍼즐별 진행 상태, 힌트 사용/보상 횟수 저장 |
-| 광고                  | 결과 전면, 힌트 보상형                   | AppsInToss 인앱 광고 2.0 ver2                                            |
-| 분석                  | AppsInToss Analytics, Firebase Analytics | 화면 진입, 힌트 사용, 광고 이벤트, 퍼즐 참여자/완료율 집계용 이벤트      |
-| 로그인/결제/서버 저장 | 없음                                     | 현재 코드 기준 미구현                                                    |
+| 권한                  | 없음                                             | `granite.config.ts`의 `permissions: []`                                  |
+| 저장 방식             | 기기 로컬 저장                                   | `localStorage`에 날짜별 미션, 퍼즐별 진행 상태, 힌트 사용/보상 횟수 저장 |
+| 광고                  | 결과 전면, 힌트 보상형                           | AppsInToss 인앱 광고 2.0 ver2                                            |
+| 분석                  | AppsInToss Analytics, Firebase Analytics         | 화면 진입, 힌트 사용, 광고 이벤트, 퍼즐 참여자/완료율 집계용 이벤트      |
+| 로그인/결제/서버 저장 | 없음                                             | 현재 코드 기준 미구현                                                    |
 
 검수 주의:
 
@@ -120,11 +120,12 @@
 - `brand.icon`에는 로컬 경로를 넣지 않는다. AppsInToss Console에 업로드한 로고 HTTPS URL을 `granite.config.ts`의 `brand.icon`에 반영했다.
 - 현재 퍼즐 힌트는 한국어기초사전 뜻풀이 기반이다. 앱 홈과 `/license` 화면에서 출처와 `CC-BY-SA-2.0-KR` 조건을 상시 표시한다. 검수 대상 문장은 `docs/hint-license-review.md`에 정리했다.
 - 광고 그룹 ID는 결과 전면 `ait.v2.live.a1439d344fa34821`, 힌트 보상형 `ait.v2.live.434bcf7cff1d462e`를 사용한다.
+- 보상형 광고 힌트는 `userEarnedReward` 이벤트 수신 즉시 지급한다. `dismissed`는 광고 닫힘 이벤트일 뿐 보상 지급 근거로 쓰지 않는다.
 - Firebase Analytics / Remote Config 설정과 QA는 `docs/firebase-analytics-remote-config.md`를 기준으로 한다. Firebase Web app 값은 GitHub Variables에 등록해 AIT 배포 워크플로에서 읽는다.
 - 퍼즐별 참여자/완료율은 `docs/puzzle-completion-stats.md`의 공개 JSON 계약과 Remote Config gate를 기준으로 한다.
 
 ## 남은 QA
 
 - AIT 라이브 광고 로드/보상/전면 노출 QA
-- Firebase Analytics 이벤트 수집 QA
+- Firebase Analytics 이벤트 수집 QA: 완료
 - 참여자/완료율 집계 JSON 최초 생성 후 Remote Config gate 전환 QA

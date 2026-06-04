@@ -379,6 +379,8 @@ function App() {
     useState<LaunchConfig>(defaultLaunchConfig);
   const [rewardedAdStatus, setRewardedAdStatus] =
     useState<RewardedAdStatus>("idle");
+  const [isRewardedHintPromptOpen, setIsRewardedHintPromptOpen] =
+    useState(false);
   const [hintNotice, setHintNotice] = useState("");
   const [hintToast, setHintToast] = useState({ id: 0, message: "" });
   const [mission, setMission] =
@@ -953,17 +955,18 @@ function App() {
       return;
     }
 
-    const confirmed = window.confirm(
-      `광고를 보고 힌트 +${launchConfig.rewardedHintCredits}개를 받을까요?`,
-    );
+    setIsRewardedHintPromptOpen(true);
+  }
 
-    if (!confirmed) {
-      telemetry.click("rewarded_hint_ad_cancel", {
-        puzzle_id: puzzle.puzzleId,
-      });
-      return;
-    }
+  function cancelRewardedHintPrompt() {
+    setIsRewardedHintPromptOpen(false);
+    telemetry.click("rewarded_hint_ad_cancel", {
+      puzzle_id: puzzle.puzzleId,
+    });
+  }
 
+  function confirmRewardedHintPrompt() {
+    setIsRewardedHintPromptOpen(false);
     void requestRewardedHint();
   }
 
@@ -1179,7 +1182,63 @@ function App() {
           startOrResumeMission={startOrResumeMission}
         />
       )}
+      {isRewardedHintPromptOpen ? (
+        <RewardedHintConfirmDialog
+          credits={launchConfig.rewardedHintCredits}
+          isLoading={rewardedAdStatus === "loading"}
+          onCancel={cancelRewardedHintPrompt}
+          onConfirm={confirmRewardedHintPrompt}
+        />
+      ) : null}
     </main>
+  );
+}
+
+type RewardedHintConfirmDialogProps = {
+  credits: number;
+  isLoading: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+};
+
+function RewardedHintConfirmDialog({
+  credits,
+  isLoading,
+  onCancel,
+  onConfirm,
+}: RewardedHintConfirmDialogProps) {
+  return (
+    <div className="rewardDialogScrim" onClick={onCancel}>
+      <section
+        className="rewardDialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="rewardDialogTitle"
+        aria-describedby="rewardDialogDescription"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="rewardDialogText">
+          <h2 id="rewardDialogTitle">힌트를 받을까요?</h2>
+          <p id="rewardDialogDescription">
+            광고 시청을 완료하면 힌트 +{credits}개가 추가돼요.
+          </p>
+        </div>
+        <div className="rewardDialogActions">
+          <button className="secondaryButton" type="button" onClick={onCancel}>
+            취소
+          </button>
+          <button
+            className="primaryButton"
+            type="button"
+            disabled={isLoading}
+            onClick={onConfirm}
+            autoFocus
+          >
+            {isLoading ? "준비 중" : "광고 보기"}
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -2159,7 +2218,7 @@ function TodayScreen({
               disabled={selectedEntry == null}
               onClick={clearSelectedAnswer}
             >
-              X
+              <EraserIcon />
             </button>
             <button
               className="ghostButton"
@@ -2178,43 +2237,48 @@ function TodayScreen({
         </div>
       )}
 
-      <PuzzleBoard
-        cellEntries={viewModel.cellEntries}
-        cellValues={cellValues}
-        cols={viewModel.cols}
-        completedEntries={completedEntries}
-        rows={viewModel.rows}
-        selectedCells={viewModel.selectedCells}
-        selectCell={selectCell}
-        startLabels={viewModel.startLabels}
-        puzzle={puzzle}
-      />
+      <section className="puzzlePlayArea" aria-label="퍼즐 풀이">
+        <PuzzleBoard
+          cellEntries={viewModel.cellEntries}
+          cellValues={cellValues}
+          cols={viewModel.cols}
+          completedEntries={completedEntries}
+          rows={viewModel.rows}
+          selectedCells={viewModel.selectedCells}
+          selectCell={selectCell}
+          startLabels={viewModel.startLabels}
+          puzzle={puzzle}
+        />
+
+        {selectedEntry != null ? (
+          <div className="selectedClueList" aria-label="선택한 문제">
+            {selectedCellEntries.map((entry) => (
+              <button
+                key={entry.id}
+                className={[
+                  "selectedClue",
+                  entry.id === selectedEntry.id ? "selectedClueActive" : "",
+                ].join(" ")}
+                type="button"
+                aria-pressed={entry.id === selectedEntry.id}
+                onClick={() =>
+                  selectEntry(
+                    entry,
+                    selectedCellKey || getEntryStartCellKey(entry),
+                  )
+                }
+              >
+                <span>{formatEntryReference(entry, startLabels)}</span>
+                <strong>{entry.clue}</strong>
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </section>
 
       {selectedEntry != null ? (
         <div className="fixedBottom answerDock">
           <div className="answerPanel">
-            <div className="selectedClueList">
-              {selectedCellEntries.map((entry) => (
-                <button
-                  key={entry.id}
-                  className={[
-                    "selectedClue",
-                    entry.id === selectedEntry.id ? "selectedClueActive" : "",
-                  ].join(" ")}
-                  type="button"
-                  aria-pressed={entry.id === selectedEntry.id}
-                  onClick={() =>
-                    selectEntry(
-                      entry,
-                      selectedCellKey || getEntryStartCellKey(entry),
-                    )
-                  }
-                >
-                  <span>{formatEntryReference(entry, startLabels)}</span>
-                  <strong>{entry.clue}</strong>
-                </button>
-              ))}
-            </div>
             <TextField
               className="answerTextField"
               variant="box"
@@ -2278,6 +2342,35 @@ function TodayScreen({
         />
       ) : null}
     </>
+  );
+}
+
+function EraserIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      focusable="false"
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+    >
+      <path
+        d="M7 17l-3-3 8.5-8.5a2.1 2.1 0 0 1 3 0l3 3a2.1 2.1 0 0 1 0 3L13 17H7z"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+      <path
+        d="M10 8l6 6M5 19h14"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    </svg>
   );
 }
 

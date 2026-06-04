@@ -51,7 +51,6 @@ export function loadAndShowFullScreenAd({
 
   return new Promise((resolve) => {
     let isResolved = false;
-    let didEarnReward = false;
     let unregisterLoad: (() => void) | undefined;
     let unregisterShow: (() => void) | undefined;
 
@@ -95,13 +94,11 @@ export function loadAndShowFullScreenAd({
               onTrace?.({ phase: "show", type: showEvent.type });
 
               if (showEvent.type === "userEarnedReward") {
-                didEarnReward = true;
+                resolveOnce({ status: "rewarded" });
               }
 
               if (showEvent.type === "dismissed") {
-                resolveOnce({
-                  status: didEarnReward ? "rewarded" : "dismissed",
-                });
+                resolveOnce({ status: "dismissed" });
               }
 
               if (showEvent.type === "failedToShow") {
