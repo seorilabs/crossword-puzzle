@@ -953,6 +953,17 @@ function App() {
       return;
     }
 
+    const confirmed = window.confirm(
+      `광고를 보고 힌트 +${launchConfig.rewardedHintCredits}개를 받을까요?`,
+    );
+
+    if (!confirmed) {
+      telemetry.click("rewarded_hint_ad_cancel", {
+        puzzle_id: puzzle.puzzleId,
+      });
+      return;
+    }
+
     void requestRewardedHint();
   }
 
@@ -2051,12 +2062,6 @@ function TodayScreen({
     });
   }
 
-  const shouldShowRewardHintBubble =
-    selectedEntry != null &&
-    hintBalance.remaining === 0 &&
-    hintBalance.adsEnabled &&
-    !hintBalance.isAdBusy;
-
   if (!hasStarted && !isCompleted) {
     return (
       <>
@@ -2117,14 +2122,14 @@ function TodayScreen({
                   ? "광고 준비 중"
                   : hintBalance.remaining > 0
                     ? `힌트 ${hintBalance.remaining}개 남음`
-                    : `힌트 0개. 광고를 보고 ${hintBalance.rewardedCredits}개 받기`
+                    : `힌트 얻기. 광고를 보고 ${hintBalance.rewardedCredits}개 받기`
               }
               title={
                 hintBalance.isAdBusy
                   ? "광고 준비 중"
                   : hintBalance.remaining > 0
                     ? `힌트 ${hintBalance.remaining}개 남음`
-                    : `힌트 0개. 광고를 보고 ${hintBalance.rewardedCredits}개 받기`
+                    : `힌트 얻기. 광고를 보고 ${hintBalance.rewardedCredits}개 받기`
               }
               disabled={
                 selectedEntry == null ||
@@ -2133,10 +2138,18 @@ function TodayScreen({
               }
               onClick={useHint}
             >
-              <span>힌트</span>
-              <strong>
-                {hintBalance.isAdBusy ? "..." : hintBalance.remaining}
-              </strong>
+              {hintBalance.remaining > 0 ? (
+                <>
+                  <span>힌트</span>
+                  <strong>
+                    {hintBalance.isAdBusy ? "..." : hintBalance.remaining}
+                  </strong>
+                </>
+              ) : (
+                <strong className="hintAcquireLabel">
+                  {hintBalance.isAdBusy ? "준비 중" : "힌트 얻기"}
+                </strong>
+              )}
             </button>
             <button
               className="iconButton"
@@ -2164,18 +2177,6 @@ function TodayScreen({
           {hintToastMessage}
         </div>
       )}
-
-      {shouldShowRewardHintBubble ? (
-        <div className="rewardHintBubbleRow">
-          <button
-            className="rewardHintBubble"
-            type="button"
-            onClick={useHint}
-          >
-            광고 보고 힌트 +{hintBalance.rewardedCredits}
-          </button>
-        </div>
-      ) : null}
 
       <PuzzleBoard
         cellEntries={viewModel.cellEntries}
@@ -2215,6 +2216,7 @@ function TodayScreen({
               ))}
             </div>
             <TextField
+              className="answerTextField"
               variant="box"
               inputMode="text"
               maxLength={selectedEntry.answer.length}

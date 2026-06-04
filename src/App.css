@@ -101,40 +101,15 @@ button:disabled {
   line-height: 20px;
 }
 
+.hintAcquireLabel {
+  font-size: 13px;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
 .hintCountButtonEmpty {
   background: #fff3f3;
   color: #d22030;
-}
-
-.rewardHintBubbleRow {
-  display: flex;
-  justify-content: flex-end;
-  margin: -2px 16px 8px;
-}
-
-.rewardHintBubble {
-  position: relative;
-  border: 0;
-  border-radius: 999px;
-  background: #191f28;
-  color: #ffffff;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 900;
-  line-height: 17px;
-  padding: 8px 12px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
-}
-
-.rewardHintBubble::before {
-  position: absolute;
-  top: -5px;
-  right: 28px;
-  width: 10px;
-  height: 10px;
-  background: inherit;
-  content: "";
-  transform: rotate(45deg);
 }
 
 .compactHeader {
@@ -1147,6 +1122,9 @@ button:disabled {
 
 .answerPanel {
   display: flex;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   flex-direction: column;
   gap: 8px;
 }
@@ -1173,6 +1151,8 @@ button:disabled {
 
 @media (min-width: 481px) {
   .fixedBottom {
+    right: auto;
+    width: min(100%, 480px);
     max-width: 480px;
     left: 50%;
     transform: translateX(-50%);
@@ -1188,6 +1168,8 @@ button:disabled {
 
 .selectedClueList {
   display: flex;
+  width: 100%;
+  min-width: 0;
   flex-direction: column;
   max-height: 86px;
   gap: 4px;
@@ -1228,6 +1210,16 @@ button:disabled {
   line-height: 20px;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+}
+
+.answerTextField {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.answerTextField input {
+  width: 100%;
 }
 
 .iconButton {
