@@ -83,7 +83,7 @@ function normalizeStatsEntry(
     completionCount,
     completionRate,
     lastAggregatedAt: getOptionalString(value.lastAggregatedAt),
-    participantCount,
+    participantCount: participantCount ?? undefined,
     puzzleId,
   };
 }

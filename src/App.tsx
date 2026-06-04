@@ -2051,6 +2051,12 @@ function TodayScreen({
     });
   }
 
+  const shouldShowRewardHintBubble =
+    selectedEntry != null &&
+    hintBalance.remaining === 0 &&
+    hintBalance.adsEnabled &&
+    !hintBalance.isAdBusy;
+
   if (!hasStarted && !isCompleted) {
     return (
       <>
@@ -2159,10 +2165,23 @@ function TodayScreen({
         </div>
       )}
 
+      {shouldShowRewardHintBubble ? (
+        <div className="rewardHintBubbleRow">
+          <button
+            className="rewardHintBubble"
+            type="button"
+            onClick={useHint}
+          >
+            광고 보고 힌트 +{hintBalance.rewardedCredits}
+          </button>
+        </div>
+      ) : null}
+
       <PuzzleBoard
         cellEntries={viewModel.cellEntries}
         cellValues={cellValues}
         cols={viewModel.cols}
+        completedEntries={completedEntries}
         rows={viewModel.rows}
         selectedCells={viewModel.selectedCells}
         selectCell={selectCell}
@@ -2539,6 +2558,7 @@ function DevSimulatorScreen({
         cellEntries={viewModel.cellEntries}
         cellValues={cellValues}
         cols={viewModel.cols}
+        completedEntries={completedEntries}
         rows={viewModel.rows}
         selectedCells={viewModel.selectedCells}
         selectCell={selectCell}
@@ -2651,6 +2671,7 @@ type PuzzleBoardProps = {
   cellEntries: Map<string, PuzzleEntry[]>;
   cellValues: Record<string, string>;
   cols: number[];
+  completedEntries: PuzzleEntry[];
   puzzle: Puzzle;
   rows: number[];
   selectedCells: Set<string>;
@@ -2662,12 +2683,25 @@ function PuzzleBoard({
   cellEntries,
   cellValues,
   cols,
+  completedEntries,
   puzzle,
   rows,
   selectedCells,
   selectCell,
   startLabels,
 }: PuzzleBoardProps) {
+  const completedCellKeys = useMemo(() => {
+    const keys = new Set<string>();
+
+    for (const entry of completedEntries) {
+      getEntryCells(entry).forEach((cell) => {
+        keys.add(getCellKey(cell.row, cell.col));
+      });
+    }
+
+    return keys;
+  }, [completedEntries]);
+
   return (
     <section
       className="puzzleBoard"
@@ -2681,6 +2715,7 @@ function PuzzleBoard({
           const key = getCellKey(row, col);
           const entries = cellEntries.get(key) ?? [];
           const isFilled = cellValues[key] != null;
+          const isComplete = completedCellKeys.has(key);
           const isSelected = selectedCells.has(key);
           const isCross = entries.length > 1;
 
@@ -2696,10 +2731,11 @@ function PuzzleBoard({
                 isSelected ? "cellSelected" : "",
                 isCross ? "cellCross" : "",
                 isFilled ? "cellFilled" : "",
+                isComplete ? "cellComplete" : "",
               ].join(" ")}
               type="button"
               onClick={() => selectCell(row, col)}
-              aria-label={`${row + 1}행 ${col + 1}열`}
+              aria-label={`${row + 1}행 ${col + 1}열${isComplete ? " 정답 완료" : ""}`}
             >
               <span className="cellNumber">{startLabels.get(key) ?? ""}</span>
               <span className="cellLetter">{cellValues[key] ?? ""}</span>
@@ -2762,8 +2798,10 @@ function AllCluesOverlay({
                     className={[
                       "clueItem",
                       entry.id === selectedEntry?.id ? "clueSelected" : "",
+                      isComplete ? "clueComplete" : "",
                     ].join(" ")}
                     type="button"
+                    aria-label={`${formatEntryReference(entry, startLabels)} ${entry.clue} ${entry.answer.length}자${isComplete ? " 완료" : ""}`}
                     onClick={() => onSelect(entry)}
                   >
                     <span className="clueIndex">
@@ -2774,7 +2812,10 @@ function AllCluesOverlay({
                     </span>
                     <span className="clueText">{entry.clue}</span>
                     <span className="clueMeta">
-                      {entry.answer.length}자{isComplete ? " · 완료" : ""}
+                      <span>{entry.answer.length}자</span>
+                      {isComplete ? (
+                        <span className="clueDoneBadge">완료</span>
+                      ) : null}
                     </span>
                   </button>
                 );
@@ -2835,6 +2876,7 @@ function ClueSection({
               className={[
                 "clueItem",
                 entry.id === selectedEntry?.id ? "clueSelected" : "",
+                isComplete ? "clueComplete" : "",
               ].join(" ")}
               type="button"
               onClick={() => selectEntry(entry)}
@@ -2847,7 +2889,10 @@ function ClueSection({
               </span>
               <span className="clueText">{entry.clue}</span>
               <span className="clueMeta">
-                {entry.answer.length}자{isComplete ? " · 완료" : ""}
+                <span>{entry.answer.length}자</span>
+                {isComplete ? (
+                  <span className="clueDoneBadge">완료</span>
+                ) : null}
               </span>
             </button>
           );
