@@ -6,7 +6,7 @@ BIGQUERY_SOURCE_PROJECT_ID=""
 FIREBASE_HOSTING_SITE=""
 FIREBASE_ANALYTICS_DATASET=""
 FIREBASE_ANALYTICS_TABLE_PATTERN="events_*"
-BIGQUERY_LOCATION="asia-northeast3"
+BIGQUERY_LOCATION="asia-southeast3"
 REGION="asia-northeast3"
 SCHEDULER_LOCATION="asia-northeast3"
 JOB_NAME="crossword-puzzle-completion-stats-aggregator"
@@ -35,7 +35,7 @@ Options:
   --analytics-dataset <dataset>        GA4 BigQuery export dataset, usually analytics_<property_id>.
   --bigquery-source-project-id <id>    Project that owns the Analytics dataset. Default: --project-id.
   --analytics-table-pattern <pattern>  GA4 export table wildcard. Default: events_*.
-  --bigquery-location <location>       BigQuery query location. Default: asia-northeast3.
+  --bigquery-location <location>       BigQuery query location. Default: asia-southeast3.
   --region <region>                    Cloud Run Job region. Default: asia-northeast3.
   --scheduler-location <region>        Cloud Scheduler location. Default: asia-northeast3.
   --job-name <name>                    Cloud Run Job name.

@@ -44,7 +44,7 @@ GitHub Actions AIT 배포는 같은 값을 GitHub Variables에서 읽는다. 미
 | `visible_puzzle_count`               |     `7` | 홈 날짜 캐러셀에 보여줄 최신 퍼즐 개수    |
 | `puzzle_generation_interval_hours`   |     `2` | 사용자 안내용 퍼즐 생성 주기              |
 | `puzzle_keep_count`                  |    `84` | 사용자 안내용 원격 퍼즐팩 보관 개수       |
-| `completion_stats_enabled`           | `false` | 퍼즐별 참여자/완료율 UI 노출 여부         |
+| `completion_stats_enabled`           |  `true` | 퍼즐별 참여자/완료율 UI 노출 여부         |
 | `completion_stats_min_display_count` |    `10` | 정확한 참여자/완료자 수 표시 최소 집계 수 |
 | `rewarded_hint_ads_enabled`          |  `true` | 힌트 보상형 광고 CTA 노출 여부            |
 | `result_interstitial_ads_enabled`    |  `true` | 결과 화면 진입 후 전면 광고 노출 여부     |

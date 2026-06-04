@@ -107,7 +107,7 @@ scripts/setup-completion-stats-cloud-run-job.sh \
   --project-id crossword-puzzle-79ae0 \
   --firebase-hosting-site crossword-puzzle-79ae0 \
   --analytics-dataset analytics_<property_id> \
-  --bigquery-location asia-northeast3
+  --bigquery-location asia-southeast3
 ```
 
 등록 스크립트가 수행하는 일:
@@ -132,7 +132,7 @@ BigQuery export 준비 전 동작:
 | `FIREBASE_ANALYTICS_DATASET`       | 필수                                              | GA4 BigQuery export dataset            |
 | `FIREBASE_ANALYTICS_TABLE_PATTERN` | `events_*`                                        | GA4 export table wildcard              |
 | `BIGQUERY_SOURCE_PROJECT`          | `FIREBASE_PROJECT_ID`                             | Analytics export가 있는 GCP project    |
-| `BIGQUERY_LOCATION`                | `asia-northeast3`                                 | BigQuery query location                |
+| `BIGQUERY_LOCATION`                | `asia-southeast3`                                 | BigQuery query location                |
 | `STATS_LOOKBACK_DAYS`              | `14`                                              | 조회 기간                              |
 | `STATS_PUBLIC_DIR`                 | `public`                                          | Hosting publish staging root           |
 | `STATS_OUTPUT_PATH`                | `/puzzle-stats/completions.json`                  | stats JSON 출력 경로                   |

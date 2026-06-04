@@ -30,7 +30,7 @@ export const defaultLaunchConfig: LaunchConfig = {
   visiblePuzzleCount: 7,
   puzzleGenerationIntervalHours: 2,
   puzzleKeepCount: 84,
-  completionStatsEnabled: false,
+  completionStatsEnabled: true,
   completionStatsMinDisplayCount: 10,
   rewardedHintAdsEnabled: true,
   resultInterstitialAdsEnabled: true,

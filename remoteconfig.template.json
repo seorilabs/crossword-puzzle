@@ -38,7 +38,7 @@
     },
     "completion_stats_enabled": {
       "defaultValue": {
-        "value": "false"
+        "value": "true"
       },
       "description": "퍼즐별 참여자/완료율 UI 노출 여부",
       "valueType": "BOOLEAN"

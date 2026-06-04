@@ -10,7 +10,7 @@ const DEFAULT_OPTIONS = {
   dryRun: readEnvBoolean("STATS_DRY_RUN"),
   fromSuffix: process.env.STATS_FROM_SUFFIX,
   hostingBaseUrl: process.env.PUZZLE_HOSTING_BASE_URL,
-  location: process.env.BIGQUERY_LOCATION ?? "asia-northeast3",
+  location: process.env.BIGQUERY_LOCATION ?? "asia-southeast3",
   lookbackDays: Number(process.env.STATS_LOOKBACK_DAYS ?? 14),
   manifestPath: process.env.STATS_MANIFEST_PATH,
   manifestUrl: process.env.STATS_MANIFEST_URL,

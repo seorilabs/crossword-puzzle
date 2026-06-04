@@ -380,6 +380,7 @@ function App() {
   const [rewardedAdStatus, setRewardedAdStatus] =
     useState<RewardedAdStatus>("idle");
   const [hintNotice, setHintNotice] = useState("");
+  const [hintToast, setHintToast] = useState({ id: 0, message: "" });
   const [mission, setMission] =
     useState<DailyMissionState>(createInitialMission);
   const [puzzleSummaries, setPuzzleSummaries] = useState<PuzzleManifestItem[]>(
@@ -652,6 +653,21 @@ function App() {
   };
 
   useEffect(() => {
+    if (hintToast.message === "") {
+      return;
+    }
+
+    const toastId = hintToast.id;
+    const timerId = window.setTimeout(() => {
+      setHintToast((prev) =>
+        prev.id === toastId ? { id: prev.id, message: "" } : prev,
+      );
+    }, 2200);
+
+    return () => window.clearTimeout(timerId);
+  }, [hintToast]);
+
+  useEffect(() => {
     telemetry.screen(route, {
       date: puzzle.date,
       puzzle_id: puzzle.puzzleId,
@@ -871,9 +887,15 @@ function App() {
     return true;
   }
 
+  function showHintToast(message: string) {
+    setHintToast((prev) => ({ id: prev.id + 1, message }));
+  }
+
   async function requestRewardedHint() {
     if (!launchConfig.rewardedHintAdsEnabled) {
-      setHintNotice("지금은 광고 힌트를 사용할 수 없어요.");
+      const message = "지금은 광고 힌트를 사용할 수 없어요.";
+      setHintNotice(message);
+      showHintToast(message);
       telemetry.click("rewarded_hint_ad_disabled", {
         puzzle_id: puzzle.puzzleId,
       });
@@ -901,17 +923,25 @@ function App() {
 
     if (result.status === "rewarded") {
       setEarnedHintCredits((prev) => prev + launchConfig.rewardedHintCredits);
-      setHintNotice(`힌트 ${launchConfig.rewardedHintCredits}개가 추가됐어요.`);
+      const message = `힌트 +${launchConfig.rewardedHintCredits}개가 추가됐어요.`;
+      setHintNotice(message);
+      showHintToast(message);
       telemetry.impression("rewarded_hint_ad_reward", {
         puzzle_id: puzzle.puzzleId,
         rewarded_hint_credits: launchConfig.rewardedHintCredits,
       });
     } else if (result.status === "unsupported") {
-      setHintNotice("현재 환경에서는 광고 힌트를 사용할 수 없어요.");
+      const message = "현재 환경에서는 광고 힌트를 사용할 수 없어요.";
+      setHintNotice(message);
+      showHintToast(message);
     } else if (result.status === "dismissed") {
-      setHintNotice("광고 시청이 완료되지 않아 힌트가 추가되지 않았어요.");
+      const message = "광고 시청이 완료되지 않아 힌트가 추가되지 않았어요.";
+      setHintNotice(message);
+      showHintToast(message);
     } else {
-      setHintNotice("광고를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.");
+      const message = "광고를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.";
+      setHintNotice(message);
+      showHintToast(message);
     }
 
     setRewardedAdStatus("idle");
@@ -953,6 +983,7 @@ function App() {
     setEarnedHintCredits(0);
     setHintCount(0);
     setHintNotice("");
+    setHintToast({ id: 0, message: "" });
     setSelectedDirection("across");
     setSelectedEntryId(getInitialEntryId(puzzle));
     setSelectedCellKey(getInitialEntryStartCellKey(puzzle));
@@ -1037,6 +1068,7 @@ function App() {
     completedEntries: viewModel.completedEntries,
     hintBalance,
     hintCount,
+    hintToastMessage: hintToast.message,
     mission,
     puzzle,
     remainingAttempts,
@@ -1918,12 +1950,12 @@ type TodayScreenProps = DateSelectionProps & {
   hasStarted: boolean;
   hintBalance: HintBalance;
   hintCount: number;
+  hintToastMessage: string;
   isCompleted: boolean;
   mission: DailyMissionState;
   navigate: (route: AppRoute) => void;
   puzzle: Puzzle;
   remainingAttempts: number;
-  requestRewardedHint: () => void;
   revealLetter: () => void;
   selectedAnswer: string;
   selectedCellKey: string;
@@ -1947,6 +1979,7 @@ function TodayScreen({
   dateCardStates,
   hasStarted,
   hintBalance,
+  hintToastMessage,
   isCompleted,
   loadState,
   mission,
@@ -1954,7 +1987,6 @@ function TodayScreen({
   puzzle,
   puzzleSummaries,
   remainingAttempts,
-  requestRewardedHint,
   selectedAnswer,
   selectedCellKey,
   selectedPuzzleId,
@@ -2067,22 +2099,38 @@ function TodayScreen({
         right={
           <div className="headerActions">
             <button
-              className="iconButton"
+              className={[
+                "hintCountButton",
+                hintBalance.remaining === 0 ? "hintCountButtonEmpty" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
               type="button"
               aria-label={
-                hintBalance.remaining > 0
-                  ? `힌트 ${hintBalance.remaining}개 남음`
-                  : "광고 보고 힌트 받기"
+                hintBalance.isAdBusy
+                  ? "광고 준비 중"
+                  : hintBalance.remaining > 0
+                    ? `힌트 ${hintBalance.remaining}개 남음`
+                    : `힌트 0개. 광고를 보고 ${hintBalance.rewardedCredits}개 받기`
               }
               title={
-                hintBalance.remaining > 0
-                  ? `힌트 ${hintBalance.remaining}개 남음`
-                  : "광고 보고 힌트 받기"
+                hintBalance.isAdBusy
+                  ? "광고 준비 중"
+                  : hintBalance.remaining > 0
+                    ? `힌트 ${hintBalance.remaining}개 남음`
+                    : `힌트 0개. 광고를 보고 ${hintBalance.rewardedCredits}개 받기`
               }
-              disabled={selectedEntry == null}
+              disabled={
+                selectedEntry == null ||
+                hintBalance.isAdBusy ||
+                (hintBalance.remaining === 0 && !hintBalance.adsEnabled)
+              }
               onClick={useHint}
             >
-              ?
+              <span>힌트</span>
+              <strong>
+                {hintBalance.isAdBusy ? "..." : hintBalance.remaining}
+              </strong>
             </button>
             <button
               className="iconButton"
@@ -2105,6 +2153,12 @@ function TodayScreen({
         }
       />
 
+      {hintToastMessage === "" ? null : (
+        <div className="hintToast" role="status">
+          {hintToastMessage}
+        </div>
+      )}
+
       <PuzzleBoard
         cellEntries={viewModel.cellEntries}
         cellValues={cellValues}
@@ -2119,12 +2173,6 @@ function TodayScreen({
       {selectedEntry != null ? (
         <div className="fixedBottom answerDock">
           <div className="answerPanel">
-            <HintRewardPanel
-              compact
-              hintBalance={hintBalance}
-              requestRewardedHint={requestRewardedHint}
-              useHint={useHint}
-            />
             <div className="selectedClueList">
               {selectedCellEntries.map((entry) => (
                 <button
