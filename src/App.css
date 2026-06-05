@@ -16,6 +16,10 @@
   padding: 0 0 var(--fixed-bottom-reserve);
 }
 
+.appShellToday {
+  --fixed-bottom-reserve: calc(164px + env(safe-area-inset-bottom, 0px));
+}
+
 button:disabled {
   cursor: not-allowed;
   opacity: 0.45;
@@ -1228,14 +1232,60 @@ button:disabled {
   -webkit-line-clamp: 2;
 }
 
-.answerTextField {
+.answerSlotInput {
+  position: relative;
+  display: flex;
   width: 100%;
   min-width: 0;
-  box-sizing: border-box;
+  justify-content: center;
 }
 
-.answerTextField input {
-  width: 100%;
+.answerSlotGrid {
+  display: flex;
+  width: var(--answer-slot-width);
+  max-width: 100%;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 7px;
+}
+
+.answerSlot {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid #d6dee6;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #191f28;
+  font: inherit;
+  font-size: 21px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 0;
+}
+
+.answerSlotFilled {
+  border-color: #c9eee6;
+  background: #effcf8;
+  color: #00866f;
+}
+
+.answerSlotActive {
+  border-color: #00a88f;
+  box-shadow: 0 0 0 3px rgba(0, 168, 143, 0.14);
+}
+
+.answerSlotPending {
+  color: #191f28;
+}
+
+.answerSlotNativeInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0.01;
+  pointer-events: none;
 }
 
 .iconButton {

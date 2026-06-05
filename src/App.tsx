@@ -1,4 +1,4 @@
-import { Button, Paragraph, TextField, Top } from "@toss/tds-mobile";
+import { Button, Paragraph, Top } from "@toss/tds-mobile";
 import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
@@ -345,6 +345,65 @@ function formatEntryReference(
 
 function getEntryStartCellKey(entry?: PuzzleEntry) {
   return entry == null ? "" : getCellKey(entry.row, entry.col);
+}
+
+function getAnswerInputLetters(value: string, maxLength: number) {
+  return [...value.replace(/\s/g, "")].slice(0, maxLength);
+}
+
+function getEntryCellIndex(entry: PuzzleEntry, cellKey: string) {
+  const cells = getEntryCells(entry);
+  const index = cells.findIndex(
+    (cell) => getCellKey(cell.row, cell.col) === cellKey,
+  );
+
+  return index === -1 ? 0 : index;
+}
+
+function getEntryCellKeyAt(entry: PuzzleEntry, index: number) {
+  const cells = getEntryCells(entry);
+  const safeIndex = Math.max(0, Math.min(cells.length - 1, index));
+  const cell = cells[safeIndex];
+
+  return cell == null
+    ? getEntryStartCellKey(entry)
+    : getCellKey(cell.row, cell.col);
+}
+
+function getNextAnswerSlotCellKey(
+  entry: PuzzleEntry,
+  cellValues: Record<string, string>,
+  startIndex: number,
+  inputLength: number,
+) {
+  const cells = getEntryCells(entry);
+  const afterInputIndex = Math.min(startIndex + inputLength, cells.length - 1);
+  const nextEmptyIndex = cells.findIndex((cell, index) => {
+    if (index < afterInputIndex) {
+      return false;
+    }
+
+    return cellValues[getCellKey(cell.row, cell.col)] == null;
+  });
+
+  if (nextEmptyIndex !== -1) {
+    return getEntryCellKeyAt(entry, nextEmptyIndex);
+  }
+
+  const firstEmptyIndex = cells.findIndex(
+    (cell) => cellValues[getCellKey(cell.row, cell.col)] == null,
+  );
+
+  return getEntryCellKeyAt(
+    entry,
+    firstEmptyIndex === -1 ? afterInputIndex : firstEmptyIndex,
+  );
+}
+
+function isEntryFilled(entry: PuzzleEntry, cellValues: Record<string, string>) {
+  return getEntryCells(entry).every(
+    (cell) => cellValues[getCellKey(cell.row, cell.col)] != null,
+  );
 }
 
 function getInitialEntryStartCellKey(puzzle: Puzzle) {
@@ -784,18 +843,12 @@ function App() {
     }
   }
 
-  function applyAnswer(
+  function trackFirstAnswerInput(
     entry: PuzzleEntry,
-    value: string,
-    source: "debug" | "manual" = "manual",
+    inputLength: number,
+    source: "debug" | "manual",
   ) {
-    const nextLetters = [...value.replace(/\s/g, "")].slice(
-      0,
-      [...entry.answer].length,
-    );
-    const cells = getEntryCells(entry);
-
-    if (source === "manual" && nextLetters.length > 0) {
+    if (source === "manual" && inputLength > 0) {
       const firstInputKey = `${puzzle.puzzleId}:${mission.attemptsUsed}`;
 
       if (!firstAnswerInputKeysRef.current.has(firstInputKey)) {
@@ -812,39 +865,116 @@ function App() {
         });
       }
     }
+  }
 
-    setCellValues((prev) => {
-      const next = { ...prev };
-      cells.forEach((cell, index) => {
-        const key = getCellKey(cell.row, cell.col);
-        const nextLetter = nextLetters[index];
+  function scheduleNextUncompletedEntry(
+    cellValuesSnapshot: Record<string, string>,
+  ) {
+    setTimeout(() => {
+      const nextUncompleted = puzzle.entries.find(
+        (entry) =>
+          !getCompletedEntries(puzzle.entries, cellValuesSnapshot).some(
+            (completedEntry) => completedEntry.id === entry.id,
+          ),
+      );
 
-        if (nextLetter == null) {
-          delete next[key];
-        } else {
-          next[key] = nextLetter;
-        }
-      });
-
-      // Smart Input: 단어가 완성되었는지 확인
-      const isWordFilled = nextLetters.length === [...entry.answer].length;
-      if (isWordFilled) {
-        // 약간의 지연 후 다음 미완료 단어로 이동 (UX 자연스러움 위해)
-        setTimeout(() => {
-          const nextUncompleted = puzzle.entries.find(
-            (e) =>
-              !getCompletedEntries(puzzle.entries, next).some(
-                (ce) => ce.id === e.id,
-              ),
-          );
-          if (nextUncompleted != null) {
-            selectEntry(nextUncompleted);
-          }
-        }, 150);
+      if (nextUncompleted != null) {
+        selectEntry(nextUncompleted);
       }
+    }, 150);
+  }
 
-      return next;
+  function applyAnswer(
+    entry: PuzzleEntry,
+    value: string,
+    source: "debug" | "manual" = "manual",
+  ) {
+    const cells = getEntryCells(entry);
+    const nextLetters = getAnswerInputLetters(value, cells.length);
+    const nextValues = { ...cellValues };
+
+    trackFirstAnswerInput(entry, nextLetters.length, source);
+
+    cells.forEach((cell, index) => {
+      const key = getCellKey(cell.row, cell.col);
+      const nextLetter = nextLetters[index];
+
+      if (nextLetter == null) {
+        delete nextValues[key];
+      } else {
+        nextValues[key] = nextLetter;
+      }
     });
+
+    setCellValues(nextValues);
+
+    if (nextLetters.length === cells.length) {
+      scheduleNextUncompletedEntry(nextValues);
+    }
+  }
+
+  function applyAnswerSegment(
+    entry: PuzzleEntry,
+    value: string,
+    startCellKey = selectedCellKey,
+    source: "debug" | "manual" = "manual",
+  ) {
+    const cells = getEntryCells(entry);
+    const startIndex = getEntryCellIndex(entry, startCellKey);
+    const nextLetters = getAnswerInputLetters(value, cells.length - startIndex);
+
+    if (nextLetters.length === 0) {
+      return;
+    }
+
+    const nextValues = { ...cellValues };
+
+    trackFirstAnswerInput(entry, nextLetters.length, source);
+
+    nextLetters.forEach((letter, offset) => {
+      const cell = cells[startIndex + offset];
+
+      if (cell != null) {
+        nextValues[getCellKey(cell.row, cell.col)] = letter;
+      }
+    });
+
+    setCellValues(nextValues);
+    setSelectedCellKey(
+      getNextAnswerSlotCellKey(
+        entry,
+        nextValues,
+        startIndex,
+        nextLetters.length,
+      ),
+    );
+
+    if (isEntryFilled(entry, nextValues)) {
+      scheduleNextUncompletedEntry(nextValues);
+    }
+  }
+
+  function clearAnswerCell(entry: PuzzleEntry, cellKey = selectedCellKey) {
+    const cells = getEntryCells(entry);
+    const selectedIndex = getEntryCellIndex(entry, cellKey);
+    const selectedKey = getEntryCellKeyAt(entry, selectedIndex);
+    const previousFilledIndex = cells
+      .slice(0, selectedIndex)
+      .map((cell, index) => ({ cell, index }))
+      .reverse()
+      .find(
+        ({ cell }) => cellValues[getCellKey(cell.row, cell.col)] != null,
+      )?.index;
+    const targetIndex =
+      cellValues[selectedKey] == null && previousFilledIndex != null
+        ? previousFilledIndex
+        : selectedIndex;
+    const targetKey = getEntryCellKeyAt(entry, targetIndex);
+    const nextValues = { ...cellValues };
+
+    delete nextValues[targetKey];
+    setCellValues(nextValues);
+    setSelectedCellKey(targetKey);
   }
 
   function revealLetter() {
@@ -1077,7 +1207,9 @@ function App() {
 
   const commonScreenProps = {
     applyAnswer,
+    applyAnswerSegment,
     cellValues,
+    clearAnswerCell,
     clueEntries: viewModel.clueEntries,
     completedEntries: viewModel.completedEntries,
     hintBalance,
@@ -1126,7 +1258,11 @@ function App() {
   }
 
   return (
-    <main className="appShell">
+    <main
+      className={["appShell", route === "today" ? "appShellToday" : ""]
+        .filter(Boolean)
+        .join(" ")}
+    >
       {route === "today" ? (
         <TodayScreen
           {...commonScreenProps}
@@ -2014,7 +2150,13 @@ function AppHeader({
 
 type TodayScreenProps = DateSelectionProps & {
   applyAnswer: (entry: PuzzleEntry, value: string) => void;
+  applyAnswerSegment: (
+    entry: PuzzleEntry,
+    value: string,
+    startCellKey?: string,
+  ) => void;
   cellValues: Record<string, string>;
+  clearAnswerCell: (entry: PuzzleEntry, cellKey?: string) => void;
   clueEntries: PuzzleEntry[];
   completedEntries: PuzzleEntry[];
   hasStarted: boolean;
@@ -2042,7 +2184,9 @@ type TodayScreenProps = DateSelectionProps & {
 
 function TodayScreen({
   applyAnswer,
+  applyAnswerSegment,
   cellValues,
+  clearAnswerCell,
   completedEntries,
   completionStatsByPuzzleId,
   completionStatsMinDisplayCount,
@@ -2057,7 +2201,6 @@ function TodayScreen({
   puzzle,
   puzzleSummaries,
   remainingAttempts,
-  selectedAnswer,
   selectedCellKey,
   selectedPuzzleId,
   selectedEntry,
@@ -2070,9 +2213,6 @@ function TodayScreen({
   viewModel,
 }: TodayScreenProps) {
   const [isClueListOpen, setIsClueListOpen] = useState(false);
-  const [answerDraft, setAnswerDraft] = useState(selectedAnswer);
-  const [isAnswerComposing, setIsAnswerComposing] = useState(false);
-  const compositionEndValueRef = useRef<string | null>(null);
   const selectedCellEntries = useMemo(() => {
     const entries =
       selectedCellKey === ""
@@ -2089,15 +2229,6 @@ function TodayScreen({
     );
   }, [selectedCellKey, selectedEntry, viewModel.cellEntries]);
 
-  useEffect(() => {
-    if (isAnswerComposing) {
-      return;
-    }
-
-    compositionEndValueRef.current = null;
-    setAnswerDraft(selectedAnswer);
-  }, [isAnswerComposing, selectedAnswer, selectedEntry?.id]);
-
   function selectClueAndClose(entry: PuzzleEntry) {
     selectEntry(entry);
     setIsClueListOpen(false);
@@ -2108,8 +2239,6 @@ function TodayScreen({
       return;
     }
 
-    setAnswerDraft("");
-    compositionEndValueRef.current = null;
     applyAnswer(selectedEntry, "");
   }
 
@@ -2279,52 +2408,14 @@ function TodayScreen({
       {selectedEntry != null ? (
         <div className="fixedBottom answerDock">
           <div className="answerPanel">
-            <TextField
-              className="answerTextField"
-              variant="box"
-              inputMode="text"
-              maxLength={selectedEntry.answer.length}
-              placeholder={`${selectedEntry.answer.length}글자 입력`}
-              value={answerDraft}
-              onCompositionStart={() => setIsAnswerComposing(true)}
-              onCompositionEnd={(event) => {
-                const nextValue = event.currentTarget.value;
-                setIsAnswerComposing(false);
-                setAnswerDraft(nextValue);
-                compositionEndValueRef.current = nextValue;
-                applyAnswer(selectedEntry, nextValue);
-              }}
-              onChange={(event) => {
-                const nextValue = event.target.value;
-                const nativeEvent = event.nativeEvent as InputEvent;
-                setAnswerDraft(nextValue);
-
-                if (isAnswerComposing || nativeEvent.isComposing) {
-                  return;
-                }
-
-                if (compositionEndValueRef.current === nextValue) {
-                  compositionEndValueRef.current = null;
-                  return;
-                }
-
-                applyAnswer(selectedEntry, nextValue);
-              }}
-              onKeyDown={(event) => {
-                const nativeEvent = event.nativeEvent as KeyboardEvent;
-                if (
-                  event.key !== "Enter" ||
-                  isAnswerComposing ||
-                  nativeEvent.isComposing
-                ) {
-                  return;
-                }
-
-                event.preventDefault();
-                applyAnswer(selectedEntry, answerDraft);
-                event.currentTarget.blur();
-                focusPuzzleBoard();
-              }}
+            <AnswerSlotInput
+              cellValues={cellValues}
+              clearAnswerCell={clearAnswerCell}
+              entry={selectedEntry}
+              onSubmit={focusPuzzleBoard}
+              selectedCellKey={selectedCellKey}
+              selectEntry={selectEntry}
+              applyAnswerSegment={applyAnswerSegment}
             />
           </div>
         </div>
@@ -2342,6 +2433,185 @@ function TodayScreen({
         />
       ) : null}
     </>
+  );
+}
+
+type AnswerSlotInputProps = {
+  applyAnswerSegment: (
+    entry: PuzzleEntry,
+    value: string,
+    startCellKey?: string,
+  ) => void;
+  cellValues: Record<string, string>;
+  clearAnswerCell: (entry: PuzzleEntry, cellKey?: string) => void;
+  entry: PuzzleEntry;
+  onSubmit: () => void;
+  selectedCellKey: string;
+  selectEntry: (entry: PuzzleEntry, cellKey?: string) => void;
+};
+
+function AnswerSlotInput({
+  applyAnswerSegment,
+  cellValues,
+  clearAnswerCell,
+  entry,
+  onSubmit,
+  selectedCellKey,
+  selectEntry,
+}: AnswerSlotInputProps) {
+  const nativeInputRef = useRef<HTMLInputElement>(null);
+  const [inputValue, setInputValue] = useState("");
+  const [isComposing, setIsComposing] = useState(false);
+  const compositionEndValueRef = useRef<string | null>(null);
+  const cells = useMemo(() => getEntryCells(entry), [entry]);
+  const slotKeys = useMemo(
+    () => cells.map((cell) => getCellKey(cell.row, cell.col)),
+    [cells],
+  );
+  const selectedIndex = Math.max(0, slotKeys.indexOf(selectedCellKey));
+  const activeCellKey = slotKeys[selectedIndex] ?? getEntryStartCellKey(entry);
+  const pendingLetter = getAnswerInputLetters(inputValue, 1)[0] ?? "";
+  const slotColumnCount = cells.length <= 5 ? cells.length : 4;
+
+  useEffect(() => {
+    compositionEndValueRef.current = null;
+    setInputValue("");
+    setIsComposing(false);
+  }, [entry.id, selectedCellKey]);
+
+  function focusNativeInput() {
+    nativeInputRef.current?.focus({ preventScroll: true });
+  }
+
+  function selectSlot(cellKey: string) {
+    selectEntry(entry, cellKey);
+    focusNativeInput();
+  }
+
+  function commitInputValue(value: string) {
+    if (getAnswerInputLetters(value, cells.length - selectedIndex).length > 0) {
+      applyAnswerSegment(entry, value, activeCellKey);
+    }
+
+    setInputValue("");
+  }
+
+  function selectRelativeSlot(delta: number) {
+    const nextIndex = Math.max(
+      0,
+      Math.min(slotKeys.length - 1, selectedIndex + delta),
+    );
+
+    selectSlot(slotKeys[nextIndex] ?? activeCellKey);
+  }
+
+  return (
+    <div className="answerSlotInput">
+      <div
+        className="answerSlotGrid"
+        style={
+          {
+            "--answer-slot-width": `${slotColumnCount * 44 + (slotColumnCount - 1) * 7}px`,
+          } as CSSProperties
+        }
+        role="group"
+        aria-label={`${formatEntryReference(entry, new Map())} 답 입력`}
+      >
+        {slotKeys.map((key, index) => {
+          const committedValue = cellValues[key] ?? "";
+          const isActive = key === activeCellKey;
+          const displayValue =
+            isActive && pendingLetter !== "" ? pendingLetter : committedValue;
+
+          return (
+            <button
+              key={key}
+              className={[
+                "answerSlot",
+                committedValue !== "" ? "answerSlotFilled" : "",
+                isActive ? "answerSlotActive" : "",
+                isActive && pendingLetter !== "" ? "answerSlotPending" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              type="button"
+              aria-label={`${index + 1}번째 글자 ${displayValue === "" ? "비어 있음" : displayValue}`}
+              aria-pressed={isActive}
+              onClick={() => selectSlot(key)}
+            >
+              {displayValue}
+            </button>
+          );
+        })}
+      </div>
+      <input
+        ref={nativeInputRef}
+        className="answerSlotNativeInput"
+        inputMode="text"
+        autoCapitalize="off"
+        autoComplete="off"
+        autoCorrect="off"
+        enterKeyHint="done"
+        maxLength={entry.answer.length}
+        value={inputValue}
+        aria-label={`${entry.answer.length}글자 답 입력`}
+        onCompositionStart={() => setIsComposing(true)}
+        onCompositionEnd={(event) => {
+          const nextValue = event.currentTarget.value;
+          setIsComposing(false);
+          compositionEndValueRef.current = nextValue;
+          commitInputValue(nextValue);
+        }}
+        onChange={(event) => {
+          const nextValue = event.target.value;
+          const nativeEvent = event.nativeEvent as InputEvent;
+          setInputValue(nextValue);
+
+          if (isComposing || nativeEvent.isComposing) {
+            return;
+          }
+
+          if (compositionEndValueRef.current === nextValue) {
+            compositionEndValueRef.current = null;
+            setInputValue("");
+            return;
+          }
+
+          commitInputValue(nextValue);
+        }}
+        onKeyDown={(event) => {
+          const nativeEvent = event.nativeEvent as KeyboardEvent;
+
+          if (isComposing || nativeEvent.isComposing) {
+            return;
+          }
+
+          if (event.key === "Backspace" && inputValue === "") {
+            event.preventDefault();
+            clearAnswerCell(entry, activeCellKey);
+            return;
+          }
+
+          if (event.key === "ArrowLeft") {
+            event.preventDefault();
+            selectRelativeSlot(-1);
+            return;
+          }
+
+          if (event.key === "ArrowRight") {
+            event.preventDefault();
+            selectRelativeSlot(1);
+            return;
+          }
+
+          if (event.key === "Enter") {
+            event.preventDefault();
+            event.currentTarget.blur();
+            onSubmit();
+          }
+        }}
+      />
+    </div>
   );
 }
 
