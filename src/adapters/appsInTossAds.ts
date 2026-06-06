@@ -16,7 +16,7 @@ export type FullScreenAdResult =
   | { status: "dismissed" }
   | { status: "failed"; reason: string }
   | { status: "unsupported" }
-  | { status: "timeout" };
+  | { status: "timeout"; reason: "load_timeout" | "show_timeout" };
 
 export type FullScreenAdTraceEvent =
   | { phase: "load"; type: LoadFullScreenAdEvent["type"] }
@@ -83,7 +83,7 @@ export function loadAndShowFullScreenAd({
 
       timeoutTimerId = window.setTimeout(() => {
         onTrace?.({ phase: "error", type });
-        resolveOnce({ status: "timeout" });
+        resolveOnce({ status: "timeout", reason: type });
       }, durationMs);
     }
 
@@ -199,6 +199,7 @@ export function showRewardedBonusPuzzleAd(
 ) {
   return loadAndShowFullScreenAd({
     adGroupId: appsInTossAdGroupIds.rewardedBonusPuzzle,
+    dismissalDelayMs: 3000,
     onTrace,
   });
 }

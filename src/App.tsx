@@ -42,6 +42,7 @@ import {
   showRewardedBonusPuzzleAd,
   showResultInterstitialAd,
   showRewardedHintAd,
+  type FullScreenAdResult,
 } from "./adapters/appsInTossAds";
 import { loadFirebaseLaunchConfig } from "./adapters/firebaseClient";
 import {
@@ -130,6 +131,11 @@ type HintBalance = {
   used: number;
 };
 
+type FullScreenAdFailureResult = Exclude<
+  FullScreenAdResult,
+  { status: "rewarded" }
+>;
+
 const DAILY_ATTEMPT_LIMIT = 3;
 
 const puzzlePackBaseUrl = import.meta.env.VITE_PUZZLE_PACK_BASE_URL?.trim();
@@ -199,6 +205,45 @@ function getPuzzleTelemetryParams(puzzle: Puzzle) {
     slot_id: puzzle.slotId,
     word_count: puzzle.entries.length,
   };
+}
+
+function getFullScreenAdResultParams(result: FullScreenAdResult) {
+  return {
+    ...("reason" in result ? { reason: result.reason } : {}),
+    status: result.status,
+  };
+}
+
+function getRewardedHintFailureMessage(result: FullScreenAdFailureResult) {
+  switch (result.status) {
+    case "unsupported":
+      return "현재 환경에서는 광고 힌트를 사용할 수 없어요.";
+    case "dismissed":
+      return "광고 시청이 완료되지 않아 힌트가 추가되지 않았어요.";
+    case "timeout":
+      return result.reason === "load_timeout"
+        ? "광고를 불러오는 데 시간이 오래 걸려 힌트가 추가되지 않았어요. 잠시 후 다시 시도해 주세요."
+        : "광고 표시가 시작되지 않아 힌트가 추가되지 않았어요. 잠시 후 다시 시도해 주세요.";
+    case "failed":
+      return "광고를 표시하지 못해 힌트가 추가되지 않았어요. 잠시 후 다시 시도해 주세요.";
+  }
+}
+
+function getRewardedBonusPuzzleFailureMessage(
+  result: FullScreenAdFailureResult,
+) {
+  switch (result.status) {
+    case "unsupported":
+      return "현재 환경에서는 보너스 퍼즐 광고를 사용할 수 없어요.";
+    case "dismissed":
+      return "광고 시청이 완료되지 않아 퍼즐이 열리지 않았어요.";
+    case "timeout":
+      return result.reason === "load_timeout"
+        ? "광고를 불러오는 데 시간이 오래 걸려 퍼즐이 열리지 않았어요. 잠시 후 다시 시도해 주세요."
+        : "광고 표시가 시작되지 않아 퍼즐이 열리지 않았어요. 잠시 후 다시 시도해 주세요.";
+    case "failed":
+      return "광고를 표시하지 못해 퍼즐이 열리지 않았어요. 잠시 후 다시 시도해 주세요.";
+  }
 }
 
 function getElapsedSeconds(startedAt?: string, endedAt?: string) {
@@ -1426,6 +1471,10 @@ function App() {
         type: event.type,
       });
     });
+    telemetry.impression("rewarded_hint_ad_result", {
+      ...getFullScreenAdResultParams(result),
+      puzzle_id: puzzle.puzzleId,
+    });
 
     if (result.status === "rewarded") {
       setEarnedHintCredits((prev) => prev + launchConfig.rewardedHintCredits);
@@ -1436,16 +1485,8 @@ function App() {
         puzzle_id: puzzle.puzzleId,
         rewarded_hint_credits: launchConfig.rewardedHintCredits,
       });
-    } else if (result.status === "unsupported") {
-      const message = "현재 환경에서는 광고 힌트를 사용할 수 없어요.";
-      setHintNotice(message);
-      showHintToast(message);
-    } else if (result.status === "dismissed") {
-      const message = "광고 시청이 완료되지 않아 힌트가 추가되지 않았어요.";
-      setHintNotice(message);
-      showHintToast(message);
     } else {
-      const message = "광고를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.";
+      const message = getRewardedHintFailureMessage(result);
       setHintNotice(message);
       showHintToast(message);
     }
@@ -1575,6 +1616,10 @@ function App() {
         type: event.type,
       });
     });
+    telemetry.impression("rewarded_bonus_puzzle_ad_result", {
+      ...getFullScreenAdResultParams(result),
+      puzzle_id: candidateSummary.puzzleId,
+    });
 
     if (result.status === "rewarded") {
       const nextUnlock = {
@@ -1590,12 +1635,8 @@ function App() {
         puzzle_id: candidateSummary.puzzleId,
       });
       await openBonusPuzzle(candidateSummary);
-    } else if (result.status === "unsupported") {
-      setBonusNotice("현재 환경에서는 보너스 퍼즐 광고를 사용할 수 없어요.");
-    } else if (result.status === "dismissed") {
-      setBonusNotice("광고 시청이 완료되지 않아 퍼즐이 열리지 않았어요.");
     } else {
-      setBonusNotice("광고를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.");
+      setBonusNotice(getRewardedBonusPuzzleFailureMessage(result));
     }
 
     setBonusAdStatus("idle");
