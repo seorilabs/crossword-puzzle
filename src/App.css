@@ -1277,7 +1277,13 @@ button:disabled {
 }
 
 .answerSlotPending {
+  border-color: #f2c94c;
+  background: #fff9db;
   color: #191f28;
+}
+
+.answerSlotActive.answerSlotPending {
+  border-color: #00a88f;
 }
 
 .answerSlotNativeInput {
