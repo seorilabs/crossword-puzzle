@@ -24,6 +24,7 @@ export type FullScreenAdTraceEvent =
 
 type FullScreenAdOptions = {
   adGroupId: string;
+  dismissalDelayMs?: number;
   onTrace?: (event: FullScreenAdTraceEvent) => void;
   timeoutMs?: number;
 };
@@ -42,6 +43,7 @@ function asErrorMessage(error: unknown) {
 
 export function loadAndShowFullScreenAd({
   adGroupId,
+  dismissalDelayMs = 0,
   onTrace,
   timeoutMs = 45000,
 }: FullScreenAdOptions): Promise<FullScreenAdResult> {
@@ -53,10 +55,14 @@ export function loadAndShowFullScreenAd({
     let isResolved = false;
     let unregisterLoad: (() => void) | undefined;
     let unregisterShow: (() => void) | undefined;
+    let dismissalTimerId: number | undefined;
 
     function cleanup() {
       unregisterLoad?.();
       unregisterShow?.();
+      if (dismissalTimerId != null) {
+        window.clearTimeout(dismissalTimerId);
+      }
       window.clearTimeout(timeoutId);
     }
 
@@ -98,7 +104,18 @@ export function loadAndShowFullScreenAd({
               }
 
               if (showEvent.type === "dismissed") {
-                resolveOnce({ status: "dismissed" });
+                if (dismissalDelayMs <= 0) {
+                  resolveOnce({ status: "dismissed" });
+                  return;
+                }
+
+                if (dismissalTimerId != null) {
+                  window.clearTimeout(dismissalTimerId);
+                }
+
+                dismissalTimerId = window.setTimeout(() => {
+                  resolveOnce({ status: "dismissed" });
+                }, dismissalDelayMs);
               }
 
               if (showEvent.type === "failedToShow") {
@@ -133,6 +150,7 @@ export function showRewardedHintAd(
 ) {
   return loadAndShowFullScreenAd({
     adGroupId: appsInTossAdGroupIds.rewardedHint,
+    dismissalDelayMs: 3000,
     onTrace,
   });
 }
