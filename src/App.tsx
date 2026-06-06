@@ -480,7 +480,9 @@ function getNearestUncompletedEntry(
     }))
     .filter(
       ({ entry }) =>
-        entry.id !== currentEntry.id && !completedEntryIds.has(entry.id),
+        (!completedEntryIds.has(currentEntry.id) ||
+          entry.id !== currentEntry.id) &&
+        !completedEntryIds.has(entry.id),
     )
     .sort(
       (a, b) =>
