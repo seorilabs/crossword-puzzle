@@ -17,6 +17,8 @@
     "build:android": "cd apps/mobile/android && ./gradlew :app:bundleRelease --no-daemon",
     "check:play": "node scripts/check-google-play-readiness.mjs",
     "play:upload:internal": "python3 scripts/upload-google-play-internal.py",
+    "release:next-tag": "node scripts/next-release-tag.mjs",
+    "release:resolve-version": "node scripts/resolve-release-version.mjs",
     "batch:puzzles": "node server/batch/generate-puzzle-pack.mjs",
     "stats:completion": "node server/batch/aggregate-completion-stats.mjs",
     "job:completion-stats": "node server/batch/aggregate-completion-stats.mjs",

@@ -156,18 +156,22 @@ gh secret set GOOGLE_PLAY_UPLOAD_KEY_PASSWORD
 Android 타깃과 service account 권한이 준비되면 먼저 artifact build만 실행한다.
 
 ```bash
-gh workflow run build-google-play.yml -f upload_to_internal=false
+gh workflow run build-google-play.yml \
+  -f release_tag=v0.1.1 \
+  -f upload_to_internal=false
 ```
 
 업로드까지 실행한다.
 
 ```bash
 gh workflow run build-google-play.yml \
+  -f release_tag=v0.1.1 \
   -f upload_to_internal=true \
   -f release_status=draft
 ```
 
 첫 목표는 production rollout이 아니라 internal testing draft release다.
+`upload_to_internal=true`일 때는 `release_tag`가 필수이며, Android `versionName`, `versionCode`, Play release name은 해당 태그에서 계산한다.
 
 ## 7. 로컬 검증/적용 명령
 

@@ -106,14 +106,53 @@ function parseGradleValue(contents, key) {
   }
 
   const numeric = contents.match(new RegExp(`${key}\\s*[= ]\\s*(\\d+)`));
-  return numeric?.[1] ?? null;
+  if (numeric != null) {
+    return numeric[1];
+  }
+
+  const identifier = contents.match(
+    new RegExp(`${key}\\s*[= ]\\s*([A-Za-z_][A-Za-z0-9_]*)`),
+  );
+  return identifier?.[1] ?? null;
+}
+
+function parseGradleAssignedNumber(contents, identifier) {
+  if (identifier == null || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(identifier)) {
+    return Number.NaN;
+  }
+
+  const assignmentLine = contents
+    .split("\n")
+    .find((line) => new RegExp(`\\b${identifier}\\s*=`).test(line));
+  if (assignmentLine == null) {
+    return Number.NaN;
+  }
+
+  const directNumber = assignmentLine.match(
+    new RegExp(`\\b${identifier}\\s*=\\s*(\\d+)`),
+  );
+  if (directNumber != null) {
+    return Number.parseInt(directNumber[1], 10);
+  }
+
+  const quotedNumbers = [...assignmentLine.matchAll(/["'](\d+)["']/g)];
+  if (quotedNumbers.length === 0) {
+    return Number.NaN;
+  }
+
+  return Number.parseInt(quotedNumbers.at(-1)[1], 10);
 }
 
 function parseGradleNumber(contents, keys) {
   for (const key of keys) {
-    const value = Number.parseInt(parseGradleValue(contents, key) ?? "", 10);
+    const rawValue = parseGradleValue(contents, key);
+    const value = Number.parseInt(rawValue ?? "", 10);
     if (!Number.isNaN(value)) {
       return value;
+    }
+    const assignedValue = parseGradleAssignedNumber(contents, rawValue);
+    if (!Number.isNaN(assignedValue)) {
+      return assignedValue;
     }
   }
   return Number.NaN;

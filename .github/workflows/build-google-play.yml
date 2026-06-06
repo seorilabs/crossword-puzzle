@@ -3,6 +3,10 @@ name: Build Google Play AAB
 on:
   workflow_dispatch:
     inputs:
+      release_tag:
+        description: "빌드할 릴리즈 태그입니다. 업로드 시에는 vX.Y.Z 태그를 지정해야 합니다."
+        required: false
+        type: string
       upload_to_internal:
         description: "Google Play internal track에 AAB 업로드"
         required: false
@@ -27,7 +31,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: google-play-aab-${{ github.ref }}
+  group: google-play-aab-${{ inputs.release_tag || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -39,6 +43,29 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.release_tag || github.ref }}
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Resolve release version
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          release_tag="${{ inputs.release_tag }}"
+          if [ "${{ inputs.upload_to_internal }}" = "true" ] && [ -z "$release_tag" ]; then
+            echo "release_tag is required when upload_to_internal is true." >&2
+            exit 1
+          fi
+
+          args=()
+          if [ -n "$release_tag" ]; then
+            args+=(--tag "$release_tag")
+          fi
+
+          node scripts/resolve-release-version.mjs "${args[@]}"
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -166,12 +193,15 @@ jobs:
 
       - name: Build signed Android AAB
         working-directory: ${{ steps.android.outputs.android_dir }}
+        env:
+          APP_VERSION_NAME: ${{ steps.release.outputs.version }}
+          APP_VERSION_CODE: ${{ steps.release.outputs.android_version_code }}
         run: ./gradlew :app:bundleRelease --no-daemon
 
       - name: Upload AAB artifact
         uses: actions/upload-artifact@v7
         with:
-          name: crossword-puzzle-google-play-aab-${{ github.sha }}
+          name: crossword-puzzle-google-play-aab-${{ steps.release.outputs.release_name }}
           path: ${{ steps.android.outputs.aab_path }}
           if-no-files-found: error
           retention-days: 14
@@ -217,6 +247,7 @@ jobs:
 
           args=(
             --aab-path "${{ steps.android.outputs.aab_path }}"
+            --release-name "${{ steps.release.outputs.release_name }}"
             --release-status "${{ inputs.release_status }}"
           )
           if [ "${{ inputs.changes_not_sent_for_review }}" = "true" ]; then

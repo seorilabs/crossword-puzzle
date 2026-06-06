@@ -11,6 +11,12 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 }
 
+def appVersionName = (System.getenv("APP_VERSION_NAME") ?: project.findProperty("APP_VERSION_NAME") ?: "0.1.0").toString()
+def appVersionCode = (System.getenv("APP_VERSION_CODE") ?: project.findProperty("APP_VERSION_CODE") ?: "1000").toString().toInteger()
+if (appVersionCode <= 0) {
+    throw new GradleException("APP_VERSION_CODE must be greater than 0.")
+}
+
 /**
  * This is the configuration block to customize your React Native Android app.
  * By default you don't need to apply any configuration, just uncomment the lines you need.
@@ -91,8 +97,8 @@ android {
         applicationId "com.seorilabs.crosswordpuzzle"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode appVersionCode
+        versionName appVersionName
     }
     signingConfigs {
         debug {

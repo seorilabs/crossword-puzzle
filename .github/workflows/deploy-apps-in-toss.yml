@@ -1,27 +1,23 @@
 name: Deploy Apps in Toss
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
     inputs:
+      release_tag:
+        description: "빌드/배포할 릴리즈 태그입니다. 예: v0.1.1"
+        required: true
+        type: string
       memo:
-        description: "앱인토스 배포 메모 (선택, 최대 1000자)"
+        description: "앱인토스 배포 메모입니다. 비우면 릴리즈 태그와 커밋이 자동으로 들어갑니다."
         required: false
         type: string
-      create_release_tag:
-        description: "앱인토스 배포 성공 후 릴리즈 태그 생성"
-        required: false
-        default: true
-        type: boolean
 
 concurrency:
-  group: crossword-puzzle-apps-in-toss-deploy
+  group: crossword-puzzle-apps-in-toss-deploy-${{ inputs.release_tag }}
   cancel-in-progress: false
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   deploy:
@@ -30,8 +26,7 @@ jobs:
 
     env:
       APPS_IN_TOSS_API_KEY: ${{ secrets.APPS_IN_TOSS_API_KEY }}
-      APPS_IN_TOSS_INPUT_MEMO: ${{ github.event.inputs.memo || '' }}
-      CREATE_RELEASE_TAG_INPUT: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.create_release_tag != 'false' }}
+      APPS_IN_TOSS_INPUT_MEMO: ${{ inputs.memo || '' }}
       VITE_FIREBASE_API_KEY: ${{ vars.FIREBASE_API_KEY || '' }}
       VITE_FIREBASE_APP_ID: ${{ vars.FIREBASE_APP_ID || '' }}
       VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.FIREBASE_AUTH_DOMAIN || '' }}
@@ -43,8 +38,12 @@ jobs:
       VITE_PUZZLE_STATS_URL: ${{ vars.PUZZLE_STATS_URL || '' }}
 
     steps:
-      - name: Checkout
+      - name: Checkout release tag
         uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.release_tag }}
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -52,50 +51,16 @@ jobs:
           node-version: 24
           cache: npm
 
-      - name: Prepare release tag metadata
-        id: release-tag
-        run: |
-          set -euo pipefail
-
-          create_release_tag="$CREATE_RELEASE_TAG_INPUT"
-
-          if [ "$create_release_tag" = "false" ]; then
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          if [ -z "${GITHUB_RUN_NUMBER:-}" ]; then
-            echo "GITHUB_RUN_NUMBER is required to create a sequential release tag." >&2
-            exit 1
-          fi
-
-          short_sha="${GITHUB_SHA::7}"
-          tag="crossword-puzzle-release-$GITHUB_RUN_NUMBER"
-          existing_tag_sha="$(git ls-remote --tags origin "refs/tags/$tag^{}" | awk 'NR == 1 { print $1 }')"
-
-          if [ -z "$existing_tag_sha" ]; then
-            existing_tag_sha="$(git ls-remote --tags origin "refs/tags/$tag" | awk 'NR == 1 { print $1 }')"
-          fi
-
-          if [ "$existing_tag_sha" = "$GITHUB_SHA" ]; then
-            echo "Release tag '$tag' already exists for this commit. Skipping tag creation."
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          if [ -n "$existing_tag_sha" ]; then
-            echo "Git tag '$tag' already exists for a different commit ($existing_tag_sha)." >&2
-            exit 1
-          fi
-
-          {
-            echo "enabled=true"
-            echo "tag=$tag"
-            echo "message=Crossword Puzzle AppsInToss deploy #$GITHUB_RUN_NUMBER ($short_sha)"
-          } >> "$GITHUB_OUTPUT"
+      - name: Resolve release version
+        id: release
+        shell: bash
+        run: node scripts/resolve-release-version.mjs --tag "${{ inputs.release_tag }}"
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Set package version for release build
+        run: npm version --no-git-tag-version --allow-same-version "${{ steps.release.outputs.version }}"
 
       - name: Validate Apps in Toss secrets
         run: |
@@ -108,34 +73,32 @@ jobs:
         run: npm run lint
 
       - name: Build .ait bundle
+        env:
+          VITE_APP_VERSION: ${{ steps.release.outputs.version }}
+          VITE_RELEASE_TAG: ${{ steps.release.outputs.tag }}
         run: npm run build
 
       - name: Upload .ait artifact
         uses: actions/upload-artifact@v7
         with:
-          name: crossword-puzzle-ait-bundle
+          name: crossword-puzzle-ait-${{ steps.release.outputs.tag }}
           path: "*.ait"
           if-no-files-found: error
 
       - name: Deploy to Apps in Toss
-        run: |
-          memo="$APPS_IN_TOSS_INPUT_MEMO"
-
-          if [ -z "$memo" ]; then
-            memo="GitHub Actions ${GITHUB_REF_NAME}@${GITHUB_SHA::7}"
-          fi
-
-          npm run deploy -- --api-key "$APPS_IN_TOSS_API_KEY" --memo "$memo"
-
-      - name: Create release tag
-        if: steps.release-tag.outputs.enabled == 'true'
         env:
-          RELEASE_TAG: ${{ steps.release-tag.outputs.tag }}
-          RELEASE_TAG_MESSAGE: ${{ steps.release-tag.outputs.message }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        shell: bash
         run: |
           set -euo pipefail
 
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "$RELEASE_TAG" "$GITHUB_SHA" -m "$RELEASE_TAG_MESSAGE"
-          git push origin "refs/tags/$RELEASE_TAG"
+          memo="$APPS_IN_TOSS_INPUT_MEMO"
+          short_sha="$(git rev-parse --short HEAD)"
+
+          if [ -z "$memo" ]; then
+            memo="릴리즈 ${RELEASE_TAG} (${short_sha})"
+          else
+            memo="${RELEASE_TAG} · ${memo}"
+          fi
+
+          npm run deploy -- --api-key "$APPS_IN_TOSS_API_KEY" --memo "$memo"

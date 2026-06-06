@@ -23,21 +23,23 @@ npm run dev
 
 모든 명령은 repo 루트에서 실행합니다.
 
-| 명령                          | 용도                                      |
-| ----------------------------- | ----------------------------------------- |
-| `npm run dev`                 | 로컬 개발 서버 실행                       |
-| `npm run lint`                | ESLint 검사                               |
-| `npm run build`               | AppsInToss `.ait` 빌드                    |
-| `npm run deploy`              | AppsInToss 배포                           |
-| `npm run mobile:install`      | `apps/mobile` RN 의존성 설치              |
-| `npm run check:mobile`        | `apps/mobile` lint/test                   |
-| `npm run build:android`       | Google Play용 Android App Bundle 빌드     |
-| `npm run wordbank:krdict`     | 한국어기초사전 XML에서 퍼즐용 단어장 생성 |
-| `npm run prototype:crossword` | 콘솔에서 퍼즐판 생성 알고리즘 샘플 출력   |
-| `npm run batch:puzzles`       | 날짜별 puzzle JSON pack 생성              |
-| `npm run job:puzzle-pack`     | 생성/검증/publish를 묶은 배치잡 entrypoint |
-| `npm run publish:puzzles`     | Firebase Hosting publish                   |
-| `npm run validate:puzzles`    | 격자 슬롯과 entry/clue 매칭 검증          |
+| 명령                              | 용도                                       |
+| --------------------------------- | ------------------------------------------ |
+| `npm run dev`                     | 로컬 개발 서버 실행                        |
+| `npm run lint`                    | ESLint 검사                                |
+| `npm run build`                   | AppsInToss `.ait` 빌드                     |
+| `npm run deploy`                  | AppsInToss 배포                            |
+| `npm run mobile:install`          | `apps/mobile` RN 의존성 설치               |
+| `npm run check:mobile`            | `apps/mobile` lint/test                    |
+| `npm run build:android`           | Google Play용 Android App Bundle 빌드      |
+| `npm run wordbank:krdict`         | 한국어기초사전 XML에서 퍼즐용 단어장 생성  |
+| `npm run release:next-tag`        | 다음 semver 릴리즈 태그 계산               |
+| `npm run release:resolve-version` | 릴리즈 태그에서 앱 빌드 버전 계산          |
+| `npm run prototype:crossword`     | 콘솔에서 퍼즐판 생성 알고리즘 샘플 출력    |
+| `npm run batch:puzzles`           | 날짜별 puzzle JSON pack 생성               |
+| `npm run job:puzzle-pack`         | 생성/검증/publish를 묶은 배치잡 entrypoint |
+| `npm run publish:puzzles`         | Firebase Hosting publish                   |
+| `npm run validate:puzzles`        | 격자 슬롯과 entry/clue 매칭 검증           |
 
 ## 구조
 
@@ -231,6 +233,8 @@ GitHub Actions 배포에서는 repository variable `PUZZLE_PACK_BASE_URL`로 운
 ## 배포하기
 
 - 앱인토스 배포 API 키는 [앱인토스 콘솔](https://apps-in-toss.toss.im/) > 워크스페이스 > API 키 > 콘솔 API 키 에서 발급받을 수 있어요.
+- `main` push 후 `CI`가 성공하면 `Release Tag` workflow가 patch semver 태그를 만들고, 해당 태그로 AppsInToss 빌드/배포 workflow를 실행합니다.
+- 버저닝 정책과 수동 minor/major 태그 생성은 `docs/release-versioning.md`를 참고합니다.
 
 ```bash
 npm run build
