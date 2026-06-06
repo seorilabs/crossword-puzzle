@@ -63,8 +63,11 @@ export function loadAndShowFullScreenAd({
     let unregisterShow: (() => void) | undefined;
     let dismissalTimerId: number | undefined;
     let timeoutTimerId: number | undefined;
+    let timeoutGeneration = 0;
 
     function clearTimeoutTimer() {
+      timeoutGeneration += 1;
+
       if (timeoutTimerId != null) {
         window.clearTimeout(timeoutTimerId);
         timeoutTimerId = undefined;
@@ -81,7 +84,14 @@ export function loadAndShowFullScreenAd({
         return;
       }
 
+      const scheduledGeneration = timeoutGeneration + 1;
+      timeoutGeneration = scheduledGeneration;
       timeoutTimerId = window.setTimeout(() => {
+        if (scheduledGeneration !== timeoutGeneration) {
+          return;
+        }
+
+        timeoutTimerId = undefined;
         onTrace?.({ phase: "error", type });
         resolveOnce({ status: "timeout", reason: type });
       }, durationMs);

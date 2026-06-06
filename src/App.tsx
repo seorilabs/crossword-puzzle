@@ -208,10 +208,18 @@ function getPuzzleTelemetryParams(puzzle: Puzzle) {
 }
 
 function getFullScreenAdResultParams(result: FullScreenAdResult) {
-  return {
-    ...("reason" in result ? { reason: result.reason } : {}),
-    status: result.status,
-  };
+  if (result.status === "timeout") {
+    return { reason: result.reason, status: result.status };
+  }
+
+  if (result.status === "failed") {
+    return {
+      reason: result.reason === "failedToShow" ? "failed_to_show" : "error",
+      status: result.status,
+    };
+  }
+
+  return { status: result.status };
 }
 
 function getRewardedHintFailureMessage(result: FullScreenAdFailureResult) {
