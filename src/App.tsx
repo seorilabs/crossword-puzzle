@@ -2649,6 +2649,11 @@ function AnswerSlotInput({
   function preserveInputOnBlur(value: string) {
     if (isComposingRef.current) {
       clearCommitTimer();
+      // Blur can interrupt IME composition without reliably firing compositionend.
+      // Reset composing flags so subsequent input is not ignored.
+      isComposingRef.current = false;
+      setIsComposing(false);
+      setInputValue(value);
       return;
     }
 
