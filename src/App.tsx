@@ -351,6 +351,24 @@ function getAnswerInputLetters(value: string, maxLength: number) {
   return [...value.replace(/\s/g, "")].slice(0, maxLength);
 }
 
+function isHangulJamoLetter(letter: string) {
+  return /^[ㄱ-ㅎㅏ-ㅣ]$/.test(letter);
+}
+
+function getAnswerCommitLetters(value: string, maxLength: number) {
+  return getAnswerInputLetters(value, maxLength).filter(
+    (letter) => !isHangulJamoLetter(letter),
+  );
+}
+
+function isHangulJamoInput(value: string) {
+  const letters = getAnswerInputLetters(value, value.length);
+
+  return (
+    letters.length > 0 && letters.every((letter) => isHangulJamoLetter(letter))
+  );
+}
+
 function getEntryCellIndex(entry: PuzzleEntry, cellKey: string) {
   const cells = getEntryCells(entry);
   const index = cells.findIndex(
@@ -2213,6 +2231,7 @@ function TodayScreen({
   viewModel,
 }: TodayScreenProps) {
   const [isClueListOpen, setIsClueListOpen] = useState(false);
+  const [answerInputResetKey, setAnswerInputResetKey] = useState(0);
   const selectedCellEntries = useMemo(() => {
     const entries =
       selectedCellKey === ""
@@ -2239,6 +2258,7 @@ function TodayScreen({
       return;
     }
 
+    setAnswerInputResetKey((prev) => prev + 1);
     applyAnswer(selectedEntry, "");
   }
 
@@ -2413,6 +2433,7 @@ function TodayScreen({
               clearAnswerCell={clearAnswerCell}
               entry={selectedEntry}
               onSubmit={focusPuzzleBoard}
+              resetKey={answerInputResetKey}
               selectedCellKey={selectedCellKey}
               selectEntry={selectEntry}
               applyAnswerSegment={applyAnswerSegment}
@@ -2446,6 +2467,7 @@ type AnswerSlotInputProps = {
   clearAnswerCell: (entry: PuzzleEntry, cellKey?: string) => void;
   entry: PuzzleEntry;
   onSubmit: () => void;
+  resetKey: number;
   selectedCellKey: string;
   selectEntry: (entry: PuzzleEntry, cellKey?: string) => void;
 };
@@ -2456,10 +2478,13 @@ function AnswerSlotInput({
   clearAnswerCell,
   entry,
   onSubmit,
+  resetKey,
   selectedCellKey,
   selectEntry,
 }: AnswerSlotInputProps) {
   const nativeInputRef = useRef<HTMLInputElement>(null);
+  const commitTimerRef = useRef<number | null>(null);
+  const isComposingRef = useRef(false);
   const [inputValue, setInputValue] = useState("");
   const [isComposing, setIsComposing] = useState(false);
   const compositionEndValueRef = useRef<string | null>(null);
@@ -2473,11 +2498,22 @@ function AnswerSlotInput({
   const pendingLetter = getAnswerInputLetters(inputValue, 1)[0] ?? "";
   const slotColumnCount = cells.length <= 5 ? cells.length : 4;
 
+  const clearCommitTimer = useCallback(() => {
+    if (commitTimerRef.current != null) {
+      window.clearTimeout(commitTimerRef.current);
+      commitTimerRef.current = null;
+    }
+  }, []);
+
   useEffect(() => {
+    clearCommitTimer();
     compositionEndValueRef.current = null;
+    isComposingRef.current = false;
     setInputValue("");
     setIsComposing(false);
-  }, [entry.id, selectedCellKey]);
+  }, [clearCommitTimer, entry.id, resetKey, selectedCellKey]);
+
+  useEffect(() => () => clearCommitTimer(), [clearCommitTimer]);
 
   function focusNativeInput() {
     nativeInputRef.current?.focus({ preventScroll: true });
@@ -2488,12 +2524,43 @@ function AnswerSlotInput({
     focusNativeInput();
   }
 
-  function commitInputValue(value: string) {
-    if (getAnswerInputLetters(value, cells.length - selectedIndex).length > 0) {
-      applyAnswerSegment(entry, value, activeCellKey);
+  function commitInputValue(value: string, startCellKey = activeCellKey) {
+    clearCommitTimer();
+    const nextLetters = getAnswerCommitLetters(
+      value,
+      cells.length - getEntryCellIndex(entry, startCellKey),
+    );
+
+    if (nextLetters.length > 0) {
+      applyAnswerSegment(entry, nextLetters.join(""), startCellKey);
     }
 
     setInputValue("");
+  }
+
+  function queueCommitInputValue(
+    value: string,
+    startCellKey = activeCellKey,
+    delayMs = 320,
+  ) {
+    clearCommitTimer();
+
+    if (isHangulJamoInput(value)) {
+      return;
+    }
+
+    if (
+      getAnswerCommitLetters(
+        value,
+        cells.length - getEntryCellIndex(entry, startCellKey),
+      ).length === 0
+    ) {
+      return;
+    }
+
+    commitTimerRef.current = window.setTimeout(() => {
+      commitInputValue(value, startCellKey);
+    }, delayMs);
   }
 
   function selectRelativeSlot(delta: number) {
@@ -2551,33 +2618,45 @@ function AnswerSlotInput({
         autoCapitalize="off"
         autoComplete="off"
         autoCorrect="off"
-        enterKeyHint="done"
+        enterKeyHint="next"
         maxLength={entry.answer.length}
+        spellCheck={false}
         value={inputValue}
         aria-label={`${entry.answer.length}글자 답 입력`}
-        onCompositionStart={() => setIsComposing(true)}
+        onCompositionStart={() => {
+          clearCommitTimer();
+          isComposingRef.current = true;
+          setIsComposing(true);
+        }}
         onCompositionEnd={(event) => {
           const nextValue = event.currentTarget.value;
+          isComposingRef.current = false;
           setIsComposing(false);
           compositionEndValueRef.current = nextValue;
-          commitInputValue(nextValue);
+          setInputValue(nextValue);
+          queueCommitInputValue(nextValue, activeCellKey, 120);
         }}
         onChange={(event) => {
           const nextValue = event.target.value;
           const nativeEvent = event.nativeEvent as InputEvent;
           setInputValue(nextValue);
 
-          if (isComposing || nativeEvent.isComposing) {
+          if (
+            isComposing ||
+            isComposingRef.current ||
+            nativeEvent.isComposing ||
+            nativeEvent.inputType === "insertCompositionText"
+          ) {
+            clearCommitTimer();
             return;
           }
 
           if (compositionEndValueRef.current === nextValue) {
             compositionEndValueRef.current = null;
-            setInputValue("");
             return;
           }
 
-          commitInputValue(nextValue);
+          queueCommitInputValue(nextValue);
         }}
         onKeyDown={(event) => {
           const nativeEvent = event.nativeEvent as KeyboardEvent;
@@ -2606,6 +2685,24 @@ function AnswerSlotInput({
 
           if (event.key === "Enter") {
             event.preventDefault();
+            const draftLetters = getAnswerInputLetters(
+              inputValue,
+              cells.length - selectedIndex,
+            );
+
+            if (
+              getAnswerCommitLetters(inputValue, draftLetters.length).length > 0
+            ) {
+              commitInputValue(inputValue, activeCellKey);
+              focusNativeInput();
+              return;
+            }
+
+            if (draftLetters.length > 0) {
+              focusNativeInput();
+              return;
+            }
+
             event.currentTarget.blur();
             onSubmit();
           }
