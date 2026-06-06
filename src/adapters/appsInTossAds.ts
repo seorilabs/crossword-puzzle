@@ -130,7 +130,6 @@ export function loadAndShowFullScreenAd({
 
           unregisterLoad?.();
           unregisterLoad = undefined;
-          clearTimeoutTimer();
           scheduleTimeout("show_timeout", showStartTimeoutMs);
 
           unregisterShow = showFullScreenAd({
