@@ -2498,12 +2498,12 @@ function AnswerSlotInput({
   const pendingLetter = getAnswerInputLetters(inputValue, 1)[0] ?? "";
   const slotColumnCount = cells.length <= 5 ? cells.length : 4;
 
-  function clearCommitTimer() {
+  const clearCommitTimer = useCallback(() => {
     if (commitTimerRef.current != null) {
       window.clearTimeout(commitTimerRef.current);
       commitTimerRef.current = null;
     }
-  }
+  }, []);
 
   useEffect(() => {
     clearCommitTimer();
@@ -2511,9 +2511,9 @@ function AnswerSlotInput({
     isComposingRef.current = false;
     setInputValue("");
     setIsComposing(false);
-  }, [entry.id, resetKey, selectedCellKey]);
+  }, [clearCommitTimer, entry.id, resetKey, selectedCellKey]);
 
-  useEffect(() => () => clearCommitTimer(), []);
+  useEffect(() => () => clearCommitTimer(), [clearCommitTimer]);
 
   function focusNativeInput() {
     nativeInputRef.current?.focus({ preventScroll: true });
