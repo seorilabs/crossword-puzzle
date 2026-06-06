@@ -16,18 +16,22 @@ export type FullScreenAdResult =
   | { status: "dismissed" }
   | { status: "failed"; reason: string }
   | { status: "unsupported" }
-  | { status: "timeout" };
+  | { status: "timeout"; reason: "load_timeout" | "show_timeout" };
 
 export type FullScreenAdTraceEvent =
   | { phase: "load"; type: LoadFullScreenAdEvent["type"] }
   | { phase: "show"; type: ShowFullScreenAdEvent["type"] }
-  | { phase: "error"; type: "load_error" | "show_error" | "timeout" };
+  | {
+      phase: "error";
+      type: "load_error" | "show_error" | "load_timeout" | "show_timeout";
+    };
 
 type FullScreenAdOptions = {
   adGroupId: string;
   dismissalDelayMs?: number;
+  loadTimeoutMs?: number;
   onTrace?: (event: FullScreenAdTraceEvent) => void;
-  timeoutMs?: number;
+  showStartTimeoutMs?: number;
 };
 
 function isFullScreenAdSupported() {
@@ -45,8 +49,9 @@ function asErrorMessage(error: unknown) {
 export function loadAndShowFullScreenAd({
   adGroupId,
   dismissalDelayMs = 0,
+  loadTimeoutMs = 45000,
   onTrace,
-  timeoutMs = 45000,
+  showStartTimeoutMs = 45000,
 }: FullScreenAdOptions): Promise<FullScreenAdResult> {
   if (!isFullScreenAdSupported()) {
     return Promise.resolve({ status: "unsupported" });
@@ -57,6 +62,40 @@ export function loadAndShowFullScreenAd({
     let unregisterLoad: (() => void) | undefined;
     let unregisterShow: (() => void) | undefined;
     let dismissalTimerId: number | undefined;
+    let timeoutTimerId: number | undefined;
+    let timeoutGeneration = 0;
+
+    function clearTimeoutTimer() {
+      timeoutGeneration += 1;
+
+      if (timeoutTimerId != null) {
+        window.clearTimeout(timeoutTimerId);
+        timeoutTimerId = undefined;
+      }
+    }
+
+    function scheduleTimeout(
+      type: "load_timeout" | "show_timeout",
+      durationMs: number,
+    ) {
+      clearTimeoutTimer();
+
+      if (durationMs <= 0) {
+        return;
+      }
+
+      const scheduledGeneration = timeoutGeneration + 1;
+      timeoutGeneration = scheduledGeneration;
+      timeoutTimerId = window.setTimeout(() => {
+        if (scheduledGeneration !== timeoutGeneration) {
+          return;
+        }
+
+        timeoutTimerId = undefined;
+        onTrace?.({ phase: "error", type });
+        resolveOnce({ status: "timeout", reason: type });
+      }, durationMs);
+    }
 
     function cleanup() {
       unregisterLoad?.();
@@ -64,7 +103,7 @@ export function loadAndShowFullScreenAd({
       if (dismissalTimerId != null) {
         window.clearTimeout(dismissalTimerId);
       }
-      window.clearTimeout(timeoutId);
+      clearTimeoutTimer();
     }
 
     function resolveOnce(result: FullScreenAdResult) {
@@ -77,10 +116,7 @@ export function loadAndShowFullScreenAd({
       resolve(result);
     }
 
-    const timeoutId = window.setTimeout(() => {
-      onTrace?.({ phase: "error", type: "timeout" });
-      resolveOnce({ status: "timeout" });
-    }, timeoutMs);
+    scheduleTimeout("load_timeout", loadTimeoutMs);
 
     try {
       unregisterLoad = loadFullScreenAd({
@@ -94,17 +130,28 @@ export function loadAndShowFullScreenAd({
 
           unregisterLoad?.();
           unregisterLoad = undefined;
+          scheduleTimeout("show_timeout", showStartTimeoutMs);
 
           unregisterShow = showFullScreenAd({
             options: { adGroupId },
             onEvent: (showEvent) => {
               onTrace?.({ phase: "show", type: showEvent.type });
 
+              if (
+                showEvent.type === "show" ||
+                showEvent.type === "impression" ||
+                showEvent.type === "clicked"
+              ) {
+                clearTimeoutTimer();
+              }
+
               if (showEvent.type === "userEarnedReward") {
                 resolveOnce({ status: "rewarded" });
               }
 
               if (showEvent.type === "dismissed") {
+                clearTimeoutTimer();
+
                 if (dismissalDelayMs <= 0) {
                   resolveOnce({ status: "dismissed" });
                   return;
@@ -161,6 +208,7 @@ export function showRewardedBonusPuzzleAd(
 ) {
   return loadAndShowFullScreenAd({
     adGroupId: appsInTossAdGroupIds.rewardedBonusPuzzle,
+    dismissalDelayMs: 3000,
     onTrace,
   });
 }
