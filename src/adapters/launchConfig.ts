@@ -6,6 +6,7 @@ export type LaunchConfig = {
   puzzleKeepCount: number;
   completionStatsEnabled: boolean;
   completionStatsMinDisplayCount: number;
+  rewardedBonusPuzzleAdsEnabled: boolean;
   rewardedHintAdsEnabled: boolean;
   resultInterstitialAdsEnabled: boolean;
   leaderboardEnabled: boolean;
@@ -19,6 +20,7 @@ export const launchConfigKeys = {
   puzzleKeepCount: "puzzle_keep_count",
   completionStatsEnabled: "completion_stats_enabled",
   completionStatsMinDisplayCount: "completion_stats_min_display_count",
+  rewardedBonusPuzzleAdsEnabled: "rewarded_bonus_puzzle_ads_enabled",
   rewardedHintAdsEnabled: "rewarded_hint_ads_enabled",
   resultInterstitialAdsEnabled: "result_interstitial_ads_enabled",
   leaderboardEnabled: "leaderboard_enabled",
@@ -27,11 +29,12 @@ export const launchConfigKeys = {
 export const defaultLaunchConfig: LaunchConfig = {
   defaultHintCredits: 3,
   rewardedHintCredits: 2,
-  visiblePuzzleCount: 7,
+  visiblePuzzleCount: 1,
   puzzleGenerationIntervalHours: 2,
   puzzleKeepCount: 84,
   completionStatsEnabled: true,
   completionStatsMinDisplayCount: 10,
+  rewardedBonusPuzzleAdsEnabled: true,
   rewardedHintAdsEnabled: true,
   resultInterstitialAdsEnabled: true,
   leaderboardEnabled: false,
@@ -95,6 +98,9 @@ export function normalizeLaunchConfig(
       1,
       100,
     ),
+    rewardedBonusPuzzleAdsEnabled:
+      value.rewardedBonusPuzzleAdsEnabled ??
+      defaultLaunchConfig.rewardedBonusPuzzleAdsEnabled,
     rewardedHintAdsEnabled:
       value.rewardedHintAdsEnabled ??
       defaultLaunchConfig.rewardedHintAdsEnabled,
@@ -121,6 +127,8 @@ export function getLaunchConfigDefaultsForRemoteConfig() {
       defaultLaunchConfig.completionStatsEnabled,
     [launchConfigKeys.completionStatsMinDisplayCount]:
       defaultLaunchConfig.completionStatsMinDisplayCount,
+    [launchConfigKeys.rewardedBonusPuzzleAdsEnabled]:
+      defaultLaunchConfig.rewardedBonusPuzzleAdsEnabled,
     [launchConfigKeys.rewardedHintAdsEnabled]:
       defaultLaunchConfig.rewardedHintAdsEnabled,
     [launchConfigKeys.resultInterstitialAdsEnabled]:

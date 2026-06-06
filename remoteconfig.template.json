@@ -17,9 +17,9 @@
     },
     "visible_puzzle_count": {
       "defaultValue": {
-        "value": "7"
+        "value": "1"
       },
-      "description": "홈 날짜 캐러셀에 보여줄 최신 퍼즐 개수",
+      "description": "홈 날짜 캐러셀에 기본 노출할 무료 퍼즐 개수. 하루 1개 정책의 기본값은 1",
       "valueType": "NUMBER"
     },
     "puzzle_generation_interval_hours": {
@@ -49,6 +49,13 @@
       },
       "description": "참여자/완료자 수를 정확한 숫자로 표시하기 위한 최소 집계 수",
       "valueType": "NUMBER"
+    },
+    "rewarded_bonus_puzzle_ads_enabled": {
+      "defaultValue": {
+        "value": "true"
+      },
+      "description": "보너스 퍼즐 해금 보상형 광고 CTA 노출 여부",
+      "valueType": "BOOLEAN"
     },
     "rewarded_hint_ads_enabled": {
       "defaultValue": {
