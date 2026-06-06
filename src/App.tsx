@@ -2685,12 +2685,20 @@ function AnswerSlotInput({
 
           if (event.key === "Enter") {
             event.preventDefault();
+            const draftLetters = getAnswerInputLetters(
+              inputValue,
+              cells.length - selectedIndex,
+            );
 
             if (
-              getAnswerCommitLetters(inputValue, cells.length - selectedIndex)
-                .length > 0
+              getAnswerCommitLetters(inputValue, draftLetters.length).length > 0
             ) {
               commitInputValue(inputValue, activeCellKey);
+              focusNativeInput();
+              return;
+            }
+
+            if (draftLetters.length > 0) {
               focusNativeInput();
               return;
             }
