@@ -418,6 +418,80 @@ function getNextAnswerSlotCellKey(
   );
 }
 
+function getEntryCellDistance(entry: PuzzleEntry, targetEntry: PuzzleEntry) {
+  const cells = getEntryCells(entry);
+  const targetCells = getEntryCells(targetEntry);
+  let nearestDistance = Number.POSITIVE_INFINITY;
+
+  for (const cell of cells) {
+    for (const targetCell of targetCells) {
+      const distance =
+        Math.abs(cell.row - targetCell.row) +
+        Math.abs(cell.col - targetCell.col);
+
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+      }
+    }
+  }
+
+  return nearestDistance;
+}
+
+function getEntryCenterDistance(entry: PuzzleEntry, targetEntry: PuzzleEntry) {
+  const cells = getEntryCells(entry);
+  const targetCells = getEntryCells(targetEntry);
+  const center = cells.reduce(
+    (total, cell) => ({
+      row: total.row + cell.row / cells.length,
+      col: total.col + cell.col / cells.length,
+    }),
+    { row: 0, col: 0 },
+  );
+  const targetCenter = targetCells.reduce(
+    (total, cell) => ({
+      row: total.row + cell.row / targetCells.length,
+      col: total.col + cell.col / targetCells.length,
+    }),
+    { row: 0, col: 0 },
+  );
+
+  return (
+    Math.abs(center.row - targetCenter.row) +
+    Math.abs(center.col - targetCenter.col)
+  );
+}
+
+function getNearestUncompletedEntry(
+  entries: PuzzleEntry[],
+  cellValues: Record<string, string>,
+  currentEntry: PuzzleEntry,
+) {
+  const completedEntryIds = new Set(
+    getCompletedEntries(entries, cellValues).map((entry) => entry.id),
+  );
+
+  return entries
+    .map((entry, index) => ({
+      cellDistance: getEntryCellDistance(currentEntry, entry),
+      centerDistance: getEntryCenterDistance(currentEntry, entry),
+      entry,
+      index,
+    }))
+    .filter(
+      ({ entry }) =>
+        (!completedEntryIds.has(currentEntry.id) ||
+          entry.id !== currentEntry.id) &&
+        !completedEntryIds.has(entry.id),
+    )
+    .sort(
+      (a, b) =>
+        a.cellDistance - b.cellDistance ||
+        a.centerDistance - b.centerDistance ||
+        a.index - b.index,
+    )[0]?.entry;
+}
+
 function isEntryFilled(entry: PuzzleEntry, cellValues: Record<string, string>) {
   return getEntryCells(entry).every(
     (cell) => cellValues[getCellKey(cell.row, cell.col)] != null,
@@ -886,14 +960,14 @@ function App() {
   }
 
   function scheduleNextUncompletedEntry(
+    currentEntry: PuzzleEntry,
     cellValuesSnapshot: Record<string, string>,
   ) {
     setTimeout(() => {
-      const nextUncompleted = puzzle.entries.find(
-        (entry) =>
-          !getCompletedEntries(puzzle.entries, cellValuesSnapshot).some(
-            (completedEntry) => completedEntry.id === entry.id,
-          ),
+      const nextUncompleted = getNearestUncompletedEntry(
+        puzzle.entries,
+        cellValuesSnapshot,
+        currentEntry,
       );
 
       if (nextUncompleted != null) {
@@ -927,7 +1001,7 @@ function App() {
     setCellValues(nextValues);
 
     if (nextLetters.length === cells.length) {
-      scheduleNextUncompletedEntry(nextValues);
+      scheduleNextUncompletedEntry(entry, nextValues);
     }
   }
 
@@ -968,7 +1042,7 @@ function App() {
     );
 
     if (isEntryFilled(entry, nextValues)) {
-      scheduleNextUncompletedEntry(nextValues);
+      scheduleNextUncompletedEntry(entry, nextValues);
     }
   }
 
@@ -2495,7 +2569,10 @@ function AnswerSlotInput({
   );
   const selectedIndex = Math.max(0, slotKeys.indexOf(selectedCellKey));
   const activeCellKey = slotKeys[selectedIndex] ?? getEntryStartCellKey(entry);
-  const pendingLetter = getAnswerInputLetters(inputValue, 1)[0] ?? "";
+  const pendingLetters = getAnswerInputLetters(
+    inputValue,
+    cells.length - selectedIndex,
+  );
   const slotColumnCount = cells.length <= 5 ? cells.length : 4;
 
   const clearCommitTimer = useCallback(() => {
@@ -2536,6 +2613,60 @@ function AnswerSlotInput({
     }
 
     setInputValue("");
+  }
+
+  function getDraftLetters(value: string, startCellKey = activeCellKey) {
+    return getAnswerInputLetters(
+      value,
+      cells.length - getEntryCellIndex(entry, startCellKey),
+    );
+  }
+
+  function hasCommittableDraft(value: string, startCellKey = activeCellKey) {
+    const draftLetters = getDraftLetters(value, startCellKey);
+
+    return getAnswerCommitLetters(value, draftLetters.length).length > 0;
+  }
+
+  function handleAdvanceInput() {
+    const draftLetters = getDraftLetters(inputValue, activeCellKey);
+
+    if (hasCommittableDraft(inputValue, activeCellKey)) {
+      commitInputValue(inputValue, activeCellKey);
+      focusNativeInput();
+      return;
+    }
+
+    if (draftLetters.length > 0) {
+      focusNativeInput();
+      return;
+    }
+
+    nativeInputRef.current?.blur();
+    onSubmit();
+  }
+
+  function preserveInputOnBlur(value: string) {
+    if (isComposingRef.current) {
+      clearCommitTimer();
+      // Blur can interrupt IME composition without reliably firing compositionend.
+      // Reset composing flags so subsequent input is not ignored.
+      isComposingRef.current = false;
+      setIsComposing(false);
+      setInputValue(value);
+      return;
+    }
+
+    const draftLetters = getDraftLetters(value, activeCellKey);
+
+    if (hasCommittableDraft(value, activeCellKey)) {
+      commitInputValue(value, activeCellKey);
+      return;
+    }
+
+    if (draftLetters.length > 0) {
+      clearCommitTimer();
+    }
   }
 
   function queueCommitInputValue(
@@ -2587,8 +2718,9 @@ function AnswerSlotInput({
         {slotKeys.map((key, index) => {
           const committedValue = cellValues[key] ?? "";
           const isActive = key === activeCellKey;
+          const pendingValue = pendingLetters[index - selectedIndex] ?? "";
           const displayValue =
-            isActive && pendingLetter !== "" ? pendingLetter : committedValue;
+            pendingValue !== "" ? pendingValue : committedValue;
 
           return (
             <button
@@ -2597,7 +2729,7 @@ function AnswerSlotInput({
                 "answerSlot",
                 committedValue !== "" ? "answerSlotFilled" : "",
                 isActive ? "answerSlotActive" : "",
-                isActive && pendingLetter !== "" ? "answerSlotPending" : "",
+                pendingValue !== "" ? "answerSlotPending" : "",
               ]
                 .filter(Boolean)
                 .join(" ")}
@@ -2683,30 +2815,16 @@ function AnswerSlotInput({
             return;
           }
 
-          if (event.key === "Enter") {
+          if (
+            event.key === "Enter" ||
+            event.key === " " ||
+            event.code === "Space"
+          ) {
             event.preventDefault();
-            const draftLetters = getAnswerInputLetters(
-              inputValue,
-              cells.length - selectedIndex,
-            );
-
-            if (
-              getAnswerCommitLetters(inputValue, draftLetters.length).length > 0
-            ) {
-              commitInputValue(inputValue, activeCellKey);
-              focusNativeInput();
-              return;
-            }
-
-            if (draftLetters.length > 0) {
-              focusNativeInput();
-              return;
-            }
-
-            event.currentTarget.blur();
-            onSubmit();
+            handleAdvanceInput();
           }
         }}
+        onBlur={(event) => preserveInputOnBlur(event.currentTarget.value)}
       />
     </div>
   );
