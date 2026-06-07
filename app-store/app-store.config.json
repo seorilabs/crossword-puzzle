@@ -47,6 +47,44 @@
     "suggestedPrivacyPolicyUrl": "https://www.seorilabs.com/privacy",
     "appPrivacy": "확정 필요",
     "ageRating": "확정 필요",
+    "ageRatingGuidance": {
+      "status": "recommended answers prepared; App Store Connect input pending",
+      "calculatedRatingCandidate": "4+",
+      "categoryOverride": "해당 없음",
+      "ageSuitabilityUrl": "blank",
+      "assumptions": [
+        "Current App Store target is the native apps/mobile iOS app.",
+        "No unrestricted web access, user-generated content, in-app chat, advertising SDK, health content, violence, gambling, loot boxes, or contests are present in the current native mobile app."
+      ],
+      "answers": {
+        "harmfulContentControls": "아니요",
+        "ageAssurance": "아니요",
+        "unrestrictedWebAccess": "아니요",
+        "userGeneratedContent": "아니요",
+        "messagingOrChat": "아니요",
+        "advertising": "아니요",
+        "profanityOrCrudeHumor": "없음",
+        "horrorOrFearThemes": "없음",
+        "alcoholTobaccoDrugUse": "없음",
+        "medicalOrTreatmentInformation": "없음",
+        "healthOrWellnessTopics": "아니요",
+        "sexualOrSuggestiveThemes": "없음",
+        "sexualContentOrNudity": "없음",
+        "explicitSexualContentOrNudity": "없음",
+        "cartoonOrFantasyViolence": "없음",
+        "realisticViolence": "없음",
+        "prolongedGraphicOrSadisticRealisticViolence": "없음",
+        "gunsOrOtherWeapons": "없음",
+        "simulatedGambling": "없음",
+        "contests": "없음",
+        "gambling": "아니요",
+        "lootBoxes": "아니요"
+      },
+      "recheckTriggers": [
+        "Add AdMob or any paid promotion in the iOS App Store app.",
+        "Add web browsing, user-generated content, chat, leaderboard/contest, rewards competition, health content, violence, weapons, gambling, or paid random items."
+      ]
+    },
     "exportCompliance": "확정 필요",
     "suggestedUsesNonExemptEncryption": false,
     "contentRights": "확정 필요",
