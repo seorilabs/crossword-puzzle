@@ -89,7 +89,15 @@
   "testFlight": {
     "internalTesting": "확정 필요",
     "externalTesting": "not planned",
-    "betaReviewNotes": "확정 필요"
+    "betaReviewNotes": "확정 필요",
+    "lastUploadedBuild": {
+      "versionTag": "v0.1.5",
+      "marketingVersion": "0.1.5",
+      "buildNumber": "1005",
+      "workflowRun": "27087313726",
+      "workflowJob": "79945275484",
+      "uploadedAt": "2026-06-07T08:49:00Z"
+    }
   },
   "automation": {
     "workflow": ".github/workflows/deploy-app-store.yml",
@@ -114,7 +122,7 @@
     "contentRightsAnswer": "확정 필요",
     "exportComplianceAnswer": "확정 필요",
     "dsaTraderDetails": "확정 필요",
-    "buildUpload": "확정 필요",
+    "buildUpload": "v0.1.5 build 1005 uploaded via GitHub Actions run 27087313726",
     "buildSelection": "확정 필요",
     "submitForReview": "확정 필요"
   }

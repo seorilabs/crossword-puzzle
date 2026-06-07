@@ -12,7 +12,7 @@ npm run check:app-store
 
 ## 현재 판정
 
-현재 App Store 등록 및 론칭 준비는 `blocked`다. `apps/mobile` iOS 프로젝트, unsigned Release build, GitHub Actions TestFlight 업로드 workflow는 준비됐지만, 아직 운영 퍼즐 데이터 연결, App Store Connect 등록값 확정, 스크린샷, Apple signing secret 등록, App Store Connect 수동 gate가 완료되지 않았다.
+현재 App Store 등록 및 론칭 준비는 `blocked`다. `apps/mobile` iOS 프로젝트, unsigned Release build, GitHub Actions TestFlight 업로드 workflow, `v0.1.5` App Store Connect 업로드는 완료됐지만, 아직 운영 퍼즐 데이터 연결, App Store Connect 등록값 확정, 스크린샷, TestFlight build selection, App Store Connect 수동 gate가 완료되지 않았다.
 
 ```mermaid
 flowchart TD
@@ -41,8 +41,9 @@ flowchart TD
 | Game Center | `no` |
 | CocoaPods | `bundle exec pod install` 완료 |
 | unsigned iOS Release build | `CODE_SIGNING_ALLOWED=NO build` 통과 |
-| TestFlight CI | `.github/workflows/deploy-app-store.yml` 준비 |
+| TestFlight CI | `.github/workflows/deploy-app-store.yml` 준비 및 `v0.1.5` 업로드 성공 |
 | App Store profile | `AppStore Crossword Puzzle Profile` secret 등록 |
+| 최신 업로드 빌드 | `v0.1.5` / build `1005` / run `27087313726` |
 
 ## 확정 필요
 
@@ -56,8 +57,7 @@ flowchart TD
 | Export Compliance | 표준 OS/HTTPS 외 비표준 암호화 없음 후보. `Info.plist` 반영 및 콘솔 답변 필요 |
 | DSA/trader | EU 배포/조직 계정/수익화 정책 기준 확인 필요 |
 | Review contact | 이름/전화번호 확정 필요 |
-| GitHub Actions secrets | Apple Distribution 인증서, App Store Connect API key 등록 필요 |
-| TestFlight | 내부 테스트 그룹/빌드 선택 필요 |
+| TestFlight | build processing 확인, 내부 테스트 그룹/빌드 선택 필요 |
 
 ## 등록 문구
 
@@ -102,3 +102,4 @@ flowchart TD
 - iPad를 계속 지원하면 iPad screenshot과 iPad AppIcon slot까지 준비해야 한다. iPad를 출시 대상에서 뺄 경우 Xcode `TARGETED_DEVICE_FAMILY`부터 바꿔야 한다.
 - 향후 Firebase Analytics/AdMob을 `apps/mobile`에 붙이면 `PrivacyInfo.xcprivacy`, App Store Connect privacy 답변, ATT/IDFA 정책을 다시 갱신해야 한다.
 - 2026-04-28 이후 App Store Connect 업로드는 Xcode 26/iOS 26 SDK 이상이 필요하므로 workflow는 `macos-26` runner와 SDK major check를 사용한다.
+- 2026-06-07 `v0.1.5` / build `1005` 업로드 run `27087313726`, job `79945275484`는 성공했다.
