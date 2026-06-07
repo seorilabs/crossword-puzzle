@@ -10,12 +10,12 @@ on:
       upload_to_internal:
         description: "Google Play internal track에 AAB 업로드"
         required: false
-        default: false
+        default: true
         type: boolean
       release_status:
         description: "internal track release status"
         required: false
-        default: "draft"
+        default: "completed"
         type: choice
         options:
           - draft

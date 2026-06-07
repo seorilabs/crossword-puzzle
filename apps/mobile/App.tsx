@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, {useEffect, useMemo, useState} from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -13,7 +13,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import {SafeAreaProvider, SafeAreaView} from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import {
   buildCellEntries,
@@ -81,16 +81,20 @@ type PuzzleViewModel = {
   completedEntries: PuzzleEntry[];
   isComplete: boolean;
   rows: number[];
-  selectedAnswer: string;
   selectedCells: Set<string>;
   selectedEntry?: PuzzleEntry;
   startLabels: Map<string, number>;
   slotValidationPass: boolean;
 };
 
+type BonusPuzzlePanelState = {
+  candidateSummary?: PuzzleManifestItem;
+  notice: string;
+  status: 'available' | 'loading' | 'waiting';
+};
+
 const DAILY_ATTEMPT_LIMIT = 3;
 const DEFAULT_HINT_CREDITS = 3;
-const VISIBLE_PUZZLE_COUNT = 7;
 const REMOTE_PUZZLE_PACK_BASE_URL = 'https://crossword-puzzle-79ae0.web.app';
 const PROGRESS_KEY_PREFIX = 'crossword-puzzle:progress';
 const MISSION_KEY_PREFIX = 'crossword-puzzle:mission';
@@ -166,13 +170,158 @@ function dedupePuzzleSummaries(puzzles: PuzzleManifestItem[]) {
   return result;
 }
 
+function createPuzzleSummary(puzzle: Puzzle): PuzzleManifestItem {
+  return {
+    date: puzzle.date,
+    difficulty: puzzle.difficulty,
+    metrics: puzzle.metrics,
+    packId: puzzle.packId,
+    path: '',
+    publishedAt: puzzle.publishedAt,
+    puzzleId: puzzle.puzzleId,
+    quality: puzzle.quality,
+    slotId: puzzle.slotId,
+  };
+}
+
+function getPuzzlePublishedTime(summary: PuzzleManifestItem) {
+  if (summary.publishedAt == null) {
+    return undefined;
+  }
+
+  const value = new Date(summary.publishedAt).getTime();
+
+  return Number.isFinite(value) ? value : undefined;
+}
+
+function isPublishedPuzzle(summary: PuzzleManifestItem, now = Date.now()) {
+  const publishedTime = getPuzzlePublishedTime(summary);
+
+  return publishedTime == null || publishedTime <= now;
+}
+
+function sortPuzzleSummariesAscending(
+  left: PuzzleManifestItem,
+  right: PuzzleManifestItem,
+) {
+  return getPuzzleSortKey(left).localeCompare(getPuzzleSortKey(right));
+}
+
+function getDailyFreePuzzleSummary(
+  puzzleSummaries: PuzzleManifestItem[],
+  today: string,
+  now = Date.now(),
+) {
+  const publishedSummaries = puzzleSummaries.filter(summary =>
+    isPublishedPuzzle(summary, now),
+  );
+  const todaySummaries = publishedSummaries
+    .filter(summary => summary.date === today)
+    .sort(sortPuzzleSummariesAscending);
+
+  if (todaySummaries[0] != null) {
+    return todaySummaries[0];
+  }
+
+  const pastDates = publishedSummaries
+    .filter(summary => summary.date <= today)
+    .map(summary => summary.date)
+    .sort();
+  const latestPastDate = pastDates[pastDates.length - 1];
+
+  if (latestPastDate != null) {
+    return publishedSummaries
+      .filter(summary => summary.date === latestPastDate)
+      .sort(sortPuzzleSummariesAscending)[0];
+  }
+
+  return (
+    publishedSummaries.sort(sortPuzzleSummariesAscending)[0] ??
+    puzzleSummaries[0]
+  );
+}
+
 function getInitialPuzzleId(puzzles: PuzzleManifestItem[]) {
   const today = getTodayDateKey();
   return (
-    puzzles.find(summary => summary.date <= today)?.puzzleId ??
+    getDailyFreePuzzleSummary(puzzles, today)?.puzzleId ??
     puzzles[0]?.puzzleId ??
     fallbackPuzzle.puzzleId
   );
+}
+
+function getCompletedPuzzleIds(dateCardStates: Record<string, DateCardState>) {
+  return new Set(
+    Object.entries(dateCardStates)
+      .filter(([, state]) => state.completedAt != null)
+      .map(([puzzleId]) => puzzleId),
+  );
+}
+
+function findPuzzleSummaryById(
+  puzzleSummaries: PuzzleManifestItem[],
+  puzzleId?: string,
+) {
+  return puzzleId == null
+    ? undefined
+    : puzzleSummaries.find(summary => summary.puzzleId === puzzleId);
+}
+
+function getBonusPuzzleCandidateSummary({
+  completedPuzzleIds,
+  dailyFreeSummary,
+  puzzleSummaries,
+  today,
+}: {
+  completedPuzzleIds: Set<string>;
+  dailyFreeSummary?: PuzzleManifestItem;
+  puzzleSummaries: PuzzleManifestItem[];
+  today: string;
+}) {
+  if (dailyFreeSummary?.date !== today) {
+    return undefined;
+  }
+
+  return puzzleSummaries
+    .filter(
+      summary =>
+        summary.date === today &&
+        summary.puzzleId !== dailyFreeSummary.puzzleId &&
+        !completedPuzzleIds.has(summary.puzzleId) &&
+        isPublishedPuzzle(summary),
+    )
+    .sort((left, right) =>
+      getPuzzleSortKey(right).localeCompare(getPuzzleSortKey(left)),
+    )[0];
+}
+
+function uniquePuzzleSummaries(summaries: PuzzleManifestItem[]) {
+  const seen = new Set<string>();
+  const result: PuzzleManifestItem[] = [];
+
+  for (const summary of summaries) {
+    if (seen.has(summary.puzzleId)) {
+      continue;
+    }
+
+    seen.add(summary.puzzleId);
+    result.push(summary);
+  }
+
+  return result;
+}
+
+function formatBonusPuzzleMeta(summary?: PuzzleManifestItem) {
+  if (summary == null) {
+    return '새 퍼즐 대기';
+  }
+
+  const wordCountLabel =
+    summary.metrics?.wordCount == null
+      ? '단어 수 확인 중'
+      : `${summary.metrics.wordCount}개 단어`;
+
+  return `${summary.date} · ${wordCountLabel}`;
 }
 
 function getInitialEntryStartCellKey(puzzle: Puzzle) {
@@ -215,7 +364,9 @@ function getMissionKey(date: string, puzzleId: string) {
   return `${MISSION_KEY_PREFIX}:${date}:${puzzleId}`;
 }
 
-function normalizeProgress(value: Partial<SavedProgress> | null): SavedProgress {
+function normalizeProgress(
+  value: Partial<SavedProgress> | null,
+): SavedProgress {
   if (value == null) {
     return createEmptyProgress();
   }
@@ -253,7 +404,10 @@ async function loadStoredProgress(puzzleId: string) {
 
 async function saveStoredProgress(puzzleId: string, progress: SavedProgress) {
   try {
-    await AsyncStorage.setItem(getProgressKey(puzzleId), JSON.stringify(progress));
+    await AsyncStorage.setItem(
+      getProgressKey(puzzleId),
+      JSON.stringify(progress),
+    );
   } catch {
     // Local persistence is best effort.
   }
@@ -414,8 +568,77 @@ async function loadDateCardStates(summaries: PuzzleManifestItem[]) {
   return Object.fromEntries(entries);
 }
 
-function normalizeAnswerInput(value: string, maxLength: number) {
-  return [...value.replace(/\s/g, '')].slice(0, maxLength).join('');
+function getAnswerInputLetters(value: string, maxLength: number) {
+  return [...value.replace(/\s/g, '')].slice(0, maxLength);
+}
+
+function isHangulJamoLetter(letter: string) {
+  return /^[ㄱ-ㅎㅏ-ㅣ]$/.test(letter);
+}
+
+function getAnswerCommitLetters(value: string, maxLength: number) {
+  return getAnswerInputLetters(value, maxLength).filter(
+    letter => !isHangulJamoLetter(letter),
+  );
+}
+
+function getEntryStartCellKey(entry?: PuzzleEntry) {
+  return entry == null ? '' : getCellKey(entry.row, entry.col);
+}
+
+function getEntryCellIndex(entry: PuzzleEntry, cellKey: string) {
+  const cells = getEntryCells(entry);
+  const index = cells.findIndex(
+    cell => getCellKey(cell.row, cell.col) === cellKey,
+  );
+
+  return index === -1 ? 0 : index;
+}
+
+function getEntryCellKeyAt(entry: PuzzleEntry, index: number) {
+  const cells = getEntryCells(entry);
+  const safeIndex = Math.max(0, Math.min(cells.length - 1, index));
+  const cell = cells[safeIndex];
+
+  return cell == null
+    ? getEntryStartCellKey(entry)
+    : getCellKey(cell.row, cell.col);
+}
+
+function getNextAnswerSlotCellKey(
+  entry: PuzzleEntry,
+  cellValues: Record<string, string>,
+  startIndex: number,
+  inputLength: number,
+) {
+  const cells = getEntryCells(entry);
+  const afterInputIndex = Math.min(startIndex + inputLength, cells.length - 1);
+  const nextEmptyIndex = cells.findIndex((cell, index) => {
+    if (index < afterInputIndex) {
+      return false;
+    }
+
+    return cellValues[getCellKey(cell.row, cell.col)] == null;
+  });
+
+  if (nextEmptyIndex !== -1) {
+    return getEntryCellKeyAt(entry, nextEmptyIndex);
+  }
+
+  const firstEmptyIndex = cells.findIndex(
+    cell => cellValues[getCellKey(cell.row, cell.col)] == null,
+  );
+
+  return getEntryCellKeyAt(
+    entry,
+    firstEmptyIndex === -1 ? afterInputIndex : firstEmptyIndex,
+  );
+}
+
+function isEntryFilled(entry: PuzzleEntry, cellValues: Record<string, string>) {
+  return getEntryCells(entry).every(
+    cell => cellValues[getCellKey(cell.row, cell.col)] != null,
+  );
 }
 
 function getEntryCellKeys(entry: PuzzleEntry) {
@@ -423,7 +646,7 @@ function getEntryCellKeys(entry: PuzzleEntry) {
 }
 
 function AppContent() {
-  const {width} = useWindowDimensions();
+  const { width } = useWindowDimensions();
   const isWide = width >= 760;
   const [route, setRoute] = useState<AppRoute>('home');
   const [isLoading, setIsLoading] = useState(true);
@@ -481,13 +704,55 @@ function AppContent() {
     viewModel.completedEntries.length > 0;
   const hasStarted = mission.attemptsUsed > 0 || hasProgress;
   const isCompleted = viewModel.isComplete || mission.completedAt != null;
-  const visiblePuzzleSummaries = useMemo(
-    () => puzzlePack.summaries.slice(0, VISIBLE_PUZZLE_COUNT),
-    [puzzlePack.summaries],
+  const todayKey = getTodayDateKey();
+  const completedPuzzleIds = useMemo(
+    () => getCompletedPuzzleIds(dateCardStates),
+    [dateCardStates],
   );
+  const dailyFreeSummary = useMemo(
+    () => getDailyFreePuzzleSummary(puzzlePack.summaries, todayKey),
+    [puzzlePack.summaries, todayKey],
+  );
+  const selectedPuzzleSummary = useMemo(
+    () =>
+      findPuzzleSummaryById(puzzlePack.summaries, puzzle.puzzleId) ??
+      createPuzzleSummary(puzzle),
+    [puzzle, puzzlePack.summaries],
+  );
+  const bonusCandidateSummary = useMemo(
+    () =>
+      getBonusPuzzleCandidateSummary({
+        completedPuzzleIds,
+        dailyFreeSummary,
+        puzzleSummaries: puzzlePack.summaries,
+        today: todayKey,
+      }),
+    [completedPuzzleIds, dailyFreeSummary, puzzlePack.summaries, todayKey],
+  );
+  const visiblePuzzleSummaries = useMemo(
+    () =>
+      uniquePuzzleSummaries(
+        [dailyFreeSummary, selectedPuzzleSummary].filter(
+          (summary): summary is PuzzleManifestItem => summary != null,
+        ),
+      ),
+    [dailyFreeSummary, selectedPuzzleSummary],
+  );
+  const bonusPuzzlePanelState: BonusPuzzlePanelState = {
+    candidateSummary: bonusCandidateSummary,
+    notice: 'Android 보상형 광고 연결 후 제공됩니다.',
+    status: isLoading
+      ? 'loading'
+      : bonusCandidateSummary != null
+      ? 'available'
+      : 'waiting',
+  };
   const boardCellSize = Math.max(
     32,
-    Math.min(48, Math.floor((width - (isWide ? 440 : 40)) / viewModel.cols.length)),
+    Math.min(
+      48,
+      Math.floor((width - (isWide ? 440 : 40)) / viewModel.cols.length),
+    ),
   );
 
   useEffect(() => {
@@ -502,10 +767,7 @@ function AppContent() {
         nextPuzzlePack = bundledPuzzlePack;
       }
 
-      const nextSummaries = nextPuzzlePack.summaries.slice(
-        0,
-        VISIBLE_PUZZLE_COUNT,
-      );
+      const nextSummaries = nextPuzzlePack.summaries;
       const initialPuzzleId = getInitialPuzzleId(nextSummaries);
       const [states, session] = await Promise.all([
         loadDateCardStates(nextSummaries),
@@ -652,53 +914,48 @@ function AppContent() {
     }
   }
 
-  function updateSelectedAnswer(value: string) {
-    const selectedEntry = viewModel.selectedEntry;
+  function applyAnswerSegment(
+    entry: PuzzleEntry,
+    value: string,
+    startCellKey = selectedCellKey,
+  ) {
+    const cells = getEntryCells(entry);
+    const startIndex = getEntryCellIndex(entry, startCellKey);
+    const nextLetters = getAnswerCommitLetters(
+      value,
+      cells.length - startIndex,
+    );
 
-    if (selectedEntry == null) {
+    if (nextLetters.length === 0) {
       return;
     }
 
-    const nextAnswer = normalizeAnswerInput(value, selectedEntry.answer.length);
-    const nextLetters = [...nextAnswer];
-    const cells = getEntryCells(selectedEntry);
-    const nextValues = {...cellValues};
+    const nextValues = { ...cellValues };
 
-    cells.forEach((cell, index) => {
-      const key = getCellKey(cell.row, cell.col);
-      const nextLetter = nextLetters[index];
+    nextLetters.forEach((letter, offset) => {
+      const cell = cells[startIndex + offset];
 
-      if (nextLetter == null) {
-        delete nextValues[key];
-      } else {
-        nextValues[key] = nextLetter;
+      if (cell != null) {
+        nextValues[getCellKey(cell.row, cell.col)] = letter;
       }
     });
 
     setCellValues(nextValues);
+    setSelectedCellKey(
+      getNextAnswerSlotCellKey(
+        entry,
+        nextValues,
+        startIndex,
+        nextLetters.length,
+      ),
+    );
 
-    if (nextAnswer === selectedEntry.answer) {
+    if (isEntryFilled(entry, nextValues)) {
       setNotice('정답입니다.');
       moveToNextUncompletedEntry(nextValues);
     } else {
-      setNotice(`${directionLabels[selectedEntry.direction]} 답을 입력 중입니다.`);
+      setNotice(`${directionLabels[entry.direction]} 답을 입력 중입니다.`);
     }
-  }
-
-  function checkSelectedAnswer() {
-    const selectedEntry = viewModel.selectedEntry;
-
-    if (selectedEntry == null) {
-      return;
-    }
-
-    if (viewModel.selectedAnswer === selectedEntry.answer) {
-      setNotice('정답입니다.');
-      moveToNextUncompletedEntry(cellValues);
-      return;
-    }
-
-    setNotice(`아직 맞지 않습니다. ${selectedEntry.answer.length}글자를 확인하세요.`);
   }
 
   function clearSelectedAnswer() {
@@ -709,7 +966,7 @@ function AppContent() {
     }
 
     setCellValues(previous => {
-      const nextValues = {...previous};
+      const nextValues = { ...previous };
       getEntryCells(selectedEntry).forEach(cell => {
         delete nextValues[getCellKey(cell.row, cell.col)];
       });
@@ -727,7 +984,9 @@ function AppContent() {
     }
 
     if (remainingHintCredits === 0) {
-      setNotice('무료 힌트를 모두 사용했습니다. iOS 광고 힌트는 아직 연결 전입니다.');
+      setNotice(
+        '무료 힌트를 모두 사용했습니다. 모바일 광고 힌트는 아직 연결 전입니다.',
+      );
       return;
     }
 
@@ -753,9 +1012,13 @@ function AppContent() {
     setHintCount(previous => previous + 1);
     setCellValues(nextValues);
     setSelectedCellKey(targetKey);
-    setNotice(`힌트 1개를 사용했습니다. 남은 힌트 ${remainingHintCredits - 1}개`);
+    setNotice(
+      `힌트 1개를 사용했습니다. 남은 힌트 ${remainingHintCredits - 1}개`,
+    );
 
-    if (getEntryAnswerValue(selectedEntry, nextValues) === selectedEntry.answer) {
+    if (
+      getEntryAnswerValue(selectedEntry, nextValues) === selectedEntry.answer
+    ) {
       moveToNextUncompletedEntry(nextValues);
     }
   }
@@ -769,6 +1032,30 @@ function AppContent() {
     setSelectedCellKey(getInitialEntryStartCellKey(puzzle));
     setNotice('진행 상황을 초기화했습니다.');
     clearStoredProgress(puzzle.puzzleId);
+  }
+
+  function clearAnswerCell(entry: PuzzleEntry, cellKey = selectedCellKey) {
+    const cells = getEntryCells(entry);
+    const selectedIndex = getEntryCellIndex(entry, cellKey);
+    const selectedKey = getEntryCellKeyAt(entry, selectedIndex);
+    const previousFilledIndex = cells
+      .slice(0, selectedIndex)
+      .map((cell, index) => ({ cell, index }))
+      .reverse()
+      .find(
+        ({ cell }) => cellValues[getCellKey(cell.row, cell.col)] != null,
+      )?.index;
+    const targetIndex =
+      cellValues[selectedKey] == null && previousFilledIndex != null
+        ? previousFilledIndex
+        : selectedIndex;
+    const targetKey = getEntryCellKeyAt(entry, targetIndex);
+    const nextValues = { ...cellValues };
+
+    delete nextValues[targetKey];
+    setCellValues(nextValues);
+    setSelectedCellKey(targetKey);
+    setNotice('선택한 칸을 비웠습니다.');
   }
 
   function startOrResumeMission() {
@@ -812,7 +1099,9 @@ function AppContent() {
     return (
       <View style={styles.header}>
         <View style={styles.headerText}>
-          {subtitle != null ? <Text style={styles.eyebrow}>{subtitle}</Text> : null}
+          {subtitle != null ? (
+            <Text style={styles.eyebrow}>{subtitle}</Text>
+          ) : null}
           <Text style={styles.title}>{title}</Text>
         </View>
         <View style={styles.progressBadge}>
@@ -828,7 +1117,8 @@ function AppContent() {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.dateList}>
+        contentContainerStyle={styles.dateList}
+      >
         {visiblePuzzleSummaries.map(summary => {
           const state = dateCardStates[summary.puzzleId];
           const isSelected = summary.puzzleId === puzzle.puzzleId;
@@ -844,7 +1134,8 @@ function AppContent() {
                 styles.dateCard,
                 isSelected && styles.dateCardSelected,
                 isDone && styles.dateCardCompleted,
-              ]}>
+              ]}
+            >
               <Text style={styles.dateCardDate}>{summary.date}</Text>
               <Text style={styles.dateCardMeta}>
                 {summary.metrics?.wordCount ?? '-'}단어 ·{' '}
@@ -866,30 +1157,56 @@ function AppContent() {
         {renderHeader('가로세로 낱말 퍼즐', puzzle.date)}
         {renderDateSelector()}
 
+        <View style={styles.policyPanel}>
+          <Text style={styles.policyTitle}>하루 1개 기본 공개</Text>
+          <Text style={styles.smallText}>
+            홈에는 오늘의 무료 퍼즐만 보여줍니다. 추가 퍼즐은 보너스 해금 흐름이
+            준비된 뒤 열 수 있습니다.
+          </Text>
+        </View>
+
         <View style={styles.summaryPanel}>
-          <Text style={styles.panelTitle}>오늘의 퍼즐</Text>
+          <Text style={styles.panelTitle}>오늘의 무료 퍼즐</Text>
           <Text style={styles.summaryText}>
             {puzzle.entries.length}개 단어 · {puzzle.gridSize}x{puzzle.gridSize}{' '}
-            보드 · {directionLabels[viewModel.selectedEntry?.direction ?? 'across']}{' '}
+            보드 ·{' '}
+            {directionLabels[viewModel.selectedEntry?.direction ?? 'across']}{' '}
             힌트부터 시작
           </Text>
           <View style={styles.statusGrid}>
-            <Metric label="시도" value={`${mission.attemptsUsed}/${DAILY_ATTEMPT_LIMIT}`} />
-            <Metric label="힌트" value={`${remainingHintCredits}/${totalHintCredits}`} />
-            <Metric label="완료 단어" value={`${viewModel.completedEntries.length}/${puzzle.entries.length}`} />
+            <Metric
+              label="시도"
+              value={`${mission.attemptsUsed}/${DAILY_ATTEMPT_LIMIT}`}
+            />
+            <Metric
+              label="힌트"
+              value={`${remainingHintCredits}/${totalHintCredits}`}
+            />
+            <Metric
+              label="완료 단어"
+              value={`${viewModel.completedEntries.length}/${puzzle.entries.length}`}
+            />
           </View>
           <View style={styles.actions}>
-            <Pressable onPress={startOrResumeMission} style={styles.primaryButton}>
+            <Pressable
+              onPress={startOrResumeMission}
+              style={styles.primaryButton}
+            >
               <Text style={styles.primaryButtonText}>
                 {hasStarted ? '이어 풀기' : '퍼즐 시작'}
               </Text>
             </Pressable>
-            <Pressable onPress={() => setRoute('history')} style={styles.secondaryButton}>
+            <Pressable
+              onPress={() => setRoute('history')}
+              style={styles.secondaryButton}
+            >
               <Text style={styles.secondaryButtonText}>기록</Text>
             </Pressable>
           </View>
           <Text style={styles.notice}>{notice}</Text>
         </View>
+
+        <BonusPuzzlePanel state={bonusPuzzlePanelState} />
 
         <View style={styles.previewPanel}>
           <Text style={styles.panelTitle}>첫 힌트</Text>
@@ -897,13 +1214,16 @@ function AppContent() {
             {viewModel.selectedEntry?.clue ?? '퍼즐 힌트가 없습니다.'}
           </Text>
           <Text style={styles.smallText}>
-            일부 힌트는 국립국어원 한국어기초사전 뜻풀이를 바탕으로 구성했습니다.
+            일부 힌트는 국립국어원 한국어기초사전 뜻풀이를 바탕으로
+            구성했습니다.
           </Text>
           <Text style={styles.smallText}>
             {puzzlePack.source === 'remote'
               ? '원격 퍼즐팩 기준'
               : '기본 퍼즐팩 기준'}
-            {puzzlePack.generatedAt != null ? ` · ${puzzlePack.generatedAt}` : ''}
+            {puzzlePack.generatedAt != null
+              ? ` · ${puzzlePack.generatedAt}`
+              : ''}
           </Text>
         </View>
       </ScrollView>
@@ -932,23 +1252,77 @@ function AppContent() {
                   onPress={() => selectCell(row, col)}
                   style={[
                     styles.cell,
-                    {height: boardCellSize, width: boardCellSize},
+                    { height: boardCellSize, width: boardCellSize },
                     isBlock && styles.cellBlock,
                     isCompletedCell && styles.cellCompleted,
                     isInSelectedEntry && styles.cellActive,
                     isSelected && styles.cellSelected,
-                  ]}>
+                  ]}
+                >
                   {!isBlock && startLabel != null ? (
                     <Text style={styles.cellNumber}>{startLabel}</Text>
                   ) : null}
                   {!isBlock ? (
-                    <Text style={styles.cellLetter}>{cellValues[key] ?? ''}</Text>
+                    <Text style={styles.cellLetter}>
+                      {cellValues[key] ?? ''}
+                    </Text>
                   ) : null}
                 </Pressable>
               );
             })}
           </View>
         ))}
+      </View>
+    );
+  }
+
+  function renderSelectedClues() {
+    const selectedEntry = viewModel.selectedEntry;
+
+    if (selectedEntry == null || selectedCellKey === '') {
+      return null;
+    }
+
+    const entries =
+      viewModel.cellEntries.get(selectedCellKey)?.filter(Boolean) ?? [];
+    const entriesWithSelected = entries.some(
+      entry => entry.id === selectedEntry.id,
+    )
+      ? entries
+      : [...entries, selectedEntry];
+
+    return (
+      <View style={styles.selectedClueList}>
+        {[...entriesWithSelected]
+          .sort(
+            (left, right) =>
+              (left.direction === 'across' ? 0 : 1) -
+              (right.direction === 'across' ? 0 : 1),
+          )
+          .map(entry => {
+            const isSelected = entry.id === selectedEntry.id;
+            const startLabel = viewModel.startLabels.get(
+              getCellKey(entry.row, entry.col),
+            );
+
+            return (
+              <Pressable
+                accessibilityRole="button"
+                key={entry.id}
+                onPress={() => selectEntry(entry, selectedCellKey)}
+                style={[
+                  styles.selectedClue,
+                  isSelected && styles.selectedClueActive,
+                ]}
+              >
+                <Text style={styles.selectedClueMeta}>
+                  {startLabel == null ? '' : `${startLabel}번 `}
+                  {directionLabels[entry.direction]} · {entry.answer.length}글자
+                </Text>
+                <Text style={styles.selectedClueText}>{entry.clue}</Text>
+              </Pressable>
+            );
+          })}
       </View>
     );
   }
@@ -963,31 +1337,39 @@ function AppContent() {
     return (
       <View style={styles.answerPanel}>
         <Text style={styles.clueMeta}>
-          {directionLabels[selectedEntry.direction]} · {selectedEntry.answer.length}
+          {directionLabels[selectedEntry.direction]} ·{' '}
+          {selectedEntry.answer.length}
           글자 · 힌트 {remainingHintCredits}개
         </Text>
         <Text style={styles.currentClue}>{selectedEntry.clue}</Text>
-        <TextInput
-          autoCapitalize="none"
-          autoCorrect={false}
-          onChangeText={updateSelectedAnswer}
-          placeholder="정답 입력"
-          placeholderTextColor="#8a94a6"
-          style={styles.answerInput}
-          value={viewModel.selectedAnswer}
+        <AnswerSlotInput
+          applyAnswerSegment={applyAnswerSegment}
+          cellValues={cellValues}
+          clearAnswerCell={clearAnswerCell}
+          entry={selectedEntry}
+          selectedCellKey={selectedCellKey}
+          selectEntry={selectEntry}
         />
         <View style={styles.actions}>
-          <Pressable onPress={checkSelectedAnswer} style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>정답 확인</Text>
+          <Pressable onPress={revealLetter} style={styles.primaryButton}>
+            <Text style={styles.primaryButtonText}>힌트</Text>
           </Pressable>
-          <Pressable onPress={revealLetter} style={styles.secondaryButton}>
-            <Text style={styles.secondaryButtonText}>힌트</Text>
+          <Pressable
+            onPress={() => clearAnswerCell(selectedEntry)}
+            style={styles.secondaryButton}
+          >
+            <Text style={styles.secondaryButtonText}>한 칸 지우기</Text>
           </Pressable>
-          <Pressable onPress={clearSelectedAnswer} style={styles.secondaryButton}>
-            <Text style={styles.secondaryButtonText}>지우기</Text>
+          <Pressable
+            onPress={clearSelectedAnswer}
+            style={styles.secondaryButton}
+          >
+            <Text style={styles.secondaryButtonText}>전체 지우기</Text>
           </Pressable>
         </View>
-        <Text style={styles.notice}>{notice}</Text>
+        <View style={styles.noticeRow}>
+          <Text style={styles.notice}>{notice}</Text>
+        </View>
       </View>
     );
   }
@@ -997,7 +1379,9 @@ function AppContent() {
       <View style={styles.clueList}>
         {(['across', 'down'] as Direction[]).map(direction => (
           <View key={direction} style={styles.clueSection}>
-            <Text style={styles.clueSectionTitle}>{directionLabels[direction]}</Text>
+            <Text style={styles.clueSectionTitle}>
+              {directionLabels[direction]}
+            </Text>
             {puzzle.entries
               .filter(entry => entry.direction === direction)
               .map(entry => {
@@ -1005,7 +1389,8 @@ function AppContent() {
                   getCellKey(entry.row, entry.col),
                 );
                 const isSelected = entry.id === viewModel.selectedEntry?.id;
-                const isDone = getEntryAnswerValue(entry, cellValues) === entry.answer;
+                const isDone =
+                  getEntryAnswerValue(entry, cellValues) === entry.answer;
 
                 return (
                   <Pressable
@@ -1015,7 +1400,8 @@ function AppContent() {
                       styles.clueItem,
                       isSelected && styles.clueItemSelected,
                       isDone && styles.clueItemCompleted,
-                    ]}>
+                    ]}
+                  >
                     <Text style={styles.clueItemNumber}>{startLabel}</Text>
                     <Text style={styles.clueItemText}>{entry.clue}</Text>
                   </Pressable>
@@ -1031,20 +1417,31 @@ function AppContent() {
     return (
       <View style={[styles.playScreen, isWide && styles.playScreenWide]}>
         <View style={[styles.boardPane, isWide && styles.boardPaneWide]}>
-          {renderHeader('오늘의 퍼즐', puzzle.date)}
+          {renderHeader(
+            '퍼즐 풀기',
+            `${puzzle.date} · 도전 ${mission.attemptsUsed}/${mission.maxAttempts}`,
+          )}
           {renderBoard()}
+          {renderSelectedClues()}
           {!isWide ? renderAnswerPanel() : null}
         </View>
         <ScrollView
           style={[styles.sidePane, isWide && styles.sidePaneWide]}
-          contentContainerStyle={styles.sidePaneContent}>
+          contentContainerStyle={styles.sidePaneContent}
+        >
           {isWide ? renderAnswerPanel() : null}
           <View style={styles.utilityRow}>
-            <Pressable onPress={() => setRoute('home')} style={styles.secondaryButton}>
+            <Pressable
+              onPress={() => setRoute('home')}
+              style={styles.secondaryButton}
+            >
               <Text style={styles.secondaryButtonText}>홈</Text>
             </Pressable>
-            <Pressable onPress={clearProgress} style={styles.secondaryButton}>
-              <Text style={styles.secondaryButtonText}>초기화</Text>
+            <Pressable
+              onPress={clearSelectedAnswer}
+              style={styles.secondaryButton}
+            >
+              <Text style={styles.secondaryButtonText}>지우기</Text>
             </Pressable>
           </View>
           {renderClueList()}
@@ -1067,7 +1464,10 @@ function AppContent() {
             <Metric label="남은 시도" value={`${remainingAttempts}회`} />
           </View>
           <View style={styles.actions}>
-            <Pressable onPress={startOrResumeMission} style={styles.primaryButton}>
+            <Pressable
+              onPress={startOrResumeMission}
+              style={styles.primaryButton}
+            >
               <Text style={styles.primaryButtonText}>
                 {isCompleted ? '보드 보기' : '계속 풀기'}
               </Text>
@@ -1077,8 +1477,10 @@ function AppContent() {
               onPress={restartMissionAttempt}
               style={[
                 styles.secondaryButton,
-                (isCompleted || remainingAttempts === 0) && styles.disabledButton,
-              ]}>
+                (isCompleted || remainingAttempts === 0) &&
+                  styles.disabledButton,
+              ]}
+            >
               <Text style={styles.secondaryButtonText}>다시 풀기</Text>
             </Pressable>
           </View>
@@ -1102,8 +1504,10 @@ function AppContent() {
               }}
               style={[
                 styles.historyItem,
-                summary.puzzleId === puzzle.puzzleId && styles.historyItemSelected,
-              ]}>
+                summary.puzzleId === puzzle.puzzleId &&
+                  styles.historyItemSelected,
+              ]}
+            >
               <View>
                 <Text style={styles.historyTitle}>{summary.date}</Text>
                 <Text style={styles.historyMeta}>
@@ -1115,17 +1519,23 @@ function AppContent() {
                 {state?.completedAt != null
                   ? '완료'
                   : state?.hasProgress
-                    ? '진행 중'
-                    : '대기'}
+                  ? '진행 중'
+                  : '대기'}
               </Text>
             </Pressable>
           );
         })}
         <View style={styles.actions}>
-          <Pressable onPress={() => setRoute('home')} style={styles.secondaryButton}>
+          <Pressable
+            onPress={() => setRoute('home')}
+            style={styles.secondaryButton}
+          >
             <Text style={styles.secondaryButtonText}>홈으로</Text>
           </Pressable>
-          <Pressable onPress={() => setRoute('license')} style={styles.secondaryButton}>
+          <Pressable
+            onPress={() => setRoute('license')}
+            style={styles.secondaryButton}
+          >
             <Text style={styles.secondaryButtonText}>출처</Text>
           </Pressable>
         </View>
@@ -1147,7 +1557,10 @@ function AppContent() {
             Creative Commons Attribution-ShareAlike 2.0 Korea 조건을 따릅니다.
           </Text>
         </View>
-        <Pressable onPress={() => setRoute('home')} style={styles.secondaryButton}>
+        <Pressable
+          onPress={() => setRoute('home')}
+          style={styles.secondaryButton}
+        >
           <Text style={styles.secondaryButtonText}>홈으로</Text>
         </Pressable>
       </ScrollView>
@@ -1171,18 +1584,163 @@ function AppContent() {
       <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.keyboardAvoidingView}>
+        style={styles.keyboardAvoidingView}
+      >
         {route === 'today'
           ? renderToday()
           : route === 'result'
-            ? renderResult()
-            : route === 'history'
-              ? renderHistory()
-              : route === 'license'
-                ? renderLicense()
-                : renderHome()}
+          ? renderResult()
+          : route === 'history'
+          ? renderHistory()
+          : route === 'license'
+          ? renderLicense()
+          : renderHome()}
       </KeyboardAvoidingView>
     </SafeAreaView>
+  );
+}
+
+function BonusPuzzlePanel({ state }: { state: BonusPuzzlePanelState }) {
+  const summary = state.candidateSummary;
+  const title =
+    state.status === 'available'
+      ? '새 퍼즐이 도착했어요'
+      : state.status === 'loading'
+      ? '보너스 퍼즐 확인 중'
+      : '다음 보너스 퍼즐을 준비 중이에요';
+  const description =
+    state.status === 'available'
+      ? `${formatBonusPuzzleMeta(summary)} · 광고를 보면 하나 더 풀 수 있어요.`
+      : state.status === 'loading'
+      ? '원격 퍼즐팩을 확인하고 있습니다.'
+      : '오늘 공개된 추가 퍼즐이 생기면 여기에 표시됩니다.';
+
+  return (
+    <View
+      style={[
+        styles.bonusPanel,
+        state.status === 'available' && styles.bonusPanelAvailable,
+      ]}
+    >
+      <View style={styles.bonusPanelText}>
+        <Text style={styles.bonusEyebrow}>하나 더 풀기</Text>
+        <Text style={styles.bonusTitle}>{title}</Text>
+        <Text style={styles.smallText}>{description}</Text>
+        <Text style={styles.bonusNotice}>{state.notice}</Text>
+      </View>
+      {state.status === 'available' ? (
+        <Pressable
+          disabled
+          style={[styles.primaryButton, styles.disabledButton]}
+        >
+          <Text style={styles.primaryButtonText}>광고 연결 대기</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+type AnswerSlotInputProps = {
+  applyAnswerSegment: (
+    entry: PuzzleEntry,
+    value: string,
+    startCellKey?: string,
+  ) => void;
+  cellValues: Record<string, string>;
+  clearAnswerCell: (entry: PuzzleEntry, cellKey?: string) => void;
+  entry: PuzzleEntry;
+  selectedCellKey: string;
+  selectEntry: (entry: PuzzleEntry, cellKey?: string) => void;
+};
+
+function AnswerSlotInput({
+  applyAnswerSegment,
+  cellValues,
+  clearAnswerCell,
+  entry,
+  selectedCellKey,
+  selectEntry,
+}: AnswerSlotInputProps) {
+  const inputRef = useRef<React.ElementRef<typeof TextInput>>(null);
+  const [inputValue, setInputValue] = useState('');
+  const cells = useMemo(() => getEntryCells(entry), [entry]);
+  const slotKeys = useMemo(
+    () => cells.map(cell => getCellKey(cell.row, cell.col)),
+    [cells],
+  );
+  const selectedIndex = Math.max(0, slotKeys.indexOf(selectedCellKey));
+  const activeCellKey = slotKeys[selectedIndex] ?? getEntryStartCellKey(entry);
+
+  useEffect(() => {
+    setInputValue('');
+  }, [activeCellKey, entry.id]);
+
+  function focusInput() {
+    inputRef.current?.focus();
+  }
+
+  function selectSlot(cellKey: string) {
+    selectEntry(entry, cellKey);
+    focusInput();
+  }
+
+  function handleChangeText(value: string) {
+    const nextLetters = getAnswerCommitLetters(
+      value,
+      cells.length - getEntryCellIndex(entry, activeCellKey),
+    );
+
+    if (nextLetters.length === 0) {
+      setInputValue(value);
+      return;
+    }
+
+    applyAnswerSegment(entry, nextLetters.join(''), activeCellKey);
+    setInputValue('');
+  }
+
+  return (
+    <Pressable onPress={focusInput} style={styles.answerSlotInput}>
+      <View style={styles.answerSlotGrid}>
+        {slotKeys.map(key => {
+          const displayValue = cellValues[key] ?? '';
+          const isActive = key === activeCellKey;
+
+          return (
+            <Pressable
+              accessibilityRole="button"
+              key={key}
+              onPress={() => selectSlot(key)}
+              style={[
+                styles.answerSlot,
+                displayValue !== '' && styles.answerSlotFilled,
+                isActive && styles.answerSlotActive,
+              ]}
+            >
+              <Text style={styles.answerSlotText}>{displayValue}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      <TextInput
+        autoCapitalize="none"
+        autoCorrect={false}
+        caretHidden
+        contextMenuHidden
+        importantForAutofill="no"
+        maxLength={entry.answer.length}
+        onChangeText={handleChangeText}
+        onKeyPress={event => {
+          if (event.nativeEvent.key === 'Backspace' && inputValue === '') {
+            clearAnswerCell(entry, activeCellKey);
+          }
+        }}
+        ref={inputRef}
+        showSoftInputOnFocus
+        style={styles.answerSlotNativeInput}
+        value={inputValue}
+      />
+    </Pressable>
   );
 }
 
@@ -1218,17 +1776,10 @@ function usePuzzleViewModel(
     () => getCompletedEntries(puzzle.entries, cellValues),
     [cellValues, puzzle.entries],
   );
-  const selectedAnswer = useMemo(
-    () =>
-      selectedEntry == null
-        ? ''
-        : getEntryAnswerValue(selectedEntry, cellValues),
-    [cellValues, selectedEntry],
-  );
   const rows = useMemo(
     () =>
       Array.from(
-        {length: bounds.maxRow - bounds.minRow + 1},
+        { length: bounds.maxRow - bounds.minRow + 1 },
         (_, index) => bounds.minRow + index,
       ),
     [bounds],
@@ -1236,7 +1787,7 @@ function usePuzzleViewModel(
   const cols = useMemo(
     () =>
       Array.from(
-        {length: bounds.maxCol - bounds.minCol + 1},
+        { length: bounds.maxCol - bounds.minCol + 1 },
         (_, index) => bounds.minCol + index,
       ),
     [bounds],
@@ -1257,9 +1808,9 @@ function usePuzzleViewModel(
     cols,
     completedEntries,
     isComplete:
-      puzzle.entries.length > 0 && completedEntries.length === puzzle.entries.length,
+      puzzle.entries.length > 0 &&
+      completedEntries.length === puzzle.entries.length,
     rows,
-    selectedAnswer,
     selectedCells,
     selectedEntry,
     startLabels,
@@ -1267,7 +1818,7 @@ function usePuzzleViewModel(
   };
 }
 
-function Metric({label, value}: {label: string; value: string}) {
+function Metric({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.metric}>
       <Text style={styles.metricValue}>{value}</Text>
@@ -1291,16 +1842,6 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 12,
   },
-  answerInput: {
-    borderColor: '#cbd5e1',
-    borderRadius: 8,
-    borderWidth: 1,
-    color: '#0f172a',
-    fontSize: 22,
-    fontWeight: '700',
-    minHeight: 48,
-    paddingHorizontal: 12,
-  },
   answerPanel: {
     backgroundColor: '#ffffff',
     borderColor: '#dbe4ee',
@@ -1308,6 +1849,73 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: 8,
     padding: 14,
+  },
+  answerSlot: {
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderColor: '#cbd5e1',
+    borderRadius: 8,
+    borderWidth: 1,
+    height: 42,
+    justifyContent: 'center',
+    width: 42,
+  },
+  answerSlotActive: {
+    backgroundColor: '#ccfbf1',
+    borderColor: '#0f766e',
+  },
+  answerSlotFilled: {
+    backgroundColor: '#ffffff',
+  },
+  answerSlotGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 7,
+  },
+  answerSlotInput: {
+    minHeight: 46,
+    position: 'relative',
+  },
+  answerSlotNativeInput: {
+    height: 1,
+    opacity: 0,
+    position: 'absolute',
+    width: 1,
+  },
+  answerSlotText: {
+    color: '#0f172a',
+    fontSize: 21,
+    fontWeight: '900',
+  },
+  bonusEyebrow: {
+    color: '#0f766e',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  bonusNotice: {
+    color: '#64748b',
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 18,
+  },
+  bonusPanel: {
+    backgroundColor: '#ffffff',
+    borderColor: '#dbe4ee',
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 12,
+    padding: 14,
+  },
+  bonusPanelAvailable: {
+    borderColor: '#99f6e4',
+  },
+  bonusPanelText: {
+    gap: 5,
+  },
+  bonusTitle: {
+    color: '#0f172a',
+    fontSize: 17,
+    fontWeight: '900',
   },
   board: {
     alignSelf: 'center',
@@ -1539,6 +2147,9 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     minHeight: 18,
   },
+  noticeRow: {
+    minHeight: 18,
+  },
   panelTitle: {
     color: '#0f172a',
     fontSize: 18,
@@ -1551,6 +2162,19 @@ const styles = StyleSheet.create({
   },
   playScreenWide: {
     flexDirection: 'row',
+  },
+  policyPanel: {
+    backgroundColor: '#f8fafc',
+    borderColor: '#dbe4ee',
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 6,
+    padding: 12,
+  },
+  policyTitle: {
+    color: '#0f172a',
+    fontSize: 15,
+    fontWeight: '900',
   },
   previewPanel: {
     backgroundColor: '#ffffff',
@@ -1609,6 +2233,33 @@ const styles = StyleSheet.create({
     color: '#0f172a',
     fontSize: 14,
     fontWeight: '900',
+  },
+  selectedClue: {
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  selectedClueActive: {
+    backgroundColor: '#ecfdf5',
+    borderColor: '#0f766e',
+  },
+  selectedClueList: {
+    gap: 8,
+  },
+  selectedClueMeta: {
+    color: '#0f766e',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  selectedClueText: {
+    color: '#0f172a',
+    fontSize: 15,
+    fontWeight: '800',
+    lineHeight: 21,
   },
   sidePane: {
     flex: 1,
