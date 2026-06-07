@@ -86,6 +86,8 @@ const tag = args.tag ? release.tag : `v${release.version}`;
 const versionCode = androidVersionCode(release);
 
 writeOutput({
+  apple_build_number: versionCode,
+  apple_marketing_version: release.version,
   android_version_code: versionCode,
   release_name: tag,
   tag,
@@ -93,5 +95,5 @@ writeOutput({
 });
 
 console.log(
-  `Resolved release version: ${release.version} (${tag}), Android versionCode ${versionCode}`,
+  `Resolved release version: ${release.version} (${tag}), Android versionCode ${versionCode}, Apple build ${versionCode}`,
 );

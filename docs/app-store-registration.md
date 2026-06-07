@@ -12,7 +12,7 @@ npm run check:app-store
 
 ## 현재 판정
 
-현재 App Store 등록 및 론칭 준비는 `blocked`다. `apps/mobile` iOS 프로젝트와 unsigned Release build는 확인됐지만, 아직 운영 퍼즐 데이터 연결, App Store 등록값 확정, 스크린샷, App Store signing, App Store Connect 수동 gate가 완료되지 않았다.
+현재 App Store 등록 및 론칭 준비는 `blocked`다. `apps/mobile` iOS 프로젝트, unsigned Release build, GitHub Actions TestFlight 업로드 workflow는 준비됐지만, 아직 운영 퍼즐 데이터 연결, App Store Connect 등록값 확정, 스크린샷, Apple signing secret 등록, App Store Connect 수동 gate가 완료되지 않았다.
 
 ```mermaid
 flowchart TD
@@ -22,6 +22,8 @@ flowchart TD
   Assets["app-store assets/screenshots"] --> Listing["App Store Connect listing"]
   Checker --> Console["Manual App Store Connect gates"]
   Archive --> Upload["TestFlight/App Store upload"]
+  Workflow[".github/workflows/deploy-app-store.yml"] --> Archive
+  Workflow --> Upload
 ```
 
 ## 현재 확정값
@@ -32,17 +34,20 @@ flowchart TD
 | 앱 유형 | `game` |
 | 가격 | `free` |
 | 고객 문의 이메일 | `cs@seorilabs.com` |
+| Bundle ID | `com.seorilabs.crosswordpuzzle` |
+| SKU | `crossword-puzzle-app` |
 | 광고 | `no` |
 | 추적/ATT | 현재 native mobile 기준 `no` 후보 |
 | Game Center | `no` |
 | CocoaPods | `bundle exec pod install` 완료 |
 | unsigned iOS Release build | `CODE_SIGNING_ALLOWED=NO build` 통과 |
+| TestFlight CI | `.github/workflows/deploy-app-store.yml` 준비 |
+| App Store profile | `AppStore Crossword Puzzle Profile` secret 등록 |
 
 ## 확정 필요
 
 | 항목 | 후보/메모 |
 | --- | --- |
-| Bundle ID | 후보 `com.seorilabs.crosswordpuzzle`. App Store Connect 생성 전 최종 확인 필요 |
 | Support URL | 후보 `https://www.seorilabs.com/support`. 실제 페이지 존재와 앱별 문의 동선 확인 필요 |
 | Privacy Policy URL | 후보 `https://www.seorilabs.com/privacy`. 현재 앱의 로컬 저장/향후 Firebase 사용 여부와 일치 확인 필요 |
 | App Privacy | 현재 native mobile은 로그인/결제/서버 저장/광고 SDK 없음. 운영 포팅 뒤 재확인 필요 |
@@ -51,7 +56,7 @@ flowchart TD
 | Export Compliance | 표준 OS/HTTPS 외 비표준 암호화 없음 후보. `Info.plist` 반영 및 콘솔 답변 필요 |
 | DSA/trader | EU 배포/조직 계정/수익화 정책 기준 확인 필요 |
 | Review contact | 이름/전화번호 확정 필요 |
-| App Store Connect app shell | 수동 생성 필요 |
+| GitHub Actions secrets | Apple Distribution 인증서, App Store Connect API key 등록 필요 |
 | TestFlight | 내부 테스트 그룹/빌드 선택 필요 |
 
 ## 등록 문구
@@ -96,3 +101,4 @@ flowchart TD
 - App Store Connect upload는 build accepted/processing까지의 의미이며, 버전 빌드 선택과 최종 심사 제출은 별도 gate다.
 - iPad를 계속 지원하면 iPad screenshot과 iPad AppIcon slot까지 준비해야 한다. iPad를 출시 대상에서 뺄 경우 Xcode `TARGETED_DEVICE_FAMILY`부터 바꿔야 한다.
 - 향후 Firebase Analytics/AdMob을 `apps/mobile`에 붙이면 `PrivacyInfo.xcprivacy`, App Store Connect privacy 답변, ATT/IDFA 정책을 다시 갱신해야 한다.
+- 2026-04-28 이후 App Store Connect 업로드는 Xcode 26/iOS 26 SDK 이상이 필요하므로 workflow는 `macos-26` runner와 SDK major check를 사용한다.
