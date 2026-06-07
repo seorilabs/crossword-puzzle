@@ -289,7 +289,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_STYLE = Manual;
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Distribution";
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "$(APPLE_TEAM_ID)";
 				INFOPLIST_FILE = CrosswordPuzzleMobile/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -304,6 +307,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.seorilabs.crosswordpuzzle;
 				PRODUCT_NAME = CrosswordPuzzleMobile;
+				PROVISIONING_PROFILE_SPECIFIER = "$(IOS_PROVISIONING_PROFILE_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";

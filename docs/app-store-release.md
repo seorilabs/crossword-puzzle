@@ -2,7 +2,7 @@
 
 ## 현재 상태
 
-`crossword-puzzle`의 App Store 릴리스는 준비 시작 단계다. 현재 목표는 등록값과 iOS build gate를 repo에 고정하고, 이후 App Store Connect 콘솔 작업과 archive/upload를 진행하는 것이다.
+`crossword-puzzle`의 App Store 릴리스는 GitHub Actions 기반 TestFlight 업로드 체계를 갖춘 상태다. 실제 업로드는 Apple signing secrets, App Store Connect API key, App Store Connect app shell/profile 준비가 끝난 뒤 `.github/workflows/deploy-app-store.yml`에서 실행한다.
 
 ## 1. 로컬 점검
 
@@ -67,7 +67,7 @@ xcodebuild \
 
 ## 5. Archive
 
-Signing 값이 확정된 뒤 archive한다.
+로컬 archive는 signing 값이 확정된 뒤 실행한다. CI에서는 workflow가 같은 build setting을 주입한다.
 
 ```bash
 xcodebuild \
@@ -76,10 +76,59 @@ xcodebuild \
   -configuration Release \
   -destination 'generic/platform=iOS' \
   -archivePath tmp/crossword-puzzle.xcarchive \
+  MARKETING_VERSION=1.0.0 \
+  CURRENT_PROJECT_VERSION=1000000 \
+  DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+  CODE_SIGN_STYLE=Manual \
+  CODE_SIGN_IDENTITY="Apple Distribution" \
+  PROVISIONING_PROFILE_SPECIFIER="$IOS_PROVISIONING_PROFILE_NAME" \
   archive
 ```
 
-## 6. Export/Upload
+## 6. GitHub Actions TestFlight 업로드
+
+Workflow:
+
+```text
+.github/workflows/deploy-app-store.yml
+```
+
+Trigger:
+
+- `vX.Y.Z` 태그 push
+- 수동 실행 `workflow_dispatch` + `release_tag=vX.Y.Z`
+
+릴리스 버전:
+
+- `MARKETING_VERSION`: `vX.Y.Z`에서 `X.Y.Z`
+- `CURRENT_PROJECT_VERSION`: `major * 1000000 + minor * 1000 + patch`
+
+필수 GitHub Secrets/Variables:
+
+| 이름 | 용도 |
+| --- | --- |
+| `APPLE_TEAM_ID` | Team ID. secret 또는 repository variable |
+| `APPLE_DISTRIBUTION_CERTIFICATE_BASE64` | Apple Distribution `.p12` base64 |
+| `APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD` | `.p12` 비밀번호 |
+| `APPLE_PROVISIONING_PROFILE_BASE64` | App Store provisioning profile `.mobileprovision` base64 |
+| `APPLE_KEYCHAIN_PASSWORD` | CI 임시 keychain 비밀번호 |
+| `APP_STORE_CONNECT_API_KEY_ID` | App Store Connect API key ID |
+| `APP_STORE_CONNECT_ISSUER_ID` | App Store Connect issuer ID |
+| `APP_STORE_CONNECT_PRIVATE_KEY_BASE64` | `AuthKey_*.p8` base64 |
+
+2026-06-07 확인 기준, `seorilabs/crossword-puzzle` GitHub repo에는 `app-store` environment가 생성되어 있고 TestFlight 업로드에 필요한 Apple signing/App Store Connect environment secrets와 `APPLE_TEAM_ID=HCDUXX4Z3X` variable이 등록되어 있다. 남은 항목은 App Store Connect 정책 답변, 스크린샷, TestFlight build upload/processing/build selection이다.
+
+Workflow는 profile을 복원한 뒤 다음을 검증한다.
+
+- profile Team ID가 `APPLE_TEAM_ID`와 일치
+- profile application identifier가 `com.seorilabs.crosswordpuzzle` 또는 wildcard와 일치
+- `get-task-allow=false`
+- device 목록이 없는 App Store profile
+- Apple Distribution signing identity import 성공
+
+업로드는 `xcodebuild -exportArchive`와 `destination=upload`, `method=app-store-connect`로 수행한다. 업로드 성공은 App Store Connect에서 build processing이 시작됐다는 뜻이며, TestFlight 그룹 선택/빌드 선택/최종 심사 제출은 별도 gate다.
+
+## 7. Export/Upload 로컬 참고
 
 `app-store/export-options.plist`는 signing 확정 후 만든다. Export method는 App Store Connect upload 기준으로 `app-store-connect`를 사용한다.
 
@@ -90,6 +139,6 @@ xcodebuild \
 - TestFlight internal testing setup
 - final Submit for Review
 
-## 7. 남은 blocker
+## 8. 남은 blocker
 
 남은 blocker는 `npm run check:app-store`와 `app-store/app-store.config.json.manualGates`를 기준으로 관리한다.

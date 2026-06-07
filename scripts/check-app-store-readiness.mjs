@@ -284,6 +284,31 @@ if (config == null) {
     pass("iOS CocoaPods 설치 산출물이 있습니다.");
   }
 
+  const automationWorkflow = valueAt(config, "automation.workflow");
+  if (isConcrete(automationWorkflow)) {
+    checkPath("App Store GitHub Actions workflow", automationWorkflow);
+  } else {
+    warn("App Store GitHub Actions workflow가 config에 기록되지 않았습니다.");
+  }
+
+  for (const path of [
+    "automation.appleTeamIdSecretOrVariable",
+    "automation.iosDistributionCertificateBase64Secret",
+    "automation.iosDistributionCertificatePasswordSecret",
+    "automation.iosProvisioningProfileBase64Secret",
+    "automation.appleKeychainPasswordSecret",
+    "automation.appStoreConnectApiKeyIdSecret",
+    "automation.appStoreConnectIssuerIdSecret",
+    "automation.appStoreConnectPrivateKeyBase64Secret",
+  ]) {
+    const value = valueAt(config, path);
+    if (isConcrete(value)) {
+      pass(`${path} 이름이 기록되어 있습니다.`, value);
+    } else {
+      warn(`${path} 이름이 기록되지 않았습니다.`);
+    }
+  }
+
   for (const [gate, value] of Object.entries(config.manualGates ?? {})) {
     if (!isConcrete(value)) {
       fail(`수동 App Store Connect gate가 남아 있습니다: ${gate}`, String(value));

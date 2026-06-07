@@ -1,14 +1,15 @@
 {
-  "bundleId": "확정 필요",
-  "suggestedBundleId": "com.seorilabs.crosswordpuzzle",
+  "bundleId": "com.seorilabs.crosswordpuzzle",
   "defaultLanguage": "ko-KR",
-  "sku": "crossword-puzzle",
+  "sku": "crossword-puzzle-app",
   "platform": "ios",
   "appType": "game",
   "freeOrPaid": "free",
   "version": {
     "marketingVersion": "1.0",
-    "buildNumber": "1"
+    "buildNumber": "1",
+    "ciSource": "release_tag",
+    "ciBuildNumberRule": "major * 1000000 + minor * 1000 + patch"
   },
   "storeListing": {
     "appName": {
@@ -79,9 +80,9 @@
     "privacyManifest": "apps/mobile/ios/CrosswordPuzzleMobile/PrivacyInfo.xcprivacy",
     "appIconSet": "apps/mobile/ios/CrosswordPuzzleMobile/Images.xcassets/AppIcon.appiconset",
     "targetedDeviceFamily": "1,2",
-    "teamId": "확정 필요",
+    "teamId": "HCDUXX4Z3X",
     "signingIdentity": "Apple Distribution",
-    "provisioningProfileSpecifier": "확정 필요",
+    "provisioningProfileSpecifier": "AppStore Crossword Puzzle Profile",
     "archivePath": "tmp/crossword-puzzle.xcarchive",
     "exportOptionsPlist": "app-store/export-options.plist"
   },
@@ -90,8 +91,23 @@
     "externalTesting": "not planned",
     "betaReviewNotes": "확정 필요"
   },
+  "automation": {
+    "workflow": ".github/workflows/deploy-app-store.yml",
+    "runner": "macos-26",
+    "xcodeSdkRequirement": "Xcode 26 / iOS 26 SDK 이상",
+    "releaseRef": "vX.Y.Z tag",
+    "bundleId": "com.seorilabs.crosswordpuzzle",
+    "appleTeamIdSecretOrVariable": "APPLE_TEAM_ID",
+    "iosDistributionCertificateBase64Secret": "APPLE_DISTRIBUTION_CERTIFICATE_BASE64",
+    "iosDistributionCertificatePasswordSecret": "APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD",
+    "iosProvisioningProfileBase64Secret": "APPLE_PROVISIONING_PROFILE_BASE64",
+    "appleKeychainPasswordSecret": "APPLE_KEYCHAIN_PASSWORD",
+    "appStoreConnectApiKeyIdSecret": "APP_STORE_CONNECT_API_KEY_ID",
+    "appStoreConnectIssuerIdSecret": "APP_STORE_CONNECT_ISSUER_ID",
+    "appStoreConnectPrivateKeyBase64Secret": "APP_STORE_CONNECT_PRIVATE_KEY_BASE64"
+  },
   "manualGates": {
-    "appStoreConnectAppShell": "확정 필요",
+    "appStoreConnectAppShell": "created",
     "appPrivacyAnswers": "확정 필요",
     "ageRatingQuestionnaire": "확정 필요",
     "reviewContact": "확정 필요",
