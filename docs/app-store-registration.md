@@ -59,6 +59,41 @@ flowchart TD
 | Review contact | 이름/전화번호 확정 필요 |
 | TestFlight | build processing 확인, 내부 테스트 그룹/빌드 선택 필요 |
 
+## App Privacy 답변 가이드
+
+현재 `apps/mobile` App Store 앱 기준 추천 답변은 `No Data Collected`다. App Store Connect에 실제 입력하기 전까지 `appPrivacyAnswers` gate는 `확정 필요`로 유지한다.
+
+근거:
+
+- Apple은 앱과 통합한 third-party partner가 수집하는 데이터까지 답변해야 한다고 안내한다.
+- Apple 기준 `Collect`는 기기 밖으로 전송되어 개발자 또는 third-party partner가 실시간 요청 처리에 필요한 시간보다 오래 접근 가능한 상태가 되는 것을 뜻한다.
+- 현재 native iOS 앱은 `AsyncStorage`로 퍼즐 진행 상태, 날짜별 미션 상태, 힌트 사용 횟수를 기기에 저장한다.
+- 현재 native iOS 앱은 Firebase Hosting의 공개 퍼즐 JSON을 다운로드하지만, 사용자의 풀이/진행/힌트/완료 이벤트를 서버로 업로드하지 않는다.
+- 현재 native mobile dependency에는 Firebase native SDK, AdMob, Crashlytics, Analytics, 로그인, 결제, tracking SDK가 없다.
+- `PrivacyInfo.xcprivacy`는 `NSPrivacyCollectedDataTypes=[]`, `NSPrivacyTracking=false`다.
+- 2026-06-07 `gcloud logging` 조회 기준 Firebase Hosting request log entry는 확인되지 않았고, 기본 logging sink만 확인됐다.
+
+추천 답변:
+
+| App Store Connect 항목 | 답변 |
+| --- | --- |
+| 이 앱에서 데이터를 수집합니까? | `아니요` / `No Data Collected` |
+| 수집 데이터 유형 | 선택 없음 |
+| 사용자에게 연결된 데이터 | 해당 없음 |
+| 추적에 사용되는 데이터 | `아니요` |
+| Privacy Choices URL | 비워둠 |
+
+주의:
+
+- Firebase Hosting request log를 Cloud Logging/BigQuery 등으로 연결해 IP, request URL, user agent, city 같은 요청 데이터를 보관/분석하면 이 답변을 다시 검토해야 한다.
+- native Firebase Analytics/Remote Config/Crashlytics/Performance, AdMob, App Check, 인증, 결제, Game Center, 리더보드, 서버 저장, 고객지원 폼, 사용자 생성 콘텐츠를 추가하면 App Privacy 답변과 `PrivacyInfo.xcprivacy`를 다시 갱신한다.
+- App Privacy 답변은 `PrivacyInfo.xcprivacy`를 대체하지 않고, 둘 다 현재 데이터 처리와 일치해야 한다.
+
+참고:
+
+- Apple App Privacy Details: https://developer.apple.com/app-store/app-privacy-details/
+- Firebase Hosting request logs: https://firebase.google.com/docs/hosting/web-request-logs-and-metrics
+
 ## 연령등급 설문 답변 가이드
 
 현재 `apps/mobile` App Store 앱 기준 추천 답변이다. App Store Connect에 실제 입력하기 전까지 `ageRatingQuestionnaire` gate는 `확정 필요`로 유지한다.

@@ -46,6 +46,38 @@
     "privacyPolicyUrl": "확정 필요",
     "suggestedPrivacyPolicyUrl": "https://www.seorilabs.com/privacy",
     "appPrivacy": "확정 필요",
+    "appPrivacyGuidance": {
+      "status": "recommended answers prepared; App Store Connect input pending",
+      "recommendedAnswer": "No Data Collected",
+      "tracking": "No",
+      "privacyManifest": {
+        "collectedDataTypes": [],
+        "tracking": false
+      },
+      "assumptions": [
+        "Current App Store target is the native apps/mobile iOS app.",
+        "The native iOS app stores puzzle progress, mission state, and hint counts on device via AsyncStorage.",
+        "The native iOS app downloads public puzzle pack JSON from Firebase Hosting but does not upload gameplay progress, account data, analytics events, crash logs, ad identifiers, purchase data, location, contacts, photos, or free-form user content.",
+        "Current native mobile dependencies do not include Firebase native SDKs, AdMob, Crashlytics, Analytics, login, payment, or tracking SDKs.",
+        "GCP Logging queries on 2026-06-07 did not return Firebase Hosting request log entries for the project; only default logging sinks were present."
+      ],
+      "answers": {
+        "collectsData": "No",
+        "dataTypes": [],
+        "dataLinkedToUser": "Not applicable",
+        "dataUsedToTrack": "No",
+        "privacyChoicesUrl": "blank"
+      },
+      "recheckTriggers": [
+        "Enable or retain Firebase Hosting request logs, Cloud Logging export, BigQuery export, or traffic analytics that expose request IP, request URL, user agent, city, or similar request data.",
+        "Add native Firebase Analytics, Remote Config, Crashlytics, Performance Monitoring, AdMob, App Check, authentication, purchases, Game Center, leaderboard, server-side progress sync, support forms, or user-generated content.",
+        "Send puzzle progress, selected puzzle IDs, hint usage, completion events, device identifiers, diagnostics, location, or any user-entered content off device."
+      ],
+      "officialReferences": [
+        "https://developer.apple.com/app-store/app-privacy-details/",
+        "https://firebase.google.com/docs/hosting/web-request-logs-and-metrics"
+      ]
+    },
     "ageRating": "확정 필요",
     "ageRatingGuidance": {
       "status": "recommended answers prepared; App Store Connect input pending",
