@@ -6,22 +6,32 @@ GITHUB_OWNER="seorilabs"
 GITHUB_REPO="crossword-puzzle"
 POOL_ID="github-actions"
 PROVIDER_ID="github"
-SERVICE_ACCOUNT_ID="crossword-puzzle-play-publisher"
+SERVICE_ACCOUNT_ID="seorilabs-play-publisher"
+SERVICE_ACCOUNT_EMAIL=""
+SERVICE_ACCOUNT_DISPLAY_NAME="Seorilabs Shared Play Publisher"
 APPLY=false
 
 usage() {
   cat <<'EOF'
 Usage:
-  scripts/setup-google-play-wif.sh --project-id <gcp-project-id> [--apply]
+  scripts/setup-google-play-wif.sh --project-id <gcp-project-id> [--github-repo <repo>] [--apply]
 
 Options:
-  --project-id <id>             Google Cloud project that owns the service account.
+  --project-id <id>             Google Cloud project that owns the shared service account.
   --github-owner <owner>        GitHub owner/org. Default: seorilabs.
   --github-repo <repo>          GitHub repo. Default: crossword-puzzle.
   --pool-id <id>                Workload Identity Pool id. Default: github-actions.
   --provider-id <id>            Workload Identity Provider id. Default: github.
-  --service-account-id <id>     Service account id. Default: crossword-puzzle-play-publisher.
-  --apply                       Run gcloud/gh mutations. Without this, only prints the plan.
+  --service-account-id <id>     Shared service account id. Default: seorilabs-play-publisher.
+  --service-account-email <email>
+                                Existing shared service account email. Overrides --service-account-id.
+  --service-account-display-name <name>
+                                Display name when creating the shared service account.
+  --apply                       Run gcloud/gh mutations. Without this, only prints the repo onboarding plan.
+
+This script is repo onboarding, not app creation. Use one shared Google Play
+publisher service account, grant it Play Console access once, then call this
+script for each GitHub repo that should be allowed to impersonate it.
 EOF
 }
 
@@ -49,6 +59,14 @@ while [ "$#" -gt 0 ]; do
       ;;
     --service-account-id)
       SERVICE_ACCOUNT_ID="${2:-}"
+      shift 2
+      ;;
+    --service-account-email)
+      SERVICE_ACCOUNT_EMAIL="${2:-}"
+      shift 2
+      ;;
+    --service-account-display-name)
+      SERVICE_ACCOUNT_DISPLAY_NAME="${2:-}"
       shift 2
       ;;
     --apply)
@@ -97,16 +115,18 @@ if [ -z "$PROJECT_NUMBER" ]; then
   exit 1
 fi
 
-SERVICE_ACCOUNT_EMAIL="${SERVICE_ACCOUNT_ID}@${PROJECT_ID}.iam.gserviceaccount.com"
+if [ -z "$SERVICE_ACCOUNT_EMAIL" ]; then
+  SERVICE_ACCOUNT_EMAIL="${SERVICE_ACCOUNT_ID}@${PROJECT_ID}.iam.gserviceaccount.com"
+fi
 PROVIDER_RESOURCE="projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${POOL_ID}/providers/${PROVIDER_ID}"
 REPOSITORY_PRINCIPAL="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${POOL_ID}/attribute.repository/${GITHUB_OWNER}/${GITHUB_REPO}"
 
 cat <<EOF
-Google Play deployment identity plan
+Google Play repo onboarding plan
 
 Project:                ${PROJECT_ID} (${PROJECT_NUMBER})
 GitHub repository:      ${GITHUB_OWNER}/${GITHUB_REPO}
-Service account:        ${SERVICE_ACCOUNT_EMAIL}
+Shared service account: ${SERVICE_ACCOUNT_EMAIL}
 WIF provider variable:  GOOGLE_WORKLOAD_IDENTITY_PROVIDER=${PROVIDER_RESOURCE}
 Service account var:    GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL=${SERVICE_ACCOUNT_EMAIL}
 
@@ -137,9 +157,13 @@ else
 fi
 
 if ! gcloud iam service-accounts describe "$SERVICE_ACCOUNT_EMAIL" --project "$PROJECT_ID" >/dev/null 2>&1; then
+  if [ -n "$SERVICE_ACCOUNT_EMAIL" ] && [ "${SERVICE_ACCOUNT_EMAIL#${SERVICE_ACCOUNT_ID}@}" = "$SERVICE_ACCOUNT_EMAIL" ]; then
+    echo "Existing service account was not found and cannot be created from --service-account-email: $SERVICE_ACCOUNT_EMAIL" >&2
+    exit 1
+  fi
   run gcloud iam service-accounts create "$SERVICE_ACCOUNT_ID" \
     --project "$PROJECT_ID" \
-    --display-name "Crossword Puzzle Play Publisher"
+    --display-name "$SERVICE_ACCOUNT_DISPLAY_NAME"
 else
   echo "Service account already exists: $SERVICE_ACCOUNT_EMAIL"
 fi
@@ -152,20 +176,24 @@ run gcloud iam service-accounts add-iam-policy-binding "$SERVICE_ACCOUNT_EMAIL" 
 cat <<EOF
 
 Next manual Play Console step:
+  One-time shared setup:
   1. Open Play Console > Users and permissions.
-  2. Invite this service account:
+  2. Invite the shared service account:
      ${SERVICE_ACCOUNT_EMAIL}
-  3. Grant app-level access for the crossword-puzzle app after the app shell exists.
-     Minimum target: view app information + manage testing-track releases.
+  3. Grant account-level permissions if you want new app repos to work without
+     per-app console permission work, or grant app-level permissions per package
+     if you prefer tighter blast radius.
+     Minimum target for automation: view app information, manage store presence,
+     and manage testing-track releases.
 
 GitHub repository variables:
-  gh variable set GOOGLE_WORKLOAD_IDENTITY_PROVIDER --body '${PROVIDER_RESOURCE}'
-  gh variable set GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL --body '${SERVICE_ACCOUNT_EMAIL}'
+  gh variable set GOOGLE_WORKLOAD_IDENTITY_PROVIDER --repo '${GITHUB_OWNER}/${GITHUB_REPO}' --body '${PROVIDER_RESOURCE}'
+  gh variable set GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL --repo '${GITHUB_OWNER}/${GITHUB_REPO}' --body '${SERVICE_ACCOUNT_EMAIL}'
 
 Run with --apply only after reviewing the plan.
 EOF
 
 if [ "$APPLY" = true ] && command -v gh >/dev/null 2>&1; then
-  gh variable set GOOGLE_WORKLOAD_IDENTITY_PROVIDER --body "$PROVIDER_RESOURCE"
-  gh variable set GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL --body "$SERVICE_ACCOUNT_EMAIL"
+  gh variable set GOOGLE_WORKLOAD_IDENTITY_PROVIDER --repo "${GITHUB_OWNER}/${GITHUB_REPO}" --body "$PROVIDER_RESOURCE"
+  gh variable set GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL --repo "${GITHUB_OWNER}/${GITHUB_REPO}" --body "$SERVICE_ACCOUNT_EMAIL"
 fi

@@ -1,12 +1,12 @@
 {
-  "packageName": "확정 필요",
+  "packageName": "com.seorilabs.crosswordpuzzle",
   "suggestedPackageName": "com.seorilabs.crosswordpuzzle",
   "defaultLanguage": "ko-KR",
   "appType": "game",
   "freeOrPaid": "free",
   "contactEmail": "cs@seorilabs.com",
-  "privacyPolicyUrl": "확정 필요",
-  "suggestedPrivacyPolicyUrl": "https://www.seorilabs.com/privacy",
+  "privacyPolicyUrl": "https://www.seorilabs.com/privacy/",
+  "suggestedPrivacyPolicyUrl": "https://www.seorilabs.com/privacy/",
   "contactWebsite": "https://www.seorilabs.com",
   "targetTrack": "internal",
   "release": {
@@ -47,9 +47,10 @@
     "tenInchTabletScreenshots": []
   },
   "automation": {
-    "developerApiAuth": "GitHub Actions OIDC + Google Cloud Workload Identity Federation",
+    "developerApiAuth": "Shared Google Play publisher service account + GitHub Actions OIDC/WIF",
     "workflow": ".github/workflows/build-google-play.yml",
     "uploadScript": "scripts/upload-google-play-internal.py",
+    "listingScript": "scripts/apply-google-play-listing.py",
     "wifSetupScript": "scripts/setup-google-play-wif.sh",
     "workloadIdentityProviderVariable": "GOOGLE_WORKLOAD_IDENTITY_PROVIDER",
     "serviceAccountEmailVariable": "GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL",

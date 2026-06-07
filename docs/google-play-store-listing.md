@@ -4,21 +4,31 @@
 
 - 설정 파일: `play-store/google-play.config.json`
 - 이미지 폴더: `play-store/assets`, `play-store/screenshots/phone`
-- 검증 명령:
+- API-writable listing 검증 명령:
 
 ```bash
-python3 /Users/syous/.codex/skills/google-play-store-registration/scripts/validate_play_store_config.py --root . --allow-missing-tablet
+python3 /Users/syous/.codex/skills/google-play-store-registration/scripts/validate_play_store_config.py --root . --allow-missing-tablet --allow-console-gates
+npm run play:listing:dry-run
+```
+
+- 전체 launch readiness 검증 명령:
+
+```bash
 npm run check:play
 ```
+
+`npm run check:play`는 Play Console 정책 gate가 끝나기 전까지 실패하는 것이 정상이다.
 
 ## 현재 확정값
 
 | 항목             | 값                 |
 | ---------------- | ------------------ |
+| packageName      | `com.seorilabs.crosswordpuzzle` |
 | 기본 언어        | `ko-KR`            |
 | 앱 유형          | `game`             |
 | 가격             | `free`             |
 | 고객 문의 이메일 | `cs@seorilabs.com` |
+| 개인정보 처리방침 | `https://www.seorilabs.com/privacy/` |
 | 광고             | `no`               |
 | 한국 배포        | `yes`              |
 | 첫 업로드 트랙   | `internal`         |
@@ -27,12 +37,25 @@ npm run check:play
 
 | 항목                  | 후보/메모                                                                                                            |
 | --------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| packageName           | RN skeleton은 `com.seorilabs.crosswordpuzzle`로 생성됨. Play Console 생성 후 삭제/재사용이 불가하므로 최종 확인 필요 |
-| 개인정보 처리방침 URL | 후보: `https://www.seorilabs.com/privacy`. 실제 내용이 이 앱의 데이터 처리와 맞는지 확인 필요                        |
 | Data Safety           | 로그인, 결제, 서버 저장 없음. 로컬 저장만 사용한다는 현재 구현 기준으로 설문 검토 필요                               |
 | 콘텐츠 등급           | 낱말 퍼즐 게임 기준 IARC 설문 완료 필요                                                                              |
 | 타겟 연령             | 아동 대상 여부와 가족 정책 해당 여부 확인 필요                                                                       |
 | 한국 게임 등급        | 한국 배포 유지 시 GRAC/자체등급분류 필요 여부 확인 필요                                                              |
+
+## 2026-06-07 검토 메모
+
+- `https://www.seorilabs.com/privacy/`는 공개 URL이며 200 응답을 확인했다.
+- Android `apps/mobile` 타깃은 `INTERNET` 권한과 원격 퍼즐팩 fetch를 사용한다.
+- Android `apps/mobile` 타깃의 현재 dependency에는 Firebase, AdMob, 결제, 로그인 SDK가 없다.
+- 진행 상태와 미션 상태는 `AsyncStorage`에 로컬 저장된다.
+- Data Safety 최종 선언은 Play Console에서 직접 검토해야 한다. Google Play 기준상 앱/SDK가 사용자 데이터를 기기 밖으로 전송하는지 여부가 핵심이고, 로컬 처리만 하는 데이터는 수집으로 보지 않는다.
+
+## 2026-06-07 API 반영 결과
+
+- Android Publisher API edit `01758169730218357159`로 details/listing/images를 반영하고 commit했다.
+- `npm run play:listing:verify` readback 결과 `defaultLanguage`, `contactEmail`, 한국어 앱명, 짧은 설명, 상세 설명이 config와 일치했다.
+- 반영된 이미지: 앱 아이콘 1장, feature graphic 1장, phone screenshot 3장.
+- privacy policy URL은 API 적용 대상이 아니므로 Play Console에서 직접 입력/검토해야 한다.
 
 ## 등록 문구
 

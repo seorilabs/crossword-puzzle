@@ -362,6 +362,7 @@ const androidProjects = [
     appBuildKtsPath: "apps/mobile/android/app/build.gradle.kts",
     rootBuildPath: "apps/mobile/android/build.gradle",
     rootBuildKtsPath: "apps/mobile/android/build.gradle.kts",
+    keyPropertiesPath: "apps/mobile/android/key.properties",
     bundleRoot: "apps/mobile/android/app/build/outputs/bundle",
     sourceRoots: ["apps/mobile", "packages/crossword-core"],
   },
@@ -370,6 +371,7 @@ const androidProjects = [
     appBuildKtsPath: "android/app/build.gradle.kts",
     rootBuildPath: "android/build.gradle",
     rootBuildKtsPath: "android/build.gradle.kts",
+    keyPropertiesPath: "android/key.properties",
     bundleRoot: "android/app/build/outputs/bundle",
     sourceRoots: ["src", "packages/crossword-core"],
   },
@@ -446,6 +448,11 @@ if (androidProject == null) {
     fail(
       "Android release 빌드가 debug keystore로 서명됩니다.",
       "upload key 기반 release signing 설정 필요",
+    );
+  } else if (!existsSync(repoPath(androidProject.keyPropertiesPath))) {
+    fail(
+      "Android release upload key 설정 파일이 없습니다.",
+      `${androidProject.keyPropertiesPath} 없으면 로컬 fallback key로만 빌드됩니다.`,
     );
   } else {
     pass("Android release signing 설정이 있습니다.");

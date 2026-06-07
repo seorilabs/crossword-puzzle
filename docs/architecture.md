@@ -33,7 +33,7 @@ flowchart TD
 | C. Firebase Hosting read-only | puzzle pack을 원격에서 공개 읽기 전용으로 서빙       | `src/adapters/staticPuzzleRepository.ts`, `server/batch/publish-puzzle-pack.mjs`                                      | 운영 빌드에 `VITE_PUZZLE_PACK_BASE_URL` 주입, CORS 헤더 확인                                   |
 | D. AIT 출시 검수              | AppsInToss 등록 정보, 빌드, QA blocker 해소          | `docs/apps-in-toss-registration.md`, release image assets, AIT 광고 adapter, Firebase Analytics/Remote Config adapter | 콘솔 필드 확정, 아이콘 HTTPS URL 반영, 힌트 라이선스/자체 작성 검수, Firebase Web app env 확정 |
 | E. AIT WebView 론칭           | 현재 WebView 앱을 먼저 출시                          | `public/puzzles` + `localStorage`                                                                                     | 검수 제출, 출시 후 운영 지표 확인                                                              |
-| F. apps/mobile RN             | Google Play/App Store용 RN shell 유지                | RN 0.85.3 skeleton, Android/iOS 네이티브 프로젝트                                                                     | AIT 론칭 후 공통 core 연결, release signing secret 구성, 첫 AAB 빌드                           |
+| F. apps/mobile RN             | Google Play/App Store용 RN shell 유지                | RN 0.85.3, Android/iOS 네이티브 프로젝트, 공통 core + Firebase Hosting puzzle pack 로딩                              | release signing secret 구성, native Firebase/광고 adapter 연결, 첫 AAB/IPA 빌드                |
 | G. shared core + adapter      | 시장별 SDK 차이를 adapter로 흡수                     | `packages/crossword-core`                                                                                             | `packages/crossword-data` 또는 app-local Supabase adapter 추가 여부 결정                       |
 
 ## 런타임 구조
@@ -46,7 +46,7 @@ flowchart LR
   FirebaseHosting["Firebase Hosting<br/>/puzzles/manifest.json + /puzzles/*.json"]
   SupabaseRead["Future Supabase read-only adapter<br/>content_packs + puzzles"]
   Mobile["apps/mobile RN"]
-  MobileAdapters["Mobile adapters<br/>Supabase + native storage"]
+  MobileAdapters["Mobile adapters<br/>Firebase Hosting fetch + native storage"]
 
   AIT --> Core
   AIT --> AITAdapters
@@ -56,7 +56,8 @@ flowchart LR
   AITAdapters -. optional .-> SupabaseRead
   Mobile --> Core
   Mobile --> MobileAdapters
-  MobileAdapters --> SupabaseRead
+  MobileAdapters --> FirebaseHosting
+  MobileAdapters -. optional .-> SupabaseRead
 ```
 
 ## Puzzle pack 운영 배치
@@ -141,12 +142,13 @@ Supabase는 puzzle pack 운영이 Firebase Hosting으로 안정화된 뒤, 검�
 - Google Play artifact는 `apps/mobile/android/app/build/outputs/bundle/release/app-release.aab`를 기준으로 한다.
 - `packages/crossword-core`는 RN, Supabase, AppsInToss import를 계속 금지한다.
 - AIT WebView는 `apps/mobile` 생성 후에도 제거하지 않는다.
-- 현재 `apps/mobile`은 shell skeleton이다. 실제 퍼즐 UI 포팅은 `PuzzleRepository`, `ProgressRepository`, `DailyMissionRepository` adapter를 먼저 연결한 뒤 진행한다.
+- 현재 `apps/mobile`은 `packages/crossword-core`, Firebase Hosting puzzle pack, AsyncStorage 기반 진행/미션 저장을 연결했다. 남은 동기화 대상은 Firebase Analytics/Remote Config, AdMob, App Store/Google Play signing 같은 platform adapter다.
 
 ## 검증 기준
 
 - AIT WebView는 계속 `npm run lint`와 `npm run build`가 통과해야 한다.
 - Core는 플랫폼 import가 없어야 한다.
+- 모바일 타깃은 Firebase Hosting 공개 JSON을 우선 읽고, 원격 로딩 실패 시 번들된 `public/puzzles`로 fallback한다.
 - 모바일 타깃이 있어도 root AppsInToss deploy workflow는 `.ait` 산출 경로를 유지한다.
 - `/dev/simulator`는 `import.meta.env.DEV`에서만 노출한다.
 - 퍼즐 pack 갱신 후 `npm run validate:puzzles`로 유령 슬롯, entry/격자 불일치, 중복 entry가 없는지 확인한다.

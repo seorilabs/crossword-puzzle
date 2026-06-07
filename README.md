@@ -31,7 +31,7 @@ npm run dev
 | `npm run deploy`                  | AppsInToss 배포                            |
 | `npm run mobile:install`          | `apps/mobile` RN 의존성 설치               |
 | `npm run check:mobile`            | `apps/mobile` lint/test                    |
-| `npm run build:android`           | Google Play용 Android App Bundle 빌드      |
+| `npm run build:android`           | Google Play용 Android App Bundle 빌드. 제출용 키가 없으면 로컬 fallback 키로 서명 |
 | `npm run wordbank:krdict`         | 한국어기초사전 XML에서 퍼즐용 단어장 생성  |
 | `npm run release:next-tag`        | 다음 semver 릴리즈 태그 계산               |
 | `npm run release:resolve-version` | 릴리즈 태그에서 앱 빌드 버전 계산          |

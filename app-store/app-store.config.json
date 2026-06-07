@@ -1,0 +1,105 @@
+{
+  "bundleId": "확정 필요",
+  "suggestedBundleId": "com.seorilabs.crosswordpuzzle",
+  "defaultLanguage": "ko-KR",
+  "sku": "crossword-puzzle",
+  "platform": "ios",
+  "appType": "game",
+  "freeOrPaid": "free",
+  "version": {
+    "marketingVersion": "1.0",
+    "buildNumber": "1"
+  },
+  "storeListing": {
+    "appName": {
+      "ko-KR": "가로세로 낱말 퍼즐"
+    },
+    "subtitle": {
+      "ko-KR": "매일 한 판 한글 퍼즐"
+    },
+    "promotionalText": {
+      "ko-KR": "오늘의 한글 낱말을 가로세로로 맞히고 기록을 남겨보세요."
+    },
+    "description": {
+      "ko-KR": "가로세로 낱말 퍼즐은 여러 한글 낱말이 서로 글자를 공유하며 교차하는 날짜별 퍼즐을 제공하는 게임입니다.\n\n홈 화면에서 날짜별 퍼즐을 선택하고, 퍼즐판의 칸이나 힌트 목록을 누르면 가로 또는 세로 단어가 선택됩니다. 사용자는 힌트를 읽은 뒤 정답을 입력하고, 한 단어를 맞히면 교차된 다른 단어의 일부 글자도 함께 열려 다음 풀이의 단서가 됩니다.\n\n막히는 경우 선택한 단어의 다음 글자를 힌트로 확인할 수 있고, 풀이가 끝나면 완료 단어 수, 사용한 힌트 횟수, 남은 도전 횟수를 확인할 수 있습니다.\n\n현재 앱은 로그인, 결제, 서버 저장을 사용하지 않습니다. 날짜별 미션 상태, 퍼즐 진행 상태, 힌트 사용 횟수는 사용자의 기기에 저장됩니다."
+    },
+    "keywords": {
+      "ko-KR": "가로세로,낱말,퍼즐,퀴즈,단어,한글,두뇌,매일,crossword,word"
+    },
+    "category": "Games",
+    "subcategory": "Puzzle",
+    "contentRights": "first-party puzzle UI and self-authored clues; dictionary word candidates require final source/license review"
+  },
+  "support": {
+    "supportUrl": "확정 필요",
+    "suggestedSupportUrl": "https://www.seorilabs.com/support",
+    "marketingUrl": "확정 필요",
+    "suggestedMarketingUrl": "https://www.seorilabs.com",
+    "contactEmail": "cs@seorilabs.com",
+    "reviewContactFirstName": "확정 필요",
+    "reviewContactLastName": "확정 필요",
+    "reviewContactPhone": "확정 필요",
+    "reviewNotes": "로그인, 결제, 서버 저장 없이 로컬 진행 상태로 퍼즐을 풀 수 있습니다."
+  },
+  "compliance": {
+    "privacyPolicyUrl": "확정 필요",
+    "suggestedPrivacyPolicyUrl": "https://www.seorilabs.com/privacy",
+    "appPrivacy": "확정 필요",
+    "ageRating": "확정 필요",
+    "exportCompliance": "확정 필요",
+    "suggestedUsesNonExemptEncryption": false,
+    "contentRights": "확정 필요",
+    "dsaTraderStatus": "확정 필요",
+    "ads": "no",
+    "tracking": "no",
+    "attRequired": "no",
+    "gameCenter": "no",
+    "routingAppCoverage": "not applicable"
+  },
+  "assets": {
+    "storeIcon": "app-store/assets/icon-1024.png",
+    "iphoneScreenshots": [
+      "app-store/screenshots/iphone/iphone-1.png",
+      "app-store/screenshots/iphone/iphone-2.png",
+      "app-store/screenshots/iphone/iphone-3.png"
+    ],
+    "ipadScreenshots": [
+      "app-store/screenshots/ipad/ipad-1.png",
+      "app-store/screenshots/ipad/ipad-2.png",
+      "app-store/screenshots/ipad/ipad-3.png"
+    ],
+    "watchScreenshots": []
+  },
+  "ios": {
+    "project": "apps/mobile/ios/CrosswordPuzzleMobile.xcodeproj",
+    "workspace": "apps/mobile/ios/CrosswordPuzzleMobile.xcworkspace",
+    "scheme": "CrosswordPuzzleMobile",
+    "targetName": "CrosswordPuzzleMobile",
+    "infoPlist": "apps/mobile/ios/CrosswordPuzzleMobile/Info.plist",
+    "privacyManifest": "apps/mobile/ios/CrosswordPuzzleMobile/PrivacyInfo.xcprivacy",
+    "appIconSet": "apps/mobile/ios/CrosswordPuzzleMobile/Images.xcassets/AppIcon.appiconset",
+    "targetedDeviceFamily": "1,2",
+    "teamId": "확정 필요",
+    "signingIdentity": "Apple Distribution",
+    "provisioningProfileSpecifier": "확정 필요",
+    "archivePath": "tmp/crossword-puzzle.xcarchive",
+    "exportOptionsPlist": "app-store/export-options.plist"
+  },
+  "testFlight": {
+    "internalTesting": "확정 필요",
+    "externalTesting": "not planned",
+    "betaReviewNotes": "확정 필요"
+  },
+  "manualGates": {
+    "appStoreConnectAppShell": "확정 필요",
+    "appPrivacyAnswers": "확정 필요",
+    "ageRatingQuestionnaire": "확정 필요",
+    "reviewContact": "확정 필요",
+    "contentRightsAnswer": "확정 필요",
+    "exportComplianceAnswer": "확정 필요",
+    "dsaTraderDetails": "확정 필요",
+    "buildUpload": "확정 필요",
+    "buildSelection": "확정 필요",
+    "submitForReview": "확정 필요"
+  }
+}
