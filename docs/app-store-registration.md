@@ -84,18 +84,47 @@ flowchart TD
 | Tracking | AdMob 개인화 광고, IDFA, cross-app ad measurement 사용 시 `예` |
 | Privacy Choices URL | `확정 필요`. 로그인/서버 저장/UGC/고객지원 폼을 붙이면 데이터 삭제/문의 경로를 공개 URL로 두는 것을 권장 |
 
-추천 데이터 유형:
+데이터 수집 항목별 입력값:
 
-| 데이터 유형 | 목적 | 사용자 연결 | 추적 |
-| --- | --- | --- | --- |
-| Name, Email Address, Phone Number, Other User Contact Info | App Functionality | `Yes` | 광고/마케팅 partner와 공유하지 않으면 `No` |
-| Coarse Location | Third-Party Advertising, Analytics, App Functionality | device/user identifier와 결합되면 `Yes` | AdMob 타겟팅/측정에 쓰면 `Yes` |
-| Gameplay Content, Customer Support Data, Other User Content | App Functionality, Analytics, Product Personalization | `Yes` | 광고/마케팅 partner와 공유하지 않으면 `No` |
-| User ID, Device ID | Third-Party Advertising, Analytics, App Functionality | `Yes` | AdMob 개인화/IDFA/교차 앱 측정 시 `Yes` |
-| Purchase History | App Functionality, Analytics | `Yes` | 광고/마케팅 partner와 공유하지 않으면 `No` |
-| Product Interaction, Advertising Data, Other Usage Data | Third-Party Advertising, Analytics, Product Personalization, App Functionality | identifier와 결합되면 `Yes` | 타겟 광고/광고 측정에 쓰면 `Yes` |
-| Crash Data, Performance Data, Other Diagnostic Data | Analytics, App Functionality | identifier 또는 Crashlytics user ID와 결합되면 `Yes` | 광고/마케팅 partner와 공유하지 않으면 `No` |
-| Other Data Types | Analytics, App Functionality | App Check/Firebase user agent/request log 설정에 따라 다름 | 광고/마케팅 partner와 공유하지 않으면 `No` |
+`조건부 예`는 최종 binary에서 해당 기능을 실제로 붙이면 선택한다. 선택적 피드백/고객지원 데이터가 Apple의 선택적 공개 조건을 모두 만족하면 공개하지 않을 수 있지만, 이 앱은 계정/UGC/서버 저장/고객지원 결합을 계획하므로 보수적으로 공개하는 기준을 둔다.
+
+| 분류 | 항목 | 선택 | 목적 | 사용자 연결 | 추적 | 메모 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 연락처 정보 | 이름 | `예` | 앱 기능, 제품 개인화 | `예` | 광고/마케팅 partner와 공유하면 `예` | 인증 프로필, Game Center 표시명, 고객지원, UGC 프로필 이름 |
+| 연락처 정보 | 이메일 주소 | `예` | 앱 기능, 고객지원 | `예` | 광고/마케팅 partner와 공유하면 `예` | Firebase Auth 이메일 로그인, 고객지원 회신, 계정 복구 |
+| 연락처 정보 | 전화번호 | `조건부 예` | 앱 기능, 고객지원 | `예` | `아니요` | 전화번호 인증 또는 고객지원 전화번호를 받으면 선택 |
+| 연락처 정보 | 주소 | `아니요` | 해당 없음 | 해당 없음 | `아니요` | DSA/trader 사업자 주소 공개는 사용자 주소 수집과 별개 |
+| 연락처 정보 | 기타 사용자 연락처 정보 | `조건부 예` | 앱 기능, 고객지원 | `예` | `아니요` | 외부 연락 가능한 SNS handle, messenger ID 등을 받으면 선택 |
+| 건강 및 피트니스 | 건강 | `아니요` | 해당 없음 | 해당 없음 | `아니요` | HealthKit/의료/건강 데이터 없음 |
+| 건강 및 피트니스 | 피트니스 | `아니요` | 해당 없음 | 해당 없음 | `아니요` | 운동/피트니스 데이터 없음 |
+| 재무 정보 | 지불 정보 | `아니요` | 해당 없음 | 해당 없음 | `아니요` | Apple IAP만 쓰고 개발자가 카드/계좌 정보에 접근하지 않는 전제 |
+| 재무 정보 | 신용 정보 | `아니요` | 해당 없음 | 해당 없음 | `아니요` | 신용 점수/신용 정보 없음 |
+| 재무 정보 | 기타 재무 정보 | `아니요` | 해당 없음 | 해당 없음 | `아니요` | 소득/자산/부채 등 재무 정보 없음 |
+| 위치 | 정확한 위치 | `아니요` | 해당 없음 | 해당 없음 | `아니요` | GPS/정밀 위치 권한을 요청하지 않는 전제 |
+| 위치 | 대략적인 위치 | `예` | 타사 광고, 분석, 앱 기능 | 기기/사용자 식별자와 결합되면 `예` | AdMob 타겟팅/광고 측정에 쓰면 `예` | AdMob IP 기반 위치 추정, Firebase Hosting request log의 city/source IP 후보 |
+| 민감 정보 | 민감 정보 | `아니요` | 해당 없음 | 해당 없음 | `아니요` | 인종, 종교, 정치 성향, 생체 데이터 등 민감 정보 없음 |
+| 연락처 | 연락처 | `아니요` | 해당 없음 | 해당 없음 | `아니요` | 주소록/소셜 그래프 접근 없음 |
+| 사용자 콘텐츠 | 이메일 또는 문자 메시지 | `아니요` | 해당 없음 | 해당 없음 | `아니요` | 사용자 간 메시지/채팅을 붙이면 재검토 |
+| 사용자 콘텐츠 | 사진 또는 비디오 | `조건부 예` | 앱 기능, 고객지원 | `예` | `아니요` | 고객지원 첨부 또는 UGC 이미지/영상 업로드를 허용하면 선택 |
+| 사용자 콘텐츠 | 오디오 데이터 | `아니요` | 해당 없음 | 해당 없음 | `아니요` | 음성 녹음/오디오 업로드 없음 |
+| 사용자 콘텐츠 | 게임 플레이 콘텐츠 | `예` | 앱 기능, 분석, 제품 개인화 | `예` | `아니요` | 서버 저장 진행 상태, 퍼즐 완료 기록, 리더보드, Game Center, 게임 내 UGC |
+| 사용자 콘텐츠 | 고객 지원 | `예` | 앱 기능, 고객지원 | `예` | `아니요` | 고객지원 요청 본문, 문의 처리 기록 |
+| 사용자 콘텐츠 | 기타 사용자 콘텐츠 | `예` | 앱 기능, 분석, 제품 개인화 | `예` | `아니요` | UGC, 자유 입력 텍스트, 커뮤니티/공유 콘텐츠 |
+| 방문 기록 | 방문 기록 | `아니요` | 해당 없음 | 해당 없음 | `아니요` | 앱 외부 웹사이트 탐색 기록 없음. open web/WebView를 붙이면 재검토 |
+| 검색 기록 | 검색 기록 | `아니요` | 해당 없음 | 해당 없음 | `아니요` | 앱 내 검색어를 서버/Analytics로 보내면 선택 |
+| 식별자 | 사용자 ID | `예` | 앱 기능, 분석, 제품 개인화 | `예` | 광고 네트워크와 결합하면 `예` | Firebase UID, 계정 ID, Game Center ID, 리더보드 사용자 ID |
+| 식별자 | 기기 ID | `예` | 타사 광고, 분석, 앱 기능 | `예` | AdMob 개인화 광고, IDFA, 교차 앱 광고 측정 시 `예` | IDFA, Firebase installation/app instance ID, AdMob device identifiers |
+| 구입 항목 | 구입 항목 | `예` | 앱 기능, 분석, 제품 개인화 | `예` | 광고/마케팅 partner와 공유하지 않으면 `아니요` | IAP purchase history, entitlement, purchase tendency |
+| 사용 데이터 | 제품 상호 작용 | `예` | 타사 광고, 분석, 제품 개인화, 앱 기능 | 식별자와 결합되면 `예` | 타겟 광고/광고 측정에 쓰면 `예` | 앱 실행, 탭, 퍼즐 시작/완료, 힌트 사용, 리더보드 활동 |
+| 사용 데이터 | 광고 데이터 | `예` | 타사 광고, 분석 | `예` | `예` | AdMob 노출/클릭/광고 응답/광고 측정 데이터 |
+| 사용 데이터 | 기타 사용 데이터 | `예` | 분석, 제품 개인화, 앱 기능 | 식별자와 결합되면 `예` | 광고 측정에 쓰면 `예` | 완료율, 세션, Remote Config/Analytics 기반 활동 데이터 |
+| 진단 | 충돌 데이터 | `예` | 분석, 앱 기능 | Crashlytics user ID 또는 식별자와 결합되면 `예` | 광고 목적으로 사용하지 않으면 `아니요` | Crashlytics crash logs |
+| 진단 | 실적 데이터 | `예` | 분석, 앱 기능, 타사 광고 | 식별자와 결합되면 `예` | AdMob 광고 성능/측정에 쓰이면 `예` | Firebase Performance, AdMob performance data, launch time, hang rate |
+| 진단 | 기타 진단 데이터 | `예` | 분석, 앱 기능 | 식별자와 결합되면 `예` | 광고 목적으로 사용하지 않으면 `아니요` | custom keys/logs, device/OS/app diagnostics |
+| 주변 환경 | 환경 스캐닝 | `아니요` | 해당 없음 | 해당 없음 | `아니요` | AR/공간 스캔 기능 없음 |
+| 신체 | 손 | `아니요` | 해당 없음 | 해당 없음 | `아니요` | 손 구조/움직임 데이터 없음 |
+| 신체 | 머리 | `아니요` | 해당 없음 | 해당 없음 | `아니요` | 머리 움직임 데이터 없음 |
+| 기타 데이터 | 기타 데이터 | `예` | 분석, 앱 기능, 보안 | 설정에 따라 다름 | 광고/마케팅 partner와 공유하지 않으면 `아니요` | App Check, Firebase user agent, Hosting request metadata 등 위 항목으로 명확히 분류되지 않는 데이터 |
 
 주의:
 
