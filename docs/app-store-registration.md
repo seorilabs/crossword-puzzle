@@ -61,37 +61,55 @@ flowchart TD
 
 ## App Privacy 답변 가이드
 
-현재 `apps/mobile` App Store 앱 기준 추천 답변은 `No Data Collected`다. App Store Connect에 실제 입력하기 전까지 `appPrivacyAnswers` gate는 `확정 필요`로 유지한다.
+현재 업로드된 `apps/mobile` binary만 보면 `No Data Collected` 후보였지만, 최종 iOS 앱에 Firebase Hosting request log 보관/분석, native Firebase Analytics/Remote Config/Crashlytics/Performance, AdMob, App Check, 인증, 결제, Game Center, 리더보드, 서버 저장, 고객지원 폼, 사용자 생성 콘텐츠를 모두 붙이면 `No Data Collected`는 더 이상 맞지 않다.
+
+최종 제출 binary 기준 추천 답변은 `Data Collected`다. AdMob 개인화 광고, IDFA, cross-app ad measurement를 켜면 `Tracking`도 `Yes`로 답하고 ATT/UMP 동선을 구현한다. App Store Connect에 실제 입력하기 전까지 `appPrivacyAnswers` gate는 `확정 필요`로 유지한다.
 
 근거:
 
 - Apple은 앱과 통합한 third-party partner가 수집하는 데이터까지 답변해야 한다고 안내한다.
 - Apple 기준 `Collect`는 기기 밖으로 전송되어 개발자 또는 third-party partner가 실시간 요청 처리에 필요한 시간보다 오래 접근 가능한 상태가 되는 것을 뜻한다.
-- 현재 native iOS 앱은 `AsyncStorage`로 퍼즐 진행 상태, 날짜별 미션 상태, 힌트 사용 횟수를 기기에 저장한다.
-- 현재 native iOS 앱은 Firebase Hosting의 공개 퍼즐 JSON을 다운로드하지만, 사용자의 풀이/진행/힌트/완료 이벤트를 서버로 업로드하지 않는다.
-- 현재 native mobile dependency에는 Firebase native SDK, AdMob, Crashlytics, Analytics, 로그인, 결제, tracking SDK가 없다.
-- `PrivacyInfo.xcprivacy`는 `NSPrivacyCollectedDataTypes=[]`, `NSPrivacyTracking=false`다.
-- 2026-06-07 `gcloud logging` 조회 기준 Firebase Hosting request log entry는 확인되지 않았고, 기본 logging sink만 확인됐다.
+- Google Mobile Ads SDK는 IP address, crash logs, performance data, device ID, advertising data, user interaction을 수집할 수 있다고 안내한다.
+- Firebase Authentication은 user authentication identifiers, email, phone, display name, federated provider contact info, Game Center ID 등을 수집할 수 있다.
+- Firebase Crashlytics는 crash stack trace, application state, device/OS information, custom keys/logs/user IDs, Analytics breadcrumb를 수집할 수 있다.
+- Firebase Remote Config는 country code, language code, time zone, OS version, Firebase Apple app ID, bundle ID 등을 수집할 수 있다.
+- Firebase Performance는 IP address, app performance metrics, CPU/memory usage, device/OS/application information을 수집할 수 있다.
+- Firebase Hosting request log를 Cloud Logging에 연결하면 source IP, request URL, user agent, city 같은 요청 데이터가 기록될 수 있다.
 
 추천 답변:
 
 | App Store Connect 항목 | 답변 |
 | --- | --- |
-| 이 앱에서 데이터를 수집합니까? | `아니요` / `No Data Collected` |
-| 수집 데이터 유형 | 선택 없음 |
-| 사용자에게 연결된 데이터 | 해당 없음 |
-| 추적에 사용되는 데이터 | `아니요` |
-| Privacy Choices URL | 비워둠 |
+| 이 앱에서 데이터를 수집합니까? | `예` / `Data Collected` |
+| Tracking | AdMob 개인화 광고, IDFA, cross-app ad measurement 사용 시 `예` |
+| Privacy Choices URL | `확정 필요`. 로그인/서버 저장/UGC/고객지원 폼을 붙이면 데이터 삭제/문의 경로를 공개 URL로 두는 것을 권장 |
+
+추천 데이터 유형:
+
+| 데이터 유형 | 목적 | 사용자 연결 | 추적 |
+| --- | --- | --- | --- |
+| Name, Email Address, Phone Number, Other User Contact Info | App Functionality | `Yes` | 광고/마케팅 partner와 공유하지 않으면 `No` |
+| Coarse Location | Third-Party Advertising, Analytics, App Functionality | device/user identifier와 결합되면 `Yes` | AdMob 타겟팅/측정에 쓰면 `Yes` |
+| Gameplay Content, Customer Support Data, Other User Content | App Functionality, Analytics, Product Personalization | `Yes` | 광고/마케팅 partner와 공유하지 않으면 `No` |
+| User ID, Device ID | Third-Party Advertising, Analytics, App Functionality | `Yes` | AdMob 개인화/IDFA/교차 앱 측정 시 `Yes` |
+| Purchase History | App Functionality, Analytics | `Yes` | 광고/마케팅 partner와 공유하지 않으면 `No` |
+| Product Interaction, Advertising Data, Other Usage Data | Third-Party Advertising, Analytics, Product Personalization, App Functionality | identifier와 결합되면 `Yes` | 타겟 광고/광고 측정에 쓰면 `Yes` |
+| Crash Data, Performance Data, Other Diagnostic Data | Analytics, App Functionality | identifier 또는 Crashlytics user ID와 결합되면 `Yes` | 광고/마케팅 partner와 공유하지 않으면 `No` |
+| Other Data Types | Analytics, App Functionality | App Check/Firebase user agent/request log 설정에 따라 다름 | 광고/마케팅 partner와 공유하지 않으면 `No` |
 
 주의:
 
-- Firebase Hosting request log를 Cloud Logging/BigQuery 등으로 연결해 IP, request URL, user agent, city 같은 요청 데이터를 보관/분석하면 이 답변을 다시 검토해야 한다.
-- native Firebase Analytics/Remote Config/Crashlytics/Performance, AdMob, App Check, 인증, 결제, Game Center, 리더보드, 서버 저장, 고객지원 폼, 사용자 생성 콘텐츠를 추가하면 App Privacy 답변과 `PrivacyInfo.xcprivacy`를 다시 갱신한다.
-- App Privacy 답변은 `PrivacyInfo.xcprivacy`를 대체하지 않고, 둘 다 현재 데이터 처리와 일치해야 한다.
+- 결제 카드 번호 등 `Payment Info`는 Apple IAP만 쓰고 개발자가 결제수단 정보에 접근하지 않으면 보통 수집으로 보지 않는다. 대신 entitlement/purchase record를 저장하면 `Purchase History`는 답한다.
+- AdMob을 붙여도 비개인화/문맥 광고만 쓰고 IDFA/교차 앱 측정을 끄면 `Tracking=No` 경로가 가능할 수 있다. 이 경우 SDK 설정과 App Store Connect 답변을 별도로 검증해야 한다.
+- Tracking 또는 IDFA를 켜면 `NSUserTrackingUsageDescription`, `AppTrackingTransparency`, UMP/동의 동선을 구현한다.
+- App Privacy 답변은 `PrivacyInfo.xcprivacy`를 대체하지 않는다. native Firebase/AdMob/App Check SDK를 붙인 뒤 privacy manifest와 App Store Connect 답변을 다시 맞춘다.
 
 참고:
 
 - Apple App Privacy Details: https://developer.apple.com/app-store/app-privacy-details/
+- Google Mobile Ads App Store data disclosure: https://developers.google.com/admob/ios/privacy/data-disclosure
+- Google Mobile Ads IDFA/ATT: https://developers.google.com/admob/ios/privacy/idfa
+- Firebase Apple App Store data disclosure: https://firebase.google.com/docs/ios/app-store-data-collection
 - Firebase Hosting request logs: https://firebase.google.com/docs/hosting/web-request-logs-and-metrics
 
 ## 연령등급 설문 답변 가이드

@@ -47,34 +47,145 @@
     "suggestedPrivacyPolicyUrl": "https://www.seorilabs.com/privacy",
     "appPrivacy": "확정 필요",
     "appPrivacyGuidance": {
-      "status": "recommended answers prepared; App Store Connect input pending",
-      "recommendedAnswer": "No Data Collected",
-      "tracking": "No",
-      "privacyManifest": {
-        "collectedDataTypes": [],
-        "tracking": false
-      },
+      "status": "future-state answers prepared; App Store Connect input pending",
+      "currentBinaryAnswer": "No Data Collected until planned native integrations are added",
+      "recommendedAnswerForPlannedProduction": "Data Collected",
+      "tracking": "Yes if AdMob personalized ads, IDFA, or cross-app ad measurement are enabled; No only if non-personalized/contextual ads and no tracking are configured and verified",
       "assumptions": [
-        "Current App Store target is the native apps/mobile iOS app.",
-        "The native iOS app stores puzzle progress, mission state, and hint counts on device via AsyncStorage.",
-        "The native iOS app downloads public puzzle pack JSON from Firebase Hosting but does not upload gameplay progress, account data, analytics events, crash logs, ad identifiers, purchase data, location, contacts, photos, or free-form user content.",
-        "Current native mobile dependencies do not include Firebase native SDKs, AdMob, Crashlytics, Analytics, login, payment, or tracking SDKs.",
-        "GCP Logging queries on 2026-06-07 did not return Firebase Hosting request log entries for the project; only default logging sinks were present."
+        "Final production iOS app will include Firebase Hosting request log retention/analysis, native Firebase Analytics, Remote Config, Crashlytics, Performance Monitoring, AdMob, App Check, authentication, purchases, Game Center, leaderboard, server-side progress sync, support forms, and user-generated content.",
+        "Apple App Privacy answers must describe the submitted binary and integrated third-party partner practices.",
+        "If AdMob is configured for personalized ads, IDFA, retargeting, or cross-app ad measurement, App Tracking Transparency and NSUserTrackingUsageDescription are required.",
+        "If AdMob is configured for non-personalized/contextual ads only, tracking may be set to No only after SDK configuration and App Store Connect answers are verified."
       ],
       "answers": {
-        "collectsData": "No",
-        "dataTypes": [],
-        "dataLinkedToUser": "Not applicable",
-        "dataUsedToTrack": "No",
-        "privacyChoicesUrl": "blank"
+        "collectsData": "Yes",
+        "dataTypes": [
+          {
+            "category": "Contact Info",
+            "types": [
+              "Name",
+              "Email Address",
+              "Phone Number",
+              "Other User Contact Info"
+            ],
+            "purposes": [
+              "App Functionality"
+            ],
+            "linkedToUser": "Yes",
+            "tracking": "No unless shared with ad/marketing partners"
+          },
+          {
+            "category": "Location",
+            "types": [
+              "Coarse Location"
+            ],
+            "purposes": [
+              "Third-Party Advertising",
+              "Analytics",
+              "App Functionality"
+            ],
+            "linkedToUser": "Yes if associated with device/user identifiers",
+            "tracking": "Yes if used by AdMob for targeted ads or ad measurement"
+          },
+          {
+            "category": "User Content",
+            "types": [
+              "Gameplay Content",
+              "Customer Support Data",
+              "Other User Content"
+            ],
+            "purposes": [
+              "App Functionality",
+              "Analytics",
+              "Product Personalization"
+            ],
+            "linkedToUser": "Yes",
+            "tracking": "No unless shared with ad/marketing partners"
+          },
+          {
+            "category": "Identifiers",
+            "types": [
+              "User ID",
+              "Device ID"
+            ],
+            "purposes": [
+              "Third-Party Advertising",
+              "Analytics",
+              "App Functionality"
+            ],
+            "linkedToUser": "Yes",
+            "tracking": "Yes for Device ID when AdMob personalized ads, IDFA, or cross-app ad measurement are enabled"
+          },
+          {
+            "category": "Purchases",
+            "types": [
+              "Purchase History"
+            ],
+            "purposes": [
+              "App Functionality",
+              "Analytics"
+            ],
+            "linkedToUser": "Yes",
+            "tracking": "No unless shared with ad/marketing partners"
+          },
+          {
+            "category": "Usage Data",
+            "types": [
+              "Product Interaction",
+              "Advertising Data",
+              "Other Usage Data"
+            ],
+            "purposes": [
+              "Third-Party Advertising",
+              "Analytics",
+              "Product Personalization",
+              "App Functionality"
+            ],
+            "linkedToUser": "Yes if associated with device/user identifiers",
+            "tracking": "Yes when used for targeted ads or ad measurement"
+          },
+          {
+            "category": "Diagnostics",
+            "types": [
+              "Crash Data",
+              "Performance Data",
+              "Other Diagnostic Data"
+            ],
+            "purposes": [
+              "Analytics",
+              "App Functionality"
+            ],
+            "linkedToUser": "Yes if associated with device/user identifiers or Crashlytics user IDs",
+            "tracking": "No unless shared with ad/marketing partners"
+          },
+          {
+            "category": "Other Data",
+            "types": [
+              "Other Data Types"
+            ],
+            "purposes": [
+              "Analytics",
+              "App Functionality"
+            ],
+            "linkedToUser": "Depends on App Check, Firebase user agent, and request log configuration",
+            "tracking": "No unless shared with ad/marketing partners"
+          }
+        ],
+        "dataLinkedToUser": "Yes for most selected data types unless de-identification is implemented and verified before collection",
+        "dataUsedToTrack": "Yes when AdMob personalized ads, IDFA, or cross-app ad measurement are enabled",
+        "privacyChoicesUrl": "확정 필요; prefer a public privacy/data request page when login, support forms, UGC, and server-stored progress ship"
       },
-      "recheckTriggers": [
-        "Enable or retain Firebase Hosting request logs, Cloud Logging export, BigQuery export, or traffic analytics that expose request IP, request URL, user agent, city, or similar request data.",
-        "Add native Firebase Analytics, Remote Config, Crashlytics, Performance Monitoring, AdMob, App Check, authentication, purchases, Game Center, leaderboard, server-side progress sync, support forms, or user-generated content.",
-        "Send puzzle progress, selected puzzle IDs, hint usage, completion events, device identifiers, diagnostics, location, or any user-entered content off device."
+      "implementationRequirements": [
+        "Update PrivacyInfo.xcprivacy to match native Firebase, AdMob, App Check, and tracking SDK manifests after dependencies are installed.",
+        "Add NSUserTrackingUsageDescription and AppTrackingTransparency/UMP flow if tracking or IDFA is enabled.",
+        "Create a user data deletion/export/support path before shipping authentication, support forms, UGC, leaderboard, or server-stored progress.",
+        "Re-run App Privacy review after final SDK list, Firebase settings, AdMob personalization policy, and request-log retention are fixed."
       ],
       "officialReferences": [
         "https://developer.apple.com/app-store/app-privacy-details/",
+        "https://developers.google.com/admob/ios/privacy/data-disclosure",
+        "https://developers.google.com/admob/ios/privacy/idfa",
+        "https://firebase.google.com/docs/ios/app-store-data-collection",
         "https://firebase.google.com/docs/hosting/web-request-logs-and-metrics"
       ]
     },
