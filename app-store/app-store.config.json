@@ -199,6 +199,15 @@
         "Current App Store target is the native apps/mobile iOS app.",
         "No unrestricted web access, user-generated content, in-app chat, advertising SDK, health content, violence, gambling, loot boxes, or contests are present in the current native mobile app."
       ],
+      "plannedProductionOverrides": {
+        "status": "Re-answer before final submission if AdMob, user-generated content, leaderboard/competition, server-side progress, purchases, Game Center, support forms, or authentication ship in the iOS binary.",
+        "advertising": "예 when AdMob or any paid promotion is present",
+        "userGeneratedContent": "예 when UGC ships",
+        "contests": "드문 or 빈번 if leaderboard/events let users compete for ranking, rewards, or personal goals",
+        "harmfulContentControls": "예 strongly recommended if UGC ships and moderation/report/block controls are available",
+        "ageAssurance": "아니요 unless age-gated content or services are introduced",
+        "calculatedRatingCandidate": "4+ is no longer guaranteed after these features are added; recalculate in App Store Connect"
+      },
       "answers": {
         "harmfulContentControls": "아니요",
         "ageAssurance": "아니요",
