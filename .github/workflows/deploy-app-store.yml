@@ -7,13 +7,13 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "업로드할 릴리즈 태그입니다. 예: v1.0.0"
+        description: "업로드할 릴리즈 태그입니다 (upload_to_testflight=true일 때 필수). 예: v1.0.0"
         required: false
         type: string
       upload_to_testflight:
         description: "archive 생성 후 App Store Connect/TestFlight에 업로드"
         required: false
-        default: true
+        default: false
         type: boolean
 
 permissions:
