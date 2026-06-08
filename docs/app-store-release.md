@@ -2,7 +2,7 @@
 
 ## 현재 상태
 
-`crossword-puzzle`의 App Store 릴리스는 GitHub Actions 기반 TestFlight 업로드 체계를 갖춘 상태다. 실제 업로드는 Apple signing secrets, App Store Connect API key, App Store Connect app shell/profile 준비가 끝난 뒤 `.github/workflows/deploy-app-store.yml`에서 실행한다.
+`crossword-puzzle`의 App Store 릴리스는 GitHub Actions 기반 TestFlight 업로드 체계를 갖춘 상태다. Apple signing secrets, App Store Connect API key, App Store Connect app shell/profile 준비 후 `.github/workflows/deploy-app-store.yml`에서 `v0.1.5` / build `1005` 업로드까지 성공했다.
 
 ## 1. 로컬 점검
 
@@ -116,7 +116,7 @@ Trigger:
 | `APP_STORE_CONNECT_ISSUER_ID` | App Store Connect issuer ID |
 | `APP_STORE_CONNECT_PRIVATE_KEY_BASE64` | `AuthKey_*.p8` base64 |
 
-2026-06-07 확인 기준, `seorilabs/crossword-puzzle` GitHub repo에는 `app-store` environment가 생성되어 있고 TestFlight 업로드에 필요한 Apple signing/App Store Connect environment secrets와 `APPLE_TEAM_ID=HCDUXX4Z3X` variable이 등록되어 있다. 남은 항목은 App Store Connect 정책 답변, 스크린샷, TestFlight build upload/processing/build selection이다.
+2026-06-07 확인 기준, `seorilabs/crossword-puzzle` GitHub repo에는 `app-store` environment가 생성되어 있고 TestFlight 업로드에 필요한 Apple signing/App Store Connect environment secrets와 `APPLE_TEAM_ID=HCDUXX4Z3X` variable이 등록되어 있다. `v0.1.5` / build `1005`는 GitHub Actions run `27087313726`, job `79945275484`에서 App Store Connect 업로드까지 성공했다. 남은 항목은 App Store Connect 정책 답변, 스크린샷, build processing 확인, TestFlight build selection이다.
 
 Workflow는 profile을 복원한 뒤 다음을 검증한다.
 

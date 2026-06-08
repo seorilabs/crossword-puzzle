@@ -46,7 +46,559 @@
     "privacyPolicyUrl": "확정 필요",
     "suggestedPrivacyPolicyUrl": "https://www.seorilabs.com/privacy",
     "appPrivacy": "확정 필요",
+    "appPrivacyGuidance": {
+      "status": "future-state answers prepared; App Store Connect input pending",
+      "currentBinaryAnswer": "No Data Collected until planned native integrations are added",
+      "recommendedAnswerForPlannedProduction": "Data Collected",
+      "tracking": "Yes if AdMob personalized ads, IDFA, or cross-app ad measurement are enabled; No only if non-personalized/contextual ads and no tracking are configured and verified",
+      "assumptions": [
+        "Final production iOS app will include Firebase Hosting request log retention/analysis, native Firebase Analytics, Remote Config, Crashlytics, Performance Monitoring, AdMob, App Check, authentication, purchases, Game Center, leaderboard, server-side progress sync, support forms, and user-generated content.",
+        "Apple App Privacy answers must describe the submitted binary and integrated third-party partner practices.",
+        "If AdMob is configured for personalized ads, IDFA, retargeting, or cross-app ad measurement, App Tracking Transparency and NSUserTrackingUsageDescription are required.",
+        "If AdMob is configured for non-personalized/contextual ads only, tracking may be set to No only after SDK configuration and App Store Connect answers are verified."
+      ],
+      "answers": {
+        "collectsData": "Yes",
+        "dataTypes": [
+          {
+            "category": "Contact Info",
+            "types": [
+              "Name",
+              "Email Address",
+              "Phone Number",
+              "Other User Contact Info"
+            ],
+            "purposes": [
+              "App Functionality"
+            ],
+            "linkedToUser": "Yes",
+            "tracking": "No unless shared with ad/marketing partners"
+          },
+          {
+            "category": "Location",
+            "types": [
+              "Coarse Location"
+            ],
+            "purposes": [
+              "Third-Party Advertising",
+              "Analytics",
+              "App Functionality"
+            ],
+            "linkedToUser": "Yes if associated with device/user identifiers",
+            "tracking": "Yes if used by AdMob for targeted ads or ad measurement"
+          },
+          {
+            "category": "User Content",
+            "types": [
+              "Gameplay Content",
+              "Customer Support Data",
+              "Other User Content"
+            ],
+            "purposes": [
+              "App Functionality",
+              "Analytics",
+              "Product Personalization"
+            ],
+            "linkedToUser": "Yes",
+            "tracking": "No unless shared with ad/marketing partners"
+          },
+          {
+            "category": "Identifiers",
+            "types": [
+              "User ID",
+              "Device ID"
+            ],
+            "purposes": [
+              "Third-Party Advertising",
+              "Analytics",
+              "App Functionality"
+            ],
+            "linkedToUser": "Yes",
+            "tracking": "Yes for Device ID when AdMob personalized ads, IDFA, or cross-app ad measurement are enabled"
+          },
+          {
+            "category": "Purchases",
+            "types": [
+              "Purchase History"
+            ],
+            "purposes": [
+              "App Functionality",
+              "Analytics"
+            ],
+            "linkedToUser": "Yes",
+            "tracking": "No unless shared with ad/marketing partners"
+          },
+          {
+            "category": "Usage Data",
+            "types": [
+              "Product Interaction",
+              "Advertising Data",
+              "Other Usage Data"
+            ],
+            "purposes": [
+              "Third-Party Advertising",
+              "Analytics",
+              "Product Personalization",
+              "App Functionality"
+            ],
+            "linkedToUser": "Yes if associated with device/user identifiers",
+            "tracking": "Yes when used for targeted ads or ad measurement"
+          },
+          {
+            "category": "Diagnostics",
+            "types": [
+              "Crash Data",
+              "Performance Data",
+              "Other Diagnostic Data"
+            ],
+            "purposes": [
+              "Analytics",
+              "App Functionality"
+            ],
+            "linkedToUser": "Yes if associated with device/user identifiers or Crashlytics user IDs",
+            "tracking": "No unless shared with ad/marketing partners"
+          },
+          {
+            "category": "Other Data",
+            "types": [
+              "Other Data Types"
+            ],
+            "purposes": [
+              "Analytics",
+              "App Functionality"
+            ],
+            "linkedToUser": "Depends on App Check, Firebase user agent, and request log configuration",
+            "tracking": "No unless shared with ad/marketing partners"
+          }
+        ],
+        "dataLinkedToUser": "Yes for most selected data types unless de-identification is implemented and verified before collection",
+        "dataUsedToTrack": "Yes when AdMob personalized ads, IDFA, or cross-app ad measurement are enabled",
+        "privacyChoicesUrl": "확정 필요; prefer a public privacy/data request page when login, support forms, UGC, and server-stored progress ship",
+        "koreanDataCollectionChecklist": [
+          {
+            "group": "연락처 정보",
+            "items": [
+              {
+                "name": "이름",
+                "answer": "예",
+                "purpose": "앱 기능, 제품 개인화",
+                "linkedToUser": "예",
+                "tracking": "아니요; 광고/마케팅 partner와 공유하면 예",
+                "note": "인증 프로필, Game Center 표시명, 고객지원, UGC 프로필 이름을 받는 경우"
+              },
+              {
+                "name": "이메일 주소",
+                "answer": "예",
+                "purpose": "앱 기능, 고객지원",
+                "linkedToUser": "예",
+                "tracking": "아니요; 광고/마케팅 partner와 공유하면 예",
+                "note": "Firebase Auth 이메일 로그인, 고객지원 회신, 계정 복구에 사용"
+              },
+              {
+                "name": "전화번호",
+                "answer": "조건부 예",
+                "purpose": "앱 기능, 고객지원",
+                "linkedToUser": "예",
+                "tracking": "아니요",
+                "note": "전화번호 인증 또는 고객지원 전화번호를 받으면 예. 받지 않으면 아니요"
+              },
+              {
+                "name": "주소",
+                "answer": "아니요",
+                "purpose": "해당 없음",
+                "linkedToUser": "해당 없음",
+                "tracking": "아니요",
+                "note": "DSA/trader 사업자 주소 공개는 앱이 사용자 주소를 수집하는 것과 별개"
+              },
+              {
+                "name": "기타 사용자 연락처 정보",
+                "answer": "조건부 예",
+                "purpose": "앱 기능, 고객지원",
+                "linkedToUser": "예",
+                "tracking": "아니요",
+                "note": "외부 연락 가능한 SNS handle, messenger ID 등을 받으면 예"
+              }
+            ]
+          },
+          {
+            "group": "건강 및 피트니스",
+            "items": [
+              {
+                "name": "건강",
+                "answer": "아니요",
+                "purpose": "해당 없음",
+                "linkedToUser": "해당 없음",
+                "tracking": "아니요",
+                "note": "HealthKit/의료/건강 데이터 없음"
+              },
+              {
+                "name": "피트니스",
+                "answer": "아니요",
+                "purpose": "해당 없음",
+                "linkedToUser": "해당 없음",
+                "tracking": "아니요",
+                "note": "운동/피트니스 데이터 없음"
+              }
+            ]
+          },
+          {
+            "group": "재무 정보",
+            "items": [
+              {
+                "name": "지불 정보",
+                "answer": "아니요",
+                "purpose": "해당 없음",
+                "linkedToUser": "해당 없음",
+                "tracking": "아니요",
+                "note": "Apple IAP만 쓰고 개발자가 카드/계좌 정보에 접근하지 않는 전제"
+              },
+              {
+                "name": "신용 정보",
+                "answer": "아니요",
+                "purpose": "해당 없음",
+                "linkedToUser": "해당 없음",
+                "tracking": "아니요",
+                "note": "신용 점수/신용 정보 없음"
+              },
+              {
+                "name": "기타 재무 정보",
+                "answer": "아니요",
+                "purpose": "해당 없음",
+                "linkedToUser": "해당 없음",
+                "tracking": "아니요",
+                "note": "소득/자산/부채 등 재무 정보 없음"
+              }
+            ]
+          },
+          {
+            "group": "위치",
+            "items": [
+              {
+                "name": "정확한 위치",
+                "answer": "아니요",
+                "purpose": "해당 없음",
+                "linkedToUser": "해당 없음",
+                "tracking": "아니요",
+                "note": "GPS/정밀 위치 권한을 요청하지 않는 전제"
+              },
+              {
+                "name": "대략적인 위치",
+                "answer": "예",
+                "purpose": "타사 광고, 분석, 앱 기능",
+                "linkedToUser": "기기/사용자 식별자와 결합되면 예",
+                "tracking": "AdMob 타겟팅/광고 측정에 쓰면 예",
+                "note": "AdMob IP 기반 위치 추정, Firebase Hosting request log의 city/source IP 후보"
+              }
+            ]
+          },
+          {
+            "group": "민감 정보",
+            "items": [
+              {
+                "name": "민감 정보",
+                "answer": "아니요",
+                "purpose": "해당 없음",
+                "linkedToUser": "해당 없음",
+                "tracking": "아니요",
+                "note": "인종, 종교, 정치 성향, 생체 데이터 등 민감 정보 없음"
+              }
+            ]
+          },
+          {
+            "group": "연락처",
+            "items": [
+              {
+                "name": "연락처",
+                "answer": "아니요",
+                "purpose": "해당 없음",
+                "linkedToUser": "해당 없음",
+                "tracking": "아니요",
+                "note": "주소록/소셜 그래프 접근 없음"
+              }
+            ]
+          },
+          {
+            "group": "사용자 콘텐츠",
+            "items": [
+              {
+                "name": "이메일 또는 문자 메시지",
+                "answer": "아니요",
+                "purpose": "해당 없음",
+                "linkedToUser": "해당 없음",
+                "tracking": "아니요",
+                "note": "사용자 간 메시지/채팅을 붙이면 재검토"
+              },
+              {
+                "name": "사진 또는 비디오",
+                "answer": "조건부 예",
+                "purpose": "앱 기능, 고객지원",
+                "linkedToUser": "예",
+                "tracking": "아니요",
+                "note": "고객지원 첨부나 UGC 이미지/영상 업로드를 허용하면 예. 텍스트 UGC만이면 아니요"
+              },
+              {
+                "name": "오디오 데이터",
+                "answer": "아니요",
+                "purpose": "해당 없음",
+                "linkedToUser": "해당 없음",
+                "tracking": "아니요",
+                "note": "음성 녹음/오디오 업로드 없음"
+              },
+              {
+                "name": "게임 플레이 콘텐츠",
+                "answer": "예",
+                "purpose": "앱 기능, 분석, 제품 개인화",
+                "linkedToUser": "예",
+                "tracking": "아니요",
+                "note": "서버 저장 진행 상태, 퍼즐 완료 기록, 리더보드, Game Center, 게임 내 UGC"
+              },
+              {
+                "name": "고객 지원",
+                "answer": "예",
+                "purpose": "앱 기능, 고객지원",
+                "linkedToUser": "예",
+                "tracking": "아니요",
+                "note": "고객지원 요청 본문, 문의 처리 기록"
+              },
+              {
+                "name": "기타 사용자 콘텐츠",
+                "answer": "예",
+                "purpose": "앱 기능, 분석, 제품 개인화",
+                "linkedToUser": "예",
+                "tracking": "아니요",
+                "note": "UGC, 자유 입력 텍스트, 커뮤니티/공유 콘텐츠"
+              }
+            ]
+          },
+          {
+            "group": "방문 기록",
+            "items": [
+              {
+                "name": "방문 기록",
+                "answer": "아니요",
+                "purpose": "해당 없음",
+                "linkedToUser": "해당 없음",
+                "tracking": "아니요",
+                "note": "앱 외부 웹사이트 탐색 기록 없음. open web/WebView를 붙이면 재검토"
+              }
+            ]
+          },
+          {
+            "group": "검색 기록",
+            "items": [
+              {
+                "name": "검색 기록",
+                "answer": "아니요",
+                "purpose": "해당 없음",
+                "linkedToUser": "해당 없음",
+                "tracking": "아니요",
+                "note": "앱 내 검색어를 서버/Analytics로 보내면 예"
+              }
+            ]
+          },
+          {
+            "group": "식별자",
+            "items": [
+              {
+                "name": "사용자 ID",
+                "answer": "예",
+                "purpose": "앱 기능, 분석, 제품 개인화",
+                "linkedToUser": "예",
+                "tracking": "광고 네트워크와 결합하면 예",
+                "note": "Firebase UID, 계정 ID, Game Center ID, 리더보드 사용자 ID"
+              },
+              {
+                "name": "기기 ID",
+                "answer": "예",
+                "purpose": "타사 광고, 분석, 앱 기능",
+                "linkedToUser": "예",
+                "tracking": "AdMob 개인화 광고, IDFA, 교차 앱 광고 측정 시 예",
+                "note": "IDFA, Firebase installation/app instance ID, AdMob device identifiers"
+              }
+            ]
+          },
+          {
+            "group": "구입 항목",
+            "items": [
+              {
+                "name": "구입 항목",
+                "answer": "예",
+                "purpose": "앱 기능, 분석, 제품 개인화",
+                "linkedToUser": "예",
+                "tracking": "광고/마케팅 partner와 공유하지 않으면 아니요",
+                "note": "IAP purchase history, entitlement, purchase tendency"
+              }
+            ]
+          },
+          {
+            "group": "사용 데이터",
+            "items": [
+              {
+                "name": "제품 상호 작용",
+                "answer": "예",
+                "purpose": "타사 광고, 분석, 제품 개인화, 앱 기능",
+                "linkedToUser": "식별자와 결합되면 예",
+                "tracking": "타겟 광고/광고 측정에 쓰면 예",
+                "note": "앱 실행, 탭, 퍼즐 시작/완료, 힌트 사용, 리더보드 활동"
+              },
+              {
+                "name": "광고 데이터",
+                "answer": "예",
+                "purpose": "타사 광고, 분석",
+                "linkedToUser": "예",
+                "tracking": "예",
+                "note": "AdMob 노출/클릭/광고 응답/광고 측정 데이터"
+              },
+              {
+                "name": "기타 사용 데이터",
+                "answer": "예",
+                "purpose": "분석, 제품 개인화, 앱 기능",
+                "linkedToUser": "식별자와 결합되면 예",
+                "tracking": "광고 측정에 쓰면 예",
+                "note": "완료율, 세션, Remote Config/Analytics 기반 활동 데이터"
+              }
+            ]
+          },
+          {
+            "group": "진단",
+            "items": [
+              {
+                "name": "충돌 데이터",
+                "answer": "예",
+                "purpose": "분석, 앱 기능",
+                "linkedToUser": "Crashlytics user ID 또는 식별자와 결합되면 예",
+                "tracking": "광고 목적으로 사용하지 않으면 아니요",
+                "note": "Crashlytics crash logs"
+              },
+              {
+                "name": "실적 데이터",
+                "answer": "예",
+                "purpose": "분석, 앱 기능, 타사 광고",
+                "linkedToUser": "식별자와 결합되면 예",
+                "tracking": "AdMob 광고 성능/측정에 쓰이면 예",
+                "note": "Firebase Performance, AdMob performance data, launch time, hang rate"
+              },
+              {
+                "name": "기타 진단 데이터",
+                "answer": "예",
+                "purpose": "분석, 앱 기능",
+                "linkedToUser": "식별자와 결합되면 예",
+                "tracking": "광고 목적으로 사용하지 않으면 아니요",
+                "note": "custom keys/logs, device/OS/app diagnostics"
+              }
+            ]
+          },
+          {
+            "group": "주변 환경",
+            "items": [
+              {
+                "name": "환경 스캐닝",
+                "answer": "아니요",
+                "purpose": "해당 없음",
+                "linkedToUser": "해당 없음",
+                "tracking": "아니요",
+                "note": "AR/공간 스캔 기능 없음"
+              }
+            ]
+          },
+          {
+            "group": "신체",
+            "items": [
+              {
+                "name": "손",
+                "answer": "아니요",
+                "purpose": "해당 없음",
+                "linkedToUser": "해당 없음",
+                "tracking": "아니요",
+                "note": "손 구조/움직임 데이터 없음"
+              },
+              {
+                "name": "머리",
+                "answer": "아니요",
+                "purpose": "해당 없음",
+                "linkedToUser": "해당 없음",
+                "tracking": "아니요",
+                "note": "머리 움직임 데이터 없음"
+              }
+            ]
+          },
+          {
+            "group": "기타 데이터",
+            "items": [
+              {
+                "name": "기타 데이터",
+                "answer": "예",
+                "purpose": "분석, 앱 기능, 보안",
+                "linkedToUser": "설정에 따라 다름",
+                "tracking": "광고/마케팅 partner와 공유하지 않으면 아니요",
+                "note": "App Check, Firebase user agent, Hosting request metadata 등 위 항목으로 명확히 분류되지 않는 데이터"
+              }
+            ]
+          }
+        ]
+      },
+      "implementationRequirements": [
+        "Update PrivacyInfo.xcprivacy to match native Firebase, AdMob, App Check, and tracking SDK manifests after dependencies are installed.",
+        "Add NSUserTrackingUsageDescription and AppTrackingTransparency/UMP flow if tracking or IDFA is enabled.",
+        "Create a user data deletion/export/support path before shipping authentication, support forms, UGC, leaderboard, or server-stored progress.",
+        "Re-run App Privacy review after final SDK list, Firebase settings, AdMob personalization policy, and request-log retention are fixed."
+      ],
+      "officialReferences": [
+        "https://developer.apple.com/app-store/app-privacy-details/",
+        "https://developers.google.com/admob/ios/privacy/data-disclosure",
+        "https://developers.google.com/admob/ios/privacy/idfa",
+        "https://firebase.google.com/docs/ios/app-store-data-collection",
+        "https://firebase.google.com/docs/hosting/web-request-logs-and-metrics"
+      ]
+    },
     "ageRating": "확정 필요",
+    "ageRatingGuidance": {
+      "status": "recommended answers prepared; App Store Connect input pending",
+      "calculatedRatingCandidate": "4+",
+      "categoryOverride": "해당 없음",
+      "ageSuitabilityUrl": "blank",
+      "assumptions": [
+        "Current App Store target is the native apps/mobile iOS app.",
+        "No unrestricted web access, user-generated content, in-app chat, advertising SDK, health content, violence, gambling, loot boxes, or contests are present in the current native mobile app."
+      ],
+      "plannedProductionOverrides": {
+        "status": "Re-answer before final submission if AdMob, user-generated content, leaderboard/competition, server-side progress, purchases, Game Center, support forms, or authentication ship in the iOS binary.",
+        "advertising": "예 when AdMob or any paid promotion is present",
+        "userGeneratedContent": "예 when UGC ships",
+        "contests": "드문 or 빈번 if leaderboard/events let users compete for ranking, rewards, or personal goals",
+        "harmfulContentControls": "예 strongly recommended if UGC ships and moderation/report/block controls are available",
+        "ageAssurance": "아니요 unless age-gated content or services are introduced",
+        "calculatedRatingCandidate": "4+ is no longer guaranteed after these features are added; recalculate in App Store Connect"
+      },
+      "answers": {
+        "harmfulContentControls": "아니요",
+        "ageAssurance": "아니요",
+        "unrestrictedWebAccess": "아니요",
+        "userGeneratedContent": "아니요",
+        "messagingOrChat": "아니요",
+        "advertising": "아니요",
+        "profanityOrCrudeHumor": "없음",
+        "horrorOrFearThemes": "없음",
+        "alcoholTobaccoDrugUse": "없음",
+        "medicalOrTreatmentInformation": "없음",
+        "healthOrWellnessTopics": "아니요",
+        "sexualOrSuggestiveThemes": "없음",
+        "sexualContentOrNudity": "없음",
+        "explicitSexualContentOrNudity": "없음",
+        "cartoonOrFantasyViolence": "없음",
+        "realisticViolence": "없음",
+        "prolongedGraphicOrSadisticRealisticViolence": "없음",
+        "gunsOrOtherWeapons": "없음",
+        "simulatedGambling": "없음",
+        "contests": "없음",
+        "gambling": "아니요",
+        "lootBoxes": "아니요"
+      },
+      "recheckTriggers": [
+        "Add AdMob or any paid promotion in the iOS App Store app.",
+        "Add web browsing, user-generated content, chat, leaderboard/contest, rewards competition, health content, violence, weapons, gambling, or paid random items."
+      ]
+    },
     "exportCompliance": "확정 필요",
     "suggestedUsesNonExemptEncryption": false,
     "contentRights": "확정 필요",
@@ -89,7 +641,15 @@
   "testFlight": {
     "internalTesting": "확정 필요",
     "externalTesting": "not planned",
-    "betaReviewNotes": "확정 필요"
+    "betaReviewNotes": "확정 필요",
+    "lastUploadedBuild": {
+      "versionTag": "v0.1.5",
+      "marketingVersion": "0.1.5",
+      "buildNumber": "1005",
+      "workflowRun": "27087313726",
+      "workflowJob": "79945275484",
+      "uploadedAt": "2026-06-07T08:49:00Z"
+    }
   },
   "automation": {
     "workflow": ".github/workflows/deploy-app-store.yml",
@@ -114,7 +674,7 @@
     "contentRightsAnswer": "확정 필요",
     "exportComplianceAnswer": "확정 필요",
     "dsaTraderDetails": "확정 필요",
-    "buildUpload": "확정 필요",
+    "buildUpload": "v0.1.5 build 1005 uploaded via GitHub Actions run 27087313726",
     "buildSelection": "확정 필요",
     "submitForReview": "확정 필요"
   }
