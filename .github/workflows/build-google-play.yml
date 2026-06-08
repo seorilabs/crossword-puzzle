@@ -199,12 +199,13 @@ jobs:
         run: ./gradlew :app:bundleRelease --no-daemon
 
       - name: Upload AAB artifact
+        if: ${{ !inputs.upload_to_internal }}
         uses: actions/upload-artifact@v7
         with:
           name: crossword-puzzle-google-play-aab-${{ steps.release.outputs.release_name }}
           path: ${{ steps.android.outputs.aab_path }}
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 3
 
       - name: Validate Google Play WIF config
         if: ${{ inputs.upload_to_internal }}
