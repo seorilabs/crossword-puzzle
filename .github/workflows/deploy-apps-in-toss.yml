@@ -1,7 +1,17 @@
-name: Deploy Apps in Toss
+name: Deploy AIT
 
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "빌드/배포할 릴리즈 태그입니다. 예: v0.1.1"
+        required: true
+        type: string
+      memo:
+        description: "앱인토스 배포 메모입니다. 비우면 릴리즈 태그와 커밋이 자동으로 들어갑니다."
+        required: false
+        type: string
+  workflow_call:
     inputs:
       release_tag:
         description: "빌드/배포할 릴리즈 태그입니다. 예: v0.1.1"

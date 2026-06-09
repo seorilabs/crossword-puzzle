@@ -24,14 +24,8 @@ on:
         required: false
         default: main
         type: string
-      deploy_apps_in_toss:
-        description: "태그 생성 후 AppsInToss 빌드/배포 워크플로를 실행합니다."
-        required: false
-        default: true
-        type: boolean
 
 permissions:
-  actions: write
   contents: write
 
 concurrency:
@@ -111,17 +105,3 @@ jobs:
           git push origin "refs/tags/$RELEASE_TAG"
 
           echo "Created $RELEASE_TAG for version $RELEASE_VERSION at $short_sha."
-
-      - name: Dispatch AppsInToss release build
-        if: ${{ steps.existing.outputs.skip != 'true' && (github.event_name != 'workflow_dispatch' || inputs.deploy_apps_in_toss) }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ steps.next.outputs.tag }}
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          gh workflow run deploy-apps-in-toss.yml \
-            --ref main \
-            -f release_tag="$RELEASE_TAG" \
-            -f memo="릴리즈 $RELEASE_TAG"

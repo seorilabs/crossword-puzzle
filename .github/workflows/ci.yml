@@ -37,6 +37,3 @@ jobs:
 
       - name: Validate puzzle packs
         run: npm run validate:puzzles
-
-      - name: Build AppsInToss bundle
-        run: npm run build

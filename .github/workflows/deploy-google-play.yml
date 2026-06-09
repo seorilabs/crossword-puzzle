@@ -1,4 +1,4 @@
-name: Build Google Play AAB
+name: Deploy Google Play
 
 on:
   workflow_dispatch:
@@ -20,6 +20,27 @@ on:
         options:
           - draft
           - completed
+      changes_not_sent_for_review:
+        description: "검토 제출 없이 edit commit"
+        required: false
+        default: false
+        type: boolean
+  workflow_call:
+    inputs:
+      release_tag:
+        description: "빌드할 릴리즈 태그입니다. 업로드 시에는 vX.Y.Z 태그를 지정해야 합니다."
+        required: false
+        type: string
+      upload_to_internal:
+        description: "Google Play internal track에 AAB 업로드"
+        required: false
+        default: true
+        type: boolean
+      release_status:
+        description: "internal track release status (draft 또는 completed)"
+        required: false
+        default: "completed"
+        type: string
       changes_not_sent_for_review:
         description: "검토 제출 없이 edit commit"
         required: false
