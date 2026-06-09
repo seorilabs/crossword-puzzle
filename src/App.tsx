@@ -819,6 +819,9 @@ function App() {
     useState<BonusPuzzleUnlock | null>(null);
   const [completionStatsByPuzzleId, setCompletionStatsByPuzzleId] =
     useState<CompletionStatsByPuzzleId>({});
+  const [completionCelebrationId, setCompletionCelebrationId] = useState<
+    string | null
+  >(null);
   const shownResultInterstitialRef = useRef<string | null>(null);
   const justCompletedPuzzleIdRef = useRef<string | null>(null);
   const firstAnswerInputKeysRef = useRef<Set<string>>(new Set());
@@ -831,6 +834,15 @@ function App() {
     window.addEventListener("popstate", syncRoute);
     return () => window.removeEventListener("popstate", syncRoute);
   }, []);
+
+  useEffect(() => {
+    // The celebration only belongs to the active 풀이 화면; clear it whenever we
+    // leave so returning to a finished puzzle (incl. via browser history) does
+    // not re-open the dialog over the read-only board.
+    if (route !== "today") {
+      setCompletionCelebrationId(null);
+    }
+  }, [route]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -1261,7 +1273,9 @@ function App() {
       // Mark this as a genuine just-completed run so the result screen can
       // show the interstitial only here, not when re-opening past records.
       justCompletedPuzzleIdRef.current = puzzle.puzzleId;
-      navigate("result", { replace: true });
+      // Stay on the board and celebrate instead of jumping straight to the
+      // result screen, letting the player choose when to leave.
+      setCompletionCelebrationId(puzzle.puzzleId);
     }
   }, [
     earnedHintCredits,
@@ -1336,18 +1350,31 @@ function App() {
 
   function selectCell(row: number, col: number) {
     const key = getCellKey(row, col);
-    const entries = viewModel.cellEntries.get(key);
-    const currentEntry = entries?.find(
+    const entries = viewModel.cellEntries.get(key) ?? [];
+
+    if (entries.length === 0) {
+      return;
+    }
+
+    const currentEntry = entries.find(
       (entry) => entry.id === viewModel.selectedEntry?.id,
     );
+
+    // Tapping the already-selected crossing cell toggles 가로/세로 so users can
+    // switch directions at an intersection without hunting for the clue list.
+    if (key === selectedCellKey && currentEntry != null && entries.length > 1) {
+      const toggledEntry =
+        entries.find((entry) => entry.id !== currentEntry.id) ?? currentEntry;
+      selectEntry(toggledEntry, key);
+      return;
+    }
+
     const nextEntry =
       currentEntry ??
-      entries?.find((entry) => entry.direction === selectedDirection) ??
-      entries?.[0];
+      entries.find((entry) => entry.direction === selectedDirection) ??
+      entries[0];
 
-    if (nextEntry != null) {
-      selectEntry(nextEntry, key);
-    }
+    selectEntry(nextEntry, key);
   }
 
   function trackFirstAnswerInput(
@@ -1903,6 +1930,8 @@ function App() {
         <TodayScreen
           {...commonScreenProps}
           {...dateSelectionProps}
+          completionCelebrationId={completionCelebrationId}
+          dismissCompletionCelebration={() => setCompletionCelebrationId(null)}
           hasStarted={hasStarted}
           isCompleted={isCompleted}
           navigate={navigate}
@@ -2839,6 +2868,7 @@ type AppHeaderProps = {
   eyebrow?: string;
   title: string;
   onBack?: () => void;
+  backVariant?: "back" | "home";
   action?: {
     label: string;
     onClick: () => void;
@@ -2849,6 +2879,7 @@ type AppHeaderProps = {
 
 function AppHeader({
   action,
+  backVariant = "back",
   compact = false,
   eyebrow,
   onBack,
@@ -2861,7 +2892,17 @@ function AppHeader({
         .filter(Boolean)
         .join(" ")}
     >
-      {onBack == null ? null : (
+      {onBack == null ? null : backVariant === "home" ? (
+        <button
+          className="homeButton"
+          type="button"
+          onClick={onBack}
+          aria-label="홈으로"
+        >
+          <HomeIcon />
+          <span>홈</span>
+        </button>
+      ) : (
         <button
           className="backButton"
           type="button"
@@ -2900,6 +2941,8 @@ type TodayScreenProps = DateSelectionProps & {
   clearAnswerCell: (entry: PuzzleEntry, cellKey?: string) => void;
   clueEntries: PuzzleEntry[];
   completedEntries: PuzzleEntry[];
+  completionCelebrationId: string | null;
+  dismissCompletionCelebration: () => void;
   hasStarted: boolean;
   hintBalance: HintBalance;
   hintCount: number;
@@ -2929,11 +2972,14 @@ function TodayScreen({
   cellValues,
   clearAnswerCell,
   completedEntries,
+  completionCelebrationId,
   completionStatsByPuzzleId,
   completionStatsMinDisplayCount,
   dateCardStates,
+  dismissCompletionCelebration,
   hasStarted,
   hintBalance,
+  hintCount,
   hintToastMessage,
   isCompleted,
   loadState,
@@ -2955,6 +3001,10 @@ function TodayScreen({
 }: TodayScreenProps) {
   const [isClueListOpen, setIsClueListOpen] = useState(false);
   const [answerInputResetKey, setAnswerInputResetKey] = useState(0);
+  // A finished puzzle is shown read-only so the saved answers stay intact while
+  // the player reviews the completed board.
+  const isReviewMode = isCompleted;
+  const showCompletionCelebration = completionCelebrationId === puzzle.puzzleId;
   const selectedCellEntries = useMemo(() => {
     const entries =
       selectedCellKey === ""
@@ -3036,62 +3086,67 @@ function TodayScreen({
     <>
       <AppHeader
         compact
+        backVariant="home"
         title={formatPuzzleHeaderLabel(puzzle.date, loadState)}
         onBack={() => navigate("home")}
         right={
           <div className="headerActions">
-            <button
-              className={[
-                "hintCountButton",
-                hintBalance.remaining === 0 ? "hintCountButtonEmpty" : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              type="button"
-              aria-label={
-                hintBalance.isAdBusy
-                  ? "광고 준비 중"
-                  : hintBalance.remaining > 0
-                    ? `힌트 ${hintBalance.remaining}개 남음`
-                    : `힌트 얻기. 광고를 보고 ${hintBalance.rewardedCredits}개 받기`
-              }
-              title={
-                hintBalance.isAdBusy
-                  ? "광고 준비 중"
-                  : hintBalance.remaining > 0
-                    ? `힌트 ${hintBalance.remaining}개 남음`
-                    : `힌트 얻기. 광고를 보고 ${hintBalance.rewardedCredits}개 받기`
-              }
-              disabled={
-                selectedEntry == null ||
-                hintBalance.isAdBusy ||
-                (hintBalance.remaining === 0 && !hintBalance.adsEnabled)
-              }
-              onClick={useHint}
-            >
-              {hintBalance.remaining > 0 ? (
-                <>
-                  <span>힌트</span>
-                  <strong>
-                    {hintBalance.isAdBusy ? "..." : hintBalance.remaining}
-                  </strong>
-                </>
-              ) : (
-                <strong className="hintAcquireLabel">
-                  {hintBalance.isAdBusy ? "준비 중" : "힌트 얻기"}
-                </strong>
-              )}
-            </button>
-            <button
-              className="iconButton"
-              type="button"
-              aria-label="지우기"
-              title="지우기"
-              disabled={selectedEntry == null}
-              onClick={clearSelectedAnswer}
-            >
-              <EraserIcon />
-            </button>
+            {isReviewMode ? null : (
+              <>
+                <button
+                  className={[
+                    "hintCountButton",
+                    hintBalance.remaining === 0 ? "hintCountButtonEmpty" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  type="button"
+                  aria-label={
+                    hintBalance.isAdBusy
+                      ? "광고 준비 중"
+                      : hintBalance.remaining > 0
+                        ? `힌트 ${hintBalance.remaining}개 남음`
+                        : `힌트 얻기. 광고를 보고 ${hintBalance.rewardedCredits}개 받기`
+                  }
+                  title={
+                    hintBalance.isAdBusy
+                      ? "광고 준비 중"
+                      : hintBalance.remaining > 0
+                        ? `힌트 ${hintBalance.remaining}개 남음`
+                        : `힌트 얻기. 광고를 보고 ${hintBalance.rewardedCredits}개 받기`
+                  }
+                  disabled={
+                    selectedEntry == null ||
+                    hintBalance.isAdBusy ||
+                    (hintBalance.remaining === 0 && !hintBalance.adsEnabled)
+                  }
+                  onClick={useHint}
+                >
+                  {hintBalance.remaining > 0 ? (
+                    <>
+                      <span>힌트</span>
+                      <strong>
+                        {hintBalance.isAdBusy ? "..." : hintBalance.remaining}
+                      </strong>
+                    </>
+                  ) : (
+                    <strong className="hintAcquireLabel">
+                      {hintBalance.isAdBusy ? "준비 중" : "힌트 얻기"}
+                    </strong>
+                  )}
+                </button>
+                <button
+                  className="iconButton"
+                  type="button"
+                  aria-label="지우기"
+                  title="지우기"
+                  disabled={selectedEntry == null}
+                  onClick={clearSelectedAnswer}
+                >
+                  <EraserIcon />
+                </button>
+              </>
+            )}
             <button
               className="ghostButton"
               type="button"
@@ -3102,6 +3157,23 @@ function TodayScreen({
           </div>
         }
       />
+
+      {isReviewMode ? (
+        <div
+          className="reviewBanner"
+          role="region"
+          aria-label="완료한 퍼즐 안내"
+        >
+          <span>완료한 퍼즐이에요 · 읽기 전용으로 답을 확인할 수 있어요</span>
+          <button
+            className="reviewBannerLink"
+            type="button"
+            onClick={() => navigate("result")}
+          >
+            결과 보기
+          </button>
+        </div>
+      ) : null}
 
       {hintToastMessage === "" ? null : (
         <div className="hintToast" role="status">
@@ -3148,7 +3220,7 @@ function TodayScreen({
         ) : null}
       </section>
 
-      {selectedEntry != null ? (
+      {selectedEntry != null && !isReviewMode ? (
         <div className="fixedBottom answerDock">
           <div className="answerPanel">
             <AnswerSlotInput
@@ -3176,7 +3248,90 @@ function TodayScreen({
           startLabels={startLabels}
         />
       ) : null}
+
+      {showCompletionCelebration ? (
+        <CompletionCelebrationDialog
+          completedCount={completedEntries.length}
+          hintCount={hintCount}
+          totalCount={puzzle.entries.length}
+          onClose={dismissCompletionCelebration}
+          onGoHome={() => {
+            dismissCompletionCelebration();
+            navigate("home");
+          }}
+          onSeeResult={() => {
+            dismissCompletionCelebration();
+            navigate("result");
+          }}
+        />
+      ) : null}
     </>
+  );
+}
+
+type CompletionCelebrationDialogProps = {
+  completedCount: number;
+  hintCount: number;
+  totalCount: number;
+  onClose: () => void;
+  onGoHome: () => void;
+  onSeeResult: () => void;
+};
+
+function CompletionCelebrationDialog({
+  completedCount,
+  hintCount,
+  totalCount,
+  onClose,
+  onGoHome,
+  onSeeResult,
+}: CompletionCelebrationDialogProps) {
+  return (
+    <div className="rewardDialogScrim" onClick={onClose}>
+      <section
+        className="rewardDialog completionDialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="completionDialogTitle"
+        aria-describedby="completionDialogDescription"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="completionDialogBadge" aria-hidden="true">
+          🎉
+        </div>
+        <div className="rewardDialogText">
+          <h2 id="completionDialogTitle">퍼즐을 완성했어요!</h2>
+          <p id="completionDialogDescription">
+            낱말 {completedCount}/{totalCount}개를 모두 맞췄어요
+            {hintCount > 0 ? ` · 힌트 ${hintCount}회 사용` : ""}.
+          </p>
+        </div>
+        <div className="rewardDialogActions">
+          <button
+            className="secondaryButton"
+            type="button"
+            onClick={onSeeResult}
+          >
+            결과 보기
+          </button>
+          <button
+            className="primaryButton"
+            type="button"
+            onClick={onGoHome}
+            autoFocus
+          >
+            홈으로
+          </button>
+        </div>
+        <button
+          className="completionDialogReview"
+          type="button"
+          onClick={onClose}
+        >
+          퍼즐 다시 보기
+        </button>
+      </section>
+    </div>
   );
 }
 
@@ -3479,6 +3634,27 @@ function AnswerSlotInput({
   );
 }
 
+function HomeIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      focusable="false"
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+    >
+      <path
+        d="M4 11.5 12 5l8 6.5M6 10.5V19h12v-8.5"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    </svg>
+  );
+}
+
 function EraserIcon() {
   return (
     <svg
@@ -3579,11 +3755,20 @@ function ResultScreen({
         <button
           className="secondaryButton"
           type="button"
-          disabled={isComplete || remainingAttempts === 0}
-          onClick={restartMissionAttempt}
+          onClick={() => navigate("today")}
         >
-          다시 도전
+          {isComplete ? "퍼즐 다시 보기" : "이어 풀기"}
         </button>
+        {isComplete ? null : (
+          <button
+            className="secondaryButton"
+            type="button"
+            disabled={remainingAttempts === 0}
+            onClick={restartMissionAttempt}
+          >
+            다시 도전
+          </button>
+        )}
       </section>
 
       <BonusPuzzlePanel
@@ -3700,7 +3885,10 @@ function HistoryScreen({
   );
 }
 
-type DevSimulatorScreenProps = TodayScreenProps & {
+type DevSimulatorScreenProps = Omit<
+  TodayScreenProps,
+  "completionCelebrationId" | "dismissCompletionCelebration"
+> & {
   clearProgress: () => void;
   revealAll: () => void;
   revealSelected: () => void;
@@ -3990,10 +4178,14 @@ function PuzzleBoard({
           const answer = puzzle.grid[row]?.[col] ?? "";
           const key = getCellKey(row, col);
           const entries = cellEntries.get(key) ?? [];
-          const isFilled = cellValues[key] != null;
+          const value = cellValues[key];
+          const isFilled = value != null;
           const isComplete = completedCellKeys.has(key);
           const isSelected = selectedCells.has(key);
           const isCross = entries.length > 1;
+          // The grid stores the single correct letter per cell, so any filled
+          // value that differs is wrong regardless of direction.
+          const isWrong = isFilled && value !== answer;
 
           if (answer === "") {
             return <div key={key} className="cell cellBlock" />;
@@ -4008,10 +4200,13 @@ function PuzzleBoard({
                 isCross ? "cellCross" : "",
                 isFilled ? "cellFilled" : "",
                 isComplete ? "cellComplete" : "",
-              ].join(" ")}
+                isWrong ? "cellWrong" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
               type="button"
               onClick={() => selectCell(row, col)}
-              aria-label={`${row + 1}행 ${col + 1}열${isComplete ? " 정답 완료" : ""}`}
+              aria-label={`${row + 1}행 ${col + 1}열${isWrong ? " 오답" : isComplete ? " 정답 완료" : ""}`}
             >
               <span className="cellNumber">{startLabels.get(key) ?? ""}</span>
               <span className="cellLetter">{cellValues[key] ?? ""}</span>
