@@ -1091,8 +1091,13 @@ function App() {
   );
   const archivePuzzleSummaries = useMemo(
     () =>
-      puzzleArchiveRecords.map((record) => createPuzzleSummary(record.puzzle)),
-    [puzzleArchiveRecords],
+      // The local archive grows unbounded, so only surface the most recent
+      // records on the shared carousel; the full list stays in 기록 화면.
+      // listPuzzles() already returns records newest-first.
+      puzzleArchiveRecords
+        .slice(0, launchConfig.visiblePuzzleCount)
+        .map((record) => createPuzzleSummary(record.puzzle)),
+    [launchConfig.visiblePuzzleCount, puzzleArchiveRecords],
   );
   const activeBonusUnlock =
     bonusPuzzleUnlock?.date === todayKey ? bonusPuzzleUnlock : null;
