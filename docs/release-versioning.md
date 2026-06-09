@@ -33,13 +33,19 @@ gh workflow run release-tag.yml \
 
 ## 태그 기본값
 
-모든 `Deploy *` workflow(및 `Deploy All`)의 `release_tag`는 옵셔널이다. 비워두면 각 workflow가 `git tag --sort=-v:refname`로 **최신 `vX.Y.Z` 태그**를 찾아 그 커밋을 checkout해 배포한다. 특정 태그를 넣으면 그 태그로 배포한다. 태그가 하나도 없으면 실패한다.
+모든 `Deploy *` workflow(및 `Deploy All`)의 `release_tag`는 옵셔널이다. 비워두면 **최신 `vX.Y.Z` 태그**를 찾아 그 커밋을 checkout해 배포한다. 최신 태그는 다음 커맨드로 고른다.
+
+```bash
+git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n 1
+```
+
+특정 태그를 넣으면 그 태그로 배포한다. 태그가 하나도 없으면 실패한다.
 
 > GitHub Actions의 `workflow_dispatch` 폼은 입력 기본값을 동적으로 채울 수 없어서 "최신 태그를 드롭다운에 미리 선택"하는 것은 불가능하다. 대신 입력을 비우면 런타임에 최신 태그로 해석한다.
 
 ## Deploy All (묶음 배포)
 
-`Deploy All` workflow는 `release_tag` 하나로 세 배포(`Deploy AIT`, `Deploy Google Play`, `Deploy App Store`)를 `workflow_call`로 한 번에 트리거한다. 각 배포는 토글로 켜고 끌 수 있다. `release_tag`를 비우면 각 배포가 최신 태그를 사용한다.
+`Deploy All` workflow는 `release_tag` 하나로 세 배포(`Deploy AIT`, `Deploy Google Play`, `Deploy App Store`)를 `workflow_call`로 한 번에 트리거한다. 각 배포는 토글로 켜고 끌 수 있다. `release_tag`를 비우면 선행 `resolve` job이 최신 태그를 **한 번만** 해석한 뒤 세 배포에 동일한 태그를 전달하므로, 실행 중 새 태그가 생겨도 세 배포가 같은 릴리즈를 사용한다.
 
 ```bash
 gh workflow run deploy-all.yml \
