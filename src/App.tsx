@@ -3159,7 +3159,11 @@ function TodayScreen({
       />
 
       {isReviewMode ? (
-        <div className="reviewBanner" role="region" aria-label="완료한 퍼즐 안내">
+        <div
+          className="reviewBanner"
+          role="region"
+          aria-label="완료한 퍼즐 안내"
+        >
           <span>완료한 퍼즐이에요 · 읽기 전용으로 답을 확인할 수 있어요</span>
           <button
             className="reviewBannerLink"
