@@ -48,7 +48,7 @@
   },
   "automation": {
     "developerApiAuth": "Shared Google Play publisher service account + GitHub Actions OIDC/WIF",
-    "workflow": ".github/workflows/build-google-play.yml",
+    "workflow": ".github/workflows/deploy-google-play.yml",
     "uploadScript": "scripts/upload-google-play-internal.py",
     "listingScript": "scripts/apply-google-play-listing.py",
     "wifSetupScript": "scripts/setup-google-play-wif.sh",

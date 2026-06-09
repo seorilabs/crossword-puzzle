@@ -35,7 +35,7 @@ flowchart TD
 | `scripts/setup-google-play-wif.sh`        | shared Play publisher service account에 repo별 WIF impersonation 권한 추가    |
 | `scripts/apply-google-play-listing.py`    | API로 쓰기 가능한 Play listing/details/images 적용                            |
 | `scripts/upload-google-play-internal.py`  | Android Publisher API로 AAB를 internal track에 업로드                         |
-| `.github/workflows/build-google-play.yml` | signed AAB build, artifact 보관, 선택적 internal upload                       |
+| `.github/workflows/deploy-google-play.yml` | signed AAB build, artifact 보관, 선택적 internal upload                       |
 | `docs/google-play-store-listing.md`       | 스토어 등록값과 미확정 항목                                                   |
 
 ## 1. Package Name
@@ -164,7 +164,7 @@ gh secret set GOOGLE_PLAY_UPLOAD_KEY_PASSWORD
 Android 타깃과 service account 권한이 준비되면 먼저 artifact build만 실행한다.
 
 ```bash
-gh workflow run build-google-play.yml \
+gh workflow run deploy-google-play.yml \
   -f release_tag=v0.1.1 \
   -f upload_to_internal=false
 ```
@@ -172,7 +172,7 @@ gh workflow run build-google-play.yml \
 업로드까지 실행한다.
 
 ```bash
-gh workflow run build-google-play.yml \
+gh workflow run deploy-google-play.yml \
   -f release_tag=v0.1.1 \
   -f upload_to_internal=true \
   -f release_status=draft

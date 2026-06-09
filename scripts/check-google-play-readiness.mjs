@@ -470,15 +470,15 @@ if (!isConcrete(configuredAabPath)) {
   pass("Android App Bundle(.aab)을 찾았습니다.", configuredAabPath);
 }
 
-if (existsSync(repoPath(".github/workflows/build-google-play.yml"))) {
+if (existsSync(repoPath(".github/workflows/deploy-google-play.yml"))) {
   pass(
-    "Google Play AAB workflow가 있습니다.",
-    ".github/workflows/build-google-play.yml",
+    "Google Play 배포 workflow가 있습니다.",
+    ".github/workflows/deploy-google-play.yml",
   );
 } else {
   fail(
-    "Google Play AAB workflow가 없습니다.",
-    ".github/workflows/build-google-play.yml",
+    "Google Play 배포 workflow가 없습니다.",
+    ".github/workflows/deploy-google-play.yml",
   );
 }
 

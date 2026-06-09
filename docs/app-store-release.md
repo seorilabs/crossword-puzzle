@@ -95,8 +95,8 @@ Workflow:
 
 Trigger:
 
-- `vX.Y.Z` 태그 push
 - 수동 실행 `workflow_dispatch` + `release_tag=vX.Y.Z`
+- `Deploy All` 묶음 workflow에서 `workflow_call`로 호출
 
 릴리스 버전:
 
