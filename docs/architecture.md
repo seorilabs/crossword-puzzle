@@ -4,7 +4,7 @@
 
 - `crossword-puzzle`의 1차 론칭 목표는 AppsInToss WebView다.
 - Google Play / App Store 확장은 AIT 출시 이후 React Native `apps/mobile` 타깃으로 이어간다.
-- AIT WebView 구현은 유지하고, 공통 퍼즐 모델과 상태 로직을 `packages/crossword-core`에서 먼저 공유한다.
+- AIT WebView 구현은 유지하고, 공통 퍼즐 모델, 상태 로직, 출시 동기화에 필요한 UI 정책을 `packages/crossword-core`에서 먼저 공유한다.
 - 운영용 puzzle pack은 Cloud Run Job이 생성하고 Firebase Hosting에서 JSON으로 서빙한다.
 - AIT 앱의 퍼즐 데이터는 Firebase SDK를 쓰지 않고, Firebase Hosting의 공개 JSON만 `fetch`하는 `PuzzleRepository`로 읽는다.
 - AIT 앱은 출시 운영을 위해 Firebase Web SDK 기반 Analytics / Remote Config를 선택적으로 초기화한다. Firebase env 값이 없으면 no-op으로 동작한다.
@@ -40,7 +40,7 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-  Core["packages/crossword-core<br/>types / mission / progress / puzzle validation"]
+  Core["packages/crossword-core<br/>types / mission / progress / puzzle validation / ui policy"]
   AIT["AIT WebView<br/>src/App.tsx"]
   AITAdapters["AIT adapters<br/>fetch + localStorage"]
   FirebaseHosting["Firebase Hosting<br/>/puzzles/manifest.json + /puzzles/*.json"]
@@ -82,6 +82,7 @@ flowchart LR
 - 같은 날짜에 여러 퍼즐이 있으면 해당 날짜의 첫 발행분을 무료 퍼즐로 고정하고, 추가 발행분은 보너스 후보로만 쓴다.
 - `하나 더 풀기`는 새 퍼즐 생성권이 아니라 manifest에 이미 들어온 미풀이 퍼즐 접근권이다. 보상형 광고 완료 이벤트가 확인된 뒤에만 당일 보너스 `puzzleId`를 로컬에 저장한다.
 - 퍼즐을 시작하거나 완료하면 퍼즐 JSON 스냅샷을 기기에 저장한다. 원격 retention에서 빠진 퍼즐도 기록 화면에서 로컬 사본으로 열 수 있지만, 앱 데이터 삭제/기기 변경/저장공간 정리 시 사라질 수 있다.
+- 무료 퍼즐 선택, 보너스 후보 선택, 기본 시도 횟수와 기본 힌트 수는 `packages/crossword-core/src/uiPolicy.ts`를 source of truth로 둔다. AIT WebView와 `apps/mobile`은 렌더링/광고 어댑터만 다르게 구현하고 같은 정책 함수를 import해야 한다.
 
 ## 경계
 
@@ -90,7 +91,7 @@ flowchart LR
 | Core                | `packages/crossword-core/src` | 퍼즐 타입, 날짜별 manifest 요약, 진행 상태/미션 타입, 순수 helper, repository 계약                                     | React, DOM, AppsInToss, Supabase SDK, RN import |
 | AIT WebView adapter | `src/adapters`                | `fetch` 기반 puzzle pack/날짜 목록 로딩, `localStorage` 진행/미션 저장, AIT 광고, Firebase Web Analytics/Remote Config | Supabase service role, RN native module         |
 | AIT UI              | `src/App.tsx`                 | 상단 날짜 카드, TDS UI, 입력, 화면 상태 연결                                                                           | 데이터 소스 세부 구현 직접 소유                 |
-| Mobile              | `apps/mobile`                 | RN navigation, native storage, store release, Supabase/mobile adapter                                                  | AIT WebView SDK import                          |
+| Mobile              | `apps/mobile`                 | RN navigation, native storage, local puzzle archive, store release, Supabase/mobile adapter                            | AIT WebView SDK import                          |
 | Future backend      | `supabase`                    | migrations, RLS, Edge Functions                                                                                        | 앱에 service role key 포함                      |
 
 ## Firebase Hosting 연동 순서
@@ -143,11 +144,12 @@ Supabase는 puzzle pack 운영이 Firebase Hosting으로 안정화된 뒤, 검�
 - `packages/crossword-core`는 RN, Supabase, AppsInToss import를 계속 금지한다.
 - AIT WebView는 `apps/mobile` 생성 후에도 제거하지 않는다.
 - Android/iOS 모바일 UI는 AIT 제품 정책을 따른다. 홈/날짜 rail은 하루 1개 기본 공개 퍼즐만 노출하고, 추가 퍼즐은 플랫폼별 보상형 광고 어댑터가 붙은 뒤 보너스 해금으로 연다.
-- 현재 `apps/mobile`은 `packages/crossword-core`, Firebase Hosting puzzle pack, AsyncStorage 기반 진행/미션 저장, AIT와 맞춘 슬롯형 답안 입력/선택 단서 레이아웃을 연결했다. Android/iOS AdMob 콘솔 앱/광고 단위 ID는 확보했고, 남은 동기화 대상은 Firebase Analytics/Remote Config, AdMob SDK/native adapter 연결과 release QA, App Store/Google Play signing 같은 platform adapter다.
+- 현재 `apps/mobile`은 `packages/crossword-core`, Firebase Hosting puzzle pack, AsyncStorage 기반 진행/미션/퍼즐 스냅샷 저장, AIT와 맞춘 최근 무료 퍼즐 rail, 기록 화면, 슬롯형 답안 입력/선택 단서 레이아웃을 연결했다. Google Play와 App Store는 이 같은 RN 타깃을 사용한다. Android/iOS AdMob 콘솔 앱/광고 단위 ID는 확보했고, 남은 동기화 대상은 Firebase Analytics/Remote Config, AdMob SDK/native adapter 연결과 release QA, App Store/Google Play signing 같은 platform adapter다.
 
 ## 검증 기준
 
 - AIT WebView는 계속 `npm run lint`와 `npm run build`가 통과해야 한다.
+- 릴리스 태그 생성 전 `npm run check:release-parity`와 `npm run check:mobile`이 같이 통과해야 한다.
 - Core는 플랫폼 import가 없어야 한다.
 - 모바일 타깃은 Firebase Hosting 공개 JSON을 우선 읽고, 원격 로딩 실패 시 번들된 `public/puzzles`로 fallback한다.
 - 모바일 타깃이 있어도 root AppsInToss deploy workflow는 `.ait` 산출 경로를 유지한다.

@@ -2,17 +2,18 @@
 
 ## 정책
 
-- `main`에 push되면 `CI`가 `lint`, `validate:puzzles`를 수행한다. AIT 빌드는 CI에서 제외하고 배포 workflow에서만 수행한다.
+- `main`에 push되면 `CI`가 Web/AIT 경로의 `lint`, `validate:puzzles`, `check:release-parity`, `build`와 `apps/mobile`의 `check:mobile`을 함께 수행한다.
 - `CI`가 성공한 push commit에만 `Release Tag` workflow가 semver 태그를 만든다.
 - 자동 태그는 항상 patch 증가다. 예: `v0.1.1` -> `v0.1.2`.
 - minor/major 증가는 `Release Tag` workflow를 수동 실행할 때만 선택한다.
-- 태그 생성 이후 실제 배포는 자동으로 트리거하지 않는다. `Deploy All`(묶음) 또는 개별 `Deploy *` workflow를 수동 실행한다.
+- 태그 생성 이후 실제 배포는 자동으로 트리거하지 않는다. 여러 마켓을 같은 릴리즈로 배포할 때는 `Deploy All`(묶음)을 사용한다.
+- 개별 `Deploy *` workflow는 단일 마켓 재배포용이다. AIT와 Google Play/App Store를 같이 내보낼 때 개별 workflow를 따로 실행하면 실행 사이에 최신 태그가 바뀔 수 있으므로 `Deploy All`로 같은 태그를 한 번만 해석한다.
 - 기존 `crossword-puzzle-release-*` 태그는 보존하되, 새 버전 계산에서는 제외한다.
 - semver 태그가 아직 없으면 `package.json`의 `version`을 기준으로 첫 patch 태그를 만든다.
 
 ```mermaid
 flowchart LR
-  Push["main push"] --> CI["CI (lint, validate:puzzles)"]
+  Push["main push"] --> CI["CI (web build + mobile check + parity)"]
   CI -->|success| Tag["Release Tag (patch 자동)"]
   Tag --> Semver["vX.Y.Z tag"]
   Semver --> DeployAll["Deploy All (수동)"]
@@ -46,6 +47,8 @@ git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n 1
 ## Deploy All (묶음 배포)
 
 `Deploy All` workflow는 `release_tag` 하나로 세 배포(`Deploy AIT`, `Deploy Google Play`, `Deploy App Store`)를 `workflow_call`로 한 번에 트리거한다. 각 배포는 토글로 켜고 끌 수 있다. `release_tag`를 비우면 선행 `resolve` job이 최신 태그를 **한 번만** 해석한 뒤 세 배포에 동일한 태그를 전달하므로, 실행 중 새 태그가 생겨도 세 배포가 같은 릴리즈를 사용한다.
+
+CI의 `check:release-parity`는 AIT WebView와 `apps/mobile`이 공통 `packages/crossword-core/src/uiPolicy.ts` 정책을 쓰는지 확인한다. 이 가드는 무료 퍼즐/보너스 퍼즐/시도 횟수 같은 사용자 정책이 앱별 로컬 함수로 다시 갈라지는 것을 막기 위한 최소 릴리스 조건이다.
 
 ```bash
 gh workflow run deploy-all.yml \

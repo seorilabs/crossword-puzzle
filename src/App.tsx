@@ -7,16 +7,23 @@ import {
   buildReviewEntries,
   buildStartLabels,
   completeMission,
+  createPuzzleSummary,
   createDailyMissionState,
+  DAILY_ATTEMPT_LIMIT,
+  getBonusPuzzleCandidateSummary,
   getBounds,
   getCellKey,
   getCompletedEntries,
+  getDailyFreePuzzleSummaries,
+  getDailyFreePuzzleSummary,
   getEntryAnswerValue,
   getEntryCells,
   getInitialEntryId,
   getRemainingAttempts,
   getTodayDateKey,
+  sortPuzzleSummariesByRecency,
   startMissionAttempt,
+  uniquePuzzleSummaries,
   validatePuzzleSlots,
   type DailyMissionState,
   type Direction,
@@ -135,8 +142,6 @@ type FullScreenAdFailureResult = Exclude<
   FullScreenAdResult,
   { status: "rewarded" }
 >;
-
-const DAILY_ATTEMPT_LIMIT = 3;
 
 const puzzlePackBaseUrl = import.meta.env.VITE_PUZZLE_PACK_BASE_URL?.trim();
 const puzzleManifestUrl = import.meta.env.VITE_PUZZLE_MANIFEST_URL?.trim();
@@ -337,20 +342,6 @@ function getProgressPercent(completedCount: number, totalCount: number) {
   return Math.round((completedCount / totalCount) * 100);
 }
 
-function createPuzzleSummary(puzzle: Puzzle): PuzzleManifestItem {
-  return {
-    date: puzzle.date,
-    difficulty: puzzle.difficulty,
-    metrics: puzzle.metrics,
-    packId: puzzle.packId,
-    path: "",
-    publishedAt: puzzle.publishedAt,
-    puzzleId: puzzle.puzzleId,
-    quality: puzzle.quality,
-    slotId: puzzle.slotId,
-  };
-}
-
 function isRemotePuzzlePackSummary(summary: PuzzleManifestItem) {
   return (
     summary.packId != null ||
@@ -361,122 +352,6 @@ function isRemotePuzzlePackSummary(summary: PuzzleManifestItem) {
 
 function getPuzzlePackLoadState(summaries: PuzzleManifestItem[]): LoadState {
   return summaries.some(isRemotePuzzlePackSummary) ? "remote" : "fallback";
-}
-
-function getPuzzlePublishedTime(summary: PuzzleManifestItem) {
-  if (summary.publishedAt == null) {
-    return undefined;
-  }
-
-  const value = new Date(summary.publishedAt).getTime();
-
-  return Number.isFinite(value) ? value : undefined;
-}
-
-function getPuzzleStableSortKey(summary: PuzzleManifestItem) {
-  return (
-    summary.publishedAt ?? summary.slotId ?? summary.date ?? summary.puzzleId
-  );
-}
-
-function isPublishedPuzzle(summary: PuzzleManifestItem, now = Date.now()) {
-  const publishedTime = getPuzzlePublishedTime(summary);
-
-  return publishedTime == null || publishedTime <= now;
-}
-
-function sortPuzzleSummariesAscending(
-  left: PuzzleManifestItem,
-  right: PuzzleManifestItem,
-) {
-  return getPuzzleStableSortKey(left).localeCompare(
-    getPuzzleStableSortKey(right),
-  );
-}
-
-function getDailyFreePuzzleSummary(
-  puzzleSummaries: PuzzleManifestItem[],
-  today: string,
-  now = Date.now(),
-) {
-  const publishedSummaries = puzzleSummaries.filter((summary) =>
-    isPublishedPuzzle(summary, now),
-  );
-  const todaySummaries = publishedSummaries
-    .filter((summary) => summary.date === today)
-    .sort(sortPuzzleSummariesAscending);
-
-  if (todaySummaries[0] != null) {
-    return todaySummaries[0];
-  }
-
-  const pastDates = publishedSummaries
-    .filter((summary) => summary.date <= today)
-    .map((summary) => summary.date)
-    .sort();
-  const latestPastDate = pastDates[pastDates.length - 1];
-
-  if (latestPastDate != null) {
-    return publishedSummaries
-      .filter((summary) => summary.date === latestPastDate)
-      .sort(sortPuzzleSummariesAscending)[0];
-  }
-
-  return (
-    publishedSummaries.sort(sortPuzzleSummariesAscending)[0] ??
-    puzzleSummaries[0]
-  );
-}
-
-function getDailyFreePuzzleSummaries(
-  puzzleSummaries: PuzzleManifestItem[],
-  today: string,
-  limit: number,
-  now = Date.now(),
-) {
-  const maxDays = Math.max(1, limit);
-  const publishedSummaries = puzzleSummaries.filter((summary) =>
-    isPublishedPuzzle(summary, now),
-  );
-  const freeSummaryByDate = new Map<string, PuzzleManifestItem>();
-
-  for (const summary of publishedSummaries) {
-    if (summary.date > today) {
-      continue;
-    }
-
-    const existing = freeSummaryByDate.get(summary.date);
-
-    // Pin the first published puzzle of each date as that day's free puzzle.
-    if (
-      existing == null ||
-      sortPuzzleSummariesAscending(summary, existing) < 0
-    ) {
-      freeSummaryByDate.set(summary.date, summary);
-    }
-  }
-
-  const dailySummaries = [...freeSummaryByDate.values()].sort((left, right) =>
-    getPuzzleStableSortKey(right).localeCompare(getPuzzleStableSortKey(left)),
-  );
-
-  if (dailySummaries.length > 0) {
-    return dailySummaries.slice(0, maxDays);
-  }
-
-  const fallbackSummary = getDailyFreePuzzleSummary(
-    puzzleSummaries,
-    today,
-    now,
-  );
-
-  return fallbackSummary == null ? [] : [fallbackSummary];
-}
-
-function sortPuzzleSummariesByRecency(summaries: PuzzleManifestItem[]) {
-  return [...summaries].sort((left, right) =>
-    getPuzzleStableSortKey(right).localeCompare(getPuzzleStableSortKey(left)),
-  );
 }
 
 function getInitialPuzzleId(
@@ -516,50 +391,6 @@ function getPuzzleSummaryFromArchive(
       : records.find((item) => item.puzzleId === puzzleId);
 
   return record == null ? undefined : createPuzzleSummary(record.puzzle);
-}
-
-function getBonusPuzzleCandidateSummary({
-  completedPuzzleIds,
-  dailyFreeSummary,
-  puzzleSummaries,
-  today,
-}: {
-  completedPuzzleIds: Set<string>;
-  dailyFreeSummary?: PuzzleManifestItem;
-  puzzleSummaries: PuzzleManifestItem[];
-  today: string;
-}) {
-  if (dailyFreeSummary?.date !== today) {
-    return undefined;
-  }
-
-  return puzzleSummaries
-    .filter(
-      (summary) =>
-        summary.date === today &&
-        summary.puzzleId !== dailyFreeSummary.puzzleId &&
-        !completedPuzzleIds.has(summary.puzzleId) &&
-        isPublishedPuzzle(summary),
-    )
-    .sort((left, right) =>
-      getPuzzleStableSortKey(right).localeCompare(getPuzzleStableSortKey(left)),
-    )[0];
-}
-
-function uniquePuzzleSummaries(summaries: PuzzleManifestItem[]) {
-  const seen = new Set<string>();
-  const result: PuzzleManifestItem[] = [];
-
-  for (const summary of summaries) {
-    if (seen.has(summary.puzzleId)) {
-      continue;
-    }
-
-    seen.add(summary.puzzleId);
-    result.push(summary);
-  }
-
-  return result;
 }
 
 function createDateCardState(

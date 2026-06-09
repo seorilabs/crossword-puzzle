@@ -1,3 +1,10 @@
+import {
+  DEFAULT_HINT_CREDITS,
+  DEFAULT_VISIBLE_PUZZLE_COUNT,
+  PUZZLE_GENERATION_INTERVAL_HOURS,
+  PUZZLE_KEEP_COUNT,
+} from "../../packages/crossword-core/src";
+
 export type LaunchConfig = {
   defaultHintCredits: number;
   rewardedHintCredits: number;
@@ -27,11 +34,11 @@ export const launchConfigKeys = {
 } as const;
 
 export const defaultLaunchConfig: LaunchConfig = {
-  defaultHintCredits: 3,
+  defaultHintCredits: DEFAULT_HINT_CREDITS,
   rewardedHintCredits: 2,
-  visiblePuzzleCount: 7,
-  puzzleGenerationIntervalHours: 2,
-  puzzleKeepCount: 84,
+  visiblePuzzleCount: DEFAULT_VISIBLE_PUZZLE_COUNT,
+  puzzleGenerationIntervalHours: PUZZLE_GENERATION_INTERVAL_HOURS,
+  puzzleKeepCount: PUZZLE_KEEP_COUNT,
   completionStatsEnabled: true,
   completionStatsMinDisplayCount: 10,
   rewardedBonusPuzzleAdsEnabled: true,

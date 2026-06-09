@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -21,15 +21,26 @@ import {
   completeMission,
   createDailyMissionState,
   createEmptyProgress,
+  createPuzzleSummary,
+  DAILY_ATTEMPT_LIMIT,
+  DEFAULT_HINT_CREDITS,
+  DEFAULT_VISIBLE_PUZZLE_COUNT,
+  getBonusPuzzleCandidateSummary,
   getBounds,
   getCellKey,
   getCompletedEntries,
+  getDailyFreePuzzleSummaries,
+  getDailyFreePuzzleSummary,
   getEntryAnswerValue,
   getEntryCells,
   getInitialEntryId,
   getRemainingAttempts,
   getTodayDateKey,
+  PUZZLE_GENERATION_INTERVAL_HOURS,
+  PUZZLE_KEEP_COUNT,
+  sortPuzzleSummariesByRecency,
   startMissionAttempt,
+  uniquePuzzleSummaries,
   validatePuzzleSlots,
   type DailyMissionState,
   type Direction,
@@ -64,6 +75,20 @@ type PuzzleSession = {
   savedProgress: SavedProgress;
 };
 
+type PuzzleArchiveRecord = {
+  completedAt: string | undefined;
+  lastPlayedAt: string | undefined;
+  puzzle: Puzzle;
+  puzzleId: string;
+  savedAt: string;
+  startedAt: string | undefined;
+};
+
+type PuzzleArchiveSaveOptions = {
+  completedAt?: string;
+  startedAt?: string;
+};
+
 type PuzzlePackSource = 'remote' | 'bundled';
 
 type PuzzlePack = {
@@ -93,9 +118,9 @@ type BonusPuzzlePanelState = {
   status: 'available' | 'loading' | 'waiting';
 };
 
-const DAILY_ATTEMPT_LIMIT = 3;
-const DEFAULT_HINT_CREDITS = 3;
 const REMOTE_PUZZLE_PACK_BASE_URL = 'https://crossword-puzzle-79ae0.web.app';
+const ARCHIVE_INDEX_KEY = 'crossword-puzzle:archive:index';
+const ARCHIVE_KEY_PREFIX = 'crossword-puzzle:archive';
 const PROGRESS_KEY_PREFIX = 'crossword-puzzle:progress';
 const MISSION_KEY_PREFIX = 'crossword-puzzle:mission';
 
@@ -130,16 +155,8 @@ const initialPuzzle =
   bundledPuzzlesById.get(getInitialPuzzleId(bundledPuzzleSummaries)) ??
   fallbackPuzzle;
 
-function getPuzzleSortKey(puzzle: PuzzleManifestItem) {
-  return puzzle.publishedAt ?? puzzle.slotId ?? puzzle.date ?? puzzle.puzzleId;
-}
-
 function sortPuzzleSummaries(puzzles: PuzzleManifestItem[]) {
-  return dedupePuzzleSummaries(
-    [...puzzles].sort((left, right) =>
-      getPuzzleSortKey(right).localeCompare(getPuzzleSortKey(left)),
-    ),
-  );
+  return dedupePuzzleSummaries(sortPuzzleSummariesByRecency(puzzles));
 }
 
 function isGeneratedPackPuzzle(puzzle: PuzzleManifestItem) {
@@ -170,77 +187,6 @@ function dedupePuzzleSummaries(puzzles: PuzzleManifestItem[]) {
   return result;
 }
 
-function createPuzzleSummary(puzzle: Puzzle): PuzzleManifestItem {
-  return {
-    date: puzzle.date,
-    difficulty: puzzle.difficulty,
-    metrics: puzzle.metrics,
-    packId: puzzle.packId,
-    path: '',
-    publishedAt: puzzle.publishedAt,
-    puzzleId: puzzle.puzzleId,
-    quality: puzzle.quality,
-    slotId: puzzle.slotId,
-  };
-}
-
-function getPuzzlePublishedTime(summary: PuzzleManifestItem) {
-  if (summary.publishedAt == null) {
-    return undefined;
-  }
-
-  const value = new Date(summary.publishedAt).getTime();
-
-  return Number.isFinite(value) ? value : undefined;
-}
-
-function isPublishedPuzzle(summary: PuzzleManifestItem, now = Date.now()) {
-  const publishedTime = getPuzzlePublishedTime(summary);
-
-  return publishedTime == null || publishedTime <= now;
-}
-
-function sortPuzzleSummariesAscending(
-  left: PuzzleManifestItem,
-  right: PuzzleManifestItem,
-) {
-  return getPuzzleSortKey(left).localeCompare(getPuzzleSortKey(right));
-}
-
-function getDailyFreePuzzleSummary(
-  puzzleSummaries: PuzzleManifestItem[],
-  today: string,
-  now = Date.now(),
-) {
-  const publishedSummaries = puzzleSummaries.filter(summary =>
-    isPublishedPuzzle(summary, now),
-  );
-  const todaySummaries = publishedSummaries
-    .filter(summary => summary.date === today)
-    .sort(sortPuzzleSummariesAscending);
-
-  if (todaySummaries[0] != null) {
-    return todaySummaries[0];
-  }
-
-  const pastDates = publishedSummaries
-    .filter(summary => summary.date <= today)
-    .map(summary => summary.date)
-    .sort();
-  const latestPastDate = pastDates[pastDates.length - 1];
-
-  if (latestPastDate != null) {
-    return publishedSummaries
-      .filter(summary => summary.date === latestPastDate)
-      .sort(sortPuzzleSummariesAscending)[0];
-  }
-
-  return (
-    publishedSummaries.sort(sortPuzzleSummariesAscending)[0] ??
-    puzzleSummaries[0]
-  );
-}
-
 function getInitialPuzzleId(puzzles: PuzzleManifestItem[]) {
   const today = getTodayDateKey();
   return (
@@ -265,50 +211,6 @@ function findPuzzleSummaryById(
   return puzzleId == null
     ? undefined
     : puzzleSummaries.find(summary => summary.puzzleId === puzzleId);
-}
-
-function getBonusPuzzleCandidateSummary({
-  completedPuzzleIds,
-  dailyFreeSummary,
-  puzzleSummaries,
-  today,
-}: {
-  completedPuzzleIds: Set<string>;
-  dailyFreeSummary?: PuzzleManifestItem;
-  puzzleSummaries: PuzzleManifestItem[];
-  today: string;
-}) {
-  if (dailyFreeSummary?.date !== today) {
-    return undefined;
-  }
-
-  return puzzleSummaries
-    .filter(
-      summary =>
-        summary.date === today &&
-        summary.puzzleId !== dailyFreeSummary.puzzleId &&
-        !completedPuzzleIds.has(summary.puzzleId) &&
-        isPublishedPuzzle(summary),
-    )
-    .sort((left, right) =>
-      getPuzzleSortKey(right).localeCompare(getPuzzleSortKey(left)),
-    )[0];
-}
-
-function uniquePuzzleSummaries(summaries: PuzzleManifestItem[]) {
-  const seen = new Set<string>();
-  const result: PuzzleManifestItem[] = [];
-
-  for (const summary of summaries) {
-    if (seen.has(summary.puzzleId)) {
-      continue;
-    }
-
-    seen.add(summary.puzzleId);
-    result.push(summary);
-  }
-
-  return result;
 }
 
 function formatBonusPuzzleMeta(summary?: PuzzleManifestItem) {
@@ -469,6 +371,103 @@ async function saveStoredMission(mission: DailyMissionState) {
   }
 }
 
+function getArchiveKey(puzzleId: string) {
+  return `${ARCHIVE_KEY_PREFIX}:${puzzleId}`;
+}
+
+function normalizeArchiveIndex(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((item): item is string => typeof item === 'string');
+}
+
+async function loadArchiveIndex() {
+  try {
+    const raw = await AsyncStorage.getItem(ARCHIVE_INDEX_KEY);
+    return normalizeArchiveIndex(raw == null ? null : JSON.parse(raw));
+  } catch {
+    return [];
+  }
+}
+
+async function loadArchivedPuzzle(puzzleId: string) {
+  try {
+    const raw = await AsyncStorage.getItem(getArchiveKey(puzzleId));
+    if (raw == null) {
+      return null;
+    }
+
+    const parsed = JSON.parse(raw) as Partial<PuzzleArchiveRecord>;
+    if (parsed.puzzle == null || parsed.puzzle.puzzleId !== puzzleId) {
+      return null;
+    }
+
+    return {
+      completedAt:
+        typeof parsed.completedAt === 'string' ? parsed.completedAt : undefined,
+      lastPlayedAt:
+        typeof parsed.lastPlayedAt === 'string'
+          ? parsed.lastPlayedAt
+          : undefined,
+      puzzle: parsed.puzzle,
+      puzzleId,
+      savedAt:
+        typeof parsed.savedAt === 'string'
+          ? parsed.savedAt
+          : new Date().toISOString(),
+      startedAt:
+        typeof parsed.startedAt === 'string' ? parsed.startedAt : undefined,
+    } satisfies PuzzleArchiveRecord;
+  } catch {
+    return null;
+  }
+}
+
+async function listArchivedPuzzles() {
+  const index = await loadArchiveIndex();
+  const records = (
+    await Promise.all(index.map(puzzleId => loadArchivedPuzzle(puzzleId)))
+  ).filter((record): record is PuzzleArchiveRecord => record != null);
+
+  return records.sort((left, right) =>
+    (right.lastPlayedAt ?? right.completedAt ?? right.savedAt).localeCompare(
+      left.lastPlayedAt ?? left.completedAt ?? left.savedAt,
+    ),
+  );
+}
+
+async function saveArchivedPuzzle(
+  puzzle: Puzzle,
+  options: PuzzleArchiveSaveOptions = {},
+) {
+  const now = new Date().toISOString();
+  const existing = await loadArchivedPuzzle(puzzle.puzzleId);
+  const nextRecord: PuzzleArchiveRecord = {
+    completedAt: options.completedAt ?? existing?.completedAt,
+    lastPlayedAt: options.startedAt ?? options.completedAt ?? now,
+    puzzle,
+    puzzleId: puzzle.puzzleId,
+    savedAt: existing?.savedAt ?? now,
+    startedAt: options.startedAt ?? existing?.startedAt,
+  };
+  const currentIndex = await loadArchiveIndex();
+  const nextIndex = [
+    puzzle.puzzleId,
+    ...currentIndex.filter(puzzleId => puzzleId !== puzzle.puzzleId),
+  ].slice(0, 30);
+
+  try {
+    await Promise.all([
+      AsyncStorage.setItem(getArchiveKey(puzzle.puzzleId), JSON.stringify(nextRecord)),
+      AsyncStorage.setItem(ARCHIVE_INDEX_KEY, JSON.stringify(nextIndex)),
+    ]);
+  } catch {
+    // Local archive is best effort.
+  }
+}
+
 function resolveRemotePuzzleUrl(pack: PuzzlePack, puzzlePath: string) {
   if (puzzlePath.startsWith('http://') || puzzlePath.startsWith('https://')) {
     return puzzlePath;
@@ -532,7 +531,9 @@ async function loadPuzzleSession(
   puzzleId: string,
   pack: PuzzlePack,
 ): Promise<PuzzleSession | null> {
-  const nextPuzzle = await loadPuzzleFromPack(puzzleId, pack);
+  const nextPuzzle =
+    (await loadPuzzleFromPack(puzzleId, pack)) ??
+    (await loadArchivedPuzzle(puzzleId))?.puzzle;
 
   if (nextPuzzle == null) {
     return null;
@@ -655,6 +656,9 @@ function AppContent() {
     Record<string, DateCardState>
   >({});
   const [puzzlePack, setPuzzlePack] = useState<PuzzlePack>(bundledPuzzlePack);
+  const [puzzleArchiveRecords, setPuzzleArchiveRecords] = useState<
+    PuzzleArchiveRecord[]
+  >([]);
   const [cellValues, setCellValues] = useState<Record<string, string>>({});
   const [earnedHintCredits, setEarnedHintCredits] = useState(0);
   const [hintCount, setHintCount] = useState(0);
@@ -713,11 +717,28 @@ function AppContent() {
     () => getDailyFreePuzzleSummary(puzzlePack.summaries, todayKey),
     [puzzlePack.summaries, todayKey],
   );
+  const dailyFreeSummaries = useMemo(
+    () =>
+      getDailyFreePuzzleSummaries(
+        puzzlePack.summaries,
+        todayKey,
+        DEFAULT_VISIBLE_PUZZLE_COUNT,
+      ),
+    [puzzlePack.summaries, todayKey],
+  );
+  const archivePuzzleSummaries = useMemo(
+    () =>
+      puzzleArchiveRecords
+        .slice(0, DEFAULT_VISIBLE_PUZZLE_COUNT)
+        .map(record => createPuzzleSummary(record.puzzle)),
+    [puzzleArchiveRecords],
+  );
   const selectedPuzzleSummary = useMemo(
     () =>
       findPuzzleSummaryById(puzzlePack.summaries, puzzle.puzzleId) ??
+      findPuzzleSummaryById(archivePuzzleSummaries, puzzle.puzzleId) ??
       createPuzzleSummary(puzzle),
-    [puzzle, puzzlePack.summaries],
+    [archivePuzzleSummaries, puzzle, puzzlePack.summaries],
   );
   const bonusCandidateSummary = useMemo(
     () =>
@@ -731,16 +752,20 @@ function AppContent() {
   );
   const visiblePuzzleSummaries = useMemo(
     () =>
-      uniquePuzzleSummaries(
-        [dailyFreeSummary, selectedPuzzleSummary].filter(
-          (summary): summary is PuzzleManifestItem => summary != null,
+      sortPuzzleSummariesByRecency(
+        uniquePuzzleSummaries(
+          [
+            ...dailyFreeSummaries,
+            selectedPuzzleSummary,
+            ...archivePuzzleSummaries,
+          ].filter((summary): summary is PuzzleManifestItem => summary != null),
         ),
       ),
-    [dailyFreeSummary, selectedPuzzleSummary],
+    [archivePuzzleSummaries, dailyFreeSummaries, selectedPuzzleSummary],
   );
   const bonusPuzzlePanelState: BonusPuzzlePanelState = {
     candidateSummary: bonusCandidateSummary,
-    notice: 'Android 보상형 광고 연결 후 제공됩니다.',
+    notice: '모바일 보상형 광고 어댑터 연결 후 제공됩니다.',
     status: isLoading
       ? 'loading'
       : bonusCandidateSummary != null
@@ -755,6 +780,24 @@ function AppContent() {
     ),
   );
 
+  const refreshPuzzleArchive = useCallback(async () => {
+    const nextArchiveRecords = await listArchivedPuzzles();
+    const archiveStates = await loadDateCardStates(
+      nextArchiveRecords.map(record => createPuzzleSummary(record.puzzle)),
+    );
+
+    setPuzzleArchiveRecords(nextArchiveRecords);
+    setDateCardStates(previous => ({ ...previous, ...archiveStates }));
+  }, []);
+
+  const savePuzzleSnapshot = useCallback(async (
+    nextPuzzle: Puzzle,
+    options: PuzzleArchiveSaveOptions = {},
+  ) => {
+    await saveArchivedPuzzle(nextPuzzle, options);
+    await refreshPuzzleArchive();
+  }, [refreshPuzzleArchive]);
+
   useEffect(() => {
     let isCancelled = false;
 
@@ -768,9 +811,13 @@ function AppContent() {
       }
 
       const nextSummaries = nextPuzzlePack.summaries;
+      const nextArchiveRecords = await listArchivedPuzzles();
       const initialPuzzleId = getInitialPuzzleId(nextSummaries);
       const [states, session] = await Promise.all([
-        loadDateCardStates(nextSummaries),
+        loadDateCardStates([
+          ...nextSummaries,
+          ...nextArchiveRecords.map(record => createPuzzleSummary(record.puzzle)),
+        ]),
         loadPuzzleSession(initialPuzzleId, nextPuzzlePack),
       ]);
 
@@ -779,6 +826,7 @@ function AppContent() {
       }
 
       setPuzzlePack(nextPuzzlePack);
+      setPuzzleArchiveRecords(nextArchiveRecords);
       setDateCardStates(states);
       applyPuzzleSession(session);
       setNotice(
@@ -843,9 +891,10 @@ function AppContent() {
     const nextMission = completeMission(mission);
     setMission(nextMission);
     saveStoredMission(nextMission);
+    savePuzzleSnapshot(puzzle, { completedAt: nextMission.completedAt });
     setNotice('퍼즐을 완료했습니다.');
     setRoute('result');
-  }, [isLoading, mission, viewModel.isComplete]);
+  }, [isLoading, mission, puzzle, savePuzzleSnapshot, viewModel.isComplete]);
 
   function applyPuzzleSession(session: PuzzleSession | null) {
     if (session == null) {
@@ -1077,6 +1126,7 @@ function AppContent() {
       const nextMission = startMissionAttempt(mission);
       setMission(nextMission);
       saveStoredMission(nextMission);
+      savePuzzleSnapshot(puzzle, { startedAt: nextMission.lastStartedAt });
     }
 
     setRoute('today');
@@ -1092,6 +1142,7 @@ function AppContent() {
     const nextMission = startMissionAttempt(mission);
     setMission(nextMission);
     saveStoredMission(nextMission);
+    savePuzzleSnapshot(puzzle, { startedAt: nextMission.lastStartedAt });
     setRoute('today');
   }
 
@@ -1160,8 +1211,10 @@ function AppContent() {
         <View style={styles.policyPanel}>
           <Text style={styles.policyTitle}>하루 1개 기본 공개</Text>
           <Text style={styles.smallText}>
-            홈에는 오늘의 무료 퍼즐만 보여줍니다. 추가 퍼즐은 보너스 해금 흐름이
-            준비된 뒤 열 수 있습니다.
+            홈에는 하루 1개씩 최근 {DEFAULT_VISIBLE_PUZZLE_COUNT}일치 무료
+            퍼즐과 기기에 저장된 기록을 함께 보여줍니다. 추가 퍼즐은 보너스
+            해금 흐름으로 엽니다. 원격 퍼즐은 {PUZZLE_GENERATION_INTERVAL_HOURS}
+            시간마다 생성되고 최근 {PUZZLE_KEEP_COUNT}개까지 유지됩니다.
           </Text>
         </View>
 
@@ -1485,15 +1538,24 @@ function AppContent() {
             </Pressable>
           </View>
         </View>
+        <BonusPuzzlePanel state={bonusPuzzlePanelState} />
       </ScrollView>
     );
   }
 
   function renderHistory() {
+    const historySummaries =
+      puzzleArchiveRecords.length > 0
+        ? puzzleArchiveRecords.map(record => createPuzzleSummary(record.puzzle))
+        : visiblePuzzleSummaries;
+
     return (
       <ScrollView contentContainerStyle={styles.homeContent}>
-        {renderHeader('퍼즐 기록', '최근 7일')}
-        {visiblePuzzleSummaries.map(summary => {
+        {renderHeader(
+          '퍼즐 기록',
+          puzzleArchiveRecords.length > 0 ? '기기 저장 사본' : '최근 공개 퍼즐',
+        )}
+        {historySummaries.map(summary => {
           const state = dateCardStates[summary.puzzleId];
 
           return (
@@ -1525,6 +1587,13 @@ function AppContent() {
             </Pressable>
           );
         })}
+        <View style={styles.policyPanel}>
+          <Text style={styles.policyTitle}>기기 저장 기록</Text>
+          <Text style={styles.smallText}>
+            시작하거나 완료한 퍼즐은 기기에 스냅샷으로 남습니다. 원격 보존
+            기간에서 빠진 퍼즐도 앱 데이터가 유지되는 동안 다시 열 수 있습니다.
+          </Text>
+        </View>
         <View style={styles.actions}>
           <Pressable
             onPress={() => setRoute('home')}
