@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "배포할 릴리즈 태그입니다. 예: v0.1.1"
-        required: true
+        description: "배포할 릴리즈 태그입니다. 비우면 각 배포가 최신 vX.Y.Z 태그를 사용합니다. 예: v0.1.1"
+        required: false
         type: string
       deploy_ait:
         description: "AIT(Apps in Toss) 배포 포함"
@@ -32,7 +32,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: deploy-all-${{ inputs.release_tag }}
+  group: deploy-all-${{ inputs.release_tag || github.ref }}
   cancel-in-progress: false
 
 jobs:
