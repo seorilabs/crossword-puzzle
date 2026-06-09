@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "배포할 릴리즈 태그입니다. 예: v0.1.1"
-        required: true
+        description: "배포할 릴리즈 태그입니다. 비우면 각 배포가 최신 vX.Y.Z 태그를 사용합니다. 예: v0.1.1"
+        required: false
         type: string
       deploy_ait:
         description: "AIT(Apps in Toss) 배포 포함"
@@ -32,34 +32,68 @@ permissions:
   id-token: write
 
 concurrency:
-  group: deploy-all-${{ inputs.release_tag }}
+  group: deploy-all-${{ inputs.release_tag || github.ref }}
   cancel-in-progress: false
 
 jobs:
+  resolve:
+    name: Resolve release tag
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.release_tag || github.ref }}
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Resolve release tag
+        id: tag
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tag="${{ inputs.release_tag }}"
+          if [ -z "$tag" ]; then
+            tag="$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n 1)"
+            if [ -z "$tag" ]; then
+              echo "release_tag가 비어 있고 vX.Y.Z 태그도 없습니다." >&2
+              exit 1
+            fi
+            echo "release_tag가 비어 있어 최신 태그 $tag 를 사용합니다."
+          fi
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
   ait:
     name: Deploy AIT
+    needs: resolve
     if: ${{ inputs.deploy_ait }}
     uses: ./.github/workflows/deploy-apps-in-toss.yml
     secrets: inherit
     with:
-      release_tag: ${{ inputs.release_tag }}
+      release_tag: ${{ needs.resolve.outputs.tag }}
       memo: ${{ inputs.memo }}
 
   google-play:
     name: Deploy Google Play
+    needs: resolve
     if: ${{ inputs.deploy_google_play }}
     uses: ./.github/workflows/deploy-google-play.yml
     secrets: inherit
     with:
-      release_tag: ${{ inputs.release_tag }}
+      release_tag: ${{ needs.resolve.outputs.tag }}
       upload_to_internal: true
       release_status: completed
 
   app-store:
     name: Deploy App Store
+    needs: resolve
     if: ${{ inputs.deploy_app_store }}
     uses: ./.github/workflows/deploy-app-store.yml
     secrets: inherit
     with:
-      release_tag: ${{ inputs.release_tag }}
+      release_tag: ${{ needs.resolve.outputs.tag }}
       upload_to_testflight: true

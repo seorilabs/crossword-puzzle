@@ -31,9 +31,21 @@ gh workflow run release-tag.yml \
 
 `bump=major`도 같은 방식으로 실행한다.
 
+## 태그 기본값
+
+모든 `Deploy *` workflow(및 `Deploy All`)의 `release_tag`는 옵셔널이다. 비워두면 **최신 `vX.Y.Z` 태그**를 찾아 그 커밋을 checkout해 배포한다. 최신 태그는 다음 커맨드로 고른다.
+
+```bash
+git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n 1
+```
+
+특정 태그를 넣으면 그 태그로 배포한다. 태그가 하나도 없으면 실패한다.
+
+> GitHub Actions의 `workflow_dispatch` 폼은 입력 기본값을 동적으로 채울 수 없어서 "최신 태그를 드롭다운에 미리 선택"하는 것은 불가능하다. 대신 입력을 비우면 런타임에 최신 태그로 해석한다.
+
 ## Deploy All (묶음 배포)
 
-`Deploy All` workflow는 `release_tag` 하나로 세 배포(`Deploy AIT`, `Deploy Google Play`, `Deploy App Store`)를 `workflow_call`로 한 번에 트리거한다. 각 배포는 토글로 켜고 끌 수 있다.
+`Deploy All` workflow는 `release_tag` 하나로 세 배포(`Deploy AIT`, `Deploy Google Play`, `Deploy App Store`)를 `workflow_call`로 한 번에 트리거한다. 각 배포는 토글로 켜고 끌 수 있다. `release_tag`를 비우면 선행 `resolve` job이 최신 태그를 **한 번만** 해석한 뒤 세 배포에 동일한 태그를 전달하므로, 실행 중 새 태그가 생겨도 세 배포가 같은 릴리즈를 사용한다.
 
 ```bash
 gh workflow run deploy-all.yml \
@@ -46,7 +58,7 @@ gh workflow run deploy-all.yml \
 
 ## AIT
 
-`Deploy AIT` workflow는 전달받은 `release_tag`를 checkout하고 다음 값을 빌드/업로드에 사용한다.
+`Deploy AIT` workflow는 `release_tag`(비우면 최신 태그)를 checkout하고 다음 값을 빌드/업로드에 사용한다.
 
 - `npm version --no-git-tag-version <version>`
 - `VITE_APP_VERSION=<version>`
@@ -63,13 +75,11 @@ gh workflow run deploy-apps-in-toss.yml \
 
 ## Google Play
 
-`Deploy Google Play` workflow는 `release_tag`를 받으면 Android 빌드 버전을 해당 태그에서 계산한다.
+`Deploy Google Play` workflow는 `release_tag`(비우면 최신 태그)에서 Android 빌드 버전을 계산한다.
 
 - `versionName`: `v`를 뺀 semver. 예: `0.1.1`
 - `versionCode`: `major * 1000000 + minor * 1000 + patch`. 예: `v0.1.1` -> `1001`
 - Android Publisher API release name: 태그 문자열. 예: `v0.1.1`
-
-업로드까지 실행할 때는 `release_tag`가 필수다.
 
 ```bash
 gh workflow run deploy-google-play.yml \
@@ -80,7 +90,7 @@ gh workflow run deploy-google-play.yml \
 
 ## App Store
 
-`Deploy App Store` workflow는 `release_tag`를 checkout해 iOS archive를 만들고, `upload_to_testflight=true`이면 App Store Connect/TestFlight에 업로드한다.
+`Deploy App Store` workflow는 `release_tag`(비우면 최신 태그)를 checkout해 iOS archive를 만들고, `upload_to_testflight=true`이면 App Store Connect/TestFlight에 업로드한다.
 
 ```bash
 gh workflow run deploy-app-store.yml \
