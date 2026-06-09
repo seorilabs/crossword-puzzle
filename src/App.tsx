@@ -836,6 +836,15 @@ function App() {
   }, []);
 
   useEffect(() => {
+    // The celebration only belongs to the active 풀이 화면; clear it whenever we
+    // leave so returning to a finished puzzle (incl. via browser history) does
+    // not re-open the dialog over the read-only board.
+    if (route !== "today") {
+      setCompletionCelebrationId(null);
+    }
+  }, [route]);
+
+  useEffect(() => {
     let isCancelled = false;
 
     loadFirebaseLaunchConfig()
