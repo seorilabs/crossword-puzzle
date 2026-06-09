@@ -29,7 +29,7 @@ export const launchConfigKeys = {
 export const defaultLaunchConfig: LaunchConfig = {
   defaultHintCredits: 3,
   rewardedHintCredits: 2,
-  visiblePuzzleCount: 1,
+  visiblePuzzleCount: 7,
   puzzleGenerationIntervalHours: 2,
   puzzleKeepCount: 84,
   completionStatsEnabled: true,
