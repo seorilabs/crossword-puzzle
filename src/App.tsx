@@ -374,7 +374,9 @@ function getPuzzlePublishedTime(summary: PuzzleManifestItem) {
 }
 
 function getPuzzleStableSortKey(summary: PuzzleManifestItem) {
-  return summary.publishedAt ?? summary.slotId ?? summary.date ?? summary.puzzleId;
+  return (
+    summary.publishedAt ?? summary.slotId ?? summary.date ?? summary.puzzleId
+  );
 }
 
 function isPublishedPuzzle(summary: PuzzleManifestItem, now = Date.now()) {
@@ -423,6 +425,57 @@ function getDailyFreePuzzleSummary(
   return (
     publishedSummaries.sort(sortPuzzleSummariesAscending)[0] ??
     puzzleSummaries[0]
+  );
+}
+
+function getDailyFreePuzzleSummaries(
+  puzzleSummaries: PuzzleManifestItem[],
+  today: string,
+  limit: number,
+  now = Date.now(),
+) {
+  const maxDays = Math.max(1, limit);
+  const publishedSummaries = puzzleSummaries.filter((summary) =>
+    isPublishedPuzzle(summary, now),
+  );
+  const freeSummaryByDate = new Map<string, PuzzleManifestItem>();
+
+  for (const summary of publishedSummaries) {
+    if (summary.date > today) {
+      continue;
+    }
+
+    const existing = freeSummaryByDate.get(summary.date);
+
+    // Pin the first published puzzle of each date as that day's free puzzle.
+    if (
+      existing == null ||
+      sortPuzzleSummariesAscending(summary, existing) < 0
+    ) {
+      freeSummaryByDate.set(summary.date, summary);
+    }
+  }
+
+  const dailySummaries = [...freeSummaryByDate.values()].sort((left, right) =>
+    getPuzzleStableSortKey(right).localeCompare(getPuzzleStableSortKey(left)),
+  );
+
+  if (dailySummaries.length > 0) {
+    return dailySummaries.slice(0, maxDays);
+  }
+
+  const fallbackSummary = getDailyFreePuzzleSummary(
+    puzzleSummaries,
+    today,
+    now,
+  );
+
+  return fallbackSummary == null ? [] : [fallbackSummary];
+}
+
+function sortPuzzleSummariesByRecency(summaries: PuzzleManifestItem[]) {
+  return [...summaries].sort((left, right) =>
+    getPuzzleStableSortKey(right).localeCompare(getPuzzleStableSortKey(left)),
   );
 }
 
@@ -745,8 +798,7 @@ function App() {
     useState<LaunchConfig>(defaultLaunchConfig);
   const [rewardedAdStatus, setRewardedAdStatus] =
     useState<RewardedAdStatus>("idle");
-  const [bonusAdStatus, setBonusAdStatus] =
-    useState<RewardedAdStatus>("idle");
+  const [bonusAdStatus, setBonusAdStatus] = useState<RewardedAdStatus>("idle");
   const [isRewardedHintPromptOpen, setIsRewardedHintPromptOpen] =
     useState(false);
   const [bonusNotice, setBonusNotice] = useState("");
@@ -768,6 +820,7 @@ function App() {
   const [completionStatsByPuzzleId, setCompletionStatsByPuzzleId] =
     useState<CompletionStatsByPuzzleId>({});
   const shownResultInterstitialRef = useRef<string | null>(null);
+  const justCompletedPuzzleIdRef = useRef<string | null>(null);
   const firstAnswerInputKeysRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -892,10 +945,7 @@ function App() {
   }, [loadDateCardStates]);
 
   const savePuzzleSnapshot = useCallback(
-    async (
-      nextPuzzle: Puzzle,
-      options: PuzzleArchiveSaveOptions = {},
-    ) => {
+    async (nextPuzzle: Puzzle, options: PuzzleArchiveSaveOptions = {}) => {
       await puzzleArchiveRepository.savePuzzle(nextPuzzle, options);
       await refreshPuzzleArchive();
     },
@@ -915,8 +965,8 @@ function App() {
             : [createPuzzleSummary(fallbackPuzzle)];
         const today = getTodayDateKey();
         const initialPuzzleId = getInitialPuzzleId(nextSummaries, today);
-        const [nextDateCardStates, session, nextBonusUnlock] = await Promise.all(
-          [
+        const [nextDateCardStates, session, nextBonusUnlock] =
+          await Promise.all([
             loadDateCardStates([
               ...nextSummaries,
               ...nextArchiveRecords.map((record) =>
@@ -925,8 +975,7 @@ function App() {
             ]),
             loadPuzzleSession(initialPuzzleId),
             bonusPuzzleUnlockRepository.loadUnlock(today),
-          ],
-        );
+          ]);
 
         if (!isCancelled) {
           setPuzzleSummaries(nextSummaries);
@@ -1031,6 +1080,25 @@ function App() {
     () => getDailyFreePuzzleSummary(puzzleSummaries, todayKey),
     [puzzleSummaries, todayKey],
   );
+  const dailyFreeSummaries = useMemo(
+    () =>
+      getDailyFreePuzzleSummaries(
+        puzzleSummaries,
+        todayKey,
+        launchConfig.visiblePuzzleCount,
+      ),
+    [launchConfig.visiblePuzzleCount, puzzleSummaries, todayKey],
+  );
+  const archivePuzzleSummaries = useMemo(
+    () =>
+      // The local archive grows unbounded, so only surface the most recent
+      // records on the shared carousel; the full list stays in 기록 화면.
+      // listPuzzles() already returns records newest-first.
+      puzzleArchiveRecords
+        .slice(0, launchConfig.visiblePuzzleCount)
+        .map((record) => createPuzzleSummary(record.puzzle)),
+    [launchConfig.visiblePuzzleCount, puzzleArchiveRecords],
+  );
   const activeBonusUnlock =
     bonusPuzzleUnlock?.date === todayKey ? bonusPuzzleUnlock : null;
   const unlockedBonusSummary =
@@ -1066,16 +1134,22 @@ function App() {
   );
   const visiblePuzzleSummaries = useMemo(
     () =>
-      uniquePuzzleSummaries(
-        [
-          dailyFreeSummary,
-          unlockedBonusSummary,
-          selectedPuzzleSummary,
-        ].filter(
-          (summary): summary is PuzzleManifestItem => summary != null,
+      sortPuzzleSummariesByRecency(
+        uniquePuzzleSummaries(
+          [
+            ...dailyFreeSummaries,
+            unlockedBonusSummary,
+            selectedPuzzleSummary,
+            ...archivePuzzleSummaries,
+          ].filter((summary): summary is PuzzleManifestItem => summary != null),
         ),
       ),
-    [dailyFreeSummary, selectedPuzzleSummary, unlockedBonusSummary],
+    [
+      archivePuzzleSummaries,
+      dailyFreeSummaries,
+      selectedPuzzleSummary,
+      unlockedBonusSummary,
+    ],
   );
   useEffect(() => {
     if (!launchConfig.completionStatsEnabled) {
@@ -1184,6 +1258,9 @@ function App() {
     });
 
     if (route === "today") {
+      // Mark this as a genuine just-completed run so the result screen can
+      // show the interstitial only here, not when re-opening past records.
+      justCompletedPuzzleIdRef.current = puzzle.puzzleId;
       navigate("result", { replace: true });
     }
   }, [
@@ -1203,6 +1280,9 @@ function App() {
       route !== "result" ||
       !isCompleted ||
       !launchConfig.resultInterstitialAdsEnabled ||
+      // Only after a genuine completion in this session; re-opening a finished
+      // puzzle from 기록/홈 must not trigger a meaningless interstitial.
+      justCompletedPuzzleIdRef.current !== puzzle.puzzleId ||
       shownResultInterstitialRef.current === puzzle.puzzleId
     ) {
       return;
@@ -1594,7 +1674,10 @@ function App() {
 
     const candidateSummary = bonusPuzzlePanelState.candidateSummary;
 
-    if (candidateSummary == null || bonusPuzzlePanelState.status !== "available") {
+    if (
+      candidateSummary == null ||
+      bonusPuzzlePanelState.status !== "available"
+    ) {
       setBonusNotice("다음 보너스 퍼즐을 준비 중이에요.");
       return;
     }
@@ -2107,7 +2190,7 @@ function HomeScreen({
         : "기기저장 기본 퍼즐";
   const packInfoPanelDescription =
     loadState === "remote"
-      ? `${launchConfig.puzzleGenerationIntervalHours}시간마다 생성된 퍼즐은 최근 ${launchConfig.puzzleKeepCount}개까지 유지하고, 홈에는 오늘의 무료 퍼즐과 해금된 보너스 퍼즐만 보여줘요.`
+      ? `${launchConfig.puzzleGenerationIntervalHours}시간마다 생성된 퍼즐은 최근 ${launchConfig.puzzleKeepCount}개까지 유지해요. 홈에는 하루 1개씩 최근 ${launchConfig.visiblePuzzleCount}일치 무료 퍼즐과 해금된 보너스, 기기에 저장된 기록을 함께 보여줘요.`
       : loadState === "loading"
         ? "원격 퍼즐팩이 준비되면 최신 퍼즐 목록으로 바뀝니다."
         : "원격 퍼즐팩을 사용할 수 없을 때 기기에 포함된 기본 퍼즐을 보여줘요.";
@@ -2564,7 +2647,7 @@ function formatPackInfoLabel(loadState: LoadState, puzzleCount: number) {
   switch (loadState) {
     case "remote":
       return puzzleCount > 1
-        ? `오늘의 무료 퍼즐 + 보너스 ${puzzleCount - 1}개`
+        ? `최근 퍼즐 ${puzzleCount}개`
         : "오늘의 무료 퍼즐";
     case "loading":
       return "원격 퍼즐팩 불러오는 중";
@@ -3610,8 +3693,8 @@ function HistoryScreen({
       </section>
 
       <section className="historyNotice" aria-label="기기 저장 안내">
-        내가 푼 퍼즐은 이 기기에 저장돼요. 앱 데이터 삭제, 기기 변경,
-        저장공간 정리 시 사라질 수 있어요.
+        내가 푼 퍼즐은 이 기기에 저장돼요. 앱 데이터 삭제, 기기 변경, 저장공간
+        정리 시 사라질 수 있어요.
       </section>
     </>
   );

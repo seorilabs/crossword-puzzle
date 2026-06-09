@@ -17,9 +17,9 @@
     },
     "visible_puzzle_count": {
       "defaultValue": {
-        "value": "1"
+        "value": "7"
       },
-      "description": "홈 날짜 캐러셀에 기본 노출할 무료 퍼즐 개수. 하루 1개 정책의 기본값은 1",
+      "description": "홈 날짜 캐러셀에 보여줄 최신 무료 퍼즐 개수. 하루 1개 정책 기준 최근 N일치 일일 퍼즐을 노출한다",
       "valueType": "NUMBER"
     },
     "puzzle_generation_interval_hours": {
