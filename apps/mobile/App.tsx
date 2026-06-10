@@ -1,5 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -478,6 +484,22 @@ function getAnswerCommitLetters(value: string, maxLength: number) {
   );
 }
 
+function isHangulJamoInput(value: string) {
+  const letters = getAnswerInputLetters(value, value.length);
+
+  return (
+    letters.length > 0 && letters.every(letter => isHangulJamoLetter(letter))
+  );
+}
+
+function hasHangulSyllableInput(value: string) {
+  return /[가-힣]/.test(value);
+}
+
+function getAnswerCommitDelayMs(value: string) {
+  return hasHangulSyllableInput(value) ? 800 : 100;
+}
+
 function getEntryStartCellKey(entry?: PuzzleEntry) {
   return entry == null ? '' : getCellKey(entry.row, entry.col);
 }
@@ -685,13 +707,13 @@ function AppContent() {
     setDateCardStates(previous => ({ ...previous, ...archiveStates }));
   }, []);
 
-  const savePuzzleSnapshot = useCallback(async (
-    nextPuzzle: Puzzle,
-    options: PuzzleArchiveSaveOptions = {},
-  ) => {
-    await saveArchivedPuzzle(nextPuzzle, options);
-    await refreshPuzzleArchive();
-  }, [refreshPuzzleArchive]);
+  const savePuzzleSnapshot = useCallback(
+    async (nextPuzzle: Puzzle, options: PuzzleArchiveSaveOptions = {}) => {
+      await saveArchivedPuzzle(nextPuzzle, options);
+      await refreshPuzzleArchive();
+    },
+    [refreshPuzzleArchive],
+  );
 
   useEffect(() => {
     let isCancelled = false;
@@ -1108,8 +1130,8 @@ function AppContent() {
           <Text style={styles.policyTitle}>하루 1개 기본 공개</Text>
           <Text style={styles.smallText}>
             홈에는 하루 1개씩 최근 {DEFAULT_VISIBLE_PUZZLE_COUNT}일치 무료
-            퍼즐과 기기에 저장된 기록을 함께 보여줍니다. 추가 퍼즐은 보너스
-            해금 흐름으로 엽니다. 원격 퍼즐은 {PUZZLE_GENERATION_INTERVAL_HOURS}
+            퍼즐과 기기에 저장된 기록을 함께 보여줍니다. 추가 퍼즐은 보너스 해금
+            흐름으로 엽니다. 원격 퍼즐은 {PUZZLE_GENERATION_INTERVAL_HOURS}
             시간마다 생성되고 최근 {PUZZLE_KEEP_COUNT}개까지 유지됩니다.
           </Text>
         </View>
@@ -1363,6 +1385,47 @@ function AppContent() {
   }
 
   function renderToday() {
+    const playContent = (
+      <>
+        <View style={styles.boardPane}>
+          {renderHeader(
+            '퍼즐 풀기',
+            `${puzzle.date} · 도전 ${mission.attemptsUsed}/${mission.maxAttempts}`,
+          )}
+          {renderBoard()}
+          {renderSelectedClues()}
+          {renderAnswerPanel()}
+        </View>
+        <View style={styles.utilityRow}>
+          <Pressable
+            onPress={() => setRoute('home')}
+            style={styles.secondaryButton}
+          >
+            <Text style={styles.secondaryButtonText}>홈</Text>
+          </Pressable>
+          <Pressable
+            onPress={clearSelectedAnswer}
+            style={styles.secondaryButton}
+          >
+            <Text style={styles.secondaryButtonText}>지우기</Text>
+          </Pressable>
+        </View>
+        {renderClueList()}
+      </>
+    );
+
+    if (!isWide) {
+      return (
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          style={styles.playScreenScroll}
+          contentContainerStyle={styles.playScreenScrollContent}
+        >
+          {playContent}
+        </ScrollView>
+      );
+    }
+
     return (
       <View style={[styles.playScreen, isWide && styles.playScreenWide]}>
         <View style={[styles.boardPane, isWide && styles.boardPaneWide]}>
@@ -1548,7 +1611,7 @@ function AppContent() {
     <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" />
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardAvoidingView}
       >
         {route === 'today'
@@ -1618,7 +1681,7 @@ type AnswerSlotInputProps = {
   selectEntry: (entry: PuzzleEntry, cellKey?: string) => void;
 };
 
-function AnswerSlotInput({
+export function AnswerSlotInput({
   applyAnswerSegment,
   cellValues,
   clearAnswerCell,
@@ -1627,6 +1690,7 @@ function AnswerSlotInput({
   selectEntry,
 }: AnswerSlotInputProps) {
   const inputRef = useRef<React.ElementRef<typeof TextInput>>(null);
+  const commitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [inputValue, setInputValue] = useState('');
   const cells = useMemo(() => getEntryCells(entry), [entry]);
   const slotKeys = useMemo(
@@ -1635,10 +1699,24 @@ function AnswerSlotInput({
   );
   const selectedIndex = Math.max(0, slotKeys.indexOf(selectedCellKey));
   const activeCellKey = slotKeys[selectedIndex] ?? getEntryStartCellKey(entry);
+  const pendingLetters = getAnswerInputLetters(
+    inputValue,
+    cells.length - selectedIndex,
+  );
+
+  const clearCommitTimer = useCallback(() => {
+    if (commitTimerRef.current != null) {
+      clearTimeout(commitTimerRef.current);
+      commitTimerRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
+    clearCommitTimer();
     setInputValue('');
-  }, [activeCellKey, entry.id]);
+  }, [activeCellKey, clearCommitTimer, entry.id]);
+
+  useEffect(() => () => clearCommitTimer(), [clearCommitTimer]);
 
   function focusInput() {
     inputRef.current?.focus();
@@ -1649,27 +1727,55 @@ function AnswerSlotInput({
     focusInput();
   }
 
-  function handleChangeText(value: string) {
+  function commitInputValue(value: string, startCellKey = activeCellKey) {
+    clearCommitTimer();
     const nextLetters = getAnswerCommitLetters(
       value,
-      cells.length - getEntryCellIndex(entry, activeCellKey),
+      cells.length - getEntryCellIndex(entry, startCellKey),
     );
 
     if (nextLetters.length === 0) {
-      setInputValue(value);
       return;
     }
 
-    applyAnswerSegment(entry, nextLetters.join(''), activeCellKey);
+    applyAnswerSegment(entry, nextLetters.join(''), startCellKey);
     setInputValue('');
+  }
+
+  function queueCommitInputValue(value: string, startCellKey = activeCellKey) {
+    clearCommitTimer();
+
+    if (isHangulJamoInput(value)) {
+      return;
+    }
+
+    if (
+      getAnswerCommitLetters(
+        value,
+        cells.length - getEntryCellIndex(entry, startCellKey),
+      ).length === 0
+    ) {
+      return;
+    }
+
+    commitTimerRef.current = setTimeout(() => {
+      commitInputValue(value, startCellKey);
+    }, getAnswerCommitDelayMs(value));
+  }
+
+  function handleChangeText(value: string) {
+    setInputValue(value);
+    queueCommitInputValue(value);
   }
 
   return (
     <Pressable onPress={focusInput} style={styles.answerSlotInput}>
       <View style={styles.answerSlotGrid}>
-        {slotKeys.map(key => {
+        {slotKeys.map((key, index) => {
           const displayValue = cellValues[key] ?? '';
           const isActive = key === activeCellKey;
+          const pendingValue = pendingLetters[index - selectedIndex] ?? '';
+          const slotValue = pendingValue !== '' ? pendingValue : displayValue;
 
           return (
             <Pressable
@@ -1679,10 +1785,11 @@ function AnswerSlotInput({
               style={[
                 styles.answerSlot,
                 displayValue !== '' && styles.answerSlotFilled,
+                pendingValue !== '' && styles.answerSlotPending,
                 isActive && styles.answerSlotActive,
               ]}
             >
-              <Text style={styles.answerSlotText}>{displayValue}</Text>
+              <Text style={styles.answerSlotText}>{slotValue}</Text>
             </Pressable>
           );
         })}
@@ -1690,17 +1797,26 @@ function AnswerSlotInput({
       <TextInput
         autoCapitalize="none"
         autoCorrect={false}
+        blurOnSubmit={false}
         caretHidden
         contextMenuHidden
         importantForAutofill="no"
-        maxLength={entry.answer.length}
+        maxLength={Math.max(1, cells.length - selectedIndex)}
         onChangeText={handleChangeText}
+        onEndEditing={event => {
+          commitInputValue(event.nativeEvent.text);
+        }}
         onKeyPress={event => {
           if (event.nativeEvent.key === 'Backspace' && inputValue === '') {
             clearAnswerCell(entry, activeCellKey);
           }
         }}
+        onSubmitEditing={() => {
+          commitInputValue(inputValue);
+          focusInput();
+        }}
         ref={inputRef}
+        returnKeyType="next"
         showSoftInputOnFocus
         style={styles.answerSlotNativeInput}
         value={inputValue}
@@ -1851,6 +1967,10 @@ const styles = StyleSheet.create({
     color: '#0f172a',
     fontSize: 21,
     fontWeight: '900',
+  },
+  answerSlotPending: {
+    backgroundColor: '#fef9c3',
+    borderColor: '#eab308',
   },
   bonusEyebrow: {
     color: '#0f766e',
@@ -2124,6 +2244,14 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 14,
     padding: 16,
+  },
+  playScreenScroll: {
+    flex: 1,
+  },
+  playScreenScrollContent: {
+    gap: 14,
+    padding: 16,
+    paddingBottom: 72,
   },
   playScreenWide: {
     flexDirection: 'row',
