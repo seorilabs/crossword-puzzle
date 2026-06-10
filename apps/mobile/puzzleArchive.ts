@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import type { Puzzle } from '../../packages/crossword-core/src';
+import type { Puzzle, PuzzleEntry } from '../../packages/crossword-core/src';
 
 export type PuzzleArchiveRecord = {
   completedAt: string | undefined;
@@ -25,6 +25,45 @@ const ARCHIVE_FALLBACK_SAVED_AT = '1970-01-01T00:00:00.000Z';
 
 export function getArchiveKey(puzzleId: string) {
   return `${ARCHIVE_RECORD_KEY_PREFIX}:${puzzleId}`;
+}
+
+function isArchivedPuzzleEntry(value: unknown): value is PuzzleEntry {
+  if (value == null || typeof value !== 'object') {
+    return false;
+  }
+
+  const entry = value as Partial<PuzzleEntry>;
+  return (
+    typeof entry.id === 'string' &&
+    typeof entry.answer === 'string' &&
+    typeof entry.clue === 'string' &&
+    (entry.direction === 'across' || entry.direction === 'down') &&
+    typeof entry.row === 'number' &&
+    typeof entry.col === 'number'
+  );
+}
+
+function isArchivedPuzzle(value: unknown, puzzleId: string): value is Puzzle {
+  if (value == null || typeof value !== 'object') {
+    return false;
+  }
+
+  const puzzle = value as Partial<Puzzle>;
+  return (
+    puzzle.puzzleId === puzzleId &&
+    typeof puzzle.date === 'string' &&
+    typeof puzzle.gridSize === 'number' &&
+    Array.isArray(puzzle.grid) &&
+    puzzle.grid.length > 0 &&
+    puzzle.grid.every(
+      row => Array.isArray(row) && row.every(cell => typeof cell === 'string'),
+    ) &&
+    Array.isArray(puzzle.entries) &&
+    puzzle.entries.length > 0 &&
+    puzzle.entries.every(isArchivedPuzzleEntry) &&
+    puzzle.metrics != null &&
+    typeof puzzle.metrics === 'object'
+  );
 }
 
 function normalizeArchiveIndex(value: unknown) {
@@ -52,7 +91,7 @@ export async function loadArchivedPuzzle(puzzleId: string) {
     }
 
     const parsed = JSON.parse(raw) as Partial<PuzzleArchiveRecord>;
-    if (parsed.puzzle == null || parsed.puzzle.puzzleId !== puzzleId) {
+    if (!isArchivedPuzzle(parsed.puzzle, puzzleId)) {
       return null;
     }
 

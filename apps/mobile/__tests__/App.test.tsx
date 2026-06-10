@@ -10,6 +10,8 @@ import {
   ARCHIVE_INDEX_KEY,
   ARCHIVE_INDEX_LIMIT,
   getArchiveKey,
+  listArchivedPuzzles,
+  loadArchivedPuzzle,
   saveArchivedPuzzle,
 } from '../puzzleArchive';
 import type { Puzzle } from '../../../packages/crossword-core/src';
@@ -73,6 +75,33 @@ test('loads an archived puzzle when it is missing from the current pack', async 
     earnedHintCredits: 0,
     hintCount: 0,
   });
+});
+
+test('rejects archived records whose puzzle is missing the playable shape', async () => {
+  const validPuzzle = createPuzzle('valid-archive-puzzle');
+  await saveArchivedPuzzle(validPuzzle, {
+    startedAt: '2026-06-01T09:00:00.000Z',
+  });
+
+  const puzzleWithoutGrid = {
+    ...createPuzzle('corrupt-archive-puzzle'),
+    grid: undefined,
+  } as unknown as Puzzle;
+  await saveArchivedPuzzle(puzzleWithoutGrid, {
+    startedAt: '2026-06-01T10:00:00.000Z',
+  });
+
+  expect(await loadArchivedPuzzle('corrupt-archive-puzzle')).toBeNull();
+
+  const records = await listArchivedPuzzles();
+  expect(records.map(record => record.puzzleId)).toEqual([
+    validPuzzle.puzzleId,
+  ]);
+
+  const prunedIndex = JSON.parse(
+    (await AsyncStorage.getItem(ARCHIVE_INDEX_KEY)) ?? '[]',
+  );
+  expect(prunedIndex).toEqual([validPuzzle.puzzleId]);
 });
 
 test('archives started and completed puzzles with bounded ordered index', async () => {
