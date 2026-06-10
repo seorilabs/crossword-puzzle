@@ -844,12 +844,13 @@ function AppContent() {
 
       const nextSummaries = nextPuzzlePack.summaries;
       const nextArchiveRecords = await listArchivedPuzzles();
+      const hydratedSummaries = uniquePuzzleSummaries([
+        ...nextSummaries,
+        ...nextArchiveRecords.map(record => createPuzzleSummary(record.puzzle)),
+      ]);
       const initialPuzzleId = getInitialPuzzleId(nextSummaries);
       const [states, session] = await Promise.all([
-        loadDateCardStates([
-          ...nextSummaries,
-          ...nextArchiveRecords.map(record => createPuzzleSummary(record.puzzle)),
-        ]),
+        loadDateCardStates(hydratedSummaries),
         loadPuzzleSession(initialPuzzleId, nextPuzzlePack),
       ]);
 
