@@ -37,3 +37,35 @@ jobs:
 
       - name: Validate puzzle packs
         run: npm run validate:puzzles
+
+      - name: Check release parity guard
+        run: npm run check:release-parity
+
+      - name: Build AppsInToss bundle
+        run: npm run build
+
+  mobile:
+    name: Validate mobile app
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            apps/mobile/package-lock.json
+
+      - name: Install web dependencies
+        run: npm ci
+
+      - name: Install mobile dependencies
+        run: npm ci --prefix apps/mobile
+
+      - name: Check mobile app
+        run: npm run check:mobile
