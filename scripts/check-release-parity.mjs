@@ -41,6 +41,7 @@ const requiredMobileImports = [
   "PUZZLE_KEEP_COUNT",
   "createPuzzleSummary",
   "getBonusPuzzleCandidateSummary",
+  "getDailyFreePuzzleSummaries",
   "getDailyFreePuzzleSummary",
   "sortPuzzleSummariesByRecency",
   "uniquePuzzleSummaries",
@@ -50,6 +51,8 @@ const forbiddenLocalDefinitions = [
   "DAILY_ATTEMPT_LIMIT",
   "DEFAULT_HINT_CREDITS",
   "DEFAULT_VISIBLE_PUZZLE_COUNT",
+  "PUZZLE_GENERATION_INTERVAL_HOURS",
+  "PUZZLE_KEEP_COUNT",
   "createPuzzleSummary",
   "getBonusPuzzleCandidateSummary",
   "getDailyFreePuzzleSummaries",
@@ -71,6 +74,14 @@ function fail(message) {
 function assertIncludes(content, needle, label) {
   if (!content.includes(needle)) {
     fail(`${label}: missing ${needle}`);
+  }
+}
+
+function assertNamedPolicyExport(content, name, path) {
+  const exportPattern = new RegExp(`export\\s+(const|function)\\s+${name}\\b`);
+
+  if (!exportPattern.test(content)) {
+    fail(`${path}: missing named export ${name}`);
   }
 }
 
@@ -102,8 +113,7 @@ const ciWorkflow = read(ciWorkflowPath);
 const deployAllWorkflow = read(deployAllWorkflowPath);
 
 for (const name of sharedPolicyExports) {
-  assertIncludes(sharedPolicy, `export `, sharedPolicyPath);
-  assertIncludes(sharedPolicy, name, sharedPolicyPath);
+  assertNamedPolicyExport(sharedPolicy, name, sharedPolicyPath);
 }
 
 assertIncludes(sharedIndex, 'export * from "./uiPolicy";', sharedIndexPath);
