@@ -431,9 +431,36 @@ async function loadArchivedPuzzle(puzzleId: string) {
 
 async function listArchivedPuzzles() {
   const index = await loadArchiveIndex();
-  const records = (
-    await Promise.all(index.map(puzzleId => loadArchivedPuzzle(puzzleId)))
-  ).filter((record): record is PuzzleArchiveRecord => record != null);
+  const loadedEntries = await Promise.all(
+    index.map(async puzzleId => ({
+      puzzleId,
+      record: await loadArchivedPuzzle(puzzleId),
+    })),
+  );
+  const seenPuzzleIds = new Set<string>();
+  const nextIndex: string[] = [];
+  const records: PuzzleArchiveRecord[] = [];
+
+  for (const { puzzleId, record } of loadedEntries) {
+    if (record == null || seenPuzzleIds.has(puzzleId)) {
+      continue;
+    }
+
+    seenPuzzleIds.add(puzzleId);
+    nextIndex.push(puzzleId);
+    records.push(record);
+  }
+
+  if (
+    nextIndex.length !== index.length ||
+    nextIndex.some((puzzleId, indexPosition) => puzzleId !== index[indexPosition])
+  ) {
+    try {
+      await AsyncStorage.setItem(ARCHIVE_INDEX_KEY, JSON.stringify(nextIndex));
+    } catch {
+      // Archive index pruning is best-effort; stale IDs can be retried later.
+    }
+  }
 
   return records.sort((left, right) =>
     (right.lastPlayedAt ?? right.completedAt ?? right.savedAt).localeCompare(
@@ -556,8 +583,9 @@ async function loadPuzzleSession(
 }
 
 async function loadDateCardStates(summaries: PuzzleManifestItem[]) {
+  const uniqueSummaries = uniquePuzzleSummaries(summaries);
   const entries = await Promise.all(
-    summaries.map(async summary => {
+    uniqueSummaries.map(async summary => {
       const [savedProgress, savedMission] = await Promise.all([
         loadStoredProgress(summary.puzzleId),
         loadStoredMission(summary.date, summary.puzzleId),
