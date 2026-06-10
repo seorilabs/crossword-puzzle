@@ -4,8 +4,9 @@
 
 import React from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
-import App, { loadPuzzleSession } from '../App';
+import App, { AnswerSlotInput, loadPuzzleSession } from '../App';
 import {
   ARCHIVE_INDEX_KEY,
   ARCHIVE_INDEX_LIMIT,
@@ -55,10 +56,71 @@ beforeEach(async () => {
   await AsyncStorage.clear();
 });
 
+afterEach(() => {
+  jest.useRealTimers();
+});
+
 test('renders correctly', async () => {
   await ReactTestRenderer.act(() => {
     ReactTestRenderer.create(<App />);
   });
+});
+
+test('keeps Korean syllable composition pending before advancing answer slots', () => {
+  jest.useFakeTimers({ now: 0 });
+
+  const entry = {
+    answer: '관포지교',
+    clue: '오랜 우정',
+    col: 0,
+    direction: 'across' as const,
+    generatedBy: 'placed' as const,
+    id: 'korean-composition-entry',
+    row: 0,
+  };
+  const applyAnswerSegment = jest.fn();
+  let renderer: ReturnType<typeof ReactTestRenderer.create> | undefined;
+
+  ReactTestRenderer.act(() => {
+    renderer = ReactTestRenderer.create(
+      <AnswerSlotInput
+        applyAnswerSegment={applyAnswerSegment}
+        cellValues={{}}
+        clearAnswerCell={jest.fn()}
+        entry={entry}
+        selectedCellKey="0:0"
+        selectEntry={jest.fn()}
+      />,
+    );
+  });
+
+  const getInput = () => {
+    if (renderer == null) {
+      throw new Error('AnswerSlotInput renderer was not created.');
+    }
+
+    return renderer.root.findByType(TextInput);
+  };
+
+  ReactTestRenderer.act(() => {
+    getInput().props.onChangeText('ㄱ');
+    getInput().props.onChangeText('고');
+  });
+  ReactTestRenderer.act(() => {
+    jest.advanceTimersByTime(799);
+  });
+
+  expect(applyAnswerSegment).not.toHaveBeenCalled();
+
+  ReactTestRenderer.act(() => {
+    getInput().props.onChangeText('관포지교');
+  });
+  ReactTestRenderer.act(() => {
+    jest.advanceTimersByTime(800);
+  });
+
+  expect(applyAnswerSegment).toHaveBeenCalledTimes(1);
+  expect(applyAnswerSegment).toHaveBeenCalledWith(entry, '관포지교', '0:0');
 });
 
 test('loads an archived puzzle when it is missing from the current pack', async () => {
@@ -150,8 +212,7 @@ test('archives started and completed puzzles with bounded ordered index', async 
   });
 
   const startedRecord = JSON.parse(
-    (await AsyncStorage.getItem(getArchiveKey(startedPuzzle.puzzleId))) ??
-      '{}',
+    (await AsyncStorage.getItem(getArchiveKey(startedPuzzle.puzzleId))) ?? '{}',
   );
   expect(startedRecord).toMatchObject({
     completedAt: '2026-06-01T09:30:00.000Z',
@@ -161,10 +222,9 @@ test('archives started and completed puzzles with bounded ordered index', async 
   });
 
   for (let index = 0; index < ARCHIVE_INDEX_LIMIT + 1; index += 1) {
-    await saveArchivedPuzzle(
-      createPuzzle(`archive-${index}`, '2026-06-02'),
-      { startedAt: `2026-06-02T00:${String(index).padStart(2, '0')}:00.000Z` },
-    );
+    await saveArchivedPuzzle(createPuzzle(`archive-${index}`, '2026-06-02'), {
+      startedAt: `2026-06-02T00:${String(index).padStart(2, '0')}:00.000Z`,
+    });
   }
 
   const archiveIndex = JSON.parse(
@@ -178,7 +238,5 @@ test('archives started and completed puzzles with bounded ordered index', async 
     await AsyncStorage.getItem(getArchiveKey(startedPuzzle.puzzleId)),
   ).toBeNull();
   expect(await AsyncStorage.getItem(getArchiveKey('archive-0'))).toBeNull();
-  expect(
-    await AsyncStorage.getItem(getArchiveKey('archive-1')),
-  ).not.toBeNull();
+  expect(await AsyncStorage.getItem(getArchiveKey('archive-1'))).not.toBeNull();
 });
