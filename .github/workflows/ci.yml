@@ -38,6 +38,9 @@ jobs:
       - name: Validate puzzle packs
         run: npm run validate:puzzles
 
+      - name: Build AppsInToss bundle
+        run: npm run build
+
       - name: Check release parity guard
         run: npm run check:release-parity
 
