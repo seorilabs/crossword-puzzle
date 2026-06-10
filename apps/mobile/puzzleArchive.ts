@@ -146,8 +146,17 @@ export async function listArchivedPuzzles() {
     nextIndex.length !== index.length ||
     nextIndex.some((puzzleId, indexPosition) => puzzleId !== index[indexPosition])
   ) {
+    const droppedPuzzleIds = index.filter(
+      puzzleId => !seenPuzzleIds.has(puzzleId),
+    );
+
     try {
-      await AsyncStorage.setItem(ARCHIVE_INDEX_KEY, JSON.stringify(nextIndex));
+      await Promise.all([
+        AsyncStorage.setItem(ARCHIVE_INDEX_KEY, JSON.stringify(nextIndex)),
+        ...droppedPuzzleIds.map(puzzleId =>
+          AsyncStorage.removeItem(getArchiveKey(puzzleId)),
+        ),
+      ]);
     } catch {
       // Archive index pruning is best-effort; stale IDs can be retried later.
     }
@@ -179,6 +188,10 @@ export async function saveArchivedPuzzle(
     puzzle.puzzleId,
     ...currentIndex.filter(puzzleId => puzzleId !== puzzle.puzzleId),
   ].slice(0, ARCHIVE_INDEX_LIMIT);
+  const retainedPuzzleIds = new Set(nextIndex);
+  const evictedPuzzleIds = currentIndex.filter(
+    puzzleId => !retainedPuzzleIds.has(puzzleId),
+  );
 
   try {
     await Promise.all([
@@ -187,6 +200,9 @@ export async function saveArchivedPuzzle(
         JSON.stringify(nextRecord),
       ),
       AsyncStorage.setItem(ARCHIVE_INDEX_KEY, JSON.stringify(nextIndex)),
+      ...evictedPuzzleIds.map(puzzleId =>
+        AsyncStorage.removeItem(getArchiveKey(puzzleId)),
+      ),
     ]);
   } catch {
     // Local archive is best effort.

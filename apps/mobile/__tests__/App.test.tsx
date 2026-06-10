@@ -102,6 +102,9 @@ test('rejects archived records whose puzzle is missing the playable shape', asyn
     (await AsyncStorage.getItem(ARCHIVE_INDEX_KEY)) ?? '[]',
   );
   expect(prunedIndex).toEqual([validPuzzle.puzzleId]);
+  expect(
+    await AsyncStorage.getItem(getArchiveKey('corrupt-archive-puzzle')),
+  ).toBeNull();
 });
 
 test('archives started and completed puzzles with bounded ordered index', async () => {
@@ -139,4 +142,12 @@ test('archives started and completed puzzles with bounded ordered index', async 
   expect(archiveIndex).toHaveLength(ARCHIVE_INDEX_LIMIT);
   expect(archiveIndex[0]).toBe(`archive-${ARCHIVE_INDEX_LIMIT}`);
   expect(archiveIndex).not.toContain(startedPuzzle.puzzleId);
+
+  expect(
+    await AsyncStorage.getItem(getArchiveKey(startedPuzzle.puzzleId)),
+  ).toBeNull();
+  expect(await AsyncStorage.getItem(getArchiveKey('archive-0'))).toBeNull();
+  expect(
+    await AsyncStorage.getItem(getArchiveKey('archive-1')),
+  ).not.toBeNull();
 });
