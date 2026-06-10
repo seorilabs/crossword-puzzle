@@ -102,8 +102,21 @@ test('rejects archived records whose puzzle is missing the playable shape', asyn
     startedAt: '2026-06-01T11:00:00.000Z',
   });
 
+  const invalidEntryPuzzle = createPuzzle('invalid-entry-puzzle');
+  const puzzleWithInvalidEntry = {
+    ...invalidEntryPuzzle,
+    entries: invalidEntryPuzzle.entries.map(entry => ({
+      ...entry,
+      generatedBy: undefined,
+    })),
+  } as unknown as Puzzle;
+  await saveArchivedPuzzle(puzzleWithInvalidEntry, {
+    startedAt: '2026-06-01T12:00:00.000Z',
+  });
+
   expect(await loadArchivedPuzzle('corrupt-archive-puzzle')).toBeNull();
   expect(await loadArchivedPuzzle('mismatched-grid-size-puzzle')).toBeNull();
+  expect(await loadArchivedPuzzle('invalid-entry-puzzle')).toBeNull();
 
   const records = await listArchivedPuzzles();
   expect(records.map(record => record.puzzleId)).toEqual([
@@ -119,6 +132,9 @@ test('rejects archived records whose puzzle is missing the playable shape', asyn
   ).toBeNull();
   expect(
     await AsyncStorage.getItem(getArchiveKey('mismatched-grid-size-puzzle')),
+  ).toBeNull();
+  expect(
+    await AsyncStorage.getItem(getArchiveKey('invalid-entry-puzzle')),
   ).toBeNull();
 });
 

@@ -38,6 +38,7 @@ function isArchivedPuzzleEntry(value: unknown): value is PuzzleEntry {
     typeof entry.answer === 'string' &&
     typeof entry.clue === 'string' &&
     (entry.direction === 'across' || entry.direction === 'down') &&
+    (entry.generatedBy === 'placed' || entry.generatedBy === 'auto') &&
     typeof entry.row === 'number' &&
     typeof entry.col === 'number'
   );
