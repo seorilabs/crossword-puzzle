@@ -49,14 +49,19 @@ function isArchivedPuzzle(value: unknown, puzzleId: string): value is Puzzle {
   }
 
   const puzzle = value as Partial<Puzzle>;
+  const { grid, gridSize } = puzzle;
   return (
     puzzle.puzzleId === puzzleId &&
     typeof puzzle.date === 'string' &&
-    typeof puzzle.gridSize === 'number' &&
-    Array.isArray(puzzle.grid) &&
-    puzzle.grid.length > 0 &&
-    puzzle.grid.every(
-      row => Array.isArray(row) && row.every(cell => typeof cell === 'string'),
+    typeof gridSize === 'number' &&
+    Array.isArray(grid) &&
+    grid.length > 0 &&
+    grid.length === gridSize &&
+    grid.every(
+      row =>
+        Array.isArray(row) &&
+        row.length === gridSize &&
+        row.every(cell => typeof cell === 'string'),
     ) &&
     Array.isArray(puzzle.entries) &&
     puzzle.entries.length > 0 &&

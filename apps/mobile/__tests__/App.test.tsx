@@ -31,7 +31,10 @@ function createPuzzle(puzzleId: string, date = '2026-06-01'): Puzzle {
         row: 0,
       },
     ],
-    grid: [['가', '나']],
+    grid: [
+      ['가', '나'],
+      ['', ''],
+    ],
     gridSize: 2,
     metrics: {
       autoRunCount: 0,
@@ -91,7 +94,16 @@ test('rejects archived records whose puzzle is missing the playable shape', asyn
     startedAt: '2026-06-01T10:00:00.000Z',
   });
 
+  const puzzleWithMismatchedGridSize = {
+    ...createPuzzle('mismatched-grid-size-puzzle'),
+    gridSize: 3,
+  };
+  await saveArchivedPuzzle(puzzleWithMismatchedGridSize, {
+    startedAt: '2026-06-01T11:00:00.000Z',
+  });
+
   expect(await loadArchivedPuzzle('corrupt-archive-puzzle')).toBeNull();
+  expect(await loadArchivedPuzzle('mismatched-grid-size-puzzle')).toBeNull();
 
   const records = await listArchivedPuzzles();
   expect(records.map(record => record.puzzleId)).toEqual([
@@ -104,6 +116,9 @@ test('rejects archived records whose puzzle is missing the playable shape', asyn
   expect(prunedIndex).toEqual([validPuzzle.puzzleId]);
   expect(
     await AsyncStorage.getItem(getArchiveKey('corrupt-archive-puzzle')),
+  ).toBeNull();
+  expect(
+    await AsyncStorage.getItem(getArchiveKey('mismatched-grid-size-puzzle')),
   ).toBeNull();
 });
 
