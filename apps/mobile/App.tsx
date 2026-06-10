@@ -121,6 +121,7 @@ type BonusPuzzlePanelState = {
 const REMOTE_PUZZLE_PACK_BASE_URL = 'https://crossword-puzzle-79ae0.web.app';
 const ARCHIVE_INDEX_KEY = 'crossword-puzzle:archive:index';
 const ARCHIVE_KEY_PREFIX = 'crossword-puzzle:archive';
+const ARCHIVE_FALLBACK_SAVED_AT = '1970-01-01T00:00:00.000Z';
 const PROGRESS_KEY_PREFIX = 'crossword-puzzle:progress';
 const MISSION_KEY_PREFIX = 'crossword-puzzle:mission';
 
@@ -404,21 +405,24 @@ async function loadArchivedPuzzle(puzzleId: string) {
       return null;
     }
 
+    const completedAt =
+      typeof parsed.completedAt === 'string' ? parsed.completedAt : undefined;
+    const lastPlayedAt =
+      typeof parsed.lastPlayedAt === 'string' ? parsed.lastPlayedAt : undefined;
+    const startedAt =
+      typeof parsed.startedAt === 'string' ? parsed.startedAt : undefined;
+    const savedAt =
+      typeof parsed.savedAt === 'string'
+        ? parsed.savedAt
+        : lastPlayedAt ?? completedAt ?? startedAt ?? ARCHIVE_FALLBACK_SAVED_AT;
+
     return {
-      completedAt:
-        typeof parsed.completedAt === 'string' ? parsed.completedAt : undefined,
-      lastPlayedAt:
-        typeof parsed.lastPlayedAt === 'string'
-          ? parsed.lastPlayedAt
-          : undefined,
+      completedAt,
+      lastPlayedAt,
       puzzle: parsed.puzzle,
       puzzleId,
-      savedAt:
-        typeof parsed.savedAt === 'string'
-          ? parsed.savedAt
-          : new Date().toISOString(),
-      startedAt:
-        typeof parsed.startedAt === 'string' ? parsed.startedAt : undefined,
+      savedAt,
+      startedAt,
     } satisfies PuzzleArchiveRecord;
   } catch {
     return null;

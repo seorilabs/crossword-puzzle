@@ -77,6 +77,10 @@ function assertIncludes(content, needle, label) {
   }
 }
 
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function assertNamedPolicyExport(content, name, path) {
   const exportPattern = new RegExp(`export\\s+(const|function)\\s+${name}\\b`);
 
@@ -85,11 +89,51 @@ function assertNamedPolicyExport(content, name, path) {
   }
 }
 
-function assertImported(content, names, path, coreImportPath) {
-  for (const name of names) {
-    assertIncludes(content, name, path);
+function extractNamedImports(content, importPath) {
+  const importPattern = new RegExp(
+    `import\\s*\\{([\\s\\S]*?)\\}\\s*from\\s*["']${escapeRegExp(
+      importPath,
+    )}["']`,
+    "g",
+  );
+  const importedNames = new Set();
+  let importCount = 0;
+  let match;
+
+  while ((match = importPattern.exec(content)) != null) {
+    importCount += 1;
+
+    for (const specifier of match[1].split(",")) {
+      const importedName = specifier
+        .trim()
+        .replace(/^type\s+/, "")
+        .split(/\s+as\s+/)[0]
+        ?.trim();
+
+      if (importedName != null && importedName.length > 0) {
+        importedNames.add(importedName);
+      }
+    }
   }
-  assertIncludes(content, coreImportPath, path);
+
+  return { importCount, importedNames };
+}
+
+function assertImported(content, names, path, coreImportPath) {
+  const { importCount, importedNames } = extractNamedImports(
+    content,
+    coreImportPath,
+  );
+
+  if (importCount === 0) {
+    fail(`${path}: missing named import from ${coreImportPath}`);
+  }
+
+  for (const name of names) {
+    if (!importedNames.has(name)) {
+      fail(`${path}: missing ${name} import from ${coreImportPath}`);
+    }
+  }
 }
 
 function assertNoLocalDefinitions(content, names, path) {
