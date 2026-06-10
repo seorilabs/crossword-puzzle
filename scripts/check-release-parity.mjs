@@ -64,7 +64,13 @@ const forbiddenLocalDefinitions = [
 const failures = [];
 
 function read(path) {
-  return readFileSync(path, "utf8");
+  try {
+    return readFileSync(path, "utf8");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    fail(`${path}: unable to read file (${message})`);
+    return "";
+  }
 }
 
 function fail(message) {

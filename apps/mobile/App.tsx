@@ -121,6 +121,7 @@ type BonusPuzzlePanelState = {
 const REMOTE_PUZZLE_PACK_BASE_URL = 'https://crossword-puzzle-79ae0.web.app';
 const ARCHIVE_INDEX_KEY = 'crossword-puzzle:archive:index';
 const ARCHIVE_KEY_PREFIX = 'crossword-puzzle:archive';
+const ARCHIVE_INDEX_LIMIT = 30;
 const ARCHIVE_FALLBACK_SAVED_AT = '1970-01-01T00:00:00.000Z';
 const PROGRESS_KEY_PREFIX = 'crossword-puzzle:progress';
 const MISSION_KEY_PREFIX = 'crossword-puzzle:mission';
@@ -431,8 +432,9 @@ async function loadArchivedPuzzle(puzzleId: string) {
 
 async function listArchivedPuzzles() {
   const index = await loadArchiveIndex();
+  const readIndex = index.slice(0, ARCHIVE_INDEX_LIMIT);
   const loadedEntries = await Promise.all(
-    index.map(async puzzleId => ({
+    readIndex.map(async puzzleId => ({
       puzzleId,
       record: await loadArchivedPuzzle(puzzleId),
     })),
@@ -487,7 +489,7 @@ async function saveArchivedPuzzle(
   const nextIndex = [
     puzzle.puzzleId,
     ...currentIndex.filter(puzzleId => puzzleId !== puzzle.puzzleId),
-  ].slice(0, 30);
+  ].slice(0, ARCHIVE_INDEX_LIMIT);
 
   try {
     await Promise.all([
