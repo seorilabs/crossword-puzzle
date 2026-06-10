@@ -79,8 +79,16 @@ Android/iOS는 AIT WebView 코드와 같은 Web SDK를 공유하지 않는다. `
 
 - Android: `google-services.json`, `@react-native-firebase/app`, `@react-native-firebase/analytics`, `@react-native-firebase/remote-config`
 - iOS: `GoogleService-Info.plist`, 같은 RNFirebase 모듈
+- AdMob 콘솔 앱과 광고 단위는 생성했지만, `apps/mobile`에는 아직 AdMob SDK/native adapter가 없다. 운영 광고 ID는 release build adapter QA가 끝난 뒤 적용하고, 개발/QA 빌드는 Google test ad unit을 사용한다.
 - 공유 core에는 Firebase import를 넣지 않는다.
 - 앱 개인정보/데이터 수집 고지에는 Analytics, 광고 식별자, 진단/사용 이벤트 수집 여부를 반영한다.
+
+## Native AdMob IDs
+
+| Platform | App ID | rewarded hint | interstitial result | rewarded bonus puzzle |
+| --- | --- | --- | --- | --- |
+| Android | `ca-app-pub-2444587584524186~5456766418` | `ca-app-pub-2444587584524186/7533141122` | `ca-app-pub-2444587584524186/4930691809` | `ca-app-pub-2444587584524186/2299285882` |
+| iOS | `ca-app-pub-2444587584524186~4715406099` | `ca-app-pub-2444587584524186/6151776694` | `ca-app-pub-2444587584524186/3402324424` | `ca-app-pub-2444587584524186/2089242756` |
 
 ## 배포 전 확인
 

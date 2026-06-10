@@ -36,7 +36,7 @@ flowchart TD
 | 고객 문의 이메일 | `cs@seorilabs.com` |
 | Bundle ID | `com.seorilabs.crosswordpuzzle` |
 | SKU | `crossword-puzzle-app` |
-| 광고 | `no` |
+| 광고 | 현재 제출 binary 기준 `no`. AdMob 콘솔 ID는 확보했고 native adapter 연결 전 |
 | 추적/ATT | 현재 native mobile 기준 `no` 후보 |
 | Game Center | `no` |
 | CocoaPods | `bundle exec pod install` 완료 |
@@ -51,13 +51,26 @@ flowchart TD
 | --- | --- |
 | Support URL | 후보 `https://www.seorilabs.com/support`. 실제 페이지 존재와 앱별 문의 동선 확인 필요 |
 | Privacy Policy URL | 후보 `https://www.seorilabs.com/privacy`. 현재 앱의 로컬 저장/향후 Firebase 사용 여부와 일치 확인 필요 |
-| App Privacy | 현재 native mobile은 로그인/결제/서버 저장/광고 SDK 없음. 운영 포팅 뒤 재확인 필요 |
+| App Privacy | 현재 native mobile은 로그인/결제/서버 저장/광고 SDK 없음. AdMob SDK 연결 뒤 재확인 필요 |
 | Age Rating | 낱말 퍼즐 게임 기준 설문 완료 필요 |
 | Content Rights | 힌트 자체 작성, 단어 후보 출처/라이선스 검수 완료 후 답변 확정 |
 | Export Compliance | 표준 OS/HTTPS 외 비표준 암호화 없음 후보. `Info.plist` 반영 및 콘솔 답변 필요 |
 | DSA/trader | EU 배포/조직 계정/수익화 정책 기준 확인 필요 |
 | Review contact | 이름/전화번호 확정 필요 |
 | TestFlight | build processing 확인, 내부 테스트 그룹/빌드 선택 필요 |
+
+## 2026-06-09 AdMob 콘솔 ID
+
+현재 ID 확보 상태이며, 운영 광고 게재는 AdMob SDK/native adapter 연결과 QA 이후 적용한다. 개발/QA 빌드는 Google test ad unit을 사용한다.
+
+| 항목 | 값 |
+| --- | --- |
+| iOS AdMob app ID | `ca-app-pub-2444587584524186~4715406099` |
+| `ios_rewarded_hint` | `ca-app-pub-2444587584524186/6151776694` |
+| `ios_interstitial_result` | `ca-app-pub-2444587584524186/3402324424` |
+| `ios_rewarded_bonus_puzzle` | `ca-app-pub-2444587584524186/2089242756` |
+
+`GADApplicationIdentifier`와 `SKAdNetworkItems`는 AdMob SDK를 `apps/mobile`에 추가하는 PR에서 `Info.plist`에 반영한다. AdMob 개인화 광고, IDFA, cross-app ad measurement를 켜면 App Store Connect Tracking 답변, ATT/UMP 동선, `NSUserTrackingUsageDescription`도 같이 구현한다.
 
 ## App Privacy 답변 가이드
 

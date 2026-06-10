@@ -16,6 +16,16 @@
       "ko-KR": "초기 내부 테스트 빌드입니다."
     }
   },
+  "adMob": {
+    "status": "console app and ad units created; native SDK adapter integration pending",
+    "appId": "ca-app-pub-2444587584524186~5456766418",
+    "adUnits": {
+      "rewardedHint": "ca-app-pub-2444587584524186/7533141122",
+      "interstitialResult": "ca-app-pub-2444587584524186/4930691809",
+      "rewardedBonusPuzzle": "ca-app-pub-2444587584524186/2299285882"
+    },
+    "productionPolicy": "Use Google test ad units in development and switch to these IDs only for release builds after adapter QA."
+  },
   "storeListing": {
     "appName": {
       "ko-KR": "가로세로 낱말 퍼즐"

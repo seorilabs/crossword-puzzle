@@ -29,7 +29,7 @@ npm run check:play
 | 가격             | `free`             |
 | 고객 문의 이메일 | `cs@seorilabs.com` |
 | 개인정보 처리방침 | `https://www.seorilabs.com/privacy/` |
-| 광고             | `no`               |
+| 광고             | 현재 제출 binary 기준 `no`. AdMob 콘솔 ID는 확보했고 native adapter 연결 전 |
 | 한국 배포        | `yes`              |
 | 첫 업로드 트랙   | `internal`         |
 
@@ -46,9 +46,20 @@ npm run check:play
 
 - `https://www.seorilabs.com/privacy/`는 공개 URL이며 200 응답을 확인했다.
 - Android `apps/mobile` 타깃은 `INTERNET` 권한과 원격 퍼즐팩 fetch를 사용한다.
-- Android `apps/mobile` 타깃의 현재 dependency에는 Firebase, AdMob, 결제, 로그인 SDK가 없다.
+- Android `apps/mobile` 타깃의 현재 dependency에는 Firebase, AdMob, 결제, 로그인 SDK가 없다. AdMob 콘솔 앱/광고 단위는 생성했지만 AdMob SDK/native adapter는 아직 없다.
 - 진행 상태와 미션 상태는 `AsyncStorage`에 로컬 저장된다.
 - Data Safety 최종 선언은 Play Console에서 직접 검토해야 한다. Google Play 기준상 앱/SDK가 사용자 데이터를 기기 밖으로 전송하는지 여부가 핵심이고, 로컬 처리만 하는 데이터는 수집으로 보지 않는다.
+
+## 2026-06-09 AdMob 콘솔 ID
+
+현재 ID 확보 상태이며, 운영 광고 게재는 AdMob SDK/native adapter 연결과 QA 이후 적용한다. 개발/QA 빌드는 Google test ad unit을 사용한다.
+
+| 항목 | 값 |
+| --- | --- |
+| Android AdMob app ID | `ca-app-pub-2444587584524186~5456766418` |
+| `android_rewarded_hint` | `ca-app-pub-2444587584524186/7533141122` |
+| `android_interstitial_result` | `ca-app-pub-2444587584524186/4930691809` |
+| `android_rewarded_bonus_puzzle` | `ca-app-pub-2444587584524186/2299285882` |
 
 ## 2026-06-07 API 반영 결과
 

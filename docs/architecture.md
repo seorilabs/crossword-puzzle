@@ -143,7 +143,7 @@ Supabase는 puzzle pack 운영이 Firebase Hosting으로 안정화된 뒤, 검�
 - `packages/crossword-core`는 RN, Supabase, AppsInToss import를 계속 금지한다.
 - AIT WebView는 `apps/mobile` 생성 후에도 제거하지 않는다.
 - Android/iOS 모바일 UI는 AIT 제품 정책을 따른다. 홈/날짜 rail은 하루 1개 기본 공개 퍼즐만 노출하고, 추가 퍼즐은 플랫폼별 보상형 광고 어댑터가 붙은 뒤 보너스 해금으로 연다.
-- 현재 `apps/mobile`은 `packages/crossword-core`, Firebase Hosting puzzle pack, AsyncStorage 기반 진행/미션 저장, AIT와 맞춘 슬롯형 답안 입력/선택 단서 레이아웃을 연결했다. 남은 동기화 대상은 Firebase Analytics/Remote Config, AdMob, App Store/Google Play signing 같은 platform adapter다.
+- 현재 `apps/mobile`은 `packages/crossword-core`, Firebase Hosting puzzle pack, AsyncStorage 기반 진행/미션 저장, AIT와 맞춘 슬롯형 답안 입력/선택 단서 레이아웃을 연결했다. Android/iOS AdMob 콘솔 앱/광고 단위 ID는 확보했고, 남은 동기화 대상은 Firebase Analytics/Remote Config, AdMob SDK/native adapter 연결과 release QA, App Store/Google Play signing 같은 platform adapter다.
 
 ## 검증 기준
 
