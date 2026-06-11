@@ -3302,7 +3302,9 @@ function TodayScreen({
                       ? "…"
                       : hintBalance.remaining > 0
                         ? hintBalance.remaining
-                        : "+"}
+                        : hintBalance.adsEnabled
+                          ? "+"
+                          : "0"}
                   </span>
                 </button>
                 <button
