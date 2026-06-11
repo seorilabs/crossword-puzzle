@@ -313,6 +313,39 @@ function isCellLocked(
   return value != null && value === getCellAnswerLetter(puzzle, cellKey);
 }
 
+// Chooses which cell `clearAnswerCell` should erase: the caret cell if it holds
+// an editable letter, otherwise the nearest earlier editable cell, skipping
+// locked (correct) letters so the caret is never trapped on one. Returns -1 when
+// there is nothing editable to delete before the caret.
+export function getClearAnswerTargetIndex(
+  puzzle: Puzzle,
+  entry: PuzzleEntry,
+  cellValues: Record<string, string>,
+  selectedIndex: number,
+): number {
+  const cells = getEntryCells(entry);
+  const isDeletable = (index: number) => {
+    const cell = cells[index];
+    if (cell == null) {
+      return false;
+    }
+    const key = getCellKey(cell.row, cell.col);
+    return cellValues[key] != null && !isCellLocked(puzzle, cellValues, key);
+  };
+
+  if (isDeletable(selectedIndex)) {
+    return selectedIndex;
+  }
+
+  for (let index = selectedIndex - 1; index >= 0; index -= 1) {
+    if (isDeletable(index)) {
+      return index;
+    }
+  }
+
+  return -1;
+}
+
 function formatEntryReference(
   entry: PuzzleEntry,
   startLabels: Map<string, number>,
@@ -1356,30 +1389,16 @@ function AppContent() {
   }
 
   function clearAnswerCell(entry: PuzzleEntry, cellKey = selectedCellKey) {
-    const cells = getEntryCells(entry);
     const selectedIndex = getEntryCellIndex(entry, cellKey);
-    const isDeletable = (index: number) => {
-      const cell = cells[index];
-      if (cell == null) {
-        return false;
-      }
-      const key = getCellKey(cell.row, cell.col);
-      return cellValues[key] != null && !isCellLocked(puzzle, cellValues, key);
-    };
-    // Delete the caret cell if it holds an editable letter; otherwise step back
-    // to the nearest editable filled cell, skipping locked (correct) letters so
-    // the caret is never trapped on one.
-    let targetIndex = isDeletable(selectedIndex) ? selectedIndex : -1;
-    if (targetIndex === -1) {
-      for (let index = selectedIndex - 1; index >= 0; index -= 1) {
-        if (isDeletable(index)) {
-          targetIndex = index;
-          break;
-        }
-      }
-    }
+    const targetIndex = getClearAnswerTargetIndex(
+      puzzle,
+      entry,
+      cellValues,
+      selectedIndex,
+    );
 
     if (targetIndex === -1) {
+      // Nothing editable to delete before the caret; leave it where it is.
       setSelectedCellKey(getEntryCellKeyAt(entry, selectedIndex));
       return;
     }
@@ -1700,7 +1719,7 @@ function AppContent() {
                       isCompletedCell && styles.cellCompleted,
                       isInSelectedEntry && styles.cellActive,
                       pendingValue !== '' && styles.cellPending,
-                      isCorrect && styles.cellCorrect,
+                      isCorrect && !isCompletedCell && styles.cellCorrect,
                       isWrong && styles.cellWrong,
                       isSelected && styles.cellSelected,
                     ]}
