@@ -142,9 +142,11 @@ export function scheduleBoardNativeInputFocus({
   platformOS,
 }: ScheduleBoardNativeInputFocusOptions): ReturnType<typeof setTimeout> {
   const input = getInput();
+  const needsAndroidRefocus =
+    platformOS === 'android' && !keyboardVisible && input?.isFocused();
 
-  if (platformOS === 'android' && !keyboardVisible && input?.isFocused()) {
-    input.blur();
+  if (needsAndroidRefocus) {
+    input?.blur();
   }
 
   // Android can leave TextInput focused after the IME is hidden; wait briefly
@@ -154,7 +156,7 @@ export function scheduleBoardNativeInputFocus({
       onFocusTimerSettled();
       getInput()?.focus();
     },
-    platformOS === 'android' ? ANDROID_TEXT_INPUT_REFOCUS_DELAY_MS : 0,
+    needsAndroidRefocus ? ANDROID_TEXT_INPUT_REFOCUS_DELAY_MS : 0,
   );
 }
 

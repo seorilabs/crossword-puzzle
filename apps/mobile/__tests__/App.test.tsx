@@ -129,6 +129,33 @@ test('refocuses a stale Android text input after the keyboard is hidden', () => 
   expect(focus).toHaveBeenCalledTimes(1);
 });
 
+test('focuses Android text input without refocus delay when keyboard is visible', () => {
+  jest.useFakeTimers({ now: 0 });
+
+  const blur = jest.fn();
+  const focus = jest.fn();
+  const isFocused = jest.fn(() => true);
+  const onFocusTimerSettled = jest.fn();
+  const getInput = jest.fn(() => ({ blur, focus, isFocused }));
+
+  scheduleBoardNativeInputFocus({
+    getInput,
+    keyboardVisible: true,
+    onFocusTimerSettled,
+    platformOS: 'android',
+  });
+
+  expect(isFocused).not.toHaveBeenCalled();
+  expect(blur).not.toHaveBeenCalled();
+
+  ReactTestRenderer.act(() => {
+    jest.advanceTimersByTime(0);
+  });
+
+  expect(onFocusTimerSettled).toHaveBeenCalledTimes(1);
+  expect(focus).toHaveBeenCalledTimes(1);
+});
+
 test('loads an archived puzzle when it is missing from the current pack', async () => {
   const archivedPuzzle = createPuzzle('archived-only-puzzle');
   await saveArchivedPuzzle(archivedPuzzle, {
