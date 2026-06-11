@@ -1312,6 +1312,12 @@ function AppContent() {
       return;
     }
 
+    // Drop any in-flight IME draft / queued commit so a stale answerInputValue
+    // can't re-apply letters right after the clear (the caret may already sit on
+    // the entry start cell, so the reset effect won't fire on its own).
+    clearAnswerCommitTimer();
+    setAnswerInputValue('');
+
     setCellValues(previous => {
       const nextValues = { ...previous };
       getEntryCells(selectedEntry).forEach(cell => {
