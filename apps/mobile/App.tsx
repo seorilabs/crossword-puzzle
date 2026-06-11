@@ -29,8 +29,7 @@ import {
   createEmptyProgress,
   createPuzzleSummary,
   DAILY_ATTEMPT_LIMIT,
-  DEFAULT_HINT_CREDITS,
-  DEFAULT_VISIBLE_PUZZLE_COUNT,
+  defaultLaunchConfig,
   getBonusPuzzleCandidateSummary,
   getBounds,
   getCellKey,
@@ -42,8 +41,6 @@ import {
   getInitialEntryId,
   getRemainingAttempts,
   getTodayDateKey,
-  PUZZLE_GENERATION_INTERVAL_HOURS,
-  PUZZLE_KEEP_COUNT,
   sortPuzzleSummariesByRecency,
   startMissionAttempt,
   uniquePuzzleSummaries,
@@ -55,6 +52,7 @@ import {
   type PuzzleManifest,
   type PuzzleManifestItem,
   type SavedProgress,
+  type LaunchConfig,
 } from '../../packages/crossword-core/src';
 
 import {
@@ -64,6 +62,8 @@ import {
   type PuzzleArchiveRecord,
   type PuzzleArchiveSaveOptions,
 } from './puzzleArchive';
+import { loadFirebaseLaunchConfig } from './firebaseClient';
+import { telemetry } from './telemetry';
 import manifestData from '../../public/puzzles/manifest.json';
 import puzzle20260525 from '../../public/puzzles/2026-05-25-normal-01.json';
 import puzzle20260526 from '../../public/puzzles/2026-05-26-normal-02.json';
@@ -208,6 +208,21 @@ function findPuzzleSummaryById(
   return puzzleId == null
     ? undefined
     : puzzleSummaries.find(summary => summary.puzzleId === puzzleId);
+}
+
+function getPuzzleTelemetryParams(
+  puzzle: Puzzle,
+  summary?: PuzzleManifestItem,
+) {
+  return {
+    difficulty: summary?.difficulty ?? puzzle.difficulty,
+    grid_size: puzzle.gridSize,
+    pack_id: summary?.packId ?? puzzle.packId,
+    published_at: summary?.publishedAt ?? puzzle.publishedAt,
+    puzzle_id: puzzle.puzzleId,
+    slot_id: summary?.slotId ?? puzzle.slotId,
+    word_count: summary?.metrics?.wordCount ?? puzzle.metrics.wordCount,
+  };
 }
 
 function formatBonusPuzzleMeta(summary?: PuzzleManifestItem) {
@@ -597,6 +612,9 @@ function AppContent() {
   const [notice, setNotice] = useState(
     '날짜를 고르고 오늘의 낱말 퍼즐을 시작하세요.',
   );
+  const [launchConfig, setLaunchConfig] =
+    useState<LaunchConfig>(defaultLaunchConfig);
+  const hasLoggedFirstAnswerInputRef = useRef(false);
 
   const viewModel = usePuzzleViewModel(
     puzzle,
@@ -616,7 +634,7 @@ function AppContent() {
     puzzle.entries.length,
   );
   const remainingAttempts = getRemainingAttempts(mission);
-  const totalHintCredits = DEFAULT_HINT_CREDITS + earnedHintCredits;
+  const totalHintCredits = launchConfig.defaultHintCredits + earnedHintCredits;
   const remainingHintCredits = Math.max(0, totalHintCredits - hintCount);
   const hasProgress =
     Object.keys(cellValues).length > 0 ||
@@ -639,16 +657,16 @@ function AppContent() {
       getDailyFreePuzzleSummaries(
         puzzlePack.summaries,
         todayKey,
-        DEFAULT_VISIBLE_PUZZLE_COUNT,
+        launchConfig.visiblePuzzleCount,
       ),
-    [puzzlePack.summaries, todayKey],
+    [launchConfig.visiblePuzzleCount, puzzlePack.summaries, todayKey],
   );
   const archivePuzzleSummaries = useMemo(
     () =>
       puzzleArchiveRecords
-        .slice(0, DEFAULT_VISIBLE_PUZZLE_COUNT)
+        .slice(0, launchConfig.visiblePuzzleCount)
         .map(record => createPuzzleSummary(record.puzzle)),
-    [puzzleArchiveRecords],
+    [launchConfig.visiblePuzzleCount, puzzleArchiveRecords],
   );
   const selectedPuzzleSummary = useMemo(
     () =>
@@ -682,7 +700,9 @@ function AppContent() {
   );
   const bonusPuzzlePanelState: BonusPuzzlePanelState = {
     candidateSummary: bonusCandidateSummary,
-    notice: '모바일 보상형 광고 어댑터 연결 후 제공됩니다.',
+    notice: launchConfig.rewardedBonusPuzzleAdsEnabled
+      ? '모바일 보상형 광고 어댑터 연결 후 제공됩니다.'
+      : '운영 설정에서 보너스 광고가 꺼져 있습니다.',
     status: isLoading
       ? 'loading'
       : bonusCandidateSummary != null
@@ -714,6 +734,26 @@ function AppContent() {
     },
     [refreshPuzzleArchive],
   );
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    loadFirebaseLaunchConfig()
+      .then(nextLaunchConfig => {
+        if (!isCancelled) {
+          setLaunchConfig(nextLaunchConfig);
+        }
+      })
+      .catch(() => {
+        if (!isCancelled) {
+          setLaunchConfig(defaultLaunchConfig);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let isCancelled = false;
@@ -772,6 +812,17 @@ function AppContent() {
       return;
     }
 
+    telemetry.screen(route, {
+      ...getPuzzleTelemetryParams(puzzle, selectedPuzzleSummary),
+      puzzle_pack_source: puzzlePack.source,
+    });
+  }, [isLoading, puzzle, puzzlePack.source, route, selectedPuzzleSummary]);
+
+  useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+
     saveStoredProgress(puzzle.puzzleId, {
       cellValues,
       earnedHintCredits,
@@ -810,9 +861,26 @@ function AppContent() {
     setMission(nextMission);
     saveStoredMission(nextMission);
     savePuzzleSnapshot(puzzle, { completedAt: nextMission.completedAt });
+    telemetry.impression('mission_complete', {
+      ...getPuzzleTelemetryParams(puzzle, selectedPuzzleSummary),
+      attempt_number: mission.attemptsUsed,
+      completed_word_count: viewModel.completedEntries.length,
+      hint_count: hintCount,
+      remaining_attempts: remainingAttempts,
+    });
     setNotice('퍼즐을 완료했습니다.');
     setRoute('result');
-  }, [isLoading, mission, puzzle, savePuzzleSnapshot, viewModel.isComplete]);
+  }, [
+    hintCount,
+    isLoading,
+    mission,
+    puzzle,
+    remainingAttempts,
+    savePuzzleSnapshot,
+    selectedPuzzleSummary,
+    viewModel.completedEntries.length,
+    viewModel.isComplete,
+  ]);
 
   function applyPuzzleSession(session: PuzzleSession | null) {
     if (session == null) {
@@ -824,6 +892,7 @@ function AppContent() {
     setEarnedHintCredits(session.savedProgress.earnedHintCredits);
     setHintCount(session.savedProgress.hintCount);
     setMission(session.savedMission);
+    hasLoggedFirstAnswerInputRef.current = false;
     setSelectedDirection('across');
     setSelectedEntryId(getInitialEntryId(session.nextPuzzle));
     setSelectedCellKey(getInitialEntryStartCellKey(session.nextPuzzle));
@@ -843,7 +912,16 @@ function AppContent() {
 
     if (session == null) {
       setNotice('퍼즐 데이터를 찾을 수 없습니다.');
+      return;
     }
+
+    telemetry.click('puzzle_select', {
+      ...getPuzzleTelemetryParams(
+        session.nextPuzzle,
+        findPuzzleSummaryById(puzzlePack.summaries, session.nextPuzzle.puzzleId),
+      ),
+      puzzle_pack_source: puzzlePack.source,
+    });
   }
 
   function selectEntry(entry: PuzzleEntry, cellKey?: string) {
@@ -895,6 +973,14 @@ function AppContent() {
 
     if (nextLetters.length === 0) {
       return;
+    }
+
+    if (!hasLoggedFirstAnswerInputRef.current) {
+      hasLoggedFirstAnswerInputRef.current = true;
+      telemetry.impression('first_answer_input', {
+        ...getPuzzleTelemetryParams(puzzle, selectedPuzzleSummary),
+        attempt_number: mission.attemptsUsed,
+      });
     }
 
     const nextValues = { ...cellValues };
@@ -976,6 +1062,11 @@ function AppContent() {
       [targetKey]: answerLetters[targetIndex],
     };
 
+    telemetry.click('hint_reveal', {
+      ...getPuzzleTelemetryParams(puzzle, selectedPuzzleSummary),
+      hint_count: hintCount + 1,
+      remaining_hint_credits: remainingHintCredits - 1,
+    });
     setHintCount(previous => previous + 1);
     setCellValues(nextValues);
     setSelectedCellKey(targetKey);
@@ -1045,6 +1136,16 @@ function AppContent() {
       setMission(nextMission);
       saveStoredMission(nextMission);
       savePuzzleSnapshot(puzzle, { startedAt: nextMission.lastStartedAt });
+      telemetry.impression('mission_start', {
+        ...getPuzzleTelemetryParams(puzzle, selectedPuzzleSummary),
+        attempt_number: nextMission.attemptsUsed,
+        remaining_attempts: getRemainingAttempts(nextMission),
+      });
+      telemetry.impression('attempt_start', {
+        ...getPuzzleTelemetryParams(puzzle, selectedPuzzleSummary),
+        attempt_number: nextMission.attemptsUsed,
+        remaining_attempts: getRemainingAttempts(nextMission),
+      });
     }
 
     setRoute('today');
@@ -1061,6 +1162,12 @@ function AppContent() {
     setMission(nextMission);
     saveStoredMission(nextMission);
     savePuzzleSnapshot(puzzle, { startedAt: nextMission.lastStartedAt });
+    telemetry.impression('attempt_start', {
+      ...getPuzzleTelemetryParams(puzzle, selectedPuzzleSummary),
+      attempt_number: nextMission.attemptsUsed,
+      attempt_type: 'retry',
+      remaining_attempts: getRemainingAttempts(nextMission),
+    });
     setRoute('today');
   }
 
@@ -1129,10 +1236,11 @@ function AppContent() {
         <View style={styles.policyPanel}>
           <Text style={styles.policyTitle}>하루 1개 기본 공개</Text>
           <Text style={styles.smallText}>
-            홈에는 하루 1개씩 최근 {DEFAULT_VISIBLE_PUZZLE_COUNT}일치 무료
+            홈에는 하루 1개씩 최근 {launchConfig.visiblePuzzleCount}일치 무료
             퍼즐과 기기에 저장된 기록을 함께 보여줍니다. 추가 퍼즐은 보너스 해금
-            흐름으로 엽니다. 원격 퍼즐은 {PUZZLE_GENERATION_INTERVAL_HOURS}
-            시간마다 생성되고 최근 {PUZZLE_KEEP_COUNT}개까지 유지됩니다.
+            흐름으로 엽니다. 원격 퍼즐은{' '}
+            {launchConfig.puzzleGenerationIntervalHours}시간마다 생성되고 최근{' '}
+            {launchConfig.puzzleKeepCount}개까지 유지됩니다.
           </Text>
         </View>
 

@@ -15,6 +15,8 @@ build/
 play-store/secrets/
 android/key.properties
 apps/mobile/android/key.properties
+apps/mobile/android/app/google-services.json
+apps/mobile/ios/CrosswordPuzzleMobile/GoogleService-Info.plist
 gha-creds-*.json
 *.jks
 *.keystore

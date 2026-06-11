@@ -50,8 +50,8 @@ flowchart TD
 | 항목 | 후보/메모 |
 | --- | --- |
 | Support URL | 후보 `https://www.seorilabs.com/support`. 실제 페이지 존재와 앱별 문의 동선 확인 필요 |
-| Privacy Policy URL | 후보 `https://www.seorilabs.com/privacy`. 현재 앱의 로컬 저장/향후 Firebase 사용 여부와 일치 확인 필요 |
-| App Privacy | 현재 native mobile은 로그인/결제/서버 저장/광고 SDK 없음. AdMob SDK 연결 뒤 재확인 필요 |
+| Privacy Policy URL | 후보 `https://www.seorilabs.com/privacy`. RNFirebase Analytics/Remote Config 사용 여부와 일치 확인 필요 |
+| App Privacy | 현재 native mobile은 RNFirebase Analytics/Remote Config를 사용하고, 로그인/결제/서버 저장/광고 SDK는 없다. AdMob SDK 연결 뒤 재확인 필요 |
 | Age Rating | 낱말 퍼즐 게임 기준 설문 완료 필요 |
 | Content Rights | 힌트 자체 작성, 단어 후보 출처/라이선스 검수 완료 후 답변 확정 |
 | Export Compliance | 표준 OS/HTTPS 외 비표준 암호화 없음 후보. `Info.plist` 반영 및 콘솔 답변 필요 |
@@ -74,7 +74,7 @@ flowchart TD
 
 ## App Privacy 답변 가이드
 
-현재 업로드된 `apps/mobile` binary만 보면 `No Data Collected` 후보였지만, 최종 iOS 앱에 Firebase Hosting request log 보관/분석, native Firebase Analytics/Remote Config/Crashlytics/Performance, AdMob, App Check, 인증, 결제, Game Center, 리더보드, 서버 저장, 고객지원 폼, 사용자 생성 콘텐츠를 모두 붙이면 `No Data Collected`는 더 이상 맞지 않다.
+현재 `apps/mobile` binary는 RNFirebase Analytics/Remote Config를 포함하므로 `No Data Collected` 전제로 제출하면 안 된다. iOS Analytics는 `$RNFirebaseAnalyticsWithoutAdIdSupport = true`로 IDFA 없는 variant를 사용하지만, Firebase app instance/installation 및 Remote Config 관련 데이터 고지는 실제 App Store Connect 입력 전에 확인해야 한다. 향후 Firebase Hosting request log 보관/분석, Crashlytics/Performance, AdMob, App Check, 인증, 결제, Game Center, 리더보드, 서버 저장, 고객지원 폼, 사용자 생성 콘텐츠를 붙이면 답변 범위가 더 넓어진다.
 
 최종 제출 binary 기준 추천 답변은 `Data Collected`다. AdMob 개인화 광고, IDFA, cross-app ad measurement를 켜면 `Tracking`도 `Yes`로 답하고 ATT/UMP 동선을 구현한다. App Store Connect에 실제 입력하기 전까지 `appPrivacyAnswers` gate는 `확정 필요`로 유지한다.
 
@@ -144,7 +144,7 @@ flowchart TD
 - 결제 카드 번호 등 `Payment Info`는 Apple IAP만 쓰고 개발자가 결제수단 정보에 접근하지 않으면 보통 수집으로 보지 않는다. 대신 entitlement/purchase record를 저장하면 `Purchase History`는 답한다.
 - AdMob을 붙여도 비개인화/문맥 광고만 쓰고 IDFA/교차 앱 측정을 끄면 `Tracking=No` 경로가 가능할 수 있다. 이 경우 SDK 설정과 App Store Connect 답변을 별도로 검증해야 한다.
 - Tracking 또는 IDFA를 켜면 `NSUserTrackingUsageDescription`, `AppTrackingTransparency`, UMP/동의 동선을 구현한다.
-- App Privacy 답변은 `PrivacyInfo.xcprivacy`를 대체하지 않는다. native Firebase/AdMob/App Check SDK를 붙인 뒤 privacy manifest와 App Store Connect 답변을 다시 맞춘다.
+- App Privacy 답변은 `PrivacyInfo.xcprivacy`를 대체하지 않는다. RNFirebase Analytics/Remote Config, 향후 AdMob/App Check SDK를 붙인 뒤 privacy manifest와 App Store Connect 답변을 다시 맞춘다.
 
 참고:
 
@@ -245,6 +245,6 @@ flowchart TD
 
 - App Store Connect upload는 build accepted/processing까지의 의미이며, 버전 빌드 선택과 최종 심사 제출은 별도 gate다.
 - iPad를 계속 지원하면 iPad screenshot과 iPad AppIcon slot까지 준비해야 한다. iPad를 출시 대상에서 뺄 경우 Xcode `TARGETED_DEVICE_FAMILY`부터 바꿔야 한다.
-- 향후 Firebase Analytics/AdMob을 `apps/mobile`에 붙이면 `PrivacyInfo.xcprivacy`, App Store Connect privacy 답변, ATT/IDFA 정책을 다시 갱신해야 한다.
+- RNFirebase Analytics/Remote Config를 붙였으므로 `PrivacyInfo.xcprivacy`, App Store Connect privacy 답변, ATT/IDFA 정책을 다시 확인해야 한다. 현재 iOS Analytics는 IDFA 없는 variant이며, AdMob SDK를 붙이면 다시 갱신한다.
 - 2026-04-28 이후 App Store Connect 업로드는 Xcode 26/iOS 26 SDK 이상이 필요하므로 workflow는 `macos-26` runner와 SDK major check를 사용한다.
 - 2026-06-07 `v0.1.5` / build `1005` 업로드 run `27087313726`, job `79945275484`는 성공했다.

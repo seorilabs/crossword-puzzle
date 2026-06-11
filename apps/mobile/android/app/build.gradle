@@ -4,6 +4,7 @@ import java.util.Properties
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
+apply plugin: "com.google.gms.google-services"
 
 def keystoreProperties = new Properties()
 def keystorePropertiesFile = rootProject.file("key.properties")
@@ -15,6 +16,11 @@ def appVersionName = (System.getenv("APP_VERSION_NAME") ?: project.findProperty(
 def appVersionCode = (System.getenv("APP_VERSION_CODE") ?: project.findProperty("APP_VERSION_CODE") ?: "1000").toString().toInteger()
 if (appVersionCode <= 0) {
     throw new GradleException("APP_VERSION_CODE must be greater than 0.")
+}
+
+def googleServicesFile = file("google-services.json")
+if (!googleServicesFile.exists()) {
+    throw new GradleException("Missing apps/mobile/android/app/google-services.json. Run node scripts/restore-mobile-firebase-config.mjs --android --require from the repository root.")
 }
 
 /**
