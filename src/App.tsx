@@ -3380,6 +3380,7 @@ function TodayScreen({
                   .filter(Boolean)
                   .join(" ")}
                 type="button"
+                aria-pressed={slot.isActive}
                 aria-label={`${index + 1}/${answerSlots.length}번째 칸${
                   slot.value === ""
                     ? ", 빈 칸"

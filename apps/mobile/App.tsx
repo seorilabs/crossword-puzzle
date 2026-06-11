@@ -1943,6 +1943,7 @@ function AppContent() {
                     }`
               }`}
               accessibilityRole="button"
+              accessibilityState={{ selected: slot.isActive }}
               key={slot.key}
               onPress={() => {
                 selectEntry(selectedEntry, slot.key);
