@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Keyboard,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -292,6 +293,67 @@ function getProgressPercent(completedCount: number, totalCount: number) {
   }
 
   return Math.round((completedCount / totalCount) * 100);
+}
+
+function getCellAnswerLetter(puzzle: Puzzle, cellKey: string) {
+  const [row, col] = cellKey.split(':').map(Number);
+
+  return puzzle.grid[row]?.[col] ?? '';
+}
+
+// A committed letter that matches the grid answer is locked: it is correct for
+// both crossing words, so erase actions (backspace / clear) skip over it.
+function isCellLocked(
+  puzzle: Puzzle,
+  cellValues: Record<string, string>,
+  cellKey: string,
+) {
+  const value = cellValues[cellKey];
+
+  return value != null && value === getCellAnswerLetter(puzzle, cellKey);
+}
+
+// Chooses which cell `clearAnswerCell` should erase: the caret cell if it holds
+// an editable letter, otherwise the nearest earlier editable cell, skipping
+// locked (correct) letters so the caret is never trapped on one. Returns -1 when
+// there is nothing editable to delete before the caret.
+export function getClearAnswerTargetIndex(
+  puzzle: Puzzle,
+  entry: PuzzleEntry,
+  cellValues: Record<string, string>,
+  selectedIndex: number,
+): number {
+  const cells = getEntryCells(entry);
+  const isDeletable = (index: number) => {
+    const cell = cells[index];
+    if (cell == null) {
+      return false;
+    }
+    const key = getCellKey(cell.row, cell.col);
+    return cellValues[key] != null && !isCellLocked(puzzle, cellValues, key);
+  };
+
+  if (isDeletable(selectedIndex)) {
+    return selectedIndex;
+  }
+
+  for (let index = selectedIndex - 1; index >= 0; index -= 1) {
+    if (isDeletable(index)) {
+      return index;
+    }
+  }
+
+  return -1;
+}
+
+function formatEntryReference(
+  entry: PuzzleEntry,
+  startLabels: Map<string, number>,
+) {
+  const startLabel = startLabels.get(getCellKey(entry.row, entry.col));
+  const prefix = startLabel == null ? '' : `${startLabel}번 `;
+
+  return `${prefix}${directionLabels[entry.direction]} · ${entry.answer.length}글자`;
 }
 
 function createDateCardState(
@@ -691,6 +753,7 @@ function AppContent() {
   );
   const keyboardVisibleRef = useRef(false);
   const [answerInputValue, setAnswerInputValue] = useState('');
+  const [isClueListOpen, setIsClueListOpen] = useState(false);
 
   const viewModel = usePuzzleViewModel(
     puzzle,
@@ -731,6 +794,55 @@ function AppContent() {
         viewModel.completedEntries.flatMap(entry => getEntryCellKeys(entry)),
       ),
     [viewModel.completedEntries],
+  );
+  // Per-character state for the sticky clue bar so the question and the answer
+  // being typed stay visible above the on-screen keyboard.
+  const answerSlots = useMemo(() => {
+    if (selectedEntry == null) {
+      return [];
+    }
+
+    return selectedEntryCellKeys.map(key => {
+      const pending = pendingAnswerCellValues[key];
+      const committed = cellValues[key];
+      const answerLetter = getCellAnswerLetter(puzzle, key);
+
+      return {
+        isActive: key === activeAnswerCellKey,
+        isLocked: isCellLocked(puzzle, cellValues, key),
+        isPending: pending != null,
+        isWrong:
+          pending == null && committed != null && committed !== answerLetter,
+        key,
+        value: pending ?? committed ?? '',
+      };
+    });
+  }, [
+    activeAnswerCellKey,
+    cellValues,
+    pendingAnswerCellValues,
+    puzzle,
+    selectedEntry,
+    selectedEntryCellKeys,
+  ]);
+  const isSelectedComplete =
+    selectedEntry != null &&
+    viewModel.completedEntries.some(entry => entry.id === selectedEntry.id);
+  const orderedEntries = useMemo(
+    () =>
+      [...puzzle.entries].sort((left, right) => {
+        const labelLeft =
+          viewModel.startLabels.get(getCellKey(left.row, left.col)) ?? 0;
+        const labelRight =
+          viewModel.startLabels.get(getCellKey(right.row, right.col)) ?? 0;
+
+        return (
+          labelLeft - labelRight ||
+          (left.direction === 'across' ? 0 : 1) -
+            (right.direction === 'across' ? 0 : 1)
+        );
+      }),
+    [puzzle.entries, viewModel.startLabels],
   );
   const progressPercent = getProgressPercent(
     viewModel.completedEntries.length,
@@ -815,8 +927,11 @@ function AppContent() {
   const boardCellSize = Math.max(
     32,
     Math.min(
-      48,
-      Math.floor((width - (isWide ? 440 : 40)) / viewModel.cols.length),
+      // The 풀이 화면 is a single column now; size cells from the real content
+      // padding (playScreenScrollContent: 16 each side) and let wide screens
+      // grow the board instead of reserving a phantom side pane.
+      isWide ? 64 : 48,
+      Math.floor((width - 32) / viewModel.cols.length),
     ),
   );
 
@@ -1087,6 +1202,30 @@ function AppContent() {
     setNotice(`${directionLabels[entry.direction]} ${entry.answer.length}글자`);
   }
 
+  function goToAdjacentClue(delta: number) {
+    if (selectedEntry == null || orderedEntries.length === 0) {
+      return;
+    }
+
+    const index = orderedEntries.findIndex(
+      entry => entry.id === selectedEntry.id,
+    );
+
+    if (index === -1) {
+      return;
+    }
+
+    const nextEntry =
+      orderedEntries[
+        (index + delta + orderedEntries.length) % orderedEntries.length
+      ];
+
+    if (nextEntry != null) {
+      selectEntry(nextEntry);
+      focusBoardInput();
+    }
+  }
+
   function selectCell(row: number, col: number) {
     const key = getCellKey(row, col);
     const entries = viewModel.cellEntries.get(key);
@@ -1173,15 +1312,25 @@ function AppContent() {
       return;
     }
 
+    // Drop any in-flight IME draft / queued commit so a stale answerInputValue
+    // can't re-apply letters right after the clear (the caret may already sit on
+    // the entry start cell, so the reset effect won't fire on its own).
+    clearAnswerCommitTimer();
+    setAnswerInputValue('');
+
     setCellValues(previous => {
       const nextValues = { ...previous };
       getEntryCells(selectedEntry).forEach(cell => {
-        delete nextValues[getCellKey(cell.row, cell.col)];
+        const key = getCellKey(cell.row, cell.col);
+        // Leave already-correct (locked) letters so a wrong-cell wipe keeps them.
+        if (!isCellLocked(puzzle, previous, key)) {
+          delete nextValues[key];
+        }
       });
       return nextValues;
     });
     setSelectedCellKey(getCellKey(selectedEntry.row, selectedEntry.col));
-    setNotice('선택한 단어를 비웠습니다.');
+    setNotice('정답이 아닌 칸을 비웠습니다.');
   }
 
   function revealLetter() {
@@ -1246,20 +1395,20 @@ function AppContent() {
   }
 
   function clearAnswerCell(entry: PuzzleEntry, cellKey = selectedCellKey) {
-    const cells = getEntryCells(entry);
     const selectedIndex = getEntryCellIndex(entry, cellKey);
-    const selectedKey = getEntryCellKeyAt(entry, selectedIndex);
-    const previousFilledIndex = cells
-      .slice(0, selectedIndex)
-      .map((cell, index) => ({ cell, index }))
-      .reverse()
-      .find(
-        ({ cell }) => cellValues[getCellKey(cell.row, cell.col)] != null,
-      )?.index;
-    const targetIndex =
-      cellValues[selectedKey] == null && previousFilledIndex != null
-        ? previousFilledIndex
-        : selectedIndex;
+    const targetIndex = getClearAnswerTargetIndex(
+      puzzle,
+      entry,
+      cellValues,
+      selectedIndex,
+    );
+
+    if (targetIndex === -1) {
+      // Nothing editable to delete before the caret; leave it where it is.
+      setSelectedCellKey(getEntryCellKeyAt(entry, selectedIndex));
+      return;
+    }
+
     const targetKey = getEntryCellKeyAt(entry, targetIndex);
     const nextValues = { ...cellValues };
 
@@ -1536,11 +1685,35 @@ function AppContent() {
                 const startLabel = viewModel.startLabels.get(key);
                 const isCompletedCell = completedCellKeys.has(key);
                 const pendingValue = pendingAnswerCellValues[key] ?? '';
+                const committedValue = cellValues[key];
                 const displayValue =
-                  pendingValue !== '' ? pendingValue : cellValues[key] ?? '';
+                  pendingValue !== '' ? pendingValue : committedValue ?? '';
+                // Pending IME text is temporary, so only committed letters get
+                // right/wrong styling.
+                const isCorrect =
+                  pendingValue === '' &&
+                  committedValue != null &&
+                  committedValue === cell;
+                const isWrong =
+                  pendingValue === '' &&
+                  committedValue != null &&
+                  committedValue !== cell;
 
                 return (
                   <Pressable
+                    accessibilityLabel={
+                      isBlock
+                        ? undefined
+                        : `${row + 1}행 ${col + 1}열${
+                            isWrong
+                              ? ' 오답'
+                              : isCompletedCell
+                              ? ' 정답 완료'
+                              : isCorrect
+                              ? ' 정답 잠금'
+                              : ''
+                          }`
+                    }
                     accessibilityRole="button"
                     disabled={isBlock}
                     key={key}
@@ -1552,6 +1725,8 @@ function AppContent() {
                       isCompletedCell && styles.cellCompleted,
                       isInSelectedEntry && styles.cellActive,
                       pendingValue !== '' && styles.cellPending,
+                      isCorrect && !isCompletedCell && styles.cellCorrect,
+                      isWrong && styles.cellWrong,
                       isSelected && styles.cellSelected,
                     ]}
                   >
@@ -1559,7 +1734,18 @@ function AppContent() {
                       <Text style={styles.cellNumber}>{startLabel}</Text>
                     ) : null}
                     {!isBlock ? (
-                      <Text style={styles.cellLetter}>{displayValue}</Text>
+                      <Text
+                        style={[
+                          styles.cellLetter,
+                          isCorrect && styles.cellLetterCorrect,
+                          isWrong && styles.cellLetterWrong,
+                        ]}
+                      >
+                        {displayValue}
+                      </Text>
+                    ) : null}
+                    {isCorrect && !isCompletedCell ? (
+                      <View style={styles.cellLockMark} />
                     ) : null}
                   </Pressable>
                 );
@@ -1657,159 +1843,249 @@ function AppContent() {
     );
   }
 
-  function renderAnswerPanel() {
+  function renderTodayHeader() {
+    const isReviewMode = isCompleted;
+
+    return (
+      <View style={styles.solveHeader}>
+        <Pressable
+          accessibilityLabel="홈으로"
+          accessibilityRole="button"
+          onPress={() => setRoute('home')}
+          style={styles.solveHeaderIcon}
+        >
+          <Text style={styles.solveHeaderIconText}>홈</Text>
+        </Pressable>
+        <View style={styles.solveHeaderText}>
+          <Text style={styles.solveHeaderEyebrow}>
+            {isReviewMode ? '다 푼 퍼즐' : puzzle.date}
+          </Text>
+          <Text style={styles.solveHeaderTitle}>
+            {viewModel.completedEntries.length}/{puzzle.entries.length} 낱말
+          </Text>
+        </View>
+        {isReviewMode ? null : (
+          <>
+            <Pressable
+              accessibilityLabel={
+                remainingHintCredits > 0
+                  ? `힌트 ${remainingHintCredits}개 남음`
+                  : '힌트'
+              }
+              accessibilityRole="button"
+              onPress={revealLetter}
+              style={[
+                styles.solveHeaderIcon,
+                remainingHintCredits === 0 && styles.solveHeaderIconMuted,
+              ]}
+            >
+              <Text style={styles.solveHeaderIconEmoji}>💡</Text>
+              <View style={styles.iconBadge}>
+                <Text style={styles.iconBadgeText}>{remainingHintCredits}</Text>
+              </View>
+            </Pressable>
+            <Pressable
+              accessibilityLabel="지우기"
+              accessibilityRole="button"
+              onPress={clearSelectedAnswer}
+              style={styles.solveHeaderIcon}
+            >
+              <Text style={styles.solveHeaderIconEmoji}>⌫</Text>
+            </Pressable>
+          </>
+        )}
+        <Pressable
+          accessibilityLabel="전체 문제 보기"
+          accessibilityRole="button"
+          onPress={() => setIsClueListOpen(true)}
+          style={styles.solveHeaderIcon}
+        >
+          <Text style={styles.solveHeaderIconEmoji}>☰</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  // Sticky clue + answer-progress bar keeps the question and the letters being
+  // typed visible above the on-screen keyboard while solving.
+  function renderSolveClueBar() {
     if (selectedEntry == null) {
       return null;
     }
 
+    const slotCount = answerSlots.length;
+
     return (
-      <View style={styles.answerPanel}>
-        <Text style={styles.clueMeta}>
-          {directionLabels[selectedEntry.direction]} ·{' '}
-          {selectedEntry.answer.length}
-          글자 · 힌트 {remainingHintCredits}개
-        </Text>
-        <Text style={styles.currentClue}>{selectedEntry.clue}</Text>
-        <View style={styles.actions}>
-          <Pressable onPress={revealLetter} style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>힌트</Text>
+      <View style={styles.solveClueBar}>
+        <View style={styles.solveClueRow}>
+          <Pressable
+            accessibilityLabel="이전 문제"
+            accessibilityRole="button"
+            disabled={orderedEntries.length < 2}
+            onPress={() => goToAdjacentClue(-1)}
+            style={styles.clueNavButton}
+          >
+            <Text style={styles.clueNavText}>‹</Text>
           </Pressable>
           <Pressable
-            onPress={() => clearAnswerCell(selectedEntry)}
-            style={styles.secondaryButton}
+            accessibilityRole="button"
+            onPress={() => {
+              selectEntry(selectedEntry, activeAnswerCellKey);
+              focusBoardInput();
+            }}
+            style={styles.solveClueInfo}
           >
-            <Text style={styles.secondaryButtonText}>한 칸 지우기</Text>
+            <Text style={styles.solveClueRef}>
+              {formatEntryReference(selectedEntry, viewModel.startLabels)}
+              {isSelectedComplete ? ' · 완료' : ''}
+            </Text>
+            <Text numberOfLines={2} style={styles.solveClueText}>
+              {selectedEntry.clue}
+            </Text>
           </Pressable>
           <Pressable
-            onPress={clearSelectedAnswer}
-            style={styles.secondaryButton}
+            accessibilityLabel="다음 문제"
+            accessibilityRole="button"
+            disabled={orderedEntries.length < 2}
+            onPress={() => goToAdjacentClue(1)}
+            style={styles.clueNavButton}
           >
-            <Text style={styles.secondaryButtonText}>전체 지우기</Text>
+            <Text style={styles.clueNavText}>›</Text>
           </Pressable>
         </View>
-        <View style={styles.noticeRow}>
-          <Text style={styles.notice}>{notice}</Text>
+        <View style={styles.answerSlots}>
+          {answerSlots.map((slot, index) => (
+            <Pressable
+              accessibilityLabel={`${index + 1}/${slotCount}번째 칸${
+                slot.value === ''
+                  ? ', 빈 칸'
+                  : `, ${slot.value}${
+                      slot.isLocked
+                        ? ' 정답 잠금'
+                        : slot.isWrong
+                        ? ' 오답'
+                        : ''
+                    }`
+              }`}
+              accessibilityRole="button"
+              accessibilityState={{ selected: slot.isActive }}
+              key={slot.key}
+              onPress={() => {
+                selectEntry(selectedEntry, slot.key);
+                focusBoardInput();
+              }}
+              style={[
+                styles.answerSlot,
+                slot.isActive && styles.answerSlotActive,
+                slot.isPending && styles.answerSlotPending,
+                slot.isLocked && styles.answerSlotLocked,
+                slot.isWrong && styles.answerSlotWrong,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.answerSlotText,
+                  slot.isLocked && styles.answerSlotTextLocked,
+                  slot.isWrong && styles.answerSlotTextWrong,
+                ]}
+              >
+                {slot.value}
+              </Text>
+            </Pressable>
+          ))}
         </View>
+        {notice === '' ? null : (
+          <Text style={styles.solveNotice}>{notice}</Text>
+        )}
       </View>
     );
   }
 
-  function renderClueList() {
-    return (
-      <View style={styles.clueList}>
-        {(['across', 'down'] as Direction[]).map(direction => (
-          <View key={direction} style={styles.clueSection}>
-            <Text style={styles.clueSectionTitle}>
-              {directionLabels[direction]}
-            </Text>
-            {puzzle.entries
-              .filter(entry => entry.direction === direction)
-              .map(entry => {
-                const startLabel = viewModel.startLabels.get(
-                  getCellKey(entry.row, entry.col),
-                );
-                const isSelected = entry.id === viewModel.selectedEntry?.id;
-                const isDone =
-                  getEntryAnswerValue(entry, cellValues) === entry.answer;
+  function renderClueListModal() {
+    const completedIds = new Set(
+      viewModel.completedEntries.map(entry => entry.id),
+    );
 
-                return (
-                  <Pressable
-                    key={entry.id}
-                    onPress={() => {
-                      selectEntry(entry);
-                      focusBoardInput();
-                    }}
-                    style={[
-                      styles.clueItem,
-                      isSelected && styles.clueItemSelected,
-                      isDone && styles.clueItemCompleted,
-                    ]}
-                  >
-                    <Text style={styles.clueItemNumber}>{startLabel}</Text>
-                    <Text style={styles.clueItemText}>{entry.clue}</Text>
-                  </Pressable>
-                );
-              })}
+    return (
+      <Modal
+        animationType="slide"
+        onRequestClose={() => setIsClueListOpen(false)}
+        visible={isClueListOpen}
+      >
+        <SafeAreaView edges={['top', 'bottom']} style={styles.clueModal}>
+          <View style={styles.clueModalHeader}>
+            <Text style={styles.clueModalTitle}>
+              전체 문제 {puzzle.entries.length}개
+            </Text>
+            <Pressable
+              accessibilityLabel="닫기"
+              accessibilityRole="button"
+              onPress={() => setIsClueListOpen(false)}
+              style={styles.solveHeaderIcon}
+            >
+              <Text style={styles.solveHeaderIconText}>닫기</Text>
+            </Pressable>
           </View>
-        ))}
-      </View>
+          <ScrollView contentContainerStyle={styles.clueModalList}>
+            {(['across', 'down'] as Direction[]).map(direction => (
+              <View key={direction} style={styles.clueSection}>
+                <Text style={styles.clueSectionTitle}>
+                  {directionLabels[direction]}
+                </Text>
+                {puzzle.entries
+                  .filter(entry => entry.direction === direction)
+                  .map(entry => {
+                    const startLabel = viewModel.startLabels.get(
+                      getCellKey(entry.row, entry.col),
+                    );
+                    const isSelected = entry.id === viewModel.selectedEntry?.id;
+                    const isDone = completedIds.has(entry.id);
+
+                    return (
+                      <Pressable
+                        accessibilityRole="button"
+                        key={entry.id}
+                        onPress={() => {
+                          selectEntry(entry);
+                          setIsClueListOpen(false);
+                          focusBoardInput();
+                        }}
+                        style={[
+                          styles.clueItem,
+                          isSelected && styles.clueItemSelected,
+                          isDone && styles.clueItemCompleted,
+                        ]}
+                      >
+                        <Text style={styles.clueItemNumber}>{startLabel}</Text>
+                        <Text style={styles.clueItemText}>{entry.clue}</Text>
+                        {isDone ? (
+                          <Text style={styles.clueDoneBadge}>완료</Text>
+                        ) : null}
+                      </Pressable>
+                    );
+                  })}
+              </View>
+            ))}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     );
   }
 
   function renderToday() {
-    const playContent = (
-      <>
-        <View style={styles.boardPane}>
-          {renderHeader(
-            '퍼즐 풀기',
-            `${puzzle.date} · 도전 ${mission.attemptsUsed}/${mission.maxAttempts}`,
-          )}
-          {renderBoard()}
-          {renderSelectedClues()}
-          {renderAnswerPanel()}
-        </View>
-        <View style={styles.utilityRow}>
-          <Pressable
-            onPress={() => setRoute('home')}
-            style={styles.secondaryButton}
-          >
-            <Text style={styles.secondaryButtonText}>홈</Text>
-          </Pressable>
-          <Pressable
-            onPress={clearSelectedAnswer}
-            style={styles.secondaryButton}
-          >
-            <Text style={styles.secondaryButtonText}>지우기</Text>
-          </Pressable>
-        </View>
-        {renderClueList()}
-      </>
-    );
-
-    if (!isWide) {
-      return (
+    return (
+      <View style={styles.playScreen}>
+        {renderTodayHeader()}
+        {renderSolveClueBar()}
         <ScrollView
           keyboardShouldPersistTaps="handled"
           style={styles.playScreenScroll}
           contentContainerStyle={styles.playScreenScrollContent}
         >
-          {playContent}
-        </ScrollView>
-      );
-    }
-
-    return (
-      <View style={[styles.playScreen, isWide && styles.playScreenWide]}>
-        <View style={[styles.boardPane, isWide && styles.boardPaneWide]}>
-          {renderHeader(
-            '퍼즐 풀기',
-            `${puzzle.date} · 도전 ${mission.attemptsUsed}/${mission.maxAttempts}`,
-          )}
           {renderBoard()}
           {renderSelectedClues()}
-          {!isWide ? renderAnswerPanel() : null}
-        </View>
-        <ScrollView
-          style={[styles.sidePane, isWide && styles.sidePaneWide]}
-          contentContainerStyle={styles.sidePaneContent}
-        >
-          {isWide ? renderAnswerPanel() : null}
-          <View style={styles.utilityRow}>
-            <Pressable
-              onPress={() => setRoute('home')}
-              style={styles.secondaryButton}
-            >
-              <Text style={styles.secondaryButtonText}>홈</Text>
-            </Pressable>
-            <Pressable
-              onPress={clearSelectedAnswer}
-              style={styles.secondaryButton}
-            >
-              <Text style={styles.secondaryButtonText}>지우기</Text>
-            </Pressable>
-          </View>
-          {renderClueList()}
         </ScrollView>
+        {renderClueListModal()}
       </View>
     );
   }
@@ -2222,6 +2498,29 @@ const styles = StyleSheet.create({
   cellSelected: {
     backgroundColor: '#bef264',
   },
+  cellCorrect: {
+    backgroundColor: '#dcfce7',
+  },
+  cellWrong: {
+    backgroundColor: '#fee2e2',
+  },
+  cellLetterCorrect: {
+    color: '#0f766e',
+  },
+  cellLetterWrong: {
+    color: '#dc2626',
+  },
+  cellLockMark: {
+    borderColor: '#0f766e',
+    borderRadius: 2,
+    borderWidth: 1.4,
+    bottom: 3,
+    height: 7,
+    opacity: 0.55,
+    position: 'absolute',
+    right: 3,
+    width: 7,
+  },
   clueItem: {
     alignItems: 'flex-start',
     borderColor: '#e2e8f0',
@@ -2412,8 +2711,6 @@ const styles = StyleSheet.create({
   },
   playScreen: {
     flex: 1,
-    gap: 14,
-    padding: 16,
   },
   playScreenScroll: {
     flex: 1,
@@ -2568,6 +2865,193 @@ const styles = StyleSheet.create({
   utilityRow: {
     flexDirection: 'row',
     gap: 8,
+  },
+  solveHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  solveHeaderText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  solveHeaderEyebrow: {
+    color: '#0f766e',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  solveHeaderTitle: {
+    color: '#0f172a',
+    fontSize: 17,
+    fontWeight: '900',
+  },
+  solveHeaderIcon: {
+    alignItems: 'center',
+    backgroundColor: '#f1f5f9',
+    borderRadius: 999,
+    height: 36,
+    justifyContent: 'center',
+    minWidth: 36,
+    paddingHorizontal: 8,
+  },
+  solveHeaderIconMuted: {
+    backgroundColor: '#fef2f2',
+  },
+  solveHeaderIconText: {
+    color: '#334155',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  solveHeaderIconEmoji: {
+    fontSize: 18,
+  },
+  iconBadge: {
+    alignItems: 'center',
+    backgroundColor: '#0f766e',
+    borderRadius: 999,
+    height: 16,
+    justifyContent: 'center',
+    minWidth: 16,
+    paddingHorizontal: 3,
+    position: 'absolute',
+    right: -2,
+    top: -2,
+  },
+  iconBadgeText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  solveClueBar: {
+    backgroundColor: '#ffffff',
+    borderBottomColor: '#e2e8f0',
+    borderBottomWidth: 1,
+    gap: 8,
+    paddingBottom: 12,
+    paddingHorizontal: 16,
+    paddingTop: 4,
+  },
+  solveClueRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  clueNavButton: {
+    alignItems: 'center',
+    backgroundColor: '#f1f5f9',
+    borderRadius: 999,
+    height: 32,
+    justifyContent: 'center',
+    width: 32,
+  },
+  clueNavText: {
+    color: '#334155',
+    fontSize: 22,
+    fontWeight: '800',
+    lineHeight: 26,
+  },
+  solveClueInfo: {
+    alignItems: 'center',
+    flex: 1,
+    gap: 2,
+    minWidth: 0,
+  },
+  solveClueRef: {
+    color: '#0f766e',
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  solveClueText: {
+    color: '#0f172a',
+    fontSize: 16,
+    fontWeight: '800',
+    lineHeight: 22,
+    textAlign: 'center',
+  },
+  answerSlots: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    justifyContent: 'center',
+  },
+  answerSlot: {
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderColor: '#cbd5e1',
+    borderRadius: 8,
+    borderWidth: 1,
+    height: 38,
+    justifyContent: 'center',
+    width: 38,
+  },
+  answerSlotActive: {
+    backgroundColor: '#ecfdf5',
+    borderColor: '#0f766e',
+    borderWidth: 2,
+  },
+  answerSlotPending: {
+    backgroundColor: '#fef9c3',
+    borderColor: '#eab308',
+  },
+  answerSlotLocked: {
+    backgroundColor: '#dcfce7',
+    borderColor: '#7edac8',
+  },
+  answerSlotWrong: {
+    backgroundColor: '#fee2e2',
+    borderColor: '#f4a6a6',
+  },
+  answerSlotText: {
+    color: '#111827',
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  answerSlotTextLocked: {
+    color: '#0f766e',
+  },
+  answerSlotTextWrong: {
+    color: '#dc2626',
+  },
+  solveNotice: {
+    color: '#64748b',
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  clueModal: {
+    backgroundColor: '#ffffff',
+    flex: 1,
+  },
+  clueModalHeader: {
+    alignItems: 'center',
+    borderBottomColor: '#eef2f4',
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+  },
+  clueModalTitle: {
+    color: '#0f172a',
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  clueModalList: {
+    gap: 16,
+    padding: 20,
+    paddingBottom: 40,
+  },
+  clueDoneBadge: {
+    backgroundColor: '#dff6f0',
+    borderRadius: 999,
+    color: '#0f766e',
+    fontSize: 11,
+    fontWeight: '900',
+    overflow: 'hidden',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
   },
 });
 

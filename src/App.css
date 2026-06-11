@@ -77,45 +77,6 @@ button:disabled {
   margin-left: auto;
 }
 
-.hintCountButton {
-  display: inline-grid;
-  min-width: 64px;
-  height: 34px;
-  flex: 0 0 auto;
-  grid-template-columns: auto auto;
-  gap: 5px;
-  place-items: center;
-  border: 0;
-  border-radius: 999px;
-  background: #effcf8;
-  color: #00866f;
-  font: inherit;
-  padding: 0 10px;
-}
-
-.hintCountButton span {
-  font-size: 11px;
-  font-weight: 900;
-  line-height: 14px;
-}
-
-.hintCountButton strong {
-  font-size: 16px;
-  font-weight: 900;
-  line-height: 20px;
-}
-
-.hintAcquireLabel {
-  font-size: 13px;
-  line-height: 18px;
-  white-space: nowrap;
-}
-
-.hintCountButtonEmpty {
-  background: #fff3f3;
-  color: #d22030;
-}
-
 .compactHeader {
   gap: 10px;
   padding: 8px 16px 8px;
@@ -1208,6 +1169,28 @@ button:disabled {
   color: #191f28;
 }
 
+/* A single correct letter (locked) — distinct from empty white cells and red
+   wrong cells, even before the whole word is finished. */
+.cellCorrect {
+  color: #00866f;
+}
+
+.cellCorrect:not(.cellSelected) {
+  background: #e6f8f2;
+}
+
+.cellLockMark {
+  position: absolute;
+  right: 4px;
+  bottom: 3px;
+  width: 8px;
+  height: 8px;
+  border: 1.4px solid #00a88f;
+  border-radius: 2px;
+  border-bottom-width: 5px;
+  opacity: 0.55;
+}
+
 .cellComplete {
   background: #e6f8f2;
   color: #00866f;
@@ -1404,6 +1387,176 @@ button:disabled {
   font-size: 16px;
   font-weight: 900;
   line-height: 1;
+}
+
+.iconButton svg {
+  display: block;
+}
+
+.hintIconButton {
+  position: relative;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: #effcf8;
+  color: #00866f;
+  font: inherit;
+  line-height: 1;
+}
+
+.hintIconButton svg {
+  display: block;
+}
+
+.hintIconButtonEmpty {
+  background: #fff3f3;
+  color: #d22030;
+}
+
+.iconButtonBadge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  display: grid;
+  min-width: 16px;
+  height: 16px;
+  place-items: center;
+  border-radius: 999px;
+  background: #00a88f;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 0 4px;
+}
+
+.hintIconButtonEmpty .iconButtonBadge {
+  background: #d22030;
+}
+
+/* Sticky clue + answer-progress bar keeps the question and the letters being
+   typed visible above the on-screen keyboard while solving. */
+.solveClueBar {
+  position: sticky;
+  top: 0;
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 10px 16px 12px;
+  background: #ffffff;
+  border-bottom: 1px solid #eef2f4;
+}
+
+.solveClueRow {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.clueNavButton {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: #f2f4f6;
+  color: #4e5968;
+  font: inherit;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.solveClueInfo {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
+  border: 0;
+  background: transparent;
+  color: #191f28;
+  font: inherit;
+  padding: 0;
+  text-align: center;
+  cursor: pointer;
+}
+
+.solveClueRef {
+  color: #00866f;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 16px;
+}
+
+.solveClueText {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 22px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.answerSlots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+
+.answerSlot {
+  display: grid;
+  width: clamp(30px, 9vw, 40px);
+  height: clamp(30px, 9vw, 40px);
+  place-items: center;
+  border: 1px solid #d6dee6;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #191f28;
+  font: inherit;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.answerSlotActive {
+  border-color: #00a88f;
+  box-shadow: inset 0 0 0 1px #00a88f;
+  background: #effcf8;
+}
+
+.answerSlotPending {
+  background: #fff9db;
+  border-color: #f0e0a0;
+}
+
+.answerSlotLocked {
+  background: #e6f8f2;
+  border-color: #7edac8;
+  color: #00866f;
+}
+
+.answerSlotWrong {
+  background: #fff1f0;
+  border-color: #f4a6a6;
+  color: #e5484d;
+}
+
+.answerSlotActive.answerSlotWrong {
+  border-color: #e5484d;
+  box-shadow: inset 0 0 0 1px #e5484d;
 }
 
 .answerInput {

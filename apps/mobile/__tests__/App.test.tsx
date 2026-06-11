@@ -7,10 +7,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import ReactTestRenderer from 'react-test-renderer';
 import App, {
   ANDROID_TEXT_INPUT_REFOCUS_DELAY_MS,
+  getClearAnswerTargetIndex,
   getPendingAnswerCellValues,
   loadPuzzleSession,
   scheduleBoardNativeInputFocus,
 } from '../App';
+import type { PuzzleEntry } from '../../../packages/crossword-core/src';
 import {
   ARCHIVE_INDEX_KEY,
   ARCHIVE_INDEX_LIMIT,
@@ -92,6 +94,58 @@ test('maps pending Korean composition directly onto board cells', () => {
     '0:2': '지',
     '0:3': '교',
   });
+});
+
+test('skips locked correct letters when choosing the backspace target', () => {
+  const lockPuzzle = {
+    ...createPuzzle('lock-puzzle'),
+    grid: [
+      ['가', '나', '다'],
+      ['', '', ''],
+      ['', '', ''],
+    ],
+    gridSize: 3,
+  } as unknown as Puzzle;
+  const entry: PuzzleEntry = {
+    answer: '가나다',
+    clue: '잠금 테스트',
+    col: 0,
+    direction: 'across',
+    generatedBy: 'placed',
+    id: 'lock-entry',
+    row: 0,
+  };
+
+  // Caret on a wrong (editable) filled cell deletes that cell.
+  expect(getClearAnswerTargetIndex(lockPuzzle, entry, { '0:0': 'X' }, 0)).toBe(
+    0,
+  );
+
+  // Caret on an empty cell steps back to the nearest editable (wrong) cell,
+  // skipping past the locked correct first cell.
+  expect(
+    getClearAnswerTargetIndex(
+      lockPuzzle,
+      entry,
+      { '0:0': '가', '0:1': 'X' },
+      2,
+    ),
+  ).toBe(1);
+
+  // When every earlier cell is locked correct, nothing is deletable.
+  expect(
+    getClearAnswerTargetIndex(
+      lockPuzzle,
+      entry,
+      { '0:0': '가', '0:1': '나' },
+      2,
+    ),
+  ).toBe(-1);
+
+  // Caret on a locked correct cell with no earlier editable cell stays put.
+  expect(getClearAnswerTargetIndex(lockPuzzle, entry, { '0:0': '가' }, 0)).toBe(
+    -1,
+  );
 });
 
 test('refocuses a stale Android text input after the keyboard is hidden', () => {
