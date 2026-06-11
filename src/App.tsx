@@ -4274,7 +4274,15 @@ function PuzzleBoard({
                 .join(" ")}
               type="button"
               onClick={() => selectCell(row, col)}
-              aria-label={`${row + 1}행 ${col + 1}열${isWrong ? " 오답" : isCorrect ? " 정답 잠금" : ""}`}
+              aria-label={`${row + 1}행 ${col + 1}열${
+                isWrong
+                  ? " 오답"
+                  : isComplete
+                    ? " 정답 완료"
+                    : isCorrect
+                      ? " 정답 잠금"
+                      : ""
+              }`}
             >
               <span className="cellNumber">{startLabels.get(key) ?? ""}</span>
               <span className="cellLetter">{displayValue}</span>

@@ -1676,6 +1676,19 @@ function AppContent() {
 
                 return (
                   <Pressable
+                    accessibilityLabel={
+                      isBlock
+                        ? undefined
+                        : `${row + 1}행 ${col + 1}열${
+                            isWrong
+                              ? ' 오답'
+                              : isCompletedCell
+                              ? ' 정답 완료'
+                              : isCorrect
+                              ? ' 정답 잠금'
+                              : ''
+                          }`
+                    }
                     accessibilityRole="button"
                     disabled={isBlock}
                     key={key}
