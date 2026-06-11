@@ -4,13 +4,12 @@
 
 import React from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import App, {
   ANDROID_TEXT_INPUT_REFOCUS_DELAY_MS,
-  AnswerSlotInput,
+  getPendingAnswerCellValues,
   loadPuzzleSession,
-  scheduleAnswerSlotNativeInputFocus,
+  scheduleBoardNativeInputFocus,
 } from '../App';
 import {
   ARCHIVE_INDEX_KEY,
@@ -71,9 +70,7 @@ test('renders correctly', async () => {
   });
 });
 
-test('keeps Korean syllable composition pending before advancing answer slots', () => {
-  jest.useFakeTimers({ now: 0 });
-
+test('maps pending Korean composition directly onto board cells', () => {
   const entry = {
     answer: '관포지교',
     clue: '오랜 우정',
@@ -83,49 +80,18 @@ test('keeps Korean syllable composition pending before advancing answer slots', 
     id: 'korean-composition-entry',
     row: 0,
   };
-  const applyAnswerSegment = jest.fn();
-  let renderer: ReturnType<typeof ReactTestRenderer.create> | undefined;
 
-  ReactTestRenderer.act(() => {
-    renderer = ReactTestRenderer.create(
-      <AnswerSlotInput
-        applyAnswerSegment={applyAnswerSegment}
-        cellValues={{}}
-        clearAnswerCell={jest.fn()}
-        entry={entry}
-        selectedCellKey="0:0"
-        selectEntry={jest.fn()}
-      />,
-    );
+  expect(getPendingAnswerCellValues(entry, 'ㄱ', '0:0')).toEqual({
+    '0:0': 'ㄱ',
   });
-
-  const getInput = () => {
-    if (renderer == null) {
-      throw new Error('AnswerSlotInput renderer was not created.');
-    }
-
-    return renderer.root.findByType(TextInput);
-  };
-
-  ReactTestRenderer.act(() => {
-    getInput().props.onChangeText('ㄱ');
-    getInput().props.onChangeText('고');
+  expect(getPendingAnswerCellValues(entry, '관포', '0:0')).toEqual({
+    '0:0': '관',
+    '0:1': '포',
   });
-  ReactTestRenderer.act(() => {
-    jest.advanceTimersByTime(799);
+  expect(getPendingAnswerCellValues(entry, '지교', '0:2')).toEqual({
+    '0:2': '지',
+    '0:3': '교',
   });
-
-  expect(applyAnswerSegment).not.toHaveBeenCalled();
-
-  ReactTestRenderer.act(() => {
-    getInput().props.onChangeText('관포지교');
-  });
-  ReactTestRenderer.act(() => {
-    jest.advanceTimersByTime(800);
-  });
-
-  expect(applyAnswerSegment).toHaveBeenCalledTimes(1);
-  expect(applyAnswerSegment).toHaveBeenCalledWith(entry, '관포지교', '0:0');
 });
 
 test('refocuses a stale Android text input after the keyboard is hidden', () => {
@@ -137,7 +103,7 @@ test('refocuses a stale Android text input after the keyboard is hidden', () => 
   const onFocusTimerSettled = jest.fn();
   const getInput = jest.fn(() => ({ blur, focus, isFocused }));
 
-  scheduleAnswerSlotNativeInputFocus({
+  scheduleBoardNativeInputFocus({
     getInput,
     keyboardVisible: false,
     onFocusTimerSettled,

@@ -17,7 +17,7 @@
 }
 
 .appShellToday {
-  --fixed-bottom-reserve: calc(164px + env(safe-area-inset-bottom, 0px));
+  --fixed-bottom-reserve: calc(24px + env(safe-area-inset-bottom, 0px));
 }
 
 button:disabled {
@@ -1141,6 +1141,7 @@ button:disabled {
 }
 
 .puzzlePlayArea {
+  position: relative;
   display: flex;
   min-width: 0;
   flex-direction: column;
@@ -1200,6 +1201,11 @@ button:disabled {
 
 .cellFilled {
   color: #00866f;
+}
+
+.cellPending {
+  background: #fff9db;
+  color: #191f28;
 }
 
 .cellComplete {
@@ -1263,10 +1269,6 @@ button:disabled {
 
 .homeBottomAction {
   padding: 12px 20px calc(env(safe-area-inset-bottom, 16px) + 12px);
-}
-
-.answerDock {
-  padding: 10px 20px calc(env(safe-area-inset-bottom, 16px) + 12px);
 }
 
 .answerPanel {
@@ -1366,65 +1368,12 @@ button:disabled {
   -webkit-line-clamp: 2;
 }
 
-.answerSlotInput {
-  position: relative;
-  display: flex;
-  width: 100%;
-  min-width: 0;
-  justify-content: center;
-}
-
-.answerSlotGrid {
-  display: flex;
-  width: var(--answer-slot-width);
-  max-width: 100%;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 7px;
-}
-
-.answerSlot {
-  display: grid;
-  width: 44px;
-  height: 44px;
-  place-items: center;
-  border: 1px solid #d6dee6;
-  border-radius: 8px;
-  background: #ffffff;
-  color: #191f28;
-  font: inherit;
-  font-size: 21px;
-  font-weight: 900;
-  line-height: 1;
-  padding: 0;
-}
-
-.answerSlotFilled {
-  border-color: #c9eee6;
-  background: #effcf8;
-  color: #00866f;
-}
-
-.answerSlotActive {
-  border-color: #00a88f;
-  box-shadow: 0 0 0 3px rgba(0, 168, 143, 0.14);
-}
-
-.answerSlotPending {
-  border-color: #f2c94c;
-  background: #fff9db;
-  color: #191f28;
-}
-
-.answerSlotActive.answerSlotPending {
-  border-color: #00a88f;
-}
-
-.answerSlotNativeInput {
+.boardNativeInput {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
   border: 0;
   background: transparent;
   caret-color: transparent;
