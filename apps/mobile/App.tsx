@@ -8,6 +8,7 @@ import React, {
 } from 'react';
 import {
   ActivityIndicator,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -120,6 +121,44 @@ type BonusPuzzlePanelState = {
 const REMOTE_PUZZLE_PACK_BASE_URL = 'https://crossword-puzzle-79ae0.web.app';
 const PROGRESS_KEY_PREFIX = 'crossword-puzzle:progress';
 const MISSION_KEY_PREFIX = 'crossword-puzzle:mission';
+export const ANDROID_TEXT_INPUT_REFOCUS_DELAY_MS = 32;
+
+type BoardNativeInput = Pick<
+  React.ElementRef<typeof TextInput>,
+  'blur' | 'focus' | 'isFocused'
+>;
+
+type ScheduleBoardNativeInputFocusOptions = {
+  getInput: () => BoardNativeInput | null;
+  keyboardVisible: boolean;
+  onFocusTimerSettled: () => void;
+  platformOS: typeof Platform.OS;
+};
+
+export function scheduleBoardNativeInputFocus({
+  getInput,
+  keyboardVisible,
+  onFocusTimerSettled,
+  platformOS,
+}: ScheduleBoardNativeInputFocusOptions): ReturnType<typeof setTimeout> {
+  const input = getInput();
+  const needsAndroidRefocus =
+    platformOS === 'android' && !keyboardVisible && input?.isFocused();
+
+  if (needsAndroidRefocus) {
+    input?.blur();
+  }
+
+  // Android can leave TextInput focused after the IME is hidden; wait briefly
+  // after blur so the next focus request attaches a fresh input connection.
+  return setTimeout(
+    () => {
+      onFocusTimerSettled();
+      getInput()?.focus();
+    },
+    needsAndroidRefocus ? ANDROID_TEXT_INPUT_REFOCUS_DELAY_MS : 0,
+  );
+}
 
 const directionLabels: Record<Direction, string> = {
   across: '가로',
@@ -489,6 +528,34 @@ function getAnswerInputLetters(value: string, maxLength: number) {
   return [...value.replace(/\s/g, '')].slice(0, maxLength);
 }
 
+export function getPendingAnswerCellValues(
+  entry: PuzzleEntry,
+  inputValue: string,
+  selectedCellKey: string,
+) {
+  const cells = getEntryCells(entry);
+  const selectedIndex = getEntryCellIndex(entry, selectedCellKey);
+  const pendingLetters = getAnswerInputLetters(
+    inputValue,
+    cells.length - selectedIndex,
+  );
+
+  return Object.fromEntries(
+    pendingLetters
+      .map((letter, offset) => {
+        const cell = cells[selectedIndex + offset];
+
+        return cell == null
+          ? null
+          : [getCellKey(cell.row, cell.col), letter] as const;
+      })
+      .filter(
+        (cellEntry): cellEntry is readonly [string, string] =>
+          cellEntry != null,
+      ),
+  );
+}
+
 function isHangulJamoLetter(letter: string) {
   return /^[ㄱ-ㅎㅏ-ㅣ]$/.test(letter);
 }
@@ -615,12 +682,48 @@ function AppContent() {
   const [launchConfig, setLaunchConfig] =
     useState<LaunchConfig>(defaultLaunchConfig);
   const hasLoggedFirstAnswerInputRef = useRef(false);
+  const boardInputRef = useRef<React.ElementRef<typeof TextInput>>(null);
+  const answerCommitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const boardFocusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const keyboardVisibleRef = useRef(false);
+  const [answerInputValue, setAnswerInputValue] = useState('');
 
   const viewModel = usePuzzleViewModel(
     puzzle,
     selectedEntryId,
     selectedDirection,
     cellValues,
+  );
+  const selectedEntry = viewModel.selectedEntry;
+  const selectedEntryCells = useMemo(
+    () => (selectedEntry == null ? [] : getEntryCells(selectedEntry)),
+    [selectedEntry],
+  );
+  const selectedEntryCellKeys = useMemo(
+    () => selectedEntryCells.map(cell => getCellKey(cell.row, cell.col)),
+    [selectedEntryCells],
+  );
+  const selectedEntryIndex = Math.max(
+    0,
+    selectedEntryCellKeys.indexOf(selectedCellKey),
+  );
+  const activeAnswerCellKey =
+    selectedEntryCellKeys[selectedEntryIndex] ??
+    getEntryStartCellKey(selectedEntry);
+  const pendingAnswerCellValues = useMemo(
+    () =>
+      selectedEntry == null
+        ? {}
+        : getPendingAnswerCellValues(
+            selectedEntry,
+            answerInputValue,
+            selectedCellKey,
+          ),
+    [answerInputValue, selectedCellKey, selectedEntry],
   );
   const completedCellKeys = useMemo(
     () =>
@@ -882,6 +985,59 @@ function AppContent() {
     viewModel.isComplete,
   ]);
 
+  const clearAnswerCommitTimer = useCallback(() => {
+    if (answerCommitTimerRef.current != null) {
+      clearTimeout(answerCommitTimerRef.current);
+      answerCommitTimerRef.current = null;
+    }
+  }, []);
+
+  const clearBoardFocusTimer = useCallback(() => {
+    if (boardFocusTimerRef.current != null) {
+      clearTimeout(boardFocusTimerRef.current);
+      boardFocusTimerRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    clearAnswerCommitTimer();
+    setAnswerInputValue('');
+  }, [activeAnswerCellKey, clearAnswerCommitTimer, selectedEntry?.id]);
+
+  useEffect(
+    () => () => {
+      clearAnswerCommitTimer();
+      clearBoardFocusTimer();
+    },
+    [clearAnswerCommitTimer, clearBoardFocusTimer],
+  );
+
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+      keyboardVisibleRef.current = true;
+    });
+    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      keyboardVisibleRef.current = false;
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
+
+  const focusBoardInput = useCallback(() => {
+    clearBoardFocusTimer();
+    boardFocusTimerRef.current = scheduleBoardNativeInputFocus({
+      getInput: () => boardInputRef.current,
+      keyboardVisible: keyboardVisibleRef.current,
+      onFocusTimerSettled: () => {
+        boardFocusTimerRef.current = null;
+      },
+      platformOS: Platform.OS,
+    });
+  }, [clearBoardFocusTimer]);
+
   function applyPuzzleSession(session: PuzzleSession | null) {
     if (session == null) {
       return;
@@ -947,6 +1103,7 @@ function AppContent() {
           entries[0];
 
     selectEntry(nextEntry, key);
+    focusBoardInput();
   }
 
   function moveToNextUncompletedEntry(nextCellValues: Record<string, string>) {
@@ -1012,8 +1169,6 @@ function AppContent() {
   }
 
   function clearSelectedAnswer() {
-    const selectedEntry = viewModel.selectedEntry;
-
     if (selectedEntry == null) {
       return;
     }
@@ -1030,8 +1185,6 @@ function AppContent() {
   }
 
   function revealLetter() {
-    const selectedEntry = viewModel.selectedEntry;
-
     if (selectedEntry == null) {
       return;
     }
@@ -1114,6 +1267,65 @@ function AppContent() {
     setCellValues(nextValues);
     setSelectedCellKey(targetKey);
     setNotice('선택한 칸을 비웠습니다.');
+  }
+
+  function commitBoardInputValue(
+    value: string,
+    startCellKey = activeAnswerCellKey,
+  ) {
+    if (selectedEntry == null) {
+      return;
+    }
+
+    clearAnswerCommitTimer();
+    const remainingCellCount =
+      selectedEntryCells.length -
+      getEntryCellIndex(selectedEntry, startCellKey);
+    const nextLetters = getAnswerCommitLetters(
+      value,
+      remainingCellCount,
+    );
+
+    if (nextLetters.length === 0) {
+      return;
+    }
+
+    applyAnswerSegment(selectedEntry, nextLetters.join(''), startCellKey);
+    setAnswerInputValue('');
+  }
+
+  function queueBoardInputValue(
+    value: string,
+    startCellKey = activeAnswerCellKey,
+  ) {
+    if (selectedEntry == null) {
+      return;
+    }
+
+    clearAnswerCommitTimer();
+
+    if (isHangulJamoInput(value)) {
+      return;
+    }
+
+    if (
+      getAnswerCommitLetters(
+        value,
+        selectedEntryCells.length -
+          getEntryCellIndex(selectedEntry, startCellKey),
+      ).length === 0
+    ) {
+      return;
+    }
+
+    answerCommitTimerRef.current = setTimeout(() => {
+      commitBoardInputValue(value, startCellKey);
+    }, getAnswerCommitDelayMs(value));
+  }
+
+  function handleBoardInputChange(value: string) {
+    setAnswerInputValue(value);
+    queueBoardInputValue(value);
   }
 
   function startOrResumeMission() {
@@ -1311,53 +1523,89 @@ function AppContent() {
 
   function renderBoard() {
     return (
-      <View style={styles.board}>
-        {viewModel.rows.map(row => (
-          <View key={row} style={styles.boardRow}>
-            {viewModel.cols.map(col => {
-              const key = getCellKey(row, col);
-              const cell = puzzle.grid[row]?.[col] ?? '';
-              const isBlock = cell === '';
-              const isSelected = selectedCellKey === key;
-              const isInSelectedEntry = viewModel.selectedCells.has(key);
-              const startLabel = viewModel.startLabels.get(key);
-              const isCompletedCell = completedCellKeys.has(key);
+      <View style={styles.boardFrame}>
+        <View style={styles.board}>
+          {viewModel.rows.map(row => (
+            <View key={row} style={styles.boardRow}>
+              {viewModel.cols.map(col => {
+                const key = getCellKey(row, col);
+                const cell = puzzle.grid[row]?.[col] ?? '';
+                const isBlock = cell === '';
+                const isSelected = activeAnswerCellKey === key;
+                const isInSelectedEntry = viewModel.selectedCells.has(key);
+                const startLabel = viewModel.startLabels.get(key);
+                const isCompletedCell = completedCellKeys.has(key);
+                const pendingValue = pendingAnswerCellValues[key] ?? '';
+                const displayValue =
+                  pendingValue !== '' ? pendingValue : cellValues[key] ?? '';
 
-              return (
-                <Pressable
-                  accessibilityRole="button"
-                  disabled={isBlock}
-                  key={key}
-                  onPress={() => selectCell(row, col)}
-                  style={[
-                    styles.cell,
-                    { height: boardCellSize, width: boardCellSize },
-                    isBlock && styles.cellBlock,
-                    isCompletedCell && styles.cellCompleted,
-                    isInSelectedEntry && styles.cellActive,
-                    isSelected && styles.cellSelected,
-                  ]}
-                >
-                  {!isBlock && startLabel != null ? (
-                    <Text style={styles.cellNumber}>{startLabel}</Text>
-                  ) : null}
-                  {!isBlock ? (
-                    <Text style={styles.cellLetter}>
-                      {cellValues[key] ?? ''}
-                    </Text>
-                  ) : null}
-                </Pressable>
-              );
-            })}
-          </View>
-        ))}
+                return (
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={isBlock}
+                    key={key}
+                    onPress={() => selectCell(row, col)}
+                    style={[
+                      styles.cell,
+                      { height: boardCellSize, width: boardCellSize },
+                      isBlock && styles.cellBlock,
+                      isCompletedCell && styles.cellCompleted,
+                      isInSelectedEntry && styles.cellActive,
+                      pendingValue !== '' && styles.cellPending,
+                      isSelected && styles.cellSelected,
+                    ]}
+                  >
+                    {!isBlock && startLabel != null ? (
+                      <Text style={styles.cellNumber}>{startLabel}</Text>
+                    ) : null}
+                    {!isBlock ? (
+                      <Text style={styles.cellLetter}>{displayValue}</Text>
+                    ) : null}
+                  </Pressable>
+                );
+              })}
+            </View>
+          ))}
+        </View>
+        <TextInput
+          accessible={false}
+          autoCapitalize="none"
+          autoCorrect={false}
+          blurOnSubmit={false}
+          caretHidden
+          contextMenuHidden
+          importantForAccessibility="no-hide-descendants"
+          importantForAutofill="no"
+          maxLength={Math.max(1, selectedEntryCells.length - selectedEntryIndex)}
+          onChangeText={handleBoardInputChange}
+          onEndEditing={event => {
+            commitBoardInputValue(event.nativeEvent.text);
+          }}
+          onKeyPress={event => {
+            if (
+              event.nativeEvent.key === 'Backspace' &&
+              answerInputValue === '' &&
+              selectedEntry != null
+            ) {
+              clearAnswerCell(selectedEntry, activeAnswerCellKey);
+            }
+          }}
+          onSubmitEditing={() => {
+            commitBoardInputValue(answerInputValue);
+            focusBoardInput();
+          }}
+          pointerEvents="none"
+          ref={boardInputRef}
+          returnKeyType="next"
+          showSoftInputOnFocus
+          style={styles.boardNativeInput}
+          value={answerInputValue}
+        />
       </View>
     );
   }
 
   function renderSelectedClues() {
-    const selectedEntry = viewModel.selectedEntry;
-
     if (selectedEntry == null || selectedCellKey === '') {
       return null;
     }
@@ -1388,7 +1636,10 @@ function AppContent() {
               <Pressable
                 accessibilityRole="button"
                 key={entry.id}
-                onPress={() => selectEntry(entry, selectedCellKey)}
+                onPress={() => {
+                  selectEntry(entry, selectedCellKey);
+                  focusBoardInput();
+                }}
                 style={[
                   styles.selectedClue,
                   isSelected && styles.selectedClueActive,
@@ -1407,8 +1658,6 @@ function AppContent() {
   }
 
   function renderAnswerPanel() {
-    const selectedEntry = viewModel.selectedEntry;
-
     if (selectedEntry == null) {
       return null;
     }
@@ -1421,14 +1670,6 @@ function AppContent() {
           글자 · 힌트 {remainingHintCredits}개
         </Text>
         <Text style={styles.currentClue}>{selectedEntry.clue}</Text>
-        <AnswerSlotInput
-          applyAnswerSegment={applyAnswerSegment}
-          cellValues={cellValues}
-          clearAnswerCell={clearAnswerCell}
-          entry={selectedEntry}
-          selectedCellKey={selectedCellKey}
-          selectEntry={selectEntry}
-        />
         <View style={styles.actions}>
           <Pressable onPress={revealLetter} style={styles.primaryButton}>
             <Text style={styles.primaryButtonText}>힌트</Text>
@@ -1474,7 +1715,10 @@ function AppContent() {
                 return (
                   <Pressable
                     key={entry.id}
-                    onPress={() => selectEntry(entry)}
+                    onPress={() => {
+                      selectEntry(entry);
+                      focusBoardInput();
+                    }}
                     style={[
                       styles.clueItem,
                       isSelected && styles.clueItemSelected,
@@ -1776,163 +2020,6 @@ function BonusPuzzlePanel({ state }: { state: BonusPuzzlePanelState }) {
   );
 }
 
-type AnswerSlotInputProps = {
-  applyAnswerSegment: (
-    entry: PuzzleEntry,
-    value: string,
-    startCellKey?: string,
-  ) => void;
-  cellValues: Record<string, string>;
-  clearAnswerCell: (entry: PuzzleEntry, cellKey?: string) => void;
-  entry: PuzzleEntry;
-  selectedCellKey: string;
-  selectEntry: (entry: PuzzleEntry, cellKey?: string) => void;
-};
-
-export function AnswerSlotInput({
-  applyAnswerSegment,
-  cellValues,
-  clearAnswerCell,
-  entry,
-  selectedCellKey,
-  selectEntry,
-}: AnswerSlotInputProps) {
-  const inputRef = useRef<React.ElementRef<typeof TextInput>>(null);
-  const commitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [inputValue, setInputValue] = useState('');
-  const cells = useMemo(() => getEntryCells(entry), [entry]);
-  const slotKeys = useMemo(
-    () => cells.map(cell => getCellKey(cell.row, cell.col)),
-    [cells],
-  );
-  const selectedIndex = Math.max(0, slotKeys.indexOf(selectedCellKey));
-  const activeCellKey = slotKeys[selectedIndex] ?? getEntryStartCellKey(entry);
-  const pendingLetters = getAnswerInputLetters(
-    inputValue,
-    cells.length - selectedIndex,
-  );
-
-  const clearCommitTimer = useCallback(() => {
-    if (commitTimerRef.current != null) {
-      clearTimeout(commitTimerRef.current);
-      commitTimerRef.current = null;
-    }
-  }, []);
-
-  useEffect(() => {
-    clearCommitTimer();
-    setInputValue('');
-  }, [activeCellKey, clearCommitTimer, entry.id]);
-
-  useEffect(() => () => clearCommitTimer(), [clearCommitTimer]);
-
-  function focusInput() {
-    inputRef.current?.focus();
-  }
-
-  function selectSlot(cellKey: string) {
-    selectEntry(entry, cellKey);
-    focusInput();
-  }
-
-  function commitInputValue(value: string, startCellKey = activeCellKey) {
-    clearCommitTimer();
-    const nextLetters = getAnswerCommitLetters(
-      value,
-      cells.length - getEntryCellIndex(entry, startCellKey),
-    );
-
-    if (nextLetters.length === 0) {
-      return;
-    }
-
-    applyAnswerSegment(entry, nextLetters.join(''), startCellKey);
-    setInputValue('');
-  }
-
-  function queueCommitInputValue(value: string, startCellKey = activeCellKey) {
-    clearCommitTimer();
-
-    if (isHangulJamoInput(value)) {
-      return;
-    }
-
-    if (
-      getAnswerCommitLetters(
-        value,
-        cells.length - getEntryCellIndex(entry, startCellKey),
-      ).length === 0
-    ) {
-      return;
-    }
-
-    commitTimerRef.current = setTimeout(() => {
-      commitInputValue(value, startCellKey);
-    }, getAnswerCommitDelayMs(value));
-  }
-
-  function handleChangeText(value: string) {
-    setInputValue(value);
-    queueCommitInputValue(value);
-  }
-
-  return (
-    <Pressable onPress={focusInput} style={styles.answerSlotInput}>
-      <View style={styles.answerSlotGrid}>
-        {slotKeys.map((key, index) => {
-          const displayValue = cellValues[key] ?? '';
-          const isActive = key === activeCellKey;
-          const pendingValue = pendingLetters[index - selectedIndex] ?? '';
-          const slotValue = pendingValue !== '' ? pendingValue : displayValue;
-
-          return (
-            <Pressable
-              accessibilityRole="button"
-              key={key}
-              onPress={() => selectSlot(key)}
-              style={[
-                styles.answerSlot,
-                displayValue !== '' && styles.answerSlotFilled,
-                pendingValue !== '' && styles.answerSlotPending,
-                isActive && styles.answerSlotActive,
-              ]}
-            >
-              <Text style={styles.answerSlotText}>{slotValue}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
-      <TextInput
-        autoCapitalize="none"
-        autoCorrect={false}
-        blurOnSubmit={false}
-        caretHidden
-        contextMenuHidden
-        importantForAutofill="no"
-        maxLength={Math.max(1, cells.length - selectedIndex)}
-        onChangeText={handleChangeText}
-        onEndEditing={event => {
-          commitInputValue(event.nativeEvent.text);
-        }}
-        onKeyPress={event => {
-          if (event.nativeEvent.key === 'Backspace' && inputValue === '') {
-            clearAnswerCell(entry, activeCellKey);
-          }
-        }}
-        onSubmitEditing={() => {
-          commitInputValue(inputValue);
-          focusInput();
-        }}
-        ref={inputRef}
-        returnKeyType="next"
-        showSoftInputOnFocus
-        style={styles.answerSlotNativeInput}
-        value={inputValue}
-      />
-    </Pressable>
-  );
-}
-
 function usePuzzleViewModel(
   puzzle: Puzzle,
   selectedEntryId: string,
@@ -2039,47 +2126,6 @@ const styles = StyleSheet.create({
     gap: 8,
     padding: 14,
   },
-  answerSlot: {
-    alignItems: 'center',
-    backgroundColor: '#f8fafc',
-    borderColor: '#cbd5e1',
-    borderRadius: 8,
-    borderWidth: 1,
-    height: 42,
-    justifyContent: 'center',
-    width: 42,
-  },
-  answerSlotActive: {
-    backgroundColor: '#ccfbf1',
-    borderColor: '#0f766e',
-  },
-  answerSlotFilled: {
-    backgroundColor: '#ffffff',
-  },
-  answerSlotGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 7,
-  },
-  answerSlotInput: {
-    minHeight: 46,
-    position: 'relative',
-  },
-  answerSlotNativeInput: {
-    height: 1,
-    opacity: 0,
-    position: 'absolute',
-    width: 1,
-  },
-  answerSlotText: {
-    color: '#0f172a',
-    fontSize: 21,
-    fontWeight: '900',
-  },
-  answerSlotPending: {
-    backgroundColor: '#fef9c3',
-    borderColor: '#eab308',
-  },
   bonusEyebrow: {
     color: '#0f766e',
     fontSize: 12,
@@ -2117,6 +2163,19 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 2,
     overflow: 'hidden',
+  },
+  boardFrame: {
+    alignSelf: 'center',
+    position: 'relative',
+  },
+  boardNativeInput: {
+    color: 'transparent',
+    height: 1,
+    left: 0,
+    opacity: 0.01,
+    position: 'absolute',
+    top: 0,
+    width: 1,
   },
   boardPane: {
     gap: 14,
@@ -2156,6 +2215,9 @@ const styles = StyleSheet.create({
     left: 3,
     position: 'absolute',
     top: 2,
+  },
+  cellPending: {
+    backgroundColor: '#fef9c3',
   },
   cellSelected: {
     backgroundColor: '#bef264',
