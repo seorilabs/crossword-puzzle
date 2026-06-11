@@ -633,6 +633,24 @@ function getInitialEntryStartCellKey(puzzle: Puzzle) {
   return getEntryStartCellKey(initialEntry);
 }
 
+function getCellAnswerLetter(puzzle: Puzzle, cellKey: string) {
+  const [row, col] = cellKey.split(":").map(Number);
+
+  return puzzle.grid[row]?.[col] ?? "";
+}
+
+// A committed letter that matches the grid answer is locked: it is correct for
+// both crossing words, so we keep it from being erased or overwritten.
+function isCellLocked(
+  puzzle: Puzzle,
+  cellValues: Record<string, string>,
+  cellKey: string,
+) {
+  const value = cellValues[cellKey];
+
+  return value != null && value === getCellAnswerLetter(puzzle, cellKey);
+}
+
 function App() {
   const [route, setRoute] = useState<AppRoute>(() =>
     getRouteFromPathname(window.location.pathname),
@@ -1362,11 +1380,34 @@ function App() {
         ? previousFilledIndex
         : selectedIndex;
     const targetKey = getEntryCellKeyAt(entry, targetIndex);
+
+    setSelectedCellKey(targetKey);
+
+    // Correct letters are locked; move the caret there but keep the answer.
+    if (isCellLocked(puzzle, cellValues, targetKey)) {
+      return;
+    }
+
     const nextValues = { ...cellValues };
 
     delete nextValues[targetKey];
     setCellValues(nextValues);
-    setSelectedCellKey(targetKey);
+  }
+
+  function clearEntryAnswer(entry: PuzzleEntry) {
+    const nextValues = { ...cellValues };
+
+    for (const cell of getEntryCells(entry)) {
+      const key = getCellKey(cell.row, cell.col);
+
+      // Leave already-correct (locked) letters so a wrong-cell wipe keeps them.
+      if (!isCellLocked(puzzle, cellValues, key)) {
+        delete nextValues[key];
+      }
+    }
+
+    setCellValues(nextValues);
+    setSelectedCellKey(getEntryStartCellKey(entry));
   }
 
   function revealLetter() {
@@ -1731,6 +1772,7 @@ function App() {
     applyAnswerSegment,
     cellValues,
     clearAnswerCell,
+    clearEntryAnswer,
     clueEntries: viewModel.clueEntries,
     completedEntries: viewModel.completedEntries,
     hintBalance,
@@ -2797,6 +2839,7 @@ type TodayScreenProps = DateSelectionProps & {
   ) => void;
   cellValues: Record<string, string>;
   clearAnswerCell: (entry: PuzzleEntry, cellKey?: string) => void;
+  clearEntryAnswer: (entry: PuzzleEntry) => void;
   clueEntries: PuzzleEntry[];
   completedEntries: PuzzleEntry[];
   completionCelebrationId: string | null;
@@ -2825,10 +2868,10 @@ type TodayScreenProps = DateSelectionProps & {
 };
 
 function TodayScreen({
-  applyAnswer,
   applyAnswerSegment,
   cellValues,
   clearAnswerCell,
+  clearEntryAnswer,
   completedEntries,
   completionCelebrationId,
   completionStatsByPuzzleId,
@@ -2910,6 +2953,78 @@ function TodayScreen({
     );
   }, [selectedCellKey, selectedEntry, viewModel.cellEntries]);
 
+  // Per-character state for the sticky top bar so the question and the answer
+  // being typed stay visible above the on-screen keyboard.
+  const answerSlots = useMemo(() => {
+    if (selectedEntry == null) {
+      return [];
+    }
+
+    return selectedEntryCellKeys.map((key) => {
+      const pending = pendingAnswerCellValues[key];
+      const committed = cellValues[key];
+      const answerLetter = getCellAnswerLetter(puzzle, key);
+
+      return {
+        isActive: key === activeCellKey,
+        isLocked: isCellLocked(puzzle, cellValues, key),
+        isPending: pending != null,
+        isWrong: pending == null && committed != null && committed !== answerLetter,
+        key,
+        value: pending ?? committed ?? "",
+      };
+    });
+  }, [
+    activeCellKey,
+    cellValues,
+    pendingAnswerCellValues,
+    puzzle,
+    selectedEntry,
+    selectedEntryCellKeys,
+  ]);
+
+  const isSelectedComplete =
+    selectedEntry != null &&
+    completedEntries.some((entry) => entry.id === selectedEntry.id);
+
+  const orderedEntries = useMemo(
+    () =>
+      [...puzzle.entries].sort((a, b) => {
+        const labelA = startLabels.get(getCellKey(a.row, a.col)) ?? 0;
+        const labelB = startLabels.get(getCellKey(b.row, b.col)) ?? 0;
+
+        return (
+          labelA - labelB ||
+          directionOrder[a.direction] - directionOrder[b.direction]
+        );
+      }),
+    [puzzle.entries, startLabels],
+  );
+
+  function goToAdjacentClue(delta: number) {
+    if (selectedEntry == null || orderedEntries.length === 0) {
+      return;
+    }
+
+    const index = orderedEntries.findIndex(
+      (entry) => entry.id === selectedEntry.id,
+    );
+
+    if (index === -1) {
+      return;
+    }
+
+    const nextEntry =
+      orderedEntries[
+        (index + delta + orderedEntries.length) % orderedEntries.length
+      ];
+
+    if (nextEntry != null) {
+      selectEntry(nextEntry);
+      focusNativeInput();
+    }
+  }
+
   function selectClueAndClose(entry: PuzzleEntry) {
     selectEntry(entry);
     setIsClueListOpen(false);
@@ -2923,7 +3038,7 @@ function TodayScreen({
 
     setAnswerInputResetKey((prev) => prev + 1);
     setInputValue("");
-    applyAnswer(selectedEntry, "");
+    clearEntryAnswer(selectedEntry);
   }
 
   const clearCommitTimer = useCallback(() => {
@@ -3133,7 +3248,12 @@ function TodayScreen({
       <AppHeader
         compact
         backVariant="home"
-        title={formatPuzzleHeaderLabel(puzzle.date, loadState)}
+        title={`${completedEntries.length}/${puzzle.entries.length} 낱말`}
+        eyebrow={
+          isReviewMode
+            ? "다 푼 퍼즐"
+            : formatPuzzleHeaderLabel(puzzle.date, loadState)
+        }
         onBack={() => navigate("home")}
         right={
           <div className="headerActions">
@@ -3141,8 +3261,8 @@ function TodayScreen({
               <>
                 <button
                   className={[
-                    "hintCountButton",
-                    hintBalance.remaining === 0 ? "hintCountButtonEmpty" : "",
+                    "hintIconButton",
+                    hintBalance.remaining === 0 ? "hintIconButtonEmpty" : "",
                   ]
                     .filter(Boolean)
                     .join(" ")}
@@ -3168,18 +3288,14 @@ function TodayScreen({
                   }
                   onClick={useHint}
                 >
-                  {hintBalance.remaining > 0 ? (
-                    <>
-                      <span>힌트</span>
-                      <strong>
-                        {hintBalance.isAdBusy ? "..." : hintBalance.remaining}
-                      </strong>
-                    </>
-                  ) : (
-                    <strong className="hintAcquireLabel">
-                      {hintBalance.isAdBusy ? "준비 중" : "힌트 얻기"}
-                    </strong>
-                  )}
+                  <HintIcon />
+                  <span className="iconButtonBadge">
+                    {hintBalance.isAdBusy
+                      ? "…"
+                      : hintBalance.remaining > 0
+                        ? hintBalance.remaining
+                        : "+"}
+                  </span>
                 </button>
                 <button
                   className="iconButton"
@@ -3194,15 +3310,84 @@ function TodayScreen({
               </>
             )}
             <button
-              className="ghostButton"
+              className="iconButton"
               type="button"
+              aria-label="전체 문제 보기"
+              title="전체 문제"
               onClick={() => setIsClueListOpen(true)}
             >
-              전체 문제
+              <ListIcon />
             </button>
           </div>
         }
       />
+
+      {selectedEntry != null ? (
+        <div className="solveClueBar">
+          <div className="solveClueRow">
+            <button
+              className="clueNavButton"
+              type="button"
+              aria-label="이전 문제"
+              disabled={orderedEntries.length < 2}
+              onClick={() => goToAdjacentClue(-1)}
+            >
+              ‹
+            </button>
+            <button
+              className="solveClueInfo"
+              type="button"
+              onClick={() => {
+                selectEntry(selectedEntry, activeCellKey);
+                focusNativeInput();
+              }}
+            >
+              <span className="solveClueRef">
+                {formatEntryReference(selectedEntry, startLabels)}
+                {isSelectedComplete ? " · 완료" : ""}
+              </span>
+              <strong className="solveClueText">{selectedEntry.clue}</strong>
+            </button>
+            <button
+              className="clueNavButton"
+              type="button"
+              aria-label="다음 문제"
+              disabled={orderedEntries.length < 2}
+              onClick={() => goToAdjacentClue(1)}
+            >
+              ›
+            </button>
+          </div>
+          <div className="answerSlots" role="group" aria-label="입력 중인 답">
+            {answerSlots.map((slot) => (
+              <button
+                key={slot.key}
+                className={[
+                  "answerSlot",
+                  slot.isActive ? "answerSlotActive" : "",
+                  slot.isLocked ? "answerSlotLocked" : "",
+                  slot.isPending ? "answerSlotPending" : "",
+                  slot.isWrong ? "answerSlotWrong" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                type="button"
+                aria-label={
+                  slot.value === ""
+                    ? "빈 칸"
+                    : `${slot.value}${slot.isLocked ? " 정답 잠금" : slot.isWrong ? " 오답" : ""}`
+                }
+                onClick={() => {
+                  selectEntry(selectedEntry, slot.key);
+                  focusNativeInput();
+                }}
+              >
+                {slot.value}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {isReviewMode ? (
         <div
@@ -3497,6 +3682,48 @@ function EraserIcon() {
       />
       <path
         d="M10 8l6 6M5 19h14"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    </svg>
+  );
+}
+
+function HintIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      focusable="false"
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+    >
+      <path
+        d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1.3 1.4 1.5 2.5h5c.2-1.1.7-1.7 1.5-2.5A6 6 0 0 0 12 3z"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    </svg>
+  );
+}
+
+function ListIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      focusable="false"
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+    >
+      <path
+        d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"
         fill="none"
         stroke="currentColor"
         strokeLinecap="round"
@@ -4013,8 +4240,9 @@ function PuzzleBoard({
           const isComplete = completedCellKeys.has(key);
           const isSelected = selectedCells.has(key);
           const isCross = entries.length > 1;
-          // Pending IME text is temporary, so only committed values show wrong
-          // state styling.
+          // Pending IME text is temporary, so only committed values get
+          // right/wrong styling.
+          const isCorrect = !isPending && isFilled && committedValue === answer;
           const isWrong = !isPending && isFilled && committedValue !== answer;
 
           if (answer === "") {
@@ -4030,6 +4258,7 @@ function PuzzleBoard({
                 isCross ? "cellCross" : "",
                 isFilled ? "cellFilled" : "",
                 isPending ? "cellPending" : "",
+                isCorrect ? "cellCorrect" : "",
                 isComplete ? "cellComplete" : "",
                 isWrong ? "cellWrong" : "",
               ]
@@ -4037,10 +4266,13 @@ function PuzzleBoard({
                 .join(" ")}
               type="button"
               onClick={() => selectCell(row, col)}
-              aria-label={`${row + 1}행 ${col + 1}열${isWrong ? " 오답" : isComplete ? " 정답 완료" : ""}`}
+              aria-label={`${row + 1}행 ${col + 1}열${isWrong ? " 오답" : isCorrect ? " 정답 잠금" : ""}`}
             >
               <span className="cellNumber">{startLabels.get(key) ?? ""}</span>
               <span className="cellLetter">{displayValue}</span>
+              {isCorrect && !isComplete ? (
+                <span className="cellLockMark" aria-hidden="true" />
+              ) : null}
             </button>
           );
         }),
