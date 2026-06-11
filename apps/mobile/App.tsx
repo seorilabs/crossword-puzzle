@@ -121,6 +121,7 @@ type BonusPuzzlePanelState = {
 const REMOTE_PUZZLE_PACK_BASE_URL = 'https://crossword-puzzle-79ae0.web.app';
 const PROGRESS_KEY_PREFIX = 'crossword-puzzle:progress';
 const MISSION_KEY_PREFIX = 'crossword-puzzle:mission';
+const ANDROID_TEXT_INPUT_REFOCUS_DELAY_MS = 32;
 
 const directionLabels: Record<Direction, string> = {
   across: '가로',
@@ -1865,10 +1866,12 @@ export function AnswerSlotInput({
     ) {
       inputRef.current.blur();
     }
+    // Android can leave TextInput focused after the IME is hidden; wait briefly
+    // after blur so the next focus request attaches a fresh input connection.
     focusTimerRef.current = setTimeout(() => {
       focusTimerRef.current = null;
       inputRef.current?.focus();
-    }, Platform.OS === 'android' ? 32 : 0);
+    }, Platform.OS === 'android' ? ANDROID_TEXT_INPUT_REFOCUS_DELAY_MS : 0);
   }, [clearFocusTimer]);
 
   function selectSlot(cellKey: string) {
@@ -1920,11 +1923,13 @@ export function AnswerSlotInput({
   return (
     <Pressable onPress={focusInput} style={styles.answerSlotInput}>
       <TextInput
+        accessible={false}
         autoCapitalize="none"
         autoCorrect={false}
         blurOnSubmit={false}
         caretHidden
         contextMenuHidden
+        importantForAccessibility="no-hide-descendants"
         importantForAutofill="no"
         maxLength={Math.max(1, cells.length - selectedIndex)}
         onChangeText={handleChangeText}
@@ -2107,13 +2112,13 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   answerSlotNativeInput: {
+    bottom: 0,
     color: 'transparent',
-    height: 46,
     left: 0,
     opacity: 0.01,
     position: 'absolute',
+    right: 0,
     top: 0,
-    width: '100%',
   },
   answerSlotText: {
     color: '#0f172a',
