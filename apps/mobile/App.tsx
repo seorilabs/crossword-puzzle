@@ -894,8 +894,11 @@ function AppContent() {
   const boardCellSize = Math.max(
     32,
     Math.min(
-      48,
-      Math.floor((width - (isWide ? 440 : 40)) / viewModel.cols.length),
+      // The 풀이 화면 is a single column now; size cells from the real content
+      // padding (playScreenScrollContent: 16 each side) and let wide screens
+      // grow the board instead of reserving a phantom side pane.
+      isWide ? 64 : 48,
+      Math.floor((width - 32) / viewModel.cols.length),
     ),
   );
 
@@ -2669,8 +2672,6 @@ const styles = StyleSheet.create({
   },
   playScreen: {
     flex: 1,
-    gap: 14,
-    padding: 16,
   },
   playScreenScroll: {
     flex: 1,
