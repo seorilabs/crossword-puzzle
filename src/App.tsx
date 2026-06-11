@@ -640,7 +640,7 @@ function getCellAnswerLetter(puzzle: Puzzle, cellKey: string) {
 }
 
 // A committed letter that matches the grid answer is locked: it is correct for
-// both crossing words, so we keep it from being erased or overwritten.
+// both crossing words, so erase actions (backspace / clear) skip over it.
 function isCellLocked(
   puzzle: Puzzle,
   cellValues: Record<string, string>,
@@ -1367,31 +1367,39 @@ function App() {
   function clearAnswerCell(entry: PuzzleEntry, cellKey = selectedCellKey) {
     const cells = getEntryCells(entry);
     const selectedIndex = getEntryCellIndex(entry, cellKey);
-    const selectedKey = getEntryCellKeyAt(entry, selectedIndex);
-    const previousFilledIndex = cells
-      .slice(0, selectedIndex)
-      .map((cell, index) => ({ cell, index }))
-      .reverse()
-      .find(
-        ({ cell }) => cellValues[getCellKey(cell.row, cell.col)] != null,
-      )?.index;
-    const targetIndex =
-      cellValues[selectedKey] == null && previousFilledIndex != null
-        ? previousFilledIndex
-        : selectedIndex;
-    const targetKey = getEntryCellKeyAt(entry, targetIndex);
+    const isDeletable = (index: number) => {
+      const cell = cells[index];
+      if (cell == null) {
+        return false;
+      }
+      const key = getCellKey(cell.row, cell.col);
+      return cellValues[key] != null && !isCellLocked(puzzle, cellValues, key);
+    };
+    // Delete the caret cell if it holds an editable letter; otherwise step back
+    // to the nearest editable filled cell, skipping locked (correct) letters so
+    // the caret is never trapped on one.
+    let targetIndex = isDeletable(selectedIndex) ? selectedIndex : -1;
+    if (targetIndex === -1) {
+      for (let index = selectedIndex - 1; index >= 0; index -= 1) {
+        if (isDeletable(index)) {
+          targetIndex = index;
+          break;
+        }
+      }
+    }
 
-    setSelectedCellKey(targetKey);
-
-    // Correct letters are locked; move the caret there but keep the answer.
-    if (isCellLocked(puzzle, cellValues, targetKey)) {
+    if (targetIndex === -1) {
+      // Nothing editable to delete before the caret; leave it where it is.
+      setSelectedCellKey(getEntryCellKeyAt(entry, selectedIndex));
       return;
     }
 
+    const targetKey = getEntryCellKeyAt(entry, targetIndex);
     const nextValues = { ...cellValues };
 
     delete nextValues[targetKey];
     setCellValues(nextValues);
+    setSelectedCellKey(targetKey);
   }
 
   function clearEntryAnswer(entry: PuzzleEntry) {
@@ -3359,7 +3367,7 @@ function TodayScreen({
             </button>
           </div>
           <div className="answerSlots" role="group" aria-label="입력 중인 답">
-            {answerSlots.map((slot) => (
+            {answerSlots.map((slot, index) => (
               <button
                 key={slot.key}
                 className={[
@@ -3372,11 +3380,11 @@ function TodayScreen({
                   .filter(Boolean)
                   .join(" ")}
                 type="button"
-                aria-label={
+                aria-label={`${index + 1}/${answerSlots.length}번째 칸${
                   slot.value === ""
-                    ? "빈 칸"
-                    : `${slot.value}${slot.isLocked ? " 정답 잠금" : slot.isWrong ? " 오답" : ""}`
-                }
+                    ? ", 빈 칸"
+                    : `, ${slot.value}${slot.isLocked ? " 정답 잠금" : slot.isWrong ? " 오답" : ""}`
+                }`}
                 onClick={() => {
                   selectEntry(selectedEntry, slot.key);
                   focusNativeInput();
