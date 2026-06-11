@@ -2883,6 +2883,10 @@ function TodayScreen({
   );
   const activeCellKey =
     selectedEntryCellKeys[selectedIndex] ?? getEntryStartCellKey(selectedEntry);
+  const selectedRemainingCellCount = Math.max(
+    1,
+    selectedEntryCells.length - selectedIndex,
+  );
   const pendingAnswerCellValues = useMemo(
     () =>
       selectedEntry == null
@@ -3246,7 +3250,7 @@ function TodayScreen({
             autoComplete="off"
             autoCorrect="off"
             enterKeyHint="next"
-            maxLength={selectedEntry.answer.length}
+            maxLength={selectedRemainingCellCount}
             spellCheck={false}
             value={inputValue}
             aria-hidden="true"
@@ -4009,9 +4013,9 @@ function PuzzleBoard({
           const isComplete = completedCellKeys.has(key);
           const isSelected = selectedCells.has(key);
           const isCross = entries.length > 1;
-          // The grid stores the single correct letter per cell, so any filled
-          // value that differs is wrong regardless of direction.
-          const isWrong = isFilled && committedValue !== answer;
+          // Pending IME text is temporary, so only committed values show wrong
+          // state styling.
+          const isWrong = !isPending && isFilled && committedValue !== answer;
 
           if (answer === "") {
             return <div key={key} className="cell cellBlock" />;
