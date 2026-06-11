@@ -3253,7 +3253,7 @@ function TodayScreen({
             maxLength={selectedRemainingCellCount}
             spellCheck={false}
             value={inputValue}
-            aria-hidden="true"
+            aria-label={`${selectedRemainingCellCount}글자 답 입력`}
             tabIndex={-1}
             onCompositionStart={() => {
               clearCommitTimer();
