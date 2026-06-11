@@ -159,6 +159,12 @@ key password가 keystore password와 다르면 추가한다.
 gh secret set GOOGLE_PLAY_UPLOAD_KEY_PASSWORD
 ```
 
+Android Firebase native config도 release build 전에 복구해야 한다.
+
+```bash
+base64 -i apps/mobile/android/app/google-services.json | tr -d '\n' | gh secret set FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64
+```
+
 ## 6. Internal Track 업로드
 
 Android 타깃과 service account 권한이 준비되면 먼저 artifact build만 실행한다.

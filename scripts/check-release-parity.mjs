@@ -2,12 +2,29 @@
 import { readFileSync } from "node:fs";
 
 const sharedPolicyPath = "packages/crossword-core/src/uiPolicy.ts";
+const sharedLaunchConfigPath = "packages/crossword-core/src/launchConfig.ts";
+const sharedPlatformContractsPath =
+  "packages/crossword-core/src/platformContracts.ts";
 const sharedIndexPath = "packages/crossword-core/src/index.ts";
 const webAppPath = "src/App.tsx";
 const mobileAppPath = "apps/mobile/App.tsx";
 const launchConfigPath = "src/adapters/launchConfig.ts";
+const webTelemetryPath = "src/adapters/telemetry.ts";
+const mobileFirebaseClientPath = "apps/mobile/firebaseClient.ts";
+const mobileTelemetryPath = "apps/mobile/telemetry.ts";
+const androidBuildGradlePath = "apps/mobile/android/build.gradle";
+const androidAppBuildGradlePath = "apps/mobile/android/app/build.gradle";
+const androidManifestPath = "apps/mobile/android/app/src/main/AndroidManifest.xml";
+const appDelegatePath = "apps/mobile/ios/CrosswordPuzzleMobile/AppDelegate.swift";
+const mobilePodfilePath = "apps/mobile/ios/Podfile";
+const mobilePackagePath = "apps/mobile/package.json";
+const gitignorePath = ".gitignore";
 const ciWorkflowPath = ".github/workflows/ci.yml";
 const deployAllWorkflowPath = ".github/workflows/deploy-all.yml";
+const deployGooglePlayWorkflowPath = ".github/workflows/deploy-google-play.yml";
+const deployAppStoreWorkflowPath = ".github/workflows/deploy-app-store.yml";
+const agentsPath = "AGENTS.md";
+const marketParityDocPath = "docs/market-parity.md";
 
 const sharedPolicyExports = [
   "DAILY_ATTEMPT_LIMIT",
@@ -35,11 +52,8 @@ const requiredWebImports = [
 
 const requiredMobileImports = [
   "DAILY_ATTEMPT_LIMIT",
-  "DEFAULT_HINT_CREDITS",
-  "DEFAULT_VISIBLE_PUZZLE_COUNT",
-  "PUZZLE_GENERATION_INTERVAL_HOURS",
-  "PUZZLE_KEEP_COUNT",
   "createPuzzleSummary",
+  "defaultLaunchConfig",
   "getBonusPuzzleCandidateSummary",
   "getDailyFreePuzzleSummaries",
   "getDailyFreePuzzleSummary",
@@ -59,6 +73,14 @@ const forbiddenLocalDefinitions = [
   "getDailyFreePuzzleSummary",
   "sortPuzzleSummariesByRecency",
   "uniquePuzzleSummaries",
+];
+
+const sharedLaunchConfigExports = [
+  "clampInteger",
+  "defaultLaunchConfig",
+  "getLaunchConfigDefaultsForRemoteConfig",
+  "launchConfigKeys",
+  "normalizeLaunchConfig",
 ];
 
 const failures = [];
@@ -83,6 +105,12 @@ function assertIncludes(content, needle, label) {
   }
 }
 
+function assertNotIncludes(content, needle, label) {
+  if (content.includes(needle)) {
+    fail(`${label}: must not include ${needle}`);
+  }
+}
+
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -97,7 +125,7 @@ function assertNamedPolicyExport(content, name, path) {
 
 function extractNamedImports(content, importPath) {
   const importPattern = new RegExp(
-    `import\\s*\\{([\\s\\S]*?)\\}\\s*from\\s*["']${escapeRegExp(
+    `import\\s*\\{([^}]*)\\}\\s*from\\s*["']${escapeRegExp(
       importPath,
     )}["']`,
     "g",
@@ -155,18 +183,48 @@ function assertNoLocalDefinitions(content, names, path) {
 }
 
 const sharedPolicy = read(sharedPolicyPath);
+const sharedLaunchConfig = read(sharedLaunchConfigPath);
+const sharedPlatformContracts = read(sharedPlatformContractsPath);
 const sharedIndex = read(sharedIndexPath);
 const webApp = read(webAppPath);
 const mobileApp = read(mobileAppPath);
 const launchConfig = read(launchConfigPath);
+const webTelemetry = read(webTelemetryPath);
+const mobileFirebaseClient = read(mobileFirebaseClientPath);
+const mobileTelemetry = read(mobileTelemetryPath);
+const androidBuildGradle = read(androidBuildGradlePath);
+const androidAppBuildGradle = read(androidAppBuildGradlePath);
+const androidManifest = read(androidManifestPath);
+const appDelegate = read(appDelegatePath);
+const mobilePodfile = read(mobilePodfilePath);
+const mobilePackage = read(mobilePackagePath);
+const gitignore = read(gitignorePath);
 const ciWorkflow = read(ciWorkflowPath);
 const deployAllWorkflow = read(deployAllWorkflowPath);
+const deployGooglePlayWorkflow = read(deployGooglePlayWorkflowPath);
+const deployAppStoreWorkflow = read(deployAppStoreWorkflowPath);
+const agents = read(agentsPath);
+const marketParityDoc = read(marketParityDocPath);
 
 for (const name of sharedPolicyExports) {
   assertNamedPolicyExport(sharedPolicy, name, sharedPolicyPath);
 }
 
+for (const name of sharedLaunchConfigExports) {
+  assertNamedPolicyExport(sharedLaunchConfig, name, sharedLaunchConfigPath);
+}
+
 assertIncludes(sharedIndex, 'export * from "./uiPolicy";', sharedIndexPath);
+assertIncludes(
+  sharedIndex,
+  'export * from "./launchConfig";',
+  sharedIndexPath,
+);
+assertIncludes(
+  sharedIndex,
+  'export * from "./platformContracts";',
+  sharedIndexPath,
+);
 assertImported(
   webApp,
   requiredWebImports,
@@ -179,23 +237,157 @@ assertImported(
   mobileAppPath,
   "../../packages/crossword-core/src",
 );
-assertImported(
+assertIncludes(
   launchConfig,
-  [
-    "DEFAULT_HINT_CREDITS",
-    "DEFAULT_VISIBLE_PUZZLE_COUNT",
-    "PUZZLE_GENERATION_INTERVAL_HOURS",
-    "PUZZLE_KEEP_COUNT",
-  ],
+  'export * from "../../packages/crossword-core/src/launchConfig";',
   launchConfigPath,
+);
+assertImported(
+  webTelemetry,
+  ["compactTelemetryParams"],
+  webTelemetryPath,
+  "../../packages/crossword-core/src",
+);
+assertImported(
+  mobileFirebaseClient,
+  [
+    "defaultLaunchConfig",
+    "getLaunchConfigDefaultsForRemoteConfig",
+    "launchConfigKeys",
+    "normalizeLaunchConfig",
+  ],
+  mobileFirebaseClientPath,
+  "../../packages/crossword-core/src",
+);
+assertImported(
+  mobileTelemetry,
+  ["compactTelemetryParams"],
+  mobileTelemetryPath,
   "../../packages/crossword-core/src",
 );
 assertNoLocalDefinitions(webApp, forbiddenLocalDefinitions, webAppPath);
 assertNoLocalDefinitions(mobileApp, forbiddenLocalDefinitions, mobileAppPath);
 
+for (const [path, content] of [
+  [sharedPolicyPath, sharedPolicy],
+  [sharedLaunchConfigPath, sharedLaunchConfig],
+  [sharedPlatformContractsPath, sharedPlatformContracts],
+  [sharedIndexPath, sharedIndex],
+]) {
+  assertNotIncludes(content, "@apps-in-toss", path);
+  assertNotIncludes(content, "@react-native-firebase", path);
+  assertNotIncludes(content, "react-native", path);
+  assertNotIncludes(content, "firebase/", path);
+}
+
+assertIncludes(
+  mobilePackage,
+  '"@react-native-firebase/app":',
+  mobilePackagePath,
+);
+assertIncludes(
+  mobilePackage,
+  '"@react-native-firebase/analytics":',
+  mobilePackagePath,
+);
+assertIncludes(
+  mobilePackage,
+  '"@react-native-firebase/remote-config":',
+  mobilePackagePath,
+);
+assertIncludes(
+  androidBuildGradle,
+  'classpath("com.google.gms:google-services:4.4.4")',
+  androidBuildGradlePath,
+);
+assertIncludes(
+  androidAppBuildGradle,
+  'apply plugin: "com.google.gms.google-services"',
+  androidAppBuildGradlePath,
+);
+assertIncludes(
+  androidAppBuildGradle,
+  "Missing apps/mobile/android/app/google-services.json",
+  androidAppBuildGradlePath,
+);
+assertIncludes(
+  androidManifest,
+  'android:name="com.google.android.gms.permission.AD_ID"',
+  androidManifestPath,
+);
+assertIncludes(
+  androidManifest,
+  'android:name="android.permission.ACCESS_ADSERVICES_ATTRIBUTION"',
+  androidManifestPath,
+);
+assertIncludes(
+  androidManifest,
+  'android:name="android.permission.ACCESS_ADSERVICES_AD_ID"',
+  androidManifestPath,
+);
+assertIncludes(androidManifest, 'tools:node="remove"', androidManifestPath);
+assertIncludes(appDelegate, "import Firebase", appDelegatePath);
+assertIncludes(appDelegate, "FirebaseApp.configure()", appDelegatePath);
+assertIncludes(
+  mobilePodfile,
+  "$RNFirebaseAsStaticFramework = true",
+  mobilePodfilePath,
+);
+assertIncludes(
+  mobilePodfile,
+  "$RNFirebaseAnalyticsWithoutAdIdSupport = true",
+  mobilePodfilePath,
+);
+assertIncludes(mobilePodfile, "ENV['RCT_USE_RN_DEP'] = '0'", mobilePodfilePath);
+assertIncludes(
+  mobilePodfile,
+  "ENV['RCT_USE_PREBUILT_RNCORE'] = '0'",
+  mobilePodfilePath,
+);
+assertIncludes(
+  mobilePodfile,
+  "CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES",
+  mobilePodfilePath,
+);
+assertIncludes(
+  gitignore,
+  "apps/mobile/android/app/google-services.json",
+  gitignorePath,
+);
+assertIncludes(
+  gitignore,
+  "apps/mobile/ios/CrosswordPuzzleMobile/GoogleService-Info.plist",
+  gitignorePath,
+);
 assertIncludes(ciWorkflow, "npm run check:release-parity", ciWorkflowPath);
 assertIncludes(ciWorkflow, "npm run build", ciWorkflowPath);
 assertIncludes(ciWorkflow, "npm run check:mobile", ciWorkflowPath);
+assertIncludes(
+  deployGooglePlayWorkflow,
+  "node scripts/restore-mobile-firebase-config.mjs --android --require",
+  deployGooglePlayWorkflowPath,
+);
+assertIncludes(
+  deployGooglePlayWorkflow,
+  "FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64",
+  deployGooglePlayWorkflowPath,
+);
+assertIncludes(
+  deployAppStoreWorkflow,
+  "node scripts/restore-mobile-firebase-config.mjs --ios --require",
+  deployAppStoreWorkflowPath,
+);
+assertIncludes(
+  deployAppStoreWorkflow,
+  "FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64",
+  deployAppStoreWorkflowPath,
+);
+assertIncludes(agents, "3마켓 패리티", agentsPath);
+assertIncludes(agents, "packages/crossword-core", agentsPath);
+assertIncludes(marketParityDoc, "AppsInToss", marketParityDocPath);
+assertIncludes(marketParityDoc, "Google Play", marketParityDocPath);
+assertIncludes(marketParityDoc, "App Store", marketParityDocPath);
+assertIncludes(marketParityDoc, "packages/crossword-core", marketParityDocPath);
 
 const deployAllResolvedTagUsages =
   deployAllWorkflow.match(/release_tag:\s*\${{ needs\.resolve\.outputs\.tag }}/g)

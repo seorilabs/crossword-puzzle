@@ -12,7 +12,7 @@ flowchart LR
   Firebase["Firebase<br/>Analytics + Remote Config"]
 
   AIT -->|Web SDK env config| Firebase
-  Mobile -->|RNFirebase native adapter 예정| Firebase
+  Mobile -->|RNFirebase native adapter| Firebase
   AIT --> Core
   Mobile --> Core
 ```
@@ -75,13 +75,30 @@ AIT는 AppsInToss Analytics와 Firebase Analytics를 함께 호출한다. 샌드
 
 ## Android / iOS
 
-Android/iOS는 AIT WebView 코드와 같은 Web SDK를 공유하지 않는다. `apps/mobile`이 실제 퍼즐 UI를 포팅한 뒤 다음 native adapter를 붙인다.
+Android/iOS는 AIT WebView 코드와 같은 Web SDK를 공유하지 않는다. `apps/mobile`은 RNFirebase native adapter를 사용한다.
 
-- Android: `google-services.json`, `@react-native-firebase/app`, `@react-native-firebase/analytics`, `@react-native-firebase/remote-config`
-- iOS: `GoogleService-Info.plist`, 같은 RNFirebase 모듈
+- Android: `apps/mobile/android/app/google-services.json`, `@react-native-firebase/app`, `@react-native-firebase/analytics`, `@react-native-firebase/remote-config`, `com.google.gms:google-services:4.4.4`
+- iOS: `apps/mobile/ios/CrosswordPuzzleMobile/GoogleService-Info.plist`, 같은 RNFirebase 모듈, `FirebaseApp.configure()`
+- `google-services.json`과 `GoogleService-Info.plist`는 `.gitignore` 대상이다.
+- CI는 `scripts/restore-mobile-firebase-config.mjs`로 native config를 복구한다.
 - AdMob 콘솔 앱과 광고 단위는 생성했지만, `apps/mobile`에는 아직 AdMob SDK/native adapter가 없다. 운영 광고 ID는 release build adapter QA가 끝난 뒤 적용하고, 개발/QA 빌드는 Google test ad unit을 사용한다.
 - 공유 core에는 Firebase import를 넣지 않는다.
 - 앱 개인정보/데이터 수집 고지에는 Analytics, 광고 식별자, 진단/사용 이벤트 수집 여부를 반영한다.
+- iOS Analytics는 `$RNFirebaseAnalyticsWithoutAdIdSupport = true`로 IDFA 없는 variant를 사용한다.
+- iOS Podfile은 RNFirebase와 RN 0.84+ prebuilt RNCore 조합의 compile error를 피하기 위해 `RCT_USE_RN_DEP=0`, `RCT_USE_PREBUILT_RNCORE=0`을 고정한다.
+- `apps/mobile/firebase.json`은 Analytics ad/user data/personalization storage 기본값을 false로 둔다.
+
+### Native config 복구
+
+```bash
+node scripts/restore-mobile-firebase-config.mjs --android --require
+node scripts/restore-mobile-firebase-config.mjs --ios --require
+```
+
+| Secret | Scope | 파일 |
+| --- | --- | --- |
+| `FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64` | repository | `apps/mobile/android/app/google-services.json` |
+| `FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64` | `app-store` environment | `apps/mobile/ios/CrosswordPuzzleMobile/GoogleService-Info.plist` |
 
 ## Native AdMob IDs
 
@@ -96,4 +113,4 @@ Android/iOS는 AIT WebView 코드와 같은 Web SDK를 공유하지 않는다. `
 2. `firebase deploy --only remoteconfig --project crossword-puzzle-79ae0`로 템플릿을 반영한다.
 3. AIT 라이브 환경에서 `screen_view`, `hint_reveal`, 광고 이벤트가 쌓이는지 확인한다.
 4. 참여자/완료율 UI를 켜기 전 `docs/puzzle-completion-stats.md` 기준으로 집계 JSON을 배포하고 `completion_stats_enabled=true`로 전환한다.
-5. Android/iOS는 native Firebase config 파일과 RNFirebase 모듈을 추가한 뒤 별도 빌드 검증한다.
+5. Android/iOS는 `npm run check:mobile`, `npm run build:android`, unsigned iOS Release build로 native Firebase 연결을 검증한다.
