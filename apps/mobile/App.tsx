@@ -8,6 +8,7 @@ import React, {
 } from 'react';
 import {
   ActivityIndicator,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -1799,6 +1800,8 @@ export function AnswerSlotInput({
 }: AnswerSlotInputProps) {
   const inputRef = useRef<React.ElementRef<typeof TextInput>>(null);
   const commitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const focusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const keyboardVisibleRef = useRef(false);
   const [inputValue, setInputValue] = useState('');
   const cells = useMemo(() => getEntryCells(entry), [entry]);
   const slotKeys = useMemo(
@@ -1819,16 +1822,54 @@ export function AnswerSlotInput({
     }
   }, []);
 
+  const clearFocusTimer = useCallback(() => {
+    if (focusTimerRef.current != null) {
+      clearTimeout(focusTimerRef.current);
+      focusTimerRef.current = null;
+    }
+  }, []);
+
   useEffect(() => {
     clearCommitTimer();
     setInputValue('');
   }, [activeCellKey, clearCommitTimer, entry.id]);
 
-  useEffect(() => () => clearCommitTimer(), [clearCommitTimer]);
+  useEffect(
+    () => () => {
+      clearCommitTimer();
+      clearFocusTimer();
+    },
+    [clearCommitTimer, clearFocusTimer],
+  );
 
-  function focusInput() {
-    inputRef.current?.focus();
-  }
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+      keyboardVisibleRef.current = true;
+    });
+    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      keyboardVisibleRef.current = false;
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
+
+  const focusInput = useCallback(() => {
+    clearFocusTimer();
+    if (
+      Platform.OS === 'android' &&
+      !keyboardVisibleRef.current &&
+      inputRef.current?.isFocused()
+    ) {
+      inputRef.current.blur();
+    }
+    focusTimerRef.current = setTimeout(() => {
+      focusTimerRef.current = null;
+      inputRef.current?.focus();
+    }, Platform.OS === 'android' ? 32 : 0);
+  }, [clearFocusTimer]);
 
   function selectSlot(cellKey: string) {
     selectEntry(entry, cellKey);
@@ -1878,30 +1919,6 @@ export function AnswerSlotInput({
 
   return (
     <Pressable onPress={focusInput} style={styles.answerSlotInput}>
-      <View style={styles.answerSlotGrid}>
-        {slotKeys.map((key, index) => {
-          const displayValue = cellValues[key] ?? '';
-          const isActive = key === activeCellKey;
-          const pendingValue = pendingLetters[index - selectedIndex] ?? '';
-          const slotValue = pendingValue !== '' ? pendingValue : displayValue;
-
-          return (
-            <Pressable
-              accessibilityRole="button"
-              key={key}
-              onPress={() => selectSlot(key)}
-              style={[
-                styles.answerSlot,
-                displayValue !== '' && styles.answerSlotFilled,
-                pendingValue !== '' && styles.answerSlotPending,
-                isActive && styles.answerSlotActive,
-              ]}
-            >
-              <Text style={styles.answerSlotText}>{slotValue}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
       <TextInput
         autoCapitalize="none"
         autoCorrect={false}
@@ -1929,6 +1946,30 @@ export function AnswerSlotInput({
         style={styles.answerSlotNativeInput}
         value={inputValue}
       />
+      <View style={styles.answerSlotGrid}>
+        {slotKeys.map((key, index) => {
+          const displayValue = cellValues[key] ?? '';
+          const isActive = key === activeCellKey;
+          const pendingValue = pendingLetters[index - selectedIndex] ?? '';
+          const slotValue = pendingValue !== '' ? pendingValue : displayValue;
+
+          return (
+            <Pressable
+              accessibilityRole="button"
+              key={key}
+              onPress={() => selectSlot(key)}
+              style={[
+                styles.answerSlot,
+                displayValue !== '' && styles.answerSlotFilled,
+                pendingValue !== '' && styles.answerSlotPending,
+                isActive && styles.answerSlotActive,
+              ]}
+            >
+              <Text style={styles.answerSlotText}>{slotValue}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
     </Pressable>
   );
 }
@@ -2066,10 +2107,13 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   answerSlotNativeInput: {
-    height: 1,
-    opacity: 0,
+    color: 'transparent',
+    height: 46,
+    left: 0,
+    opacity: 0.01,
     position: 'absolute',
-    width: 1,
+    top: 0,
+    width: '100%',
   },
   answerSlotText: {
     color: '#0f172a',
