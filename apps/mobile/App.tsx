@@ -121,7 +121,42 @@ type BonusPuzzlePanelState = {
 const REMOTE_PUZZLE_PACK_BASE_URL = 'https://crossword-puzzle-79ae0.web.app';
 const PROGRESS_KEY_PREFIX = 'crossword-puzzle:progress';
 const MISSION_KEY_PREFIX = 'crossword-puzzle:mission';
-const ANDROID_TEXT_INPUT_REFOCUS_DELAY_MS = 32;
+export const ANDROID_TEXT_INPUT_REFOCUS_DELAY_MS = 32;
+
+type AnswerSlotNativeInput = Pick<
+  React.ElementRef<typeof TextInput>,
+  'blur' | 'focus' | 'isFocused'
+>;
+
+type ScheduleAnswerSlotNativeInputFocusOptions = {
+  getInput: () => AnswerSlotNativeInput | null;
+  keyboardVisible: boolean;
+  onFocusTimerSettled: () => void;
+  platformOS: typeof Platform.OS;
+};
+
+export function scheduleAnswerSlotNativeInputFocus({
+  getInput,
+  keyboardVisible,
+  onFocusTimerSettled,
+  platformOS,
+}: ScheduleAnswerSlotNativeInputFocusOptions): ReturnType<typeof setTimeout> {
+  const input = getInput();
+
+  if (platformOS === 'android' && !keyboardVisible && input?.isFocused()) {
+    input.blur();
+  }
+
+  // Android can leave TextInput focused after the IME is hidden; wait briefly
+  // after blur so the next focus request attaches a fresh input connection.
+  return setTimeout(
+    () => {
+      onFocusTimerSettled();
+      getInput()?.focus();
+    },
+    platformOS === 'android' ? ANDROID_TEXT_INPUT_REFOCUS_DELAY_MS : 0,
+  );
+}
 
 const directionLabels: Record<Direction, string> = {
   across: '가로',
@@ -1859,19 +1894,14 @@ export function AnswerSlotInput({
 
   const focusInput = useCallback(() => {
     clearFocusTimer();
-    if (
-      Platform.OS === 'android' &&
-      !keyboardVisibleRef.current &&
-      inputRef.current?.isFocused()
-    ) {
-      inputRef.current.blur();
-    }
-    // Android can leave TextInput focused after the IME is hidden; wait briefly
-    // after blur so the next focus request attaches a fresh input connection.
-    focusTimerRef.current = setTimeout(() => {
-      focusTimerRef.current = null;
-      inputRef.current?.focus();
-    }, Platform.OS === 'android' ? ANDROID_TEXT_INPUT_REFOCUS_DELAY_MS : 0);
+    focusTimerRef.current = scheduleAnswerSlotNativeInputFocus({
+      getInput: () => inputRef.current,
+      keyboardVisible: keyboardVisibleRef.current,
+      onFocusTimerSettled: () => {
+        focusTimerRef.current = null;
+      },
+      platformOS: Platform.OS,
+    });
   }, [clearFocusTimer]);
 
   function selectSlot(cellKey: string) {

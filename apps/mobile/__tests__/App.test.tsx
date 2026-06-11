@@ -6,7 +6,12 @@ import React from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
-import App, { AnswerSlotInput, loadPuzzleSession } from '../App';
+import App, {
+  ANDROID_TEXT_INPUT_REFOCUS_DELAY_MS,
+  AnswerSlotInput,
+  loadPuzzleSession,
+  scheduleAnswerSlotNativeInputFocus,
+} from '../App';
 import {
   ARCHIVE_INDEX_KEY,
   ARCHIVE_INDEX_LIMIT,
@@ -121,6 +126,41 @@ test('keeps Korean syllable composition pending before advancing answer slots', 
 
   expect(applyAnswerSegment).toHaveBeenCalledTimes(1);
   expect(applyAnswerSegment).toHaveBeenCalledWith(entry, '관포지교', '0:0');
+});
+
+test('refocuses a stale Android text input after the keyboard is hidden', () => {
+  jest.useFakeTimers({ now: 0 });
+
+  const blur = jest.fn();
+  const focus = jest.fn();
+  const isFocused = jest.fn(() => true);
+  const onFocusTimerSettled = jest.fn();
+  const getInput = jest.fn(() => ({ blur, focus, isFocused }));
+
+  scheduleAnswerSlotNativeInputFocus({
+    getInput,
+    keyboardVisible: false,
+    onFocusTimerSettled,
+    platformOS: 'android',
+  });
+
+  expect(isFocused).toHaveBeenCalledTimes(1);
+  expect(blur).toHaveBeenCalledTimes(1);
+  expect(focus).not.toHaveBeenCalled();
+
+  ReactTestRenderer.act(() => {
+    jest.advanceTimersByTime(ANDROID_TEXT_INPUT_REFOCUS_DELAY_MS - 1);
+  });
+
+  expect(onFocusTimerSettled).not.toHaveBeenCalled();
+  expect(focus).not.toHaveBeenCalled();
+
+  ReactTestRenderer.act(() => {
+    jest.advanceTimersByTime(1);
+  });
+
+  expect(onFocusTimerSettled).toHaveBeenCalledTimes(1);
+  expect(focus).toHaveBeenCalledTimes(1);
 });
 
 test('loads an archived puzzle when it is missing from the current pack', async () => {
