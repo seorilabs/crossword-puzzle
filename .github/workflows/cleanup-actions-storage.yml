@@ -29,7 +29,7 @@ concurrency:
 jobs:
   cleanup:
     name: Delete Actions artifacts and caches
-    runs-on: ubuntu-latest
+    runs-on: seorilabs-rpi-arm64
     timeout-minutes: 15
 
     env:
