@@ -137,6 +137,26 @@ function pad2(value) {
   return String(value).padStart(2, "0");
 }
 
+function compactYear(year) {
+  return String(year).slice(-2);
+}
+
+function normalizeAlias(value) {
+  const dateTimeMatch = value.match(/^(\d{4})(\d{2})(\d{2})(\d{2})$/);
+  if (dateTimeMatch != null) {
+    const [, year, month, day, hour] = dateTimeMatch;
+    return `${compactYear(year)}${month}${day}${hour}`;
+  }
+
+  const dateMatch = value.match(/^(\d{4})(\d{2})(\d{2})$/);
+  if (dateMatch != null) {
+    const [, year, month, day] = dateMatch;
+    return `${compactYear(year)}${month}${day}`;
+  }
+
+  return value;
+}
+
 function getZonedParts(date, timeZone) {
   const parts = new Intl.DateTimeFormat("en-CA", {
     day: "2-digit",
@@ -162,7 +182,7 @@ function makeSlotInfo(date, timeZone, intervalHours) {
   const parts = getZonedParts(date, timeZone);
   const slotHour = Math.floor(parts.hour / intervalHours) * intervalHours;
   const dateKey = `${parts.year}-${parts.month}-${parts.day}`;
-  const alias = `${parts.year}${parts.month}${parts.day}${pad2(slotHour)}`;
+  const alias = `${compactYear(parts.year)}${parts.month}${parts.day}${pad2(slotHour)}`;
   const slotId = `${dateKey}-h${pad2(slotHour)}`;
 
   return {
@@ -465,7 +485,7 @@ function getPublishedAtAlias(publishedAt) {
   }
 
   const parts = getZonedParts(date, "Asia/Seoul");
-  return `${parts.year}${parts.month}${parts.day}${pad2(parts.hour)}`;
+  return `${compactYear(parts.year)}${parts.month}${parts.day}${pad2(parts.hour)}`;
 }
 
 function getManifestAlias(item) {
@@ -473,7 +493,7 @@ function getManifestAlias(item) {
     typeof item.alias === "string" ? item.alias.trim() : undefined;
 
   if (explicitAlias != null && explicitAlias.length > 0) {
-    return explicitAlias;
+    return normalizeAlias(explicitAlias);
   }
 
   const slotMatch =
@@ -482,7 +502,7 @@ function getManifestAlias(item) {
       : null;
   if (slotMatch != null) {
     const [, year, month, day, hour] = slotMatch;
-    return `${year}${month}${day}${hour}`;
+    return `${compactYear(year)}${month}${day}${hour}`;
   }
 
   const publishedAtAlias = getPublishedAtAlias(item.publishedAt);
@@ -495,7 +515,7 @@ function getManifestAlias(item) {
       ? item.packId.match(/^pack-(\d{10})/)
       : null;
   if (packIdMatch != null) {
-    return packIdMatch[1];
+    return normalizeAlias(packIdMatch[1]);
   }
 
   const dateMatch =
@@ -504,7 +524,7 @@ function getManifestAlias(item) {
       : null;
   if (dateMatch != null) {
     const [, year, month, day] = dateMatch;
-    return `${year}${month}${day}`;
+    return `${compactYear(year)}${month}${day}`;
   }
 
   return item.puzzleId;

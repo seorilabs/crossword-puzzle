@@ -43,20 +43,36 @@ function getPublishedAtAlias(value: string) {
     return undefined;
   }
 
-  return `${valueByType.year}${valueByType.month}${valueByType.day}${valueByType.hour}`;
+  return `${valueByType.year.slice(-2)}${valueByType.month}${valueByType.day}${valueByType.hour}`;
+}
+
+function normalizePuzzleAlias(value: string) {
+  const dateTimeMatch = value.match(/^(\d{4})(\d{2})(\d{2})(\d{2})$/);
+  if (dateTimeMatch != null) {
+    const [, year, month, day, hour] = dateTimeMatch;
+    return `${year.slice(-2)}${month}${day}${hour}`;
+  }
+
+  const dateMatch = value.match(/^(\d{4})(\d{2})(\d{2})$/);
+  if (dateMatch != null) {
+    const [, year, month, day] = dateMatch;
+    return `${year.slice(-2)}${month}${day}`;
+  }
+
+  return value;
 }
 
 export function getPuzzlePackAlias(source: PuzzleAliasSource) {
   const explicitAlias = source.alias?.trim();
 
   if (explicitAlias != null && explicitAlias.length > 0) {
-    return explicitAlias;
+    return normalizePuzzleAlias(explicitAlias);
   }
 
   const slotMatch = source.slotId?.match(/^(\d{4})-(\d{2})-(\d{2})-h(\d{2})$/);
   if (slotMatch != null) {
     const [, year, month, day, hour] = slotMatch;
-    return `${year}${month}${day}${hour}`;
+    return `${year.slice(-2)}${month}${day}${hour}`;
   }
 
   if (source.publishedAt != null) {
@@ -69,13 +85,13 @@ export function getPuzzlePackAlias(source: PuzzleAliasSource) {
 
   const packIdMatch = source.packId?.match(/^pack-(\d{10})/);
   if (packIdMatch != null) {
-    return packIdMatch[1];
+    return normalizePuzzleAlias(packIdMatch[1]);
   }
 
   const dateMatch = source.date?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (dateMatch != null) {
     const [, year, month, day] = dateMatch;
-    return `${year}${month}${day}`;
+    return `${year.slice(-2)}${month}${day}`;
   }
 
   return source.puzzleId ?? "unknown";
