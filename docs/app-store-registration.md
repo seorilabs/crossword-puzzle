@@ -12,7 +12,7 @@ npm run check:app-store
 
 ## 현재 판정
 
-현재 App Store 등록 및 론칭 준비는 `blocked`다. `apps/mobile` iOS 프로젝트, unsigned Release build, GitHub Actions TestFlight 업로드 workflow, `v0.1.5` App Store Connect 업로드는 완료됐지만, 아직 운영 퍼즐 데이터 연결, App Store Connect 등록값 확정, 스크린샷, TestFlight build selection, App Store Connect 수동 gate가 완료되지 않았다.
+현재 App Store 등록 및 론칭 준비는 `blocked`다. `apps/mobile` iOS 프로젝트, unsigned Release build, GitHub Actions TestFlight 업로드 workflow, 로컬 build/archive/upload 스크립트, Fastlane deliver 기반 metadata/screenshot 업로드 스크립트, `v0.1.5` App Store Connect 업로드는 준비 또는 완료됐지만, 아직 운영 퍼즐 데이터 연결, App Store Connect 등록값 확정, 스크린샷, TestFlight build selection, App Store Connect 수동 gate가 완료되지 않았다.
 
 ```mermaid
 flowchart TD
@@ -24,6 +24,8 @@ flowchart TD
   Archive --> Upload["TestFlight/App Store upload"]
   Workflow[".github/workflows/deploy-app-store.yml"] --> Archive
   Workflow --> Upload
+  LocalBuild["scripts/app-store-local-build.sh"] --> Archive
+  LocalDeliver["scripts/app-store-local-deliver.sh"] --> Listing
 ```
 
 ## 현재 확정값
@@ -42,6 +44,8 @@ flowchart TD
 | CocoaPods                  | `bundle exec pod install` 완료                                        |
 | unsigned iOS Release build | `CODE_SIGNING_ALLOWED=NO build` 통과                                  |
 | TestFlight CI              | `.github/workflows/deploy-app-store.yml` 준비 및 `v0.1.5` 업로드 성공 |
+| 로컬 iOS build             | `npm run app-store:build:local` 준비                                  |
+| 로컬 metadata 등록         | `npm run app-store:deliver:upload` 준비                               |
 | App Store profile          | `AppStore Crossword Puzzle Profile` secret 등록                       |
 | 최신 업로드 빌드           | `v0.1.5` / build `1005` / run `27087313726`                           |
 
@@ -58,6 +62,34 @@ flowchart TD
 | DSA/trader         | EU 배포/조직 계정/수익화 정책 기준 확인 필요                                                            |
 | Review contact     | 이름/전화번호 확정 필요                                                                                 |
 | TestFlight         | build processing 확인, 내부 테스트 그룹/빌드 선택 필요                                                  |
+
+## 로컬 등록/빌드 명령
+
+GitHub Actions minutes가 소진되어도 로컬에서 같은 흐름을 실행할 수 있다.
+
+```bash
+npm run app-store:build:local
+npm run app-store:deliver:prepare
+```
+
+signed archive:
+
+```bash
+APPLE_TEAM_ID="HCDUXX4Z3X" \
+IOS_PROVISIONING_PROFILE_NAME="AppStore Crossword Puzzle Profile" \
+npm run app-store:build:local -- --archive --tag v1.0.0
+```
+
+metadata/screenshot upload:
+
+```bash
+APP_STORE_CONNECT_API_KEY_ID="$APP_STORE_CONNECT_API_KEY_ID" \
+APP_STORE_CONNECT_ISSUER_ID="$APP_STORE_CONNECT_ISSUER_ID" \
+APP_STORE_CONNECT_PRIVATE_KEY_BASE64="$APP_STORE_CONNECT_PRIVATE_KEY_BASE64" \
+npm run app-store:deliver:upload -- --metadata-only --use-suggested-urls
+```
+
+`--use-suggested-urls`는 `supportUrl`, `privacyPolicyUrl`, `marketingUrl` 후보를 실제 등록값으로 쓰기로 확정한 경우에만 사용한다.
 
 ## 2026-06-09 AdMob 콘솔 ID
 
@@ -230,16 +262,24 @@ flowchart TD
 가로세로,낱말,퍼즐,퀴즈,단어,한글,두뇌,매일,crossword,word
 ```
 
+최초 출시노트:
+
+```text
+가로세로 낱말 퍼즐을 처음 출시합니다.
+
+날짜별 한글 낱말 퍼즐, 힌트 기능, 기기 내 기록 저장을 사용할 수 있습니다.
+```
+
 상세 설명은 `app-store/app-store.config.json`의 `storeListing.description.ko-KR`를 기준으로 한다.
 
 ## 이미지
 
-| 용도               | 파일                                                                       | 상태                             |
-| ------------------ | -------------------------------------------------------------------------- | -------------------------------- |
-| Store icon         | `app-store/assets/icon-1024.png`                                           | 생성됨, 디자인 QA 필요           |
-| Xcode AppIcon      | `apps/mobile/ios/CrosswordPuzzleMobile/Images.xcassets/AppIcon.appiconset` | iPhone/iPad/marketing PNG 생성됨 |
-| iPhone screenshots | `app-store/screenshots/iphone/*.png`                                       | 실제 iOS 화면 캡처 필요          |
-| iPad screenshots   | `app-store/screenshots/ipad/*.png`                                         | 현재 iPad 지원값 `1,2`라 필요    |
+| 용도               | 파일                                                                       | 상태                               |
+| ------------------ | -------------------------------------------------------------------------- | ---------------------------------- |
+| Store icon         | `app-store/assets/icon-1024.png`                                           | 생성됨, 디자인 QA 필요             |
+| Xcode AppIcon      | `apps/mobile/ios/CrosswordPuzzleMobile/Images.xcassets/AppIcon.appiconset` | iPhone/iPad/marketing PNG 생성됨   |
+| iPhone screenshots | `app-store/screenshots/iphone/*.png`                                       | `iphone-1.png` 1장 존재, 추가 필요 |
+| iPad screenshots   | `app-store/screenshots/ipad/*.png`                                         | 현재 iPad 지원값 `1,2`라 필요      |
 
 ## 주의
 

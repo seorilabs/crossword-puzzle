@@ -2,7 +2,7 @@
 
 ## 현재 상태
 
-`crossword-puzzle`의 App Store 릴리스는 GitHub Actions 기반 TestFlight 업로드 체계를 갖춘 상태다. Apple signing secrets, App Store Connect API key, App Store Connect app shell/profile 준비 후 `.github/workflows/deploy-app-store.yml`에서 `v0.1.5` / build `1005` 업로드까지 성공했다.
+`crossword-puzzle`의 App Store 릴리스는 GitHub Actions 기반 TestFlight 업로드 체계와 로컬 build/archive/upload 체계를 함께 둔다. Apple signing secrets, App Store Connect API key, App Store Connect app shell/profile 준비 후 `.github/workflows/deploy-app-store.yml`에서 `v0.1.5` / build `1005` 업로드까지 성공했다. GitHub Actions minutes가 소진된 경우에는 아래 로컬 명령을 사용한다.
 
 ## 1. 로컬 점검
 
@@ -67,7 +67,43 @@ xcodebuild \
 
 ## 5. Archive
 
-로컬 archive는 signing 값이 확정된 뒤 실행한다. CI에서는 workflow가 같은 build setting을 주입한다.
+로컬 unsigned Release build는 다음 명령으로 확인한다.
+
+```bash
+npm run app-store:build:local
+```
+
+signed archive는 signing 값이 확정된 뒤 실행한다. `app-store/app-store.config.json`의 `ios.teamId`, `ios.provisioningProfileSpecifier`를 기본값으로 쓰며, 필요한 경우 환경변수로 덮어쓴다.
+
+```bash
+APPLE_TEAM_ID="HCDUXX4Z3X" \
+IOS_PROVISIONING_PROFILE_NAME="AppStore Crossword Puzzle Profile" \
+npm run app-store:build:local -- --archive --tag v1.0.0
+```
+
+로컬 파일 없이 GitHub secret과 같은 base64 값을 환경변수로 주입할 수도 있다.
+
+```bash
+APPLE_TEAM_ID="HCDUXX4Z3X" \
+APPLE_DISTRIBUTION_CERTIFICATE_BASE64="$APPLE_DISTRIBUTION_CERTIFICATE_BASE64" \
+APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD="$APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD" \
+APPLE_PROVISIONING_PROFILE_BASE64="$APPLE_PROVISIONING_PROFILE_BASE64" \
+APPLE_KEYCHAIN_PASSWORD="$APPLE_KEYCHAIN_PASSWORD" \
+npm run app-store:build:local -- --archive --tag v1.0.0
+```
+
+archive 후 App Store Connect/TestFlight 업로드까지 로컬에서 실행하려면 App Store Connect API key를 추가한다.
+
+```bash
+APPLE_TEAM_ID="HCDUXX4Z3X" \
+IOS_PROVISIONING_PROFILE_NAME="AppStore Crossword Puzzle Profile" \
+APP_STORE_CONNECT_API_KEY_ID="$APP_STORE_CONNECT_API_KEY_ID" \
+APP_STORE_CONNECT_ISSUER_ID="$APP_STORE_CONNECT_ISSUER_ID" \
+APP_STORE_CONNECT_PRIVATE_KEY_BASE64="$APP_STORE_CONNECT_PRIVATE_KEY_BASE64" \
+npm run app-store:build:local -- --export-upload --tag v1.0.0
+```
+
+수동 xcodebuild 참고 명령:
 
 ```bash
 xcodebuild \
@@ -105,17 +141,17 @@ Trigger:
 
 필수 GitHub Secrets/Variables:
 
-| 이름 | 용도 |
-| --- | --- |
-| `APPLE_TEAM_ID` | Team ID. secret 또는 repository variable |
-| `APPLE_DISTRIBUTION_CERTIFICATE_BASE64` | Apple Distribution `.p12` base64 |
-| `APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD` | `.p12` 비밀번호 |
-| `APPLE_PROVISIONING_PROFILE_BASE64` | App Store provisioning profile `.mobileprovision` base64 |
-| `APPLE_KEYCHAIN_PASSWORD` | CI 임시 keychain 비밀번호 |
-| `APP_STORE_CONNECT_API_KEY_ID` | App Store Connect API key ID |
-| `APP_STORE_CONNECT_ISSUER_ID` | App Store Connect issuer ID |
-| `APP_STORE_CONNECT_PRIVATE_KEY_BASE64` | `AuthKey_*.p8` base64 |
-| `FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64` | `GoogleService-Info.plist` base64 |
+| 이름                                            | 용도                                                     |
+| ----------------------------------------------- | -------------------------------------------------------- |
+| `APPLE_TEAM_ID`                                 | Team ID. secret 또는 repository variable                 |
+| `APPLE_DISTRIBUTION_CERTIFICATE_BASE64`         | Apple Distribution `.p12` base64                         |
+| `APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD`       | `.p12` 비밀번호                                          |
+| `APPLE_PROVISIONING_PROFILE_BASE64`             | App Store provisioning profile `.mobileprovision` base64 |
+| `APPLE_KEYCHAIN_PASSWORD`                       | CI 임시 keychain 비밀번호                                |
+| `APP_STORE_CONNECT_API_KEY_ID`                  | App Store Connect API key ID                             |
+| `APP_STORE_CONNECT_ISSUER_ID`                   | App Store Connect issuer ID                              |
+| `APP_STORE_CONNECT_PRIVATE_KEY_BASE64`          | `AuthKey_*.p8` base64                                    |
+| `FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64` | `GoogleService-Info.plist` base64                        |
 
 2026-06-07 확인 기준, `seorilabs/crossword-puzzle` GitHub repo에는 `app-store` environment가 생성되어 있고 TestFlight 업로드에 필요한 Apple signing/App Store Connect environment secrets와 `APPLE_TEAM_ID=HCDUXX4Z3X` variable이 등록되어 있다. `v0.1.5` / build `1005`는 GitHub Actions run `27087313726`, job `79945275484`에서 App Store Connect 업로드까지 성공했다. 남은 항목은 App Store Connect 정책 답변, 스크린샷, build processing 확인, TestFlight build selection이다.
 
@@ -129,7 +165,43 @@ Workflow는 profile을 복원한 뒤 다음을 검증한다.
 
 업로드는 `xcodebuild -exportArchive`와 `destination=upload`, `method=app-store-connect`로 수행한다. 업로드 성공은 App Store Connect에서 build processing이 시작됐다는 뜻이며, TestFlight 그룹 선택/빌드 선택/최종 심사 제출은 별도 gate다.
 
-## 7. Export/Upload 로컬 참고
+## 7. Metadata/Screenshot 로컬 등록
+
+App Store Connect 등록 텍스트와 screenshot은 Fastlane `deliver`로 로컬 업로드한다. GitHub Actions minutes를 쓰지 않는다.
+
+업로드 전 생성 산출물 확인:
+
+```bash
+npm run app-store:deliver:prepare
+```
+
+`supportUrl`, `privacyPolicyUrl`, `marketingUrl`이 아직 `확정 필요`인 상태에서는 기본 명령이 해당 URL 파일을 만들지 않는다. 후보 URL을 실제 등록값으로 쓰기로 확정한 경우에만 다음 옵션을 사용한다.
+
+```bash
+npm run app-store:deliver:prepare -- --use-suggested-urls
+```
+
+metadata만 로컬 업로드:
+
+```bash
+APP_STORE_CONNECT_API_KEY_ID="$APP_STORE_CONNECT_API_KEY_ID" \
+APP_STORE_CONNECT_ISSUER_ID="$APP_STORE_CONNECT_ISSUER_ID" \
+APP_STORE_CONNECT_PRIVATE_KEY_BASE64="$APP_STORE_CONNECT_PRIVATE_KEY_BASE64" \
+npm run app-store:deliver:upload -- --metadata-only --use-suggested-urls
+```
+
+screenshot만 로컬 업로드:
+
+```bash
+APP_STORE_CONNECT_API_KEY_ID="$APP_STORE_CONNECT_API_KEY_ID" \
+APP_STORE_CONNECT_ISSUER_ID="$APP_STORE_CONNECT_ISSUER_ID" \
+APP_STORE_CONNECT_PRIVATE_KEY_BASE64="$APP_STORE_CONNECT_PRIVATE_KEY_BASE64" \
+npm run app-store:deliver:upload -- --screenshots-only
+```
+
+현재 `app-store/screenshots/iphone/iphone-1.png`만 존재한다. `TARGETED_DEVICE_FAMILY=1,2`를 유지하면 iPad screenshot도 별도로 준비해야 한다.
+
+## 8. Export/Upload 로컬 참고
 
 `app-store/export-options.plist`는 signing 확정 후 만든다. Export method는 App Store Connect upload 기준으로 `app-store-connect`를 사용한다.
 
@@ -140,6 +212,6 @@ Workflow는 profile을 복원한 뒤 다음을 검증한다.
 - TestFlight internal testing setup
 - final Submit for Review
 
-## 8. 남은 blocker
+## 9. 남은 blocker
 
 남은 blocker는 `npm run check:app-store`와 `app-store/app-store.config.json.manualGates`를 기준으로 관리한다.

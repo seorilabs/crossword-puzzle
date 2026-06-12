@@ -1,5 +1,7 @@
 # Dependencies
 node_modules/
+apps/mobile/.bundle/
+apps/mobile/vendor/bundle/
 
 # Build outputs
 dist/
@@ -13,6 +15,8 @@ build/
 
 # Google Play signing/API local files
 play-store/secrets/
+app-store/.local/
+app-store/deliver/
 android/key.properties
 apps/mobile/android/key.properties
 apps/mobile/android/app/google-services.json
