@@ -12,10 +12,14 @@ const launchConfigPath = "src/adapters/launchConfig.ts";
 const webTelemetryPath = "src/adapters/telemetry.ts";
 const mobileFirebaseClientPath = "apps/mobile/firebaseClient.ts";
 const mobileTelemetryPath = "apps/mobile/telemetry.ts";
+const mobileAdsPath = "apps/mobile/mobileAds.ts";
+const mobileAppJsonPath = "apps/mobile/app.json";
 const androidBuildGradlePath = "apps/mobile/android/build.gradle";
 const androidAppBuildGradlePath = "apps/mobile/android/app/build.gradle";
-const androidManifestPath = "apps/mobile/android/app/src/main/AndroidManifest.xml";
-const appDelegatePath = "apps/mobile/ios/CrosswordPuzzleMobile/AppDelegate.swift";
+const androidManifestPath =
+  "apps/mobile/android/app/src/main/AndroidManifest.xml";
+const appDelegatePath =
+  "apps/mobile/ios/CrosswordPuzzleMobile/AppDelegate.swift";
 const mobilePodfilePath = "apps/mobile/ios/Podfile";
 const mobilePackagePath = "apps/mobile/package.json";
 const gitignorePath = ".gitignore";
@@ -25,6 +29,8 @@ const deployGooglePlayWorkflowPath = ".github/workflows/deploy-google-play.yml";
 const deployAppStoreWorkflowPath = ".github/workflows/deploy-app-store.yml";
 const agentsPath = "AGENTS.md";
 const marketParityDocPath = "docs/market-parity.md";
+const playStoreConfigPath = "play-store/google-play.config.json";
+const appStoreConfigPath = "app-store/app-store.config.json";
 
 const sharedPolicyExports = [
   "DAILY_ATTEMPT_LIMIT",
@@ -111,8 +117,29 @@ function assertNotIncludes(content, needle, label) {
   }
 }
 
+function assertMatches(content, pattern, label, description) {
+  if (!pattern.test(content)) {
+    fail(`${label}: missing ${description}`);
+  }
+}
+
+function assertNotMatches(content, pattern, label, description) {
+  if (pattern.test(content)) {
+    fail(`${label}: must not include ${description}`);
+  }
+}
+
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function removedPermissionPattern(permission) {
+  return new RegExp(
+    `<uses-permission\\b(?=[^>]*${escapeRegExp(
+      permission,
+    )})(?=[^>]*tools:node="remove")[^>]*/>`,
+    "s",
+  );
 }
 
 function assertNamedPolicyExport(content, name, path) {
@@ -125,9 +152,7 @@ function assertNamedPolicyExport(content, name, path) {
 
 function extractNamedImports(content, importPath) {
   const importPattern = new RegExp(
-    `import\\s*\\{([^}]*)\\}\\s*from\\s*["']${escapeRegExp(
-      importPath,
-    )}["']`,
+    `import\\s*\\{([^}]*)\\}\\s*from\\s*["']${escapeRegExp(importPath)}["']`,
     "g",
   );
   const importedNames = new Set();
@@ -192,6 +217,8 @@ const launchConfig = read(launchConfigPath);
 const webTelemetry = read(webTelemetryPath);
 const mobileFirebaseClient = read(mobileFirebaseClientPath);
 const mobileTelemetry = read(mobileTelemetryPath);
+const mobileAds = read(mobileAdsPath);
+const mobileAppJson = read(mobileAppJsonPath);
 const androidBuildGradle = read(androidBuildGradlePath);
 const androidAppBuildGradle = read(androidAppBuildGradlePath);
 const androidManifest = read(androidManifestPath);
@@ -205,6 +232,8 @@ const deployGooglePlayWorkflow = read(deployGooglePlayWorkflowPath);
 const deployAppStoreWorkflow = read(deployAppStoreWorkflowPath);
 const agents = read(agentsPath);
 const marketParityDoc = read(marketParityDocPath);
+const playStoreConfig = read(playStoreConfigPath);
+const appStoreConfig = read(appStoreConfigPath);
 
 for (const name of sharedPolicyExports) {
   assertNamedPolicyExport(sharedPolicy, name, sharedPolicyPath);
@@ -215,11 +244,7 @@ for (const name of sharedLaunchConfigExports) {
 }
 
 assertIncludes(sharedIndex, 'export * from "./uiPolicy";', sharedIndexPath);
-assertIncludes(
-  sharedIndex,
-  'export * from "./launchConfig";',
-  sharedIndexPath,
-);
+assertIncludes(sharedIndex, 'export * from "./launchConfig";', sharedIndexPath);
 assertIncludes(
   sharedIndex,
   'export * from "./platformContracts";',
@@ -296,6 +321,34 @@ assertIncludes(
   mobilePackagePath,
 );
 assertIncludes(
+  mobilePackage,
+  '"react-native-google-mobile-ads":',
+  mobilePackagePath,
+);
+assertIncludes(
+  mobileAppJson,
+  '"react-native-google-mobile-ads"',
+  mobileAppJsonPath,
+);
+assertIncludes(
+  mobileAppJson,
+  '"android_app_id": "ca-app-pub-2444587584524186~5456766418"',
+  mobileAppJsonPath,
+);
+assertIncludes(
+  mobileAppJson,
+  '"ios_app_id": "ca-app-pub-2444587584524186~4715406099"',
+  mobileAppJsonPath,
+);
+assertIncludes(mobileAppJson, '"sk_ad_network_items":', mobileAppJsonPath);
+assertIncludes(mobileAppJson, '"cstr6suwn9.skadnetwork"', mobileAppJsonPath);
+assertIncludes(mobileAds, "initializeMobileAds", mobileAdsPath);
+assertIncludes(mobileAds, "showRewardedAd", mobileAdsPath);
+assertIncludes(mobileAds, "showInterstitialAd", mobileAdsPath);
+assertIncludes(mobileAds, "requestNonPersonalizedAdsOnly: true", mobileAdsPath);
+assertIncludes(mobileApp, "showRewardedAd", mobileAppPath);
+assertIncludes(mobileApp, "showInterstitialAd", mobileAppPath);
+assertIncludes(
   androidBuildGradle,
   'classpath("com.google.gms:google-services:4.4.4")',
   androidBuildGradlePath,
@@ -315,17 +368,40 @@ assertIncludes(
   'android:name="com.google.android.gms.permission.AD_ID"',
   androidManifestPath,
 );
+assertNotMatches(
+  androidManifest,
+  removedPermissionPattern("com.google.android.gms.permission.AD_ID"),
+  androidManifestPath,
+  "AD_ID permission removal",
+);
+assertMatches(
+  androidManifest,
+  removedPermissionPattern("android.permission.ACCESS_ADSERVICES_ATTRIBUTION"),
+  androidManifestPath,
+  "ACCESS_ADSERVICES_ATTRIBUTION permission removal",
+);
+assertMatches(
+  androidManifest,
+  removedPermissionPattern("android.permission.ACCESS_ADSERVICES_AD_ID"),
+  androidManifestPath,
+  "ACCESS_ADSERVICES_AD_ID permission removal",
+);
+assertMatches(
+  androidManifest,
+  removedPermissionPattern("android.permission.ACCESS_ADSERVICES_TOPICS"),
+  androidManifestPath,
+  "ACCESS_ADSERVICES_TOPICS permission removal",
+);
 assertIncludes(
   androidManifest,
-  'android:name="android.permission.ACCESS_ADSERVICES_ATTRIBUTION"',
+  'android:name="com.google.android.gms.ads.APPLICATION_ID"',
   androidManifestPath,
 );
 assertIncludes(
   androidManifest,
-  'android:name="android.permission.ACCESS_ADSERVICES_AD_ID"',
+  "ca-app-pub-2444587584524186~5456766418",
   androidManifestPath,
 );
-assertIncludes(androidManifest, 'tools:node="remove"', androidManifestPath);
 assertIncludes(appDelegate, "import Firebase", appDelegatePath);
 assertIncludes(appDelegate, "FirebaseApp.configure()", appDelegatePath);
 assertIncludes(
@@ -336,6 +412,11 @@ assertIncludes(
 assertIncludes(
   mobilePodfile,
   "$RNFirebaseAnalyticsWithoutAdIdSupport = true",
+  mobilePodfilePath,
+);
+assertIncludes(
+  mobilePodfile,
+  "$RNGoogleMobileAdsAsStaticFramework = true",
   mobilePodfilePath,
 );
 assertIncludes(mobilePodfile, "ENV['RCT_USE_RN_DEP'] = '0'", mobilePodfilePath);
@@ -388,10 +469,23 @@ assertIncludes(marketParityDoc, "AppsInToss", marketParityDocPath);
 assertIncludes(marketParityDoc, "Google Play", marketParityDocPath);
 assertIncludes(marketParityDoc, "App Store", marketParityDocPath);
 assertIncludes(marketParityDoc, "packages/crossword-core", marketParityDocPath);
+assertIncludes(playStoreConfig, '"ads": "yes"', playStoreConfigPath);
+assertIncludes(
+  playStoreConfig,
+  "react-native-google-mobile-ads",
+  playStoreConfigPath,
+);
+assertIncludes(appStoreConfig, '"ads": "yes"', appStoreConfigPath);
+assertIncludes(
+  appStoreConfig,
+  "react-native-google-mobile-ads",
+  appStoreConfigPath,
+);
 
 const deployAllResolvedTagUsages =
-  deployAllWorkflow.match(/release_tag:\s*\${{ needs\.resolve\.outputs\.tag }}/g)
-    ?.length ?? 0;
+  deployAllWorkflow.match(
+    /release_tag:\s*\${{ needs\.resolve\.outputs\.tag }}/g,
+  )?.length ?? 0;
 
 if (deployAllResolvedTagUsages < 3) {
   fail(

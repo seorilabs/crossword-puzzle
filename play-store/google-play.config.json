@@ -17,14 +17,14 @@
     }
   },
   "adMob": {
-    "status": "console app and ad units created; native SDK adapter integration pending",
+    "status": "native SDK adapter integrated in apps/mobile; QA with Google test ad units before production rollout",
     "appId": "ca-app-pub-2444587584524186~5456766418",
     "adUnits": {
       "rewardedHint": "ca-app-pub-2444587584524186/7533141122",
       "interstitialResult": "ca-app-pub-2444587584524186/4930691809",
       "rewardedBonusPuzzle": "ca-app-pub-2444587584524186/2299285882"
     },
-    "productionPolicy": "Use Google test ad units in development and switch to these IDs only for release builds after adapter QA."
+    "productionPolicy": "Development builds use Google test ad units through react-native-google-mobile-ads; release builds use these production IDs after adapter QA. Personalized ads stay off for the first launch; requests set requestNonPersonalizedAdsOnly=true."
   },
   "storeListing": {
     "appName": {
@@ -41,7 +41,7 @@
     "dataSafety": "확정 필요",
     "contentRating": "확정 필요",
     "targetAudience": "확정 필요",
-    "ads": "no",
+    "ads": "yes",
     "koreaDistribution": "yes",
     "koreaGameRating": "확정 필요"
   },

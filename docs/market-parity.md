@@ -22,22 +22,23 @@ flowchart TD
 
 ## Source Of Truth
 
-| 영역 | Source of truth | 시장별 구현 |
-| --- | --- | --- |
-| 퍼즐 타입/검증 | `packages/crossword-core/src/types.ts`, `puzzle.ts` | 없음 |
-| 공개/보너스/힌트 정책 | `packages/crossword-core/src/uiPolicy.ts` | 화면 렌더링만 분리 |
-| Remote Config 키/기본값 | `packages/crossword-core/src/launchConfig.ts` | AIT는 Firebase Web SDK, mobile은 RNFirebase |
-| telemetry 파라미터 정리 | `packages/crossword-core/src/platformContracts.ts` | AIT는 AppsInToss Analytics + Firebase Web, mobile은 RNFirebase Analytics |
-| AIT adapter | `src/adapters` | AppsInToss SDK, Web Firebase, localStorage |
-| Android/iOS adapter | `apps/mobile` | RNFirebase, AsyncStorage, native projects |
+| 영역                    | Source of truth                                             | 시장별 구현                                                              |
+| ----------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------ |
+| 퍼즐 타입/검증          | `packages/crossword-core/src/types.ts`, `puzzle.ts`         | 없음                                                                     |
+| 공개/보너스/힌트 정책   | `packages/crossword-core/src/uiPolicy.ts`                   | 화면 렌더링만 분리                                                       |
+| Remote Config 키/기본값 | `packages/crossword-core/src/launchConfig.ts`               | AIT는 Firebase Web SDK, mobile은 RNFirebase                              |
+| telemetry 파라미터 정리 | `packages/crossword-core/src/platformContracts.ts`          | AIT는 AppsInToss Analytics + Firebase Web, mobile은 RNFirebase Analytics |
+| 광고 adapter            | `src/adapters/appsInTossAds.ts`, `apps/mobile/mobileAds.ts` | AIT는 AppsInToss 광고, mobile은 AdMob                                    |
+| AIT adapter             | `src/adapters`                                              | AppsInToss SDK, Web Firebase, localStorage                               |
+| Android/iOS adapter     | `apps/mobile`                                               | RNFirebase, AsyncStorage, native projects                                |
 
 ## Firebase
 
-| 시장 | Firebase 방식 | 설정 파일/secret |
-| --- | --- | --- |
-| AppsInToss | Firebase Web SDK optional init | `VITE_FIREBASE_*` GitHub Variables |
-| Google Play | RNFirebase native Android | `FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64` repo secret |
-| App Store | RNFirebase native iOS | `FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64` `app-store` environment secret |
+| 시장        | Firebase 방식                  | 설정 파일/secret                                                               |
+| ----------- | ------------------------------ | ------------------------------------------------------------------------------ |
+| AppsInToss  | Firebase Web SDK optional init | `VITE_FIREBASE_*` GitHub Variables                                             |
+| Google Play | RNFirebase native Android      | `FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64` repo secret                     |
+| App Store   | RNFirebase native iOS          | `FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64` `app-store` environment secret |
 
 `google-services.json`과 `GoogleService-Info.plist`는 커밋하지 않는다. CI는 `scripts/restore-mobile-firebase-config.mjs`로 복구하고, local native build도 같은 스크립트를 사용한다.
 
