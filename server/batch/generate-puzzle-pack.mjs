@@ -162,9 +162,11 @@ function makeSlotInfo(date, timeZone, intervalHours) {
   const parts = getZonedParts(date, timeZone);
   const slotHour = Math.floor(parts.hour / intervalHours) * intervalHours;
   const dateKey = `${parts.year}-${parts.month}-${parts.day}`;
+  const alias = `${parts.year}${parts.month}${parts.day}${pad2(slotHour)}`;
   const slotId = `${dateKey}-h${pad2(slotHour)}`;
 
   return {
+    alias,
     date: dateKey,
     publishedAt: date.toISOString(),
     slotId,
@@ -291,6 +293,7 @@ function serializeBoard(
   });
 
   return {
+    alias: slotInfo.alias,
     puzzleId: packId,
     date: slotInfo.date,
     difficulty: "normal",
@@ -451,6 +454,66 @@ function getManifestIdentityKey(item) {
   return item.slotId ?? item.puzzleId;
 }
 
+function getPublishedAtAlias(publishedAt) {
+  if (typeof publishedAt !== "string") {
+    return undefined;
+  }
+
+  const date = new Date(publishedAt);
+  if (Number.isNaN(date.getTime())) {
+    return undefined;
+  }
+
+  const parts = getZonedParts(date, "Asia/Seoul");
+  return `${parts.year}${parts.month}${parts.day}${pad2(parts.hour)}`;
+}
+
+function getManifestAlias(item) {
+  const explicitAlias =
+    typeof item.alias === "string" ? item.alias.trim() : undefined;
+
+  if (explicitAlias != null && explicitAlias.length > 0) {
+    return explicitAlias;
+  }
+
+  const slotMatch =
+    typeof item.slotId === "string"
+      ? item.slotId.match(/^(\d{4})-(\d{2})-(\d{2})-h(\d{2})$/)
+      : null;
+  if (slotMatch != null) {
+    const [, year, month, day, hour] = slotMatch;
+    return `${year}${month}${day}${hour}`;
+  }
+
+  const publishedAtAlias = getPublishedAtAlias(item.publishedAt);
+  if (publishedAtAlias != null) {
+    return publishedAtAlias;
+  }
+
+  const packIdMatch =
+    typeof item.packId === "string"
+      ? item.packId.match(/^pack-(\d{10})/)
+      : null;
+  if (packIdMatch != null) {
+    return packIdMatch[1];
+  }
+
+  const dateMatch =
+    typeof item.date === "string"
+      ? item.date.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+      : null;
+  if (dateMatch != null) {
+    const [, year, month, day] = dateMatch;
+    return `${year}${month}${day}`;
+  }
+
+  return item.puzzleId;
+}
+
+function withManifestAlias(item) {
+  return { ...item, alias: getManifestAlias(item) };
+}
+
 function mergeManifestPuzzles(existingPuzzles, newPuzzles, keepPuzzles) {
   const byIdentity = new Map();
   const sortedExistingPuzzles = [...existingPuzzles].sort((left, right) =>
@@ -461,12 +524,12 @@ function mergeManifestPuzzles(existingPuzzles, newPuzzles, keepPuzzles) {
     const key = getManifestIdentityKey(item);
 
     if (!byIdentity.has(key)) {
-      byIdentity.set(key, item);
+      byIdentity.set(key, withManifestAlias(item));
     }
   }
 
   for (const item of newPuzzles) {
-    byIdentity.set(getManifestIdentityKey(item), item);
+    byIdentity.set(getManifestIdentityKey(item), withManifestAlias(item));
   }
 
   return [...byIdentity.values()]
@@ -624,6 +687,7 @@ async function run() {
 
     if (board == null) {
       const failedReport = {
+        alias: slotInfo.alias,
         date: slotInfo.date,
         packId,
         slotId: slotInfo.slotId,
@@ -655,6 +719,7 @@ async function run() {
       `[${slotInfo.slotId}] wrote ${filename} dayElapsed=${((Date.now() - dayStartTime) / 1000).toFixed(1)}s`,
     );
     puzzles.push({
+      alias: puzzle.alias,
       date: slotInfo.date,
       packId,
       publishedAt: slotInfo.publishedAt,
@@ -665,6 +730,7 @@ async function run() {
       slotId: slotInfo.slotId,
     });
     generationReport.push({
+      alias: puzzle.alias,
       date: slotInfo.date,
       packId,
       publishedAt: slotInfo.publishedAt,

@@ -6,8 +6,84 @@ export const DEFAULT_VISIBLE_PUZZLE_COUNT = 7;
 export const PUZZLE_GENERATION_INTERVAL_HOURS = 2;
 export const PUZZLE_KEEP_COUNT = 84;
 
+type PuzzleAliasSource = {
+  alias?: string;
+  date?: string;
+  packId?: string;
+  publishedAt?: string;
+  puzzleId?: string;
+  slotId?: string;
+};
+
+function getPublishedAtAlias(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return undefined;
+  }
+
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    day: "2-digit",
+    hour: "2-digit",
+    hour12: false,
+    month: "2-digit",
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+  }).formatToParts(date);
+  const valueByType = Object.fromEntries(
+    parts.map((part) => [part.type, part.value]),
+  );
+
+  if (
+    valueByType.year == null ||
+    valueByType.month == null ||
+    valueByType.day == null ||
+    valueByType.hour == null
+  ) {
+    return undefined;
+  }
+
+  return `${valueByType.year}${valueByType.month}${valueByType.day}${valueByType.hour}`;
+}
+
+export function getPuzzlePackAlias(source: PuzzleAliasSource) {
+  const explicitAlias = source.alias?.trim();
+
+  if (explicitAlias != null && explicitAlias.length > 0) {
+    return explicitAlias;
+  }
+
+  const slotMatch = source.slotId?.match(/^(\d{4})-(\d{2})-(\d{2})-h(\d{2})$/);
+  if (slotMatch != null) {
+    const [, year, month, day, hour] = slotMatch;
+    return `${year}${month}${day}${hour}`;
+  }
+
+  if (source.publishedAt != null) {
+    const publishedAlias = getPublishedAtAlias(source.publishedAt);
+
+    if (publishedAlias != null) {
+      return publishedAlias;
+    }
+  }
+
+  const packIdMatch = source.packId?.match(/^pack-(\d{10})/);
+  if (packIdMatch != null) {
+    return packIdMatch[1];
+  }
+
+  const dateMatch = source.date?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateMatch != null) {
+    const [, year, month, day] = dateMatch;
+    return `${year}${month}${day}`;
+  }
+
+  return source.puzzleId ?? "unknown";
+}
+
 export function createPuzzleSummary(puzzle: Puzzle): PuzzleManifestItem {
   return {
+    alias: puzzle.alias ?? getPuzzlePackAlias(puzzle),
     date: puzzle.date,
     difficulty: puzzle.difficulty,
     metrics: puzzle.metrics,
@@ -54,9 +130,7 @@ export function sortPuzzleSummariesAscending(
   );
 }
 
-export function sortPuzzleSummariesByRecency(
-  summaries: PuzzleManifestItem[],
-) {
+export function sortPuzzleSummariesByRecency(summaries: PuzzleManifestItem[]) {
   return [...summaries].sort((left, right) =>
     getPuzzleStableSortKey(right).localeCompare(getPuzzleStableSortKey(left)),
   );

@@ -57,12 +57,7 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            apps/mobile/package-lock.json
-
-      - name: Install web dependencies
-        run: npm ci
+          cache-dependency-path: apps/mobile/package-lock.json
 
       - name: Install mobile dependencies
         run: npm ci --prefix apps/mobile

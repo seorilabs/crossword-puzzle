@@ -19,6 +19,7 @@ import {
   getEntryAnswerValue,
   getEntryCells,
   getInitialEntryId,
+  getPuzzlePackAlias,
   getRemainingAttempts,
   getTodayDateKey,
   sortPuzzleSummariesByRecency,
@@ -205,6 +206,7 @@ function getPuzzleTelemetryParams(puzzle: Puzzle) {
     grid_size: puzzle.gridSize,
     pack_id: puzzle.packId,
     published_at: puzzle.publishedAt,
+    puzzle_alias: getPuzzlePackAlias(puzzle),
     puzzle_id: puzzle.puzzleId,
     slot_id: puzzle.slotId,
     word_count: puzzle.entries.length,
@@ -392,6 +394,10 @@ function getPuzzleSummaryFromArchive(
   return record == null ? undefined : createPuzzleSummary(record.puzzle);
 }
 
+function formatPuzzleAliasLabel(summary: PuzzleManifestItem) {
+  return `#${getPuzzlePackAlias(summary)}`;
+}
+
 function createDateCardState(
   mission: DailyMissionState,
   progress: SavedProgress,
@@ -468,7 +474,7 @@ function getPendingAnswerCellValues(
 
         return cell == null
           ? null
-          : [getCellKey(cell.row, cell.col), letter] as const;
+          : ([getCellKey(cell.row, cell.col), letter] as const);
       })
       .filter((cellEntry): cellEntry is readonly [string, string] => {
         return cellEntry != null;
@@ -1004,7 +1010,10 @@ function App() {
           .map(
             (unlock) =>
               findPuzzleSummaryById(puzzleSummaries, unlock.puzzleId) ??
-              getPuzzleSummaryFromArchive(puzzleArchiveRecords, unlock.puzzleId),
+              getPuzzleSummaryFromArchive(
+                puzzleArchiveRecords,
+                unlock.puzzleId,
+              ),
           )
           .filter((summary): summary is PuzzleManifestItem => summary != null),
       ),
@@ -1025,12 +1034,7 @@ function App() {
         puzzleSummaries,
         today: todayKey,
       }),
-    [
-      completedOrUnlockedPuzzleIds,
-      dailyFreeSummary,
-      puzzleSummaries,
-      todayKey,
-    ],
+    [completedOrUnlockedPuzzleIds, dailyFreeSummary, puzzleSummaries, todayKey],
   );
   const selectedPuzzleSummary = useMemo(
     () =>
@@ -1633,9 +1637,8 @@ function App() {
         unlockedAt: new Date().toISOString(),
       };
 
-      const nextUnlocks = await bonusPuzzleUnlockRepository.saveUnlock(
-        nextUnlock,
-      );
+      const nextUnlocks =
+        await bonusPuzzleUnlockRepository.saveUnlock(nextUnlock);
       setBonusPuzzleUnlocks(nextUnlocks);
       setBonusNotice("보너스 퍼즐이 열렸어요.");
       telemetry.impression("rewarded_bonus_puzzle_ad_reward", {
@@ -2091,10 +2094,18 @@ function HomeScreen({
     completionStatsByPuzzleId[puzzle.puzzleId],
     completionStatsMinDisplayCount,
   );
+  const selectedPuzzleSummary =
+    findPuzzleSummaryById(puzzleSummaries, selectedPuzzleId) ??
+    createPuzzleSummary(puzzle);
+  const selectedPuzzleAlias = formatPuzzleAliasLabel(selectedPuzzleSummary);
   const isPrimaryDisabled =
     isLoadingPuzzlePack ||
     (!isCompleted && !hasStarted && remainingAttempts === 0);
-  const missionLeadLabel = isLoadingPuzzlePack ? "원격 퍼즐팩" : "선택한 미션";
+  const missionLeadLabel = isLoadingPuzzlePack
+    ? "원격 퍼즐팩"
+    : loadState === "remote"
+      ? `퍼즐팩 ${selectedPuzzleAlias}`
+      : "선택한 미션";
   const missionHeadline = isLoadingPuzzlePack
     ? "불러오는 중"
     : `${puzzle.entries.length}개 낱말`;
@@ -2118,7 +2129,11 @@ function HomeScreen({
     <>
       <Top
         title="가로세로 낱말 퍼즐"
-        subtitleBottom={`${formatMissionDateLabel(mission.date, loadState)} · 🔥 5일째 도전 중`}
+        subtitleBottom={`${
+          loadState === "remote"
+            ? `${selectedPuzzleAlias} · ${formatGameHeaderDate(mission.date)}`
+            : formatMissionDateLabel(mission.date, loadState)
+        } · 🔥 5일째 도전 중`}
       />
 
       <DateCarousel
@@ -2394,12 +2409,13 @@ function getBonusPuzzleMeta(summary?: PuzzleManifestItem) {
     return "";
   }
 
+  const aliasLabel = formatPuzzleAliasLabel(summary);
   const slotLabel = formatPuzzleCardSlot(summary);
   const wordCountLabel = `${summary.metrics?.wordCount ?? "-"}개 낱말`;
 
   return slotLabel === ""
-    ? wordCountLabel
-    : `${slotLabel} 도착 · ${wordCountLabel}`;
+    ? `${aliasLabel} · ${wordCountLabel}`
+    : `${aliasLabel} · ${slotLabel} 도착 · ${wordCountLabel}`;
 }
 
 function BonusPuzzlePanel({ onAction, state }: BonusPuzzlePanelProps) {
@@ -2713,10 +2729,12 @@ function DateCarousel({
           );
           const eyebrowLabel = isFallbackPack
             ? "기기저장"
-            : formatDateCardWeekday(summary.date);
+            : `${formatDateCardWeekday(summary.date)} ${formatDateCardDay(
+                summary.date,
+              )}`;
           const titleLabel = isFallbackPack
             ? formatFallbackCardTitle(index, puzzleSummaries.length)
-            : formatDateCardDay(summary.date);
+            : formatPuzzleAliasLabel(summary);
           const metaLabel =
             !isFallbackPack && completionStatsLabel !== ""
               ? slotLabel === ""
@@ -2738,7 +2756,9 @@ function DateCarousel({
               aria-label={
                 isFallbackPack
                   ? `${eyebrowLabel} ${titleLabel} ${statusLabel}`
-                  : `${formatGameHeaderDate(summary.date)} ${slotLabel} ${statusLabel}`
+                  : `${formatPuzzleAliasLabel(summary)} ${formatGameHeaderDate(
+                      summary.date,
+                    )} ${slotLabel} ${statusLabel}`
               }
               aria-pressed={isSelected}
               onClick={() => void selectPuzzle(summary.puzzleId)}
@@ -2901,6 +2921,13 @@ function TodayScreen({
   // A finished puzzle is shown read-only so the saved answers stay intact while
   // the player reviews the completed board.
   const isReviewMode = isCompleted;
+  const selectedPuzzleSummary =
+    findPuzzleSummaryById(puzzleSummaries, selectedPuzzleId) ??
+    createPuzzleSummary(puzzle);
+  const selectedPuzzleLabel =
+    loadState === "remote"
+      ? formatPuzzleAliasLabel(selectedPuzzleSummary)
+      : formatPuzzleHeaderLabel(puzzle.date, loadState);
   const showCompletionCelebration = completionCelebrationId === puzzle.puzzleId;
   const selectedEntryCells = useMemo(
     () => (selectedEntry == null ? [] : getEntryCells(selectedEntry)),
@@ -2924,7 +2951,11 @@ function TodayScreen({
     () =>
       selectedEntry == null
         ? {}
-        : getPendingAnswerCellValues(selectedEntry, inputValue, selectedCellKey),
+        : getPendingAnswerCellValues(
+            selectedEntry,
+            inputValue,
+            selectedCellKey,
+          ),
     [inputValue, selectedCellKey, selectedEntry],
   );
   const selectedCellEntries = useMemo(() => {
@@ -2959,7 +2990,8 @@ function TodayScreen({
         isActive: key === activeCellKey,
         isLocked: isCellLocked(puzzle, cellValues, key),
         isPending: pending != null,
-        isWrong: pending == null && committed != null && committed !== answerLetter,
+        isWrong:
+          pending == null && committed != null && committed !== answerLetter,
         key,
         value: pending ?? committed ?? "",
       };
@@ -3044,12 +3076,7 @@ function TodayScreen({
     isComposingRef.current = false;
     setInputValue("");
     setIsComposing(false);
-  }, [
-    activeCellKey,
-    answerInputResetKey,
-    clearCommitTimer,
-    selectedEntry?.id,
-  ]);
+  }, [activeCellKey, answerInputResetKey, clearCommitTimer, selectedEntry?.id]);
 
   useEffect(() => () => clearCommitTimer(), [clearCommitTimer]);
 
@@ -3079,10 +3106,7 @@ function TodayScreen({
     const remainingCellCount =
       selectedEntryCells.length -
       getEntryCellIndex(selectedEntry, startCellKey);
-    const nextLetters = getAnswerCommitLetters(
-      value,
-      remainingCellCount,
-    );
+    const nextLetters = getAnswerCommitLetters(value, remainingCellCount);
 
     if (nextLetters.length > 0) {
       applyAnswerSegment(selectedEntry, nextLetters.join(""), startCellKey);
@@ -3190,7 +3214,10 @@ function TodayScreen({
       Math.min(selectedEntryCellKeys.length - 1, selectedIndex + delta),
     );
 
-    selectEntry(selectedEntry, selectedEntryCellKeys[nextIndex] ?? activeCellKey);
+    selectEntry(
+      selectedEntry,
+      selectedEntryCellKeys[nextIndex] ?? activeCellKey,
+    );
     focusNativeInput();
   }
 
@@ -3241,8 +3268,8 @@ function TodayScreen({
         title={`${completedEntries.length}/${puzzle.entries.length} 낱말`}
         eyebrow={
           isReviewMode
-            ? "다 푼 퍼즐"
-            : formatPuzzleHeaderLabel(puzzle.date, loadState)
+            ? `다 푼 퍼즐 · ${selectedPuzzleLabel}`
+            : selectedPuzzleLabel
         }
         onBack={() => navigate("home")}
         right={
@@ -3760,11 +3787,18 @@ function ResultScreen({
   selectPuzzle,
 }: ResultScreenProps) {
   const isComplete = completedEntries.length === puzzle.entries.length;
+  const selectedPuzzleSummary =
+    findPuzzleSummaryById(puzzleSummaries, selectedPuzzleId) ??
+    createPuzzleSummary(puzzle);
+  const selectedPuzzleLabel =
+    loadState === "remote"
+      ? formatPuzzleAliasLabel(selectedPuzzleSummary)
+      : formatMissionDateLabel(mission.date, loadState);
 
   return (
     <>
       <AppHeader
-        eyebrow={`${formatMissionDateLabel(mission.date, loadState)} · 도전 ${mission.attemptsUsed}/${mission.maxAttempts}`}
+        eyebrow={`${selectedPuzzleLabel} · 도전 ${mission.attemptsUsed}/${mission.maxAttempts}`}
         title="미션 결과"
         onBack={() => navigate("home")}
       />
@@ -3854,6 +3888,14 @@ function HistoryScreen({
   selectPuzzle,
   startOrResumeMission,
 }: HistoryScreenProps) {
+  const selectedPuzzleSummary =
+    findPuzzleSummaryById(puzzleSummaries, selectedPuzzleId) ??
+    createPuzzleSummary(puzzle);
+  const selectedPuzzleLabel =
+    loadState === "remote"
+      ? formatPuzzleAliasLabel(selectedPuzzleSummary)
+      : formatMissionDateLabel(mission.date, loadState);
+
   function openArchiveRecord(record: PuzzleArchiveRecord) {
     const state = dateCardStates[record.puzzleId];
 
@@ -3864,7 +3906,7 @@ function HistoryScreen({
   return (
     <>
       <AppHeader
-        eyebrow={`${formatMissionDateLabel(mission.date, loadState)} · ${isCompleted ? "완료" : `${progressPercent}%`}`}
+        eyebrow={`${selectedPuzzleLabel} · ${isCompleted ? "완료" : `${progressPercent}%`}`}
         title="기록"
         onBack={() => navigate("home")}
       />
@@ -3893,7 +3935,10 @@ function HistoryScreen({
                 type="button"
                 onClick={() => openArchiveRecord(record)}
               >
-                <span>{record.puzzle.date} · 기기 저장 사본</span>
+                <span>
+                  {formatPuzzleAliasLabel(createPuzzleSummary(record.puzzle))} ·{" "}
+                  기기 저장 사본
+                </span>
                 <strong>{isRecordCompleted ? "완료" : "진행 중"}</strong>
                 <em>
                   {record.puzzle.entries.length}개 단어 ·{" "}
@@ -3910,7 +3955,7 @@ function HistoryScreen({
               isCompleted ? () => navigate("result") : startOrResumeMission
             }
           >
-            <span>{formatMissionDateLabel(mission.date, loadState)}</span>
+            <span>{selectedPuzzleLabel}</span>
             <strong>{isCompleted ? "완료" : "진행 중"}</strong>
             <em>
               {completedEntries.length}/{puzzle.entries.length} 단어 · 힌트{" "}
@@ -4227,7 +4272,7 @@ function PuzzleBoard({
           const committedValue = cellValues[key];
           const pendingValue = pendingCellValues[key] ?? "";
           const displayValue =
-            pendingValue !== "" ? pendingValue : committedValue ?? "";
+            pendingValue !== "" ? pendingValue : (committedValue ?? "");
           const isFilled = committedValue != null;
           const isPending = pendingValue !== "";
           const isComplete = completedCellKeys.has(key);

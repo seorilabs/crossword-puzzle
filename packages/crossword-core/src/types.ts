@@ -53,6 +53,7 @@ export type PuzzleMetrics = {
 };
 
 export type Puzzle = {
+  alias?: string;
   puzzleId: string;
   date: string;
   difficulty: "easy" | "normal" | "hard";
@@ -97,6 +98,7 @@ export type PuzzleSlotValidation = {
 };
 
 export type PuzzleManifestItem = {
+  alias?: string;
   date: string;
   difficulty?: Puzzle["difficulty"];
   metrics?: PuzzleMetrics;

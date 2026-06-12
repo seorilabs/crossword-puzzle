@@ -41,6 +41,7 @@ import {
   getEntryAnswerValue,
   getEntryCells,
   getInitialEntryId,
+  getPuzzlePackAlias,
   getRemainingAttempts,
   getTodayDateKey,
   sortPuzzleSummariesByRecency,
@@ -283,15 +284,22 @@ function getPuzzleTelemetryParams(
   puzzle: Puzzle,
   summary?: PuzzleManifestItem,
 ) {
+  const aliasSource = summary ?? puzzle;
+
   return {
     difficulty: summary?.difficulty ?? puzzle.difficulty,
     grid_size: puzzle.gridSize,
     pack_id: summary?.packId ?? puzzle.packId,
     published_at: summary?.publishedAt ?? puzzle.publishedAt,
+    puzzle_alias: getPuzzlePackAlias(aliasSource),
     puzzle_id: puzzle.puzzleId,
     slot_id: summary?.slotId ?? puzzle.slotId,
     word_count: summary?.metrics?.wordCount ?? puzzle.metrics.wordCount,
   };
+}
+
+function formatPuzzleAliasLabel(summary: PuzzleManifestItem) {
+  return `#${getPuzzlePackAlias(summary)}`;
 }
 
 function formatBonusPuzzleMeta(summary?: PuzzleManifestItem) {
@@ -304,7 +312,7 @@ function formatBonusPuzzleMeta(summary?: PuzzleManifestItem) {
       ? '단어 수 확인 중'
       : `${summary.metrics.wordCount}개 단어`;
 
-  return `${summary.date} · ${wordCountLabel}`;
+  return `${formatPuzzleAliasLabel(summary)} · ${wordCountLabel}`;
 }
 
 function getInitialEntryStartCellKey(puzzle: Puzzle) {
@@ -745,8 +753,7 @@ export function getBoardNativeInputPosition(
   }
 
   return {
-    left:
-      Math.max(0, cell.col - bounds.minCol) * cellSize + BOARD_BORDER_WIDTH,
+    left: Math.max(0, cell.col - bounds.minCol) * cellSize + BOARD_BORDER_WIDTH,
     top: Math.max(0, cell.row - bounds.minRow) * cellSize + BOARD_BORDER_WIDTH,
   };
 }
@@ -2031,6 +2038,10 @@ function AppContent() {
               : slotLabel === ''
                 ? completionStatsLabel
                 : `${slotLabel} · ${completionStatsLabel}`;
+          const titleLabel =
+            puzzlePack.source === 'remote'
+              ? formatPuzzleAliasLabel(summary)
+              : summary.date;
 
           return (
             <Pressable
@@ -2044,7 +2055,7 @@ function AppContent() {
                 isDone && styles.dateCardCompleted,
               ]}
             >
-              <Text style={styles.dateCardDate}>{summary.date}</Text>
+              <Text style={styles.dateCardDate}>{titleLabel}</Text>
               <Text style={styles.dateCardMeta}>{metaLabel}</Text>
               <Text style={styles.dateCardState}>
                 {isDone ? '완료' : state?.hasProgress ? '진행 중' : '대기'}
@@ -2061,10 +2072,14 @@ function AppContent() {
       completionStatsByPuzzleId[puzzle.puzzleId],
       launchConfig.completionStatsMinDisplayCount,
     );
+    const selectedPuzzleLabel =
+      puzzlePack.source === 'remote'
+        ? formatPuzzleAliasLabel(selectedPuzzleSummary)
+        : puzzle.date;
 
     return (
       <ScrollView contentContainerStyle={styles.homeContent}>
-        {renderHeader('가로세로 낱말 퍼즐', puzzle.date)}
+        {renderHeader('가로세로 낱말 퍼즐', selectedPuzzleLabel)}
         {renderDateSelector()}
 
         <View style={styles.policyPanel}>
@@ -2346,7 +2361,15 @@ function AppContent() {
         </Pressable>
         <View style={styles.solveHeaderText}>
           <Text style={styles.solveHeaderEyebrow}>
-            {isReviewMode ? '다 푼 퍼즐' : puzzle.date}
+            {isReviewMode
+              ? `다 푼 퍼즐 · ${
+                  puzzlePack.source === 'remote'
+                    ? formatPuzzleAliasLabel(selectedPuzzleSummary)
+                    : puzzle.date
+                }`
+              : puzzlePack.source === 'remote'
+                ? formatPuzzleAliasLabel(selectedPuzzleSummary)
+                : puzzle.date}
           </Text>
           <Text style={styles.solveHeaderTitle}>
             {viewModel.completedEntries.length}/{puzzle.entries.length} 낱말
@@ -2616,7 +2639,10 @@ function AppContent() {
               >
                 <Text style={styles.secondaryButtonText}>퍼즐 다시 보기</Text>
               </Pressable>
-              <Pressable onPress={openCompletedResult} style={styles.primaryButton}>
+              <Pressable
+                onPress={openCompletedResult}
+                style={styles.primaryButton}
+              >
                 <Text style={styles.primaryButtonText}>결과 보기</Text>
               </Pressable>
             </View>
@@ -2659,7 +2685,12 @@ function AppContent() {
   function renderResult() {
     return (
       <ScrollView contentContainerStyle={styles.homeContent}>
-        {renderHeader(isCompleted ? '퍼즐 완료' : '진행 결과', puzzle.date)}
+        {renderHeader(
+          isCompleted ? '퍼즐 완료' : '진행 결과',
+          puzzlePack.source === 'remote'
+            ? formatPuzzleAliasLabel(selectedPuzzleSummary)
+            : puzzle.date,
+        )}
         <View style={styles.summaryPanel}>
           <Text style={styles.panelTitle}>
             {isCompleted ? '오늘 미션을 완료했습니다.' : '아직 풀이 중입니다.'}
@@ -2733,10 +2764,12 @@ function AppContent() {
               ]}
             >
               <View>
-                <Text style={styles.historyTitle}>{summary.date}</Text>
+                <Text style={styles.historyTitle}>
+                  {formatPuzzleAliasLabel(summary)}
+                </Text>
                 <Text style={styles.historyMeta}>
-                  {summary.metrics?.wordCount ?? '-'}단어 · 힌트{' '}
-                  {state?.hintCount ?? 0}개
+                  {summary.date} · {summary.metrics?.wordCount ?? '-'}단어 ·
+                  힌트 {state?.hintCount ?? 0}개
                 </Text>
               </View>
               <Text style={styles.historyState}>

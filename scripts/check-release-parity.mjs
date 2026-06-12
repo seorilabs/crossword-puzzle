@@ -42,6 +42,7 @@ const sharedPolicyExports = [
   "getBonusPuzzleCandidateSummary",
   "getDailyFreePuzzleSummaries",
   "getDailyFreePuzzleSummary",
+  "getPuzzlePackAlias",
   "sortPuzzleSummariesByRecency",
   "uniquePuzzleSummaries",
 ];
@@ -52,6 +53,7 @@ const requiredWebImports = [
   "getBonusPuzzleCandidateSummary",
   "getDailyFreePuzzleSummaries",
   "getDailyFreePuzzleSummary",
+  "getPuzzlePackAlias",
   "sortPuzzleSummariesByRecency",
   "uniquePuzzleSummaries",
 ];
@@ -63,6 +65,7 @@ const requiredMobileImports = [
   "getBonusPuzzleCandidateSummary",
   "getDailyFreePuzzleSummaries",
   "getDailyFreePuzzleSummary",
+  "getPuzzlePackAlias",
   "sortPuzzleSummariesByRecency",
   "uniquePuzzleSummaries",
 ];
@@ -77,6 +80,7 @@ const forbiddenLocalDefinitions = [
   "getBonusPuzzleCandidateSummary",
   "getDailyFreePuzzleSummaries",
   "getDailyFreePuzzleSummary",
+  "getPuzzlePackAlias",
   "sortPuzzleSummariesByRecency",
   "uniquePuzzleSummaries",
 ];
