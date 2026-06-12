@@ -8,14 +8,21 @@ import ReactTestRenderer from 'react-test-renderer';
 import App, {
   ANDROID_TEXT_INPUT_REFOCUS_DELAY_MS,
   formatCompletionStatsLabel,
+  formatPuzzleAliasLabel,
+  getBackTargetRoute,
   getBoardCellFocusScrollY,
   getBoardNativeInputPosition,
   getClearAnswerTargetIndex,
   getPendingAnswerCellValues,
   loadPuzzleSession,
   scheduleBoardNativeInputFocus,
+  shouldUseSystemBack,
 } from '../App';
-import type { PuzzleEntry } from '../../../packages/crossword-core/src';
+import type {
+  Puzzle,
+  PuzzleEntry,
+  PuzzleManifestItem,
+} from '../../../packages/crossword-core/src';
 import {
   ARCHIVE_INDEX_KEY,
   ARCHIVE_INDEX_LIMIT,
@@ -29,7 +36,6 @@ import {
   loadBonusPuzzleUnlocks,
   saveBonusPuzzleUnlock,
 } from '../bonusPuzzleUnlockRepository';
-import type { Puzzle } from '../../../packages/crossword-core/src';
 
 function createPuzzle(puzzleId: string, date = '2026-06-01'): Puzzle {
   return {
@@ -114,6 +120,49 @@ test('formats completion stats for mobile home cards and selected mission', () =
       10,
     ),
   ).toBe('10명 미만 참여');
+});
+
+test('maps Android hardware back targets through the app scene graph', () => {
+  expect(shouldUseSystemBack('home')).toBe(true);
+  expect(getBackTargetRoute('history')).toBe('home');
+  expect(getBackTargetRoute('today')).toBe('home');
+  expect(getBackTargetRoute('result')).toBe('home');
+  expect(getBackTargetRoute('license')).toBe('history');
+});
+
+test('formats generated puzzle aliases as yyMMddHH labels', () => {
+  const baseSummary: PuzzleManifestItem = {
+    date: '2026-06-12',
+    difficulty: 'normal',
+    metrics: {
+      autoRunCount: 0,
+      bboxDensity: 1,
+      crossCells: 0,
+      crossRatio: 0,
+      filledCells: 2,
+      multiCrossEntries: 0,
+      placedWordCount: 1,
+      wordCount: 1,
+    },
+    path: '/puzzles/26061218.json',
+    puzzleId: '26061218',
+  };
+
+  expect(formatPuzzleAliasLabel(baseSummary)).toBe('#26061218');
+  expect(
+    formatPuzzleAliasLabel({
+      ...baseSummary,
+      alias: '2026061218',
+      puzzleId: 'pack-20260612180000-20260525',
+    }),
+  ).toBe('#26061218');
+  expect(
+    formatPuzzleAliasLabel({
+      ...baseSummary,
+      packId: 'pack-20260612180000-20260525',
+      puzzleId: 'pack-20260612180000-20260525',
+    }),
+  ).toBe('#26061218');
 });
 
 test('maps pending Korean composition directly onto board cells', () => {

@@ -141,20 +141,47 @@ function compactYear(year) {
   return String(year).slice(-2);
 }
 
+function compactDateTimeAlias(year, month, day, hour) {
+  return `${compactYear(year)}${month}${day}${hour}`;
+}
+
+function isFourDigitGregorianYear(value) {
+  const year = Number(value);
+
+  return Number.isInteger(year) && year >= 1900 && year <= 2099;
+}
+
 function normalizeAlias(value) {
-  const dateTimeMatch = value.match(/^(\d{4})(\d{2})(\d{2})(\d{2})$/);
-  if (dateTimeMatch != null) {
-    const [, year, month, day, hour] = dateTimeMatch;
-    return `${compactYear(year)}${month}${day}${hour}`;
+  const trimmedValue = value.trim();
+  const packDateTimeMatch = trimmedValue.match(
+    /^pack-(\d{4})(\d{2})(\d{2})(\d{2})/,
+  );
+  if (packDateTimeMatch != null) {
+    const [, year, month, day, hour] = packDateTimeMatch;
+    return compactDateTimeAlias(year, month, day, hour);
   }
 
-  const dateMatch = value.match(/^(\d{4})(\d{2})(\d{2})$/);
+  const dateTimeMatch = trimmedValue.match(
+    /^(\d{4})(\d{2})(\d{2})(\d{2})(?:\d{2}){0,2}$/,
+  );
+  if (dateTimeMatch != null) {
+    const [, year, month, day, hour] = dateTimeMatch;
+    return compactDateTimeAlias(year, month, day, hour);
+  }
+
+  if (/^\d{8}$/.test(trimmedValue)) {
+    const year = trimmedValue.slice(0, 4);
+
+    return isFourDigitGregorianYear(year) ? trimmedValue.slice(2) : trimmedValue;
+  }
+
+  const dateMatch = trimmedValue.match(/^(\d{4})(\d{2})(\d{2})$/);
   if (dateMatch != null) {
     const [, year, month, day] = dateMatch;
     return `${compactYear(year)}${month}${day}`;
   }
 
-  return value;
+  return trimmedValue;
 }
 
 function getZonedParts(date, timeZone) {
@@ -314,7 +341,7 @@ function serializeBoard(
 
   return {
     alias: slotInfo.alias,
-    puzzleId: packId,
+    puzzleId: slotInfo.alias,
     date: slotInfo.date,
     difficulty: "normal",
     gridSize: board.grid.length,
@@ -515,7 +542,18 @@ function getManifestAlias(item) {
       ? item.packId.match(/^pack-(\d{10})/)
       : null;
   if (packIdMatch != null) {
-    return normalizeAlias(packIdMatch[1]);
+    return normalizeAlias(item.packId ?? packIdMatch[1]);
+  }
+
+  const puzzleIdAlias =
+    typeof item.puzzleId === "string"
+      ? normalizeAlias(item.puzzleId)
+      : undefined;
+  if (
+    puzzleIdAlias != null &&
+    (puzzleIdAlias !== item.puzzleId || /^\d{8}$/.test(puzzleIdAlias))
+  ) {
+    return puzzleIdAlias;
   }
 
   const dateMatch =
@@ -527,7 +565,7 @@ function getManifestAlias(item) {
     return `${compactYear(year)}${month}${day}`;
   }
 
-  return item.puzzleId;
+  return puzzleIdAlias ?? item.puzzleId;
 }
 
 function withManifestAlias(item) {

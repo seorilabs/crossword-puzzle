@@ -8,6 +8,7 @@ import React, {
 } from 'react';
 import {
   ActivityIndicator,
+  BackHandler,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
@@ -90,7 +91,23 @@ import puzzle20260529 from '../../public/puzzles/2026-05-29-normal-05.json';
 import puzzle20260530 from '../../public/puzzles/2026-05-30-normal-06.json';
 import puzzle20260531 from '../../public/puzzles/2026-05-31-normal-07.json';
 
-type AppRoute = 'home' | 'today' | 'result' | 'history' | 'license';
+export type AppRoute = 'home' | 'today' | 'result' | 'history' | 'license';
+
+const APP_ROUTE_GRAPH: Record<AppRoute, { backTarget: AppRoute | null }> = {
+  history: { backTarget: 'home' },
+  home: { backTarget: null },
+  license: { backTarget: 'history' },
+  result: { backTarget: 'home' },
+  today: { backTarget: 'home' },
+};
+
+export function getBackTargetRoute(route: AppRoute) {
+  return APP_ROUTE_GRAPH[route].backTarget;
+}
+
+export function shouldUseSystemBack(route: AppRoute) {
+  return getBackTargetRoute(route) == null;
+}
 
 type DateCardState = {
   attemptsUsed: number;
@@ -298,7 +315,7 @@ function getPuzzleTelemetryParams(
   };
 }
 
-function formatPuzzleAliasLabel(summary: PuzzleManifestItem) {
+export function formatPuzzleAliasLabel(summary: PuzzleManifestItem) {
   return `#${getPuzzlePackAlias(summary)}`;
 }
 
@@ -910,6 +927,42 @@ function AppContent() {
   const [answerInputValue, setAnswerInputValue] = useState('');
   const [isClueListOpen, setIsClueListOpen] = useState(false);
 
+  const navigateTo = useCallback((nextRoute: AppRoute) => {
+    setRoute(nextRoute);
+  }, []);
+
+  const goBackWithinSceneGraph = useCallback(() => {
+    if (keyboardVisibleRef.current) {
+      Keyboard.dismiss();
+      keyboardVisibleRef.current = false;
+      return true;
+    }
+
+    if (isClueListOpen) {
+      setIsClueListOpen(false);
+      return true;
+    }
+
+    if (completionCelebrationPuzzleId != null) {
+      setCompletionCelebrationPuzzleId(null);
+      return true;
+    }
+
+    const backTarget = getBackTargetRoute(route);
+
+    if (backTarget == null) {
+      return false;
+    }
+
+    navigateTo(backTarget);
+    return true;
+  }, [
+    completionCelebrationPuzzleId,
+    isClueListOpen,
+    navigateTo,
+    route,
+  ]);
+
   const viewModel = usePuzzleViewModel(
     puzzle,
     selectedEntryId,
@@ -1438,6 +1491,21 @@ function AppContent() {
     };
   }, []);
 
+  useEffect(() => {
+    if (Platform.OS !== 'android') {
+      return undefined;
+    }
+
+    const subscription = BackHandler.addEventListener(
+      'hardwareBackPress',
+      goBackWithinSceneGraph,
+    );
+
+    return () => {
+      subscription.remove();
+    };
+  }, [goBackWithinSceneGraph]);
+
   const scrollBoardCellIntoView = useCallback(
     (cellKey = activeAnswerCellKey) => {
       const position = getBoardNativeInputPosition(
@@ -1537,7 +1605,7 @@ function AppContent() {
       const shouldOpenResult = completedPuzzleIds.has(unlockedSummary.puzzleId);
       await selectPuzzle(unlockedSummary.puzzleId);
       if (shouldOpenResult) {
-        setRoute('result');
+        navigateTo('result');
       }
       setNotice('광고로 열어 둔 보너스 퍼즐을 불러왔습니다.');
       return;
@@ -1606,12 +1674,12 @@ function AppContent() {
 
   function openCompletedResult() {
     setCompletionCelebrationPuzzleId(null);
-    setRoute('result');
+    navigateTo('result');
   }
 
   function openCompletedBoard() {
     setCompletionCelebrationPuzzleId(null);
-    setRoute('today');
+    navigateTo('today');
   }
 
   function applyPuzzleSession(session: PuzzleSession | null) {
@@ -1641,7 +1709,7 @@ function AppContent() {
     const session = await loadPuzzleSession(puzzleId, puzzlePack);
     applyPuzzleSession(session);
     setIsLoading(false);
-    setRoute('home');
+    navigateTo('home');
 
     if (session == null) {
       setNotice('퍼즐 데이터를 찾을 수 없습니다.');
@@ -1943,7 +2011,7 @@ function AppContent() {
     }
 
     if (isCompleted) {
-      setRoute('result');
+      navigateTo('result');
       return;
     }
 
@@ -1969,7 +2037,7 @@ function AppContent() {
       });
     }
 
-    setRoute('today');
+    navigateTo('today');
   }
 
   function restartMissionAttempt() {
@@ -1989,7 +2057,7 @@ function AppContent() {
       attempt_type: 'retry',
       remaining_attempts: getRemainingAttempts(nextMission),
     });
-    setRoute('today');
+    navigateTo('today');
   }
 
   function renderHeader(title: string, subtitle?: string) {
@@ -2126,7 +2194,7 @@ function AppContent() {
               </Text>
             </Pressable>
             <Pressable
-              onPress={() => setRoute('history')}
+              onPress={() => navigateTo('history')}
               style={styles.secondaryButton}
             >
               <Text style={styles.secondaryButtonText}>기록</Text>
@@ -2354,7 +2422,7 @@ function AppContent() {
         <Pressable
           accessibilityLabel="홈으로"
           accessibilityRole="button"
-          onPress={() => setRoute('home')}
+          onPress={() => navigateTo('home')}
           style={styles.solveHeaderIcon}
         >
           <Text style={styles.solveHeaderIconText}>홈</Text>
@@ -2649,7 +2717,7 @@ function AppContent() {
             <Pressable
               onPress={() => {
                 setCompletionCelebrationPuzzleId(null);
-                setRoute('home');
+                navigateTo('home');
               }}
               style={styles.completionHomeButton}
             >
@@ -2710,7 +2778,7 @@ function AppContent() {
               </Text>
             </Pressable>
             <Pressable
-              onPress={() => setRoute('home')}
+              onPress={() => navigateTo('home')}
               style={styles.secondaryButton}
             >
               <Text style={styles.secondaryButtonText}>홈으로</Text>
@@ -2791,13 +2859,13 @@ function AppContent() {
         </View>
         <View style={styles.actions}>
           <Pressable
-            onPress={() => setRoute('home')}
+            onPress={() => navigateTo('home')}
             style={styles.secondaryButton}
           >
             <Text style={styles.secondaryButtonText}>홈으로</Text>
           </Pressable>
           <Pressable
-            onPress={() => setRoute('license')}
+            onPress={() => navigateTo('license')}
             style={styles.secondaryButton}
           >
             <Text style={styles.secondaryButtonText}>출처</Text>
@@ -2822,7 +2890,7 @@ function AppContent() {
           </Text>
         </View>
         <Pressable
-          onPress={() => setRoute('home')}
+          onPress={() => navigateTo('home')}
           style={styles.secondaryButton}
         >
           <Text style={styles.secondaryButtonText}>홈으로</Text>
