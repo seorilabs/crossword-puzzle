@@ -21,44 +21,44 @@ npm run check:play
 
 ## 현재 확정값
 
-| 항목             | 값                 |
-| ---------------- | ------------------ |
-| packageName      | `com.seorilabs.crosswordpuzzle` |
-| 기본 언어        | `ko-KR`            |
-| 앱 유형          | `game`             |
-| 가격             | `free`             |
-| 고객 문의 이메일 | `cs@seorilabs.com` |
-| 개인정보 처리방침 | `https://www.seorilabs.com/privacy/` |
-| 광고             | 현재 제출 binary 기준 `no`. AdMob 콘솔 ID는 확보했고 native adapter 연결 전 |
-| 한국 배포        | `yes`              |
-| 첫 업로드 트랙   | `internal`         |
+| 항목              | 값                                               |
+| ----------------- | ------------------------------------------------ |
+| packageName       | `com.seorilabs.crosswordpuzzle`                  |
+| 기본 언어         | `ko-KR`                                          |
+| 앱 유형           | `game`                                           |
+| 가격              | `free`                                           |
+| 고객 문의 이메일  | `cs@seorilabs.com`                               |
+| 개인정보 처리방침 | `https://www.seorilabs.com/privacy/`             |
+| 광고              | `yes`. `apps/mobile`에 AdMob native adapter 연결 |
+| 한국 배포         | `yes`                                            |
+| 첫 업로드 트랙    | `internal`                                       |
 
 ## 확정 필요
 
-| 항목                  | 후보/메모                                                                                                            |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| Data Safety           | 로그인, 결제, 서버 저장 없음. 로컬 저장만 사용한다는 현재 구현 기준으로 설문 검토 필요                               |
-| 콘텐츠 등급           | 낱말 퍼즐 게임 기준 IARC 설문 완료 필요                                                                              |
-| 타겟 연령             | 아동 대상 여부와 가족 정책 해당 여부 확인 필요                                                                       |
-| 한국 게임 등급        | 한국 배포 유지 시 GRAC/자체등급분류 필요 여부 확인 필요                                                              |
+| 항목           | 후보/메모                                                                              |
+| -------------- | -------------------------------------------------------------------------------------- |
+| Data Safety    | 로그인, 결제, 서버 저장 없음. 로컬 저장만 사용한다는 현재 구현 기준으로 설문 검토 필요 |
+| 콘텐츠 등급    | 낱말 퍼즐 게임 기준 IARC 설문 완료 필요                                                |
+| 타겟 연령      | 아동 대상 여부와 가족 정책 해당 여부 확인 필요                                         |
+| 한국 게임 등급 | 한국 배포 유지 시 GRAC/자체등급분류 필요 여부 확인 필요                                |
 
 ## 2026-06-07 검토 메모
 
 - `https://www.seorilabs.com/privacy/`는 공개 URL이며 200 응답을 확인했다.
 - Android `apps/mobile` 타깃은 `INTERNET` 권한과 원격 퍼즐팩 fetch를 사용한다.
-- Android `apps/mobile` 타깃은 RNFirebase Analytics/Remote Config를 사용한다. AdMob 콘솔 앱/광고 단위는 생성했지만 AdMob SDK/native adapter는 아직 없다.
+- Android `apps/mobile` 타깃은 RNFirebase Analytics/Remote Config와 AdMob native adapter를 사용한다.
 - 진행 상태와 미션 상태는 `AsyncStorage`에 로컬 저장된다.
 - Data Safety 최종 선언은 Play Console에서 직접 검토해야 한다. Google Play 기준상 앱/SDK가 사용자 데이터를 기기 밖으로 전송하는지 여부가 핵심이고, 로컬 처리만 하는 데이터는 수집으로 보지 않는다.
 
 ## 2026-06-09 AdMob 콘솔 ID
 
-현재 ID 확보 상태이며, 운영 광고 게재는 AdMob SDK/native adapter 연결과 QA 이후 적용한다. 개발/QA 빌드는 Google test ad unit을 사용한다.
+현재 `react-native-google-mobile-ads` adapter에 연결되어 있다. 개발/QA 빌드는 Google test ad unit을 사용하고, release 빌드는 adapter QA 후 아래 운영 ID를 사용한다. 1차 출시는 개인화 광고를 끄고 비개인화 광고 요청으로 운영한다.
 
-| 항목 | 값 |
-| --- | --- |
-| Android AdMob app ID | `ca-app-pub-2444587584524186~5456766418` |
-| `android_rewarded_hint` | `ca-app-pub-2444587584524186/7533141122` |
-| `android_interstitial_result` | `ca-app-pub-2444587584524186/4930691809` |
+| 항목                            | 값                                       |
+| ------------------------------- | ---------------------------------------- |
+| Android AdMob app ID            | `ca-app-pub-2444587584524186~5456766418` |
+| `android_rewarded_hint`         | `ca-app-pub-2444587584524186/7533141122` |
+| `android_interstitial_result`   | `ca-app-pub-2444587584524186/4930691809` |
 | `android_rewarded_bonus_puzzle` | `ca-app-pub-2444587584524186/2299285882` |
 
 ## 2026-06-07 API 반영 결과

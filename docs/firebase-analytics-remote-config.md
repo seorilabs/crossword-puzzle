@@ -47,6 +47,7 @@ GitHub Actions AIT 배포는 같은 값을 GitHub Variables에서 읽는다. 미
 | `completion_stats_enabled`           |  `true` | 퍼즐별 참여자/완료율 UI 노출 여부         |
 | `completion_stats_min_display_count` |    `10` | 정확한 참여자/완료자 수 표시 최소 집계 수 |
 | `rewarded_hint_ads_enabled`          |  `true` | 힌트 보상형 광고 CTA 노출 여부            |
+| `rewarded_bonus_puzzle_ads_enabled`  |  `true` | 보너스 퍼즐 보상형 광고 CTA 노출 여부     |
 | `result_interstitial_ads_enabled`    |  `true` | 결과 화면 진입 후 전면 광고 노출 여부     |
 | `leaderboard_enabled`                | `false` | 리더보드 UI 노출 여부                     |
 
@@ -56,20 +57,24 @@ Remote Config는 보안 결정이나 정답 검증의 source가 아니다. UI �
 
 AIT는 AppsInToss Analytics와 Firebase Analytics를 함께 호출한다. 샌드박스나 로컬 브라우저에서 일부 이벤트가 실제 콘솔에 쌓이지 않을 수 있으므로, QA는 런타임 로그와 라이브 콘솔을 분리해서 본다.
 
-| Event                           | 시점                                  |
-| ------------------------------- | ------------------------------------- |
-| `screen_view`                   | 홈, 풀이, 결과, 기록 화면 진입        |
-| `puzzle_select`                 | 홈/풀이/결과에서 다른 퍼즐 카드 선택  |
-| `mission_start`                 | 퍼즐별 첫 도전 시작. 참여자 집계 기준 |
-| `attempt_start`                 | 첫 도전 또는 재도전 시작              |
-| `first_answer_input`            | 도전 중 첫 수동 입력                  |
-| `hint_reveal`                   | 힌트 1개 사용                         |
-| `rewarded_hint_ad_request`      | 보상형 광고 요청                      |
-| `rewarded_hint_ad_event`        | 보상형 광고 load/show 이벤트          |
-| `rewarded_hint_ad_reward`       | `userEarnedReward` 수신 후 힌트 지급  |
-| `mission_complete`              | 퍼즐 완료. 완료자 집계 기준           |
-| `result_interstitial_ad_event`  | 결과 전면 광고 load/show 이벤트       |
-| `result_interstitial_ad_result` | 결과 전면 광고 종료/실패              |
+| Event                              | 시점                                        |
+| ---------------------------------- | ------------------------------------------- |
+| `screen_view`                      | 홈, 풀이, 결과, 기록 화면 진입              |
+| `puzzle_select`                    | 홈/풀이/결과에서 다른 퍼즐 카드 선택        |
+| `mission_start`                    | 퍼즐별 첫 도전 시작. 참여자 집계 기준       |
+| `attempt_start`                    | 첫 도전 또는 재도전 시작                    |
+| `first_answer_input`               | 도전 중 첫 수동 입력                        |
+| `hint_reveal`                      | 힌트 1개 사용                               |
+| `rewarded_hint_ad_request`         | 보상형 광고 요청                            |
+| `rewarded_hint_ad_event`           | 보상형 광고 load/show 이벤트                |
+| `rewarded_hint_ad_reward`          | `userEarnedReward` 수신 후 힌트 지급        |
+| `rewarded_bonus_puzzle_ad_request` | 보너스 퍼즐 보상형 광고 요청                |
+| `rewarded_bonus_puzzle_ad_event`   | 보너스 퍼즐 보상형 광고 load/show 이벤트    |
+| `rewarded_bonus_puzzle_ad_reward`  | `userEarnedReward` 수신 후 보너스 퍼즐 해금 |
+| `mission_complete`                 | 퍼즐 완료. 완료자 집계 기준                 |
+| `result_interstitial_ad_request`   | 결과 전면 광고 요청                         |
+| `result_interstitial_ad_event`     | 결과 전면 광고 load/show 이벤트             |
+| `result_interstitial_ad_result`    | 결과 전면 광고 종료/실패                    |
 
 집계용 이벤트는 공통으로 `puzzle_id`, `slot_id`, `pack_id`, `published_at`, `difficulty`, `grid_size`, `word_count`를 포함한다. 미션/시도 이벤트는 `attempt_number`, `remaining_attempts`, `hint_count`, `earned_hint_credits`를 추가한다. `mission_complete`는 `completed_at`, `elapsed_seconds`, `completed_word_count`도 포함한다.
 
@@ -81,7 +86,7 @@ Android/iOS는 AIT WebView 코드와 같은 Web SDK를 공유하지 않는다. `
 - iOS: `apps/mobile/ios/CrosswordPuzzleMobile/GoogleService-Info.plist`, 같은 RNFirebase 모듈, `FirebaseApp.configure()`
 - `google-services.json`과 `GoogleService-Info.plist`는 `.gitignore` 대상이다.
 - CI는 `scripts/restore-mobile-firebase-config.mjs`로 native config를 복구한다.
-- AdMob 콘솔 앱과 광고 단위는 생성했지만, `apps/mobile`에는 아직 AdMob SDK/native adapter가 없다. 운영 광고 ID는 release build adapter QA가 끝난 뒤 적용하고, 개발/QA 빌드는 Google test ad unit을 사용한다.
+- `apps/mobile`은 `react-native-google-mobile-ads` native adapter를 사용한다. 개발/QA 빌드는 Google test ad unit을 사용하고, release 빌드는 adapter QA 후 운영 광고 ID를 사용한다. 1차 출시에서는 개인화 광고를 끄고 `requestNonPersonalizedAdsOnly=true`로 요청한다.
 - 공유 core에는 Firebase import를 넣지 않는다.
 - 앱 개인정보/데이터 수집 고지에는 Analytics, 광고 식별자, 진단/사용 이벤트 수집 여부를 반영한다.
 - iOS Analytics는 `$RNFirebaseAnalyticsWithoutAdIdSupport = true`로 IDFA 없는 variant를 사용한다.
@@ -95,17 +100,17 @@ node scripts/restore-mobile-firebase-config.mjs --android --require
 node scripts/restore-mobile-firebase-config.mjs --ios --require
 ```
 
-| Secret | Scope | 파일 |
-| --- | --- | --- |
-| `FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64` | repository | `apps/mobile/android/app/google-services.json` |
+| Secret                                          | Scope                   | 파일                                                             |
+| ----------------------------------------------- | ----------------------- | ---------------------------------------------------------------- |
+| `FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64`  | repository              | `apps/mobile/android/app/google-services.json`                   |
 | `FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64` | `app-store` environment | `apps/mobile/ios/CrosswordPuzzleMobile/GoogleService-Info.plist` |
 
 ## Native AdMob IDs
 
-| Platform | App ID | rewarded hint | interstitial result | rewarded bonus puzzle |
-| --- | --- | --- | --- | --- |
-| Android | `ca-app-pub-2444587584524186~5456766418` | `ca-app-pub-2444587584524186/7533141122` | `ca-app-pub-2444587584524186/4930691809` | `ca-app-pub-2444587584524186/2299285882` |
-| iOS | `ca-app-pub-2444587584524186~4715406099` | `ca-app-pub-2444587584524186/6151776694` | `ca-app-pub-2444587584524186/3402324424` | `ca-app-pub-2444587584524186/2089242756` |
+| Platform | App ID                                   | rewarded hint                            | interstitial result                      | rewarded bonus puzzle                    |
+| -------- | ---------------------------------------- | ---------------------------------------- | ---------------------------------------- | ---------------------------------------- |
+| Android  | `ca-app-pub-2444587584524186~5456766418` | `ca-app-pub-2444587584524186/7533141122` | `ca-app-pub-2444587584524186/4930691809` | `ca-app-pub-2444587584524186/2299285882` |
+| iOS      | `ca-app-pub-2444587584524186~4715406099` | `ca-app-pub-2444587584524186/6151776694` | `ca-app-pub-2444587584524186/3402324424` | `ca-app-pub-2444587584524186/2089242756` |
 
 ## 배포 전 확인
 

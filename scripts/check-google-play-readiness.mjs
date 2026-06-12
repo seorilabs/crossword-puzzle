@@ -260,6 +260,141 @@ function checkNativeSourceImports(sourceRoots) {
   }
 }
 
+function hasPackageDependency(packageJson, dependencyName) {
+  return (
+    packageJson?.dependencies?.[dependencyName] != null ||
+    packageJson?.devDependencies?.[dependencyName] != null
+  );
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function hasRemovedPermission(manifest, permission) {
+  return new RegExp(
+    `<uses-permission\\b(?=[^>]*${escapeRegExp(
+      permission,
+    )})(?=[^>]*tools:node="remove")[^>]*/>`,
+    "s",
+  ).test(manifest);
+}
+
+function checkAdMobConfig(config) {
+  const mobilePackagePath = "apps/mobile/package.json";
+  const mobileAppJsonPath = "apps/mobile/app.json";
+  const androidManifestPath =
+    "apps/mobile/android/app/src/main/AndroidManifest.xml";
+
+  if (!existsSync(repoPath(mobilePackagePath))) {
+    return;
+  }
+
+  const mobilePackageJson = readJson(mobilePackagePath);
+  const hasAdMobDependency = hasPackageDependency(
+    mobilePackageJson,
+    "react-native-google-mobile-ads",
+  );
+
+  if (!hasAdMobDependency) {
+    if (config?.contentDeclarations?.ads === "yes") {
+      warn(
+        "Google Play 광고 선언은 yes지만 AdMob dependency를 찾지 못했습니다.",
+        mobilePackagePath,
+      );
+    }
+    return;
+  }
+
+  pass(
+    "AdMob RN dependency가 있습니다.",
+    mobilePackageJson.dependencies?.["react-native-google-mobile-ads"] ??
+      mobilePackageJson.devDependencies?.["react-native-google-mobile-ads"],
+  );
+
+  if (config?.contentDeclarations?.ads !== "yes") {
+    fail(
+      "AdMob SDK가 포함된 빌드는 Google Play 광고 선언이 yes여야 합니다.",
+      "contentDeclarations.ads",
+    );
+  } else {
+    pass("Google Play 광고 선언이 AdMob SDK 포함 상태와 일치합니다.");
+  }
+
+  if (!existsSync(repoPath(mobileAppJsonPath))) {
+    fail("AdMob app.json 설정 파일이 없습니다.", mobileAppJsonPath);
+  } else {
+    const mobileAppJson = readFileSync(repoPath(mobileAppJsonPath), "utf8");
+    if (
+      mobileAppJson.includes(
+        '"android_app_id": "ca-app-pub-2444587584524186~5456766418"',
+      )
+    ) {
+      pass("Android AdMob app ID가 app.json에 있습니다.", mobileAppJsonPath);
+    } else {
+      fail("Android AdMob app ID가 app.json에 없습니다.", mobileAppJsonPath);
+    }
+  }
+
+  if (!existsSync(repoPath(androidManifestPath))) {
+    fail("AndroidManifest.xml이 없습니다.", androidManifestPath);
+  } else {
+    const androidManifest = readFileSync(repoPath(androidManifestPath), "utf8");
+    if (
+      androidManifest.includes(
+        'android:name="com.google.android.gms.ads.APPLICATION_ID"',
+      ) &&
+      androidManifest.includes("ca-app-pub-2444587584524186~5456766418")
+    ) {
+      pass(
+        "Android manifest에 AdMob application ID가 있습니다.",
+        androidManifestPath,
+      );
+    } else {
+      fail(
+        "Android manifest에 AdMob application ID가 없습니다.",
+        androidManifestPath,
+      );
+    }
+
+    if (
+      hasRemovedPermission(
+        androidManifest,
+        "com.google.android.gms.permission.AD_ID",
+      )
+    ) {
+      fail(
+        "Android manifest가 AD_ID 권한 병합을 제거하고 있습니다.",
+        androidManifestPath,
+      );
+    } else {
+      pass("Android manifest가 AD_ID 권한 병합을 막지 않습니다.");
+    }
+
+    const adServicesPermissions = [
+      "android.permission.ACCESS_ADSERVICES_ATTRIBUTION",
+      "android.permission.ACCESS_ADSERVICES_AD_ID",
+      "android.permission.ACCESS_ADSERVICES_TOPICS",
+    ];
+    const removedAdServicesPermissions = adServicesPermissions.filter(
+      (permission) => hasRemovedPermission(androidManifest, permission),
+    );
+
+    if (removedAdServicesPermissions.length !== adServicesPermissions.length) {
+      fail(
+        "비개인화 광고 방침과 다르게 AdServices 권한 병합 제거가 누락됐습니다.",
+        adServicesPermissions
+          .filter(
+            (permission) => !removedAdServicesPermissions.includes(permission),
+          )
+          .join(", "),
+      );
+    } else {
+      pass("비개인화 광고 방침에 맞게 AdServices 권한 병합을 제거합니다.");
+    }
+  }
+}
+
 const packageJson = readJson("package.json");
 if (packageJson != null) {
   pass("package.json을 읽었습니다.", packageJson.name);
@@ -350,6 +485,7 @@ if (config == null) {
   ) {
     assertField(config, "contentDeclarations.koreaGameRating");
   }
+  checkAdMobConfig(config);
 
   checkAssetPath("assets.playIcon", config.assets?.playIcon);
   checkAssetPath("assets.featureGraphic", config.assets?.featureGraphic);

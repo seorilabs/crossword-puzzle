@@ -43,22 +43,22 @@
     "reviewNotes": "로그인, 결제, 서버 저장 없이 로컬 진행 상태로 퍼즐을 풀 수 있습니다."
   },
   "adMob": {
-    "status": "console app and ad units created; native SDK adapter integration pending",
+    "status": "native SDK adapter integrated in apps/mobile; App Store privacy answers must be rechecked before submission",
     "appId": "ca-app-pub-2444587584524186~4715406099",
     "adUnits": {
       "rewardedHint": "ca-app-pub-2444587584524186/6151776694",
       "interstitialResult": "ca-app-pub-2444587584524186/3402324424",
       "rewardedBonusPuzzle": "ca-app-pub-2444587584524186/2089242756"
     },
-    "productionPolicy": "Use Google test ad units in development and switch to these IDs only for release builds after adapter QA."
+    "productionPolicy": "Development builds use Google test ad units through react-native-google-mobile-ads; release builds use these production IDs after adapter QA. Personalized ads stay off for the first launch; requests set requestNonPersonalizedAdsOnly=true."
   },
   "compliance": {
     "privacyPolicyUrl": "확정 필요",
     "suggestedPrivacyPolicyUrl": "https://www.seorilabs.com/privacy",
     "appPrivacy": "확정 필요",
     "appPrivacyGuidance": {
-      "status": "future-state answers prepared; App Store Connect input pending",
-      "currentBinaryAnswer": "No Data Collected until planned native integrations are added",
+      "status": "native Firebase and AdMob answers prepared; App Store Connect input pending",
+      "currentBinaryAnswer": "Data Collected; native Firebase and AdMob SDKs are integrated, exact App Store Connect answers pending",
       "recommendedAnswerForPlannedProduction": "Data Collected",
       "tracking": "Yes if AdMob personalized ads, IDFA, or cross-app ad measurement are enabled; No only if non-personalized/contextual ads and no tracking are configured and verified",
       "assumptions": [
@@ -78,17 +78,13 @@
               "Phone Number",
               "Other User Contact Info"
             ],
-            "purposes": [
-              "App Functionality"
-            ],
+            "purposes": ["App Functionality"],
             "linkedToUser": "Yes",
             "tracking": "No unless shared with ad/marketing partners"
           },
           {
             "category": "Location",
-            "types": [
-              "Coarse Location"
-            ],
+            "types": ["Coarse Location"],
             "purposes": [
               "Third-Party Advertising",
               "Analytics",
@@ -114,10 +110,7 @@
           },
           {
             "category": "Identifiers",
-            "types": [
-              "User ID",
-              "Device ID"
-            ],
+            "types": ["User ID", "Device ID"],
             "purposes": [
               "Third-Party Advertising",
               "Analytics",
@@ -128,13 +121,8 @@
           },
           {
             "category": "Purchases",
-            "types": [
-              "Purchase History"
-            ],
-            "purposes": [
-              "App Functionality",
-              "Analytics"
-            ],
+            "types": ["Purchase History"],
+            "purposes": ["App Functionality", "Analytics"],
             "linkedToUser": "Yes",
             "tracking": "No unless shared with ad/marketing partners"
           },
@@ -161,22 +149,14 @@
               "Performance Data",
               "Other Diagnostic Data"
             ],
-            "purposes": [
-              "Analytics",
-              "App Functionality"
-            ],
+            "purposes": ["Analytics", "App Functionality"],
             "linkedToUser": "Yes if associated with device/user identifiers or Crashlytics user IDs",
             "tracking": "No unless shared with ad/marketing partners"
           },
           {
             "category": "Other Data",
-            "types": [
-              "Other Data Types"
-            ],
-            "purposes": [
-              "Analytics",
-              "App Functionality"
-            ],
+            "types": ["Other Data Types"],
+            "purposes": ["Analytics", "App Functionality"],
             "linkedToUser": "Depends on App Check, Firebase user agent, and request log configuration",
             "tracking": "No unless shared with ad/marketing partners"
           }
@@ -569,7 +549,8 @@
       "ageSuitabilityUrl": "blank",
       "assumptions": [
         "Current App Store target is the native apps/mobile iOS app.",
-        "No unrestricted web access, user-generated content, in-app chat, advertising SDK, health content, violence, gambling, loot boxes, or contests are present in the current native mobile app."
+        "No unrestricted web access, user-generated content, in-app chat, health content, violence, gambling, loot boxes, or contests are present in the current native mobile app.",
+        "AdMob SDK is integrated; answer advertising as yes and re-check App Store Connect age rating before submission."
       ],
       "plannedProductionOverrides": {
         "status": "Re-answer before final submission if AdMob, user-generated content, leaderboard/competition, server-side progress, purchases, Game Center, support forms, or authentication ship in the iOS binary.",
@@ -586,7 +567,7 @@
         "unrestrictedWebAccess": "아니요",
         "userGeneratedContent": "아니요",
         "messagingOrChat": "아니요",
-        "advertising": "아니요",
+        "advertising": "예",
         "profanityOrCrudeHumor": "없음",
         "horrorOrFearThemes": "없음",
         "alcoholTobaccoDrugUse": "없음",
@@ -613,7 +594,7 @@
     "suggestedUsesNonExemptEncryption": false,
     "contentRights": "확정 필요",
     "dsaTraderStatus": "확정 필요",
-    "ads": "no",
+    "ads": "yes",
     "tracking": "no",
     "attRequired": "no",
     "gameCenter": "no",

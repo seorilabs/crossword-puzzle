@@ -65,6 +65,13 @@ import {
   type PuzzleArchiveSaveOptions,
 } from './puzzleArchive';
 import { loadFirebaseLaunchConfig } from './firebaseClient';
+import {
+  initializeMobileAds,
+  showInterstitialAd,
+  showRewardedAd,
+  type MobileAdEvent,
+  type RewardedAdPlacement,
+} from './mobileAds';
 import { telemetry } from './telemetry';
 import manifestData from '../../public/puzzles/manifest.json';
 import puzzle20260525 from '../../public/puzzles/2026-05-25-normal-01.json';
@@ -115,6 +122,7 @@ type PuzzleViewModel = {
 
 type BonusPuzzlePanelState = {
   candidateSummary?: PuzzleManifestItem;
+  isUnlocking: boolean;
   notice: string;
   status: 'available' | 'loading' | 'waiting';
 };
@@ -609,7 +617,7 @@ export function getPendingAnswerCellValues(
 
         return cell == null
           ? null
-          : [getCellKey(cell.row, cell.col), letter] as const;
+          : ([getCellKey(cell.row, cell.col), letter] as const);
       })
       .filter(
         (cellEntry): cellEntry is readonly [string, string] =>
@@ -743,14 +751,15 @@ function AppContent() {
   );
   const [launchConfig, setLaunchConfig] =
     useState<LaunchConfig>(defaultLaunchConfig);
+  const [rewardedAdPlacement, setRewardedAdPlacement] =
+    useState<RewardedAdPlacement | null>(null);
   const hasLoggedFirstAnswerInputRef = useRef(false);
+  const resultInterstitialPuzzleIdsRef = useRef(new Set<string>());
   const boardInputRef = useRef<React.ElementRef<typeof TextInput>>(null);
   const answerCommitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
-  const boardFocusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
+  const boardFocusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const keyboardVisibleRef = useRef(false);
   const [answerInputValue, setAnswerInputValue] = useState('');
   const [isClueListOpen, setIsClueListOpen] = useState(false);
@@ -915,14 +924,15 @@ function AppContent() {
   );
   const bonusPuzzlePanelState: BonusPuzzlePanelState = {
     candidateSummary: bonusCandidateSummary,
+    isUnlocking: rewardedAdPlacement === 'rewardedBonusPuzzle',
     notice: launchConfig.rewardedBonusPuzzleAdsEnabled
-      ? '모바일 보상형 광고 어댑터 연결 후 제공됩니다.'
+      ? '광고를 끝까지 보면 추가 퍼즐이 열립니다.'
       : '운영 설정에서 보너스 광고가 꺼져 있습니다.',
     status: isLoading
       ? 'loading'
       : bonusCandidateSummary != null
-      ? 'available'
-      : 'waiting',
+        ? 'available'
+        : 'waiting',
   };
   const boardCellSize = Math.max(
     32,
@@ -971,6 +981,14 @@ function AppContent() {
     return () => {
       isCancelled = true;
     };
+  }, []);
+
+  useEffect(() => {
+    initializeMobileAds().then(isInitialized => {
+      telemetry.impression('mobile_ads_initialize', {
+        status: isInitialized ? 'ready' : 'unavailable',
+      });
+    });
   }, []);
 
   useEffect(() => {
@@ -1070,6 +1088,68 @@ function AppContent() {
     puzzle.puzzleId,
   ]);
 
+  const getMobileAdTelemetryParams = useCallback(
+    (
+      placement: string,
+      nextPuzzle = puzzle,
+      summary = selectedPuzzleSummary,
+    ) => ({
+      ...getPuzzleTelemetryParams(nextPuzzle, summary),
+      ad_placement: placement,
+      ad_provider: 'admob',
+    }),
+    [puzzle, selectedPuzzleSummary],
+  );
+
+  const logMobileAdEvents = useCallback(
+    (
+      eventName: string,
+      placement: string,
+      events: MobileAdEvent[],
+      nextPuzzle = puzzle,
+      summary = selectedPuzzleSummary,
+    ) => {
+      events.forEach(event => {
+        telemetry.impression(eventName, {
+          ...getMobileAdTelemetryParams(placement, nextPuzzle, summary),
+          ad_error_code: event.errorCode,
+          ad_event: event.type,
+        });
+      });
+    },
+    [getMobileAdTelemetryParams, puzzle, selectedPuzzleSummary],
+  );
+
+  const showResultInterstitialAfterCompletion = useCallback(
+    async (completedPuzzle: Puzzle, summary?: PuzzleManifestItem) => {
+      telemetry.impression('result_interstitial_ad_request', {
+        ...getMobileAdTelemetryParams(
+          'interstitialResult',
+          completedPuzzle,
+          summary,
+        ),
+      });
+
+      const result = await showInterstitialAd('interstitialResult');
+      logMobileAdEvents(
+        'result_interstitial_ad_event',
+        'interstitialResult',
+        result.events,
+        completedPuzzle,
+        summary,
+      );
+      telemetry.impression('result_interstitial_ad_result', {
+        ...getMobileAdTelemetryParams(
+          'interstitialResult',
+          completedPuzzle,
+          summary,
+        ),
+        ad_status: result.status,
+      });
+    },
+    [getMobileAdTelemetryParams, logMobileAdEvents],
+  );
+
   useEffect(() => {
     if (isLoading || !viewModel.isComplete || mission.completedAt != null) {
       return;
@@ -1086,16 +1166,25 @@ function AppContent() {
       hint_count: hintCount,
       remaining_attempts: remainingAttempts,
     });
+    if (
+      launchConfig.resultInterstitialAdsEnabled &&
+      !resultInterstitialPuzzleIdsRef.current.has(puzzle.puzzleId)
+    ) {
+      resultInterstitialPuzzleIdsRef.current.add(puzzle.puzzleId);
+      showResultInterstitialAfterCompletion(puzzle, selectedPuzzleSummary);
+    }
     setNotice('퍼즐을 완료했습니다.');
     setRoute('result');
   }, [
     hintCount,
     isLoading,
+    launchConfig.resultInterstitialAdsEnabled,
     mission,
     puzzle,
     remainingAttempts,
     savePuzzleSnapshot,
     selectedPuzzleSummary,
+    showResultInterstitialAfterCompletion,
     viewModel.completedEntries.length,
     viewModel.isComplete,
   ]);
@@ -1153,6 +1242,110 @@ function AppContent() {
     });
   }, [clearBoardFocusTimer]);
 
+  async function requestRewardedHintCredits() {
+    if (!launchConfig.rewardedHintAdsEnabled) {
+      setNotice('운영 설정에서 힌트 광고가 꺼져 있습니다.');
+      return;
+    }
+
+    if (rewardedAdPlacement != null) {
+      setNotice('광고를 불러오는 중입니다.');
+      return;
+    }
+
+    setRewardedAdPlacement('rewardedHint');
+    telemetry.click('rewarded_hint_ad_request', {
+      ...getMobileAdTelemetryParams('rewardedHint'),
+      rewarded_hint_credits: launchConfig.rewardedHintCredits,
+    });
+
+    try {
+      const result = await showRewardedAd('rewardedHint');
+      logMobileAdEvents(
+        'rewarded_hint_ad_event',
+        'rewardedHint',
+        result.events,
+      );
+      telemetry.impression('rewarded_hint_ad_result', {
+        ...getMobileAdTelemetryParams('rewardedHint'),
+        ad_status: result.status,
+      });
+
+      if (result.status === 'rewarded') {
+        setEarnedHintCredits(
+          previous => previous + launchConfig.rewardedHintCredits,
+        );
+        telemetry.impression('rewarded_hint_ad_reward', {
+          ...getMobileAdTelemetryParams('rewardedHint'),
+          rewarded_hint_credits: launchConfig.rewardedHintCredits,
+        });
+        setNotice(
+          `광고 보상으로 힌트 ${launchConfig.rewardedHintCredits}개를 받았습니다.`,
+        );
+      } else if (result.status === 'closed') {
+        setNotice('광고를 끝까지 보지 않아 힌트가 지급되지 않았습니다.');
+      } else {
+        setNotice('광고를 불러오지 못했습니다. 잠시 후 다시 시도하세요.');
+      }
+    } finally {
+      setRewardedAdPlacement(null);
+    }
+  }
+
+  async function unlockBonusPuzzle() {
+    const summary = bonusCandidateSummary;
+
+    if (summary == null) {
+      setNotice('열 수 있는 보너스 퍼즐이 없습니다.');
+      return;
+    }
+
+    if (!launchConfig.rewardedBonusPuzzleAdsEnabled) {
+      setNotice('운영 설정에서 보너스 광고가 꺼져 있습니다.');
+      return;
+    }
+
+    if (rewardedAdPlacement != null || isLoading) {
+      setNotice('광고를 불러오는 중입니다.');
+      return;
+    }
+
+    setRewardedAdPlacement('rewardedBonusPuzzle');
+    telemetry.click('rewarded_bonus_puzzle_ad_request', {
+      ...getMobileAdTelemetryParams('rewardedBonusPuzzle'),
+      bonus_puzzle_id: summary.puzzleId,
+    });
+
+    try {
+      const result = await showRewardedAd('rewardedBonusPuzzle');
+      logMobileAdEvents(
+        'rewarded_bonus_puzzle_ad_event',
+        'rewardedBonusPuzzle',
+        result.events,
+      );
+      telemetry.impression('rewarded_bonus_puzzle_ad_result', {
+        ...getMobileAdTelemetryParams('rewardedBonusPuzzle'),
+        ad_status: result.status,
+        bonus_puzzle_id: summary.puzzleId,
+      });
+
+      if (result.status === 'rewarded') {
+        telemetry.impression('rewarded_bonus_puzzle_ad_reward', {
+          ...getMobileAdTelemetryParams('rewardedBonusPuzzle'),
+          bonus_puzzle_id: summary.puzzleId,
+        });
+        await selectPuzzle(summary.puzzleId);
+        setNotice('광고 보상으로 보너스 퍼즐을 열었습니다.');
+      } else if (result.status === 'closed') {
+        setNotice('광고를 끝까지 보지 않아 보너스 퍼즐이 열리지 않았습니다.');
+      } else {
+        setNotice('광고를 불러오지 못했습니다. 잠시 후 다시 시도하세요.');
+      }
+    } finally {
+      setRewardedAdPlacement(null);
+    }
+  }
+
   function applyPuzzleSession(session: PuzzleSession | null) {
     if (session == null) {
       return;
@@ -1189,7 +1382,10 @@ function AppContent() {
     telemetry.click('puzzle_select', {
       ...getPuzzleTelemetryParams(
         session.nextPuzzle,
-        findPuzzleSummaryById(puzzlePack.summaries, session.nextPuzzle.puzzleId),
+        findPuzzleSummaryById(
+          puzzlePack.summaries,
+          session.nextPuzzle.puzzleId,
+        ),
       ),
       puzzle_pack_source: puzzlePack.source,
     });
@@ -1237,9 +1433,9 @@ function AppContent() {
     const currentEntry = entries.find(entry => entry.id === selectedEntryId);
     const nextEntry =
       currentEntry != null && key === selectedCellKey && entries.length > 1
-        ? entries.find(entry => entry.id !== currentEntry.id) ?? currentEntry
-        : entries.find(entry => entry.direction === selectedDirection) ??
-          entries[0];
+        ? (entries.find(entry => entry.id !== currentEntry.id) ?? currentEntry)
+        : (entries.find(entry => entry.direction === selectedDirection) ??
+          entries[0]);
 
     selectEntry(nextEntry, key);
     focusBoardInput();
@@ -1339,9 +1535,7 @@ function AppContent() {
     }
 
     if (remainingHintCredits === 0) {
-      setNotice(
-        '무료 힌트를 모두 사용했습니다. 모바일 광고 힌트는 아직 연결 전입니다.',
-      );
+      requestRewardedHintCredits();
       return;
     }
 
@@ -1430,10 +1624,7 @@ function AppContent() {
     const remainingCellCount =
       selectedEntryCells.length -
       getEntryCellIndex(selectedEntry, startCellKey);
-    const nextLetters = getAnswerCommitLetters(
-      value,
-      remainingCellCount,
-    );
+    const nextLetters = getAnswerCommitLetters(value, remainingCellCount);
 
     if (nextLetters.length === 0) {
       return;
@@ -1646,7 +1837,10 @@ function AppContent() {
           <Text style={styles.notice}>{notice}</Text>
         </View>
 
-        <BonusPuzzlePanel state={bonusPuzzlePanelState} />
+        <BonusPuzzlePanel
+          onUnlock={unlockBonusPuzzle}
+          state={bonusPuzzlePanelState}
+        />
 
         <View style={styles.previewPanel}>
           <Text style={styles.panelTitle}>첫 힌트</Text>
@@ -1687,7 +1881,7 @@ function AppContent() {
                 const pendingValue = pendingAnswerCellValues[key] ?? '';
                 const committedValue = cellValues[key];
                 const displayValue =
-                  pendingValue !== '' ? pendingValue : committedValue ?? '';
+                  pendingValue !== '' ? pendingValue : (committedValue ?? '');
                 // Pending IME text is temporary, so only committed letters get
                 // right/wrong styling.
                 const isCorrect =
@@ -1708,10 +1902,10 @@ function AppContent() {
                             isWrong
                               ? ' 오답'
                               : isCompletedCell
-                              ? ' 정답 완료'
-                              : isCorrect
-                              ? ' 정답 잠금'
-                              : ''
+                                ? ' 정답 완료'
+                                : isCorrect
+                                  ? ' 정답 잠금'
+                                  : ''
                           }`
                     }
                     accessibilityRole="button"
@@ -1762,7 +1956,10 @@ function AppContent() {
           contextMenuHidden
           importantForAccessibility="no-hide-descendants"
           importantForAutofill="no"
-          maxLength={Math.max(1, selectedEntryCells.length - selectedEntryIndex)}
+          maxLength={Math.max(
+            1,
+            selectedEntryCells.length - selectedEntryIndex,
+          )}
           onChangeText={handleBoardInputChange}
           onEndEditing={event => {
             commitBoardInputValue(event.nativeEvent.text);
@@ -1960,11 +2157,7 @@ function AppContent() {
                 slot.value === ''
                   ? ', 빈 칸'
                   : `, ${slot.value}${
-                      slot.isLocked
-                        ? ' 정답 잠금'
-                        : slot.isWrong
-                        ? ' 오답'
-                        : ''
+                      slot.isLocked ? ' 정답 잠금' : slot.isWrong ? ' 오답' : ''
                     }`
               }`}
               accessibilityRole="button"
@@ -2125,7 +2318,10 @@ function AppContent() {
             </Pressable>
           </View>
         </View>
-        <BonusPuzzlePanel state={bonusPuzzlePanelState} />
+        <BonusPuzzlePanel
+          onUnlock={unlockBonusPuzzle}
+          state={bonusPuzzlePanelState}
+        />
       </ScrollView>
     );
   }
@@ -2168,8 +2364,8 @@ function AppContent() {
                 {state?.completedAt != null
                   ? '완료'
                   : state?.hasProgress
-                  ? '진행 중'
-                  : '대기'}
+                    ? '진행 중'
+                    : '대기'}
               </Text>
             </Pressable>
           );
@@ -2245,31 +2441,37 @@ function AppContent() {
         {route === 'today'
           ? renderToday()
           : route === 'result'
-          ? renderResult()
-          : route === 'history'
-          ? renderHistory()
-          : route === 'license'
-          ? renderLicense()
-          : renderHome()}
+            ? renderResult()
+            : route === 'history'
+              ? renderHistory()
+              : route === 'license'
+                ? renderLicense()
+                : renderHome()}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
-function BonusPuzzlePanel({ state }: { state: BonusPuzzlePanelState }) {
+function BonusPuzzlePanel({
+  onUnlock,
+  state,
+}: {
+  onUnlock: () => void;
+  state: BonusPuzzlePanelState;
+}) {
   const summary = state.candidateSummary;
   const title =
     state.status === 'available'
       ? '새 퍼즐이 도착했어요'
       : state.status === 'loading'
-      ? '보너스 퍼즐 확인 중'
-      : '다음 보너스 퍼즐을 준비 중이에요';
+        ? '보너스 퍼즐 확인 중'
+        : '다음 보너스 퍼즐을 준비 중이에요';
   const description =
     state.status === 'available'
       ? `${formatBonusPuzzleMeta(summary)} · 광고를 보면 하나 더 풀 수 있어요.`
       : state.status === 'loading'
-      ? '원격 퍼즐팩을 확인하고 있습니다.'
-      : '오늘 공개된 추가 퍼즐이 생기면 여기에 표시됩니다.';
+        ? '원격 퍼즐팩을 확인하고 있습니다.'
+        : '오늘 공개된 추가 퍼즐이 생기면 여기에 표시됩니다.';
 
   return (
     <View
@@ -2286,10 +2488,16 @@ function BonusPuzzlePanel({ state }: { state: BonusPuzzlePanelState }) {
       </View>
       {state.status === 'available' ? (
         <Pressable
-          disabled
-          style={[styles.primaryButton, styles.disabledButton]}
+          disabled={state.isUnlocking}
+          onPress={onUnlock}
+          style={[
+            styles.primaryButton,
+            state.isUnlocking && styles.disabledButton,
+          ]}
         >
-          <Text style={styles.primaryButtonText}>광고 연결 대기</Text>
+          <Text style={styles.primaryButtonText}>
+            {state.isUnlocking ? '광고 불러오는 중' : '광고 보고 열기'}
+          </Text>
         </Pressable>
       ) : null}
     </View>
