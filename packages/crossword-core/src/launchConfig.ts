@@ -43,7 +43,7 @@ export const defaultLaunchConfig: LaunchConfig = {
   completionStatsMinDisplayCount: 10,
   rewardedBonusPuzzleAdsEnabled: true,
   rewardedHintAdsEnabled: true,
-  resultInterstitialAdsEnabled: true,
+  resultInterstitialAdsEnabled: false,
   leaderboardEnabled: false,
 };
 

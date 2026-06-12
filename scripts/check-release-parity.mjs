@@ -347,7 +347,8 @@ assertIncludes(mobileAds, "showRewardedAd", mobileAdsPath);
 assertIncludes(mobileAds, "showInterstitialAd", mobileAdsPath);
 assertIncludes(mobileAds, "requestNonPersonalizedAdsOnly: true", mobileAdsPath);
 assertIncludes(mobileApp, "showRewardedAd", mobileAppPath);
-assertIncludes(mobileApp, "showInterstitialAd", mobileAppPath);
+assertNotIncludes(mobileApp, "showInterstitialAd", mobileAppPath);
+assertNotIncludes(webApp, "showResultInterstitialAd", webAppPath);
 assertIncludes(
   androidBuildGradle,
   'classpath("com.google.gms:google-services:4.4.4")',

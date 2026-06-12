@@ -48,7 +48,7 @@ GitHub Actions AIT 배포는 같은 값을 GitHub Variables에서 읽는다. 미
 | `completion_stats_min_display_count` |    `10` | 정확한 참여자/완료자 수 표시 최소 집계 수 |
 | `rewarded_hint_ads_enabled`          |  `true` | 힌트 보상형 광고 CTA 노출 여부            |
 | `rewarded_bonus_puzzle_ads_enabled`  |  `true` | 보너스 퍼즐 보상형 광고 CTA 노출 여부     |
-| `result_interstitial_ads_enabled`    |  `true` | 결과 화면 진입 후 전면 광고 노출 여부     |
+| `result_interstitial_ads_enabled`    | `false` | 결과 화면 진입 후 전면 광고 노출 여부. 현재 기본 비활성 |
 | `leaderboard_enabled`                | `false` | 리더보드 UI 노출 여부                     |
 
 Remote Config는 보안 결정이나 정답 검증의 source가 아니다. UI 노출 개수, 힌트 지급량, 광고 on/off 같은 운영 튜닝에만 사용한다. 힌트 출처/라이선스 표시는 Remote Config 대상이 아니며 앱 안에서 항상 접근 가능한 정적 고지로 둔다.
@@ -72,9 +72,9 @@ AIT는 AppsInToss Analytics와 Firebase Analytics를 함께 호출한다. 샌드
 | `rewarded_bonus_puzzle_ad_event`   | 보너스 퍼즐 보상형 광고 load/show 이벤트    |
 | `rewarded_bonus_puzzle_ad_reward`  | `userEarnedReward` 수신 후 보너스 퍼즐 해금 |
 | `mission_complete`                 | 퍼즐 완료. 완료자 집계 기준                 |
-| `result_interstitial_ad_request`   | 결과 전면 광고 요청                         |
-| `result_interstitial_ad_event`     | 결과 전면 광고 load/show 이벤트             |
-| `result_interstitial_ad_result`    | 결과 전면 광고 종료/실패                    |
+| `result_interstitial_ad_request`   | 결과 전면 광고 요청. 현재 기본 비활성       |
+| `result_interstitial_ad_event`     | 결과 전면 광고 load/show 이벤트. 현재 기본 비활성 |
+| `result_interstitial_ad_result`    | 결과 전면 광고 종료/실패. 현재 기본 비활성 |
 
 집계용 이벤트는 공통으로 `puzzle_id`, `slot_id`, `pack_id`, `published_at`, `difficulty`, `grid_size`, `word_count`를 포함한다. 미션/시도 이벤트는 `attempt_number`, `remaining_attempts`, `hint_count`, `earned_hint_credits`를 추가한다. `mission_complete`는 `completed_at`, `elapsed_seconds`, `completed_word_count`도 포함한다.
 

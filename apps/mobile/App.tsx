@@ -66,11 +66,15 @@ import {
   type PuzzleArchiveRecord,
   type PuzzleArchiveSaveOptions,
 } from './puzzleArchive';
+import {
+  loadBonusPuzzleUnlocks,
+  saveBonusPuzzleUnlock,
+  type BonusPuzzleUnlock,
+} from './bonusPuzzleUnlockRepository';
 import { createPuzzleCompletionStatsRepository } from './puzzleCompletionStatsRepository';
 import { loadFirebaseLaunchConfig } from './firebaseClient';
 import {
   initializeMobileAds,
-  showInterstitialAd,
   showRewardedAd,
   type MobileAdEvent,
   type RewardedAdPlacement,
@@ -127,9 +131,10 @@ type PuzzleViewModel = {
 
 type BonusPuzzlePanelState = {
   candidateSummary?: PuzzleManifestItem;
+  unlockedSummary?: PuzzleManifestItem;
   isUnlocking: boolean;
   notice: string;
-  status: 'available' | 'loading' | 'waiting';
+  status: 'available' | 'loading' | 'unlocked' | 'used' | 'waiting';
 };
 
 const REMOTE_PUZZLE_PACK_BASE_URL = 'https://crossword-puzzle-79ae0.web.app';
@@ -855,6 +860,9 @@ function AppContent() {
   const [puzzleArchiveRecords, setPuzzleArchiveRecords] = useState<
     PuzzleArchiveRecord[]
   >([]);
+  const [bonusPuzzleUnlocks, setBonusPuzzleUnlocks] = useState<
+    BonusPuzzleUnlock[]
+  >([]);
   const [cellValues, setCellValues] = useState<Record<string, string>>({});
   const [earnedHintCredits, setEarnedHintCredits] = useState(0);
   const [hintCount, setHintCount] = useState(0);
@@ -880,10 +888,11 @@ function AppContent() {
     useState<LaunchConfig>(defaultLaunchConfig);
   const [completionStatsByPuzzleId, setCompletionStatsByPuzzleId] =
     useState<CompletionStatsByPuzzleId>({});
+  const [completionCelebrationPuzzleId, setCompletionCelebrationPuzzleId] =
+    useState<string | null>(null);
   const [rewardedAdPlacement, setRewardedAdPlacement] =
     useState<RewardedAdPlacement | null>(null);
   const hasLoggedFirstAnswerInputRef = useRef(false);
-  const resultInterstitialPuzzleIdsRef = useRef(new Set<string>());
   const playScreenScrollRef = useRef<React.ElementRef<typeof ScrollView>>(null);
   const boardInputRef = useRef<React.ElementRef<typeof TextInput>>(null);
   const answerCommitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
@@ -1002,6 +1011,18 @@ function AppContent() {
     () => getCompletedPuzzleIds(dateCardStates),
     [dateCardStates],
   );
+  const activeBonusPuzzleUnlocks = useMemo(
+    () => bonusPuzzleUnlocks.filter(unlock => unlock.date === todayKey),
+    [bonusPuzzleUnlocks, todayKey],
+  );
+  const unlockedBonusPuzzleIds = useMemo(
+    () => new Set(activeBonusPuzzleUnlocks.map(unlock => unlock.puzzleId)),
+    [activeBonusPuzzleUnlocks],
+  );
+  const completedOrUnlockedPuzzleIds = useMemo(
+    () => new Set([...completedPuzzleIds, ...unlockedBonusPuzzleIds]),
+    [completedPuzzleIds, unlockedBonusPuzzleIds],
+  );
   const dailyFreeSummary = useMemo(
     () => getDailyFreePuzzleSummary(puzzlePack.summaries, todayKey),
     [puzzlePack.summaries, todayKey],
@@ -1022,6 +1043,26 @@ function AppContent() {
         .map(record => createPuzzleSummary(record.puzzle)),
     [launchConfig.visiblePuzzleCount, puzzleArchiveRecords],
   );
+  const unlockedBonusSummaries = useMemo(
+    () =>
+      uniquePuzzleSummaries(
+        activeBonusPuzzleUnlocks
+          .map(
+            unlock =>
+              findPuzzleSummaryById(puzzlePack.summaries, unlock.puzzleId) ??
+              findPuzzleSummaryById(archivePuzzleSummaries, unlock.puzzleId),
+          )
+          .filter((summary): summary is PuzzleManifestItem => summary != null),
+      ),
+    [activeBonusPuzzleUnlocks, archivePuzzleSummaries, puzzlePack.summaries],
+  );
+  const unlockedPlayableBonusSummary = useMemo(
+    () =>
+      unlockedBonusSummaries.find(
+        summary => !completedPuzzleIds.has(summary.puzzleId),
+      ),
+    [completedPuzzleIds, unlockedBonusSummaries],
+  );
   const selectedPuzzleSummary = useMemo(
     () =>
       findPuzzleSummaryById(puzzlePack.summaries, puzzle.puzzleId) ??
@@ -1032,12 +1073,17 @@ function AppContent() {
   const bonusCandidateSummary = useMemo(
     () =>
       getBonusPuzzleCandidateSummary({
-        completedPuzzleIds,
+        completedPuzzleIds: completedOrUnlockedPuzzleIds,
         dailyFreeSummary,
         puzzleSummaries: puzzlePack.summaries,
         today: todayKey,
       }),
-    [completedPuzzleIds, dailyFreeSummary, puzzlePack.summaries, todayKey],
+    [
+      completedOrUnlockedPuzzleIds,
+      dailyFreeSummary,
+      puzzlePack.summaries,
+      todayKey,
+    ],
   );
   const visiblePuzzleSummaries = useMemo(
     () =>
@@ -1045,12 +1091,18 @@ function AppContent() {
         uniquePuzzleSummaries(
           [
             ...dailyFreeSummaries,
+            ...unlockedBonusSummaries,
             selectedPuzzleSummary,
             ...archivePuzzleSummaries,
           ].filter((summary): summary is PuzzleManifestItem => summary != null),
         ),
       ),
-    [archivePuzzleSummaries, dailyFreeSummaries, selectedPuzzleSummary],
+    [
+      archivePuzzleSummaries,
+      dailyFreeSummaries,
+      selectedPuzzleSummary,
+      unlockedBonusSummaries,
+    ],
   );
   useEffect(() => {
     if (!launchConfig.completionStatsEnabled) {
@@ -1081,15 +1133,24 @@ function AppContent() {
 
   const bonusPuzzlePanelState: BonusPuzzlePanelState = {
     candidateSummary: bonusCandidateSummary,
+    unlockedSummary:
+      unlockedPlayableBonusSummary ?? unlockedBonusSummaries[0] ?? undefined,
     isUnlocking: rewardedAdPlacement === 'rewardedBonusPuzzle',
-    notice: launchConfig.rewardedBonusPuzzleAdsEnabled
-      ? '광고를 끝까지 보면 추가 퍼즐이 열립니다.'
-      : '운영 설정에서 보너스 광고가 꺼져 있습니다.',
+    notice:
+      unlockedPlayableBonusSummary != null
+        ? '이미 광고로 연 퍼즐입니다. 광고 없이 이어서 풀 수 있습니다.'
+        : launchConfig.rewardedBonusPuzzleAdsEnabled
+          ? '광고를 끝까지 보면 추가 퍼즐이 열립니다.'
+          : '운영 설정에서 보너스 광고가 꺼져 있습니다.',
     status: isLoading
       ? 'loading'
-      : bonusCandidateSummary != null
-        ? 'available'
-        : 'waiting',
+      : unlockedPlayableBonusSummary != null
+        ? 'unlocked'
+        : bonusCandidateSummary != null
+          ? 'available'
+          : unlockedBonusSummaries.length > 0
+            ? 'used'
+            : 'waiting',
   };
   const boardCellSize = Math.max(
     32,
@@ -1176,9 +1237,11 @@ function AppContent() {
         ...nextArchiveRecords.map(record => createPuzzleSummary(record.puzzle)),
       ]);
       const initialPuzzleId = getInitialPuzzleId(nextSummaries);
-      const [states, session] = await Promise.all([
+      const today = getTodayDateKey();
+      const [states, session, nextBonusPuzzleUnlocks] = await Promise.all([
         loadDateCardStates(hydratedSummaries),
         loadPuzzleSession(initialPuzzleId, nextPuzzlePack),
+        loadBonusPuzzleUnlocks(today),
       ]);
 
       if (isCancelled) {
@@ -1187,6 +1250,7 @@ function AppContent() {
 
       setPuzzlePack(nextPuzzlePack);
       setPuzzleArchiveRecords(nextArchiveRecords);
+      setBonusPuzzleUnlocks(nextBonusPuzzleUnlocks);
       setDateCardStates(states);
       applyPuzzleSession(session);
       setNotice(
@@ -1219,6 +1283,12 @@ function AppContent() {
       puzzle_pack_source: puzzlePack.source,
     });
   }, [isLoading, puzzle, puzzlePack.source, route, selectedPuzzleSummary]);
+
+  useEffect(() => {
+    if (route !== 'today') {
+      setCompletionCelebrationPuzzleId(null);
+    }
+  }, [route]);
 
   useEffect(() => {
     if (isLoading) {
@@ -1286,36 +1356,6 @@ function AppContent() {
     [getMobileAdTelemetryParams, puzzle, selectedPuzzleSummary],
   );
 
-  const showResultInterstitialAfterCompletion = useCallback(
-    async (completedPuzzle: Puzzle, summary?: PuzzleManifestItem) => {
-      telemetry.impression('result_interstitial_ad_request', {
-        ...getMobileAdTelemetryParams(
-          'interstitialResult',
-          completedPuzzle,
-          summary,
-        ),
-      });
-
-      const result = await showInterstitialAd('interstitialResult');
-      logMobileAdEvents(
-        'result_interstitial_ad_event',
-        'interstitialResult',
-        result.events,
-        completedPuzzle,
-        summary,
-      );
-      telemetry.impression('result_interstitial_ad_result', {
-        ...getMobileAdTelemetryParams(
-          'interstitialResult',
-          completedPuzzle,
-          summary,
-        ),
-        ad_status: result.status,
-      });
-    },
-    [getMobileAdTelemetryParams, logMobileAdEvents],
-  );
-
   useEffect(() => {
     if (isLoading || !viewModel.isComplete || mission.completedAt != null) {
       return;
@@ -1332,25 +1372,20 @@ function AppContent() {
       hint_count: hintCount,
       remaining_attempts: remainingAttempts,
     });
-    if (
-      launchConfig.resultInterstitialAdsEnabled &&
-      !resultInterstitialPuzzleIdsRef.current.has(puzzle.puzzleId)
-    ) {
-      resultInterstitialPuzzleIdsRef.current.add(puzzle.puzzleId);
-      showResultInterstitialAfterCompletion(puzzle, selectedPuzzleSummary);
+    Keyboard.dismiss();
+    setNotice('퍼즐을 완료했습니다. 정답판을 확인한 뒤 결과를 볼 수 있습니다.');
+    if (route === 'today') {
+      setCompletionCelebrationPuzzleId(puzzle.puzzleId);
     }
-    setNotice('퍼즐을 완료했습니다.');
-    setRoute('result');
   }, [
     hintCount,
     isLoading,
-    launchConfig.resultInterstitialAdsEnabled,
     mission,
     puzzle,
     remainingAttempts,
+    route,
     savePuzzleSnapshot,
     selectedPuzzleSummary,
-    showResultInterstitialAfterCompletion,
     viewModel.completedEntries.length,
     viewModel.isComplete,
   ]);
@@ -1485,6 +1520,22 @@ function AppContent() {
   }
 
   async function unlockBonusPuzzle() {
+    const unlockedSummary = bonusPuzzlePanelState.unlockedSummary;
+
+    if (
+      (bonusPuzzlePanelState.status === 'unlocked' ||
+        bonusPuzzlePanelState.status === 'used') &&
+      unlockedSummary != null
+    ) {
+      const shouldOpenResult = completedPuzzleIds.has(unlockedSummary.puzzleId);
+      await selectPuzzle(unlockedSummary.puzzleId);
+      if (shouldOpenResult) {
+        setRoute('result');
+      }
+      setNotice('광고로 열어 둔 보너스 퍼즐을 불러왔습니다.');
+      return;
+    }
+
     const summary = bonusCandidateSummary;
 
     if (summary == null) {
@@ -1522,6 +1573,14 @@ function AppContent() {
       });
 
       if (result.status === 'rewarded') {
+        const nextUnlock = {
+          date: todayKey,
+          puzzleId: summary.puzzleId,
+          unlockedAt: new Date().toISOString(),
+        };
+        const nextUnlocks = await saveBonusPuzzleUnlock(nextUnlock);
+
+        setBonusPuzzleUnlocks(nextUnlocks);
         telemetry.impression('rewarded_bonus_puzzle_ad_reward', {
           ...getMobileAdTelemetryParams('rewardedBonusPuzzle'),
           bonus_puzzle_id: summary.puzzleId,
@@ -1538,11 +1597,22 @@ function AppContent() {
     }
   }
 
+  function openCompletedResult() {
+    setCompletionCelebrationPuzzleId(null);
+    setRoute('result');
+  }
+
+  function openCompletedBoard() {
+    setCompletionCelebrationPuzzleId(null);
+    setRoute('today');
+  }
+
   function applyPuzzleSession(session: PuzzleSession | null) {
     if (session == null) {
       return;
     }
 
+    setCompletionCelebrationPuzzleId(null);
     setPuzzle(session.nextPuzzle);
     setCellValues(session.savedProgress.cellValues);
     setEarnedHintCredits(session.savedProgress.earnedHintCredits);
@@ -2490,6 +2560,81 @@ function AppContent() {
     );
   }
 
+  function renderCompletedReviewPanel() {
+    if (!isCompleted) {
+      return null;
+    }
+
+    return (
+      <View style={styles.completedReviewPanel}>
+        <View style={styles.completedReviewText}>
+          <Text style={styles.completedReviewTitle}>정답판 확인 중</Text>
+          <Text style={styles.completedReviewDescription}>
+            맞춘 낱말을 확인한 뒤 결과 화면으로 이동할 수 있습니다.
+          </Text>
+        </View>
+        <Pressable onPress={openCompletedResult} style={styles.primaryButton}>
+          <Text style={styles.primaryButtonText}>결과 보기</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  function renderCompletionCelebrationModal() {
+    const isVisible = completionCelebrationPuzzleId === puzzle.puzzleId;
+
+    return (
+      <Modal
+        animationType="fade"
+        onRequestClose={() => setCompletionCelebrationPuzzleId(null)}
+        transparent
+        visible={isVisible}
+      >
+        <View style={styles.completionModalOverlay}>
+          <View
+            accessibilityLabel="퍼즐 완료 안내"
+            accessibilityRole="alert"
+            style={styles.completionDialog}
+          >
+            <View style={styles.completionDialogBadge}>
+              <Text style={styles.completionDialogBadgeText}>완료</Text>
+            </View>
+            <View style={styles.completionDialogText}>
+              <Text style={styles.completionDialogTitle}>
+                퍼즐을 완성했습니다
+              </Text>
+              <Text style={styles.completionDialogDescription}>
+                낱말 {viewModel.completedEntries.length}/{puzzle.entries.length}
+                개를 모두 맞췄습니다
+                {hintCount > 0 ? ` · 힌트 ${hintCount}개 사용` : ''}.
+              </Text>
+            </View>
+            <View style={styles.completionDialogActions}>
+              <Pressable
+                onPress={() => setCompletionCelebrationPuzzleId(null)}
+                style={styles.secondaryButton}
+              >
+                <Text style={styles.secondaryButtonText}>퍼즐 다시 보기</Text>
+              </Pressable>
+              <Pressable onPress={openCompletedResult} style={styles.primaryButton}>
+                <Text style={styles.primaryButtonText}>결과 보기</Text>
+              </Pressable>
+            </View>
+            <Pressable
+              onPress={() => {
+                setCompletionCelebrationPuzzleId(null);
+                setRoute('home');
+              }}
+              style={styles.completionHomeButton}
+            >
+              <Text style={styles.completionHomeButtonText}>홈으로</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+    );
+  }
+
   function renderToday() {
     return (
       <View style={styles.playScreen}>
@@ -2503,8 +2648,10 @@ function AppContent() {
         >
           {renderBoard()}
           {renderSelectedClues()}
+          {renderCompletedReviewPanel()}
         </ScrollView>
         {renderClueListModal()}
+        {renderCompletionCelebrationModal()}
       </View>
     );
   }
@@ -2524,12 +2671,18 @@ function AppContent() {
           </View>
           <View style={styles.actions}>
             <Pressable
-              onPress={startOrResumeMission}
+              onPress={isCompleted ? openCompletedBoard : startOrResumeMission}
               style={styles.primaryButton}
             >
               <Text style={styles.primaryButtonText}>
                 {isCompleted ? '보드 보기' : '계속 풀기'}
               </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setRoute('home')}
+              style={styles.secondaryButton}
+            >
+              <Text style={styles.secondaryButtonText}>홈으로</Text>
             </Pressable>
             <Pressable
               disabled={isCompleted || remainingAttempts === 0}
@@ -2685,19 +2838,39 @@ function BonusPuzzlePanel({
   onUnlock: () => void;
   state: BonusPuzzlePanelState;
 }) {
-  const summary = state.candidateSummary;
-  const title =
+  const summary = state.unlockedSummary ?? state.candidateSummary;
+  let title = '다음 보너스 퍼즐을 준비 중이에요';
+  let description = '오늘 공개된 추가 퍼즐이 생기면 여기에 표시됩니다.';
+
+  if (state.status === 'available') {
+    title = '새 퍼즐이 도착했어요';
+    description = `${formatBonusPuzzleMeta(summary)} · 광고를 보면 하나 더 풀 수 있어요.`;
+  } else if (state.status === 'unlocked') {
+    title = '보너스 퍼즐이 열려 있어요';
+    description = `${formatBonusPuzzleMeta(summary)} · 광고 없이 이어서 풀 수 있어요.`;
+  } else if (state.status === 'used') {
+    title = '오늘의 보너스 퍼즐을 풀었어요';
+    description = `${formatBonusPuzzleMeta(summary)} · 결과를 다시 볼 수 있어요.`;
+  } else if (state.status === 'loading') {
+    title = '보너스 퍼즐 확인 중';
+    description = '원격 퍼즐팩을 확인하고 있습니다.';
+  }
+
+  const buttonLabel =
     state.status === 'available'
-      ? '새 퍼즐이 도착했어요'
-      : state.status === 'loading'
-        ? '보너스 퍼즐 확인 중'
-        : '다음 보너스 퍼즐을 준비 중이에요';
-  const description =
-    state.status === 'available'
-      ? `${formatBonusPuzzleMeta(summary)} · 광고를 보면 하나 더 풀 수 있어요.`
-      : state.status === 'loading'
-        ? '원격 퍼즐팩을 확인하고 있습니다.'
-        : '오늘 공개된 추가 퍼즐이 생기면 여기에 표시됩니다.';
+      ? state.isUnlocking
+        ? '광고 불러오는 중'
+        : '광고 보고 열기'
+      : state.status === 'unlocked'
+        ? '보너스 퍼즐 풀기'
+        : state.status === 'used'
+          ? '결과 보기'
+          : '';
+  const canShowAction =
+    state.status === 'available' ||
+    state.status === 'unlocked' ||
+    state.status === 'used';
+  const isActionDisabled = state.isUnlocking || summary == null;
 
   return (
     <View
@@ -2712,18 +2885,16 @@ function BonusPuzzlePanel({
         <Text style={styles.smallText}>{description}</Text>
         <Text style={styles.bonusNotice}>{state.notice}</Text>
       </View>
-      {state.status === 'available' ? (
+      {canShowAction ? (
         <Pressable
-          disabled={state.isUnlocking}
+          disabled={isActionDisabled}
           onPress={onUnlock}
           style={[
             styles.primaryButton,
-            state.isUnlocking && styles.disabledButton,
+            isActionDisabled && styles.disabledButton,
           ]}
         >
-          <Text style={styles.primaryButtonText}>
-            {state.isUnlocking ? '광고 불러오는 중' : '광고 보고 열기'}
-          </Text>
+          <Text style={styles.primaryButtonText}>{buttonLabel}</Text>
         </Pressable>
       ) : null}
     </View>
@@ -3486,6 +3657,93 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     textAlign: 'center',
+  },
+  completedReviewPanel: {
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderColor: '#99f6e4',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 12,
+    padding: 14,
+  },
+  completedReviewText: {
+    flex: 1,
+    gap: 4,
+    minWidth: 0,
+  },
+  completedReviewTitle: {
+    color: '#0f172a',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  completedReviewDescription: {
+    color: '#64748b',
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 18,
+  },
+  completionModalOverlay: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(15, 23, 42, 0.42)',
+    flex: 1,
+    justifyContent: 'center',
+    padding: 24,
+  },
+  completionDialog: {
+    alignItems: 'stretch',
+    backgroundColor: '#ffffff',
+    borderRadius: 8,
+    gap: 16,
+    maxWidth: 420,
+    padding: 18,
+    width: '100%',
+  },
+  completionDialogBadge: {
+    alignItems: 'center',
+    alignSelf: 'center',
+    backgroundColor: '#ecfdf5',
+    borderRadius: 999,
+    height: 54,
+    justifyContent: 'center',
+    width: 54,
+  },
+  completionDialogBadgeText: {
+    color: '#0f766e',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  completionDialogText: {
+    alignItems: 'center',
+    gap: 6,
+  },
+  completionDialogTitle: {
+    color: '#0f172a',
+    fontSize: 20,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  completionDialogDescription: {
+    color: '#64748b',
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 21,
+    textAlign: 'center',
+  },
+  completionDialogActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  completionHomeButton: {
+    alignItems: 'center',
+    minHeight: 28,
+    justifyContent: 'center',
+  },
+  completionHomeButtonText: {
+    color: '#64748b',
+    fontSize: 13,
+    fontWeight: '800',
   },
   clueModal: {
     backgroundColor: '#ffffff',

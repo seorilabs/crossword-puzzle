@@ -47,7 +47,6 @@ import {
 import { createLocalProgressRepository } from "./adapters/localProgressRepository";
 import {
   showRewardedBonusPuzzleAd,
-  showResultInterstitialAd,
   showRewardedHintAd,
   type FullScreenAdResult,
 } from "./adapters/appsInTossAds";
@@ -691,15 +690,14 @@ function App() {
   const [puzzleArchiveRecords, setPuzzleArchiveRecords] = useState<
     PuzzleArchiveRecord[]
   >([]);
-  const [bonusPuzzleUnlock, setBonusPuzzleUnlock] =
-    useState<BonusPuzzleUnlock | null>(null);
+  const [bonusPuzzleUnlocks, setBonusPuzzleUnlocks] = useState<
+    BonusPuzzleUnlock[]
+  >([]);
   const [completionStatsByPuzzleId, setCompletionStatsByPuzzleId] =
     useState<CompletionStatsByPuzzleId>({});
   const [completionCelebrationId, setCompletionCelebrationId] = useState<
     string | null
   >(null);
-  const shownResultInterstitialRef = useRef<string | null>(null);
-  const justCompletedPuzzleIdRef = useRef<string | null>(null);
   const firstAnswerInputKeysRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -853,7 +851,7 @@ function App() {
             : [createPuzzleSummary(fallbackPuzzle)];
         const today = getTodayDateKey();
         const initialPuzzleId = getInitialPuzzleId(nextSummaries, today);
-        const [nextDateCardStates, session, nextBonusUnlock] =
+        const [nextDateCardStates, session, nextBonusPuzzleUnlocks] =
           await Promise.all([
             loadDateCardStates([
               ...nextSummaries,
@@ -862,13 +860,13 @@ function App() {
               ),
             ]),
             loadPuzzleSession(initialPuzzleId),
-            bonusPuzzleUnlockRepository.loadUnlock(today),
+            bonusPuzzleUnlockRepository.loadUnlocks(today),
           ]);
 
         if (!isCancelled) {
           setPuzzleSummaries(nextSummaries);
           setPuzzleArchiveRecords(nextArchiveRecords);
-          setBonusPuzzleUnlock(nextBonusUnlock);
+          setBonusPuzzleUnlocks(nextBonusPuzzleUnlocks);
           setDateCardStates(nextDateCardStates);
           applyPuzzleSession(session);
           setLoadState(getPuzzlePackLoadState(nextSummaries));
@@ -964,6 +962,18 @@ function App() {
     () => getCompletedPuzzleIds(dateCardStates),
     [dateCardStates],
   );
+  const activeBonusPuzzleUnlocks = useMemo(
+    () => bonusPuzzleUnlocks.filter((unlock) => unlock.date === todayKey),
+    [bonusPuzzleUnlocks, todayKey],
+  );
+  const unlockedBonusPuzzleIds = useMemo(
+    () => new Set(activeBonusPuzzleUnlocks.map((unlock) => unlock.puzzleId)),
+    [activeBonusPuzzleUnlocks],
+  );
+  const completedOrUnlockedPuzzleIds = useMemo(
+    () => new Set([...completedPuzzleIds, ...unlockedBonusPuzzleIds]),
+    [completedPuzzleIds, unlockedBonusPuzzleIds],
+  );
   const dailyFreeSummary = useMemo(
     () => getDailyFreePuzzleSummary(puzzleSummaries, todayKey),
     [puzzleSummaries, todayKey],
@@ -987,27 +997,36 @@ function App() {
         .map((record) => createPuzzleSummary(record.puzzle)),
     [launchConfig.visiblePuzzleCount, puzzleArchiveRecords],
   );
-  const activeBonusUnlock =
-    bonusPuzzleUnlock?.date === todayKey ? bonusPuzzleUnlock : null;
-  const unlockedBonusSummary =
-    findPuzzleSummaryById(puzzleSummaries, activeBonusUnlock?.puzzleId) ??
-    getPuzzleSummaryFromArchive(
-      puzzleArchiveRecords,
-      activeBonusUnlock?.puzzleId,
-    );
+  const unlockedBonusSummaries = useMemo(
+    () =>
+      uniquePuzzleSummaries(
+        activeBonusPuzzleUnlocks
+          .map(
+            (unlock) =>
+              findPuzzleSummaryById(puzzleSummaries, unlock.puzzleId) ??
+              getPuzzleSummaryFromArchive(puzzleArchiveRecords, unlock.puzzleId),
+          )
+          .filter((summary): summary is PuzzleManifestItem => summary != null),
+      ),
+    [activeBonusPuzzleUnlocks, puzzleArchiveRecords, puzzleSummaries],
+  );
+  const unlockedPlayableBonusSummary = useMemo(
+    () =>
+      unlockedBonusSummaries.find(
+        (summary) => !completedPuzzleIds.has(summary.puzzleId),
+      ),
+    [completedPuzzleIds, unlockedBonusSummaries],
+  );
   const bonusCandidateSummary = useMemo(
     () =>
-      activeBonusUnlock == null
-        ? getBonusPuzzleCandidateSummary({
-            completedPuzzleIds,
-            dailyFreeSummary,
-            puzzleSummaries,
-            today: todayKey,
-          })
-        : undefined,
+      getBonusPuzzleCandidateSummary({
+        completedPuzzleIds: completedOrUnlockedPuzzleIds,
+        dailyFreeSummary,
+        puzzleSummaries,
+        today: todayKey,
+      }),
     [
-      activeBonusUnlock,
-      completedPuzzleIds,
+      completedOrUnlockedPuzzleIds,
       dailyFreeSummary,
       puzzleSummaries,
       todayKey,
@@ -1026,7 +1045,7 @@ function App() {
         uniquePuzzleSummaries(
           [
             ...dailyFreeSummaries,
-            unlockedBonusSummary,
+            ...unlockedBonusSummaries,
             selectedPuzzleSummary,
             ...archivePuzzleSummaries,
           ].filter((summary): summary is PuzzleManifestItem => summary != null),
@@ -1036,7 +1055,7 @@ function App() {
       archivePuzzleSummaries,
       dailyFreeSummaries,
       selectedPuzzleSummary,
-      unlockedBonusSummary,
+      unlockedBonusSummaries,
     ],
   );
   useEffect(() => {
@@ -1090,14 +1109,15 @@ function App() {
     status:
       loadState === "loading"
         ? "loading"
-        : activeBonusUnlock != null && unlockedBonusSummary != null
-          ? completedPuzzleIds.has(activeBonusUnlock.puzzleId)
-            ? "used"
-            : "unlocked"
+        : unlockedPlayableBonusSummary != null
+          ? "unlocked"
           : bonusCandidateSummary != null
             ? "available"
-            : "waiting",
-    unlockedSummary: unlockedBonusSummary,
+            : unlockedBonusSummaries.length > 0
+              ? "used"
+              : "waiting",
+    unlockedSummary:
+      unlockedPlayableBonusSummary ?? unlockedBonusSummaries[0] ?? undefined,
   };
 
   useEffect(() => {
@@ -1146,9 +1166,6 @@ function App() {
     });
 
     if (route === "today") {
-      // Mark this as a genuine just-completed run so the result screen can
-      // show the interstitial only here, not when re-opening past records.
-      justCompletedPuzzleIdRef.current = puzzle.puzzleId;
       // Stay on the board and celebrate instead of jumping straight to the
       // result screen, letting the player choose when to leave.
       setCompletionCelebrationId(puzzle.puzzleId);
@@ -1163,43 +1180,6 @@ function App() {
     route,
     viewModel.completedEntries.length,
     viewModel.isComplete,
-  ]);
-
-  useEffect(() => {
-    if (
-      route !== "result" ||
-      !isCompleted ||
-      !launchConfig.resultInterstitialAdsEnabled ||
-      // Only after a genuine completion in this session; re-opening a finished
-      // puzzle from 기록/홈 must not trigger a meaningless interstitial.
-      justCompletedPuzzleIdRef.current !== puzzle.puzzleId ||
-      shownResultInterstitialRef.current === puzzle.puzzleId
-    ) {
-      return;
-    }
-
-    shownResultInterstitialRef.current = puzzle.puzzleId;
-    const timerId = window.setTimeout(() => {
-      void showResultInterstitialAd((event) => {
-        telemetry.impression("result_interstitial_ad_event", {
-          phase: event.phase,
-          puzzle_id: puzzle.puzzleId,
-          type: event.type,
-        });
-      }).then((result) => {
-        telemetry.impression("result_interstitial_ad_result", {
-          puzzle_id: puzzle.puzzleId,
-          status: result.status,
-        });
-      });
-    }, 800);
-
-    return () => window.clearTimeout(timerId);
-  }, [
-    isCompleted,
-    launchConfig.resultInterstitialAdsEnabled,
-    puzzle.puzzleId,
-    route,
   ]);
 
   function navigate(nextRoute: AppRoute, options: { replace?: boolean } = {}) {
@@ -1653,8 +1633,10 @@ function App() {
         unlockedAt: new Date().toISOString(),
       };
 
-      await bonusPuzzleUnlockRepository.saveUnlock(nextUnlock);
-      setBonusPuzzleUnlock(nextUnlock);
+      const nextUnlocks = await bonusPuzzleUnlockRepository.saveUnlock(
+        nextUnlock,
+      );
+      setBonusPuzzleUnlocks(nextUnlocks);
       setBonusNotice("보너스 퍼즐이 열렸어요.");
       telemetry.impression("rewarded_bonus_puzzle_ad_reward", {
         puzzle_id: candidateSummary.puzzleId,

@@ -66,9 +66,9 @@
     },
     "result_interstitial_ads_enabled": {
       "defaultValue": {
-        "value": "true"
+        "value": "false"
       },
-      "description": "결과 화면 진입 후 전면 광고 노출 여부",
+      "description": "결과 화면 진입 후 전면 광고 노출 여부. 기본값은 완료 직후 사용자 피로를 줄이기 위해 비활성",
       "valueType": "BOOLEAN"
     },
     "leaderboard_enabled": {

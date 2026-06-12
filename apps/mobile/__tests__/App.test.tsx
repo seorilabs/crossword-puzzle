@@ -24,6 +24,11 @@ import {
   loadArchivedPuzzle,
   saveArchivedPuzzle,
 } from '../puzzleArchive';
+import {
+  getBonusUnlockKey,
+  loadBonusPuzzleUnlocks,
+  saveBonusPuzzleUnlock,
+} from '../bonusPuzzleUnlockRepository';
 import type { Puzzle } from '../../../packages/crossword-core/src';
 
 function createPuzzle(puzzleId: string, date = '2026-06-01'): Puzzle {
@@ -280,6 +285,43 @@ test('loads an archived puzzle when it is missing from the current pack', async 
     earnedHintCredits: 0,
     hintCount: 0,
   });
+});
+
+test('persists multiple bonus puzzle unlocks for the same date', async () => {
+  const firstUnlock = {
+    date: '2026-06-12',
+    puzzleId: 'bonus-puzzle-1',
+    unlockedAt: '2026-06-12T09:00:00.000Z',
+  };
+  const secondUnlock = {
+    date: '2026-06-12',
+    puzzleId: 'bonus-puzzle-2',
+    unlockedAt: '2026-06-12T09:30:00.000Z',
+  };
+
+  await saveBonusPuzzleUnlock(firstUnlock);
+  await saveBonusPuzzleUnlock(secondUnlock);
+
+  expect(await loadBonusPuzzleUnlocks('2026-06-12')).toEqual([
+    firstUnlock,
+    secondUnlock,
+  ]);
+  expect(await loadBonusPuzzleUnlocks('2026-06-13')).toEqual([]);
+});
+
+test('loads legacy single bonus puzzle unlock records', async () => {
+  const legacyUnlock = {
+    date: '2026-06-12',
+    puzzleId: 'legacy-bonus-puzzle',
+    unlockedAt: '2026-06-12T09:00:00.000Z',
+  };
+
+  await AsyncStorage.setItem(
+    getBonusUnlockKey('2026-06-12'),
+    JSON.stringify(legacyUnlock),
+  );
+
+  expect(await loadBonusPuzzleUnlocks('2026-06-12')).toEqual([legacyUnlock]);
 });
 
 test('rejects archived records whose puzzle is missing the playable shape', async () => {
