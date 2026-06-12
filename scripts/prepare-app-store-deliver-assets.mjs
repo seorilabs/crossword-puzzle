@@ -11,6 +11,7 @@ import { basename, dirname, join, resolve } from "node:path";
 
 const root = process.cwd();
 const placeholders = new Set(["", "확정 필요", "TODO", "TBD", "FIXME"]);
+const appStoreLocaleAliases = new Map([["ko-KR", "ko"]]);
 
 function parseArgs(argv) {
   const args = {
@@ -19,6 +20,7 @@ function parseArgs(argv) {
     outputPath: "app-store/deliver",
     skipMetadata: false,
     skipScreenshots: false,
+    skipAppName: false,
     useSuggestedUrls: false,
   };
 
@@ -34,6 +36,10 @@ function parseArgs(argv) {
     }
     if (arg === "--screenshots-only") {
       args.skipMetadata = true;
+      continue;
+    }
+    if (arg === "--skip-app-name") {
+      args.skipAppName = true;
       continue;
     }
     if (arg === "--use-suggested-urls") {
@@ -132,12 +138,14 @@ function copyScreenshots(paths, family, localeDir, summary) {
 
 const args = parseArgs(process.argv.slice(2));
 const config = readJson(args.configPath);
-const locale = config.defaultLanguage ?? "ko-KR";
+const sourceLocale = config.defaultLanguage ?? "ko-KR";
+const locale = appStoreLocaleAliases.get(sourceLocale) ?? sourceLocale;
 const outputRoot = repoPath(args.outputPath);
 const metadataLocaleDir = join(outputRoot, "metadata", locale);
 const screenshotsLocaleDir = join(outputRoot, "screenshots", locale);
 const summary = {
   output: args.outputPath,
+  sourceLocale,
   locale,
   metadata: [],
   skippedMetadata: [],
@@ -155,40 +163,44 @@ if (!args.skipMetadata) {
   const support = config.support ?? {};
   const compliance = config.compliance ?? {};
 
-  writeConfirmedText(
-    join(metadataLocaleDir, "name.txt"),
-    localeValue(listing.appName, locale),
-    summary,
-    "name",
-  );
+  if (args.skipAppName) {
+    summary.skippedMetadata.push("name");
+  } else {
+    writeConfirmedText(
+      join(metadataLocaleDir, "name.txt"),
+      localeValue(listing.appName, sourceLocale),
+      summary,
+      "name",
+    );
+  }
   writeConfirmedText(
     join(metadataLocaleDir, "subtitle.txt"),
-    localeValue(listing.subtitle, locale),
+    localeValue(listing.subtitle, sourceLocale),
     summary,
     "subtitle",
   );
   writeConfirmedText(
     join(metadataLocaleDir, "promotional_text.txt"),
-    localeValue(listing.promotionalText, locale),
+    localeValue(listing.promotionalText, sourceLocale),
     summary,
     "promotional_text",
   );
   writeConfirmedText(
     join(metadataLocaleDir, "description.txt"),
-    localeValue(listing.description, locale),
+    localeValue(listing.description, sourceLocale),
     summary,
     "description",
   );
   writeConfirmedText(
     join(metadataLocaleDir, "keywords.txt"),
-    localeValue(listing.keywords, locale),
+    localeValue(listing.keywords, sourceLocale),
     summary,
     "keywords",
   );
   writeConfirmedText(
     join(metadataLocaleDir, "release_notes.txt"),
-    localeValue(listing.releaseNotes, locale) ??
-      localeValue(config.releaseNotes, locale),
+    localeValue(listing.releaseNotes, sourceLocale) ??
+      localeValue(config.releaseNotes, sourceLocale),
     summary,
     "release_notes",
   );

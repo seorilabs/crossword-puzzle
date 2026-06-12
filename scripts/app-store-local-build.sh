@@ -252,7 +252,7 @@ xcodebuild archive \
   CODE_SIGN_STYLE=Manual \
   CODE_SIGN_IDENTITY="Apple Distribution" \
   PROVISIONING_PROFILE_SPECIFIER="$profile_name" \
-  "${code_sign_flags[@]}"
+  ${code_sign_flags:+"${code_sign_flags[@]}"}
 
 app_info_plist="$archive_path/Products/Applications/CrosswordPuzzleMobile.app/Info.plist"
 actual_marketing_version="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$app_info_plist")"
@@ -337,4 +337,3 @@ xcodebuild -exportArchive \
   -authenticationKeyPath "$api_key_path" \
   -authenticationKeyID "$APP_STORE_CONNECT_API_KEY_ID" \
   -authenticationKeyIssuerID "$APP_STORE_CONNECT_ISSUER_ID"
-

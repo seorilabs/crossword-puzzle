@@ -83,13 +83,11 @@ npm run app-store:build:local -- --archive --tag v1.0.0
 metadata/screenshot upload:
 
 ```bash
-APP_STORE_CONNECT_API_KEY_ID="$APP_STORE_CONNECT_API_KEY_ID" \
-APP_STORE_CONNECT_ISSUER_ID="$APP_STORE_CONNECT_ISSUER_ID" \
-APP_STORE_CONNECT_PRIVATE_KEY_BASE64="$APP_STORE_CONNECT_PRIVATE_KEY_BASE64" \
-npm run app-store:deliver:upload -- --metadata-only --use-suggested-urls
+source "$HOME/.config/seorilabs/app-store-connect.env"
+npm run app-store:metadata:upload -- --skip-app-name
 ```
 
-`--use-suggested-urls`는 `supportUrl`, `privacyPolicyUrl`, `marketingUrl` 후보를 실제 등록값으로 쓰기로 확정한 경우에만 사용한다.
+`--skip-app-name`은 App Store Connect에서 `가로세로 낱말 퍼즐` 이름이 이미 사용 중이라고 거절되는 동안 사용한다. `--use-suggested-urls`는 `supportUrl`, `privacyPolicyUrl`, `marketingUrl` 후보를 실제 등록값으로 쓰기로 확정한 경우에만 사용한다.
 
 ## 2026-06-09 AdMob 콘솔 ID
 

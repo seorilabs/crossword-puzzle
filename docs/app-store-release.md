@@ -167,7 +167,9 @@ Workflow는 profile을 복원한 뒤 다음을 검증한다.
 
 ## 7. Metadata/Screenshot 로컬 등록
 
-App Store Connect 등록 텍스트와 screenshot은 Fastlane `deliver`로 로컬 업로드한다. GitHub Actions minutes를 쓰지 않는다.
+App Store Connect 등록 텍스트와 screenshot은 로컬에서 업로드한다. GitHub Actions minutes를 쓰지 않는다.
+
+텍스트 metadata는 Fastlane `deliver`가 최초 버전의 비어 있는 review detail을 조회하다 실패할 수 있으므로, 기본적으로 App Store Connect API 직접 업로더를 사용한다. screenshot은 Fastlane `deliver`를 사용한다.
 
 업로드 전 생성 산출물 확인:
 
@@ -184,18 +186,23 @@ npm run app-store:deliver:prepare -- --use-suggested-urls
 metadata만 로컬 업로드:
 
 ```bash
-APP_STORE_CONNECT_API_KEY_ID="$APP_STORE_CONNECT_API_KEY_ID" \
-APP_STORE_CONNECT_ISSUER_ID="$APP_STORE_CONNECT_ISSUER_ID" \
-APP_STORE_CONNECT_PRIVATE_KEY_BASE64="$APP_STORE_CONNECT_PRIVATE_KEY_BASE64" \
-npm run app-store:deliver:upload -- --metadata-only --use-suggested-urls
+source "$HOME/.config/seorilabs/app-store-connect.env"
+npm run app-store:metadata:upload -- --skip-app-name
+```
+
+`--skip-app-name`은 App Store Connect에서 `가로세로 낱말 퍼즐` 이름이 이미 사용 중이라고 거절되는 동안 사용한다. 이름을 변경하거나 권리 소명을 마친 뒤에만 제거한다. `supportUrl`, `privacyPolicyUrl`, `marketingUrl` 후보를 실제 등록값으로 확정한 경우에만 `--use-suggested-urls`를 추가한다.
+
+업로드 없이 현재 ASC 값을 읽어서 확인:
+
+```bash
+source "$HOME/.config/seorilabs/app-store-connect.env"
+npm run app-store:metadata:upload -- --verify-only --skip-app-name
 ```
 
 screenshot만 로컬 업로드:
 
 ```bash
-APP_STORE_CONNECT_API_KEY_ID="$APP_STORE_CONNECT_API_KEY_ID" \
-APP_STORE_CONNECT_ISSUER_ID="$APP_STORE_CONNECT_ISSUER_ID" \
-APP_STORE_CONNECT_PRIVATE_KEY_BASE64="$APP_STORE_CONNECT_PRIVATE_KEY_BASE64" \
+source "$HOME/.config/seorilabs/app-store-connect.env"
 npm run app-store:deliver:upload -- --screenshots-only
 ```
 

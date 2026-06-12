@@ -24,6 +24,7 @@
     "check:app-store": "node scripts/check-app-store-readiness.mjs",
     "app-store:deliver:prepare": "node scripts/prepare-app-store-deliver-assets.mjs",
     "app-store:deliver:upload": "scripts/app-store-local-deliver.sh",
+    "app-store:metadata:upload": "sh -c 'cd apps/mobile && (bundle check >/dev/null 2>&1 || bundle install) && bundle exec ruby ../../scripts/app-store-connect-upload-metadata.rb \"$@\"' --",
     "app-store:build:local": "scripts/app-store-local-build.sh",
     "play:upload:internal": "python3 scripts/upload-google-play-internal.py",
     "release:next-tag": "node scripts/next-release-tag.mjs",

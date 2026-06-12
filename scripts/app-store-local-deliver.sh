@@ -17,6 +17,7 @@ Usage: scripts/app-store-local-deliver.sh [options]
 Options:
   --metadata-only       App Store metadata만 업로드합니다.
   --screenshots-only    screenshot만 업로드합니다.
+  --skip-app-name       metadata 업로드에서 App Store 앱 이름을 제외합니다.
   --skip-upload         deliver 입력 파일만 생성하고 App Store Connect 업로드는 건너뜁니다.
   --use-suggested-urls  config의 suggestedSupportUrl/suggestedPrivacyPolicyUrl을 deliver에 포함합니다.
   --                    뒤 인자는 fastlane deliver에 그대로 전달합니다.
@@ -40,6 +41,10 @@ while [[ $# -gt 0 ]]; do
     --screenshots-only)
       mode="screenshots"
       prepare_args+=("--screenshots-only")
+      shift
+      ;;
+    --skip-app-name)
+      prepare_args+=("--skip-app-name")
       shift
       ;;
     --skip-upload|--prepare-only)
@@ -77,10 +82,14 @@ fi
 
 api_key_json_path="${APP_STORE_CONNECT_API_KEY_JSON_PATH:-}"
 temporary_dir=""
+temporary_deliver_metadata_dir=""
 
 cleanup() {
   if [[ -n "$temporary_dir" ]]; then
     rm -rf "$temporary_dir"
+  fi
+  if [[ -n "$temporary_deliver_metadata_dir" ]]; then
+    rm -rf "$temporary_deliver_metadata_dir"
   fi
 }
 trap cleanup EXIT
@@ -136,6 +145,7 @@ app_version="$(node --input-type=module -e "const c=JSON.parse(await import('nod
 
 fastlane_deliver_args=(
   deliver
+  run
   --api_key_path "$api_key_json_path"
   --app_identifier "$app_identifier"
   --app_version "$app_version"
@@ -145,6 +155,7 @@ fastlane_deliver_args=(
   --skip_binary_upload true
   --skip_app_version_update false
   --force true
+  --run_precheck_before_submit false
 )
 
 case "$mode" in
@@ -165,5 +176,8 @@ fi
 
 cd apps/mobile
 bundle check >/dev/null 2>&1 || bundle install
-bundle exec fastlane "${fastlane_deliver_args[@]}" "${deliver_args[@]}"
-
+if [[ ! -d metadata ]]; then
+  temporary_deliver_metadata_dir="$PWD/metadata"
+  mkdir -p "$temporary_deliver_metadata_dir"
+fi
+bundle exec fastlane "${fastlane_deliver_args[@]}" ${deliver_args:+"${deliver_args[@]}"}
