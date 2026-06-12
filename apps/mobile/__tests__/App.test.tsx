@@ -8,6 +8,8 @@ import ReactTestRenderer from 'react-test-renderer';
 import App, {
   ANDROID_TEXT_INPUT_REFOCUS_DELAY_MS,
   formatCompletionStatsLabel,
+  getBoardCellFocusScrollY,
+  getBoardNativeInputPosition,
   getClearAnswerTargetIndex,
   getPendingAnswerCellValues,
   loadPuzzleSession,
@@ -131,6 +133,20 @@ test('maps pending Korean composition directly onto board cells', () => {
     '0:2': '지',
     '0:3': '교',
   });
+});
+
+test('positions the hidden board input on the active puzzle cell', () => {
+  const bounds = { maxCol: 8, maxRow: 8, minCol: 3, minRow: 2 };
+
+  expect(getBoardNativeInputPosition('2:3', bounds, 40)).toEqual({
+    left: 2,
+    top: 2,
+  });
+  expect(getBoardNativeInputPosition('5:7', bounds, 40)).toEqual({
+    left: 162,
+    top: 122,
+  });
+  expect(getBoardCellFocusScrollY(122, 40)).toBe(58);
 });
 
 test('skips locked correct letters when choosing the backspace target', () => {

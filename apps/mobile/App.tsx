@@ -47,6 +47,7 @@ import {
   startMissionAttempt,
   uniquePuzzleSummaries,
   validatePuzzleSlots,
+  type Bounds,
   type DailyMissionState,
   type Direction,
   type Puzzle,
@@ -140,6 +141,9 @@ const PROGRESS_KEY_PREFIX = 'crossword-puzzle:progress';
 const MISSION_KEY_PREFIX = 'crossword-puzzle:mission';
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 export const ANDROID_TEXT_INPUT_REFOCUS_DELAY_MS = 32;
+const BOARD_BORDER_WIDTH = 2;
+const PLAY_SCREEN_CONTENT_PADDING = 16;
+const BOARD_FOCUS_ROWS_ABOVE = 2;
 
 type BoardNativeInput = Pick<
   React.ElementRef<typeof TextInput>,
@@ -716,6 +720,39 @@ export function getPendingAnswerCellValues(
   );
 }
 
+function parseCellKey(cellKey: string) {
+  const [rowText, colText] = cellKey.split(':');
+  const row = Number(rowText);
+  const col = Number(colText);
+
+  return Number.isFinite(row) && Number.isFinite(col) ? { col, row } : null;
+}
+
+export function getBoardNativeInputPosition(
+  cellKey: string,
+  bounds: Bounds,
+  cellSize: number,
+) {
+  const cell = parseCellKey(cellKey);
+
+  if (cell == null) {
+    return { left: BOARD_BORDER_WIDTH, top: BOARD_BORDER_WIDTH };
+  }
+
+  return {
+    left:
+      Math.max(0, cell.col - bounds.minCol) * cellSize + BOARD_BORDER_WIDTH,
+    top: Math.max(0, cell.row - bounds.minRow) * cellSize + BOARD_BORDER_WIDTH,
+  };
+}
+
+export function getBoardCellFocusScrollY(cellTop: number, cellSize: number) {
+  return Math.max(
+    0,
+    PLAY_SCREEN_CONTENT_PADDING + cellTop - cellSize * BOARD_FOCUS_ROWS_ABOVE,
+  );
+}
+
 function isHangulJamoLetter(letter: string) {
   return /^[ㄱ-ㅎㅏ-ㅣ]$/.test(letter);
 }
@@ -847,6 +884,7 @@ function AppContent() {
     useState<RewardedAdPlacement | null>(null);
   const hasLoggedFirstAnswerInputRef = useRef(false);
   const resultInterstitialPuzzleIdsRef = useRef(new Set<string>());
+  const playScreenScrollRef = useRef<React.ElementRef<typeof ScrollView>>(null);
   const boardInputRef = useRef<React.ElementRef<typeof TextInput>>(null);
   const answerCommitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
@@ -1062,6 +1100,15 @@ function AppContent() {
       isWide ? 64 : 48,
       Math.floor((width - 32) / viewModel.cols.length),
     ),
+  );
+  const boardNativeInputPosition = useMemo(
+    () =>
+      getBoardNativeInputPosition(
+        activeAnswerCellKey,
+        viewModel.bounds,
+        boardCellSize,
+      ),
+    [activeAnswerCellKey, boardCellSize, viewModel.bounds],
   );
 
   const refreshPuzzleArchive = useCallback(async () => {
@@ -1349,17 +1396,43 @@ function AppContent() {
     };
   }, []);
 
-  const focusBoardInput = useCallback(() => {
-    clearBoardFocusTimer();
-    boardFocusTimerRef.current = scheduleBoardNativeInputFocus({
-      getInput: () => boardInputRef.current,
-      keyboardVisible: keyboardVisibleRef.current,
-      onFocusTimerSettled: () => {
-        boardFocusTimerRef.current = null;
-      },
-      platformOS: Platform.OS,
-    });
-  }, [clearBoardFocusTimer]);
+  const scrollBoardCellIntoView = useCallback(
+    (cellKey = activeAnswerCellKey) => {
+      const position = getBoardNativeInputPosition(
+        cellKey,
+        viewModel.bounds,
+        boardCellSize,
+      );
+
+      playScreenScrollRef.current?.scrollTo({
+        animated: true,
+        y: getBoardCellFocusScrollY(position.top, boardCellSize),
+      });
+    },
+    [activeAnswerCellKey, boardCellSize, viewModel.bounds],
+  );
+
+  const focusBoardInput = useCallback(
+    (cellKey?: string) => {
+      scrollBoardCellIntoView(cellKey);
+      clearBoardFocusTimer();
+      boardFocusTimerRef.current = scheduleBoardNativeInputFocus({
+        getInput: () => boardInputRef.current,
+        keyboardVisible: keyboardVisibleRef.current,
+        onFocusTimerSettled: () => {
+          boardFocusTimerRef.current = null;
+        },
+        platformOS: Platform.OS,
+      });
+    },
+    [clearBoardFocusTimer, scrollBoardCellIntoView],
+  );
+
+  useEffect(() => {
+    if (route === 'today') {
+      scrollBoardCellIntoView(activeAnswerCellKey);
+    }
+  }, [activeAnswerCellKey, route, scrollBoardCellIntoView]);
 
   async function requestRewardedHintCredits() {
     if (!launchConfig.rewardedHintAdsEnabled) {
@@ -1537,7 +1610,7 @@ function AppContent() {
 
     if (nextEntry != null) {
       selectEntry(nextEntry);
-      focusBoardInput();
+      focusBoardInput(getEntryStartCellKey(nextEntry));
     }
   }
 
@@ -1557,7 +1630,7 @@ function AppContent() {
           entries[0]);
 
     selectEntry(nextEntry, key);
-    focusBoardInput();
+    focusBoardInput(key);
   }
 
   function moveToNextUncompletedEntry(nextCellValues: Record<string, string>) {
@@ -2121,7 +2194,7 @@ function AppContent() {
           ref={boardInputRef}
           returnKeyType="next"
           showSoftInputOnFocus
-          style={styles.boardNativeInput}
+          style={[styles.boardNativeInput, boardNativeInputPosition]}
           value={answerInputValue}
         />
       </View>
@@ -2161,7 +2234,7 @@ function AppContent() {
                 key={entry.id}
                 onPress={() => {
                   selectEntry(entry, selectedCellKey);
-                  focusBoardInput();
+                  focusBoardInput(selectedCellKey);
                 }}
                 style={[
                   styles.selectedClue,
@@ -2284,7 +2357,7 @@ function AppContent() {
             accessibilityRole="button"
             onPress={() => {
               selectEntry(selectedEntry, activeAnswerCellKey);
-              focusBoardInput();
+              focusBoardInput(activeAnswerCellKey);
             }}
             style={styles.solveClueInfo}
           >
@@ -2317,7 +2390,7 @@ function AppContent() {
               key={slot.key}
               onPress={() => {
                 selectEntry(selectedEntry, slot.key);
-                focusBoardInput();
+                focusBoardInput(slot.key);
               }}
               style={[
                 styles.answerSlot,
@@ -2393,7 +2466,7 @@ function AppContent() {
                         onPress={() => {
                           selectEntry(entry);
                           setIsClueListOpen(false);
-                          focusBoardInput();
+                          focusBoardInput(getEntryStartCellKey(entry));
                         }}
                         style={[
                           styles.clueItem,
@@ -2423,6 +2496,7 @@ function AppContent() {
         {renderTodayHeader()}
         {renderSolveClueBar()}
         <ScrollView
+          ref={playScreenScrollRef}
           keyboardShouldPersistTaps="handled"
           style={styles.playScreenScroll}
           contentContainerStyle={styles.playScreenScrollContent}
@@ -2808,7 +2882,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1f2937',
     borderColor: '#1f2937',
     borderRadius: 8,
-    borderWidth: 2,
+    borderWidth: BOARD_BORDER_WIDTH,
     overflow: 'hidden',
   },
   boardFrame: {
