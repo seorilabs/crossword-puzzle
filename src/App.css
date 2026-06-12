@@ -1481,7 +1481,6 @@ button:disabled {
   min-width: 0;
   flex: 1 1 auto;
   flex-direction: column;
-  gap: 2px;
   border: 0;
   background: transparent;
   color: #191f28;
@@ -1489,13 +1488,6 @@ button:disabled {
   padding: 0;
   text-align: center;
   cursor: pointer;
-}
-
-.solveClueRef {
-  color: #00866f;
-  font-size: 12px;
-  font-weight: 900;
-  line-height: 16px;
 }
 
 .solveClueText {

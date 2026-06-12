@@ -3347,15 +3347,15 @@ function TodayScreen({
             <button
               className="solveClueInfo"
               type="button"
+              aria-label={`${formatEntryReference(
+                selectedEntry,
+                startLabels,
+              )} ${selectedEntry.clue}${isSelectedComplete ? " 완료" : ""}`}
               onClick={() => {
                 selectEntry(selectedEntry, activeCellKey);
                 focusNativeInput();
               }}
             >
-              <span className="solveClueRef">
-                {formatEntryReference(selectedEntry, startLabels)}
-                {isSelectedComplete ? " · 완료" : ""}
-              </span>
               <strong className="solveClueText">{selectedEntry.clue}</strong>
             </button>
             <button

@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import ReactTestRenderer from 'react-test-renderer';
 import App, {
   ANDROID_TEXT_INPUT_REFOCUS_DELAY_MS,
+  formatCompletionStatsLabel,
   getClearAnswerTargetIndex,
   getPendingAnswerCellValues,
   loadPuzzleSession,
@@ -70,6 +71,42 @@ test('renders correctly', async () => {
   await ReactTestRenderer.act(() => {
     ReactTestRenderer.create(<App />);
   });
+});
+
+test('formats completion stats for mobile home cards and selected mission', () => {
+  expect(
+    formatCompletionStatsLabel(
+      {
+        completionCount: 54,
+        completionRate: 0.421875,
+        participantCount: 128,
+        puzzleId: 'stats-puzzle',
+      },
+      10,
+      'compact',
+    ),
+  ).toBe('42% 완료');
+  expect(
+    formatCompletionStatsLabel(
+      {
+        completionCount: 54,
+        completionRate: 0.421875,
+        participantCount: 128,
+        puzzleId: 'stats-puzzle',
+      },
+      10,
+    ),
+  ).toBe('128명 참여 · 54명 완료(42%)');
+  expect(
+    formatCompletionStatsLabel(
+      {
+        completionCount: 0,
+        participantCount: 3,
+        puzzleId: 'low-participant-puzzle',
+      },
+      10,
+    ),
+  ).toBe('10명 미만 참여');
 });
 
 test('maps pending Korean composition directly onto board cells', () => {

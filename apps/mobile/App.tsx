@@ -51,6 +51,7 @@ import {
   type Direction,
   type Puzzle,
   type PuzzleEntry,
+  type PuzzleCompletionStats,
   type PuzzleManifest,
   type PuzzleManifestItem,
   type SavedProgress,
@@ -64,6 +65,7 @@ import {
   type PuzzleArchiveRecord,
   type PuzzleArchiveSaveOptions,
 } from './puzzleArchive';
+import { createPuzzleCompletionStatsRepository } from './puzzleCompletionStatsRepository';
 import { loadFirebaseLaunchConfig } from './firebaseClient';
 import {
   initializeMobileAds,
@@ -106,6 +108,8 @@ type PuzzlePack = {
   summaries: PuzzleManifestItem[];
 };
 
+type CompletionStatsByPuzzleId = Record<string, PuzzleCompletionStats>;
+
 type PuzzleViewModel = {
   bounds: ReturnType<typeof getBounds>;
   cellEntries: Map<string, PuzzleEntry[]>;
@@ -128,8 +132,13 @@ type BonusPuzzlePanelState = {
 };
 
 const REMOTE_PUZZLE_PACK_BASE_URL = 'https://crossword-puzzle-79ae0.web.app';
+const REMOTE_PUZZLE_STATS_URL = `${REMOTE_PUZZLE_PACK_BASE_URL.replace(
+  /\/+$/,
+  '',
+)}/puzzle-stats/completions.json`;
 const PROGRESS_KEY_PREFIX = 'crossword-puzzle:progress';
 const MISSION_KEY_PREFIX = 'crossword-puzzle:mission';
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 export const ANDROID_TEXT_INPUT_REFOCUS_DELAY_MS = 32;
 
 type BoardNativeInput = Pick<
@@ -196,6 +205,9 @@ const bundledPuzzlePack: PuzzlePack = {
   source: 'bundled',
   summaries: bundledPuzzleSummaries,
 };
+const puzzleCompletionStatsRepository = createPuzzleCompletionStatsRepository({
+  statsUrl: REMOTE_PUZZLE_STATS_URL,
+});
 const initialPuzzle =
   bundledPuzzlesById.get(getInitialPuzzleId(bundledPuzzleSummaries)) ??
   fallbackPuzzle;
@@ -362,6 +374,84 @@ function formatEntryReference(
   const prefix = startLabel == null ? '' : `${startLabel}번 `;
 
   return `${prefix}${directionLabels[entry.direction]} · ${entry.answer.length}글자`;
+}
+
+function formatPuzzleCardSlot(summary: PuzzleManifestItem) {
+  if (summary.publishedAt == null) {
+    return '';
+  }
+
+  const value = new Date(summary.publishedAt);
+  if (Number.isNaN(value.getTime())) {
+    return '';
+  }
+
+  const hour = new Date(value.getTime() + KST_OFFSET_MS).getUTCHours();
+
+  return `${hour}시`;
+}
+
+function formatKoreanInteger(value: number) {
+  return Math.round(value)
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+export function formatCompletionStatsLabel(
+  stats: PuzzleCompletionStats | undefined,
+  minDisplayCount: number,
+  variant: 'compact' | 'detail' = 'detail',
+) {
+  if (stats == null) {
+    return '';
+  }
+
+  const participantCount = stats.participantCount;
+
+  if (participantCount != null) {
+    if (participantCount === 0) {
+      return '';
+    }
+
+    if (participantCount < minDisplayCount) {
+      return `${minDisplayCount}명 미만 참여`;
+    }
+
+    if (stats.completionCount === 0) {
+      return variant === 'compact'
+        ? '완료 전'
+        : `${formatKoreanInteger(participantCount)}명 참여 · 완료 전`;
+    }
+
+    if (stats.completionCount < minDisplayCount) {
+      return variant === 'compact'
+        ? `${minDisplayCount}명 미만 완료`
+        : `${formatKoreanInteger(participantCount)}명 참여 · ${minDisplayCount}명 미만 완료`;
+    }
+
+    const completionRate =
+      stats.completionRate ??
+      Math.max(0, Math.min(1, stats.completionCount / participantCount));
+    const completionRateLabel = `${Math.round(completionRate * 100)}%`;
+
+    if (variant === 'compact') {
+      return `${completionRateLabel} 완료`;
+    }
+
+    return `${formatKoreanInteger(participantCount)}명 참여 · ${formatKoreanInteger(
+      stats.completionCount,
+    )}명 완료(${completionRateLabel})`;
+  }
+
+  if (stats.completionCount === 0) {
+    return '';
+  }
+
+  if (stats.completionCount < minDisplayCount) {
+    return `${minDisplayCount}명 미만 완료`;
+  }
+
+  return `${formatKoreanInteger(stats.completionCount)}명 완료`;
 }
 
 function createDateCardState(
@@ -751,6 +841,8 @@ function AppContent() {
   );
   const [launchConfig, setLaunchConfig] =
     useState<LaunchConfig>(defaultLaunchConfig);
+  const [completionStatsByPuzzleId, setCompletionStatsByPuzzleId] =
+    useState<CompletionStatsByPuzzleId>({});
   const [rewardedAdPlacement, setRewardedAdPlacement] =
     useState<RewardedAdPlacement | null>(null);
   const hasLoggedFirstAnswerInputRef = useRef(false);
@@ -922,6 +1014,33 @@ function AppContent() {
       ),
     [archivePuzzleSummaries, dailyFreeSummaries, selectedPuzzleSummary],
   );
+  useEffect(() => {
+    if (!launchConfig.completionStatsEnabled) {
+      setCompletionStatsByPuzzleId({});
+      return;
+    }
+
+    let isCancelled = false;
+    const puzzleIds = visiblePuzzleSummaries.map(summary => summary.puzzleId);
+
+    puzzleCompletionStatsRepository
+      .loadStats(puzzleIds)
+      .then(nextStats => {
+        if (!isCancelled) {
+          setCompletionStatsByPuzzleId(nextStats);
+        }
+      })
+      .catch(() => {
+        if (!isCancelled) {
+          setCompletionStatsByPuzzleId({});
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [launchConfig.completionStatsEnabled, visiblePuzzleSummaries]);
+
   const bonusPuzzlePanelState: BonusPuzzlePanelState = {
     candidateSummary: bonusCandidateSummary,
     isUnlocking: rewardedAdPlacement === 'rewardedBonusPuzzle',
@@ -1751,6 +1870,24 @@ function AppContent() {
           const state = dateCardStates[summary.puzzleId];
           const isSelected = summary.puzzleId === puzzle.puzzleId;
           const isDone = state?.completedAt != null;
+          const slotLabel =
+            puzzlePack.source === 'remote' ? formatPuzzleCardSlot(summary) : '';
+          const completionStatsLabel = formatCompletionStatsLabel(
+            completionStatsByPuzzleId[summary.puzzleId],
+            launchConfig.completionStatsMinDisplayCount,
+            'compact',
+          );
+          const wordCountLabel = `${summary.metrics?.wordCount ?? '-'}단어`;
+          const fallbackMetaLabel =
+            slotLabel === ''
+              ? `${wordCountLabel} · ${state?.attemptsUsed ?? 0}/${DAILY_ATTEMPT_LIMIT}회`
+              : `${slotLabel} · ${wordCountLabel}`;
+          const metaLabel =
+            completionStatsLabel === ''
+              ? fallbackMetaLabel
+              : slotLabel === ''
+                ? completionStatsLabel
+                : `${slotLabel} · ${completionStatsLabel}`;
 
           return (
             <Pressable
@@ -1765,10 +1902,7 @@ function AppContent() {
               ]}
             >
               <Text style={styles.dateCardDate}>{summary.date}</Text>
-              <Text style={styles.dateCardMeta}>
-                {summary.metrics?.wordCount ?? '-'}단어 ·{' '}
-                {state?.attemptsUsed ?? 0}/{DAILY_ATTEMPT_LIMIT}회
-              </Text>
+              <Text style={styles.dateCardMeta}>{metaLabel}</Text>
               <Text style={styles.dateCardState}>
                 {isDone ? '완료' : state?.hasProgress ? '진행 중' : '대기'}
               </Text>
@@ -1780,6 +1914,11 @@ function AppContent() {
   }
 
   function renderHome() {
+    const completionStatsLabel = formatCompletionStatsLabel(
+      completionStatsByPuzzleId[puzzle.puzzleId],
+      launchConfig.completionStatsMinDisplayCount,
+    );
+
     return (
       <ScrollView contentContainerStyle={styles.homeContent}>
         {renderHeader('가로세로 낱말 퍼즐', puzzle.date)}
@@ -1803,6 +1942,7 @@ function AppContent() {
             보드 ·{' '}
             {directionLabels[viewModel.selectedEntry?.direction ?? 'across']}{' '}
             힌트부터 시작
+            {completionStatsLabel === '' ? '' : ` · ${completionStatsLabel}`}
           </Text>
           <View style={styles.statusGrid}>
             <Metric
@@ -2042,6 +2182,14 @@ function AppContent() {
 
   function renderTodayHeader() {
     const isReviewMode = isCompleted;
+    const isHintAdBusy = rewardedAdPlacement === 'rewardedHint';
+    const hintBadgeLabel = isHintAdBusy
+      ? '…'
+      : remainingHintCredits > 0
+        ? `${remainingHintCredits}`
+        : launchConfig.rewardedHintAdsEnabled
+          ? '+'
+          : '0';
 
     return (
       <View style={styles.solveHeader}>
@@ -2065,9 +2213,13 @@ function AppContent() {
           <>
             <Pressable
               accessibilityLabel={
-                remainingHintCredits > 0
-                  ? `힌트 ${remainingHintCredits}개 남음`
-                  : '힌트'
+                isHintAdBusy
+                  ? '광고 준비 중'
+                  : remainingHintCredits > 0
+                    ? `힌트 ${remainingHintCredits}개 남음`
+                    : launchConfig.rewardedHintAdsEnabled
+                      ? `힌트 얻기. 광고를 보고 ${launchConfig.rewardedHintCredits}개 받기`
+                      : '힌트 없음'
               }
               accessibilityRole="button"
               onPress={revealLetter}
@@ -2078,7 +2230,7 @@ function AppContent() {
             >
               <Text style={styles.solveHeaderIconEmoji}>💡</Text>
               <View style={styles.iconBadge}>
-                <Text style={styles.iconBadgeText}>{remainingHintCredits}</Text>
+                <Text style={styles.iconBadgeText}>{hintBadgeLabel}</Text>
               </View>
             </Pressable>
             <Pressable
@@ -2087,7 +2239,7 @@ function AppContent() {
               onPress={clearSelectedAnswer}
               style={styles.solveHeaderIcon}
             >
-              <Text style={styles.solveHeaderIconEmoji}>⌫</Text>
+              <EraserIcon />
             </Pressable>
           </>
         )}
@@ -2125,6 +2277,10 @@ function AppContent() {
             <Text style={styles.clueNavText}>‹</Text>
           </Pressable>
           <Pressable
+            accessibilityLabel={`${formatEntryReference(
+              selectedEntry,
+              viewModel.startLabels,
+            )} ${selectedEntry.clue}${isSelectedComplete ? ' 완료' : ''}`}
             accessibilityRole="button"
             onPress={() => {
               selectEntry(selectedEntry, activeAnswerCellKey);
@@ -2132,10 +2288,6 @@ function AppContent() {
             }}
             style={styles.solveClueInfo}
           >
-            <Text style={styles.solveClueRef}>
-              {formatEntryReference(selectedEntry, viewModel.startLabels)}
-              {isSelectedComplete ? ' · 완료' : ''}
-            </Text>
             <Text numberOfLines={2} style={styles.solveClueText}>
               {selectedEntry.clue}
             </Text>
@@ -2587,6 +2739,17 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
+function EraserIcon() {
+  return (
+    <View style={styles.eraserIcon} pointerEvents="none">
+      <View style={styles.eraserIconBody}>
+        <View style={styles.eraserIconCut} />
+      </View>
+      <View style={styles.eraserIconDust} />
+    </View>
+  );
+}
+
 function App() {
   return (
     <SafeAreaProvider>
@@ -2829,6 +2992,34 @@ const styles = StyleSheet.create({
     color: '#0f766e',
     fontSize: 13,
     fontWeight: '900',
+  },
+  eraserIcon: {
+    alignItems: 'center',
+    height: 18,
+    justifyContent: 'center',
+    width: 18,
+  },
+  eraserIconBody: {
+    backgroundColor: '#334155',
+    borderRadius: 3,
+    height: 10,
+    position: 'relative',
+    transform: [{ rotate: '-28deg' }],
+    width: 17,
+  },
+  eraserIconCut: {
+    backgroundColor: '#f1f5f9',
+    height: 10,
+    left: 10,
+    position: 'absolute',
+    width: 2,
+  },
+  eraserIconDust: {
+    backgroundColor: '#94a3b8',
+    borderRadius: 999,
+    height: 2,
+    marginTop: 3,
+    width: 13,
   },
   header: {
     alignItems: 'center',
@@ -3163,13 +3354,7 @@ const styles = StyleSheet.create({
   solveClueInfo: {
     alignItems: 'center',
     flex: 1,
-    gap: 2,
     minWidth: 0,
-  },
-  solveClueRef: {
-    color: '#0f766e',
-    fontSize: 12,
-    fontWeight: '900',
   },
   solveClueText: {
     color: '#0f172a',

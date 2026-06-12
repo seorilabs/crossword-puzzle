@@ -4,8 +4,15 @@ import base64
 import json
 import os
 import sys
+import warnings
 from pathlib import Path
 
+
+warnings.filterwarnings(
+    "ignore",
+    category=FutureWarning,
+    module=r"google\.(auth|oauth2|api_core)(\.|$)",
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG_PATH = ROOT / "play-store" / "google-play.config.json"
