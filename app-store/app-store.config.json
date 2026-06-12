@@ -13,7 +13,7 @@
   },
   "storeListing": {
     "appName": {
-      "ko-KR": "가로세로 낱말 퍼즐"
+      "ko-KR": "가로세로 퍼즐"
     },
     "subtitle": {
       "ko-KR": "매일 한 판 한글 퍼즐"
@@ -35,9 +35,9 @@
     "contentRights": "first-party puzzle UI and self-authored clues; dictionary word candidates require final source/license review"
   },
   "support": {
-    "supportUrl": "확정 필요",
+    "supportUrl": "https://www.seorilabs.com/support/",
     "suggestedSupportUrl": "https://www.seorilabs.com/support",
-    "marketingUrl": "확정 필요",
+    "marketingUrl": "https://www.seorilabs.com/",
     "suggestedMarketingUrl": "https://www.seorilabs.com",
     "contactEmail": "cs@seorilabs.com",
     "reviewContactFirstName": "확정 필요",
@@ -56,7 +56,7 @@
     "productionPolicy": "Development builds use Google test ad units through react-native-google-mobile-ads; release builds use these production IDs after adapter QA. Personalized ads stay off for the first launch; requests set requestNonPersonalizedAdsOnly=true."
   },
   "compliance": {
-    "privacyPolicyUrl": "확정 필요",
+    "privacyPolicyUrl": "https://www.seorilabs.com/privacy/",
     "suggestedPrivacyPolicyUrl": "https://www.seorilabs.com/privacy",
     "appPrivacy": "확정 필요",
     "appPrivacyGuidance": {

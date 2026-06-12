@@ -160,6 +160,8 @@ const REMOTE_PUZZLE_STATS_URL = `${REMOTE_PUZZLE_PACK_BASE_URL.replace(
   /\/+$/,
   '',
 )}/puzzle-stats/completions.json`;
+const HOME_HEADER_TITLE =
+  Platform.OS === 'ios' ? '가로세로 퍼즐' : '가로세로 낱말 퍼즐';
 const PROGRESS_KEY_PREFIX = 'crossword-puzzle:progress';
 const MISSION_KEY_PREFIX = 'crossword-puzzle:mission';
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
@@ -2147,7 +2149,7 @@ function AppContent() {
 
     return (
       <ScrollView contentContainerStyle={styles.homeContent}>
-        {renderHeader('가로세로 낱말 퍼즐', selectedPuzzleLabel)}
+        {renderHeader(HOME_HEADER_TITLE, selectedPuzzleLabel)}
         {renderDateSelector()}
 
         <View style={styles.policyPanel}>

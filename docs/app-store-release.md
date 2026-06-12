@@ -177,7 +177,7 @@ App Store Connect 등록 텍스트와 screenshot은 로컬에서 업로드한다
 npm run app-store:deliver:prepare
 ```
 
-`supportUrl`, `privacyPolicyUrl`, `marketingUrl`이 아직 `확정 필요`인 상태에서는 기본 명령이 해당 URL 파일을 만들지 않는다. 후보 URL을 실제 등록값으로 쓰기로 확정한 경우에만 다음 옵션을 사용한다.
+`supportUrl`, `privacyPolicyUrl`, `marketingUrl`은 현재 config에 확정값을 둔다. 아직 확정값이 없고 후보 URL을 실제 등록값으로 쓰기로 결정한 경우에만 다음 옵션을 사용한다.
 
 ```bash
 npm run app-store:deliver:prepare -- --use-suggested-urls
@@ -187,16 +187,16 @@ metadata만 로컬 업로드:
 
 ```bash
 source "$HOME/.config/seorilabs/app-store-connect.env"
-npm run app-store:metadata:upload -- --skip-app-name
+npm run app-store:metadata:upload
 ```
 
-`--skip-app-name`은 App Store Connect에서 `가로세로 낱말 퍼즐` 이름이 이미 사용 중이라고 거절되는 동안 사용한다. 이름을 변경하거나 권리 소명을 마친 뒤에만 제거한다. `supportUrl`, `privacyPolicyUrl`, `marketingUrl` 후보를 실제 등록값으로 확정한 경우에만 `--use-suggested-urls`를 추가한다.
+App Store 앱 이름은 iOS용으로 `가로세로 퍼즐`을 사용한다. `supportUrl`, `privacyPolicyUrl`, `marketingUrl` 후보를 실제 등록값으로 확정한 경우에만 `--use-suggested-urls`를 추가한다.
 
 업로드 없이 현재 ASC 값을 읽어서 확인:
 
 ```bash
 source "$HOME/.config/seorilabs/app-store-connect.env"
-npm run app-store:metadata:upload -- --verify-only --skip-app-name
+npm run app-store:metadata:upload -- --verify-only
 ```
 
 screenshot만 로컬 업로드:
@@ -206,7 +206,7 @@ source "$HOME/.config/seorilabs/app-store-connect.env"
 npm run app-store:deliver:upload -- --screenshots-only
 ```
 
-현재 `app-store/screenshots/iphone/iphone-1.png`만 존재한다. `TARGETED_DEVICE_FAMILY=1,2`를 유지하면 iPad screenshot도 별도로 준비해야 한다.
+현재 `app-store/screenshots/iphone/iphone-{1,2,3}.png`와 `app-store/screenshots/ipad/ipad-{1,2,3}.png`를 시뮬레이터 Release build에서 생성했다. iPhone은 1320 x 2868, iPad는 2064 x 2752 PNG다.
 
 ## 8. Export/Upload 로컬 참고
 

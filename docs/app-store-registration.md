@@ -84,10 +84,10 @@ metadata/screenshot upload:
 
 ```bash
 source "$HOME/.config/seorilabs/app-store-connect.env"
-npm run app-store:metadata:upload -- --skip-app-name
+npm run app-store:metadata:upload
 ```
 
-`--skip-app-name`은 App Store Connect에서 `가로세로 낱말 퍼즐` 이름이 이미 사용 중이라고 거절되는 동안 사용한다. `--use-suggested-urls`는 `supportUrl`, `privacyPolicyUrl`, `marketingUrl` 후보를 실제 등록값으로 쓰기로 확정한 경우에만 사용한다.
+App Store 앱 이름은 iOS용으로 `가로세로 퍼즐`을 사용한다. `--use-suggested-urls`는 `supportUrl`, `privacyPolicyUrl`, `marketingUrl` 후보를 실제 등록값으로 쓰기로 확정한 경우에만 사용한다.
 
 ## 2026-06-09 AdMob 콘솔 ID
 
@@ -276,8 +276,8 @@ npm run app-store:metadata:upload -- --skip-app-name
 | ------------------ | -------------------------------------------------------------------------- | ---------------------------------- |
 | Store icon         | `app-store/assets/icon-1024.png`                                           | 생성됨, 디자인 QA 필요             |
 | Xcode AppIcon      | `apps/mobile/ios/CrosswordPuzzleMobile/Images.xcassets/AppIcon.appiconset` | iPhone/iPad/marketing PNG 생성됨   |
-| iPhone screenshots | `app-store/screenshots/iphone/*.png`                                       | `iphone-1.png` 1장 존재, 추가 필요 |
-| iPad screenshots   | `app-store/screenshots/ipad/*.png`                                         | 현재 iPad 지원값 `1,2`라 필요      |
+| iPhone screenshots | `app-store/screenshots/iphone/*.png`                                       | 3장 생성됨, 1320 x 2868            |
+| iPad screenshots   | `app-store/screenshots/ipad/*.png`                                         | 3장 생성됨, 2064 x 2752            |
 
 ## 주의
 
