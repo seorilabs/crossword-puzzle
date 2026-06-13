@@ -29,3 +29,10 @@ test('prefers Google Mobile Ads error codes over generic Error names', () => {
 
   expect(getMobileAdErrorCode(error)).toBe('googleMobileAds/no-fill');
 });
+
+test('falls back to Error names when Google Mobile Ads code is missing', () => {
+  const error = new Error('Request timed out.');
+  error.name = 'TimeoutError';
+
+  expect(getMobileAdErrorCode(error)).toBe('TimeoutError');
+});

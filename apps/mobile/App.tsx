@@ -77,7 +77,9 @@ import { createPuzzleCompletionStatsRepository } from './puzzleCompletionStatsRe
 import { loadFirebaseLaunchConfig } from './firebaseClient';
 import {
   initializeMobileAds,
+  openMobileAdsInspector,
   showRewardedAd,
+  type MobileAdUnitMode,
   type MobileAdEvent,
   type RewardedAdPlacement,
 } from './mobileAds';
@@ -153,6 +155,11 @@ type BonusPuzzlePanelState = {
   isUnlocking: boolean;
   notice: string;
   status: 'available' | 'loading' | 'unlocked' | 'used' | 'waiting';
+};
+
+type AdDiagnosticState = {
+  isRunning: boolean;
+  message: string;
 };
 
 const REMOTE_PUZZLE_PACK_BASE_URL = 'https://crossword-puzzle-79ae0.web.app';
@@ -860,6 +867,34 @@ function getEntryStartCellKey(entry?: PuzzleEntry) {
   return entry == null ? '' : getCellKey(entry.row, entry.col);
 }
 
+function formatMobileAdEvent(event: MobileAdEvent) {
+  const parts: string[] = [event.type];
+
+  if (event.adUnitMode != null) {
+    parts.push(event.adUnitMode);
+  }
+
+  if (event.errorCode != null) {
+    parts.push(event.errorCode);
+  }
+
+  return parts.join(':');
+}
+
+function formatMobileAdEventSequence(events: MobileAdEvent[]) {
+  return events.map(formatMobileAdEvent).join(' -> ');
+}
+
+function getMobileAdFailureCode(events: MobileAdEvent[]) {
+  const eventWithCode = events.find(event => event.errorCode != null);
+
+  if (eventWithCode?.errorCode != null) {
+    return eventWithCode.errorCode;
+  }
+
+  return events.at(-1)?.type;
+}
+
 function getEntryCellIndex(entry: PuzzleEntry, cellKey: string) {
   const cells = getEntryCells(entry);
   const index = cells.findIndex(
@@ -964,6 +999,12 @@ function AppContent() {
     useState<string | null>(null);
   const [rewardedAdPlacement, setRewardedAdPlacement] =
     useState<RewardedAdPlacement | null>(null);
+  const [, setAdDiagnosticsTapCount] = useState(0);
+  const [isAdDiagnosticsOpen, setIsAdDiagnosticsOpen] = useState(false);
+  const [adDiagnosticState, setAdDiagnosticState] = useState<AdDiagnosticState>({
+    isRunning: false,
+    message: '대기 중',
+  });
   const hasLoggedFirstAnswerInputRef = useRef(false);
   const playScreenScrollRef = useRef<React.ElementRef<typeof ScrollView>>(null);
   const boardInputRef = useRef<React.ElementRef<typeof TextInput>>(null);
@@ -1465,6 +1506,78 @@ function AppContent() {
     [getMobileAdTelemetryParams, puzzle, selectedPuzzleSummary],
   );
 
+  const openAdDiagnostics = useCallback(() => {
+    setIsAdDiagnosticsOpen(true);
+    setAdDiagnosticState({
+      isRunning: false,
+      message: '대기 중',
+    });
+  }, []);
+
+  const handleAdDiagnosticsUnlockTap = useCallback(() => {
+    setAdDiagnosticsTapCount(previous => {
+      const next = previous + 1;
+
+      if (next >= 7) {
+        openAdDiagnostics();
+        return 0;
+      }
+
+      return next;
+    });
+  }, [openAdDiagnostics]);
+
+  const runRewardedAdDiagnostic = useCallback(
+    async (placement: RewardedAdPlacement, adUnitMode: MobileAdUnitMode) => {
+      setAdDiagnosticState({
+        isRunning: true,
+        message: `${placement} ${adUnitMode} 요청 중`,
+      });
+
+      const result = await showRewardedAd(placement, { adUnitMode });
+      const eventSequence = formatMobileAdEventSequence(result.events);
+      const failureCode = getMobileAdFailureCode(result.events);
+      const message = `${placement} ${adUnitMode}: ${result.status}${
+        failureCode == null ? '' : ` (${failureCode})`
+      }\n${eventSequence}`;
+
+      telemetry.impression('mobile_ad_diagnostic_result', {
+        ad_mode: adUnitMode,
+        ad_placement: placement,
+        ad_provider: 'admob',
+        ad_status: result.status,
+        ad_summary: eventSequence,
+      });
+      setAdDiagnosticState({
+        isRunning: false,
+        message,
+      });
+    },
+    [],
+  );
+
+  const openAdInspector = useCallback(async () => {
+    setAdDiagnosticState({
+      isRunning: true,
+      message: 'Ad Inspector 여는 중',
+    });
+
+    const result = await openMobileAdsInspector();
+
+    telemetry.impression('mobile_ad_inspector_open', {
+      ad_error_code: result.errorCode,
+      ad_provider: 'admob',
+      ad_status: result.status,
+    });
+    setAdDiagnosticState({
+      isRunning: false,
+      message:
+        result.status === 'opened'
+          ? 'Ad Inspector를 닫았습니다.'
+          : `Ad Inspector 실패 (${result.errorCode ?? 'unknown'})`,
+    });
+  }, []);
+
   useEffect(() => {
     if (isLoading || !viewModel.isComplete || mission.completedAt != null) {
       return;
@@ -1636,7 +1749,11 @@ function AppContent() {
       } else if (result.status === 'closed') {
         setNotice('광고를 끝까지 보지 않아 힌트가 지급되지 않았습니다.');
       } else {
-        setNotice('광고를 불러오지 못했습니다. 잠시 후 다시 시도하세요.');
+        setNotice(
+          `광고를 불러오지 못했습니다. (${getMobileAdFailureCode(
+            result.events,
+          )})`,
+        );
       }
     } finally {
       setRewardedAdPlacement(null);
@@ -1714,7 +1831,11 @@ function AppContent() {
       } else if (result.status === 'closed') {
         setNotice('광고를 끝까지 보지 않아 보너스 퍼즐이 열리지 않았습니다.');
       } else {
-        setNotice('광고를 불러오지 못했습니다. 잠시 후 다시 시도하세요.');
+        setNotice(
+          `광고를 불러오지 못했습니다. (${getMobileAdFailureCode(
+            result.events,
+          )})`,
+        );
       }
     } finally {
       setRewardedAdPlacement(null);
@@ -2773,6 +2894,83 @@ function AppContent() {
     );
   }
 
+  function renderAdDiagnosticsModal() {
+    return (
+      <Modal
+        animationType="fade"
+        onRequestClose={() => setIsAdDiagnosticsOpen(false)}
+        transparent
+        visible={isAdDiagnosticsOpen}
+      >
+        <View style={styles.completionModalOverlay}>
+          <View
+            accessibilityLabel="광고 진단"
+            accessibilityRole="alert"
+            style={styles.completionDialog}
+          >
+            <View style={styles.completionDialogText}>
+              <Text style={styles.completionDialogTitle}>광고 진단</Text>
+              <Text style={styles.adDiagnosticText}>
+                {adDiagnosticState.message}
+              </Text>
+            </View>
+            <View style={styles.adDiagnosticActions}>
+              <Pressable
+                disabled={adDiagnosticState.isRunning}
+                onPress={() => runRewardedAdDiagnostic('rewardedHint', 'test')}
+                style={styles.secondaryButton}
+              >
+                <Text style={styles.secondaryButtonText}>힌트 테스트</Text>
+              </Pressable>
+              <Pressable
+                disabled={adDiagnosticState.isRunning}
+                onPress={() =>
+                  runRewardedAdDiagnostic('rewardedHint', 'production')
+                }
+                style={styles.secondaryButton}
+              >
+                <Text style={styles.secondaryButtonText}>힌트 운영</Text>
+              </Pressable>
+              <Pressable
+                disabled={adDiagnosticState.isRunning}
+                onPress={() =>
+                  runRewardedAdDiagnostic('rewardedBonusPuzzle', 'test')
+                }
+                style={styles.secondaryButton}
+              >
+                <Text style={styles.secondaryButtonText}>보너스 테스트</Text>
+              </Pressable>
+              <Pressable
+                disabled={adDiagnosticState.isRunning}
+                onPress={() =>
+                  runRewardedAdDiagnostic('rewardedBonusPuzzle', 'production')
+                }
+                style={styles.secondaryButton}
+              >
+                <Text style={styles.secondaryButtonText}>보너스 운영</Text>
+              </Pressable>
+            </View>
+            <View style={styles.completionDialogActions}>
+              <Pressable
+                disabled={adDiagnosticState.isRunning}
+                onPress={openAdInspector}
+                style={styles.primaryButton}
+              >
+                <Text style={styles.primaryButtonText}>Ad Inspector</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setIsAdDiagnosticsOpen(false)}
+                style={styles.secondaryButton}
+              >
+                <Text style={styles.secondaryButtonText}>닫기</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    );
+  }
+
   function renderToday() {
     return (
       <View style={styles.playScreen}>
@@ -2924,7 +3122,9 @@ function AppContent() {
       <ScrollView contentContainerStyle={styles.homeContent}>
         {renderHeader('자료 출처', '라이선스')}
         <View style={styles.summaryPanel}>
-          <Text style={styles.panelTitle}>한국어기초사전</Text>
+          <Pressable onPress={handleAdDiagnosticsUnlockTap}>
+            <Text style={styles.panelTitle}>한국어기초사전</Text>
+          </Pressable>
           <Text style={styles.summaryText}>
             일부 단어 힌트는 국립국어원 한국어기초사전 뜻풀이를 바탕으로
             구성했습니다.
@@ -2971,6 +3171,7 @@ function AppContent() {
               : route === 'license'
                 ? renderLicense()
                 : renderHome()}
+        {renderAdDiagnosticsModal()}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -3154,6 +3355,18 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
     marginTop: 12,
+  },
+  adDiagnosticActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  adDiagnosticText: {
+    color: '#334155',
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 19,
+    textAlign: 'center',
   },
   answerPanel: {
     backgroundColor: '#ffffff',

@@ -14,19 +14,28 @@ type MobileAdEventType =
   | 'closed'
   | 'earned_reward'
   | 'error'
+  | 'initialize_failed'
   | 'loaded'
+  | 'module_unavailable'
   | 'opened'
+  | 'request'
   | 'show_failed'
   | 'timeout'
   | 'unavailable';
 
 export type MobileAdEvent = {
+  adUnitId?: string;
+  adUnitMode?: MobileAdUnitMode;
   errorCode?: string;
   type: MobileAdEventType;
 };
 
+export type MobileAdUnitMode = 'production' | 'test';
 export type RewardedAdPlacement = 'rewardedBonusPuzzle' | 'rewardedHint';
 export type InterstitialAdPlacement = 'interstitialResult';
+export type MobileAdRequestOptions = {
+  adUnitMode?: MobileAdUnitMode;
+};
 
 export type RewardedAdResult = {
   events: MobileAdEvent[];
@@ -55,6 +64,7 @@ const productionAdUnitIds = {
 
 let mobileAdsModulePromise: Promise<GoogleMobileAdsModule | null> | null = null;
 let initializationPromise: Promise<boolean> | null = null;
+let initializationErrorCode: string | undefined;
 
 function isTestRuntime() {
   return typeof process !== 'undefined' && process.env?.NODE_ENV === 'test';
@@ -83,14 +93,24 @@ function getPlatformAdUnitIds() {
 function getRewardedAdUnitId(
   module: GoogleMobileAdsModule,
   placement: RewardedAdPlacement,
+  options: MobileAdRequestOptions = {},
 ) {
-  return __DEV__ ? module.TestIds.REWARDED : getPlatformAdUnitIds()[placement];
+  return __DEV__ || options.adUnitMode === 'test'
+    ? module.TestIds.REWARDED
+    : getPlatformAdUnitIds()[placement];
 }
 
-function getInterstitialAdUnitId(module: GoogleMobileAdsModule) {
-  return __DEV__
+function getInterstitialAdUnitId(
+  module: GoogleMobileAdsModule,
+  options: MobileAdRequestOptions = {},
+) {
+  return __DEV__ || options.adUnitMode === 'test'
     ? module.TestIds.INTERSTITIAL
     : getPlatformAdUnitIds().interstitialResult;
+}
+
+function getAdUnitMode(options: MobileAdRequestOptions = {}): MobileAdUnitMode {
+  return __DEV__ || options.adUnitMode === 'test' ? 'test' : 'production';
 }
 
 export function createMobileAdsRequestConfiguration(
@@ -104,12 +124,22 @@ export function createMobileAdsRequestConfiguration(
   };
 }
 
-function createUnavailableRewardedResult(): RewardedAdResult {
-  return { events: [{ type: 'unavailable' }], status: 'failed' };
+function createUnavailableRewardedResult(
+  type: Extract<MobileAdEventType, 'initialize_failed' | 'module_unavailable'>,
+): RewardedAdResult {
+  return {
+    events: [{ errorCode: initializationErrorCode, type }],
+    status: 'failed',
+  };
 }
 
-function createUnavailableInterstitialResult(): InterstitialAdResult {
-  return { events: [{ type: 'unavailable' }], status: 'failed' };
+function createUnavailableInterstitialResult(
+  type: Extract<MobileAdEventType, 'initialize_failed' | 'module_unavailable'>,
+): InterstitialAdResult {
+  return {
+    events: [{ errorCode: initializationErrorCode, type }],
+    status: 'failed',
+  };
 }
 
 export async function initializeMobileAds() {
@@ -130,8 +160,10 @@ export async function initializeMobileAds() {
         createMobileAdsRequestConfiguration(module),
       );
       await mobileAds.initialize();
+      initializationErrorCode = undefined;
       return true;
-    } catch {
+    } catch (error) {
+      initializationErrorCode = getMobileAdErrorCode(error);
       return false;
     }
   })();
@@ -141,17 +173,26 @@ export async function initializeMobileAds() {
 
 export async function showRewardedAd(
   placement: RewardedAdPlacement,
+  options: MobileAdRequestOptions = {},
 ): Promise<RewardedAdResult> {
   const module = await getMobileAdsModule();
 
-  if (module == null || !(await initializeMobileAds())) {
-    return createUnavailableRewardedResult();
+  if (module == null) {
+    return createUnavailableRewardedResult('module_unavailable');
+  }
+
+  if (!(await initializeMobileAds())) {
+    return createUnavailableRewardedResult('initialize_failed');
   }
 
   return new Promise(resolve => {
-    const events: MobileAdEvent[] = [];
+    const adUnitMode = getAdUnitMode(options);
+    const adUnitId = getRewardedAdUnitId(module, placement, options);
+    const events: MobileAdEvent[] = [
+      { adUnitId, adUnitMode, type: 'request' },
+    ];
     const ad = module.RewardedAd.createForAdRequest(
-      getRewardedAdUnitId(module, placement),
+      adUnitId,
       { requestNonPersonalizedAdsOnly: true },
     );
     const unsubscribers: Array<() => void> = [];
@@ -213,17 +254,26 @@ export async function showRewardedAd(
 
 export async function showInterstitialAd(
   _placement: InterstitialAdPlacement,
+  options: MobileAdRequestOptions = {},
 ): Promise<InterstitialAdResult> {
   const module = await getMobileAdsModule();
 
-  if (module == null || !(await initializeMobileAds())) {
-    return createUnavailableInterstitialResult();
+  if (module == null) {
+    return createUnavailableInterstitialResult('module_unavailable');
+  }
+
+  if (!(await initializeMobileAds())) {
+    return createUnavailableInterstitialResult('initialize_failed');
   }
 
   return new Promise(resolve => {
-    const events: MobileAdEvent[] = [];
+    const adUnitMode = getAdUnitMode(options);
+    const adUnitId = getInterstitialAdUnitId(module, options);
+    const events: MobileAdEvent[] = [
+      { adUnitId, adUnitMode, type: 'request' },
+    ];
     const ad = module.InterstitialAd.createForAdRequest(
-      getInterstitialAdUnitId(module),
+      adUnitId,
       { requestNonPersonalizedAdsOnly: true },
     );
     const unsubscribers: Array<() => void> = [];
@@ -278,6 +328,34 @@ export async function showInterstitialAd(
 
     ad.load();
   });
+}
+
+export async function openMobileAdsInspector() {
+  const module = await getMobileAdsModule();
+
+  if (module == null) {
+    return {
+      errorCode: 'module_unavailable',
+      status: 'failed' as const,
+    };
+  }
+
+  if (!(await initializeMobileAds())) {
+    return {
+      errorCode: initializationErrorCode ?? 'initialize_failed',
+      status: 'failed' as const,
+    };
+  }
+
+  try {
+    await module.default().openAdInspector();
+    return { status: 'opened' as const };
+  } catch (error) {
+    return {
+      errorCode: getMobileAdErrorCode(error),
+      status: 'failed' as const,
+    };
+  }
 }
 
 export function getMobileAdErrorCode(error: unknown) {
