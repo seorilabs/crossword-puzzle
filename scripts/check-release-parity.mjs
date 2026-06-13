@@ -28,6 +28,7 @@ const ciWorkflowPath = ".github/workflows/ci.yml";
 const deployAllWorkflowPath = ".github/workflows/deploy-all.yml";
 const deployGooglePlayWorkflowPath = ".github/workflows/deploy-google-play.yml";
 const deployAppStoreWorkflowPath = ".github/workflows/deploy-app-store.yml";
+const appStoreLocalBuildPath = "scripts/app-store-local-build.sh";
 const agentsPath = "AGENTS.md";
 const marketParityDocPath = "docs/market-parity.md";
 const playStoreConfigPath = "play-store/google-play.config.json";
@@ -236,6 +237,7 @@ const ciWorkflow = read(ciWorkflowPath);
 const deployAllWorkflow = read(deployAllWorkflowPath);
 const deployGooglePlayWorkflow = read(deployGooglePlayWorkflowPath);
 const deployAppStoreWorkflow = read(deployAppStoreWorkflowPath);
+const appStoreLocalBuild = read(appStoreLocalBuildPath);
 const agents = read(agentsPath);
 const marketParityDoc = read(marketParityDocPath);
 const playStoreConfig = read(playStoreConfigPath);
@@ -348,10 +350,31 @@ assertIncludes(
 );
 assertIncludes(mobileAppJson, '"sk_ad_network_items":', mobileAppJsonPath);
 assertIncludes(mobileAppJson, '"cstr6suwn9.skadnetwork"', mobileAppJsonPath);
+assertIncludes(
+  appStoreLocalBuild,
+  "GADApplicationIdentifier",
+  appStoreLocalBuildPath,
+);
+assertIncludes(
+  appStoreLocalBuild,
+  "SKAdNetworkItems:0:SKAdNetworkIdentifier",
+  appStoreLocalBuildPath,
+);
+assertIncludes(
+  deployAppStoreWorkflow,
+  "GADApplicationIdentifier",
+  deployAppStoreWorkflowPath,
+);
+assertIncludes(
+  deployAppStoreWorkflow,
+  "SKAdNetworkItems:0:SKAdNetworkIdentifier",
+  deployAppStoreWorkflowPath,
+);
 assertIncludes(mobileAds, "initializeMobileAds", mobileAdsPath);
 assertIncludes(mobileAds, "showRewardedAd", mobileAdsPath);
 assertIncludes(mobileAds, "showInterstitialAd", mobileAdsPath);
 assertIncludes(mobileAds, "requestNonPersonalizedAdsOnly: true", mobileAdsPath);
+assertIncludes(mobileAds, "setRequestConfiguration", mobileAdsPath);
 assertIncludes(mobileApp, "showRewardedAd", mobileAppPath);
 assertNotIncludes(mobileApp, "showInterstitialAd", mobileAppPath);
 assertIncludes(

@@ -91,7 +91,7 @@ App Store 앱 이름은 iOS용으로 `가로세로 퍼즐`을 사용한다. `--u
 
 ## 2026-06-09 AdMob 콘솔 ID
 
-현재 `react-native-google-mobile-ads` adapter에 연결되어 있다. 개발/QA 빌드는 Google test ad unit을 사용하고, release 빌드는 adapter QA 후 아래 운영 ID를 사용한다. 1차 출시는 개인화 광고를 끄고 비개인화 광고 요청으로 운영한다.
+현재 `react-native-google-mobile-ads` adapter에 연결되어 있다. 개발/QA 빌드는 Google test ad unit을 사용하고, release 빌드는 adapter QA 후 아래 운영 ID를 사용한다. 1차 출시는 개인화 광고를 끄고 비개인화 광고 요청으로 운영하며, global request configuration은 아동 대상/동의연령 미만 대상 플래그를 false로 명시하고 simulator/emulator를 test device로 allowlist한다.
 
 | 항목                        | 값                                       |
 | --------------------------- | ---------------------------------------- |
@@ -100,7 +100,7 @@ App Store 앱 이름은 iOS용으로 `가로세로 퍼즐`을 사용한다. `--u
 | `ios_interstitial_result`   | `ca-app-pub-2444587584524186/3402324424` |
 | `ios_rewarded_bonus_puzzle` | `ca-app-pub-2444587584524186/2089242756` |
 
-`GADApplicationIdentifier`와 `SKAdNetworkItems`는 `app.json`의 `react-native-google-mobile-ads` 설정을 CocoaPods build phase가 빌드 산출물 `Info.plist`에 주입한다. AdMob 개인화 광고, IDFA, cross-app ad measurement를 켜면 App Store Connect Tracking 답변, ATT/UMP 동선, `NSUserTrackingUsageDescription`도 같이 구현한다.
+`GADApplicationIdentifier`와 `SKAdNetworkItems`는 `app.json`의 `react-native-google-mobile-ads` 설정을 CocoaPods build phase가 빌드 산출물 `Info.plist`에 주입한다. 로컬/App Store archive 경로는 업로드 전에 산출물 `Info.plist`에서 iOS AdMob app ID와 Google SKAdNetwork ID를 다시 검증한다. AdMob 개인화 광고, IDFA, cross-app ad measurement를 켜면 App Store Connect Tracking 답변, ATT/UMP 동선, `NSUserTrackingUsageDescription`도 같이 구현한다.
 
 ## App Privacy 답변 가이드
 

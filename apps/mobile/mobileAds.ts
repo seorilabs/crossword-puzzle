@@ -93,6 +93,17 @@ function getInterstitialAdUnitId(module: GoogleMobileAdsModule) {
     : getPlatformAdUnitIds().interstitialResult;
 }
 
+export function createMobileAdsRequestConfiguration(
+  module: Pick<GoogleMobileAdsModule, 'MaxAdContentRating'>,
+) {
+  return {
+    maxAdContentRating: module.MaxAdContentRating.PG,
+    tagForChildDirectedTreatment: false,
+    tagForUnderAgeOfConsent: false,
+    testDeviceIdentifiers: ['EMULATOR'],
+  };
+}
+
 function createUnavailableRewardedResult(): RewardedAdResult {
   return { events: [{ type: 'unavailable' }], status: 'failed' };
 }
@@ -114,7 +125,11 @@ export async function initializeMobileAds() {
     }
 
     try {
-      await module.default().initialize();
+      const mobileAds = module.default();
+      await mobileAds.setRequestConfiguration(
+        createMobileAdsRequestConfiguration(module),
+      );
+      await mobileAds.initialize();
       return true;
     } catch {
       return false;
@@ -169,7 +184,7 @@ export async function showRewardedAd(
         clearTimeout(timeoutId);
         ad.show().catch(error => {
           events.push({
-            errorCode: getErrorCode(error),
+            errorCode: getMobileAdErrorCode(error),
             type: 'show_failed',
           });
           resolveOnce('failed');
@@ -187,7 +202,7 @@ export async function showRewardedAd(
         resolveOnce(hasEarnedReward ? 'rewarded' : 'closed');
       }),
       ad.addAdEventListener(module.AdEventType.ERROR, error => {
-        events.push({ errorCode: getErrorCode(error), type: 'error' });
+        events.push({ errorCode: getMobileAdErrorCode(error), type: 'error' });
         resolveOnce('failed');
       }),
     );
@@ -241,7 +256,7 @@ export async function showInterstitialAd(
         clearTimeout(timeoutId);
         ad.show().catch(error => {
           events.push({
-            errorCode: getErrorCode(error),
+            errorCode: getMobileAdErrorCode(error),
             type: 'show_failed',
           });
           resolveOnce('failed');
@@ -256,7 +271,7 @@ export async function showInterstitialAd(
         resolveOnce('shown');
       }),
       ad.addAdEventListener(module.AdEventType.ERROR, error => {
-        events.push({ errorCode: getErrorCode(error), type: 'error' });
+        events.push({ errorCode: getMobileAdErrorCode(error), type: 'error' });
         resolveOnce('failed');
       }),
     );
@@ -265,11 +280,7 @@ export async function showInterstitialAd(
   });
 }
 
-function getErrorCode(error: unknown) {
-  if (error instanceof Error) {
-    return error.name || 'error';
-  }
-
+export function getMobileAdErrorCode(error: unknown) {
   if (
     error != null &&
     typeof error === 'object' &&
@@ -277,6 +288,10 @@ function getErrorCode(error: unknown) {
     typeof error.code === 'string'
   ) {
     return error.code;
+  }
+
+  if (error instanceof Error) {
+    return error.name || 'error';
   }
 
   return 'unknown';

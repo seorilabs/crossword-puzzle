@@ -86,7 +86,7 @@ Android/iOS는 AIT WebView 코드와 같은 Web SDK를 공유하지 않는다. `
 - iOS: `apps/mobile/ios/CrosswordPuzzleMobile/GoogleService-Info.plist`, 같은 RNFirebase 모듈, `FirebaseApp.configure()`
 - `google-services.json`과 `GoogleService-Info.plist`는 `.gitignore` 대상이다.
 - CI는 `scripts/restore-mobile-firebase-config.mjs`로 native config를 복구한다.
-- `apps/mobile`은 `react-native-google-mobile-ads` native adapter를 사용한다. 개발/QA 빌드는 Google test ad unit을 사용하고, release 빌드는 adapter QA 후 운영 광고 ID를 사용한다. 1차 출시에서는 개인화 광고를 끄고 `requestNonPersonalizedAdsOnly=true`로 요청한다.
+- `apps/mobile`은 `react-native-google-mobile-ads` native adapter를 사용한다. 개발/QA 빌드는 Google test ad unit을 사용하고, release 빌드는 adapter QA 후 운영 광고 ID를 사용한다. 1차 출시에서는 개인화 광고를 끄고 `requestNonPersonalizedAdsOnly=true`로 요청하며, global request configuration에서 아동 대상/동의연령 미만 대상 플래그를 false로 명시하고 simulator/emulator를 test device로 allowlist한다.
 - 공유 core에는 Firebase import를 넣지 않는다.
 - 앱 개인정보/데이터 수집 고지에는 Analytics, 광고 식별자, 진단/사용 이벤트 수집 여부를 반영한다.
 - iOS Analytics는 `$RNFirebaseAnalyticsWithoutAdIdSupport = true`로 IDFA 없는 variant를 사용한다.

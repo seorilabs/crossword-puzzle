@@ -53,7 +53,7 @@
       "interstitialResult": "ca-app-pub-2444587584524186/3402324424",
       "rewardedBonusPuzzle": "ca-app-pub-2444587584524186/2089242756"
     },
-    "productionPolicy": "Development builds use Google test ad units through react-native-google-mobile-ads; release builds use these production IDs after adapter QA. Personalized ads stay off for the first launch; requests set requestNonPersonalizedAdsOnly=true."
+    "productionPolicy": "Development builds use Google test ad units through react-native-google-mobile-ads; release builds use these production IDs after adapter QA. Personalized ads stay off for the first launch; requests set requestNonPersonalizedAdsOnly=true, global request configuration marks child-directed and under-age-of-consent treatment false, and simulator/emulator devices are allowlisted as test devices."
   },
   "compliance": {
     "privacyPolicyUrl": "https://www.seorilabs.com/privacy/",
@@ -637,14 +637,14 @@
     "externalTesting": "not planned",
     "betaReviewNotes": "확정 필요",
     "lastUploadedBuild": {
-      "versionTag": "v0.3.2",
-      "marketingVersion": "0.3.2",
-      "buildNumber": "3002",
-      "sourceCommit": "0974859",
+      "versionTag": "v0.3.4",
+      "marketingVersion": "0.3.4",
+      "buildNumber": "3004",
+      "sourceCommit": "d20d9ff+local",
       "workflowRun": "local",
       "workflowJob": "local",
-      "uploadedAt": "2026-06-13T00:44:13Z",
-      "appStoreConnectBuildId": "5720d5e9-38ab-4324-a8fa-acb74721426a",
+      "uploadedAt": "2026-06-13T05:02:25Z",
+      "appStoreConnectBuildId": "7adb7c92-7763-4046-9b42-119c0612c249",
       "processingState": "VALID",
       "uploadWarning": "Hermes hermesvm.framework dSYM missing from archive"
     }
@@ -672,7 +672,7 @@
     "contentRightsAnswer": "확정 필요",
     "exportComplianceAnswer": "확정 필요",
     "dsaTraderDetails": "확정 필요",
-    "buildUpload": "v0.3.2 build 3002 uploaded locally via xcodebuild -exportArchive on 2026-06-13; App Store Connect build 5720d5e9-38ab-4324-a8fa-acb74721426a is VALID",
+    "buildUpload": "v0.3.4 build 3004 uploaded locally via xcodebuild -exportArchive on 2026-06-13; App Store Connect build 7adb7c92-7763-4046-9b42-119c0612c249 is VALID",
     "buildSelection": "확정 필요",
     "submitForReview": "확정 필요"
   }

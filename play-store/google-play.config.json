@@ -24,7 +24,7 @@
       "interstitialResult": "ca-app-pub-2444587584524186/4930691809",
       "rewardedBonusPuzzle": "ca-app-pub-2444587584524186/2299285882"
     },
-    "productionPolicy": "Development builds use Google test ad units through react-native-google-mobile-ads; release builds use these production IDs after adapter QA. Personalized ads stay off for the first launch; requests set requestNonPersonalizedAdsOnly=true."
+    "productionPolicy": "Development builds use Google test ad units through react-native-google-mobile-ads; release builds use these production IDs after adapter QA. Personalized ads stay off for the first launch; requests set requestNonPersonalizedAdsOnly=true, global request configuration marks child-directed and under-age-of-consent treatment false, and simulator/emulator devices are allowlisted as test devices."
   },
   "storeListing": {
     "appName": {

@@ -161,6 +161,12 @@ Trigger:
 npm run app-store:build:local -- --export-upload --tag v0.3.2 --skip-pods
 ```
 
+2026-06-13 로컬 확인 기준, iOS AdMob 설정을 점검한 뒤 아래 명령으로 `0.3.4` / build `3004`를 App Store Connect에 업로드했다. App Store Connect build ID는 `7adb7c92-7763-4046-9b42-119c0612c249`이고 processing state는 `VALID`다. archive 산출물 `Info.plist`에서 `GADApplicationIdentifier=ca-app-pub-2444587584524186~4715406099`와 Google Mobile Ads `SKAdNetworkItems`를 업로드 전에 검증했다. 업로드 중 `hermesvm.framework` dSYM 누락 경고가 있었지만 binary upload는 성공했다.
+
+```bash
+npm run app-store:build:local -- --export-upload --marketing-version 0.3.4 --build-number 3004 --skip-pods
+```
+
 남은 항목은 App Store Connect 정책 답변, TestFlight/App Store version build selection, 최종 심사 제출이다.
 
 Workflow는 profile을 복원한 뒤 다음을 검증한다.

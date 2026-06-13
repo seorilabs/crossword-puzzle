@@ -393,6 +393,19 @@ jobs:
             exit 1
           fi
 
+          expected_admob_app_id="$(node --input-type=module -e "const c=JSON.parse(await import('node:fs').then(fs=>fs.readFileSync('app-store/app-store.config.json','utf8'))); console.log(c.adMob.appId)")"
+          actual_admob_app_id="$(/usr/libexec/PlistBuddy -c 'Print :GADApplicationIdentifier' "$app_info_plist" 2>/dev/null || true)"
+          if [ "$actual_admob_app_id" != "$expected_admob_app_id" ]; then
+            echo "Archive AdMob app ID mismatch: ${actual_admob_app_id:-missing} != $expected_admob_app_id" >&2
+            exit 1
+          fi
+
+          actual_skad_network_id="$(/usr/libexec/PlistBuddy -c 'Print :SKAdNetworkItems:0:SKAdNetworkIdentifier' "$app_info_plist" 2>/dev/null || true)"
+          if [ "$actual_skad_network_id" != "cstr6suwn9.skadnetwork" ]; then
+            echo "Archive SKAdNetworkItems missing Google Mobile Ads network ID." >&2
+            exit 1
+          fi
+
           {
             echo "archive_path=$archive_path"
             echo "marketing_version=$actual_marketing_version"

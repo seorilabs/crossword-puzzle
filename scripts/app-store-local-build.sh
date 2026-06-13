@@ -114,6 +114,7 @@ read_config() {
 workspace="$(read_config 'c.ios.workspace')"
 scheme="$(read_config 'c.ios.scheme')"
 bundle_id="$(read_config 'c.bundleId')"
+admob_app_id="$(read_config 'c.adMob.appId')"
 config_team_id="$(read_config 'c.ios.teamId')"
 config_profile_name="$(read_config 'c.ios.provisioningProfileSpecifier')"
 
@@ -314,6 +315,18 @@ actual_build_number="$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$app_
 
 if [[ "$actual_marketing_version" != "$marketing_version" || "$actual_build_number" != "$build_number" ]]; then
   echo "Archive version mismatch: $actual_marketing_version/$actual_build_number != $marketing_version/$build_number" >&2
+  exit 1
+fi
+
+actual_admob_app_id="$(/usr/libexec/PlistBuddy -c 'Print :GADApplicationIdentifier' "$app_info_plist" 2>/dev/null || true)"
+if [[ "$actual_admob_app_id" != "$admob_app_id" ]]; then
+  echo "Archive AdMob app ID mismatch: ${actual_admob_app_id:-missing} != $admob_app_id" >&2
+  exit 1
+fi
+
+actual_skad_network_id="$(/usr/libexec/PlistBuddy -c 'Print :SKAdNetworkItems:0:SKAdNetworkIdentifier' "$app_info_plist" 2>/dev/null || true)"
+if [[ "$actual_skad_network_id" != "cstr6suwn9.skadnetwork" ]]; then
+  echo "Archive SKAdNetworkItems missing Google Mobile Ads network ID." >&2
   exit 1
 fi
 
