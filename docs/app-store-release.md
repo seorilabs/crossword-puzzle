@@ -167,6 +167,14 @@ npm run app-store:build:local -- --export-upload --tag v0.3.2 --skip-pods
 npm run app-store:build:local -- --export-upload --marketing-version 0.3.4 --build-number 3004 --skip-pods
 ```
 
+2026-06-13 로컬 확인 기준, 보상형 광고 진단 모드를 추가한 뒤 아래 명령으로 `0.3.5` / build `3005`를 App Store Connect에 업로드했다. App Store Connect build ID는 `28e5db1a-fc5d-4788-a1c8-beaa1481eda1`이고 processing state는 `VALID`다. archive 산출물 `Info.plist`에서 iOS AdMob app ID와 Google Mobile Ads SKAdNetwork ID를 다시 검증했다. 업로드 중 `hermesvm.framework` dSYM 누락 경고가 있었지만 binary upload는 성공했다.
+
+```bash
+npm run app-store:build:local -- --export-upload --marketing-version 0.3.5 --build-number 3005 --skip-pods
+```
+
+`0.3.5` 광고 진단은 `출처` 화면에서 `한국어기초사전` 제목을 7회 탭해 연다. `힌트 테스트`/`보너스 테스트`가 성공하면 SDK 통합은 정상이고, `힌트 운영`/`보너스 운영`이 `googleMobileAds/no-fill`이면 AdMob serving 또는 신규 광고 단위 fill 문제로 본다. `module_unavailable` 또는 `initialize_failed`면 앱 binary/native SDK 연결 문제다. Ad Inspector 버튼은 Google Mobile Ads SDK request log를 확인하는 데 사용한다.
+
 남은 항목은 App Store Connect 정책 답변, TestFlight/App Store version build selection, 최종 심사 제출이다.
 
 Workflow는 profile을 복원한 뒤 다음을 검증한다.
