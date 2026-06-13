@@ -160,12 +160,13 @@ const REMOTE_PUZZLE_STATS_URL = `${REMOTE_PUZZLE_PACK_BASE_URL.replace(
   /\/+$/,
   '',
 )}/puzzle-stats/completions.json`;
-const HOME_HEADER_TITLE =
-  Platform.OS === 'ios' ? '가로세로 퍼즐' : '가로세로 낱말 퍼즐';
+const HOME_HEADER_TITLE = '가로세로 낱말 퍼즐';
 const PROGRESS_KEY_PREFIX = 'crossword-puzzle:progress';
 const MISSION_KEY_PREFIX = 'crossword-puzzle:mission';
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
-export const ANDROID_TEXT_INPUT_REFOCUS_DELAY_MS = 32;
+export const BOARD_TEXT_INPUT_REFOCUS_DELAY_MS = 32;
+export const ANDROID_TEXT_INPUT_REFOCUS_DELAY_MS =
+  BOARD_TEXT_INPUT_REFOCUS_DELAY_MS;
 const BOARD_BORDER_WIDTH = 2;
 const PLAY_SCREEN_CONTENT_PADDING = 16;
 const BOARD_FOCUS_ROWS_ABOVE = 2;
@@ -186,24 +187,22 @@ export function scheduleBoardNativeInputFocus({
   getInput,
   keyboardVisible,
   onFocusTimerSettled,
-  platformOS,
 }: ScheduleBoardNativeInputFocusOptions): ReturnType<typeof setTimeout> {
   const input = getInput();
-  const needsAndroidRefocus =
-    platformOS === 'android' && !keyboardVisible && input?.isFocused();
+  const needsNativeRefocus = !keyboardVisible && input?.isFocused();
 
-  if (needsAndroidRefocus) {
+  if (needsNativeRefocus) {
     input?.blur();
   }
 
-  // Android can leave TextInput focused after the IME is hidden; wait briefly
+  // Native TextInput can stay focused after the IME is hidden; wait briefly
   // after blur so the next focus request attaches a fresh input connection.
   return setTimeout(
     () => {
       onFocusTimerSettled();
       getInput()?.focus();
     },
-    needsAndroidRefocus ? ANDROID_TEXT_INPUT_REFOCUS_DELAY_MS : 0,
+    needsNativeRefocus ? BOARD_TEXT_INPUT_REFOCUS_DELAY_MS : 0,
   );
 }
 
@@ -321,17 +320,64 @@ export function formatPuzzleAliasLabel(summary: PuzzleManifestItem) {
   return `#${getPuzzlePackAlias(summary)}`;
 }
 
+function formatDateCardDay(date: string) {
+  const [, month, day] = date.split('-');
+  if (month == null || day == null) {
+    return date;
+  }
+
+  return `${Number(month)}.${Number(day)}`;
+}
+
+function formatDateCardWeekday(date: string, variant: 'long' | 'short') {
+  const value = new Date(`${date}T00:00:00`);
+  if (Number.isNaN(value.getTime())) {
+    return '';
+  }
+
+  return new Intl.DateTimeFormat('ko-KR', { weekday: variant }).format(value);
+}
+
+export function formatPuzzleHomeSubtitle(
+  summary: PuzzleManifestItem,
+  source: PuzzlePackSource,
+) {
+  if (source !== 'remote') {
+    return summary.date;
+  }
+
+  const weekday = formatDateCardWeekday(summary.date, 'long');
+  const dayLabel = formatDateCardDay(summary.date);
+
+  return weekday === '' ? dayLabel : `${dayLabel} ${weekday}`;
+}
+
+export function formatPuzzleCardTitle(
+  summary: PuzzleManifestItem,
+  source: PuzzlePackSource,
+) {
+  if (source !== 'remote') {
+    return summary.date;
+  }
+
+  const weekday = formatDateCardWeekday(summary.date, 'short');
+  const dayLabel = formatDateCardDay(summary.date);
+
+  return weekday === '' ? dayLabel : `${dayLabel} ${weekday}`;
+}
+
 function formatBonusPuzzleMeta(summary?: PuzzleManifestItem) {
   if (summary == null) {
     return '새 퍼즐 대기';
   }
 
+  const puzzleLabel = formatPuzzleCardTitle(summary, 'remote');
   const wordCountLabel =
     summary.metrics?.wordCount == null
       ? '단어 수 확인 중'
       : `${summary.metrics.wordCount}개 단어`;
 
-  return `${formatPuzzleAliasLabel(summary)} · ${wordCountLabel}`;
+  return `${puzzleLabel} · ${wordCountLabel}`;
 }
 
 function getInitialEntryStartCellKey(puzzle: Puzzle) {
@@ -1068,6 +1114,7 @@ function AppContent() {
     viewModel.completedEntries.length > 0;
   const hasStarted = mission.attemptsUsed > 0 || hasProgress;
   const isCompleted = viewModel.isComplete || mission.completedAt != null;
+  const isReviewMode = isCompleted;
   const todayKey = getTodayDateKey();
   const completedPuzzleIds = useMemo(
     () => getCompletedPuzzleIds(dateCardStates),
@@ -2108,10 +2155,7 @@ function AppContent() {
               : slotLabel === ''
                 ? completionStatsLabel
                 : `${slotLabel} · ${completionStatsLabel}`;
-          const titleLabel =
-            puzzlePack.source === 'remote'
-              ? formatPuzzleAliasLabel(summary)
-              : summary.date;
+          const titleLabel = formatPuzzleCardTitle(summary, puzzlePack.source);
 
           return (
             <Pressable
@@ -2142,10 +2186,10 @@ function AppContent() {
       completionStatsByPuzzleId[puzzle.puzzleId],
       launchConfig.completionStatsMinDisplayCount,
     );
-    const selectedPuzzleLabel =
-      puzzlePack.source === 'remote'
-        ? formatPuzzleAliasLabel(selectedPuzzleSummary)
-        : puzzle.date;
+    const selectedPuzzleLabel = formatPuzzleHomeSubtitle(
+      selectedPuzzleSummary,
+      puzzlePack.source,
+    );
 
     return (
       <ScrollView contentContainerStyle={styles.homeContent}>
@@ -2322,6 +2366,7 @@ function AppContent() {
           blurOnSubmit={false}
           caretHidden
           contextMenuHidden
+          editable={!isReviewMode}
           importantForAccessibility="no-hide-descendants"
           importantForAutofill="no"
           maxLength={Math.max(
@@ -2348,8 +2393,10 @@ function AppContent() {
           pointerEvents="none"
           ref={boardInputRef}
           returnKeyType="next"
+          selectionColor="transparent"
           showSoftInputOnFocus
           style={[styles.boardNativeInput, boardNativeInputPosition]}
+          underlineColorAndroid="transparent"
           value={answerInputValue}
         />
       </View>
@@ -2409,7 +2456,6 @@ function AppContent() {
   }
 
   function renderTodayHeader() {
-    const isReviewMode = isCompleted;
     const isHintAdBusy = rewardedAdPlacement === 'rewardedHint';
     const hintBadgeLabel = isHintAdBusy
       ? '…'
@@ -3164,10 +3210,16 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   boardNativeInput: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
     color: 'transparent',
+    fontSize: 1,
     height: 1,
+    includeFontPadding: false,
     left: 0,
-    opacity: 0.01,
+    margin: 0,
+    opacity: 0,
+    padding: 0,
     position: 'absolute',
     top: 0,
     width: 1,

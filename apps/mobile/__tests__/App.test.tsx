@@ -6,8 +6,10 @@ import React from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ReactTestRenderer from 'react-test-renderer';
 import App, {
-  ANDROID_TEXT_INPUT_REFOCUS_DELAY_MS,
+  BOARD_TEXT_INPUT_REFOCUS_DELAY_MS,
   formatCompletionStatsLabel,
+  formatPuzzleCardTitle,
+  formatPuzzleHomeSubtitle,
   formatPuzzleAliasLabel,
   getBackTargetRoute,
   getBoardCellFocusScrollY,
@@ -165,6 +167,30 @@ test('formats generated puzzle aliases as yyMMddHH labels', () => {
   ).toBe('#26061218');
 });
 
+test('formats mobile home puzzle labels without exposing remote ids', () => {
+  const summary: PuzzleManifestItem = {
+    date: '2026-06-12',
+    difficulty: 'normal',
+    metrics: {
+      autoRunCount: 0,
+      bboxDensity: 1,
+      crossCells: 0,
+      crossRatio: 0,
+      filledCells: 2,
+      multiCrossEntries: 0,
+      placedWordCount: 1,
+      wordCount: 1,
+    },
+    path: '/puzzles/26061218.json',
+    puzzleId: '26061218',
+  };
+
+  expect(formatPuzzleHomeSubtitle(summary, 'remote')).toBe('6.12 금요일');
+  expect(formatPuzzleCardTitle(summary, 'remote')).toBe('6.12 금');
+  expect(formatPuzzleHomeSubtitle(summary, 'bundled')).toBe('2026-06-12');
+  expect(formatPuzzleCardTitle(summary, 'bundled')).toBe('2026-06-12');
+});
+
 test('maps pending Korean composition directly onto board cells', () => {
   const entry = {
     answer: '관포지교',
@@ -255,7 +281,7 @@ test('skips locked correct letters when choosing the backspace target', () => {
   );
 });
 
-test('refocuses a stale Android text input after the keyboard is hidden', () => {
+test('refocuses a stale native text input after the keyboard is hidden', () => {
   jest.useFakeTimers({ now: 0 });
 
   const blur = jest.fn();
@@ -268,7 +294,7 @@ test('refocuses a stale Android text input after the keyboard is hidden', () => 
     getInput,
     keyboardVisible: false,
     onFocusTimerSettled,
-    platformOS: 'android',
+    platformOS: 'ios',
   });
 
   expect(isFocused).toHaveBeenCalledTimes(1);
@@ -276,7 +302,7 @@ test('refocuses a stale Android text input after the keyboard is hidden', () => 
   expect(focus).not.toHaveBeenCalled();
 
   ReactTestRenderer.act(() => {
-    jest.advanceTimersByTime(ANDROID_TEXT_INPUT_REFOCUS_DELAY_MS - 1);
+    jest.advanceTimersByTime(BOARD_TEXT_INPUT_REFOCUS_DELAY_MS - 1);
   });
 
   expect(onFocusTimerSettled).not.toHaveBeenCalled();
@@ -290,7 +316,7 @@ test('refocuses a stale Android text input after the keyboard is hidden', () => 
   expect(focus).toHaveBeenCalledTimes(1);
 });
 
-test('focuses Android text input without refocus delay when keyboard is visible', () => {
+test('focuses native text input without refocus delay when keyboard is visible', () => {
   jest.useFakeTimers({ now: 0 });
 
   const blur = jest.fn();
