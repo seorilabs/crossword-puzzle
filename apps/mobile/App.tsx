@@ -2369,10 +2369,6 @@ function AppContent() {
           editable={!isReviewMode}
           importantForAccessibility="no-hide-descendants"
           importantForAutofill="no"
-          maxLength={Math.max(
-            1,
-            selectedEntryCells.length - selectedEntryIndex,
-          )}
           onChangeText={handleBoardInputChange}
           onEndEditing={event => {
             commitBoardInputValue(event.nativeEvent.text);

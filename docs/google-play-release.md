@@ -130,6 +130,12 @@ Google 공식 문서 기준으로 service account는 Google Cloud에서 만들�
 - `npm run check:mobile`
 - `npm run build:android`
 
+macOS 로컬 기본 JDK가 GraalVM/JDK 22인 경우 Android 36 `core-for-system-modules.jar` 변환 단계에서 `jlink` 실패가 날 수 있다. 로컬 Android release AAB는 JDK 17로 고정해 확인한다.
+
+```bash
+JAVA_HOME=$(/usr/libexec/java_home -v 17) npm run build:android
+```
+
 ## 5. Upload Key와 GitHub Secrets
 
 Android 타깃을 만든 뒤 upload key를 만든다. 예시는 alias 후보값이다.

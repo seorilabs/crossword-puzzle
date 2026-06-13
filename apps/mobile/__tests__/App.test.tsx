@@ -4,6 +4,7 @@
 
 import React from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import App, {
   BOARD_TEXT_INPUT_REFOCUS_DELAY_MS,
@@ -73,6 +74,30 @@ function createPuzzle(puzzleId: string, date = '2026-06-01'): Puzzle {
   };
 }
 
+async function flushAsyncWork(cycles = 1) {
+  for (let index = 0; index < cycles; index += 1) {
+    await ReactTestRenderer.act(async () => {
+      await Promise.resolve();
+    });
+  }
+}
+
+function findAncestorWithOnPress(
+  node: ReactTestRenderer.ReactTestInstance | undefined,
+) {
+  let current = node?.parent;
+
+  while (current != null) {
+    if (typeof current.props.onPress === 'function') {
+      return current;
+    }
+
+    current = current.parent;
+  }
+
+  return undefined;
+}
+
 beforeEach(async () => {
   jest.clearAllMocks();
   await AsyncStorage.clear();
@@ -83,8 +108,14 @@ afterEach(() => {
 });
 
 test('renders correctly', async () => {
+  let renderer: ReactTestRenderer.ReactTestRenderer | undefined;
+
   await ReactTestRenderer.act(() => {
-    ReactTestRenderer.create(<App />);
+    renderer = ReactTestRenderer.create(<App />);
+  });
+
+  ReactTestRenderer.act(() => {
+    renderer?.unmount();
   });
 });
 
@@ -212,6 +243,41 @@ test('maps pending Korean composition directly onto board cells', () => {
   expect(getPendingAnswerCellValues(entry, '지교', '0:2')).toEqual({
     '0:2': '지',
     '0:3': '교',
+  });
+});
+
+test('leaves the hidden board input uncapped for Korean IME composition', async () => {
+  let renderer: ReactTestRenderer.ReactTestRenderer | undefined;
+
+  await ReactTestRenderer.act(() => {
+    renderer = ReactTestRenderer.create(<App />);
+  });
+  await flushAsyncWork(5);
+
+  const startLabel = renderer?.root.find(
+    node =>
+      node.children.some(
+        child =>
+          typeof child === 'string' &&
+          ['퍼즐 시작', '이어 풀기'].includes(child),
+      ),
+  );
+  const startButton = findAncestorWithOnPress(startLabel);
+
+  expect(startButton?.props.onPress).toEqual(expect.any(Function));
+
+  await ReactTestRenderer.act(() => {
+    startButton?.props.onPress();
+  });
+
+  const boardInput = renderer?.root
+    .findAllByType(TextInput)
+    .find(node => node.props.caretHidden);
+
+  expect(boardInput?.props.maxLength).toBeUndefined();
+
+  ReactTestRenderer.act(() => {
+    renderer?.unmount();
   });
 });
 
