@@ -637,12 +637,16 @@
     "externalTesting": "not planned",
     "betaReviewNotes": "확정 필요",
     "lastUploadedBuild": {
-      "versionTag": "v0.1.5",
-      "marketingVersion": "0.1.5",
-      "buildNumber": "1005",
-      "workflowRun": "27087313726",
-      "workflowJob": "79945275484",
-      "uploadedAt": "2026-06-07T08:49:00Z"
+      "versionTag": "v0.3.2",
+      "marketingVersion": "0.3.2",
+      "buildNumber": "3002",
+      "sourceCommit": "0974859",
+      "workflowRun": "local",
+      "workflowJob": "local",
+      "uploadedAt": "2026-06-13T00:44:13Z",
+      "appStoreConnectBuildId": "5720d5e9-38ab-4324-a8fa-acb74721426a",
+      "processingState": "VALID",
+      "uploadWarning": "Hermes hermesvm.framework dSYM missing from archive"
     }
   },
   "automation": {
@@ -668,7 +672,7 @@
     "contentRightsAnswer": "확정 필요",
     "exportComplianceAnswer": "확정 필요",
     "dsaTraderDetails": "확정 필요",
-    "buildUpload": "v0.1.5 build 1005 uploaded via GitHub Actions run 27087313726",
+    "buildUpload": "v0.3.2 build 3002 uploaded locally via xcodebuild -exportArchive on 2026-06-13; App Store Connect build 5720d5e9-38ab-4324-a8fa-acb74721426a is VALID",
     "buildSelection": "확정 필요",
     "submitForReview": "확정 필요"
   }

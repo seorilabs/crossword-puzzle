@@ -40,6 +40,7 @@ Upload env for --export-upload:
   APP_STORE_CONNECT_API_KEY_ID
   APP_STORE_CONNECT_ISSUER_ID
   APP_STORE_CONNECT_PRIVATE_KEY_BASE64 or APP_STORE_CONNECT_PRIVATE_KEY_PATH
+  If present, ~/.config/seorilabs/app-store-connect.env is loaded automatically.
 EOF
 }
 
@@ -116,6 +117,19 @@ bundle_id="$(read_config 'c.bundleId')"
 config_team_id="$(read_config 'c.ios.teamId')"
 config_profile_name="$(read_config 'c.ios.provisioningProfileSpecifier')"
 
+app_store_connect_env="$HOME/.config/seorilabs/app-store-connect.env"
+if [[ -f "$app_store_connect_env" ]] && {
+  [[ -z "${APP_STORE_CONNECT_API_KEY_ID:-}" ]] ||
+    [[ -z "${APP_STORE_CONNECT_ISSUER_ID:-}" ]] ||
+    {
+      [[ -z "${APP_STORE_CONNECT_PRIVATE_KEY_BASE64:-}" ]] &&
+        [[ -z "${APP_STORE_CONNECT_PRIVATE_KEY_PATH:-}" ]]
+    }
+}; then
+  # shellcheck disable=SC1090
+  source "$app_store_connect_env"
+fi
+
 if [[ -n "$tag" ]]; then
   version_values="$(TAG="$tag" node --input-type=module <<'NODE'
 const match = /^v(\d+)\.(\d+)\.(\d+)$/.exec(process.env.TAG);
@@ -183,6 +197,7 @@ team_id="${APPLE_TEAM_ID:-$config_team_id}"
 profile_name="${IOS_PROVISIONING_PROFILE_NAME:-$config_profile_name}"
 temporary_dir=""
 keychain_path=""
+api_key_path=""
 
 cleanup() {
   if [[ -n "$temporary_dir" ]]; then
@@ -190,6 +205,37 @@ cleanup() {
   fi
 }
 trap cleanup EXIT
+
+prepare_app_store_connect_api_key() {
+  if [[ -n "$api_key_path" ]]; then
+    return
+  fi
+
+  for var_name in APP_STORE_CONNECT_API_KEY_ID APP_STORE_CONNECT_ISSUER_ID; do
+    if [[ -z "${!var_name:-}" ]]; then
+      echo "$var_name is required for App Store Connect API authentication." >&2
+      exit 1
+    fi
+  done
+
+  if [[ -z "${APP_STORE_CONNECT_PRIVATE_KEY_BASE64:-}" && -z "${APP_STORE_CONNECT_PRIVATE_KEY_PATH:-}" ]]; then
+    echo "APP_STORE_CONNECT_PRIVATE_KEY_BASE64 or APP_STORE_CONNECT_PRIVATE_KEY_PATH is required for App Store Connect API authentication." >&2
+    exit 1
+  fi
+
+  if [[ -z "$temporary_dir" ]]; then
+    temporary_dir="$(mktemp -d)"
+  fi
+
+  api_key_path="$temporary_dir/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
+  if [[ -n "${APP_STORE_CONNECT_PRIVATE_KEY_BASE64:-}" ]]; then
+    printf '%s' "$APP_STORE_CONNECT_PRIVATE_KEY_BASE64" | base64 --decode > "$api_key_path" 2>/dev/null || \
+      printf '%s' "$APP_STORE_CONNECT_PRIVATE_KEY_BASE64" | base64 -D > "$api_key_path"
+  else
+    cp "$APP_STORE_CONNECT_PRIVATE_KEY_PATH" "$api_key_path"
+  fi
+  chmod 600 "$api_key_path"
+}
 
 if [[ -z "$team_id" || -z "$profile_name" ]]; then
   echo "APPLE_TEAM_ID and IOS_PROVISIONING_PROFILE_NAME are required for --archive." >&2
@@ -240,18 +286,26 @@ if [[ -n "$keychain_path" ]]; then
   code_sign_flags+=(OTHER_CODE_SIGN_FLAGS="--keychain $keychain_path")
 fi
 
-xcodebuild archive \
+archive_auth_flags=()
+if [[ -n "${APP_STORE_CONNECT_API_KEY_ID:-}" || -n "${APP_STORE_CONNECT_ISSUER_ID:-}" || -n "${APP_STORE_CONNECT_PRIVATE_KEY_BASE64:-}" || -n "${APP_STORE_CONNECT_PRIVATE_KEY_PATH:-}" ]]; then
+  prepare_app_store_connect_api_key
+  archive_auth_flags+=(
+    -allowProvisioningUpdates
+    -authenticationKeyPath "$api_key_path"
+    -authenticationKeyID "$APP_STORE_CONNECT_API_KEY_ID"
+    -authenticationKeyIssuerID "$APP_STORE_CONNECT_ISSUER_ID"
+  )
+fi
+
+APPLE_TEAM_ID="$team_id" IOS_PROVISIONING_PROFILE_NAME="$profile_name" xcodebuild archive \
   -workspace "$workspace" \
   -scheme "$scheme" \
   -configuration Release \
   -destination 'generic/platform=iOS' \
   -archivePath "$archive_path" \
+  "${archive_auth_flags[@]}" \
   MARKETING_VERSION="$marketing_version" \
   CURRENT_PROJECT_VERSION="$build_number" \
-  DEVELOPMENT_TEAM="$team_id" \
-  CODE_SIGN_STYLE=Manual \
-  CODE_SIGN_IDENTITY="Apple Distribution" \
-  PROVISIONING_PROFILE_SPECIFIER="$profile_name" \
   ${code_sign_flags:+"${code_sign_flags[@]}"}
 
 app_info_plist="$archive_path/Products/Applications/CrosswordPuzzleMobile.app/Info.plist"
@@ -269,30 +323,7 @@ if [[ "$export_upload" != "true" ]]; then
   exit 0
 fi
 
-for var_name in APP_STORE_CONNECT_API_KEY_ID APP_STORE_CONNECT_ISSUER_ID; do
-  if [[ -z "${!var_name:-}" ]]; then
-    echo "$var_name is required for --export-upload." >&2
-    exit 1
-  fi
-done
-
-if [[ -z "${APP_STORE_CONNECT_PRIVATE_KEY_BASE64:-}" && -z "${APP_STORE_CONNECT_PRIVATE_KEY_PATH:-}" ]]; then
-  echo "APP_STORE_CONNECT_PRIVATE_KEY_BASE64 or APP_STORE_CONNECT_PRIVATE_KEY_PATH is required for --export-upload." >&2
-  exit 1
-fi
-
-if [[ -z "$temporary_dir" ]]; then
-  temporary_dir="$(mktemp -d)"
-fi
-
-api_key_path="$temporary_dir/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
-if [[ -n "${APP_STORE_CONNECT_PRIVATE_KEY_BASE64:-}" ]]; then
-  printf '%s' "$APP_STORE_CONNECT_PRIVATE_KEY_BASE64" | base64 --decode > "$api_key_path" 2>/dev/null || \
-    printf '%s' "$APP_STORE_CONNECT_PRIVATE_KEY_BASE64" | base64 -D > "$api_key_path"
-else
-  cp "$APP_STORE_CONNECT_PRIVATE_KEY_PATH" "$api_key_path"
-fi
-chmod 600 "$api_key_path"
+prepare_app_store_connect_api_key
 
 export_options_plist="$temporary_dir/AppStoreExportOptions.plist"
 export_path="$repo_root/tmp/app-store-export-v${marketing_version}-build${build_number}"

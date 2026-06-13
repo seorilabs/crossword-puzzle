@@ -153,7 +153,15 @@ Trigger:
 | `APP_STORE_CONNECT_PRIVATE_KEY_BASE64`          | `AuthKey_*.p8` base64                                    |
 | `FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64` | `GoogleService-Info.plist` base64                        |
 
-2026-06-07 확인 기준, `seorilabs/crossword-puzzle` GitHub repo에는 `app-store` environment가 생성되어 있고 TestFlight 업로드에 필요한 Apple signing/App Store Connect environment secrets와 `APPLE_TEAM_ID=HCDUXX4Z3X` variable이 등록되어 있다. `v0.1.5` / build `1005`는 GitHub Actions run `27087313726`, job `79945275484`에서 App Store Connect 업로드까지 성공했다. 남은 항목은 App Store Connect 정책 답변, 스크린샷, build processing 확인, TestFlight build selection이다.
+2026-06-07 확인 기준, `seorilabs/crossword-puzzle` GitHub repo에는 `app-store` environment가 생성되어 있고 TestFlight 업로드에 필요한 Apple signing/App Store Connect environment secrets와 `APPLE_TEAM_ID=HCDUXX4Z3X` variable이 등록되어 있다. `v0.1.5` / build `1005`는 GitHub Actions run `27087313726`, job `79945275484`에서 App Store Connect 업로드까지 성공했다.
+
+2026-06-13 로컬 확인 기준, GitHub Actions minutes를 쓰지 않고 아래 명령으로 `0.3.2` / build `3002`를 App Store Connect에 업로드했다. App Store Connect build ID는 `5720d5e9-38ab-4324-a8fa-acb74721426a`이고 processing state는 `VALID`다. 업로드 중 `hermesvm.framework` dSYM 누락 경고가 있었지만 binary upload는 성공했다.
+
+```bash
+npm run app-store:build:local -- --export-upload --tag v0.3.2 --skip-pods
+```
+
+남은 항목은 App Store Connect 정책 답변, TestFlight/App Store version build selection, 최종 심사 제출이다.
 
 Workflow는 profile을 복원한 뒤 다음을 검증한다.
 
@@ -164,6 +172,8 @@ Workflow는 profile을 복원한 뒤 다음을 검증한다.
 - Apple Distribution signing identity import 성공
 
 업로드는 `xcodebuild -exportArchive`와 `destination=upload`, `method=app-store-connect`로 수행한다. 업로드 성공은 App Store Connect에서 build processing이 시작됐다는 뜻이며, TestFlight 그룹 선택/빌드 선택/최종 심사 제출은 별도 gate다.
+
+로컬 스크립트는 `~/.config/seorilabs/app-store-connect.env`가 있으면 자동으로 읽는다. App Store Connect API 인증은 archive 단계의 `-allowProvisioningUpdates`에도 전달하고, signing profile은 Xcode project의 앱 타깃 전용 `$(IOS_PROVISIONING_PROFILE_NAME)`로만 주입한다. `PROVISIONING_PROFILE_SPECIFIER`를 xcodebuild command-line build setting으로 넘기면 Pods target까지 오염되어 archive가 실패한다.
 
 ## 7. Metadata/Screenshot 로컬 등록
 

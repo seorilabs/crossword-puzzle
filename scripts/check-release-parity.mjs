@@ -8,6 +8,7 @@ const sharedPlatformContractsPath =
 const sharedIndexPath = "packages/crossword-core/src/index.ts";
 const webAppPath = "src/App.tsx";
 const mobileAppPath = "apps/mobile/App.tsx";
+const mobileAppTestPath = "apps/mobile/__tests__/App.test.tsx";
 const launchConfigPath = "src/adapters/launchConfig.ts";
 const webTelemetryPath = "src/adapters/telemetry.ts";
 const mobileFirebaseClientPath = "apps/mobile/firebaseClient.ts";
@@ -217,6 +218,7 @@ const sharedPlatformContracts = read(sharedPlatformContractsPath);
 const sharedIndex = read(sharedIndexPath);
 const webApp = read(webAppPath);
 const mobileApp = read(mobileAppPath);
+const mobileAppTest = read(mobileAppTestPath);
 const launchConfig = read(launchConfigPath);
 const webTelemetry = read(webTelemetryPath);
 const mobileFirebaseClient = read(mobileFirebaseClientPath);
@@ -352,6 +354,39 @@ assertIncludes(mobileAds, "showInterstitialAd", mobileAdsPath);
 assertIncludes(mobileAds, "requestNonPersonalizedAdsOnly: true", mobileAdsPath);
 assertIncludes(mobileApp, "showRewardedAd", mobileAppPath);
 assertNotIncludes(mobileApp, "showInterstitialAd", mobileAppPath);
+assertIncludes(
+  mobileApp,
+  "const HOME_HEADER_TITLE = '가로세로 낱말 퍼즐';",
+  mobileAppPath,
+);
+assertNotMatches(
+  mobileApp,
+  /HOME_HEADER_TITLE[\s\S]{0,240}Platform\.OS\s*===\s*["']ios["']/,
+  mobileAppPath,
+  "iOS-only mobile home title branch",
+);
+assertIncludes(
+  mobileApp,
+  "export const BOARD_TEXT_INPUT_REFOCUS_DELAY_MS",
+  mobileAppPath,
+);
+assertNotMatches(
+  mobileApp,
+  /platformOS\s*===\s*["']android["']\s*&&\s*!keyboardVisible/,
+  mobileAppPath,
+  "Android-only stale board input refocus",
+);
+assertIncludes(
+  mobileAppTest,
+  "formats mobile home puzzle labels without exposing remote ids",
+  mobileAppTestPath,
+);
+assertIncludes(mobileAppTest, "platformOS: 'ios'", mobileAppTestPath);
+assertIncludes(
+  mobileAppTest,
+  "BOARD_TEXT_INPUT_REFOCUS_DELAY_MS",
+  mobileAppTestPath,
+);
 assertNotIncludes(webApp, "showResultInterstitialAd", webAppPath);
 assertIncludes(
   androidBuildGradle,
