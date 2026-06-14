@@ -1,5 +1,6 @@
 import {
   createDailyMissionState,
+  getTodayDateKey,
   type DailyMissionRepository,
   type DailyMissionState,
 } from "../../packages/crossword-core/src";
@@ -53,6 +54,64 @@ function normalizeMission(
     lastStartedAt:
       typeof value.lastStartedAt === "string" ? value.lastStartedAt : undefined,
   };
+}
+
+type IterableStorage = KeyValueStorage & {
+  readonly length: number;
+  key(index: number): string | null;
+};
+
+function getIterableStorage(): IterableStorage | null {
+  try {
+    return typeof window === "undefined" ? null : window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function getPreviousDateKey(dateKey: string): string {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  const prev = new Date(Date.UTC(y, m - 1, d - 1));
+  return prev.toISOString().slice(0, 10);
+}
+
+export function computeConsecutiveStreakDays(
+  keyPrefix = "crossword-puzzle:mission",
+): number {
+  const storage = getIterableStorage();
+  if (storage == null) return 0;
+
+  const prefix = `${keyPrefix}:`;
+  const completedDates = new Set<string>();
+
+  for (let i = 0; i < storage.length; i++) {
+    const key = storage.key(i);
+    if (key == null || !key.startsWith(prefix)) continue;
+    const rest = key.slice(prefix.length);
+    const sepIdx = rest.indexOf(":");
+    if (sepIdx < 0) continue;
+    const date = rest.slice(0, sepIdx);
+
+    try {
+      const raw = storage.getItem(key);
+      if (raw == null) continue;
+      const parsed = JSON.parse(raw) as { completedAt?: string };
+      if (typeof parsed.completedAt === "string") {
+        completedDates.add(date);
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  let streak = 0;
+  let current = getTodayDateKey();
+  while (completedDates.has(current)) {
+    streak++;
+    current = getPreviousDateKey(current);
+  }
+
+  return streak;
 }
 
 export function createLocalMissionRepository({
