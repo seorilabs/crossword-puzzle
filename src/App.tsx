@@ -728,6 +728,11 @@ function App() {
     if (route !== "today") {
       setCompletionCelebrationId(null);
     }
+    if (route === "home") {
+      // Recalculate streak whenever the home screen is shown so that a date
+      // change at midnight is reflected without requiring an app restart.
+      setConsecutiveStreak(computeConsecutiveStreakDays());
+    }
   }, [route]);
 
   useEffect(() => {

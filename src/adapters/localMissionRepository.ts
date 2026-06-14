@@ -77,9 +77,20 @@ function getPreviousDateKey(dateKey: string): string {
 
 export function computeConsecutiveStreakDays(
   keyPrefix = "crossword-puzzle:mission",
+  maxLookbackDays = 366,
 ): number {
   const storage = getIterableStorage();
   if (storage == null) return 0;
+
+  const today = getTodayDateKey();
+
+  // Build the set of dates within the lookback window to avoid parsing old data.
+  const lookbackDates = new Set<string>();
+  let d = today;
+  for (let i = 0; i < maxLookbackDays; i++) {
+    lookbackDates.add(d);
+    d = getPreviousDateKey(d);
+  }
 
   const prefix = `${keyPrefix}:`;
   const completedDates = new Set<string>();
@@ -91,6 +102,7 @@ export function computeConsecutiveStreakDays(
     const sepIdx = rest.indexOf(":");
     if (sepIdx < 0) continue;
     const date = rest.slice(0, sepIdx);
+    if (!lookbackDates.has(date)) continue;
 
     try {
       const raw = storage.getItem(key);
@@ -104,14 +116,23 @@ export function computeConsecutiveStreakDays(
     }
   }
 
+  const yesterday = getPreviousDateKey(today);
+
+  // If today is already completed, count from today.
+  // If today is not yet completed but yesterday is, count from yesterday and
+  // add 1 for today — this preserves the "streak still active" state and
+  // motivates the user to complete today's puzzle.
+  const startDate = completedDates.has(today) ? today : yesterday;
+  if (!completedDates.has(startDate)) return 0;
+
   let streak = 0;
-  let current = getTodayDateKey();
+  let current = startDate;
   while (completedDates.has(current)) {
     streak++;
     current = getPreviousDateKey(current);
   }
 
-  return streak;
+  return startDate === yesterday ? streak + 1 : streak;
 }
 
 export function createLocalMissionRepository({
