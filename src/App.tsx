@@ -4307,6 +4307,73 @@ function PuzzleBoard({
     return keys;
   }, [completedEntries]);
 
+  const [completionKeyRefCount, setCompletionKeyRefCount] = useState<
+    Map<string, number>
+  >(new Map());
+  const prevPuzzleIdRef = useRef<string>("");
+  const prevCompletedIdsRef = useRef<Set<string>>(new Set());
+  const animTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  useEffect(() => {
+    if (prevPuzzleIdRef.current !== puzzle.puzzleId) {
+      prevPuzzleIdRef.current = puzzle.puzzleId;
+      prevCompletedIdsRef.current = new Set(completedEntries.map((e) => e.id));
+      for (const t of animTimersRef.current) clearTimeout(t);
+      animTimersRef.current = [];
+      setCompletionKeyRefCount(new Map());
+      return;
+    }
+
+    const newlyCompleted = completedEntries.filter(
+      (e) => !prevCompletedIdsRef.current.has(e.id),
+    );
+    prevCompletedIdsRef.current = new Set(completedEntries.map((e) => e.id));
+
+    if (newlyCompleted.length === 0) {
+      return;
+    }
+
+    const animKeys = new Set<string>();
+
+    for (const entry of newlyCompleted) {
+      for (const cell of getEntryCells(entry)) {
+        animKeys.add(getCellKey(cell.row, cell.col));
+      }
+    }
+
+    setCompletionKeyRefCount((prev) => {
+      const next = new Map(prev);
+      for (const key of animKeys) {
+        next.set(key, (next.get(key) ?? 0) + 1);
+      }
+      return next;
+    });
+
+    const timer = setTimeout(() => {
+      setCompletionKeyRefCount((prev) => {
+        const next = new Map(prev);
+        for (const key of animKeys) {
+          const count = (next.get(key) ?? 1) - 1;
+          if (count <= 0) {
+            next.delete(key);
+          } else {
+            next.set(key, count);
+          }
+        }
+        return next;
+      });
+      animTimersRef.current = animTimersRef.current.filter((t) => t !== timer);
+    }, 550);
+
+    animTimersRef.current.push(timer);
+  }, [completedEntries, puzzle.puzzleId]);
+
+  useEffect(() => {
+    return () => {
+      for (const t of animTimersRef.current) clearTimeout(t);
+    };
+  }, []);
+
   return (
     <section
       className="puzzleBoard"
@@ -4332,6 +4399,7 @@ function PuzzleBoard({
           // right/wrong styling.
           const isCorrect = !isPending && isFilled && committedValue === answer;
           const isWrong = !isPending && isFilled && committedValue !== answer;
+          const isJustCompleted = (completionKeyRefCount.get(key) ?? 0) > 0;
 
           if (answer === "") {
             return <div key={key} className="cell cellBlock" />;
@@ -4348,6 +4416,7 @@ function PuzzleBoard({
                 isPending ? "cellPending" : "",
                 isCorrect ? "cellCorrect" : "",
                 isComplete ? "cellComplete" : "",
+                isJustCompleted ? "cellJustCompleted" : "",
                 isWrong ? "cellWrong" : "",
               ]
                 .filter(Boolean)
