@@ -2715,7 +2715,7 @@ function formatElapsedTime(
   const elapsedMs =
     new Date(completedAt).getTime() - new Date(startedAt).getTime();
 
-  if (elapsedMs < 0) {
+  if (Number.isNaN(elapsedMs) || elapsedMs < 0) {
     return null;
   }
 
