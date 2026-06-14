@@ -4353,12 +4353,13 @@ function PuzzleBoard({
     }, 550);
 
     animTimersRef.current.push(timer);
-
-    return () => {
-      clearTimeout(timer);
-      animTimersRef.current = animTimersRef.current.filter((t) => t !== timer);
-    };
   }, [completedEntries, puzzle.puzzleId]);
+
+  useEffect(() => {
+    return () => {
+      for (const t of animTimersRef.current) clearTimeout(t);
+    };
+  }, []);
 
   return (
     <section
