@@ -4307,6 +4307,45 @@ function PuzzleBoard({
     return keys;
   }, [completedEntries]);
 
+  const [newlyCompletedKeys, setNewlyCompletedKeys] = useState<Set<string>>(
+    new Set(),
+  );
+  const prevPuzzleIdRef = useRef<string>("");
+  const prevCompletedIdsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (prevPuzzleIdRef.current !== puzzle.puzzleId) {
+      prevPuzzleIdRef.current = puzzle.puzzleId;
+      prevCompletedIdsRef.current = new Set(completedEntries.map((e) => e.id));
+      return;
+    }
+
+    const newlyCompleted = completedEntries.filter(
+      (e) => !prevCompletedIdsRef.current.has(e.id),
+    );
+    prevCompletedIdsRef.current = new Set(completedEntries.map((e) => e.id));
+
+    if (newlyCompleted.length === 0) {
+      return;
+    }
+
+    const animKeys = new Set<string>();
+
+    for (const entry of newlyCompleted) {
+      for (const cell of getEntryCells(entry)) {
+        animKeys.add(getCellKey(cell.row, cell.col));
+      }
+    }
+
+    setNewlyCompletedKeys(animKeys);
+
+    const timer = setTimeout(() => {
+      setNewlyCompletedKeys(new Set());
+    }, 550);
+
+    return () => clearTimeout(timer);
+  }, [completedEntries, puzzle.puzzleId]);
+
   return (
     <section
       className="puzzleBoard"
@@ -4332,6 +4371,7 @@ function PuzzleBoard({
           // right/wrong styling.
           const isCorrect = !isPending && isFilled && committedValue === answer;
           const isWrong = !isPending && isFilled && committedValue !== answer;
+          const isJustCompleted = newlyCompletedKeys.has(key);
 
           if (answer === "") {
             return <div key={key} className="cell cellBlock" />;
@@ -4348,6 +4388,7 @@ function PuzzleBoard({
                 isPending ? "cellPending" : "",
                 isCorrect ? "cellCorrect" : "",
                 isComplete ? "cellComplete" : "",
+                isJustCompleted ? "cellJustCompleted" : "",
                 isWrong ? "cellWrong" : "",
               ]
                 .filter(Boolean)
