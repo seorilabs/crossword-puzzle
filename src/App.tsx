@@ -2704,6 +2704,32 @@ function formatCompletionStatsLabel(
   return `${numberFormatter.format(stats.completionCount)}명 완료`;
 }
 
+function formatElapsedTime(
+  startedAt: string | undefined,
+  completedAt: string | undefined,
+): string | null {
+  if (startedAt == null || completedAt == null) {
+    return null;
+  }
+
+  const elapsedMs =
+    new Date(completedAt).getTime() - new Date(startedAt).getTime();
+
+  if (Number.isNaN(elapsedMs) || elapsedMs < 0) {
+    return null;
+  }
+
+  const totalSeconds = Math.floor(elapsedMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  if (minutes === 0) {
+    return `${totalSeconds}초`;
+  }
+
+  return `${minutes}분 ${String(seconds).padStart(2, "0")}초`;
+}
+
 function DateCarousel({
   completionStatsByPuzzleId,
   completionStatsMinDisplayCount,
@@ -3812,6 +3838,9 @@ function ResultScreen({
     loadState === "remote"
       ? formatPuzzleAliasLabel(selectedPuzzleSummary)
       : formatMissionDateLabel(mission.date, loadState);
+  const elapsedLabel = isComplete
+    ? formatElapsedTime(mission.lastStartedAt, mission.completedAt)
+    : null;
 
   return (
     <>
@@ -3833,6 +3862,9 @@ function ResultScreen({
 
       <section className="resultPanel" aria-label="미션 결과">
         <strong>{isComplete ? "완료" : `${progressPercent}% 진행`}</strong>
+        {elapsedLabel != null && (
+          <p className="resultElapsedTime">⏱ {elapsedLabel}</p>
+        )}
         <span>
           {completedEntries.length}/{puzzle.entries.length} 단어 · 힌트{" "}
           {hintCount}회 · 남은 도전 {remainingAttempts}

@@ -726,6 +726,14 @@ button:disabled {
   line-height: 20px;
 }
 
+.resultElapsedTime {
+  margin: 0;
+  color: #3182f6;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 28px;
+}
+
 .missionCompact {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
