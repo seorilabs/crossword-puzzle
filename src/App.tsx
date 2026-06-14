@@ -3891,6 +3891,16 @@ function ResultScreen({
         {elapsedLabel != null && (
           <p className="resultElapsedTime">⏱ {elapsedLabel}</p>
         )}
+        {isComplete && (hintCount === 0 || mission?.attemptsUsed === 1) && (
+          <div className="resultAchievements">
+            {hintCount === 0 && (
+              <span className="resultAchievement">🎯 노힌트 클리어</span>
+            )}
+            {mission?.attemptsUsed === 1 && (
+              <span className="resultAchievement">💎 첫 도전 성공</span>
+            )}
+          </div>
+        )}
         <span>
           {completedEntries.length}/{puzzle.entries.length} 단어 · 힌트{" "}
           {hintCount}회 · 남은 도전 {remainingAttempts}
