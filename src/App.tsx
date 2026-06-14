@@ -4307,9 +4307,9 @@ function PuzzleBoard({
     return keys;
   }, [completedEntries]);
 
-  const [newlyCompletedKeys, setNewlyCompletedKeys] = useState<Set<string>>(
-    new Set(),
-  );
+  const [completionKeyRefCount, setCompletionKeyRefCount] = useState<
+    Map<string, number>
+  >(new Map());
   const prevPuzzleIdRef = useRef<string>("");
   const prevCompletedIdsRef = useRef<Set<string>>(new Set());
   const animTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -4320,7 +4320,7 @@ function PuzzleBoard({
       prevCompletedIdsRef.current = new Set(completedEntries.map((e) => e.id));
       for (const t of animTimersRef.current) clearTimeout(t);
       animTimersRef.current = [];
-      setNewlyCompletedKeys(new Set());
+      setCompletionKeyRefCount(new Map());
       return;
     }
 
@@ -4341,12 +4341,25 @@ function PuzzleBoard({
       }
     }
 
-    setNewlyCompletedKeys((prev) => new Set([...prev, ...animKeys]));
+    setCompletionKeyRefCount((prev) => {
+      const next = new Map(prev);
+      for (const key of animKeys) {
+        next.set(key, (next.get(key) ?? 0) + 1);
+      }
+      return next;
+    });
 
     const timer = setTimeout(() => {
-      setNewlyCompletedKeys((prev) => {
-        const next = new Set(prev);
-        for (const key of animKeys) next.delete(key);
+      setCompletionKeyRefCount((prev) => {
+        const next = new Map(prev);
+        for (const key of animKeys) {
+          const count = (next.get(key) ?? 1) - 1;
+          if (count <= 0) {
+            next.delete(key);
+          } else {
+            next.set(key, count);
+          }
+        }
         return next;
       });
       animTimersRef.current = animTimersRef.current.filter((t) => t !== timer);
@@ -4386,7 +4399,7 @@ function PuzzleBoard({
           // right/wrong styling.
           const isCorrect = !isPending && isFilled && committedValue === answer;
           const isWrong = !isPending && isFilled && committedValue !== answer;
-          const isJustCompleted = newlyCompletedKeys.has(key);
+          const isJustCompleted = (completionKeyRefCount.get(key) ?? 0) > 0;
 
           if (answer === "") {
             return <div key={key} className="cell cellBlock" />;
