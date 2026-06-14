@@ -37,7 +37,11 @@ import {
   type ReviewEntry,
   type SavedProgress,
 } from "../packages/crossword-core/src";
-import { createLocalMissionRepository } from "./adapters/localMissionRepository";
+import {
+  computeConsecutiveStreakDays,
+  createLocalMissionRepository,
+  invalidateStreakCache,
+} from "./adapters/localMissionRepository";
 import {
   createLocalBonusPuzzleUnlockRepository,
   createLocalPuzzleArchiveRepository,
@@ -704,6 +708,9 @@ function App() {
   const [completionCelebrationId, setCompletionCelebrationId] = useState<
     string | null
   >(null);
+  const [consecutiveStreak, setConsecutiveStreak] = useState(
+    () => computeConsecutiveStreakDays(),
+  );
   const firstAnswerInputKeysRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -721,6 +728,11 @@ function App() {
     // not re-open the dialog over the read-only board.
     if (route !== "today") {
       setCompletionCelebrationId(null);
+    }
+    if (route === "home") {
+      // Recalculate streak whenever the home screen is shown so that a date
+      // change at midnight is reflected without requiring an app restart.
+      setConsecutiveStreak(computeConsecutiveStreakDays());
     }
   }, [route]);
 
@@ -1153,7 +1165,10 @@ function App() {
 
     const nextMission = completeMission(mission);
     setMission(nextMission);
-    void missionRepository.saveMission(nextMission);
+    void missionRepository.saveMission(nextMission).then(() => {
+      invalidateStreakCache();
+      setConsecutiveStreak(computeConsecutiveStreakDays());
+    });
     void savePuzzleSnapshot(puzzle, { completedAt: nextMission.completedAt });
     telemetry.impression("mission_complete", {
       ...puzzleTelemetryParams,
@@ -1865,6 +1880,7 @@ function App() {
           {...dateSelectionProps}
           bonusPuzzlePanelState={bonusPuzzlePanelState}
           completedEntries={viewModel.completedEntries}
+          consecutiveStreak={consecutiveStreak}
           hasStarted={hasStarted}
           hintBalance={hintBalance}
           isCompleted={isCompleted}
@@ -2031,6 +2047,7 @@ function usePuzzleViewModel(
 type HomeScreenProps = DateSelectionProps & {
   bonusPuzzlePanelState: BonusPuzzlePanelState;
   completedEntries: PuzzleEntry[];
+  consecutiveStreak: number;
   hasStarted: boolean;
   hintBalance: HintBalance;
   isCompleted: boolean;
@@ -2050,6 +2067,7 @@ type HomeScreenProps = DateSelectionProps & {
 function HomeScreen({
   bonusPuzzlePanelState,
   completedEntries,
+  consecutiveStreak,
   completionStatsByPuzzleId,
   completionStatsMinDisplayCount,
   dateCardStates,
@@ -2133,7 +2151,7 @@ function HomeScreen({
           loadState === "remote"
             ? `${selectedPuzzleAlias} · ${formatGameHeaderDate(mission.date)}`
             : formatMissionDateLabel(mission.date, loadState)
-        } · 🔥 5일째 도전 중`}
+        }${consecutiveStreak > 0 ? ` · 🔥 ${consecutiveStreak}일째 도전 중` : ""}`}
       />
 
       <DateCarousel

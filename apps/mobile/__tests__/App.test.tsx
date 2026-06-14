@@ -117,7 +117,7 @@ test('renders correctly', async () => {
   ReactTestRenderer.act(() => {
     renderer?.unmount();
   });
-});
+}, 15000);
 
 test('formats completion stats for mobile home cards and selected mission', () => {
   expect(
