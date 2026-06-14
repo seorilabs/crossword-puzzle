@@ -75,14 +75,26 @@ function getPreviousDateKey(dateKey: string): string {
   return prev.toISOString().slice(0, 10);
 }
 
+// Module-level memory cache: avoids re-scanning localStorage on every home
+// screen visit within the same calendar day.
+let _streakCache: { date: string; value: number } | null = null;
+
+export function invalidateStreakCache(): void {
+  _streakCache = null;
+}
+
 export function computeConsecutiveStreakDays(
   keyPrefix = "crossword-puzzle:mission",
   maxLookbackDays = 366,
 ): number {
+  const today = getTodayDateKey();
+
+  if (_streakCache != null && _streakCache.date === today) {
+    return _streakCache.value;
+  }
+
   const storage = getIterableStorage();
   if (storage == null) return 0;
-
-  const today = getTodayDateKey();
 
   // Build the set of dates within the lookback window to avoid parsing old data.
   const lookbackDates = new Set<string>();
@@ -100,8 +112,9 @@ export function computeConsecutiveStreakDays(
     if (key == null || !key.startsWith(prefix)) continue;
     const rest = key.slice(prefix.length);
     const sepIdx = rest.indexOf(":");
-    if (sepIdx < 0) continue;
-    const date = rest.slice(0, sepIdx);
+    // Legacy key format: "{prefix}:{date}" (no puzzleId suffix)
+    // New key format:    "{prefix}:{date}:{puzzleId}"
+    const date = sepIdx < 0 ? rest : rest.slice(0, sepIdx);
     if (!lookbackDates.has(date)) continue;
 
     try {
@@ -123,7 +136,10 @@ export function computeConsecutiveStreakDays(
   // add 1 for today — this preserves the "streak still active" state and
   // motivates the user to complete today's puzzle.
   const startDate = completedDates.has(today) ? today : yesterday;
-  if (!completedDates.has(startDate)) return 0;
+  if (!completedDates.has(startDate)) {
+    _streakCache = { date: today, value: 0 };
+    return 0;
+  }
 
   let streak = 0;
   let current = startDate;
@@ -132,7 +148,9 @@ export function computeConsecutiveStreakDays(
     current = getPreviousDateKey(current);
   }
 
-  return startDate === yesterday ? streak + 1 : streak;
+  const result = startDate === yesterday ? streak + 1 : streak;
+  _streakCache = { date: today, value: result };
+  return result;
 }
 
 export function createLocalMissionRepository({

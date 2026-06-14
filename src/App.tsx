@@ -40,6 +40,7 @@ import {
 import {
   computeConsecutiveStreakDays,
   createLocalMissionRepository,
+  invalidateStreakCache,
 } from "./adapters/localMissionRepository";
 import {
   createLocalBonusPuzzleUnlockRepository,
@@ -1164,9 +1165,11 @@ function App() {
 
     const nextMission = completeMission(mission);
     setMission(nextMission);
-    void missionRepository.saveMission(nextMission);
+    void missionRepository.saveMission(nextMission).then(() => {
+      invalidateStreakCache();
+      setConsecutiveStreak(computeConsecutiveStreakDays());
+    });
     void savePuzzleSnapshot(puzzle, { completedAt: nextMission.completedAt });
-    setConsecutiveStreak(computeConsecutiveStreakDays());
     telemetry.impression("mission_complete", {
       ...puzzleTelemetryParams,
       attempt_number: nextMission.attemptsUsed,
