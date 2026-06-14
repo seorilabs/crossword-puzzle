@@ -3692,7 +3692,15 @@ function CompletionCelebrationDialog({
             <p className="celebrationStat">⏱ {elapsedLabel}</p>
           )}
           {consecutiveStreak > 0 && (
-            <p className="celebrationStat">🔥 {consecutiveStreak}일째 도전 중</p>
+            <p className="celebrationStat">
+              {consecutiveStreak >= 100
+                ? `🏆 ${consecutiveStreak}일 연속 달성!`
+                : consecutiveStreak >= 30
+                  ? `🏆 ${consecutiveStreak}일째 — 한 달 연속 도전 중!`
+                  : consecutiveStreak >= 7
+                    ? `🔥 ${consecutiveStreak}일째 — 일주일 연속 도전 중!`
+                    : `🔥 ${consecutiveStreak}일째 도전 중`}
+            </p>
           )}
         </div>
         <div className="rewardDialogActions">
