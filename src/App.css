@@ -734,6 +734,24 @@ button:disabled {
   line-height: 28px;
 }
 
+.resultAchievements {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.resultAchievement {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 100px;
+  background: #e8f3ff;
+  color: #1a5eda;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 20px;
+}
+
 .missionCompact {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
