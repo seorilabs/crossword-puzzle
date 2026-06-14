@@ -4312,11 +4312,15 @@ function PuzzleBoard({
   );
   const prevPuzzleIdRef = useRef<string>("");
   const prevCompletedIdsRef = useRef<Set<string>>(new Set());
+  const animTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   useEffect(() => {
     if (prevPuzzleIdRef.current !== puzzle.puzzleId) {
       prevPuzzleIdRef.current = puzzle.puzzleId;
       prevCompletedIdsRef.current = new Set(completedEntries.map((e) => e.id));
+      for (const t of animTimersRef.current) clearTimeout(t);
+      animTimersRef.current = [];
+      setNewlyCompletedKeys(new Set());
       return;
     }
 
@@ -4337,13 +4341,23 @@ function PuzzleBoard({
       }
     }
 
-    setNewlyCompletedKeys(animKeys);
+    setNewlyCompletedKeys((prev) => new Set([...prev, ...animKeys]));
 
     const timer = setTimeout(() => {
-      setNewlyCompletedKeys(new Set());
+      setNewlyCompletedKeys((prev) => {
+        const next = new Set(prev);
+        for (const key of animKeys) next.delete(key);
+        return next;
+      });
+      animTimersRef.current = animTimersRef.current.filter((t) => t !== timer);
     }, 550);
 
-    return () => clearTimeout(timer);
+    animTimersRef.current.push(timer);
+
+    return () => {
+      clearTimeout(timer);
+      animTimersRef.current = animTimersRef.current.filter((t) => t !== timer);
+    };
   }, [completedEntries, puzzle.puzzleId]);
 
   return (
