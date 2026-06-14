@@ -1839,6 +1839,7 @@ function App() {
           {...commonScreenProps}
           {...dateSelectionProps}
           completionCelebrationId={completionCelebrationId}
+          consecutiveStreak={consecutiveStreak}
           dismissCompletionCelebration={() => setCompletionCelebrationId(null)}
           hasStarted={hasStarted}
           isCompleted={isCompleted}
@@ -2894,6 +2895,7 @@ type TodayScreenProps = DateSelectionProps & {
   cellValues: Record<string, string>;
   clearAnswerCell: (entry: PuzzleEntry, cellKey?: string) => void;
   clearEntryAnswer: (entry: PuzzleEntry) => void;
+  consecutiveStreak: number;
   clueEntries: PuzzleEntry[];
   completedEntries: PuzzleEntry[];
   completionCelebrationId: string | null;
@@ -2930,6 +2932,7 @@ function TodayScreen({
   completionCelebrationId,
   completionStatsByPuzzleId,
   completionStatsMinDisplayCount,
+  consecutiveStreak,
   dateCardStates,
   dismissCompletionCelebration,
   hasStarted,
@@ -3623,6 +3626,11 @@ function TodayScreen({
       {showCompletionCelebration ? (
         <CompletionCelebrationDialog
           completedCount={completedEntries.length}
+          consecutiveStreak={consecutiveStreak}
+          elapsedLabel={formatElapsedTime(
+            mission.lastStartedAt,
+            mission.completedAt,
+          )}
           hintCount={hintCount}
           totalCount={puzzle.entries.length}
           onClose={dismissCompletionCelebration}
@@ -3642,6 +3650,8 @@ function TodayScreen({
 
 type CompletionCelebrationDialogProps = {
   completedCount: number;
+  consecutiveStreak: number;
+  elapsedLabel: string | null;
   hintCount: number;
   totalCount: number;
   onClose: () => void;
@@ -3651,6 +3661,8 @@ type CompletionCelebrationDialogProps = {
 
 function CompletionCelebrationDialog({
   completedCount,
+  consecutiveStreak,
+  elapsedLabel,
   hintCount,
   totalCount,
   onClose,
@@ -3676,6 +3688,12 @@ function CompletionCelebrationDialog({
             낱말 {completedCount}/{totalCount}개를 모두 맞췄어요
             {hintCount > 0 ? ` · 힌트 ${hintCount}회 사용` : ""}.
           </p>
+          {elapsedLabel != null && (
+            <p className="celebrationStat">⏱ {elapsedLabel}</p>
+          )}
+          {consecutiveStreak > 0 && (
+            <p className="celebrationStat">🔥 {consecutiveStreak}일째 도전 중</p>
+          )}
         </div>
         <div className="rewardDialogActions">
           <button
