@@ -2712,6 +2712,26 @@ function formatLiveTimer(totalSeconds: number): string {
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
+function LiveTimer({ startedAt }: { startedAt: string }) {
+  const [seconds, setSeconds] = useState(
+    () => getElapsedSeconds(startedAt) ?? 0,
+  );
+
+  useEffect(() => {
+    setSeconds(getElapsedSeconds(startedAt) ?? 0);
+    const id = window.setInterval(() => {
+      setSeconds(getElapsedSeconds(startedAt) ?? 0);
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [startedAt]);
+
+  return (
+    <span className="liveTimerDisplay" aria-label={`경과 시간 ${formatLiveTimer(seconds)}`}>
+      {formatLiveTimer(seconds)}
+    </span>
+  );
+}
+
 function formatElapsedTime(
   startedAt: string | undefined,
   completedAt: string | undefined,
@@ -3017,13 +3037,6 @@ function TodayScreen({
   const [inputValue, setInputValue] = useState("");
   const [isComposing, setIsComposing] = useState(false);
   const compositionEndValueRef = useRef<string | null>(null);
-  const [liveElapsedSeconds, setLiveElapsedSeconds] = useState<
-    number | undefined
-  >(() =>
-    !isCompleted && hasStarted && mission.lastStartedAt != null
-      ? getElapsedSeconds(mission.lastStartedAt)
-      : undefined,
-  );
   // A finished puzzle is shown read-only so the saved answers stay intact while
   // the player reviews the completed board.
   const isReviewMode = isCompleted;
@@ -3185,18 +3198,6 @@ function TodayScreen({
   }, [activeCellKey, answerInputResetKey, clearCommitTimer, selectedEntry?.id]);
 
   useEffect(() => () => clearCommitTimer(), [clearCommitTimer]);
-
-  useEffect(() => {
-    if (isCompleted || !hasStarted || mission.lastStartedAt == null) {
-      setLiveElapsedSeconds(undefined);
-      return;
-    }
-    setLiveElapsedSeconds(getElapsedSeconds(mission.lastStartedAt));
-    const id = window.setInterval(() => {
-      setLiveElapsedSeconds(getElapsedSeconds(mission.lastStartedAt));
-    }, 1000);
-    return () => window.clearInterval(id);
-  }, [isCompleted, hasStarted, mission.lastStartedAt]);
 
   function focusPuzzleBoard() {
     requestAnimationFrame(() => {
@@ -3387,13 +3388,14 @@ function TodayScreen({
         eyebrow={
           isReviewMode
             ? `다 푼 퍼즐 · ${selectedPuzzleLabel}`
-            : liveElapsedSeconds != null
-              ? `${selectedPuzzleLabel} · ${formatLiveTimer(liveElapsedSeconds)}`
-              : selectedPuzzleLabel
+            : selectedPuzzleLabel
         }
         onBack={() => navigate("home")}
         right={
           <div className="headerActions">
+            {!isReviewMode && mission.lastStartedAt != null && (
+              <LiveTimer startedAt={mission.lastStartedAt} />
+            )}
             {isReviewMode ? null : (
               <>
                 <button
