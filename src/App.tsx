@@ -3927,6 +3927,14 @@ function ResultScreen({
   const [shareCopied, setShareCopied] = useState(false);
   const shareTimeoutRef = useRef<number | null>(null);
 
+  useEffect(() => {
+    return () => {
+      if (shareTimeoutRef.current != null) {
+        window.clearTimeout(shareTimeoutRef.current);
+      }
+    };
+  }, []);
+
   function handleShare() {
     const text = buildShareText({
       puzzleLabel: selectedPuzzleLabel,
@@ -3951,7 +3959,8 @@ function ResultScreen({
     }
 
     if (navigator.share != null) {
-      void navigator.share({ text }).catch(() => {
+      void navigator.share({ text }).catch((err: unknown) => {
+        if (err instanceof Error && err.name === "AbortError") return;
         copyToClipboard();
       });
     } else {
