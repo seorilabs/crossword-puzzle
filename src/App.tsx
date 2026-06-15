@@ -3063,6 +3063,11 @@ function TodayScreen({
   const [inputValue, setInputValue] = useState("");
   const [isComposing, setIsComposing] = useState(false);
   const compositionEndValueRef = useRef<string | null>(null);
+  const answerSlotsRef = useRef<HTMLDivElement>(null);
+  const shakeTrackRef = useRef<{ entryId: string | null; allFilled: boolean }>({
+    entryId: null,
+    allFilled: false,
+  });
   // A finished puzzle is shown read-only so the saved answers stay intact while
   // the player reviews the completed board.
   const isReviewMode = isCompleted;
@@ -3224,6 +3229,27 @@ function TodayScreen({
   }, [activeCellKey, answerInputResetKey, clearCommitTimer, selectedEntry?.id]);
 
   useEffect(() => () => clearCommitTimer(), [clearCommitTimer]);
+
+  useEffect(() => {
+    if (isReviewMode) return;
+    const track = shakeTrackRef.current;
+    const currentEntryId = selectedEntry?.id ?? null;
+    const isNewEntry = track.entryId !== currentEntryId;
+    const nowAllFilled =
+      answerSlots.length > 0 &&
+      answerSlots.every((s) => s.value !== "" && !s.isPending);
+    const hasWrong = answerSlots.some((s) => s.isWrong);
+    const wasAllFilled = !isNewEntry && track.allFilled;
+    shakeTrackRef.current = { entryId: currentEntryId, allFilled: nowAllFilled };
+    if (!wasAllFilled && nowAllFilled && hasWrong) {
+      const el = answerSlotsRef.current;
+      if (el != null) {
+        el.classList.remove("answerSlotsShake");
+        void el.offsetWidth;
+        el.classList.add("answerSlotsShake");
+      }
+    }
+  }, [answerSlots, selectedEntry?.id, isReviewMode]);
 
   function focusPuzzleBoard() {
     requestAnimationFrame(() => {
@@ -3517,7 +3543,16 @@ function TodayScreen({
                 focusNativeInput();
               }}
             >
-              <strong className="solveClueText">{selectedEntry.clue}</strong>
+              <strong
+                className={[
+                  "solveClueText",
+                  isSelectedComplete ? "solveClueTextComplete" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+              >
+                {selectedEntry.clue}
+              </strong>
             </button>
             <button
               className="clueNavButton"
@@ -3529,7 +3564,7 @@ function TodayScreen({
               ›
             </button>
           </div>
-          <div className="answerSlots" role="group" aria-label="입력 중인 답">
+          <div ref={answerSlotsRef} className="answerSlots" role="group" aria-label="입력 중인 답">
             {answerSlots.map((slot, index) => (
               <button
                 key={slot.key}
