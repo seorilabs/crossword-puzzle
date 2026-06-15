@@ -2706,6 +2706,33 @@ function formatCompletionStatsLabel(
   return `${numberFormatter.format(stats.completionCount)}명 완료`;
 }
 
+function formatLiveTimer(totalSeconds: number): string {
+  const total = Math.floor(totalSeconds);
+  const minutes = Math.floor(total / 60);
+  const seconds = total % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+function LiveTimer({ startedAt }: { startedAt: string }) {
+  const [seconds, setSeconds] = useState(
+    () => getElapsedSeconds(startedAt) ?? 0,
+  );
+
+  useEffect(() => {
+    setSeconds(getElapsedSeconds(startedAt) ?? 0);
+    const id = window.setInterval(() => {
+      setSeconds(getElapsedSeconds(startedAt) ?? 0);
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [startedAt]);
+
+  return (
+    <span className="liveTimerDisplay" aria-label={`경과 시간 ${formatLiveTimer(seconds)}`}>
+      {formatLiveTimer(seconds)}
+    </span>
+  );
+}
+
 function formatElapsedTime(
   startedAt: string | undefined,
   completedAt: string | undefined,
@@ -2866,7 +2893,7 @@ function DateCarousel({
 }
 
 type AppHeaderProps = {
-  eyebrow?: string;
+  eyebrow?: ReactNode;
   title: string;
   onBack?: () => void;
   backVariant?: "back" | "home";
@@ -3360,9 +3387,16 @@ function TodayScreen({
         backVariant="home"
         title={`${completedEntries.length}/${puzzle.entries.length} 낱말`}
         eyebrow={
-          isReviewMode
-            ? `다 푼 퍼즐 · ${selectedPuzzleLabel}`
-            : selectedPuzzleLabel
+          isReviewMode ? (
+            `다 푼 퍼즐 · ${selectedPuzzleLabel}`
+          ) : mission.lastStartedAt != null ? (
+            <>
+              {selectedPuzzleLabel} ·{" "}
+              <LiveTimer startedAt={mission.lastStartedAt} />
+            </>
+          ) : (
+            selectedPuzzleLabel
+          )
         }
         onBack={() => navigate("home")}
         right={
