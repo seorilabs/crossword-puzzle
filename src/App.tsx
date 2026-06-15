@@ -2706,6 +2706,12 @@ function formatCompletionStatsLabel(
   return `${numberFormatter.format(stats.completionCount)}명 완료`;
 }
 
+function formatLiveTimer(totalSeconds: number): string {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
 function formatElapsedTime(
   startedAt: string | undefined,
   completedAt: string | undefined,
@@ -3011,6 +3017,13 @@ function TodayScreen({
   const [inputValue, setInputValue] = useState("");
   const [isComposing, setIsComposing] = useState(false);
   const compositionEndValueRef = useRef<string | null>(null);
+  const [liveElapsedSeconds, setLiveElapsedSeconds] = useState<
+    number | undefined
+  >(() =>
+    !isCompleted && hasStarted && mission.lastStartedAt != null
+      ? getElapsedSeconds(mission.lastStartedAt)
+      : undefined,
+  );
   // A finished puzzle is shown read-only so the saved answers stay intact while
   // the player reviews the completed board.
   const isReviewMode = isCompleted;
@@ -3172,6 +3185,18 @@ function TodayScreen({
   }, [activeCellKey, answerInputResetKey, clearCommitTimer, selectedEntry?.id]);
 
   useEffect(() => () => clearCommitTimer(), [clearCommitTimer]);
+
+  useEffect(() => {
+    if (isCompleted || !hasStarted || mission.lastStartedAt == null) {
+      setLiveElapsedSeconds(undefined);
+      return;
+    }
+    setLiveElapsedSeconds(getElapsedSeconds(mission.lastStartedAt));
+    const id = window.setInterval(() => {
+      setLiveElapsedSeconds(getElapsedSeconds(mission.lastStartedAt));
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [isCompleted, hasStarted, mission.lastStartedAt]);
 
   function focusPuzzleBoard() {
     requestAnimationFrame(() => {
@@ -3362,7 +3387,9 @@ function TodayScreen({
         eyebrow={
           isReviewMode
             ? `다 푼 퍼즐 · ${selectedPuzzleLabel}`
-            : selectedPuzzleLabel
+            : liveElapsedSeconds != null
+              ? `${selectedPuzzleLabel} · ${formatLiveTimer(liveElapsedSeconds)}`
+              : selectedPuzzleLabel
         }
         onBack={() => navigate("home")}
         right={
