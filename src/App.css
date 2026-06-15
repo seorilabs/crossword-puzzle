@@ -761,6 +761,11 @@ button:disabled {
   line-height: 20px;
 }
 
+.resultAchievementBest {
+  background: #fff7e0;
+  color: #9a6000;
+}
+
 .missionCompact {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
