@@ -3679,6 +3679,11 @@ function CompletionCelebrationDialog({
         aria-describedby="completionDialogDescription"
         onClick={(event) => event.stopPropagation()}
       >
+        <div className="confettiContainer" aria-hidden="true">
+          {Array.from({ length: 12 }, (_, i) => (
+            <div key={i} className={`confettiPiece confettiPiece--${i + 1}`} />
+          ))}
+        </div>
         <div className="completionDialogBadge" aria-hidden="true">
           🎉
         </div>

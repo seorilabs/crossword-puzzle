@@ -1718,10 +1718,51 @@ button:disabled {
 }
 
 .completionDialog {
+  position: relative;
+  overflow: hidden;
   align-items: stretch;
   text-align: center;
   gap: 16px;
 }
+
+@keyframes confettiFall {
+  0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(320px) rotate(540deg); opacity: 0; }
+}
+
+.confettiContainer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: inherit;
+  z-index: 0;
+}
+
+.confettiPiece {
+  position: absolute;
+  top: -12px;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  animation: confettiFall 1.4s ease-in forwards;
+}
+
+.confettiPiece--1  { left:  7%; background: #ff6b6b; animation-delay: 0.00s; }
+.confettiPiece--2  { left: 16%; background: #ffd93d; animation-delay: 0.10s; border-radius: 50%; }
+.confettiPiece--3  { left: 27%; background: #6bcb77; animation-delay: 0.05s; width: 6px; height: 10px; }
+.confettiPiece--4  { left: 38%; background: #4d96ff; animation-delay: 0.20s; }
+.confettiPiece--5  { left: 50%; background: #ff922b; animation-delay: 0.00s; border-radius: 50%; width: 6px; height: 6px; }
+.confettiPiece--6  { left: 62%; background: #cc5de8; animation-delay: 0.15s; width: 10px; height: 5px; }
+.confettiPiece--7  { left: 72%; background: #ff6b6b; animation-delay: 0.08s; height: 10px; }
+.confettiPiece--8  { left: 83%; background: #ffd93d; animation-delay: 0.25s; border-radius: 50%; }
+.confettiPiece--9  { left: 22%; background: #4d96ff; animation-delay: 0.32s; width: 6px; height: 9px; }
+.confettiPiece--10 { left: 58%; background: #6bcb77; animation-delay: 0.18s; }
+.confettiPiece--11 { left: 45%; background: #ff922b; animation-delay: 0.38s; border-radius: 50%; width: 9px; height: 9px; }
+.confettiPiece--12 { left: 33%; background: #cc5de8; animation-delay: 0.12s; width: 10px; height: 5px; }
 
 .completionDialogBadge {
   align-self: center;
