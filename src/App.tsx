@@ -3250,12 +3250,13 @@ function TodayScreen({
     const wasAllFilled = !isNewEntry && track.allFilled;
     const signatureChanged =
       answerSignature !== "" && answerSignature !== track.shakeSignature;
-    const shouldShake = nowAllFilled && hasWrong && (!wasAllFilled || signatureChanged);
+    const shouldShake =
+      !isNewEntry && nowAllFilled && hasWrong && (!wasAllFilled || signatureChanged);
     shakeTrackRef.current = {
       entryId: currentEntryId,
       allFilled: nowAllFilled,
       shakeSignature: isNewEntry
-        ? ""
+        ? answerSignature
         : shouldShake
           ? answerSignature
           : track.shakeSignature,
