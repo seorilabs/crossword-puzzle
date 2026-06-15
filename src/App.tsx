@@ -1850,6 +1850,8 @@ function App() {
         <ResultScreen
           {...dateSelectionProps}
           bonusPuzzlePanelState={bonusPuzzlePanelState}
+          completedEntries={viewModel.completedEntries}
+          consecutiveStreak={consecutiveStreak}
           hintCount={hintCount}
           mission={mission}
           navigate={navigate}
@@ -1858,7 +1860,6 @@ function App() {
           remainingAttempts={remainingAttempts}
           requestBonusPuzzle={() => void requestBonusPuzzle()}
           restartMissionAttempt={restartMissionAttempt}
-          completedEntries={viewModel.completedEntries}
         />
       ) : route === "history" ? (
         <HistoryScreen
@@ -2729,6 +2730,51 @@ function formatElapsedTime(
   }
 
   return `${minutes}분 ${String(seconds).padStart(2, "0")}초`;
+}
+
+function buildShareText({
+  puzzleLabel,
+  elapsedLabel,
+  hintCount,
+  attemptsUsed,
+  completedCount,
+  totalCount,
+  consecutiveStreak,
+}: {
+  puzzleLabel: string;
+  elapsedLabel: string | null;
+  hintCount: number;
+  attemptsUsed: number;
+  completedCount: number;
+  totalCount: number;
+  consecutiveStreak: number;
+}): string {
+  const lines: string[] = [`가로세로 낱말 퍼즐 ${puzzleLabel}`, ""];
+
+  const stats: string[] = [];
+  if (elapsedLabel != null) stats.push(`⏱ ${elapsedLabel}`);
+  stats.push(`도전 ${attemptsUsed}회`);
+  if (hintCount > 0) stats.push(`힌트 ${hintCount}회`);
+  lines.push(stats.join(" · "));
+
+  const badges: string[] = [];
+  if (hintCount === 0) badges.push("🎯 노힌트 클리어");
+  if (attemptsUsed === 1) badges.push("💎 첫 도전 성공");
+  if (badges.length > 0) lines.push(badges.join(" · "));
+
+  if (consecutiveStreak >= 100) {
+    lines.push(`🏆 ${consecutiveStreak}일 연속 달성!`);
+  } else if (consecutiveStreak >= 30) {
+    lines.push(`🏆 ${consecutiveStreak}일째 — 한 달 연속 도전 중!`);
+  } else if (consecutiveStreak >= 7) {
+    lines.push(`🔥 ${consecutiveStreak}일째 — 일주일 연속 도전 중!`);
+  } else if (consecutiveStreak > 0) {
+    lines.push(`🔥 ${consecutiveStreak}일째 도전 중`);
+  }
+
+  lines.push(`낱말 ${completedCount}/${totalCount}개 완성 🎉`);
+
+  return lines.join("\n");
 }
 
 function DateCarousel({
@@ -3832,6 +3878,7 @@ function ListIcon() {
 type ResultScreenProps = DateSelectionProps & {
   bonusPuzzlePanelState: BonusPuzzlePanelState;
   completedEntries: PuzzleEntry[];
+  consecutiveStreak: number;
   hintCount: number;
   mission: DailyMissionState;
   navigate: (route: AppRoute) => void;
@@ -3847,6 +3894,7 @@ function ResultScreen({
   completedEntries,
   completionStatsByPuzzleId,
   completionStatsMinDisplayCount,
+  consecutiveStreak,
   dateCardStates,
   hintCount,
   loadState,
@@ -3876,6 +3924,49 @@ function ResultScreen({
     () => buildStartLabels(puzzle.entries),
     [puzzle.entries],
   );
+  const [shareCopied, setShareCopied] = useState(false);
+  const shareTimeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (shareTimeoutRef.current != null) {
+        window.clearTimeout(shareTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  function handleShare() {
+    const text = buildShareText({
+      puzzleLabel: selectedPuzzleLabel,
+      elapsedLabel,
+      hintCount,
+      attemptsUsed: mission.attemptsUsed,
+      completedCount: completedEntries.length,
+      totalCount: puzzle.entries.length,
+      consecutiveStreak,
+    });
+
+    function copyToClipboard() {
+      void navigator.clipboard.writeText(text).then(() => {
+        setShareCopied(true);
+        if (shareTimeoutRef.current != null) {
+          window.clearTimeout(shareTimeoutRef.current);
+        }
+        shareTimeoutRef.current = window.setTimeout(() => {
+          setShareCopied(false);
+        }, 2000);
+      });
+    }
+
+    if (navigator.share != null) {
+      void navigator.share({ text }).catch((err: unknown) => {
+        if (err instanceof Error && err.name === "AbortError") return;
+        copyToClipboard();
+      });
+    } else {
+      copyToClipboard();
+    }
+  }
 
   return (
     <>
@@ -3975,6 +4066,22 @@ function ResultScreen({
           >
             다시 도전
           </button>
+        )}
+        {isComplete && (
+          <div className="shareContainer">
+            <button
+              className="shareButton"
+              type="button"
+              onClick={handleShare}
+            >
+              결과 공유하기
+            </button>
+            {shareCopied && (
+              <p className="shareToast" role="status" aria-live="polite">
+                클립보드에 복사됐어요!
+              </p>
+            )}
+          </div>
         )}
       </section>
 
