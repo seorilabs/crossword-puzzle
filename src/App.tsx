@@ -1200,8 +1200,9 @@ function App() {
       if (elapsedMs > 0) {
         const currentBest = getBestTimeMs(puzzle.puzzleId);
         if (currentBest == null || elapsedMs < currentBest) {
-          saveBestTimeMs(puzzle.puzzleId, elapsedMs);
-          setIsNewBestTime(true);
+          if (saveBestTimeMs(puzzle.puzzleId, elapsedMs)) {
+            setIsNewBestTime(true);
+          }
         }
       }
     }

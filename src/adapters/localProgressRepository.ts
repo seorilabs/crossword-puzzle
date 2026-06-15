@@ -33,10 +33,13 @@ function getBestTimeStorageKey(puzzleId: string) {
   return `${BEST_TIME_KEY_PREFIX}:${puzzleId}`;
 }
 
-export function getBestTimeMs(puzzleId: string): number | null {
+export function getBestTimeMs(
+  puzzleId: string,
+  storage: KeyValueStorage | null = getDefaultStorage(),
+): number | null {
+  if (storage == null) return null;
   try {
-    if (typeof window === "undefined") return null;
-    const raw = window.localStorage.getItem(getBestTimeStorageKey(puzzleId));
+    const raw = storage.getItem(getBestTimeStorageKey(puzzleId));
     if (raw == null) return null;
     const value = Number(raw);
     return Number.isFinite(value) && value > 0 ? value : null;
@@ -45,15 +48,20 @@ export function getBestTimeMs(puzzleId: string): number | null {
   }
 }
 
-export function saveBestTimeMs(puzzleId: string, elapsedMs: number): void {
+export function saveBestTimeMs(
+  puzzleId: string,
+  elapsedMs: number,
+  storage: KeyValueStorage | null = getDefaultStorage(),
+): boolean {
+  if (storage == null) return false;
   try {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(
+    storage.setItem(
       getBestTimeStorageKey(puzzleId),
       String(Math.round(elapsedMs)),
     );
+    return true;
   } catch {
-    // Best effort.
+    return false;
   }
 }
 
