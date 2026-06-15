@@ -3064,9 +3064,14 @@ function TodayScreen({
   const [isComposing, setIsComposing] = useState(false);
   const compositionEndValueRef = useRef<string | null>(null);
   const answerSlotsRef = useRef<HTMLDivElement>(null);
-  const shakeTrackRef = useRef<{ entryId: string | null; allFilled: boolean }>({
+  const shakeTrackRef = useRef<{
+    entryId: string | null;
+    allFilled: boolean;
+    shakeSignature: string;
+  }>({
     entryId: null,
     allFilled: false,
+    shakeSignature: "",
   });
   // A finished puzzle is shown read-only so the saved answers stay intact while
   // the player reviews the completed board.
@@ -3239,9 +3244,23 @@ function TodayScreen({
       answerSlots.length > 0 &&
       answerSlots.every((s) => s.value !== "" && !s.isPending);
     const hasWrong = answerSlots.some((s) => s.isWrong);
+    const answerSignature = nowAllFilled
+      ? answerSlots.map((s) => s.value).join("|")
+      : "";
     const wasAllFilled = !isNewEntry && track.allFilled;
-    shakeTrackRef.current = { entryId: currentEntryId, allFilled: nowAllFilled };
-    if (!wasAllFilled && nowAllFilled && hasWrong) {
+    const signatureChanged =
+      answerSignature !== "" && answerSignature !== track.shakeSignature;
+    const shouldShake = nowAllFilled && hasWrong && (!wasAllFilled || signatureChanged);
+    shakeTrackRef.current = {
+      entryId: currentEntryId,
+      allFilled: nowAllFilled,
+      shakeSignature: isNewEntry
+        ? ""
+        : shouldShake
+          ? answerSignature
+          : track.shakeSignature,
+    };
+    if (shouldShake) {
       const el = answerSlotsRef.current;
       if (el != null) {
         el.classList.remove("answerSlotsShake");
