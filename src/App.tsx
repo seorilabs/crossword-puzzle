@@ -3872,6 +3872,7 @@ function ResultScreen({
   const elapsedLabel = isComplete
     ? formatElapsedTime(mission.lastStartedAt, mission.completedAt)
     : null;
+  const resultStartLabels = buildStartLabels(puzzle.entries);
 
   return (
     <>
@@ -3911,6 +3912,41 @@ function ResultScreen({
           {hintCount}회 · 남은 도전 {remainingAttempts}
         </span>
       </section>
+
+      {completedEntries.length > 0 && (
+        <section
+          className="resultWordList"
+          aria-label={isComplete ? "완성한 단어" : "맞춘 단어"}
+        >
+          <p className="resultWordListTitle">
+            {isComplete
+              ? "완성한 단어"
+              : `맞춘 단어 ${completedEntries.length}개`}
+          </p>
+          {(["across", "down"] as Direction[]).map((direction) => {
+            const entries = completedEntries.filter(
+              (e) => e.direction === direction,
+            );
+            if (entries.length === 0) return null;
+            return (
+              <div key={direction} className="resultWordGroup">
+                <p className="resultWordGroupLabel">
+                  {directionLabels[direction]}
+                </p>
+                {entries.map((entry) => (
+                  <div key={entry.id} className="resultWordItem">
+                    <span className="resultWordNumber">
+                      {getEntryStartLabel(entry, resultStartLabels) ?? "·"}
+                    </span>
+                    <strong className="resultWordAnswer">{entry.answer}</strong>
+                    <span className="resultWordClue">{entry.clue}</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </section>
+      )}
 
       <section className="resultActions" aria-label="결과 메뉴">
         <button

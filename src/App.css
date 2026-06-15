@@ -1977,3 +1977,79 @@ button:disabled {
     transform: translateX(-50%);
   }
 }
+
+.resultWordList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0 20px 18px;
+}
+
+.resultWordListTitle {
+  margin: 0;
+  color: #4e5968;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 18px;
+}
+
+.resultWordGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.resultWordGroupLabel {
+  margin: 0;
+  color: #6b7684;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 16px;
+}
+
+.resultWordItem {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 10px;
+  row-gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid #e5e8eb;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.resultWordNumber {
+  grid-row: 1 / 3;
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  align-self: center;
+  border-radius: 50%;
+  background: #eef2f4;
+  color: #4e5968;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.resultWordAnswer {
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 20px;
+  color: #00866f;
+  min-width: 0;
+}
+
+.resultWordClue {
+  color: #6b7684;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 17px;
+  min-width: 0;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
