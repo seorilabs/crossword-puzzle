@@ -49,7 +49,11 @@ import {
   type PuzzleArchiveRecord,
   type PuzzleArchiveSaveOptions,
 } from "./adapters/localPuzzleAccessRepository";
-import { createLocalProgressRepository } from "./adapters/localProgressRepository";
+import {
+  createLocalProgressRepository,
+  getBestTimeMs,
+  saveBestTimeMs,
+} from "./adapters/localProgressRepository";
 import {
   showRewardedBonusPuzzleAd,
   showRewardedHintAd,
@@ -711,6 +715,7 @@ function App() {
   const [consecutiveStreak, setConsecutiveStreak] = useState(
     () => computeConsecutiveStreakDays(),
   );
+  const [isNewBestTime, setIsNewBestTime] = useState(false);
   const firstAnswerInputKeysRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -735,6 +740,10 @@ function App() {
       setConsecutiveStreak(computeConsecutiveStreakDays());
     }
   }, [route]);
+
+  useEffect(() => {
+    setIsNewBestTime(false);
+  }, [puzzle.puzzleId]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -1183,6 +1192,19 @@ function App() {
       hint_count: hintCount,
       remaining_attempts: getRemainingAttempts(nextMission),
     });
+
+    if (nextMission.lastStartedAt != null && nextMission.completedAt != null) {
+      const elapsedMs =
+        new Date(nextMission.completedAt).getTime() -
+        new Date(nextMission.lastStartedAt).getTime();
+      if (elapsedMs > 0) {
+        const currentBest = getBestTimeMs(puzzle.puzzleId);
+        if (currentBest == null || elapsedMs < currentBest) {
+          saveBestTimeMs(puzzle.puzzleId, elapsedMs);
+          setIsNewBestTime(true);
+        }
+      }
+    }
 
     if (route === "today") {
       // Stay on the board and celebrate instead of jumping straight to the
@@ -1763,6 +1785,7 @@ function App() {
       return;
     }
 
+    setIsNewBestTime(false);
     clearProgress();
     const nextMission = startMissionAttempt(mission);
     setMission(nextMission);
@@ -1853,6 +1876,7 @@ function App() {
           completedEntries={viewModel.completedEntries}
           consecutiveStreak={consecutiveStreak}
           hintCount={hintCount}
+          isNewBestTime={isNewBestTime}
           mission={mission}
           navigate={navigate}
           progressPercent={progressPercent}
@@ -3914,6 +3938,7 @@ type ResultScreenProps = DateSelectionProps & {
   completedEntries: PuzzleEntry[];
   consecutiveStreak: number;
   hintCount: number;
+  isNewBestTime: boolean;
   mission: DailyMissionState;
   navigate: (route: AppRoute) => void;
   progressPercent: number;
@@ -3931,6 +3956,7 @@ function ResultScreen({
   consecutiveStreak,
   dateCardStates,
   hintCount,
+  isNewBestTime,
   loadState,
   mission,
   navigate,
@@ -4036,10 +4062,16 @@ function ResultScreen({
           <p className="resultElapsedTime">⏱ {elapsedLabel}</p>
         )}
         {isComplete &&
-          (hintCount === 0 ||
+          (isNewBestTime ||
+            hintCount === 0 ||
             mission?.attemptsUsed === 1 ||
             streakAchievementLabel != null) && (
           <div className="resultAchievements">
+            {isNewBestTime && (
+              <span className="resultAchievement resultAchievementBest">
+                🏆 최고 기록 갱신!
+              </span>
+            )}
             {hintCount === 0 && (
               <span className="resultAchievement">🎯 노힌트 클리어</span>
             )}

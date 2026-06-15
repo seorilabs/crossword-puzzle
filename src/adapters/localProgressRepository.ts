@@ -27,6 +27,36 @@ function getProgressKey(keyPrefix: string, puzzleId: string) {
   return `${keyPrefix}:${puzzleId}`;
 }
 
+const BEST_TIME_KEY_PREFIX = "crossword-puzzle:best-time";
+
+function getBestTimeStorageKey(puzzleId: string) {
+  return `${BEST_TIME_KEY_PREFIX}:${puzzleId}`;
+}
+
+export function getBestTimeMs(puzzleId: string): number | null {
+  try {
+    if (typeof window === "undefined") return null;
+    const raw = window.localStorage.getItem(getBestTimeStorageKey(puzzleId));
+    if (raw == null) return null;
+    const value = Number(raw);
+    return Number.isFinite(value) && value > 0 ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveBestTimeMs(puzzleId: string, elapsedMs: number): void {
+  try {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      getBestTimeStorageKey(puzzleId),
+      String(Math.round(elapsedMs)),
+    );
+  } catch {
+    // Best effort.
+  }
+}
+
 function normalizeProgress(progress: Partial<SavedProgress>): SavedProgress {
   return {
     cellValues:
