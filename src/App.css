@@ -82,8 +82,8 @@ button:disabled {
   font-variant-numeric: tabular-nums;
   color: #6b7684;
   letter-spacing: 0.02em;
-  min-width: 32px;
-  text-align: right;
+  min-width: 42px;
+  display: inline-block;
 }
 
 .compactHeader {

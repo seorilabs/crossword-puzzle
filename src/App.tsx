@@ -2707,8 +2707,9 @@ function formatCompletionStatsLabel(
 }
 
 function formatLiveTimer(totalSeconds: number): string {
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
+  const total = Math.floor(totalSeconds);
+  const minutes = Math.floor(total / 60);
+  const seconds = total % 60;
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
@@ -2892,7 +2893,7 @@ function DateCarousel({
 }
 
 type AppHeaderProps = {
-  eyebrow?: string;
+  eyebrow?: ReactNode;
   title: string;
   onBack?: () => void;
   backVariant?: "back" | "home";
@@ -3386,16 +3387,20 @@ function TodayScreen({
         backVariant="home"
         title={`${completedEntries.length}/${puzzle.entries.length} 낱말`}
         eyebrow={
-          isReviewMode
-            ? `다 푼 퍼즐 · ${selectedPuzzleLabel}`
-            : selectedPuzzleLabel
+          isReviewMode ? (
+            `다 푼 퍼즐 · ${selectedPuzzleLabel}`
+          ) : mission.lastStartedAt != null ? (
+            <>
+              {selectedPuzzleLabel} ·{" "}
+              <LiveTimer startedAt={mission.lastStartedAt} />
+            </>
+          ) : (
+            selectedPuzzleLabel
+          )
         }
         onBack={() => navigate("home")}
         right={
           <div className="headerActions">
-            {!isReviewMode && mission.lastStartedAt != null && (
-              <LiveTimer startedAt={mission.lastStartedAt} />
-            )}
             {isReviewMode ? null : (
               <>
                 <button
