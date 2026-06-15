@@ -3954,6 +3954,16 @@ function ResultScreen({
   const elapsedLabel = isComplete
     ? formatElapsedTime(mission.lastStartedAt, mission.completedAt)
     : null;
+  const streakAchievementLabel =
+    isComplete && consecutiveStreak >= 100
+      ? `🏆 ${consecutiveStreak}일 연속`
+      : isComplete && consecutiveStreak >= 30
+        ? `🏆 한 달 연속 (${consecutiveStreak}일)`
+        : isComplete && consecutiveStreak >= 7
+          ? `🔥 일주일 연속 (${consecutiveStreak}일)`
+          : isComplete && consecutiveStreak > 0
+            ? `🔥 ${consecutiveStreak}일 연속`
+            : null;
   const resultStartLabels = useMemo(
     () => buildStartLabels(puzzle.entries),
     [puzzle.entries],
@@ -4025,13 +4035,19 @@ function ResultScreen({
         {elapsedLabel != null && (
           <p className="resultElapsedTime">⏱ {elapsedLabel}</p>
         )}
-        {isComplete && (hintCount === 0 || mission?.attemptsUsed === 1) && (
+        {isComplete &&
+          (hintCount === 0 ||
+            mission?.attemptsUsed === 1 ||
+            streakAchievementLabel != null) && (
           <div className="resultAchievements">
             {hintCount === 0 && (
               <span className="resultAchievement">🎯 노힌트 클리어</span>
             )}
             {mission?.attemptsUsed === 1 && (
               <span className="resultAchievement">💎 첫 도전 성공</span>
+            )}
+            {streakAchievementLabel != null && (
+              <span className="resultAchievement">{streakAchievementLabel}</span>
             )}
           </div>
         )}
