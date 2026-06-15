@@ -3872,7 +3872,10 @@ function ResultScreen({
   const elapsedLabel = isComplete
     ? formatElapsedTime(mission.lastStartedAt, mission.completedAt)
     : null;
-  const resultStartLabels = buildStartLabels(puzzle.entries);
+  const resultStartLabels = useMemo(
+    () => buildStartLabels(puzzle.entries),
+    [puzzle.entries],
+  );
 
   return (
     <>
