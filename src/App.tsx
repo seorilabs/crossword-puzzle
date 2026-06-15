@@ -3063,6 +3063,16 @@ function TodayScreen({
   const [inputValue, setInputValue] = useState("");
   const [isComposing, setIsComposing] = useState(false);
   const compositionEndValueRef = useRef<string | null>(null);
+  const answerSlotsRef = useRef<HTMLDivElement>(null);
+  const shakeTrackRef = useRef<{
+    entryId: string | null;
+    allFilled: boolean;
+    shakeSignature: string;
+  }>({
+    entryId: null,
+    allFilled: false,
+    shakeSignature: "",
+  });
   // A finished puzzle is shown read-only so the saved answers stay intact while
   // the player reviews the completed board.
   const isReviewMode = isCompleted;
@@ -3224,6 +3234,42 @@ function TodayScreen({
   }, [activeCellKey, answerInputResetKey, clearCommitTimer, selectedEntry?.id]);
 
   useEffect(() => () => clearCommitTimer(), [clearCommitTimer]);
+
+  useEffect(() => {
+    if (isReviewMode) return;
+    const track = shakeTrackRef.current;
+    const currentEntryId = selectedEntry?.id ?? null;
+    const isNewEntry = track.entryId !== currentEntryId;
+    const nowAllFilled =
+      answerSlots.length > 0 &&
+      answerSlots.every((s) => s.value !== "" && !s.isPending);
+    const hasWrong = answerSlots.some((s) => s.isWrong);
+    const answerSignature = nowAllFilled
+      ? answerSlots.map((s) => s.value).join("|")
+      : "";
+    const wasAllFilled = !isNewEntry && track.allFilled;
+    const signatureChanged =
+      answerSignature !== "" && answerSignature !== track.shakeSignature;
+    const shouldShake =
+      !isNewEntry && nowAllFilled && hasWrong && (!wasAllFilled || signatureChanged);
+    shakeTrackRef.current = {
+      entryId: currentEntryId,
+      allFilled: nowAllFilled,
+      shakeSignature: isNewEntry
+        ? answerSignature
+        : shouldShake
+          ? answerSignature
+          : track.shakeSignature,
+    };
+    if (shouldShake) {
+      const el = answerSlotsRef.current;
+      if (el != null) {
+        el.classList.remove("answerSlotsShake");
+        void el.offsetWidth;
+        el.classList.add("answerSlotsShake");
+      }
+    }
+  }, [answerSlots, selectedEntry?.id, isReviewMode]);
 
   function focusPuzzleBoard() {
     requestAnimationFrame(() => {
@@ -3517,7 +3563,16 @@ function TodayScreen({
                 focusNativeInput();
               }}
             >
-              <strong className="solveClueText">{selectedEntry.clue}</strong>
+              <strong
+                className={[
+                  "solveClueText",
+                  isSelectedComplete ? "solveClueTextComplete" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+              >
+                {selectedEntry.clue}
+              </strong>
             </button>
             <button
               className="clueNavButton"
@@ -3529,7 +3584,7 @@ function TodayScreen({
               ›
             </button>
           </div>
-          <div className="answerSlots" role="group" aria-label="입력 중인 답">
+          <div ref={answerSlotsRef} className="answerSlots" role="group" aria-label="입력 중인 답">
             {answerSlots.map((slot, index) => (
               <button
                 key={slot.key}
