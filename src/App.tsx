@@ -181,7 +181,7 @@ const puzzleCompletionStatsRepository = createPuzzleCompletionStatsRepository({
 const directionLabels: Record<Direction, string> = {
   across: "가로",
   down: "세로",
-};
+}; // ResultScreen 포함 전체 컴포넌트에서 공유하는 방향 레이블
 
 const directionOrder: Record<Direction, number> = {
   across: 0,
