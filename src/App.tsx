@@ -1730,19 +1730,11 @@ function App() {
           hintCount: 0,
         });
       } catch {
-        // saveProgress 실패 시 진행상태를 삭제해 저장소-UI 불일치 방지
-        try {
-          await progressRepository.clearProgress(puzzle.puzzleId);
-        } catch {
-          // 삭제도 실패하면 UI 초기화된 상태로 진행
-        }
+        // saveProgress 실패 시 removeItem으로 폴백; 이것도 실패하면 호출자에게 에러 전파
+        await progressRepository.clearProgress(puzzle.puzzleId);
       }
     } else {
-      try {
-        await progressRepository.clearProgress(puzzle.puzzleId);
-      } catch {
-        // 삭제 실패는 best-effort: UI 초기화는 완료된 상태
-      }
+      await progressRepository.clearProgress(puzzle.puzzleId);
     }
   }
 
@@ -1810,8 +1802,12 @@ function App() {
 
     const creditsToPreserve = earnedHintCredits;
     setIsNewBestTime(false);
-    // clearProgress의 모든 리셋을 재사용하되 크레딧만 보존; saveProgress 완료 후 진행
-    await clearProgress(creditsToPreserve);
+    try {
+      await clearProgress(creditsToPreserve);
+    } catch {
+      setHintNotice("재도전 중 오류가 발생했습니다. 다시 시도해 주세요.");
+      return;
+    }
 
     const nextMission = startMissionAttempt(mission);
     setMission(nextMission);
