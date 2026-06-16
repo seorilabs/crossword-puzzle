@@ -4169,7 +4169,7 @@ function ResultScreen({
           {hintCount}회 · 남은 도전 {remainingAttempts}
         </span>
         {!isComplete && remainingAttempts === 0 && (
-          <p className="resultDayLimitNotice">
+          <p className="resultDayLimitNotice" role="status" aria-live="polite">
             오늘의 도전 기회를 모두 사용했어요. 내일 새로운 퍼즐이 기다려요.
           </p>
         )}
