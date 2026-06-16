@@ -101,22 +101,22 @@ describe("localProgressRepository — restartMissionAttempt 시나리오", () =>
     assert.equal(loaded.earnedHintCredits, 0, "음수 크레딧은 0으로 정규화");
   });
 
-  it("earnedHintCredits에 NaN이 저장되면 0으로 정규화된다", async () => {
+  it("earnedHintCredits가 null(일반 JSON 오염/필드 누락)이면 0으로 정규화된다", async () => {
     storage.setItem(
-      "crossword-puzzle:progress:puzzle-nan-credits",
-      JSON.stringify({ cellValues: {}, earnedHintCredits: NaN, hintCount: 0 }),
+      "crossword-puzzle:progress:puzzle-null-credits",
+      JSON.stringify({ cellValues: {}, earnedHintCredits: null, hintCount: 0 }),
     );
-    const loaded = await repo.loadProgress("puzzle-nan-credits");
-    assert.equal(loaded.earnedHintCredits, 0, "NaN 크레딧은 0으로 정규화");
+    const loaded = await repo.loadProgress("puzzle-null-credits");
+    assert.equal(loaded.earnedHintCredits, 0, "null 크레딧은 0으로 정규화");
   });
 
-  it("earnedHintCredits에 Infinity가 저장되면 0으로 정규화된다", async () => {
+  it("earnedHintCredits가 문자열 타입(구 버전 데이터 오염)이면 0으로 정규화된다", async () => {
     storage.setItem(
-      "crossword-puzzle:progress:puzzle-inf-credits",
-      JSON.stringify({ cellValues: {}, earnedHintCredits: Infinity, hintCount: 0 }),
+      "crossword-puzzle:progress:puzzle-string-credits",
+      JSON.stringify({ cellValues: {}, earnedHintCredits: "3", hintCount: 0 }),
     );
-    const loaded = await repo.loadProgress("puzzle-inf-credits");
-    assert.equal(loaded.earnedHintCredits, 0, "Infinity 크레딧은 0으로 정규화");
+    const loaded = await repo.loadProgress("puzzle-string-credits");
+    assert.equal(loaded.earnedHintCredits, 0, "문자열 크레딧은 0으로 정규화");
   });
 
   it("hintCount에 음수가 저장되면 0으로 정규화된다", async () => {
@@ -128,22 +128,22 @@ describe("localProgressRepository — restartMissionAttempt 시나리오", () =>
     assert.equal(loaded.hintCount, 0, "음수 힌트카운트는 0으로 정규화");
   });
 
-  it("hintCount에 NaN이 저장되면 0으로 정규화된다", async () => {
+  it("hintCount가 null(필드 누락)이면 0으로 정규화된다", async () => {
     storage.setItem(
-      "crossword-puzzle:progress:puzzle-nan-hint",
-      JSON.stringify({ cellValues: {}, earnedHintCredits: 0, hintCount: NaN }),
+      "crossword-puzzle:progress:puzzle-null-hint",
+      JSON.stringify({ cellValues: {}, earnedHintCredits: 0, hintCount: null }),
     );
-    const loaded = await repo.loadProgress("puzzle-nan-hint");
-    assert.equal(loaded.hintCount, 0, "NaN 힌트카운트는 0으로 정규화");
+    const loaded = await repo.loadProgress("puzzle-null-hint");
+    assert.equal(loaded.hintCount, 0, "null 힌트카운트는 0으로 정규화");
   });
 
-  it("hintCount에 Infinity가 저장되면 0으로 정규화된다", async () => {
+  it("hintCount가 소수점이면 내림하여 정수로 정규화된다", async () => {
     storage.setItem(
-      "crossword-puzzle:progress:puzzle-inf-hint",
-      JSON.stringify({ cellValues: {}, earnedHintCredits: 0, hintCount: Infinity }),
+      "crossword-puzzle:progress:puzzle-float-hint",
+      JSON.stringify({ cellValues: {}, earnedHintCredits: 0, hintCount: 1.9 }),
     );
-    const loaded = await repo.loadProgress("puzzle-inf-hint");
-    assert.equal(loaded.hintCount, 0, "Infinity 힌트카운트는 0으로 정규화");
+    const loaded = await repo.loadProgress("puzzle-float-hint");
+    assert.equal(loaded.hintCount, 1, "소수점 힌트카운트는 내림하여 정수로 정규화");
   });
 
   it("saveProgress가 실패하면 예외를 전파한다", async () => {
