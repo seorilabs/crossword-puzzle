@@ -3544,7 +3544,15 @@ function TodayScreen({
           className="solveProgressBar"
           role="progressbar"
           aria-valuenow={Math.round(
-            (completedEntries.length / puzzle.entries.length) * 100,
+            Math.min(
+              100,
+              Math.max(
+                0,
+                puzzle.entries.length > 0
+                  ? (completedEntries.length / puzzle.entries.length) * 100
+                  : 0,
+              ),
+            ),
           )}
           aria-valuemin={0}
           aria-valuemax={100}
@@ -3552,7 +3560,15 @@ function TodayScreen({
         >
           <span
             style={{
-              width: `${(completedEntries.length / puzzle.entries.length) * 100}%`,
+              width: `${Math.min(
+                100,
+                Math.max(
+                  0,
+                  puzzle.entries.length > 0
+                    ? (completedEntries.length / puzzle.entries.length) * 100
+                    : 0,
+                ),
+              )}%`,
             }}
           />
         </div>
