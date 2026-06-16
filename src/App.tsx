@@ -500,6 +500,14 @@ function isHangulJamoInput(value: string) {
   );
 }
 
+function hasHangulSyllableInput(value: string) {
+  return /[가-힣]/.test(value);
+}
+
+function getAnswerCommitDelayMs(value: string) {
+  return hasHangulSyllableInput(value) ? 800 : 100;
+}
+
 function getEntryCellIndex(entry: PuzzleEntry, cellKey: string) {
   const cells = getEntryCells(entry);
   const index = cells.findIndex(
@@ -2943,6 +2951,25 @@ function TodayScreen({
   );
   const activeCellKey =
     selectedEntryCellKeys[selectedIndex] ?? getEntryStartCellKey(selectedEntry);
+  const draftLetters = useMemo(
+    () =>
+      selectedEntry == null
+        ? []
+        : getAnswerInputLetters(
+            inputValue,
+            selectedEntryCells.length - selectedIndex,
+          ),
+    [inputValue, selectedEntry, selectedEntryCells.length, selectedIndex],
+  );
+  const visualActiveCellKey =
+    inputValue === ""
+      ? activeCellKey
+      : (selectedEntryCellKeys[
+          Math.min(
+            selectedEntryCellKeys.length - 1,
+            selectedIndex + draftLetters.length,
+          )
+        ] ?? activeCellKey);
   const selectedRemainingCellCount = Math.max(
     1,
     selectedEntryCells.length - selectedIndex,
@@ -2987,7 +3014,7 @@ function TodayScreen({
       const answerLetter = getCellAnswerLetter(puzzle, key);
 
       return {
-        isActive: key === activeCellKey,
+        isActive: key === visualActiveCellKey,
         isLocked: isCellLocked(puzzle, cellValues, key),
         isPending: pending != null,
         isWrong:
@@ -2997,8 +3024,8 @@ function TodayScreen({
       };
     });
   }, [
-    activeCellKey,
     cellValues,
+    visualActiveCellKey,
     pendingAnswerCellValues,
     puzzle,
     selectedEntry,
@@ -3030,7 +3057,7 @@ function TodayScreen({
       }
 
       const moveCaret = () => {
-        if (!input.isConnected) {
+        if (input == null || !input.isConnected) {
           return;
         }
 
@@ -3214,7 +3241,7 @@ function TodayScreen({
   function queueCommitInputValue(
     value: string,
     startCellKey = activeCellKey,
-    delayMs = 100,
+    delayMs = getAnswerCommitDelayMs(value),
   ) {
     if (selectedEntry == null) {
       return;
@@ -3252,7 +3279,7 @@ function TodayScreen({
     }
 
     moveBoardInputCaretToEnd(input);
-    queueCommitInputValue(value, startCellKey, 220);
+    queueCommitInputValue(value, startCellKey);
   }
 
   function selectRelativeCell(delta: number) {
@@ -3514,10 +3541,12 @@ function TodayScreen({
             onFocus={(event) => {
               moveBoardInputCaretToEnd(event.currentTarget);
             }}
-            onCompositionStart={() => {
+            onCompositionStart={(event) => {
               clearCommitTimer();
+              compositionEndValueRef.current = null;
               isComposingRef.current = true;
               setIsComposing(true);
+              moveBoardInputCaretToEnd(event.currentTarget);
             }}
             onCompositionEnd={(event) => {
               const nextValue = event.currentTarget.value;
