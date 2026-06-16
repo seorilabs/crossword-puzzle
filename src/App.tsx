@@ -3023,6 +3023,32 @@ function TodayScreen({
     [puzzle.entries, startLabels],
   );
 
+  const moveBoardInputCaretToEnd = useCallback(
+    (input: HTMLInputElement | null = boardInputRef.current) => {
+      if (input == null) {
+        return;
+      }
+
+      const moveCaret = () => {
+        const position = input.value.length;
+        input.setSelectionRange(position, position);
+      };
+
+      moveCaret();
+      requestAnimationFrame(moveCaret);
+    },
+    [],
+  );
+
+  const resetBoardInputValue = useCallback(() => {
+    setInputValue("");
+
+    if (boardInputRef.current != null) {
+      boardInputRef.current.value = "";
+      moveBoardInputCaretToEnd(boardInputRef.current);
+    }
+  }, [moveBoardInputCaretToEnd]);
+
   function goToAdjacentClue(delta: number) {
     if (selectedEntry == null || orderedEntries.length === 0) {
       return;
@@ -3059,7 +3085,7 @@ function TodayScreen({
     }
 
     setAnswerInputResetKey((prev) => prev + 1);
-    setInputValue("");
+    resetBoardInputValue();
     clearEntryAnswer(selectedEntry);
   }
 
@@ -3074,9 +3100,15 @@ function TodayScreen({
     clearCommitTimer();
     compositionEndValueRef.current = null;
     isComposingRef.current = false;
-    setInputValue("");
+    resetBoardInputValue();
     setIsComposing(false);
-  }, [activeCellKey, answerInputResetKey, clearCommitTimer, selectedEntry?.id]);
+  }, [
+    activeCellKey,
+    answerInputResetKey,
+    clearCommitTimer,
+    resetBoardInputValue,
+    selectedEntry?.id,
+  ]);
 
   useEffect(() => () => clearCommitTimer(), [clearCommitTimer]);
 
@@ -3090,6 +3122,7 @@ function TodayScreen({
 
   function focusNativeInput() {
     boardInputRef.current?.focus({ preventScroll: true });
+    moveBoardInputCaretToEnd();
   }
 
   function selectCellAndFocus(row: number, col: number) {
@@ -3112,7 +3145,7 @@ function TodayScreen({
       applyAnswerSegment(selectedEntry, nextLetters.join(""), startCellKey);
     }
 
-    setInputValue("");
+    resetBoardInputValue();
   }
 
   function getDraftLetters(value: string, startCellKey = activeCellKey) {
@@ -3177,7 +3210,7 @@ function TodayScreen({
   function queueCommitInputValue(
     value: string,
     startCellKey = activeCellKey,
-    delayMs = 320,
+    delayMs = 100,
   ) {
     if (selectedEntry == null) {
       return;
@@ -3202,6 +3235,20 @@ function TodayScreen({
     commitTimerRef.current = window.setTimeout(() => {
       commitInputValue(value, startCellKey);
     }, delayMs);
+  }
+
+  function queueComposingCommitFallback(
+    value: string,
+    input: HTMLInputElement,
+    startCellKey = activeCellKey,
+  ) {
+    if (!hasCommittableDraft(value, startCellKey)) {
+      clearCommitTimer();
+      return;
+    }
+
+    moveBoardInputCaretToEnd(input);
+    queueCommitInputValue(value, startCellKey, 220);
   }
 
   function selectRelativeCell(delta: number) {
@@ -3447,6 +3494,8 @@ function TodayScreen({
         />
 
         {selectedEntry != null && !isReviewMode ? (
+          // Keep the hidden input uncontrolled and uncapped so Android WebView
+          // Korean IME can finish composing syllables before we map them to cells.
           <input
             ref={boardInputRef}
             className="boardNativeInput"
@@ -3455,11 +3504,12 @@ function TodayScreen({
             autoComplete="off"
             autoCorrect="off"
             enterKeyHint="next"
-            maxLength={selectedRemainingCellCount}
             spellCheck={false}
-            value={inputValue}
             aria-label={`${selectedRemainingCellCount}글자 답 입력`}
             tabIndex={-1}
+            onFocus={(event) => {
+              moveBoardInputCaretToEnd(event.currentTarget);
+            }}
             onCompositionStart={() => {
               clearCommitTimer();
               isComposingRef.current = true;
@@ -3471,7 +3521,8 @@ function TodayScreen({
               setIsComposing(false);
               compositionEndValueRef.current = nextValue;
               setInputValue(nextValue);
-              queueCommitInputValue(nextValue, activeCellKey, 120);
+              moveBoardInputCaretToEnd(event.currentTarget);
+              queueCommitInputValue(nextValue, activeCellKey);
             }}
             onChange={(event) => {
               const nextValue = event.target.value;
@@ -3484,7 +3535,11 @@ function TodayScreen({
                 nativeEvent.isComposing ||
                 nativeEvent.inputType === "insertCompositionText"
               ) {
-                clearCommitTimer();
+                queueComposingCommitFallback(
+                  nextValue,
+                  event.currentTarget,
+                  activeCellKey,
+                );
                 return;
               }
 
@@ -3493,6 +3548,7 @@ function TodayScreen({
                 return;
               }
 
+              moveBoardInputCaretToEnd(event.currentTarget);
               queueCommitInputValue(nextValue);
             }}
             onKeyDown={(event) => {
