@@ -944,6 +944,10 @@ function App() {
   );
 
   useEffect(() => {
+    // 모든 값이 기본값이면 저장 스킵: clearProgress가 삭제한 키가 재생성되지 않도록 함
+    if (Object.keys(cellValues).length === 0 && earnedHintCredits === 0 && hintCount === 0) {
+      return;
+    }
     void progressRepository.saveProgress(puzzle.puzzleId, {
       cellValues,
       earnedHintCredits,
