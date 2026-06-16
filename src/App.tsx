@@ -1786,14 +1786,21 @@ function App() {
       return;
     }
 
+    const creditsToPreserve = earnedHintCredits;
     setIsNewBestTime(false);
     clearProgress();
+    setEarnedHintCredits(creditsToPreserve);
+    void progressRepository.saveProgress(puzzle.puzzleId, {
+      cellValues: {},
+      earnedHintCredits: creditsToPreserve,
+      hintCount: 0,
+    });
     const nextMission = startMissionAttempt(mission);
     setMission(nextMission);
     void missionRepository.saveMission(nextMission);
     void savePuzzleSnapshot(puzzle, { startedAt: nextMission.lastStartedAt });
     trackAttemptStart(nextMission, "retry", {
-      earnedHintCredits: 0,
+      earnedHintCredits: creditsToPreserve,
       hintCount: 0,
     });
     navigate("today");
