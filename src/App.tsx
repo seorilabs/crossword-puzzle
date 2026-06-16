@@ -3539,6 +3539,25 @@ function TodayScreen({
         }
       />
 
+      {!isReviewMode ? (
+        <div
+          className="solveProgressBar"
+          role="progressbar"
+          aria-valuenow={Math.round(
+            (completedEntries.length / puzzle.entries.length) * 100,
+          )}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={`퍼즐 완성도 ${completedEntries.length}/${puzzle.entries.length}`}
+        >
+          <span
+            style={{
+              width: `${(completedEntries.length / puzzle.entries.length) * 100}%`,
+            }}
+          />
+        </div>
+      ) : null}
+
       {selectedEntry != null ? (
         <div className="solveClueBar">
           <div className="solveClueRow">

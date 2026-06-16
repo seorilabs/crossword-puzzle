@@ -86,6 +86,19 @@ button:disabled {
   display: inline-block;
 }
 
+.solveProgressBar {
+  height: 3px;
+  background: #dce5e8;
+  overflow: hidden;
+}
+
+.solveProgressBar span {
+  display: block;
+  height: 100%;
+  background: #00a88f;
+  transition: width 0.3s ease;
+}
+
 .compactHeader {
   gap: 10px;
   padding: 8px 16px 8px;
