@@ -948,7 +948,9 @@ function App() {
       cellValues,
       earnedHintCredits,
       hintCount,
-    }).catch(() => {});
+    }).catch(() => {
+      telemetry.impression("progress_save_error", { puzzle_id: puzzle.puzzleId });
+    });
   }, [cellValues, earnedHintCredits, hintCount, puzzle.puzzleId]);
 
   useEffect(() => {
@@ -1714,6 +1716,18 @@ function App() {
 
   async function clearProgress(preserveEarnedHintCredits?: number) {
     const creditsValue = preserveEarnedHintCredits ?? 0;
+
+    // 저장소 작업 먼저: 실패 시 UI 상태를 건드리지 않아 저장소-UI 일관성 유지
+    if (creditsValue > 0) {
+      await progressRepository.saveProgress(puzzle.puzzleId, {
+        cellValues: {},
+        earnedHintCredits: creditsValue,
+        hintCount: 0,
+      });
+    } else {
+      await progressRepository.clearProgress(puzzle.puzzleId);
+    }
+
     setCellValues({});
     setEarnedHintCredits(creditsValue);
     setHintCount(0);
@@ -1722,21 +1736,6 @@ function App() {
     setSelectedDirection("across");
     setSelectedEntryId(getInitialEntryId(puzzle));
     setSelectedCellKey(getInitialEntryStartCellKey(puzzle));
-    if (preserveEarnedHintCredits != null && preserveEarnedHintCredits > 0) {
-      try {
-        await progressRepository.saveProgress(puzzle.puzzleId, {
-          cellValues: {},
-          earnedHintCredits: creditsValue,
-          hintCount: 0,
-        });
-      } catch (saveError) {
-        // saveProgress 실패 시 best-effort로 기존 진행 삭제 후 원래 오류를 전파
-        await progressRepository.clearProgress(puzzle.puzzleId).catch(() => {});
-        throw saveError;
-      }
-    } else {
-      await progressRepository.clearProgress(puzzle.puzzleId);
-    }
   }
 
   function trackMissionStart(nextMission: DailyMissionState) {
