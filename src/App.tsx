@@ -3030,6 +3030,10 @@ function TodayScreen({
       }
 
       const moveCaret = () => {
+        if (!input.isConnected) {
+          return;
+        }
+
         const position = input.value.length;
         input.setSelectionRange(position, position);
       };
