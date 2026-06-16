@@ -1788,13 +1788,22 @@ function App() {
 
     const creditsToPreserve = earnedHintCredits;
     setIsNewBestTime(false);
-    clearProgress();
+
+    // clearProgress() 대신 직접 리셋: 광고 획득 크레딧을 유지하면서 saveProgress 한 번으로 원자적 저장
+    setCellValues({});
+    setHintCount(0);
+    setHintNotice("");
+    setHintToast({ id: 0, message: "" });
+    setSelectedDirection("across");
+    setSelectedEntryId(getInitialEntryId(puzzle));
+    setSelectedCellKey(getInitialEntryStartCellKey(puzzle));
     setEarnedHintCredits(creditsToPreserve);
     void progressRepository.saveProgress(puzzle.puzzleId, {
       cellValues: {},
       earnedHintCredits: creditsToPreserve,
       hintCount: 0,
     });
+
     const nextMission = startMissionAttempt(mission);
     setMission(nextMission);
     void missionRepository.saveMission(nextMission);

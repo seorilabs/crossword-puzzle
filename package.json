@@ -7,6 +7,7 @@
     "dev": "granite dev",
     "build": "ait build",
     "deploy": "ait deploy",
+    "test:adapters": "node --test src/adapters/*.test.mjs",
     "lint": "eslint .",
     "format": "prettier --write .",
     "mobile:install": "npm ci --prefix apps/mobile",
