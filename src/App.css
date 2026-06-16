@@ -97,6 +97,7 @@ button:disabled {
   height: 100%;
   background: #00a88f;
   transition: width 0.3s ease;
+  will-change: width;
 }
 
 .compactHeader {
