@@ -1715,7 +1715,8 @@ function App() {
   }
 
   async function clearProgress(preserveEarnedHintCredits?: number) {
-    const creditsValue = preserveEarnedHintCredits ?? 0;
+    const raw = preserveEarnedHintCredits ?? 0;
+    const creditsValue = Number.isFinite(raw) ? Math.max(0, raw) : 0;
 
     // 저장소 작업 먼저: 실패 시 UI 상태를 건드리지 않아 저장소-UI 일관성 유지
     if (creditsValue > 0) {
@@ -1803,21 +1804,19 @@ function App() {
     const creditsToPreserve = earnedHintCredits;
     try {
       await clearProgress(creditsToPreserve);
+      setIsNewBestTime(false);
+      const nextMission = startMissionAttempt(mission);
+      setMission(nextMission);
+      void missionRepository.saveMission(nextMission);
+      void savePuzzleSnapshot(puzzle, { startedAt: nextMission.lastStartedAt });
+      trackAttemptStart(nextMission, "retry", {
+        earnedHintCredits: creditsToPreserve,
+        hintCount: 0,
+      });
+      navigate("today");
     } catch {
       setHintNotice("재도전 중 오류가 발생했습니다. 다시 시도해 주세요.");
-      return;
     }
-    setIsNewBestTime(false);
-
-    const nextMission = startMissionAttempt(mission);
-    setMission(nextMission);
-    void missionRepository.saveMission(nextMission);
-    void savePuzzleSnapshot(puzzle, { startedAt: nextMission.lastStartedAt });
-    trackAttemptStart(nextMission, "retry", {
-      earnedHintCredits: creditsToPreserve,
-      hintCount: 0,
-    });
-    navigate("today");
   }
 
   const commonScreenProps = {
@@ -4572,7 +4571,7 @@ function DevSimulatorScreen({
             <button
               className="toolButton"
               type="button"
-              onClick={() => { void clearProgress().catch(() => {}); }}
+              onClick={() => { void clearProgress().catch((error) => { console.error("clearProgress 실패:", error); }); }}
             >
               초기화
             </button>
