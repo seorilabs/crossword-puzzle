@@ -100,4 +100,34 @@ describe("localProgressRepository — restartMissionAttempt 시나리오", () =>
     const loaded = await repo.loadProgress("puzzle-4");
     assert.equal(loaded.earnedHintCredits, 0, "음수 크레딧은 0으로 정규화");
   });
+
+  it("saveProgress가 실패하면 예외를 전파한다", async () => {
+    const failStorage = {
+      getItem: () => null,
+      setItem: (_key: string, _value: string): void => {
+        throw new Error("QuotaExceededError");
+      },
+      removeItem: (_key: string): void => {},
+    };
+    const failRepo = createLocalProgressRepository({ storage: failStorage });
+    await assert.rejects(() =>
+      failRepo.saveProgress("puzzle-fail", {
+        cellValues: {},
+        earnedHintCredits: 3,
+        hintCount: 0,
+      })
+    );
+  });
+
+  it("clearProgress가 실패하면 예외를 전파한다", async () => {
+    const failStorage = {
+      getItem: () => null,
+      setItem: (_key: string, _value: string): void => {},
+      removeItem: (_key: string): void => {
+        throw new Error("StorageError");
+      },
+    };
+    const failRepo = createLocalProgressRepository({ storage: failStorage });
+    await assert.rejects(() => failRepo.clearProgress("puzzle-fail"));
+  });
 });

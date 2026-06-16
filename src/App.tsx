@@ -948,7 +948,7 @@ function App() {
       cellValues,
       earnedHintCredits,
       hintCount,
-    });
+    }).catch(() => {});
   }, [cellValues, earnedHintCredits, hintCount, puzzle.puzzleId]);
 
   useEffect(() => {
@@ -1729,9 +1729,10 @@ function App() {
           earnedHintCredits: creditsValue,
           hintCount: 0,
         });
-      } catch {
-        // saveProgress 실패 시 removeItem으로 폴백; 이것도 실패하면 호출자에게 에러 전파
-        await progressRepository.clearProgress(puzzle.puzzleId);
+      } catch (saveError) {
+        // saveProgress 실패 시 best-effort로 기존 진행 삭제 후 원래 오류를 전파
+        await progressRepository.clearProgress(puzzle.puzzleId).catch(() => {});
+        throw saveError;
       }
     } else {
       await progressRepository.clearProgress(puzzle.puzzleId);

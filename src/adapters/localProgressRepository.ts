@@ -106,14 +106,10 @@ export function createLocalProgressRepository({
         return;
       }
 
-      try {
-        storage.setItem(
-          getProgressKey(keyPrefix, puzzleId),
-          JSON.stringify(progress),
-        );
-      } catch {
-        // Local persistence is best effort.
-      }
+      storage.setItem(
+        getProgressKey(keyPrefix, puzzleId),
+        JSON.stringify(progress),
+      );
     },
 
     async clearProgress(puzzleId) {
@@ -121,11 +117,7 @@ export function createLocalProgressRepository({
         return;
       }
 
-      try {
-        storage.removeItem(getProgressKey(keyPrefix, puzzleId));
-      } catch {
-        // Local persistence is best effort.
-      }
+      storage.removeItem(getProgressKey(keyPrefix, puzzleId));
     },
   };
 }
