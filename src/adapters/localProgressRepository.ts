@@ -72,10 +72,15 @@ function normalizeProgress(progress: Partial<SavedProgress>): SavedProgress {
         ? progress.cellValues
         : {},
     earnedHintCredits:
-      typeof progress.earnedHintCredits === "number"
+      typeof progress.earnedHintCredits === "number" &&
+      Number.isFinite(progress.earnedHintCredits)
         ? Math.max(0, progress.earnedHintCredits)
         : 0,
-    hintCount: typeof progress.hintCount === "number" ? progress.hintCount : 0,
+    hintCount:
+      typeof progress.hintCount === "number" &&
+      Number.isFinite(progress.hintCount)
+        ? Math.max(0, Math.floor(progress.hintCount))
+        : 0,
   };
 }
 

@@ -101,6 +101,51 @@ describe("localProgressRepository — restartMissionAttempt 시나리오", () =>
     assert.equal(loaded.earnedHintCredits, 0, "음수 크레딧은 0으로 정규화");
   });
 
+  it("earnedHintCredits에 NaN이 저장되면 0으로 정규화된다", async () => {
+    storage.setItem(
+      "crossword-puzzle:progress:puzzle-nan-credits",
+      JSON.stringify({ cellValues: {}, earnedHintCredits: NaN, hintCount: 0 }),
+    );
+    const loaded = await repo.loadProgress("puzzle-nan-credits");
+    assert.equal(loaded.earnedHintCredits, 0, "NaN 크레딧은 0으로 정규화");
+  });
+
+  it("earnedHintCredits에 Infinity가 저장되면 0으로 정규화된다", async () => {
+    storage.setItem(
+      "crossword-puzzle:progress:puzzle-inf-credits",
+      JSON.stringify({ cellValues: {}, earnedHintCredits: Infinity, hintCount: 0 }),
+    );
+    const loaded = await repo.loadProgress("puzzle-inf-credits");
+    assert.equal(loaded.earnedHintCredits, 0, "Infinity 크레딧은 0으로 정규화");
+  });
+
+  it("hintCount에 음수가 저장되면 0으로 정규화된다", async () => {
+    storage.setItem(
+      "crossword-puzzle:progress:puzzle-neg-hint",
+      JSON.stringify({ cellValues: {}, earnedHintCredits: 0, hintCount: -3 }),
+    );
+    const loaded = await repo.loadProgress("puzzle-neg-hint");
+    assert.equal(loaded.hintCount, 0, "음수 힌트카운트는 0으로 정규화");
+  });
+
+  it("hintCount에 NaN이 저장되면 0으로 정규화된다", async () => {
+    storage.setItem(
+      "crossword-puzzle:progress:puzzle-nan-hint",
+      JSON.stringify({ cellValues: {}, earnedHintCredits: 0, hintCount: NaN }),
+    );
+    const loaded = await repo.loadProgress("puzzle-nan-hint");
+    assert.equal(loaded.hintCount, 0, "NaN 힌트카운트는 0으로 정규화");
+  });
+
+  it("hintCount에 Infinity가 저장되면 0으로 정규화된다", async () => {
+    storage.setItem(
+      "crossword-puzzle:progress:puzzle-inf-hint",
+      JSON.stringify({ cellValues: {}, earnedHintCredits: 0, hintCount: Infinity }),
+    );
+    const loaded = await repo.loadProgress("puzzle-inf-hint");
+    assert.equal(loaded.hintCount, 0, "Infinity 힌트카운트는 0으로 정규화");
+  });
+
   it("saveProgress가 실패하면 예외를 전파한다", async () => {
     const failStorage = {
       getItem: () => null,
