@@ -1801,14 +1801,19 @@ function App() {
       return;
     }
 
-    const creditsToPreserve = earnedHintCredits;
+    const rawCredits = earnedHintCredits;
+    const creditsToPreserve = Number.isFinite(rawCredits) ? Math.max(0, rawCredits) : 0;
     try {
       await clearProgress(creditsToPreserve);
       setIsNewBestTime(false);
       const nextMission = startMissionAttempt(mission);
       setMission(nextMission);
-      void missionRepository.saveMission(nextMission);
-      void savePuzzleSnapshot(puzzle, { startedAt: nextMission.lastStartedAt });
+      void missionRepository.saveMission(nextMission).catch(() => {
+        telemetry.impression("mission_save_error", { puzzle_id: puzzle.puzzleId });
+      });
+      void savePuzzleSnapshot(puzzle, { startedAt: nextMission.lastStartedAt }).catch(() => {
+        telemetry.impression("snapshot_save_error", { puzzle_id: puzzle.puzzleId });
+      });
       trackAttemptStart(nextMission, "retry", {
         earnedHintCredits: creditsToPreserve,
         hintCount: 0,
