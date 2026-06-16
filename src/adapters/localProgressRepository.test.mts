@@ -35,14 +35,14 @@ describe("localProgressRepository — restartMissionAttempt 시나리오", () =>
     assert.deepEqual(loaded.cellValues, { "0,0": "가" });
   });
 
-  it("재도전 시나리오: saveProgress로 셀/힌트 초기화하면서 크레딧 유지", async () => {
+  it("재도전 시나리오(크레딧 > 0): saveProgress로 셀/힌트 초기화하면서 크레딧 유지", async () => {
     await repo.saveProgress("puzzle-2", {
       cellValues: { "0,0": "가", "0,1": "나" },
       earnedHintCredits: 5,
       hintCount: 2,
     });
 
-    // restartMissionAttempt의 clearProgress(creditsToPreserve) 경로와 동일
+    // clearProgress(preserveEarnedHintCredits > 0) 경로: saveProgress로 원자적 저장
     const creditsToPreserve = 5;
     await repo.saveProgress("puzzle-2", {
       cellValues: {},
@@ -54,6 +54,21 @@ describe("localProgressRepository — restartMissionAttempt 시나리오", () =>
     assert.equal(loaded.earnedHintCredits, 5, "광고 획득 크레딧이 유지되어야 함");
     assert.equal(loaded.hintCount, 0, "힌트 사용 횟수는 초기화되어야 함");
     assert.deepEqual(loaded.cellValues, {}, "셀 값은 초기화되어야 함");
+  });
+
+  it("재도전 시나리오(크레딧 = 0): clearProgress 경로로 키가 삭제된다", async () => {
+    await repo.saveProgress("puzzle-5", {
+      cellValues: { "0,0": "가" },
+      earnedHintCredits: 0,
+      hintCount: 1,
+    });
+
+    // clearProgress(0)이거나 일반 clearProgress() 경로: removeItem
+    await repo.clearProgress("puzzle-5");
+    const loaded = await repo.loadProgress("puzzle-5");
+    assert.equal(loaded.earnedHintCredits, 0);
+    assert.equal(loaded.hintCount, 0);
+    assert.deepEqual(loaded.cellValues, {});
   });
 
   it("clearProgress 후 데이터가 없으면 기본값을 반환한다", async () => {

@@ -1722,14 +1722,19 @@ function App() {
     setSelectedDirection("across");
     setSelectedEntryId(getInitialEntryId(puzzle));
     setSelectedCellKey(getInitialEntryStartCellKey(puzzle));
-    if (preserveEarnedHintCredits != null) {
-      await progressRepository.saveProgress(puzzle.puzzleId, {
-        cellValues: {},
-        earnedHintCredits: creditsValue,
-        hintCount: 0,
-      });
-    } else {
-      await progressRepository.clearProgress(puzzle.puzzleId);
+    try {
+      if (preserveEarnedHintCredits != null && preserveEarnedHintCredits > 0) {
+        // 크레딧이 0보다 클 때만 보존 저장; 0이면 키를 삭제해 이전 동작과 동일하게 유지
+        await progressRepository.saveProgress(puzzle.puzzleId, {
+          cellValues: {},
+          earnedHintCredits: creditsValue,
+          hintCount: 0,
+        });
+      } else {
+        await progressRepository.clearProgress(puzzle.puzzleId);
+      }
+    } catch {
+      // 저장 실패는 best-effort: UI 초기화는 완료된 상태로 재도전 진행
     }
   }
 
