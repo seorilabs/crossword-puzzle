@@ -756,6 +756,15 @@ button:disabled {
   line-height: 28px;
 }
 
+.resultDayLimitNotice {
+  margin: 0;
+  color: #6b7684;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 18px;
+  padding: 4px 0 0;
+}
+
 .resultAchievements {
   display: flex;
   flex-wrap: wrap;
