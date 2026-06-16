@@ -97,6 +97,7 @@ button:disabled {
   height: 100%;
   background: #00a88f;
   transition: width 0.3s ease;
+  will-change: width;
 }
 
 .compactHeader {
@@ -754,6 +755,15 @@ button:disabled {
   font-size: 20px;
   font-weight: 700;
   line-height: 28px;
+}
+
+.resultDayLimitNotice {
+  margin: 0;
+  color: #6b7684;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 18px;
+  padding: 4px 0 0;
 }
 
 .resultAchievements {
