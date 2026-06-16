@@ -2,7 +2,7 @@ import {
   createEmptyProgress,
   type ProgressRepository,
   type SavedProgress,
-} from "../../packages/crossword-core/src";
+} from "../../packages/crossword-core/src/repositories.ts";
 
 type KeyValueStorage = {
   getItem(key: string): string | null;
@@ -72,10 +72,15 @@ function normalizeProgress(progress: Partial<SavedProgress>): SavedProgress {
         ? progress.cellValues
         : {},
     earnedHintCredits:
-      typeof progress.earnedHintCredits === "number"
+      typeof progress.earnedHintCredits === "number" &&
+      Number.isFinite(progress.earnedHintCredits)
         ? Math.max(0, progress.earnedHintCredits)
         : 0,
-    hintCount: typeof progress.hintCount === "number" ? progress.hintCount : 0,
+    hintCount:
+      typeof progress.hintCount === "number" &&
+      Number.isFinite(progress.hintCount)
+        ? Math.max(0, Math.floor(progress.hintCount))
+        : 0,
   };
 }
 
@@ -106,14 +111,10 @@ export function createLocalProgressRepository({
         return;
       }
 
-      try {
-        storage.setItem(
-          getProgressKey(keyPrefix, puzzleId),
-          JSON.stringify(progress),
-        );
-      } catch {
-        // Local persistence is best effort.
-      }
+      storage.setItem(
+        getProgressKey(keyPrefix, puzzleId),
+        JSON.stringify(progress),
+      );
     },
 
     async clearProgress(puzzleId) {
@@ -121,11 +122,7 @@ export function createLocalProgressRepository({
         return;
       }
 
-      try {
-        storage.removeItem(getProgressKey(keyPrefix, puzzleId));
-      } catch {
-        // Local persistence is best effort.
-      }
+      storage.removeItem(getProgressKey(keyPrefix, puzzleId));
     },
   };
 }

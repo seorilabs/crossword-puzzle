@@ -944,10 +944,16 @@ function App() {
   );
 
   useEffect(() => {
+    // 모든 값이 기본값이면 저장 스킵: clearProgress가 삭제한 키가 재생성되지 않도록 함
+    if (Object.keys(cellValues).length === 0 && earnedHintCredits === 0 && hintCount === 0) {
+      return;
+    }
     void progressRepository.saveProgress(puzzle.puzzleId, {
       cellValues,
       earnedHintCredits,
       hintCount,
+    }).catch(() => {
+      telemetry.impression("progress_save_error", { puzzle_id: puzzle.puzzleId });
     });
   }, [cellValues, earnedHintCredits, hintCount, puzzle.puzzleId]);
 
@@ -1712,16 +1718,29 @@ function App() {
     setCellValues(nextValues);
   }
 
-  function clearProgress() {
+  async function clearProgress(preserveEarnedHintCredits?: number) {
+    const raw = preserveEarnedHintCredits ?? 0;
+    const creditsValue = Number.isFinite(raw) ? Math.max(0, raw) : 0;
+
+    // 저장소 작업 먼저: 실패 시 UI 상태를 건드리지 않아 저장소-UI 일관성 유지
+    if (creditsValue > 0) {
+      await progressRepository.saveProgress(puzzle.puzzleId, {
+        cellValues: {},
+        earnedHintCredits: creditsValue,
+        hintCount: 0,
+      });
+    } else {
+      await progressRepository.clearProgress(puzzle.puzzleId);
+    }
+
     setCellValues({});
-    setEarnedHintCredits(0);
+    setEarnedHintCredits(creditsValue);
     setHintCount(0);
     setHintNotice("");
     setHintToast({ id: 0, message: "" });
     setSelectedDirection("across");
     setSelectedEntryId(getInitialEntryId(puzzle));
     setSelectedCellKey(getInitialEntryStartCellKey(puzzle));
-    void progressRepository.clearProgress(puzzle.puzzleId);
   }
 
   function trackMissionStart(nextMission: DailyMissionState) {
@@ -1781,22 +1800,32 @@ function App() {
     navigate("today");
   }
 
-  function restartMissionAttempt() {
+  async function restartMissionAttempt() {
     if (remainingAttempts === 0) {
       return;
     }
 
-    setIsNewBestTime(false);
-    clearProgress();
-    const nextMission = startMissionAttempt(mission);
-    setMission(nextMission);
-    void missionRepository.saveMission(nextMission);
-    void savePuzzleSnapshot(puzzle, { startedAt: nextMission.lastStartedAt });
-    trackAttemptStart(nextMission, "retry", {
-      earnedHintCredits: 0,
-      hintCount: 0,
-    });
-    navigate("today");
+    const rawCredits = earnedHintCredits;
+    const creditsToPreserve = Number.isFinite(rawCredits) ? Math.max(0, rawCredits) : 0;
+    try {
+      await clearProgress(creditsToPreserve);
+      setIsNewBestTime(false);
+      const nextMission = startMissionAttempt(mission);
+      setMission(nextMission);
+      void missionRepository.saveMission(nextMission).catch(() => {
+        telemetry.impression("mission_save_error", { puzzle_id: puzzle.puzzleId });
+      });
+      void savePuzzleSnapshot(puzzle, { startedAt: nextMission.lastStartedAt }).catch(() => {
+        telemetry.impression("snapshot_save_error", { puzzle_id: puzzle.puzzleId });
+      });
+      trackAttemptStart(nextMission, "retry", {
+        earnedHintCredits: creditsToPreserve,
+        hintCount: 0,
+      });
+      navigate("today");
+    } catch {
+      setHintNotice("재도전 중 오류가 발생했습니다. 다시 시도해 주세요.");
+    }
   }
 
   const commonScreenProps = {
@@ -4551,7 +4580,7 @@ function DevSimulatorScreen({
             <button
               className="toolButton"
               type="button"
-              onClick={clearProgress}
+              onClick={() => { void clearProgress().catch((error) => { console.error("clearProgress 실패:", error); }); }}
             >
               초기화
             </button>

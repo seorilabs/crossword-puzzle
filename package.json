@@ -7,6 +7,7 @@
     "dev": "granite dev",
     "build": "ait build",
     "deploy": "ait deploy",
+    "test:adapters": "node --experimental-strip-types --test src/adapters/*.test.mts",
     "lint": "eslint .",
     "format": "prettier --write .",
     "mobile:install": "npm ci --prefix apps/mobile",
