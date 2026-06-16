@@ -3451,6 +3451,18 @@ function TodayScreen({
     );
   }
 
+  const solvePercent = Math.round(
+    Math.min(
+      100,
+      Math.max(
+        0,
+        puzzle.entries.length > 0
+          ? (completedEntries.length / puzzle.entries.length) * 100
+          : 0,
+      ),
+    ),
+  );
+
   return (
     <>
       <AppHeader
@@ -3538,6 +3550,19 @@ function TodayScreen({
           </div>
         }
       />
+
+      {!isReviewMode ? (
+        <div
+          className="solveProgressBar"
+          role="progressbar"
+          aria-valuenow={solvePercent}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={`퍼즐 완성도 ${solvePercent}%`}
+        >
+          <span style={{ width: `${solvePercent}%` }} />
+        </div>
+      ) : null}
 
       {selectedEntry != null ? (
         <div className="solveClueBar">
