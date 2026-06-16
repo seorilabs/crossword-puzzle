@@ -1801,13 +1801,13 @@ function App() {
     }
 
     const creditsToPreserve = earnedHintCredits;
-    setIsNewBestTime(false);
     try {
       await clearProgress(creditsToPreserve);
     } catch {
       setHintNotice("재도전 중 오류가 발생했습니다. 다시 시도해 주세요.");
       return;
     }
+    setIsNewBestTime(false);
 
     const nextMission = startMissionAttempt(mission);
     setMission(nextMission);
@@ -4572,7 +4572,7 @@ function DevSimulatorScreen({
             <button
               className="toolButton"
               type="button"
-              onClick={clearProgress}
+              onClick={() => { void clearProgress().catch(() => {}); }}
             >
               초기화
             </button>
