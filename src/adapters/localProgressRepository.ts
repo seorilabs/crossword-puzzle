@@ -2,7 +2,7 @@ import {
   createEmptyProgress,
   type ProgressRepository,
   type SavedProgress,
-} from "../../packages/crossword-core/src";
+} from "../../packages/crossword-core/src/repositories.ts";
 
 type KeyValueStorage = {
   getItem(key: string): string | null;

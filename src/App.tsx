@@ -1712,16 +1712,25 @@ function App() {
     setCellValues(nextValues);
   }
 
-  function clearProgress() {
+  async function clearProgress(preserveEarnedHintCredits?: number) {
+    const creditsValue = preserveEarnedHintCredits ?? 0;
     setCellValues({});
-    setEarnedHintCredits(0);
+    setEarnedHintCredits(creditsValue);
     setHintCount(0);
     setHintNotice("");
     setHintToast({ id: 0, message: "" });
     setSelectedDirection("across");
     setSelectedEntryId(getInitialEntryId(puzzle));
     setSelectedCellKey(getInitialEntryStartCellKey(puzzle));
-    void progressRepository.clearProgress(puzzle.puzzleId);
+    if (preserveEarnedHintCredits != null) {
+      await progressRepository.saveProgress(puzzle.puzzleId, {
+        cellValues: {},
+        earnedHintCredits: creditsValue,
+        hintCount: 0,
+      });
+    } else {
+      await progressRepository.clearProgress(puzzle.puzzleId);
+    }
   }
 
   function trackMissionStart(nextMission: DailyMissionState) {
@@ -1781,28 +1790,15 @@ function App() {
     navigate("today");
   }
 
-  function restartMissionAttempt() {
+  async function restartMissionAttempt() {
     if (remainingAttempts === 0) {
       return;
     }
 
     const creditsToPreserve = earnedHintCredits;
     setIsNewBestTime(false);
-
-    // clearProgress() 대신 직접 리셋: 광고 획득 크레딧을 유지하면서 saveProgress 한 번으로 원자적 저장
-    setCellValues({});
-    setHintCount(0);
-    setHintNotice("");
-    setHintToast({ id: 0, message: "" });
-    setSelectedDirection("across");
-    setSelectedEntryId(getInitialEntryId(puzzle));
-    setSelectedCellKey(getInitialEntryStartCellKey(puzzle));
-    setEarnedHintCredits(creditsToPreserve);
-    void progressRepository.saveProgress(puzzle.puzzleId, {
-      cellValues: {},
-      earnedHintCredits: creditsToPreserve,
-      hintCount: 0,
-    });
+    // clearProgress의 모든 리셋을 재사용하되 크레딧만 보존; saveProgress 완료 후 진행
+    await clearProgress(creditsToPreserve);
 
     const nextMission = startMissionAttempt(mission);
     setMission(nextMission);
