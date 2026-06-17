@@ -1,8 +1,10 @@
 import { Button, Paragraph, Top } from "@toss/tds-mobile";
 import type {
   CSSProperties,
+  MouseEvent as ReactMouseEvent,
   PointerEvent as ReactPointerEvent,
   ReactNode,
+  TouchEvent as ReactTouchEvent,
 } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
@@ -3308,17 +3310,12 @@ function TodayScreen({
     return null;
   }
 
-  function handleAnswerSlotInputPointerDown(
-    event: ReactPointerEvent<HTMLInputElement>,
-  ) {
+  function selectAnswerSlotFromPoint(clientX: number, clientY: number) {
     if (selectedEntry == null) {
       return;
     }
 
-    const cellKey = getAnswerSlotCellKeyFromPoint(
-      event.clientX,
-      event.clientY,
-    );
+    const cellKey = getAnswerSlotCellKeyFromPoint(clientX, clientY);
 
     if (cellKey == null) {
       focusNativeInput();
@@ -3332,6 +3329,31 @@ function TodayScreen({
 
     selectEntry(selectedEntry, cellKey);
     focusNativeInput();
+  }
+
+  function handleAnswerSlotInputPointerDown(
+    event: ReactPointerEvent<HTMLInputElement>,
+  ) {
+    selectAnswerSlotFromPoint(event.clientX, event.clientY);
+  }
+
+  function handleAnswerSlotInputClick(
+    event: ReactMouseEvent<HTMLInputElement>,
+  ) {
+    selectAnswerSlotFromPoint(event.clientX, event.clientY);
+  }
+
+  function handleAnswerSlotInputTouchStart(
+    event: ReactTouchEvent<HTMLInputElement>,
+  ) {
+    const touch = event.touches[0] ?? event.changedTouches[0];
+
+    if (touch == null) {
+      focusNativeInput();
+      return;
+    }
+
+    selectAnswerSlotFromPoint(touch.clientX, touch.clientY);
   }
 
   function commitInputValue(value: string, startCellKey = activeCellKey) {
@@ -3574,7 +3596,9 @@ function TodayScreen({
           maxLength={selectedRemainingCellCount}
           spellCheck={false}
           aria-label={`${selectedRemainingCellCount}글자 답 입력`}
+          onClick={handleAnswerSlotInputClick}
           onPointerDown={handleAnswerSlotInputPointerDown}
+          onTouchStart={handleAnswerSlotInputTouchStart}
           onFocus={(event) => moveBoardInputCaretToEnd(event.currentTarget)}
           onCompositionStart={(event) => {
             clearCommitTimer();
