@@ -216,11 +216,26 @@ export function getPuzzleStableSortKey(summary: PuzzleManifestItem) {
 }
 
 export function getPuzzlePublishedTime(summary: PuzzleManifestItem) {
-  if (summary.publishedAt == null) {
+  if (summary.publishedAt != null) {
+    const value = new Date(summary.publishedAt).getTime();
+
+    if (Number.isFinite(value)) {
+      return value;
+    }
+  }
+
+  const slotMatch = summary.slotId?.match(
+    /^(\d{4})-(\d{2})-(\d{2})-h(\d{2})$/,
+  );
+
+  if (slotMatch == null) {
     return undefined;
   }
 
-  const value = new Date(summary.publishedAt).getTime();
+  const [, year, month, day, hour] = slotMatch;
+  const value = new Date(
+    `${year}-${month}-${day}T${hour}:00:00+09:00`,
+  ).getTime();
 
   return Number.isFinite(value) ? value : undefined;
 }
@@ -351,6 +366,69 @@ export function getBonusPuzzleCandidateSummary({
         isPublishedPuzzle(summary),
     ),
   )[0];
+}
+
+export function getOpenPuzzleSummariesForDate({
+  archivePuzzleSummaries,
+  date,
+  dailyFreeSummary,
+  now = Date.now(),
+  selectedPuzzleSummary,
+  unlockedBonusSummaries,
+}: {
+  archivePuzzleSummaries: PuzzleManifestItem[];
+  date: string;
+  dailyFreeSummary?: PuzzleManifestItem;
+  now?: number;
+  selectedPuzzleSummary?: PuzzleManifestItem;
+  unlockedBonusSummaries: PuzzleManifestItem[];
+}) {
+  const summaryByPuzzleId = new Map<string, PuzzleManifestItem>();
+  const addSummary = (summary: PuzzleManifestItem | undefined) => {
+    if (summary == null || summary.date !== date) {
+      return;
+    }
+
+    const existing = summaryByPuzzleId.get(summary.puzzleId);
+    summaryByPuzzleId.set(
+      summary.puzzleId,
+      existing == null ? summary : mergePuzzleSummaryMetadata(existing, summary),
+    );
+  };
+
+  addSummary(
+    dailyFreeSummary != null && isPublishedPuzzle(dailyFreeSummary, now)
+      ? dailyFreeSummary
+      : undefined,
+  );
+  addSummary(
+    selectedPuzzleSummary != null && isPublishedPuzzle(selectedPuzzleSummary, now)
+      ? selectedPuzzleSummary
+      : undefined,
+  );
+  unlockedBonusSummaries.forEach((summary) => {
+    addSummary(isPublishedPuzzle(summary, now) ? summary : undefined);
+  });
+  archivePuzzleSummaries.forEach(addSummary);
+
+  return sortPuzzleSummariesByRecency([...summaryByPuzzleId.values()]);
+}
+
+function mergePuzzleSummaryMetadata(
+  primary: PuzzleManifestItem,
+  fallback: PuzzleManifestItem,
+): PuzzleManifestItem {
+  return {
+    ...fallback,
+    ...primary,
+    alias: primary.alias ?? fallback.alias,
+    metrics: primary.metrics ?? fallback.metrics,
+    packId: primary.packId ?? fallback.packId,
+    path: primary.path !== "" ? primary.path : fallback.path,
+    publishedAt: primary.publishedAt ?? fallback.publishedAt,
+    quality: primary.quality ?? fallback.quality,
+    slotId: primary.slotId ?? fallback.slotId,
+  };
 }
 
 export function uniquePuzzleSummaries(summaries: PuzzleManifestItem[]) {
