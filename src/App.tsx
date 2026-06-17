@@ -508,14 +508,6 @@ function isHangulJamoInput(value: string) {
   );
 }
 
-function hasHangulSyllableInput(value: string) {
-  return /[가-힣]/.test(value);
-}
-
-function getAnswerCommitDelayMs(value: string) {
-  return hasHangulSyllableInput(value) ? 800 : 100;
-}
-
 function getEntryCellIndex(entry: PuzzleEntry, cellKey: string) {
   const cells = getEntryCells(entry);
   const index = cells.findIndex(
@@ -3125,10 +3117,6 @@ function TodayScreen({
   );
   const activeCellKey =
     selectedEntryCellKeys[selectedIndex] ?? getEntryStartCellKey(selectedEntry);
-  const selectedRemainingCellCount = Math.max(
-    1,
-    selectedEntryCells.length - selectedIndex,
-  );
   const pendingAnswerCellValues = useMemo(
     () =>
       selectedEntry == null
@@ -3320,21 +3308,6 @@ function TodayScreen({
     return getAnswerCommitLetters(value, draftLetters.length).length > 0;
   }
 
-  function hasCompleteDraft(value: string, startCellKey = activeCellKey) {
-    if (selectedEntry == null) {
-      return false;
-    }
-
-    const remainingCellCount =
-      selectedEntryCells.length -
-      getEntryCellIndex(selectedEntry, startCellKey);
-
-    return (
-      getAnswerCommitLetters(value, remainingCellCount).length >=
-      remainingCellCount
-    );
-  }
-
   function handleAdvanceInput() {
     const draftLetters = getDraftLetters(inputValue, activeCellKey);
 
@@ -3379,7 +3352,7 @@ function TodayScreen({
   function queueCommitInputValue(
     value: string,
     startCellKey = activeCellKey,
-    delayMs = getAnswerCommitDelayMs(value),
+    delayMs = 320,
   ) {
     if (selectedEntry == null) {
       return;
@@ -3391,7 +3364,13 @@ function TodayScreen({
       return;
     }
 
-    if (!hasCompleteDraft(value, startCellKey)) {
+    if (
+      getAnswerCommitLetters(
+        value,
+        selectedEntryCells.length -
+          getEntryCellIndex(selectedEntry, startCellKey),
+      ).length === 0
+    ) {
       return;
     }
 
@@ -3467,102 +3446,153 @@ function TodayScreen({
       ),
     ),
   );
-  const answerInputStyle = {
-    "--answer-input-length": selectedRemainingCellCount,
+  const answerSlotColumnCount =
+    selectedEntryCells.length <= 5 ? selectedEntryCells.length : 4;
+  const answerSlotInputStyle = {
+    "--answer-slot-width": `${answerSlotColumnCount * 44 + Math.max(0, answerSlotColumnCount - 1) * 7}px`,
   } as CSSProperties;
   const answerInputElement =
     selectedEntry != null && !isReviewMode ? (
-      <input
-        ref={boardInputRef}
-        className="boardNativeInput"
-        style={answerInputStyle}
-        inputMode="text"
-        autoCapitalize="off"
-        autoComplete="off"
-        autoCorrect="off"
-        enterKeyHint="next"
-        spellCheck={false}
-        aria-label={`${selectedRemainingCellCount}글자 답 입력`}
-        onFocus={(event) => moveBoardInputCaretToEnd(event.currentTarget)}
-        onCompositionStart={(event) => {
-          clearCommitTimer();
-          compositionEndValueRef.current = null;
-          isComposingRef.current = true;
-          setIsComposing(true);
-          moveBoardInputCaretToEnd(event.currentTarget);
-        }}
-        onCompositionEnd={(event) => {
-          const nextValue = event.currentTarget.value;
-          isComposingRef.current = false;
-          setIsComposing(false);
-          compositionEndValueRef.current = nextValue;
-          setInputValue(nextValue);
-          moveBoardInputCaretToEnd(event.currentTarget);
-          queueCommitInputValue(nextValue, activeCellKey);
-        }}
-        onChange={(event) => {
-          const nextValue = event.currentTarget.value;
-          const nativeEvent = event.nativeEvent as InputEvent;
-          setInputValue(nextValue);
+      <div className="answerSlotInput">
+        <div
+          className="answerSlotGrid"
+          style={answerSlotInputStyle}
+          role="group"
+          aria-label={`${formatEntryReference(selectedEntry, startLabels)} 답 입력`}
+        >
+          {selectedEntryCellKeys.map((key, index) => {
+            const pendingValue = pendingAnswerCellValues[key] ?? "";
+            const committedValue = cellValues[key] ?? "";
+            const displayValue =
+              pendingValue !== "" ? pendingValue : committedValue;
+            const isActive = key === activeCellKey;
+            const isLocked = isCellLocked(puzzle, cellValues, key);
+            const isWrong =
+              pendingValue === "" &&
+              committedValue !== "" &&
+              committedValue !== getCellAnswerLetter(puzzle, key);
 
-          if (
-            isComposing ||
-            isComposingRef.current ||
-            nativeEvent.isComposing ||
-            nativeEvent.inputType === "insertCompositionText"
-          ) {
+            return (
+              <button
+                key={key}
+                className={[
+                  "answerSlot",
+                  committedValue !== "" ? "answerSlotFilled" : "",
+                  isActive ? "answerSlotActive" : "",
+                  pendingValue !== "" ? "answerSlotPending" : "",
+                  isLocked ? "answerSlotLocked" : "",
+                  isWrong ? "answerSlotWrong" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                type="button"
+                aria-label={`${index + 1}번째 글자 ${
+                  displayValue === "" ? "비어 있음" : displayValue
+                }`}
+                aria-pressed={isActive}
+                onClick={() => {
+                  selectEntry(selectedEntry, key);
+                  focusNativeInput();
+                }}
+              >
+                {displayValue}
+              </button>
+            );
+          })}
+        </div>
+        <input
+          ref={boardInputRef}
+          className="answerSlotNativeInput"
+          inputMode="text"
+          autoCapitalize="off"
+          autoComplete="off"
+          autoCorrect="off"
+          enterKeyHint="next"
+          maxLength={selectedEntry.answer.length}
+          spellCheck={false}
+          value={inputValue}
+          aria-label={`${selectedEntry.answer.length}글자 답 입력`}
+          onFocus={(event) => moveBoardInputCaretToEnd(event.currentTarget)}
+          onCompositionStart={(event) => {
             clearCommitTimer();
-            return;
-          }
-
-          if (compositionEndValueRef.current === nextValue) {
             compositionEndValueRef.current = null;
-            return;
-          }
+            isComposingRef.current = true;
+            setIsComposing(true);
+            moveBoardInputCaretToEnd(event.currentTarget);
+          }}
+          onCompositionEnd={(event) => {
+            const nextValue = event.currentTarget.value;
+            isComposingRef.current = false;
+            setIsComposing(false);
+            compositionEndValueRef.current = nextValue;
+            setInputValue(nextValue);
+            moveBoardInputCaretToEnd(event.currentTarget);
+            queueCommitInputValue(nextValue, activeCellKey, 120);
+          }}
+          onChange={(event) => {
+            const nextValue = event.currentTarget.value;
+            const nativeEvent = event.nativeEvent as InputEvent;
+            setInputValue(nextValue);
 
-          moveBoardInputCaretToEnd(event.currentTarget);
-          queueCommitInputValue(nextValue);
-        }}
-        onKeyDown={(event) => {
-          const nativeEvent = event.nativeEvent as KeyboardEvent;
+            if (
+              isComposing ||
+              isComposingRef.current ||
+              nativeEvent.isComposing ||
+              nativeEvent.inputType === "insertCompositionText"
+            ) {
+              clearCommitTimer();
+              return;
+            }
 
-          if (isComposing || nativeEvent.isComposing) {
-            return;
-          }
+            if (compositionEndValueRef.current === nextValue) {
+              compositionEndValueRef.current = null;
+              return;
+            }
 
-          if (
-            event.key === "Backspace" &&
-            inputValue === "" &&
-            selectedEntry != null
-          ) {
-            event.preventDefault();
-            clearAnswerCell(selectedEntry, activeCellKey);
-            return;
-          }
+            moveBoardInputCaretToEnd(event.currentTarget);
+            queueCommitInputValue(nextValue);
+          }}
+          onKeyDown={(event) => {
+            const nativeEvent = event.nativeEvent as KeyboardEvent;
 
-          if (event.key === "ArrowLeft") {
-            event.preventDefault();
-            selectRelativeCell(-1);
-            return;
-          }
+            if (isComposing || nativeEvent.isComposing) {
+              return;
+            }
 
-          if (event.key === "ArrowRight") {
-            event.preventDefault();
-            selectRelativeCell(1);
-            return;
-          }
+            if (
+              event.key === "Backspace" &&
+              inputValue === "" &&
+              selectedEntry != null
+            ) {
+              event.preventDefault();
+              clearAnswerCell(selectedEntry, activeCellKey);
+              return;
+            }
 
-          if (
-            event.key === "Enter" ||
-            event.key === " " ||
-            event.code === "Space"
-          ) {
-            event.preventDefault();
-            handleAdvanceInput();
-          }
-        }}
-        onBlur={(event) => preserveInputOnBlur(event.currentTarget.value)}
-      />
+            if (event.key === "ArrowLeft") {
+              event.preventDefault();
+              selectRelativeCell(-1);
+              return;
+            }
+
+            if (event.key === "ArrowRight") {
+              event.preventDefault();
+              selectRelativeCell(1);
+              return;
+            }
+
+            if (
+              event.key === "Enter" ||
+              event.key === " " ||
+              event.code === "Space"
+            ) {
+              event.preventDefault();
+              handleAdvanceInput();
+            }
+          }}
+          onBlur={(event) => preserveInputOnBlur(event.currentTarget.value)}
+        />
+      </div>
     ) : null;
 
   return (

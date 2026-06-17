@@ -1483,34 +1483,6 @@ button:disabled {
   -webkit-line-clamp: 2;
 }
 
-.boardNativeInput {
-  box-sizing: border-box;
-  width: min(
-    100%,
-    max(96px, calc((var(--answer-input-length, 3) * 2.25em) + 34px))
-  );
-  align-self: center;
-  min-height: 48px;
-  border: 1px solid #d1d6db;
-  border-radius: 8px;
-  background: #ffffff;
-  caret-color: #00866f;
-  color: #191f28;
-  font-size: 16px;
-  line-height: 22px;
-  outline: none;
-  padding: 12px 14px;
-  text-align: center;
-  transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
-}
-
-.boardNativeInput:focus {
-  border-color: #00866f;
-  box-shadow: 0 0 0 3px rgba(0, 134, 111, 0.14);
-}
-
 @media (max-width: 390px) {
   .bonusPuzzlePanel {
     grid-template-columns: minmax(0, 1fr);
@@ -1647,6 +1619,92 @@ button:disabled {
 
 .solveClueTextComplete {
   color: #00866f;
+}
+
+.answerSlotInput {
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  justify-content: center;
+}
+
+.answerSlotGrid {
+  display: flex;
+  width: var(--answer-slot-width);
+  max-width: 100%;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 7px;
+}
+
+.answerSlot {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid #d6dee6;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #191f28;
+  font: inherit;
+  font-size: 21px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 0;
+}
+
+.answerSlotFilled {
+  border-color: #c9eee6;
+  background: #effcf8;
+  color: #00866f;
+}
+
+.answerSlotActive {
+  border-color: #00a88f;
+  box-shadow: 0 0 0 3px rgba(0, 168, 143, 0.14);
+}
+
+.answerSlotPending {
+  border-color: #f2c94c;
+  background: #fff9db;
+  color: #191f28;
+}
+
+.answerSlotActive.answerSlotPending {
+  border-color: #00a88f;
+}
+
+.answerSlotLocked {
+  border-color: #7edac8;
+  background: #e6f8f2;
+  color: #00866f;
+}
+
+.answerSlotWrong {
+  border-color: #f4a6a6;
+  background: #fff1f0;
+  color: #e5484d;
+}
+
+.answerSlotActive.answerSlotWrong {
+  border-color: #e5484d;
+  box-shadow: 0 0 0 3px rgba(229, 72, 77, 0.14);
+}
+
+.answerSlotNativeInput {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  caret-color: transparent;
+  color: transparent;
+  font-size: 16px;
+  opacity: 0.02;
+  outline: none;
+  pointer-events: none;
 }
 
 .answerInput {
