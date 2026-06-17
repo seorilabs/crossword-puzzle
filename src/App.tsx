@@ -1076,29 +1076,36 @@ function App() {
       }),
     [completedOrUnlockedPuzzleIds, dailyFreeSummary, puzzleSummaries, todayKey],
   );
+  const bonusPuzzlePanelIsWaiting =
+    loadState !== "loading" &&
+    unlockedPlayableBonusSummary == null &&
+    bonusCandidateSummary == null &&
+    unlockedBonusSummaries.length === 0;
   const nextBonusPuzzlePublishedAt = useMemo(() => {
     const nowMs = now.getTime();
-    const next = puzzleSummaries
-      .filter(
-        (s) =>
-          s.date === todayKey &&
-          s.puzzleId !== dailyFreeSummary?.puzzleId &&
-          !completedOrUnlockedPuzzleIds.has(s.puzzleId) &&
-          s.publishedAt != null &&
-          new Date(s.publishedAt).getTime() > nowMs,
-      )
-      .sort(
-        (a, b) =>
-          new Date(a.publishedAt!).getTime() - new Date(b.publishedAt!).getTime(),
-      )[0];
+    const next = puzzleSummaries.reduce<PuzzleManifestItem | undefined>((min, s) => {
+      if (
+        s.date !== todayKey ||
+        s.puzzleId === dailyFreeSummary?.puzzleId ||
+        completedOrUnlockedPuzzleIds.has(s.puzzleId) ||
+        s.publishedAt == null ||
+        new Date(s.publishedAt).getTime() < nowMs
+      ) {
+        return min;
+      }
+      return min == null ||
+        new Date(s.publishedAt).getTime() < new Date(min.publishedAt!).getTime()
+        ? s
+        : min;
+    }, undefined);
     return next?.publishedAt != null ? new Date(next.publishedAt) : undefined;
   }, [completedOrUnlockedPuzzleIds, dailyFreeSummary, now, puzzleSummaries, todayKey]);
   const nextBonusPuzzlePublishedAtMs = nextBonusPuzzlePublishedAt?.getTime() ?? null;
   useEffect(() => {
-    if (nextBonusPuzzlePublishedAtMs == null) return;
+    if (nextBonusPuzzlePublishedAtMs == null || !bonusPuzzlePanelIsWaiting) return;
     const id = window.setInterval(() => setNow(new Date()), 60_000);
     return () => window.clearInterval(id);
-  }, [nextBonusPuzzlePublishedAtMs]);
+  }, [bonusPuzzlePanelIsWaiting, nextBonusPuzzlePublishedAtMs]);
   const selectedPuzzleSummary = useMemo(
     () =>
       findPuzzleSummaryById(puzzleSummaries, puzzle.puzzleId) ??
@@ -2536,6 +2543,9 @@ function formatWaitingDescription(nextAt: Date | undefined, intervalHours: numbe
     return `${intervalHours}시간마다 새 보너스 퍼즐이 발행돼요.`;
   }
   const totalMinutes = Math.ceil((nextAt.getTime() - now.getTime()) / 60_000);
+  if (totalMinutes <= 0) {
+    return "새 보너스 퍼즐이 곧 발행돼요.";
+  }
   if (totalMinutes < 60) {
     return `${totalMinutes}분 후 새 보너스 퍼즐이 발행돼요.`;
   }
