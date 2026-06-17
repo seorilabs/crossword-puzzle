@@ -1,5 +1,11 @@
 import { Button, Paragraph, Top } from "@toss/tds-mobile";
-import type { CSSProperties, ReactNode } from "react";
+import type {
+  CSSProperties,
+  MouseEvent as ReactMouseEvent,
+  PointerEvent as ReactPointerEvent,
+  ReactNode,
+  TouchEvent as ReactTouchEvent,
+} from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import {
@@ -106,6 +112,9 @@ type DateCardState = {
 };
 
 type CompletionStatsByPuzzleId = Record<string, PuzzleCompletionStats>;
+
+const DIRECT_INPUT_COMMIT_DELAY_MS = 140;
+const COMPOSITION_COMMIT_DELAY_MS = 0;
 
 type DateSelectionProps = {
   completionStatsByPuzzleId: CompletionStatsByPuzzleId;
@@ -506,14 +515,6 @@ function isHangulJamoInput(value: string) {
   return (
     letters.length > 0 && letters.every((letter) => isHangulJamoLetter(letter))
   );
-}
-
-function hasHangulSyllableInput(value: string) {
-  return /[가-힣]/.test(value);
-}
-
-function getAnswerCommitDelayMs(value: string) {
-  return hasHangulSyllableInput(value) ? 800 : 100;
 }
 
 function getEntryCellIndex(entry: PuzzleEntry, cellKey: string) {
@@ -3099,6 +3100,7 @@ function TodayScreen({
   const isComposingRef = useRef(false);
   const [inputValue, setInputValue] = useState("");
   const [isComposing, setIsComposing] = useState(false);
+  const compositionStartCellKeyRef = useRef<string | null>(null);
   const compositionEndValueRef = useRef<string | null>(null);
   // A finished puzzle is shown read-only so the saved answers stay intact while
   // the player reviews the completed board.
@@ -3254,6 +3256,7 @@ function TodayScreen({
   useEffect(() => {
     clearCommitTimer();
     compositionEndValueRef.current = null;
+    compositionStartCellKeyRef.current = null;
     isComposingRef.current = false;
     resetBoardInputValue();
     setIsComposing(false);
@@ -3282,6 +3285,75 @@ function TodayScreen({
   function selectCellAndFocus(row: number, col: number) {
     selectCell(row, col);
     focusNativeInput();
+  }
+
+  function getAnswerSlotCellKeyFromPoint(clientX: number, clientY: number) {
+    for (const slot of document.querySelectorAll<HTMLElement>(".answerSlot")) {
+      const cellKey = slot.dataset.cellKey;
+
+      if (cellKey == null || !selectedEntryCellKeys.includes(cellKey)) {
+        continue;
+      }
+
+      const rect = slot.getBoundingClientRect();
+
+      if (
+        clientX >= rect.left &&
+        clientX <= rect.right &&
+        clientY >= rect.top &&
+        clientY <= rect.bottom
+      ) {
+        return cellKey;
+      }
+    }
+
+    return null;
+  }
+
+  function selectAnswerSlotFromPoint(clientX: number, clientY: number) {
+    if (selectedEntry == null) {
+      return;
+    }
+
+    const cellKey = getAnswerSlotCellKeyFromPoint(clientX, clientY);
+
+    if (cellKey == null) {
+      focusNativeInput();
+      return;
+    }
+
+    if (isComposingRef.current || isComposing) {
+      focusNativeInput();
+      return;
+    }
+
+    selectEntry(selectedEntry, cellKey);
+    focusNativeInput();
+  }
+
+  function handleAnswerSlotInputPointerDown(
+    event: ReactPointerEvent<HTMLInputElement>,
+  ) {
+    selectAnswerSlotFromPoint(event.clientX, event.clientY);
+  }
+
+  function handleAnswerSlotInputClick(
+    event: ReactMouseEvent<HTMLInputElement>,
+  ) {
+    selectAnswerSlotFromPoint(event.clientX, event.clientY);
+  }
+
+  function handleAnswerSlotInputTouchStart(
+    event: ReactTouchEvent<HTMLInputElement>,
+  ) {
+    const touch = event.touches[0] ?? event.changedTouches[0];
+
+    if (touch == null) {
+      focusNativeInput();
+      return;
+    }
+
+    selectAnswerSlotFromPoint(touch.clientX, touch.clientY);
   }
 
   function commitInputValue(value: string, startCellKey = activeCellKey) {
@@ -3318,21 +3390,6 @@ function TodayScreen({
     const draftLetters = getDraftLetters(value, startCellKey);
 
     return getAnswerCommitLetters(value, draftLetters.length).length > 0;
-  }
-
-  function hasCompleteDraft(value: string, startCellKey = activeCellKey) {
-    if (selectedEntry == null) {
-      return false;
-    }
-
-    const remainingCellCount =
-      selectedEntryCells.length -
-      getEntryCellIndex(selectedEntry, startCellKey);
-
-    return (
-      getAnswerCommitLetters(value, remainingCellCount).length >=
-      remainingCellCount
-    );
   }
 
   function handleAdvanceInput() {
@@ -3379,7 +3436,7 @@ function TodayScreen({
   function queueCommitInputValue(
     value: string,
     startCellKey = activeCellKey,
-    delayMs = getAnswerCommitDelayMs(value),
+    delayMs = DIRECT_INPUT_COMMIT_DELAY_MS,
   ) {
     if (selectedEntry == null) {
       return;
@@ -3391,7 +3448,13 @@ function TodayScreen({
       return;
     }
 
-    if (!hasCompleteDraft(value, startCellKey)) {
+    if (
+      getAnswerCommitLetters(
+        value,
+        selectedEntryCells.length -
+          getEntryCellIndex(selectedEntry, startCellKey),
+      ).length === 0
+    ) {
       return;
     }
 
@@ -3467,102 +3530,170 @@ function TodayScreen({
       ),
     ),
   );
-  const answerInputStyle = {
-    "--answer-input-length": selectedRemainingCellCount,
+  const answerSlotColumnCount =
+    selectedEntryCells.length <= 5 ? selectedEntryCells.length : 4;
+  const answerSlotInputStyle = {
+    "--answer-slot-width": `${answerSlotColumnCount * 44 + Math.max(0, answerSlotColumnCount - 1) * 7}px`,
   } as CSSProperties;
   const answerInputElement =
     selectedEntry != null && !isReviewMode ? (
-      <input
-        ref={boardInputRef}
-        className="boardNativeInput"
-        style={answerInputStyle}
-        inputMode="text"
-        autoCapitalize="off"
-        autoComplete="off"
-        autoCorrect="off"
-        enterKeyHint="next"
-        spellCheck={false}
-        aria-label={`${selectedRemainingCellCount}글자 답 입력`}
-        onFocus={(event) => moveBoardInputCaretToEnd(event.currentTarget)}
-        onCompositionStart={(event) => {
-          clearCommitTimer();
-          compositionEndValueRef.current = null;
-          isComposingRef.current = true;
-          setIsComposing(true);
-          moveBoardInputCaretToEnd(event.currentTarget);
-        }}
-        onCompositionEnd={(event) => {
-          const nextValue = event.currentTarget.value;
-          isComposingRef.current = false;
-          setIsComposing(false);
-          compositionEndValueRef.current = nextValue;
-          setInputValue(nextValue);
-          moveBoardInputCaretToEnd(event.currentTarget);
-          queueCommitInputValue(nextValue, activeCellKey);
-        }}
-        onChange={(event) => {
-          const nextValue = event.currentTarget.value;
-          const nativeEvent = event.nativeEvent as InputEvent;
-          setInputValue(nextValue);
+      <div className="answerSlotInput">
+        <div
+          className="answerSlotGrid"
+          style={answerSlotInputStyle}
+          role="group"
+          aria-label={`${formatEntryReference(selectedEntry, startLabels)} 답 입력`}
+        >
+          {selectedEntryCellKeys.map((key, index) => {
+            const pendingValue = pendingAnswerCellValues[key] ?? "";
+            const committedValue = cellValues[key] ?? "";
+            const displayValue =
+              pendingValue !== "" ? pendingValue : committedValue;
+            const isActive = key === activeCellKey;
+            const isLocked = isCellLocked(puzzle, cellValues, key);
+            const isWrong =
+              pendingValue === "" &&
+              committedValue !== "" &&
+              committedValue !== getCellAnswerLetter(puzzle, key);
 
-          if (
-            isComposing ||
-            isComposingRef.current ||
-            nativeEvent.isComposing ||
-            nativeEvent.inputType === "insertCompositionText"
-          ) {
+            return (
+              <button
+                key={key}
+                data-cell-key={key}
+                className={[
+                  "answerSlot",
+                  committedValue !== "" ? "answerSlotFilled" : "",
+                  isActive ? "answerSlotActive" : "",
+                  pendingValue !== "" ? "answerSlotPending" : "",
+                  isLocked ? "answerSlotLocked" : "",
+                  isWrong ? "answerSlotWrong" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                type="button"
+                aria-label={`${index + 1}번째 글자 ${
+                  displayValue === "" ? "비어 있음" : displayValue
+                }`}
+                aria-pressed={isActive}
+                onClick={() => {
+                  selectEntry(selectedEntry, key);
+                  focusNativeInput();
+                }}
+              >
+                {displayValue}
+              </button>
+            );
+          })}
+        </div>
+        <input
+          ref={boardInputRef}
+          className="answerSlotNativeInput"
+          inputMode="text"
+          autoCapitalize="off"
+          autoComplete="off"
+          autoCorrect="off"
+          enterKeyHint="next"
+          maxLength={selectedRemainingCellCount}
+          spellCheck={false}
+          aria-label={`${selectedRemainingCellCount}글자 답 입력`}
+          onClick={handleAnswerSlotInputClick}
+          onPointerDown={handleAnswerSlotInputPointerDown}
+          onTouchStart={handleAnswerSlotInputTouchStart}
+          onFocus={(event) => moveBoardInputCaretToEnd(event.currentTarget)}
+          onCompositionStart={(event) => {
             clearCommitTimer();
-            return;
-          }
-
-          if (compositionEndValueRef.current === nextValue) {
+            compositionStartCellKeyRef.current = activeCellKey;
             compositionEndValueRef.current = null;
-            return;
-          }
+            isComposingRef.current = true;
+            setIsComposing(true);
+            moveBoardInputCaretToEnd(event.currentTarget);
+          }}
+          onCompositionEnd={(event) => {
+            const nextValue = event.currentTarget.value;
+            const startCellKey = compositionStartCellKeyRef.current;
 
-          moveBoardInputCaretToEnd(event.currentTarget);
-          queueCommitInputValue(nextValue);
-        }}
-        onKeyDown={(event) => {
-          const nativeEvent = event.nativeEvent as KeyboardEvent;
+            isComposingRef.current = false;
+            compositionStartCellKeyRef.current = null;
+            setIsComposing(false);
 
-          if (isComposing || nativeEvent.isComposing) {
-            return;
-          }
+            if (startCellKey == null) {
+              resetBoardInputValue();
+              return;
+            }
 
-          if (
-            event.key === "Backspace" &&
-            inputValue === "" &&
-            selectedEntry != null
-          ) {
-            event.preventDefault();
-            clearAnswerCell(selectedEntry, activeCellKey);
-            return;
-          }
+            compositionEndValueRef.current = nextValue;
+            setInputValue(nextValue);
+            moveBoardInputCaretToEnd(event.currentTarget);
+            queueCommitInputValue(
+              nextValue,
+              startCellKey,
+              COMPOSITION_COMMIT_DELAY_MS,
+            );
+          }}
+          onChange={(event) => {
+            const nextValue = event.currentTarget.value;
+            const nativeEvent = event.nativeEvent as InputEvent;
 
-          if (event.key === "ArrowLeft") {
-            event.preventDefault();
-            selectRelativeCell(-1);
-            return;
-          }
+            if (
+              isComposing ||
+              isComposingRef.current ||
+              nativeEvent.isComposing ||
+              nativeEvent.inputType === "insertCompositionText"
+            ) {
+              clearCommitTimer();
+              return;
+            }
 
-          if (event.key === "ArrowRight") {
-            event.preventDefault();
-            selectRelativeCell(1);
-            return;
-          }
+            setInputValue(nextValue);
+            if (compositionEndValueRef.current === nextValue) {
+              compositionEndValueRef.current = null;
+              return;
+            }
 
-          if (
-            event.key === "Enter" ||
-            event.key === " " ||
-            event.code === "Space"
-          ) {
-            event.preventDefault();
-            handleAdvanceInput();
-          }
-        }}
-        onBlur={(event) => preserveInputOnBlur(event.currentTarget.value)}
-      />
+            moveBoardInputCaretToEnd(event.currentTarget);
+            queueCommitInputValue(nextValue);
+          }}
+          onKeyDown={(event) => {
+            const nativeEvent = event.nativeEvent as KeyboardEvent;
+
+            if (isComposing || nativeEvent.isComposing) {
+              return;
+            }
+
+            if (
+              event.key === "Backspace" &&
+              inputValue === "" &&
+              selectedEntry != null
+            ) {
+              event.preventDefault();
+              clearAnswerCell(selectedEntry, activeCellKey);
+              return;
+            }
+
+            if (event.key === "ArrowLeft") {
+              event.preventDefault();
+              selectRelativeCell(-1);
+              return;
+            }
+
+            if (event.key === "ArrowRight") {
+              event.preventDefault();
+              selectRelativeCell(1);
+              return;
+            }
+
+            if (
+              event.key === "Enter" ||
+              event.key === " " ||
+              event.code === "Space"
+            ) {
+              event.preventDefault();
+              handleAdvanceInput();
+            }
+          }}
+          onBlur={(event) => preserveInputOnBlur(event.currentTarget.value)}
+        />
+      </div>
     ) : null;
 
   return (
