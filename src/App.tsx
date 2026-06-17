@@ -2399,9 +2399,12 @@ function HomeScreen({
         selectPuzzle={selectPuzzle}
       />
 
-      <section
+      <button
         className="cluePeek"
-        aria-label="대표 단서"
+        type="button"
+        aria-label={`${primaryLabel}: 대표 단서`}
+        disabled={isPrimaryDisabled}
+        onClick={isCompleted ? () => navigate("result") : startOrResumeMission}
       >
         <span>
           {isLoadingPuzzlePack
@@ -2415,7 +2418,7 @@ function HomeScreen({
             ? "불러오는 중"
             : (selectedEntry?.clue ?? "단서 준비 중")}
         </strong>
-      </section>
+      </button>
 
       <HintRewardPanel
         hintBalance={hintBalance}

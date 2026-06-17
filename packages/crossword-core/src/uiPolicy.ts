@@ -216,11 +216,26 @@ export function getPuzzleStableSortKey(summary: PuzzleManifestItem) {
 }
 
 export function getPuzzlePublishedTime(summary: PuzzleManifestItem) {
-  if (summary.publishedAt == null) {
+  if (summary.publishedAt != null) {
+    const value = new Date(summary.publishedAt).getTime();
+
+    if (Number.isFinite(value)) {
+      return value;
+    }
+  }
+
+  const slotMatch = summary.slotId?.match(
+    /^(\d{4})-(\d{2})-(\d{2})-h(\d{2})$/,
+  );
+
+  if (slotMatch == null) {
     return undefined;
   }
 
-  const value = new Date(summary.publishedAt).getTime();
+  const [, year, month, day, hour] = slotMatch;
+  const value = new Date(
+    `${year}-${month}-${day}T${hour}:00:00+09:00`,
+  ).getTime();
 
   return Number.isFinite(value) ? value : undefined;
 }

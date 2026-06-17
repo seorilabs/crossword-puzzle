@@ -51,6 +51,30 @@ describe("getOpenPuzzleSummariesForDate", () => {
     );
   });
 
+  it("uses slotId when publishedAt is missing to exclude future remote slots", () => {
+    const currentSlot = createSummary("current-slot", {
+      publishedAt: undefined,
+      slotId: "2026-06-12-h10",
+    });
+    const futureSlot = createSummary("future-slot", {
+      publishedAt: undefined,
+      slotId: "2026-06-12-h12",
+    });
+
+    const result = getOpenPuzzleSummariesForDate({
+      archivePuzzleSummaries: [],
+      date: "2026-06-12",
+      dailyFreeSummary: currentSlot,
+      now,
+      unlockedBonusSummaries: [futureSlot],
+    });
+
+    assert.deepEqual(
+      result.map((summary) => summary.puzzleId),
+      ["current-slot"],
+    );
+  });
+
   it("keeps archived same-day records even when their publishedAt is in the future", () => {
     const archivedFuture = createSummary("archived-future", {
       publishedAt: "2026-06-12T13:00:00.000Z",

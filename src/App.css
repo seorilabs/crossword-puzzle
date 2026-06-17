@@ -586,6 +586,20 @@ button:disabled {
   box-sizing: border-box;
 }
 
+.cluePeek:not(:disabled) {
+  cursor: pointer;
+}
+
+.cluePeek:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.cluePeek:focus-visible {
+  outline: 3px solid rgba(0, 168, 143, 0.32);
+  outline-offset: 2px;
+}
+
 .cluePeek strong {
   font-size: 17px;
   line-height: 24px;
