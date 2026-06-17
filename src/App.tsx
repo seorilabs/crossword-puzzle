@@ -1088,13 +1088,15 @@ function App() {
         s.date !== todayKey ||
         s.puzzleId === dailyFreeSummary?.puzzleId ||
         completedOrUnlockedPuzzleIds.has(s.puzzleId) ||
-        s.publishedAt == null ||
-        new Date(s.publishedAt).getTime() < nowMs - 60_000
+        s.publishedAt == null
       ) {
         return min;
       }
-      return min == null ||
-        new Date(s.publishedAt).getTime() < new Date(min.publishedAt!).getTime()
+      const publishedAtMs = new Date(s.publishedAt).getTime();
+      if (!Number.isFinite(publishedAtMs) || publishedAtMs < nowMs - 60_000) {
+        return min;
+      }
+      return min == null || publishedAtMs < new Date(min.publishedAt!).getTime()
         ? s
         : min;
     }, undefined);
@@ -1106,8 +1108,15 @@ function App() {
     const nowMs = Date.now();
     const msUntilNextMinute = Math.ceil(nowMs / 60_000) * 60_000 - nowMs;
     const msUntilNextAt = Math.max(0, nextBonusPuzzlePublishedAtMs - nowMs);
-    const msUntilFirstTick = Math.max(1, Math.min(msUntilNextMinute, msUntilNextAt));
+    const msUntilFirstTick = Math.min(msUntilNextMinute, msUntilNextAt);
     let intervalId: ReturnType<typeof setInterval> | null = null;
+    if (msUntilFirstTick === 0) {
+      setNow(new Date());
+      intervalId = setInterval(() => setNow(new Date()), 60_000);
+      return () => {
+        if (intervalId != null) clearInterval(intervalId);
+      };
+    }
     const timeoutId = setTimeout(() => {
       setNow(new Date());
       intervalId = setInterval(() => setNow(new Date()), 60_000);
@@ -2551,7 +2560,8 @@ function getBonusPuzzleMeta(summary?: PuzzleManifestItem) {
 
 function formatWaitingDescription(nextAt: Date | undefined, intervalHours: number, now: Date): string {
   if (nextAt == null) {
-    return `${intervalHours}시간마다 새 보너스 퍼즐이 발행돼요.`;
+    const safeHours = Number.isFinite(intervalHours) ? Math.max(1, Math.floor(intervalHours)) : 2;
+    return `${safeHours}시간마다 새 보너스 퍼즐이 발행돼요.`;
   }
   const totalMinutes = Math.ceil((nextAt.getTime() - now.getTime()) / 60_000);
   if (totalMinutes <= 0) {
