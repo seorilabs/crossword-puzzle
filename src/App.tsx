@@ -3392,6 +3392,21 @@ function TodayScreen({
     return getAnswerCommitLetters(value, draftLetters.length).length > 0;
   }
 
+  function hasCompleteDraft(value: string, startCellKey = activeCellKey) {
+    if (selectedEntry == null) {
+      return false;
+    }
+
+    const remainingCellCount =
+      selectedEntryCells.length -
+      getEntryCellIndex(selectedEntry, startCellKey);
+
+    return (
+      getAnswerCommitLetters(value, remainingCellCount).length >=
+      remainingCellCount
+    );
+  }
+
   function handleAdvanceInput() {
     const draftLetters = getDraftLetters(inputValue, activeCellKey);
 
@@ -3448,13 +3463,7 @@ function TodayScreen({
       return;
     }
 
-    if (
-      getAnswerCommitLetters(
-        value,
-        selectedEntryCells.length -
-          getEntryCellIndex(selectedEntry, startCellKey),
-      ).length === 0
-    ) {
+    if (!hasCompleteDraft(value, startCellKey)) {
       return;
     }
 
