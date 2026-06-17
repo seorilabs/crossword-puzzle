@@ -2,7 +2,7 @@
   "conditions": [
     {
       "name": "ios_app_store_review_ads_off",
-      "expression": "app.id == '1:547625965706:ios:1b21e504c7895f959ef573'",
+      "expression": "appId == '1:547625965706:ios:1b21e504c7895f959ef573'",
       "tagColor": "INDIGO"
     }
   ],
