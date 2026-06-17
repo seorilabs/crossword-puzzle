@@ -1089,7 +1089,7 @@ function App() {
         s.puzzleId === dailyFreeSummary?.puzzleId ||
         completedOrUnlockedPuzzleIds.has(s.puzzleId) ||
         s.publishedAt == null ||
-        new Date(s.publishedAt).getTime() < nowMs
+        new Date(s.publishedAt).getTime() < nowMs - 60_000
       ) {
         return min;
       }
