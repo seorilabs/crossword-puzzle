@@ -137,7 +137,9 @@ type RewardedAdStatus = "idle" | "loading";
 type BonusPuzzlePanelState = {
   adsEnabled: boolean;
   candidateSummary?: PuzzleManifestItem;
+  generationIntervalHours: number;
   isAdBusy: boolean;
+  nextBonusPublishedAt?: Date;
   notice: string;
   status: "available" | "loading" | "unlocked" | "used" | "waiting";
   unlockedSummary?: PuzzleManifestItem;
@@ -1072,6 +1074,23 @@ function App() {
       }),
     [completedOrUnlockedPuzzleIds, dailyFreeSummary, puzzleSummaries, todayKey],
   );
+  const nextBonusPuzzlePublishedAt = useMemo(() => {
+    const now = Date.now();
+    const next = puzzleSummaries
+      .filter(
+        (s) =>
+          s.date === todayKey &&
+          s.puzzleId !== dailyFreeSummary?.puzzleId &&
+          !completedOrUnlockedPuzzleIds.has(s.puzzleId) &&
+          s.publishedAt != null &&
+          new Date(s.publishedAt).getTime() > now,
+      )
+      .sort(
+        (a, b) =>
+          new Date(a.publishedAt!).getTime() - new Date(b.publishedAt!).getTime(),
+      )[0];
+    return next?.publishedAt != null ? new Date(next.publishedAt) : undefined;
+  }, [completedOrUnlockedPuzzleIds, dailyFreeSummary, puzzleSummaries, todayKey]);
   const selectedPuzzleSummary = useMemo(
     () =>
       findPuzzleSummaryById(puzzleSummaries, puzzle.puzzleId) ??
@@ -1144,7 +1163,9 @@ function App() {
   const bonusPuzzlePanelState: BonusPuzzlePanelState = {
     adsEnabled: launchConfig.rewardedBonusPuzzleAdsEnabled,
     candidateSummary: bonusCandidateSummary,
+    generationIntervalHours: launchConfig.puzzleGenerationIntervalHours,
     isAdBusy: bonusAdStatus === "loading",
+    nextBonusPublishedAt: nextBonusPuzzlePublishedAt,
     notice: bonusNotice,
     status:
       loadState === "loading"
@@ -2501,6 +2522,25 @@ function getBonusPuzzleMeta(summary?: PuzzleManifestItem) {
     : `${aliasLabel} · ${slotLabel} 도착 · ${wordCountLabel}`;
 }
 
+function formatWaitingDescription(nextAt: Date | undefined, intervalHours: number): string {
+  if (nextAt == null) {
+    return `${intervalHours}시간마다 새 보너스 퍼즐이 발행돼요.`;
+  }
+  const diffMs = nextAt.getTime() - Date.now();
+  if (diffMs <= 0) {
+    return "새 보너스 퍼즐이 곧 발행돼요.";
+  }
+  const totalMinutes = Math.ceil(diffMs / 60_000);
+  if (totalMinutes < 60) {
+    return `${totalMinutes}분 후 새 보너스 퍼즐이 발행돼요.`;
+  }
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return minutes === 0
+    ? `${hours}시간 후 새 보너스 퍼즐이 발행돼요.`
+    : `${hours}시간 ${minutes}분 후 새 보너스 퍼즐이 발행돼요.`;
+}
+
 function BonusPuzzlePanel({ onAction, state }: BonusPuzzlePanelProps) {
   const summary = state.unlockedSummary ?? state.candidateSummary;
   const title =
@@ -2522,7 +2562,7 @@ function BonusPuzzlePanel({ onAction, state }: BonusPuzzlePanelProps) {
           ? `${getBonusPuzzleMeta(summary)} · 기록에서 다시 볼 수 있어요.`
           : state.status === "loading"
             ? "원격 퍼즐팩을 확인하고 있어요."
-            : "2시간 배치가 새 퍼즐을 발행하면 열 수 있어요.";
+            : formatWaitingDescription(state.nextBonusPublishedAt, state.generationIntervalHours);
   const buttonLabel =
     state.status === "available"
       ? state.isAdBusy
