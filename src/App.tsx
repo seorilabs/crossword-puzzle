@@ -2325,31 +2325,65 @@ function HomeScreen({
 
         <MiniPuzzlePreview puzzle={puzzle} />
 
-        <div className="attemptStrip" aria-label="도전 상태">
-          <div>
-            <Paragraph typography="t7" color="#6b7684">
-              남은 도전
-            </Paragraph>
-            <Paragraph typography="t5" fontWeight="bold">
-              {remainingAttempts}/{mission.maxAttempts}
-            </Paragraph>
-          </div>
-          <div>
-            <Paragraph typography="t7" color="#6b7684">
-              완료
-            </Paragraph>
-            <Paragraph typography="t5" fontWeight="bold">
-              {completedEntries.length}/{puzzle.entries.length}
-            </Paragraph>
-          </div>
-          <div>
-            <Paragraph typography="t7" color="#6b7684">
-              힌트 남음
-            </Paragraph>
-            <Paragraph typography="t5" fontWeight="bold">
-              {hintBalance.remaining}/{hintBalance.total}
-            </Paragraph>
-          </div>
+        <div
+          className="attemptStrip"
+          aria-label={isCompleted ? "완료 통계" : "도전 상태"}
+        >
+          {isCompleted ? (
+            <>
+              <div>
+                <Paragraph typography="t7" color="#6b7684">
+                  도전 횟수
+                </Paragraph>
+                <Paragraph typography="t5" fontWeight="bold">
+                  {mission.attemptsUsed}회
+                </Paragraph>
+              </div>
+              <div>
+                <Paragraph typography="t7" color="#6b7684">
+                  풀이 시간
+                </Paragraph>
+                <Paragraph typography="t5" fontWeight="bold">
+                  {formatElapsedTime(mission.lastStartedAt, mission.completedAt) ?? "−"}
+                </Paragraph>
+              </div>
+              <div>
+                <Paragraph typography="t7" color="#6b7684">
+                  사용 힌트
+                </Paragraph>
+                <Paragraph typography="t5" fontWeight="bold">
+                  {hintBalance.used}회
+                </Paragraph>
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <Paragraph typography="t7" color="#6b7684">
+                  남은 도전
+                </Paragraph>
+                <Paragraph typography="t5" fontWeight="bold">
+                  {remainingAttempts}/{mission.maxAttempts}
+                </Paragraph>
+              </div>
+              <div>
+                <Paragraph typography="t7" color="#6b7684">
+                  완료
+                </Paragraph>
+                <Paragraph typography="t5" fontWeight="bold">
+                  {completedEntries.length}/{puzzle.entries.length}
+                </Paragraph>
+              </div>
+              <div>
+                <Paragraph typography="t7" color="#6b7684">
+                  힌트 남음
+                </Paragraph>
+                <Paragraph typography="t5" fontWeight="bold">
+                  {hintBalance.remaining}/{hintBalance.total}
+                </Paragraph>
+              </div>
+            </>
+          )}
         </div>
 
         <div
