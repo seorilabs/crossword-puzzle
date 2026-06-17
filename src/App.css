@@ -1484,19 +1484,31 @@ button:disabled {
 }
 
 .boardNativeInput {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 1px;
-  height: 1px;
-  border: 0;
-  background: transparent;
-  caret-color: transparent;
-  color: transparent;
+  box-sizing: border-box;
+  width: min(
+    100%,
+    max(96px, calc((var(--answer-input-length, 3) * 2.25em) + 34px))
+  );
+  align-self: center;
+  min-height: 48px;
+  border: 1px solid #d1d6db;
+  border-radius: 8px;
+  background: #ffffff;
+  caret-color: #00866f;
+  color: #191f28;
   font-size: 16px;
-  opacity: 0.02;
+  line-height: 22px;
   outline: none;
-  pointer-events: none;
+  padding: 12px 14px;
+  text-align: center;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.boardNativeInput:focus {
+  border-color: #00866f;
+  box-shadow: 0 0 0 3px rgba(0, 134, 111, 0.14);
 }
 
 @media (max-width: 390px) {
@@ -1635,71 +1647,6 @@ button:disabled {
 
 .solveClueTextComplete {
   color: #00866f;
-}
-
-.answerSlots {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  justify-content: center;
-}
-
-.answerSlot {
-  display: grid;
-  width: clamp(30px, 9vw, 40px);
-  height: clamp(30px, 9vw, 40px);
-  place-items: center;
-  border: 1px solid #d6dee6;
-  border-radius: 8px;
-  background: #ffffff;
-  color: #191f28;
-  font: inherit;
-  font-size: 20px;
-  font-weight: 800;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.answerSlotActive {
-  border-color: #00a88f;
-  box-shadow: inset 0 0 0 1px #00a88f;
-  background: #effcf8;
-}
-
-.answerSlotPending {
-  background: #fff9db;
-  border-color: #f0e0a0;
-}
-
-.answerSlotLocked {
-  background: #e6f8f2;
-  border-color: #7edac8;
-  color: #00866f;
-}
-
-.answerSlotWrong {
-  background: #fff1f0;
-  border-color: #f4a6a6;
-  color: #e5484d;
-}
-
-.answerSlotActive.answerSlotWrong {
-  border-color: #e5484d;
-  box-shadow: inset 0 0 0 1px #e5484d;
-}
-
-@keyframes answerShake {
-  0%   { transform: translateX(0); }
-  18%  { transform: translateX(-5px); }
-  36%  { transform: translateX(5px); }
-  54%  { transform: translateX(-4px); }
-  72%  { transform: translateX(4px); }
-  90%  { transform: translateX(-2px); }
-  100% { transform: translateX(0); }
-}
-
-.answerSlotsShake {
-  animation: answerShake 0.38s ease-in-out;
 }
 
 .answerInput {

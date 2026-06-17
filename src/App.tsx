@@ -508,6 +508,14 @@ function isHangulJamoInput(value: string) {
   );
 }
 
+function hasHangulSyllableInput(value: string) {
+  return /[가-힣]/.test(value);
+}
+
+function getAnswerCommitDelayMs(value: string) {
+  return hasHangulSyllableInput(value) ? 800 : 100;
+}
+
 function getEntryCellIndex(entry: PuzzleEntry, cellKey: string) {
   const cells = getEntryCells(entry);
   const index = cells.findIndex(
@@ -3092,16 +3100,6 @@ function TodayScreen({
   const [inputValue, setInputValue] = useState("");
   const [isComposing, setIsComposing] = useState(false);
   const compositionEndValueRef = useRef<string | null>(null);
-  const answerSlotsRef = useRef<HTMLDivElement>(null);
-  const shakeTrackRef = useRef<{
-    entryId: string | null;
-    allFilled: boolean;
-    shakeSignature: string;
-  }>({
-    entryId: null,
-    allFilled: false,
-    shakeSignature: "",
-  });
   // A finished puzzle is shown read-only so the saved answers stay intact while
   // the player reviews the completed board.
   const isReviewMode = isCompleted;
@@ -3158,37 +3156,6 @@ function TodayScreen({
     );
   }, [selectedCellKey, selectedEntry, viewModel.cellEntries]);
 
-  // Per-character state for the sticky top bar so the question and the answer
-  // being typed stay visible above the on-screen keyboard.
-  const answerSlots = useMemo(() => {
-    if (selectedEntry == null) {
-      return [];
-    }
-
-    return selectedEntryCellKeys.map((key) => {
-      const pending = pendingAnswerCellValues[key];
-      const committed = cellValues[key];
-      const answerLetter = getCellAnswerLetter(puzzle, key);
-
-      return {
-        isActive: key === activeCellKey,
-        isLocked: isCellLocked(puzzle, cellValues, key),
-        isPending: pending != null,
-        isWrong:
-          pending == null && committed != null && committed !== answerLetter,
-        key,
-        value: pending ?? committed ?? "",
-      };
-    });
-  }, [
-    activeCellKey,
-    cellValues,
-    pendingAnswerCellValues,
-    puzzle,
-    selectedEntry,
-    selectedEntryCellKeys,
-  ]);
-
   const isSelectedComplete =
     selectedEntry != null &&
     completedEntries.some((entry) => entry.id === selectedEntry.id);
@@ -3206,6 +3173,36 @@ function TodayScreen({
       }),
     [puzzle.entries, startLabels],
   );
+
+  const moveBoardInputCaretToEnd = useCallback(
+    (input: HTMLInputElement | null = boardInputRef.current) => {
+      if (input == null) {
+        return;
+      }
+
+      const moveCaret = () => {
+        if (input == null || !input.isConnected) {
+          return;
+        }
+
+        const position = input.value.length;
+        input.setSelectionRange(position, position);
+      };
+
+      moveCaret();
+      requestAnimationFrame(moveCaret);
+    },
+    [],
+  );
+
+  const resetBoardInputValue = useCallback(() => {
+    setInputValue("");
+
+    if (boardInputRef.current != null) {
+      boardInputRef.current.value = "";
+      moveBoardInputCaretToEnd(boardInputRef.current);
+    }
+  }, [moveBoardInputCaretToEnd]);
 
   function goToAdjacentClue(delta: number) {
     if (selectedEntry == null || orderedEntries.length === 0) {
@@ -3243,7 +3240,7 @@ function TodayScreen({
     }
 
     setAnswerInputResetKey((prev) => prev + 1);
-    setInputValue("");
+    resetBoardInputValue();
     clearEntryAnswer(selectedEntry);
   }
 
@@ -3258,47 +3255,17 @@ function TodayScreen({
     clearCommitTimer();
     compositionEndValueRef.current = null;
     isComposingRef.current = false;
-    setInputValue("");
+    resetBoardInputValue();
     setIsComposing(false);
-  }, [activeCellKey, answerInputResetKey, clearCommitTimer, selectedEntry?.id]);
+  }, [
+    activeCellKey,
+    answerInputResetKey,
+    clearCommitTimer,
+    resetBoardInputValue,
+    selectedEntry?.id,
+  ]);
 
   useEffect(() => () => clearCommitTimer(), [clearCommitTimer]);
-
-  useEffect(() => {
-    if (isReviewMode) return;
-    const track = shakeTrackRef.current;
-    const currentEntryId = selectedEntry?.id ?? null;
-    const isNewEntry = track.entryId !== currentEntryId;
-    const nowAllFilled =
-      answerSlots.length > 0 &&
-      answerSlots.every((s) => s.value !== "" && !s.isPending);
-    const hasWrong = answerSlots.some((s) => s.isWrong);
-    const answerSignature = nowAllFilled
-      ? answerSlots.map((s) => s.value).join("|")
-      : "";
-    const wasAllFilled = !isNewEntry && track.allFilled;
-    const signatureChanged =
-      answerSignature !== "" && answerSignature !== track.shakeSignature;
-    const shouldShake =
-      !isNewEntry && nowAllFilled && hasWrong && (!wasAllFilled || signatureChanged);
-    shakeTrackRef.current = {
-      entryId: currentEntryId,
-      allFilled: nowAllFilled,
-      shakeSignature: isNewEntry
-        ? answerSignature
-        : shouldShake
-          ? answerSignature
-          : track.shakeSignature,
-    };
-    if (shouldShake) {
-      const el = answerSlotsRef.current;
-      if (el != null) {
-        el.classList.remove("answerSlotsShake");
-        void el.offsetWidth;
-        el.classList.add("answerSlotsShake");
-      }
-    }
-  }, [answerSlots, selectedEntry?.id, isReviewMode]);
 
   function focusPuzzleBoard() {
     requestAnimationFrame(() => {
@@ -3332,7 +3299,7 @@ function TodayScreen({
       applyAnswerSegment(selectedEntry, nextLetters.join(""), startCellKey);
     }
 
-    setInputValue("");
+    resetBoardInputValue();
   }
 
   function getDraftLetters(value: string, startCellKey = activeCellKey) {
@@ -3351,6 +3318,21 @@ function TodayScreen({
     const draftLetters = getDraftLetters(value, startCellKey);
 
     return getAnswerCommitLetters(value, draftLetters.length).length > 0;
+  }
+
+  function hasCompleteDraft(value: string, startCellKey = activeCellKey) {
+    if (selectedEntry == null) {
+      return false;
+    }
+
+    const remainingCellCount =
+      selectedEntryCells.length -
+      getEntryCellIndex(selectedEntry, startCellKey);
+
+    return (
+      getAnswerCommitLetters(value, remainingCellCount).length >=
+      remainingCellCount
+    );
   }
 
   function handleAdvanceInput() {
@@ -3397,7 +3379,7 @@ function TodayScreen({
   function queueCommitInputValue(
     value: string,
     startCellKey = activeCellKey,
-    delayMs = 320,
+    delayMs = getAnswerCommitDelayMs(value),
   ) {
     if (selectedEntry == null) {
       return;
@@ -3409,13 +3391,7 @@ function TodayScreen({
       return;
     }
 
-    if (
-      getAnswerCommitLetters(
-        value,
-        selectedEntryCells.length -
-          getEntryCellIndex(selectedEntry, startCellKey),
-      ).length === 0
-    ) {
+    if (!hasCompleteDraft(value, startCellKey)) {
       return;
     }
 
@@ -3491,6 +3467,103 @@ function TodayScreen({
       ),
     ),
   );
+  const answerInputStyle = {
+    "--answer-input-length": selectedRemainingCellCount,
+  } as CSSProperties;
+  const answerInputElement =
+    selectedEntry != null && !isReviewMode ? (
+      <input
+        ref={boardInputRef}
+        className="boardNativeInput"
+        style={answerInputStyle}
+        inputMode="text"
+        autoCapitalize="off"
+        autoComplete="off"
+        autoCorrect="off"
+        enterKeyHint="next"
+        spellCheck={false}
+        aria-label={`${selectedRemainingCellCount}글자 답 입력`}
+        onFocus={(event) => moveBoardInputCaretToEnd(event.currentTarget)}
+        onCompositionStart={(event) => {
+          clearCommitTimer();
+          compositionEndValueRef.current = null;
+          isComposingRef.current = true;
+          setIsComposing(true);
+          moveBoardInputCaretToEnd(event.currentTarget);
+        }}
+        onCompositionEnd={(event) => {
+          const nextValue = event.currentTarget.value;
+          isComposingRef.current = false;
+          setIsComposing(false);
+          compositionEndValueRef.current = nextValue;
+          setInputValue(nextValue);
+          moveBoardInputCaretToEnd(event.currentTarget);
+          queueCommitInputValue(nextValue, activeCellKey);
+        }}
+        onChange={(event) => {
+          const nextValue = event.currentTarget.value;
+          const nativeEvent = event.nativeEvent as InputEvent;
+          setInputValue(nextValue);
+
+          if (
+            isComposing ||
+            isComposingRef.current ||
+            nativeEvent.isComposing ||
+            nativeEvent.inputType === "insertCompositionText"
+          ) {
+            clearCommitTimer();
+            return;
+          }
+
+          if (compositionEndValueRef.current === nextValue) {
+            compositionEndValueRef.current = null;
+            return;
+          }
+
+          moveBoardInputCaretToEnd(event.currentTarget);
+          queueCommitInputValue(nextValue);
+        }}
+        onKeyDown={(event) => {
+          const nativeEvent = event.nativeEvent as KeyboardEvent;
+
+          if (isComposing || nativeEvent.isComposing) {
+            return;
+          }
+
+          if (
+            event.key === "Backspace" &&
+            inputValue === "" &&
+            selectedEntry != null
+          ) {
+            event.preventDefault();
+            clearAnswerCell(selectedEntry, activeCellKey);
+            return;
+          }
+
+          if (event.key === "ArrowLeft") {
+            event.preventDefault();
+            selectRelativeCell(-1);
+            return;
+          }
+
+          if (event.key === "ArrowRight") {
+            event.preventDefault();
+            selectRelativeCell(1);
+            return;
+          }
+
+          if (
+            event.key === "Enter" ||
+            event.key === " " ||
+            event.code === "Space"
+          ) {
+            event.preventDefault();
+            handleAdvanceInput();
+          }
+        }}
+        onBlur={(event) => preserveInputOnBlur(event.currentTarget.value)}
+      />
+    ) : null;
 
   return (
     <>
@@ -3638,35 +3711,7 @@ function TodayScreen({
               ›
             </button>
           </div>
-          <div ref={answerSlotsRef} className="answerSlots" role="group" aria-label="입력 중인 답">
-            {answerSlots.map((slot, index) => (
-              <button
-                key={slot.key}
-                className={[
-                  "answerSlot",
-                  slot.isActive ? "answerSlotActive" : "",
-                  slot.isLocked ? "answerSlotLocked" : "",
-                  slot.isPending ? "answerSlotPending" : "",
-                  slot.isWrong ? "answerSlotWrong" : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-                type="button"
-                aria-pressed={slot.isActive}
-                aria-label={`${index + 1}/${answerSlots.length}번째 칸${
-                  slot.value === ""
-                    ? ", 빈 칸"
-                    : `, ${slot.value}${slot.isLocked ? " 정답 잠금" : slot.isWrong ? " 오답" : ""}`
-                }`}
-                onClick={() => {
-                  selectEntry(selectedEntry, slot.key);
-                  focusNativeInput();
-                }}
-              >
-                {slot.value}
-              </button>
-            ))}
-          </div>
+          {answerInputElement}
         </div>
       ) : null}
 
@@ -3706,97 +3751,6 @@ function TodayScreen({
           startLabels={viewModel.startLabels}
           puzzle={puzzle}
         />
-
-        {selectedEntry != null && !isReviewMode ? (
-          <input
-            ref={boardInputRef}
-            className="boardNativeInput"
-            inputMode="text"
-            autoCapitalize="off"
-            autoComplete="off"
-            autoCorrect="off"
-            enterKeyHint="next"
-            maxLength={selectedRemainingCellCount}
-            spellCheck={false}
-            value={inputValue}
-            aria-label={`${selectedRemainingCellCount}글자 답 입력`}
-            tabIndex={-1}
-            onCompositionStart={() => {
-              clearCommitTimer();
-              isComposingRef.current = true;
-              setIsComposing(true);
-            }}
-            onCompositionEnd={(event) => {
-              const nextValue = event.currentTarget.value;
-              isComposingRef.current = false;
-              setIsComposing(false);
-              compositionEndValueRef.current = nextValue;
-              setInputValue(nextValue);
-              queueCommitInputValue(nextValue, activeCellKey, 120);
-            }}
-            onChange={(event) => {
-              const nextValue = event.target.value;
-              const nativeEvent = event.nativeEvent as InputEvent;
-              setInputValue(nextValue);
-
-              if (
-                isComposing ||
-                isComposingRef.current ||
-                nativeEvent.isComposing ||
-                nativeEvent.inputType === "insertCompositionText"
-              ) {
-                clearCommitTimer();
-                return;
-              }
-
-              if (compositionEndValueRef.current === nextValue) {
-                compositionEndValueRef.current = null;
-                return;
-              }
-
-              queueCommitInputValue(nextValue);
-            }}
-            onKeyDown={(event) => {
-              const nativeEvent = event.nativeEvent as KeyboardEvent;
-
-              if (isComposing || nativeEvent.isComposing) {
-                return;
-              }
-
-              if (
-                event.key === "Backspace" &&
-                inputValue === "" &&
-                selectedEntry != null
-              ) {
-                event.preventDefault();
-                clearAnswerCell(selectedEntry, activeCellKey);
-                return;
-              }
-
-              if (event.key === "ArrowLeft") {
-                event.preventDefault();
-                selectRelativeCell(-1);
-                return;
-              }
-
-              if (event.key === "ArrowRight") {
-                event.preventDefault();
-                selectRelativeCell(1);
-                return;
-              }
-
-              if (
-                event.key === "Enter" ||
-                event.key === " " ||
-                event.code === "Space"
-              ) {
-                event.preventDefault();
-                handleAdvanceInput();
-              }
-            }}
-            onBlur={(event) => preserveInputOnBlur(event.currentTarget.value)}
-          />
-        ) : null}
 
         {selectedEntry != null ? (
           <div className="selectedClueList" aria-label="선택한 문제">
