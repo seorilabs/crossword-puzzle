@@ -11,6 +11,7 @@ import App, {
   formatCompletionStatsLabel,
   formatPuzzleCardSequenceLabel,
   formatPuzzleCardTitle,
+  formatPuzzleHistoryTitle,
   formatPuzzleHomeSubtitle,
   formatPuzzleAliasLabel,
   getBackTargetRoute,
@@ -274,6 +275,32 @@ test('formats two-digit puzzle sequence labels from two-hour slots', () => {
       slotId: undefined,
     }),
   ).toBe('퍼즐 --번');
+});
+
+test('formats history titles with home sequence labels for remote puzzles', () => {
+  const summary: PuzzleManifestItem = {
+    alias: '2026061222',
+    date: '2026-06-12',
+    difficulty: 'normal',
+    metrics: {
+      autoRunCount: 0,
+      bboxDensity: 1,
+      crossCells: 0,
+      crossRatio: 0,
+      filledCells: 2,
+      multiCrossEntries: 0,
+      placedWordCount: 1,
+      wordCount: 1,
+    },
+    path: '/puzzles/26061222.json',
+    puzzleId: '26061222',
+    slotId: '2026-06-12-h22',
+  };
+
+  expect(formatPuzzleHistoryTitle(summary, 'remote')).toBe(
+    '퍼즐 12번 · #26061222',
+  );
+  expect(formatPuzzleHistoryTitle(summary, 'bundled')).toBe('#26061222');
 });
 
 test('maps pending Korean composition directly onto board cells', () => {

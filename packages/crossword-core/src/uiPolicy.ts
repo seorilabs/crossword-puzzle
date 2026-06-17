@@ -353,6 +353,31 @@ export function getBonusPuzzleCandidateSummary({
   )[0];
 }
 
+export function getOpenPuzzleSummariesForDate({
+  archivePuzzleSummaries,
+  date,
+  dailyFreeSummary,
+  selectedPuzzleSummary,
+  unlockedBonusSummaries,
+}: {
+  archivePuzzleSummaries: PuzzleManifestItem[];
+  date: string;
+  dailyFreeSummary?: PuzzleManifestItem;
+  selectedPuzzleSummary?: PuzzleManifestItem;
+  unlockedBonusSummaries: PuzzleManifestItem[];
+}) {
+  return sortPuzzleSummariesByRecency(
+    uniquePuzzleSummaries(
+      [
+        dailyFreeSummary?.date === date ? dailyFreeSummary : undefined,
+        ...unlockedBonusSummaries.filter((summary) => summary.date === date),
+        selectedPuzzleSummary?.date === date ? selectedPuzzleSummary : undefined,
+        ...archivePuzzleSummaries.filter((summary) => summary.date === date),
+      ].filter((summary): summary is PuzzleManifestItem => summary != null),
+    ),
+  );
+}
+
 export function uniquePuzzleSummaries(summaries: PuzzleManifestItem[]) {
   const seen = new Set<string>();
   const result: PuzzleManifestItem[] = [];

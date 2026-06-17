@@ -42,6 +42,7 @@ import {
   getEntryAnswerValue,
   getEntryCells,
   getInitialEntryId,
+  getOpenPuzzleSummariesForDate,
   getPuzzleDailySequenceNumber,
   getPuzzlePackAlias,
   getRemainingAttempts,
@@ -477,6 +478,17 @@ export function formatPuzzleCardSequenceLabel(summary: PuzzleManifestItem) {
   return sequenceNumber == null
     ? '퍼즐 --번'
     : `퍼즐 ${String(sequenceNumber).padStart(2, '0')}번`;
+}
+
+export function formatPuzzleHistoryTitle(
+  summary: PuzzleManifestItem,
+  source: PuzzlePackSource,
+) {
+  const aliasLabel = formatPuzzleAliasLabel(summary);
+
+  return source === 'remote'
+    ? `${formatPuzzleCardSequenceLabel(summary)} · ${aliasLabel}`
+    : aliasLabel;
 }
 
 export function formatCompletionStatsLabel(
@@ -1186,6 +1198,13 @@ function AppContent() {
         .map(record => createPuzzleSummary(record.puzzle)),
     [launchConfig.visiblePuzzleCount, puzzleArchiveRecords],
   );
+  const todayArchivePuzzleSummaries = useMemo(
+    () =>
+      puzzleArchiveRecords
+        .map(record => createPuzzleSummary(record.puzzle))
+        .filter(summary => summary.date === todayKey),
+    [puzzleArchiveRecords, todayKey],
+  );
   const unlockedBonusSummaries = useMemo(
     () =>
       uniquePuzzleSummaries(
@@ -1212,6 +1231,23 @@ function AppContent() {
       findPuzzleSummaryById(archivePuzzleSummaries, puzzle.puzzleId) ??
       createPuzzleSummary(puzzle),
     [archivePuzzleSummaries, puzzle, puzzlePack.summaries],
+  );
+  const todayOpenPuzzleSummaries = useMemo(
+    () =>
+      getOpenPuzzleSummariesForDate({
+        archivePuzzleSummaries: todayArchivePuzzleSummaries,
+        date: todayKey,
+        dailyFreeSummary,
+        selectedPuzzleSummary,
+        unlockedBonusSummaries,
+      }),
+    [
+      dailyFreeSummary,
+      selectedPuzzleSummary,
+      todayArchivePuzzleSummaries,
+      todayKey,
+      unlockedBonusSummaries,
+    ],
   );
   const bonusCandidateSummary = useMemo(
     () =>
@@ -2297,6 +2333,62 @@ function AppContent() {
     );
   }
 
+  function renderTodayPuzzleNavigator() {
+    if (isLoading || todayOpenPuzzleSummaries.length <= 1) {
+      return null;
+    }
+
+    return (
+      <View style={styles.todayPuzzleRail}>
+        <View style={styles.todayPuzzleRailHeader}>
+          <Text style={styles.todayPuzzleRailTitle}>오늘 열린 퍼즐</Text>
+          <Text style={styles.todayPuzzleRailCount}>
+            {todayOpenPuzzleSummaries.length}개
+          </Text>
+        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.todayPuzzleList}
+        >
+          {todayOpenPuzzleSummaries.map(summary => {
+            const state = dateCardStates[summary.puzzleId];
+            const isSelected = summary.puzzleId === puzzle.puzzleId;
+            const statusLabel =
+              state?.completedAt != null
+                ? '완료'
+                : state?.hasProgress
+                  ? '진행 중'
+                  : '대기';
+            const titleLabel =
+              puzzlePack.source === 'remote'
+                ? formatPuzzleCardSequenceLabel(summary)
+                : formatPuzzleAliasLabel(summary);
+
+            return (
+              <Pressable
+                key={summary.puzzleId}
+                onPress={() => {
+                  selectPuzzle(summary.puzzleId);
+                }}
+                style={[
+                  styles.todayPuzzleChip,
+                  isSelected && styles.todayPuzzleChipSelected,
+                ]}
+              >
+                <Text style={styles.todayPuzzleChipTitle}>{titleLabel}</Text>
+                <Text style={styles.todayPuzzleChipState}>{statusLabel}</Text>
+                <Text style={styles.todayPuzzleChipMeta}>
+                  {summary.metrics?.wordCount ?? '-'}단어
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </View>
+    );
+  }
+
   function renderHome() {
     const completionStatsLabel = formatCompletionStatsLabel(
       completionStatsByPuzzleId[puzzle.puzzleId],
@@ -2306,6 +2398,10 @@ function AppContent() {
       selectedPuzzleSummary,
       puzzlePack.source,
     );
+    const selectedPuzzleSequenceLabel =
+      puzzlePack.source === 'remote'
+        ? formatPuzzleCardSequenceLabel(selectedPuzzleSummary)
+        : '오늘의 무료 퍼즐';
 
     return (
       <ScrollView contentContainerStyle={styles.homeContent}>
@@ -2324,7 +2420,7 @@ function AppContent() {
         </View>
 
         <View style={styles.summaryPanel}>
-          <Text style={styles.panelTitle}>오늘의 무료 퍼즐</Text>
+          <Text style={styles.panelTitle}>{selectedPuzzleSequenceLabel}</Text>
           <Text style={styles.summaryText}>
             {puzzle.entries.length}개 단어 · {puzzle.gridSize}x{puzzle.gridSize}{' '}
             보드 ·{' '}
@@ -2364,6 +2460,8 @@ function AppContent() {
           </View>
           <Text style={styles.notice}>{notice}</Text>
         </View>
+
+        {renderTodayPuzzleNavigator()}
 
         <BonusPuzzlePanel
           onUnlock={unlockBonusPuzzle}
@@ -3070,7 +3168,7 @@ function AppContent() {
             >
               <View>
                 <Text style={styles.historyTitle}>
-                  {formatPuzzleAliasLabel(summary)}
+                  {formatPuzzleHistoryTitle(summary, puzzlePack.source)}
                 </Text>
                 <Text style={styles.historyMeta}>
                   {summary.date} · {summary.metrics?.wordCount ?? '-'}단어 ·
@@ -3202,15 +3300,8 @@ function BonusPuzzlePanel({
       ? state.isUnlocking
         ? '광고 불러오는 중'
         : '광고 보고 열기'
-      : state.status === 'unlocked'
-        ? '보너스 퍼즐 풀기'
-        : state.status === 'used'
-          ? '결과 보기'
-          : '';
-  const canShowAction =
-    state.status === 'available' ||
-    state.status === 'unlocked' ||
-    state.status === 'used';
+      : '';
+  const canShowAction = state.status === 'available';
   const isActionDisabled = state.isUnlocking || summary == null;
 
   return (
@@ -3588,6 +3679,58 @@ const styles = StyleSheet.create({
   dateList: {
     gap: 8,
     paddingRight: 16,
+  },
+  todayPuzzleChip: {
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
+    borderRadius: 8,
+    borderWidth: 1,
+    minHeight: 82,
+    padding: 12,
+    width: 122,
+  },
+  todayPuzzleChipMeta: {
+    color: '#64748b',
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 3,
+  },
+  todayPuzzleChipSelected: {
+    backgroundColor: '#f0fdfa',
+    borderColor: '#0f766e',
+  },
+  todayPuzzleChipState: {
+    color: '#0f172a',
+    fontSize: 16,
+    fontWeight: '900',
+    marginTop: 3,
+  },
+  todayPuzzleChipTitle: {
+    color: '#0f766e',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  todayPuzzleList: {
+    gap: 8,
+    paddingRight: 16,
+  },
+  todayPuzzleRail: {
+    gap: 10,
+  },
+  todayPuzzleRailCount: {
+    color: '#64748b',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  todayPuzzleRailHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  todayPuzzleRailTitle: {
+    color: '#0f172a',
+    fontSize: 15,
+    fontWeight: '900',
   },
   disabledButton: {
     opacity: 0.45,
