@@ -4101,17 +4101,17 @@ function CompletionCelebrationDialog({
           <button
             className="secondaryButton"
             type="button"
-            onClick={onSeeResult}
+            onClick={onGoHome}
           >
-            결과 보기
+            홈으로
           </button>
           <button
             className="primaryButton"
             type="button"
-            onClick={onGoHome}
+            onClick={onSeeResult}
             autoFocus
           >
-            홈으로
+            결과 보기
           </button>
         </div>
         <button
@@ -5160,3 +5160,4 @@ function ClueSection({
 }
 
 export default App;
+
