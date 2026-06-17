@@ -4415,28 +4415,47 @@ function ResultScreen({
       )}
 
       <section className="resultActions" aria-label="결과 메뉴">
-        <button
-          className="primaryButton"
-          type="button"
-          onClick={() => navigate("home")}
-        >
-          홈으로
-        </button>
-        <button
-          className="secondaryButton"
-          type="button"
-          onClick={() => navigate("today")}
-        >
-          {isComplete ? "퍼즐 다시 보기" : "이어 풀기"}
-        </button>
-        {!isComplete && remainingAttempts > 0 && (
-          <button
-            className="secondaryButton"
-            type="button"
-            onClick={restartMissionAttempt}
-          >
-            다시 도전
-          </button>
+        {!isComplete && remainingAttempts > 0 ? (
+          <>
+            <button
+              className="primaryButton"
+              type="button"
+              onClick={() => navigate("today")}
+            >
+              이어 풀기
+            </button>
+            <button
+              className="secondaryButton"
+              type="button"
+              onClick={restartMissionAttempt}
+            >
+              다시 도전
+            </button>
+            <button
+              className="secondaryButton"
+              type="button"
+              onClick={() => navigate("home")}
+            >
+              홈으로
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              className="primaryButton"
+              type="button"
+              onClick={() => navigate("home")}
+            >
+              홈으로
+            </button>
+            <button
+              className="secondaryButton"
+              type="button"
+              onClick={() => navigate("today")}
+            >
+              {isComplete ? "퍼즐 다시 보기" : "이어 풀기"}
+            </button>
+          </>
         )}
         {isComplete && (
           <div className="shareContainer">
