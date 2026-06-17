@@ -9,6 +9,7 @@ import ReactTestRenderer from 'react-test-renderer';
 import App, {
   BOARD_TEXT_INPUT_REFOCUS_DELAY_MS,
   formatCompletionStatsLabel,
+  formatPuzzleCardSequenceLabel,
   formatPuzzleCardTitle,
   formatPuzzleHomeSubtitle,
   formatPuzzleAliasLabel,
@@ -221,6 +222,44 @@ test('formats mobile home puzzle labels without exposing remote ids', () => {
   expect(formatPuzzleCardTitle(summary, 'remote')).toBe('6.12 금');
   expect(formatPuzzleHomeSubtitle(summary, 'bundled')).toBe('2026-06-12');
   expect(formatPuzzleCardTitle(summary, 'bundled')).toBe('2026-06-12');
+});
+
+test('formats two-digit puzzle sequence labels from two-hour slots', () => {
+  const summary: PuzzleManifestItem = {
+    date: '2026-06-12',
+    difficulty: 'normal',
+    metrics: {
+      autoRunCount: 0,
+      bboxDensity: 1,
+      crossCells: 0,
+      crossRatio: 0,
+      filledCells: 2,
+      multiCrossEntries: 0,
+      placedWordCount: 1,
+      wordCount: 1,
+    },
+    path: '/puzzles/26061218.json',
+    puzzleId: '26061218',
+  };
+
+  expect(
+    formatPuzzleCardSequenceLabel({
+      ...summary,
+      publishedAt: '2026-06-11T15:00:00.000Z',
+    }),
+  ).toBe('퍼즐 01번');
+  expect(
+    formatPuzzleCardSequenceLabel({
+      ...summary,
+      publishedAt: '2026-06-12T09:00:00.000Z',
+    }),
+  ).toBe('퍼즐 10번');
+  expect(
+    formatPuzzleCardSequenceLabel({
+      ...summary,
+      slotId: '2026-06-12-h22',
+    }),
+  ).toBe('퍼즐 12번');
 });
 
 test('maps pending Korean composition directly onto board cells', () => {

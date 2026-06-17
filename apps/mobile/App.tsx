@@ -42,6 +42,7 @@ import {
   getEntryAnswerValue,
   getEntryCells,
   getInitialEntryId,
+  getPuzzleDailySequenceNumber,
   getPuzzlePackAlias,
   getRemainingAttempts,
   getTodayDateKey,
@@ -170,7 +171,6 @@ const REMOTE_PUZZLE_STATS_URL = `${REMOTE_PUZZLE_PACK_BASE_URL.replace(
 const HOME_HEADER_TITLE = '가로세로 낱말 퍼즐';
 const PROGRESS_KEY_PREFIX = 'crossword-puzzle:progress';
 const MISSION_KEY_PREFIX = 'crossword-puzzle:mission';
-const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 export const BOARD_TEXT_INPUT_REFOCUS_DELAY_MS = 32;
 export const ANDROID_TEXT_INPUT_REFOCUS_DELAY_MS =
   BOARD_TEXT_INPUT_REFOCUS_DELAY_MS;
@@ -465,25 +465,18 @@ function formatEntryReference(
   return `${prefix}${directionLabels[entry.direction]} · ${entry.answer.length}글자`;
 }
 
-function formatPuzzleCardSlot(summary: PuzzleManifestItem) {
-  if (summary.publishedAt == null) {
-    return '';
-  }
-
-  const value = new Date(summary.publishedAt);
-  if (Number.isNaN(value.getTime())) {
-    return '';
-  }
-
-  const hour = new Date(value.getTime() + KST_OFFSET_MS).getUTCHours();
-
-  return `${hour}시`;
-}
-
 function formatKoreanInteger(value: number) {
   return Math.round(value)
     .toString()
     .replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+export function formatPuzzleCardSequenceLabel(summary: PuzzleManifestItem) {
+  const sequenceNumber = getPuzzleDailySequenceNumber(summary);
+
+  return sequenceNumber == null
+    ? ''
+    : `퍼즐 ${String(sequenceNumber).padStart(2, '0')}번`;
 }
 
 export function formatCompletionStatsLabel(
@@ -2258,8 +2251,10 @@ function AppContent() {
           const state = dateCardStates[summary.puzzleId];
           const isSelected = summary.puzzleId === puzzle.puzzleId;
           const isDone = state?.completedAt != null;
-          const slotLabel =
-            puzzlePack.source === 'remote' ? formatPuzzleCardSlot(summary) : '';
+          const sequenceLabel =
+            puzzlePack.source === 'remote'
+              ? formatPuzzleCardSequenceLabel(summary)
+              : '';
           const completionStatsLabel = formatCompletionStatsLabel(
             completionStatsByPuzzleId[summary.puzzleId],
             launchConfig.completionStatsMinDisplayCount,
@@ -2267,15 +2262,15 @@ function AppContent() {
           );
           const wordCountLabel = `${summary.metrics?.wordCount ?? '-'}단어`;
           const fallbackMetaLabel =
-            slotLabel === ''
+            sequenceLabel === ''
               ? `${wordCountLabel} · ${state?.attemptsUsed ?? 0}/${DAILY_ATTEMPT_LIMIT}회`
-              : `${slotLabel} · ${wordCountLabel}`;
+              : `${sequenceLabel} · ${wordCountLabel}`;
           const metaLabel =
             completionStatsLabel === ''
               ? fallbackMetaLabel
-              : slotLabel === ''
+              : sequenceLabel === ''
                 ? completionStatsLabel
-                : `${slotLabel} · ${completionStatsLabel}`;
+                : `${sequenceLabel} · ${completionStatsLabel}`;
           const titleLabel = formatPuzzleCardTitle(summary, puzzlePack.source);
 
           return (
