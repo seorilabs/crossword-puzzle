@@ -1704,7 +1704,7 @@ button:disabled {
   font-size: 16px;
   opacity: 0.02;
   outline: none;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .answerInput {

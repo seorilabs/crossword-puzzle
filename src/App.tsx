@@ -1,5 +1,9 @@
 import { Button, Paragraph, Top } from "@toss/tds-mobile";
-import type { CSSProperties, ReactNode } from "react";
+import type {
+  CSSProperties,
+  PointerEvent as ReactPointerEvent,
+  ReactNode,
+} from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import {
@@ -106,6 +110,9 @@ type DateCardState = {
 };
 
 type CompletionStatsByPuzzleId = Record<string, PuzzleCompletionStats>;
+
+const DIRECT_INPUT_COMMIT_DELAY_MS = 140;
+const COMPOSITION_COMMIT_DELAY_MS = 0;
 
 type DateSelectionProps = {
   completionStatsByPuzzleId: CompletionStatsByPuzzleId;
@@ -3091,6 +3098,7 @@ function TodayScreen({
   const isComposingRef = useRef(false);
   const [inputValue, setInputValue] = useState("");
   const [isComposing, setIsComposing] = useState(false);
+  const compositionStartCellKeyRef = useRef<string | null>(null);
   const compositionEndValueRef = useRef<string | null>(null);
   // A finished puzzle is shown read-only so the saved answers stay intact while
   // the player reviews the completed board.
@@ -3246,6 +3254,7 @@ function TodayScreen({
   useEffect(() => {
     clearCommitTimer();
     compositionEndValueRef.current = null;
+    compositionStartCellKeyRef.current = null;
     isComposingRef.current = false;
     resetBoardInputValue();
     setIsComposing(false);
@@ -3273,6 +3282,55 @@ function TodayScreen({
 
   function selectCellAndFocus(row: number, col: number) {
     selectCell(row, col);
+    focusNativeInput();
+  }
+
+  function getAnswerSlotCellKeyFromPoint(clientX: number, clientY: number) {
+    for (const slot of document.querySelectorAll<HTMLElement>(".answerSlot")) {
+      const cellKey = slot.dataset.cellKey;
+
+      if (cellKey == null || !selectedEntryCellKeys.includes(cellKey)) {
+        continue;
+      }
+
+      const rect = slot.getBoundingClientRect();
+
+      if (
+        clientX >= rect.left &&
+        clientX <= rect.right &&
+        clientY >= rect.top &&
+        clientY <= rect.bottom
+      ) {
+        return cellKey;
+      }
+    }
+
+    return null;
+  }
+
+  function handleAnswerSlotInputPointerDown(
+    event: ReactPointerEvent<HTMLInputElement>,
+  ) {
+    if (selectedEntry == null) {
+      return;
+    }
+
+    const cellKey = getAnswerSlotCellKeyFromPoint(
+      event.clientX,
+      event.clientY,
+    );
+
+    if (cellKey == null) {
+      focusNativeInput();
+      return;
+    }
+
+    if (isComposingRef.current || isComposing) {
+      focusNativeInput();
+      return;
+    }
+
+    selectEntry(selectedEntry, cellKey);
     focusNativeInput();
   }
 
@@ -3356,7 +3414,7 @@ function TodayScreen({
   function queueCommitInputValue(
     value: string,
     startCellKey = activeCellKey,
-    delayMs = 320,
+    delayMs = DIRECT_INPUT_COMMIT_DELAY_MS,
   ) {
     if (selectedEntry == null) {
       return;
@@ -3479,6 +3537,7 @@ function TodayScreen({
             return (
               <button
                 key={key}
+                data-cell-key={key}
                 className={[
                   "answerSlot",
                   committedValue !== "" ? "answerSlotFilled" : "",
@@ -3515,9 +3574,11 @@ function TodayScreen({
           maxLength={selectedRemainingCellCount}
           spellCheck={false}
           aria-label={`${selectedRemainingCellCount}글자 답 입력`}
+          onPointerDown={handleAnswerSlotInputPointerDown}
           onFocus={(event) => moveBoardInputCaretToEnd(event.currentTarget)}
           onCompositionStart={(event) => {
             clearCommitTimer();
+            compositionStartCellKeyRef.current = activeCellKey;
             compositionEndValueRef.current = null;
             isComposingRef.current = true;
             setIsComposing(true);
@@ -3525,12 +3586,25 @@ function TodayScreen({
           }}
           onCompositionEnd={(event) => {
             const nextValue = event.currentTarget.value;
+            const startCellKey = compositionStartCellKeyRef.current;
+
             isComposingRef.current = false;
+            compositionStartCellKeyRef.current = null;
             setIsComposing(false);
+
+            if (startCellKey == null) {
+              resetBoardInputValue();
+              return;
+            }
+
             compositionEndValueRef.current = nextValue;
             setInputValue(nextValue);
             moveBoardInputCaretToEnd(event.currentTarget);
-            queueCommitInputValue(nextValue, activeCellKey, 120);
+            queueCommitInputValue(
+              nextValue,
+              startCellKey,
+              COMPOSITION_COMMIT_DELAY_MS,
+            );
           }}
           onChange={(event) => {
             const nextValue = event.currentTarget.value;
