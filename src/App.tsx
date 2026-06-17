@@ -3117,6 +3117,10 @@ function TodayScreen({
   );
   const activeCellKey =
     selectedEntryCellKeys[selectedIndex] ?? getEntryStartCellKey(selectedEntry);
+  const selectedRemainingCellCount = Math.max(
+    1,
+    selectedEntryCells.length - selectedIndex,
+  );
   const pendingAnswerCellValues = useMemo(
     () =>
       selectedEntry == null
@@ -3508,10 +3512,9 @@ function TodayScreen({
           autoComplete="off"
           autoCorrect="off"
           enterKeyHint="next"
-          maxLength={selectedEntry.answer.length}
+          maxLength={selectedRemainingCellCount}
           spellCheck={false}
-          value={inputValue}
-          aria-label={`${selectedEntry.answer.length}글자 답 입력`}
+          aria-label={`${selectedRemainingCellCount}글자 답 입력`}
           onFocus={(event) => moveBoardInputCaretToEnd(event.currentTarget)}
           onCompositionStart={(event) => {
             clearCommitTimer();
@@ -3532,7 +3535,6 @@ function TodayScreen({
           onChange={(event) => {
             const nextValue = event.currentTarget.value;
             const nativeEvent = event.nativeEvent as InputEvent;
-            setInputValue(nextValue);
 
             if (
               isComposing ||
@@ -3544,6 +3546,7 @@ function TodayScreen({
               return;
             }
 
+            setInputValue(nextValue);
             if (compositionEndValueRef.current === nextValue) {
               compositionEndValueRef.current = null;
               return;
