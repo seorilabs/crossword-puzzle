@@ -15,6 +15,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  Share,
   StatusBar,
   StyleSheet,
   Text,
@@ -464,6 +465,52 @@ function formatEntryReference(
   const prefix = startLabel == null ? '' : `${startLabel}번 `;
 
   return `${prefix}${directionLabels[entry.direction]} · ${entry.answer.length}글자`;
+}
+
+function formatElapsedTime(
+  startedAt: string | undefined,
+  completedAt: string | undefined,
+): string | null {
+  if (startedAt == null) return null;
+  const startMs = new Date(startedAt).getTime();
+  const endMs =
+    completedAt == null ? Date.now() : new Date(completedAt).getTime();
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs < startMs) {
+    return null;
+  }
+  const totalSeconds = Math.floor((endMs - startMs) / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return minutes > 0 ? `${minutes}분 ${seconds}초` : `${seconds}초`;
+}
+
+function buildResultShareText({
+  puzzleLabel,
+  elapsedLabel,
+  hintCount,
+  attemptsUsed,
+  completedCount,
+  totalCount,
+}: {
+  puzzleLabel: string;
+  elapsedLabel: string | null;
+  hintCount: number;
+  attemptsUsed: number;
+  completedCount: number;
+  totalCount: number;
+}): string {
+  const lines: string[] = [`가로세로 낱말 퍼즐 ${puzzleLabel}`, ''];
+  const stats: string[] = [];
+  if (elapsedLabel != null) stats.push(`⏱ ${elapsedLabel}`);
+  stats.push(`도전 ${attemptsUsed}회`);
+  if (hintCount > 0) stats.push(`힌트 ${hintCount}회`);
+  lines.push(stats.join(' · '));
+  const badges: string[] = [];
+  if (hintCount === 0) badges.push('🎯 노힌트 클리어');
+  if (attemptsUsed === 1) badges.push('💎 첫 도전 성공');
+  if (badges.length > 0) lines.push(badges.join(' · '));
+  lines.push(`낱말 ${completedCount}/${totalCount}개 완성 🎉`);
+  return lines.join('\n');
 }
 
 function formatKoreanInteger(value: number) {
@@ -3086,30 +3133,72 @@ function AppContent() {
   }
 
   function renderResult() {
+    const puzzleLabel =
+      puzzlePack.source === 'remote'
+        ? formatPuzzleAliasLabel(selectedPuzzleSummary)
+        : puzzle.date;
+    const elapsedLabel = formatElapsedTime(
+      mission.lastStartedAt,
+      mission.completedAt,
+    );
+    const acrossEntries = viewModel.completedEntries.filter(
+      e => e.direction === 'across',
+    );
+    const downEntries = viewModel.completedEntries.filter(
+      e => e.direction === 'down',
+    );
+
+    async function handleShare() {
+      const text = buildResultShareText({
+        puzzleLabel,
+        elapsedLabel,
+        hintCount,
+        attemptsUsed: mission.attemptsUsed,
+        completedCount: viewModel.completedEntries.length,
+        totalCount: puzzle.entries.length,
+      });
+      try {
+        await Share.share({ message: text });
+      } catch {}
+    }
+
     return (
       <ScrollView contentContainerStyle={styles.homeContent}>
-        {renderHeader(
-          isCompleted ? '퍼즐 완료' : '진행 결과',
-          puzzlePack.source === 'remote'
-            ? formatPuzzleAliasLabel(selectedPuzzleSummary)
-            : puzzle.date,
-        )}
+        {renderHeader(isCompleted ? '퍼즐 완료' : '진행 결과', puzzleLabel)}
         <View style={styles.summaryPanel}>
           <Text style={styles.panelTitle}>
-            {isCompleted ? '오늘 미션을 완료했습니다.' : '아직 풀이 중입니다.'}
+            {isCompleted ? '미션 완료' : '아직 풀이 중입니다.'}
           </Text>
           <View style={styles.statusGrid}>
-            <Metric label="진행률" value={`${progressPercent}%`} />
-            <Metric label="사용 힌트" value={`${hintCount}개`} />
-            <Metric label="남은 시도" value={`${remainingAttempts}회`} />
+            {isCompleted ? (
+              <>
+                <Metric label="도전 횟수" value={`${mission.attemptsUsed}회`} />
+                <Metric
+                  label="풀이 시간"
+                  value={elapsedLabel ?? '−'}
+                />
+                <Metric label="사용 힌트" value={`${hintCount}개`} />
+              </>
+            ) : (
+              <>
+                <Metric label="진행률" value={`${progressPercent}%`} />
+                <Metric label="사용 힌트" value={`${hintCount}개`} />
+                <Metric label="남은 시도" value={`${remainingAttempts}회`} />
+              </>
+            )}
           </View>
+          {!isCompleted && remainingAttempts === 0 && (
+            <Text style={styles.resultNotice}>
+              오늘의 도전 기회를 모두 사용했어요. 내일 새로운 퍼즐이 기다려요.
+            </Text>
+          )}
           <View style={styles.actions}>
             <Pressable
               onPress={isCompleted ? openCompletedBoard : startOrResumeMission}
               style={styles.primaryButton}
             >
               <Text style={styles.primaryButtonText}>
-                {isCompleted ? '보드 보기' : '계속 풀기'}
+                {isCompleted ? '퍼즐 다시 보기' : '계속 풀기'}
               </Text>
             </Pressable>
             <Pressable
@@ -3118,19 +3207,72 @@ function AppContent() {
             >
               <Text style={styles.secondaryButtonText}>홈으로</Text>
             </Pressable>
-            <Pressable
-              disabled={isCompleted || remainingAttempts === 0}
-              onPress={restartMissionAttempt}
-              style={[
-                styles.secondaryButton,
-                (isCompleted || remainingAttempts === 0) &&
-                  styles.disabledButton,
-              ]}
-            >
-              <Text style={styles.secondaryButtonText}>다시 풀기</Text>
-            </Pressable>
+            {!isCompleted && remainingAttempts > 0 && (
+              <Pressable
+                onPress={restartMissionAttempt}
+                style={styles.secondaryButton}
+              >
+                <Text style={styles.secondaryButtonText}>다시 도전</Text>
+              </Pressable>
+            )}
           </View>
+          {isCompleted && (
+            <Pressable onPress={handleShare} style={styles.shareButton}>
+              <Text style={styles.shareButtonText}>결과 공유하기</Text>
+            </Pressable>
+          )}
         </View>
+        {viewModel.completedEntries.length > 0 && (
+          <View style={styles.resultWordList}>
+            <Text style={styles.resultWordListTitle}>
+              {isCompleted
+                ? '완성한 단어'
+                : `맞춘 단어 ${viewModel.completedEntries.length}개`}
+            </Text>
+            {acrossEntries.length > 0 && (
+              <View style={styles.resultWordSection}>
+                <Text style={styles.resultSectionTitle}>가로</Text>
+                {acrossEntries.map(entry => {
+                  const label = viewModel.startLabels.get(
+                    getCellKey(entry.row, entry.col),
+                  );
+                  return (
+                    <View key={entry.id} style={styles.resultWordItem}>
+                      <Text style={styles.resultWordNumber}>
+                        {label != null ? `${label}번` : '·'}
+                      </Text>
+                      <Text style={styles.resultWordAnswer}>{entry.answer}</Text>
+                      <Text style={styles.resultWordClue} numberOfLines={2}>
+                        {entry.clue}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+            {downEntries.length > 0 && (
+              <View style={styles.resultWordSection}>
+                <Text style={styles.resultSectionTitle}>세로</Text>
+                {downEntries.map(entry => {
+                  const label = viewModel.startLabels.get(
+                    getCellKey(entry.row, entry.col),
+                  );
+                  return (
+                    <View key={entry.id} style={styles.resultWordItem}>
+                      <Text style={styles.resultWordNumber}>
+                        {label != null ? `${label}번` : '·'}
+                      </Text>
+                      <Text style={styles.resultWordAnswer}>{entry.answer}</Text>
+                      <Text style={styles.resultWordClue} numberOfLines={2}>
+                        {entry.clue}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+        )}
         <BonusPuzzlePanel
           onUnlock={unlockBonusPuzzle}
           state={bonusPuzzlePanelState}
@@ -4279,6 +4421,76 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     paddingHorizontal: 7,
     paddingVertical: 2,
+  },
+  resultNotice: {
+    color: '#64748b',
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 19,
+    marginTop: 2,
+  },
+  shareButton: {
+    alignItems: 'center',
+    backgroundColor: '#f0fdfa',
+    borderColor: '#99f6e4',
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: 'center',
+    minHeight: 44,
+    paddingHorizontal: 14,
+  },
+  shareButtonText: {
+    color: '#0f766e',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  resultWordList: {
+    backgroundColor: '#ffffff',
+    borderColor: '#dbe4ee',
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 12,
+    padding: 14,
+  },
+  resultWordListTitle: {
+    color: '#0f172a',
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  resultWordSection: {
+    gap: 6,
+  },
+  resultSectionTitle: {
+    color: '#0f766e',
+    fontSize: 13,
+    fontWeight: '900',
+    marginBottom: 2,
+  },
+  resultWordItem: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: 8,
+    paddingVertical: 3,
+  },
+  resultWordNumber: {
+    color: '#0f766e',
+    fontSize: 13,
+    fontWeight: '800',
+    minWidth: 34,
+    paddingTop: 1,
+  },
+  resultWordAnswer: {
+    color: '#0f172a',
+    fontSize: 15,
+    fontWeight: '900',
+    minWidth: 60,
+  },
+  resultWordClue: {
+    color: '#64748b',
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 19,
   },
 });
 
