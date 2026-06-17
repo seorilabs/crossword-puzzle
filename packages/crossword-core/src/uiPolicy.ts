@@ -357,25 +357,63 @@ export function getOpenPuzzleSummariesForDate({
   archivePuzzleSummaries,
   date,
   dailyFreeSummary,
+  now = Date.now(),
   selectedPuzzleSummary,
   unlockedBonusSummaries,
 }: {
   archivePuzzleSummaries: PuzzleManifestItem[];
   date: string;
   dailyFreeSummary?: PuzzleManifestItem;
+  now?: number;
   selectedPuzzleSummary?: PuzzleManifestItem;
   unlockedBonusSummaries: PuzzleManifestItem[];
 }) {
-  return sortPuzzleSummariesByRecency(
-    uniquePuzzleSummaries(
-      [
-        dailyFreeSummary?.date === date ? dailyFreeSummary : undefined,
-        ...unlockedBonusSummaries.filter((summary) => summary.date === date),
-        selectedPuzzleSummary?.date === date ? selectedPuzzleSummary : undefined,
-        ...archivePuzzleSummaries.filter((summary) => summary.date === date),
-      ].filter((summary): summary is PuzzleManifestItem => summary != null),
-    ),
+  const summaryByPuzzleId = new Map<string, PuzzleManifestItem>();
+  const addSummary = (summary: PuzzleManifestItem | undefined) => {
+    if (summary == null || summary.date !== date) {
+      return;
+    }
+
+    const existing = summaryByPuzzleId.get(summary.puzzleId);
+    summaryByPuzzleId.set(
+      summary.puzzleId,
+      existing == null ? summary : mergePuzzleSummaryMetadata(existing, summary),
+    );
+  };
+
+  addSummary(
+    dailyFreeSummary != null && isPublishedPuzzle(dailyFreeSummary, now)
+      ? dailyFreeSummary
+      : undefined,
   );
+  addSummary(
+    selectedPuzzleSummary != null && isPublishedPuzzle(selectedPuzzleSummary, now)
+      ? selectedPuzzleSummary
+      : undefined,
+  );
+  unlockedBonusSummaries.forEach((summary) => {
+    addSummary(isPublishedPuzzle(summary, now) ? summary : undefined);
+  });
+  archivePuzzleSummaries.forEach(addSummary);
+
+  return sortPuzzleSummariesByRecency([...summaryByPuzzleId.values()]);
+}
+
+function mergePuzzleSummaryMetadata(
+  primary: PuzzleManifestItem,
+  fallback: PuzzleManifestItem,
+): PuzzleManifestItem {
+  return {
+    ...fallback,
+    ...primary,
+    alias: primary.alias ?? fallback.alias,
+    metrics: primary.metrics ?? fallback.metrics,
+    packId: primary.packId ?? fallback.packId,
+    path: primary.path !== "" ? primary.path : fallback.path,
+    publishedAt: primary.publishedAt ?? fallback.publishedAt,
+    quality: primary.quality ?? fallback.quality,
+    slotId: primary.slotId ?? fallback.slotId,
+  };
 }
 
 export function uniquePuzzleSummaries(summaries: PuzzleManifestItem[]) {

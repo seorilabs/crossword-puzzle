@@ -41,6 +41,9 @@ jobs:
       - name: Test adapters
         run: npm run test:adapters
 
+      - name: Test core policy
+        run: npm run test:core
+
       - name: Build AppsInToss bundle
         run: npm run build
 
