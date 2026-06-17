@@ -3617,6 +3617,10 @@ function TodayScreen({
             setIsComposing(true);
             moveBoardInputCaretToEnd(event.currentTarget);
           }}
+          onCompositionUpdate={(event) => {
+            setInputValue(event.currentTarget.value || event.data);
+            clearCommitTimer();
+          }}
           onCompositionEnd={(event) => {
             const nextValue = event.currentTarget.value;
             const startCellKey = compositionStartCellKeyRef.current;
@@ -3649,6 +3653,7 @@ function TodayScreen({
               nativeEvent.isComposing ||
               nativeEvent.inputType === "insertCompositionText"
             ) {
+              setInputValue(nextValue);
               clearCommitTimer();
               return;
             }
