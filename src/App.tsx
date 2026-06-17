@@ -2780,7 +2780,7 @@ function formatPuzzleCardSequenceLabel(summary: PuzzleManifestItem) {
   const sequenceNumber = getPuzzleDailySequenceNumber(summary);
 
   return sequenceNumber == null
-    ? ""
+    ? "퍼즐 --번"
     : `퍼즐 ${String(sequenceNumber).padStart(2, "0")}번`;
 }
 
@@ -3002,7 +3002,7 @@ function DateCarousel({
               )}`;
           const titleLabel = isFallbackPack
             ? formatFallbackCardTitle(index, puzzleSummaries.length)
-            : sequenceLabel || formatPuzzleAliasLabel(summary);
+            : sequenceLabel;
           const metaLabel =
             !isFallbackPack && completionStatsLabel !== ""
               ? completionStatsLabel

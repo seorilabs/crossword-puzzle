@@ -260,6 +260,20 @@ test('formats two-digit puzzle sequence labels from two-hour slots', () => {
       slotId: '2026-06-12-h22',
     }),
   ).toBe('퍼즐 12번');
+  expect(
+    formatPuzzleCardSequenceLabel({
+      ...summary,
+      publishedAt: '2026-06-12T09:00:00.000Z',
+      slotId: '2026-06-12-h99',
+    }),
+  ).toBe('퍼즐 10번');
+  expect(
+    formatPuzzleCardSequenceLabel({
+      ...summary,
+      publishedAt: undefined,
+      slotId: undefined,
+    }),
+  ).toBe('퍼즐 --번');
 });
 
 test('maps pending Korean composition directly onto board cells', () => {

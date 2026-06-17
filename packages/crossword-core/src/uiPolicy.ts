@@ -73,8 +73,8 @@ function getPuzzleSlotHour(
   if (slotMatch != null) {
     const hour = Number(slotMatch[4]);
 
-    if (Number.isInteger(hour)) {
-      return hour % 24;
+    if (Number.isInteger(hour) && hour >= 0 && hour <= 23) {
+      return hour;
     }
   }
 
