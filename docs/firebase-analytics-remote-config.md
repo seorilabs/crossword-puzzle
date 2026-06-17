@@ -51,6 +51,8 @@ GitHub Actions AIT 배포는 같은 값을 GitHub Variables에서 읽는다. 미
 | `result_interstitial_ads_enabled`    | `false` | 결과 화면 진입 후 전면 광고 노출 여부. 현재 기본 비활성 |
 | `leaderboard_enabled`                | `false` | 리더보드 UI 노출 여부                     |
 
+`ios_app_store_review_ads_off` 조건은 iOS Firebase app `1:547625965706:ios:1b21e504c7895f959ef573`에만 적용한다. App Store 최초 심사 중 AdMob 앱 검토 전 `no-fill` 실패 CTA가 보이지 않도록 `rewarded_hint_ads_enabled`, `rewarded_bonus_puzzle_ads_enabled`를 조건부 `false`로 둔다. AdMob 앱 상태가 `Ready`가 되면 이 조건부 값을 제거하거나 `true`로 되돌린다.
+
 Remote Config는 보안 결정이나 정답 검증의 source가 아니다. UI 노출 개수, 힌트 지급량, 광고 on/off 같은 운영 튜닝에만 사용한다. 힌트 출처/라이선스 표시는 Remote Config 대상이 아니며 앱 안에서 항상 접근 가능한 정적 고지로 둔다.
 
 ## Analytics Events
