@@ -46,6 +46,59 @@ function getPublishedAtAlias(value: string) {
   return `${valueByType.year.slice(-2)}${valueByType.month}${valueByType.day}${valueByType.hour}`;
 }
 
+function getPublishedAtHour(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return undefined;
+  }
+
+  const hour = new Intl.DateTimeFormat("en-CA", {
+    hour: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Seoul",
+  })
+    .formatToParts(date)
+    .find((part) => part.type === "hour")?.value;
+  const hourValue = hour == null ? NaN : Number(hour);
+
+  return Number.isInteger(hourValue) ? hourValue % 24 : undefined;
+}
+
+function getPuzzleSlotHour(
+  source: Pick<PuzzleAliasSource, "publishedAt" | "slotId">,
+) {
+  const slotMatch = source.slotId?.match(/^(\d{4})-(\d{2})-(\d{2})-h(\d{2})$/);
+
+  if (slotMatch != null) {
+    const hour = Number(slotMatch[4]);
+
+    if (Number.isInteger(hour) && hour >= 0 && hour <= 23) {
+      return hour;
+    }
+  }
+
+  return source.publishedAt == null
+    ? undefined
+    : getPublishedAtHour(source.publishedAt);
+}
+
+export function getPuzzleDailySequenceNumber(
+  source: Pick<PuzzleAliasSource, "publishedAt" | "slotId">,
+  intervalHours = PUZZLE_GENERATION_INTERVAL_HOURS,
+) {
+  const hour = getPuzzleSlotHour(source);
+  const safeInterval = Math.max(1, Math.floor(intervalHours));
+
+  if (hour == null || !Number.isFinite(safeInterval)) {
+    return undefined;
+  }
+
+  const maxSequence = Math.ceil(24 / safeInterval);
+
+  return Math.min(maxSequence, Math.floor(hour / safeInterval) + 1);
+}
+
 function getCompactDateTimeAlias(
   year: string,
   month: string,

@@ -25,6 +25,7 @@ import {
   getEntryAnswerValue,
   getEntryCells,
   getInitialEntryId,
+  getPuzzleDailySequenceNumber,
   getPuzzlePackAlias,
   getRemainingAttempts,
   getTodayDateKey,
@@ -2775,6 +2776,14 @@ function formatPuzzleCardSlot(summary: PuzzleManifestItem) {
   return hour == null ? "" : `${Number(hour) % 24}시`;
 }
 
+function formatPuzzleCardSequenceLabel(summary: PuzzleManifestItem) {
+  const sequenceNumber = getPuzzleDailySequenceNumber(summary);
+
+  return sequenceNumber == null
+    ? "퍼즐 --번"
+    : `퍼즐 ${String(sequenceNumber).padStart(2, "0")}번`;
+}
+
 function getDateCardStatus(state?: DateCardState) {
   if (state?.completedAt != null) {
     return "완료";
@@ -2976,7 +2985,9 @@ function DateCarousel({
         {puzzleSummaries.map((summary, index) => {
           const state = dateCardStates[summary.puzzleId];
           const isSelected = summary.puzzleId === selectedPuzzleId;
-          const slotLabel = isFallbackPack ? "" : formatPuzzleCardSlot(summary);
+          const sequenceLabel = isFallbackPack
+            ? ""
+            : formatPuzzleCardSequenceLabel(summary);
           const statusLabel = getDateCardStatus(state);
           const wordCountLabel = `${summary.metrics?.wordCount ?? "-"}개`;
           const completionStatsLabel = formatCompletionStatsLabel(
@@ -2991,15 +3002,11 @@ function DateCarousel({
               )}`;
           const titleLabel = isFallbackPack
             ? formatFallbackCardTitle(index, puzzleSummaries.length)
-            : formatPuzzleAliasLabel(summary);
+            : sequenceLabel;
           const metaLabel =
             !isFallbackPack && completionStatsLabel !== ""
-              ? slotLabel === ""
-                ? completionStatsLabel
-                : `${slotLabel} · ${completionStatsLabel}`
-              : slotLabel === ""
-                ? `${statusLabel} · ${wordCountLabel}`
-                : `${slotLabel} · ${wordCountLabel}`;
+              ? completionStatsLabel
+              : `${statusLabel} · ${wordCountLabel}`;
 
           return (
             <button
@@ -3013,9 +3020,9 @@ function DateCarousel({
               aria-label={
                 isFallbackPack
                   ? `${eyebrowLabel} ${titleLabel} ${statusLabel}`
-                  : `${formatPuzzleAliasLabel(summary)} ${formatGameHeaderDate(
+                  : `${titleLabel} ${formatGameHeaderDate(
                       summary.date,
-                    )} ${slotLabel} ${statusLabel}`
+                    )} ${statusLabel}`
               }
               aria-pressed={isSelected}
               onClick={() => void selectPuzzle(summary.puzzleId)}
@@ -5179,4 +5186,3 @@ function ClueSection({
 }
 
 export default App;
-
