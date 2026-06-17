@@ -1103,8 +1103,19 @@ function App() {
   const nextBonusPuzzlePublishedAtMs = nextBonusPuzzlePublishedAt?.getTime() ?? null;
   useEffect(() => {
     if (nextBonusPuzzlePublishedAtMs == null || !bonusPuzzlePanelIsWaiting) return;
-    const id = window.setInterval(() => setNow(new Date()), 60_000);
-    return () => window.clearInterval(id);
+    const nowMs = Date.now();
+    const msUntilNextMinute = Math.ceil(nowMs / 60_000) * 60_000 - nowMs;
+    const msUntilNextAt = Math.max(0, nextBonusPuzzlePublishedAtMs - nowMs);
+    const msUntilFirstTick = Math.max(1, Math.min(msUntilNextMinute, msUntilNextAt));
+    let intervalId: number | null = null;
+    const timeoutId = window.setTimeout(() => {
+      setNow(new Date());
+      intervalId = window.setInterval(() => setNow(new Date()), 60_000);
+    }, msUntilFirstTick);
+    return () => {
+      window.clearTimeout(timeoutId);
+      if (intervalId != null) window.clearInterval(intervalId);
+    };
   }, [bonusPuzzlePanelIsWaiting, nextBonusPuzzlePublishedAtMs]);
   const selectedPuzzleSummary = useMemo(
     () =>
