@@ -113,6 +113,7 @@ test('renders correctly', async () => {
   await ReactTestRenderer.act(() => {
     renderer = ReactTestRenderer.create(<App />);
   });
+  await flushAsyncWork(5);
 
   ReactTestRenderer.act(() => {
     renderer?.unmount();
