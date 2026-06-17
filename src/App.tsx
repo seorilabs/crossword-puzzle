@@ -1107,14 +1107,14 @@ function App() {
     const msUntilNextMinute = Math.ceil(nowMs / 60_000) * 60_000 - nowMs;
     const msUntilNextAt = Math.max(0, nextBonusPuzzlePublishedAtMs - nowMs);
     const msUntilFirstTick = Math.max(1, Math.min(msUntilNextMinute, msUntilNextAt));
-    let intervalId: number | null = null;
-    const timeoutId = window.setTimeout(() => {
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+    const timeoutId = setTimeout(() => {
       setNow(new Date());
-      intervalId = window.setInterval(() => setNow(new Date()), 60_000);
+      intervalId = setInterval(() => setNow(new Date()), 60_000);
     }, msUntilFirstTick);
     return () => {
-      window.clearTimeout(timeoutId);
-      if (intervalId != null) window.clearInterval(intervalId);
+      clearTimeout(timeoutId);
+      if (intervalId != null) clearInterval(intervalId);
     };
   }, [bonusPuzzlePanelIsWaiting, nextBonusPuzzlePublishedAtMs]);
   const selectedPuzzleSummary = useMemo(
