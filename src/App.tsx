@@ -3085,6 +3085,21 @@ function formatElapsedTime(
   return `${minutes}분 ${String(seconds).padStart(2, "0")}초`;
 }
 
+function getNextStreakMilestoneHint(streak: number): string | null {
+  if (streak <= 0) return null;
+  const milestones = [7, 30, 100] as const;
+  for (const milestone of milestones) {
+    if (streak >= milestone) continue;
+    const daysLeft = milestone - streak;
+    if (daysLeft > 3) return null;
+    const label = milestone === 7 ? "일주일" : milestone === 30 ? "한 달" : "100일";
+    return daysLeft === 1
+      ? `내일 풀면 ${label} 연속이에요!`
+      : `${daysLeft}일만 더하면 ${label} 연속이에요!`;
+  }
+  return null;
+}
+
 function buildShareText({
   puzzleLabel,
   elapsedLabel,
@@ -4303,6 +4318,11 @@ function CompletionCelebrationDialog({
               )}
             </div>
           )}
+          {getNextStreakMilestoneHint(consecutiveStreak) != null && (
+            <p className="streakNudge">
+              {getNextStreakMilestoneHint(consecutiveStreak)}
+            </p>
+          )}
         </div>
         <div className="rewardDialogActions">
           <button
@@ -4574,6 +4594,11 @@ function ResultScreen({
               <span className="resultAchievement">{streakAchievementLabel}</span>
             )}
           </div>
+        )}
+        {isComplete && getNextStreakMilestoneHint(consecutiveStreak) != null && (
+          <p className="streakNudge">
+            {getNextStreakMilestoneHint(consecutiveStreak)}
+          </p>
         )}
         <span>
           {completedEntries.length}/{puzzle.entries.length} 단어 · 힌트{" "}
