@@ -945,6 +945,10 @@ function App() {
         applyPuzzleSession(session);
         if (session == null) {
           setLoadState("fallback");
+          setHintToast((prev) => ({
+            id: prev.id + 1,
+            message: "선택한 날짜의 퍼즐을 불러오지 못했습니다.",
+          }));
         }
         telemetry.click("puzzle_select", {
           ...(session == null
@@ -956,6 +960,10 @@ function App() {
         });
       } catch {
         setLoadState("fallback");
+        setHintToast((prev) => ({
+          id: prev.id + 1,
+          message: "선택한 날짜의 퍼즐을 불러오지 못했습니다.",
+        }));
         telemetry.click("puzzle_select", {
           puzzle_id: puzzleId,
           status: "error",
@@ -1943,7 +1951,6 @@ function App() {
     completedEntries: viewModel.completedEntries,
     hintBalance,
     hintCount,
-    hintToastMessage: hintToast.message,
     mission,
     puzzle,
     remainingAttempts,
@@ -2066,6 +2073,11 @@ function App() {
           onCancel={cancelRewardedHintPrompt}
           onConfirm={confirmRewardedHintPrompt}
         />
+      ) : null}
+      {hintToast.message !== "" ? (
+        <div className="hintToast" role="status">
+          {hintToast.message}
+        </div>
       ) : null}
     </main>
   );
@@ -3287,7 +3299,6 @@ type TodayScreenProps = DateSelectionProps & {
   hasStarted: boolean;
   hintBalance: HintBalance;
   hintCount: number;
-  hintToastMessage: string;
   isCompleted: boolean;
   mission: DailyMissionState;
   navigate: (route: AppRoute) => void;
@@ -3322,7 +3333,6 @@ function TodayScreen({
   hasStarted,
   hintBalance,
   hintCount,
-  hintToastMessage,
   isCompleted,
   loadState,
   mission,
@@ -4124,12 +4134,6 @@ function TodayScreen({
           </button>
         </div>
       ) : null}
-
-      {hintToastMessage === "" ? null : (
-        <div className="hintToast" role="status">
-          {hintToastMessage}
-        </div>
-      )}
 
       <section className="puzzlePlayArea" aria-label="퍼즐 풀이">
         <PuzzleBoard
