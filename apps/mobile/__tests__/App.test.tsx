@@ -709,4 +709,23 @@ describe('computeMobileStreakDays', () => {
     ];
     expect(computeMobileStreakDays(records, today)).toBe(1);
   });
+
+  test('completedAt이 빈 문자열이면 완료로 카운트하지 않는다', () => {
+    const today = '2026-06-10';
+    const records = [
+      rec('2026-06-10', ''),
+      rec('2026-06-09', '2026-06-09T10:00:00Z'),
+    ];
+    expect(computeMobileStreakDays(records, today)).toBe(1);
+  });
+
+  test('실재하지 않는 날짜(2026-13-40)는 스트릭에 포함되지 않는다', () => {
+    const today = '2026-06-10';
+    const records = [
+      rec('2026-13-40', '2026-06-10T10:00:00Z'),
+      rec('2026-00-00', '2026-06-10T10:00:00Z'),
+      rec('2026-06-10', '2026-06-10T10:00:00Z'),
+    ];
+    expect(computeMobileStreakDays(records, today)).toBe(1);
+  });
 });

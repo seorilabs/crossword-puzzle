@@ -532,6 +532,13 @@ export function computeMobileStreakDays(
 ): number {
   const YYYY_MM_DD = /^\d{4}-\d{2}-\d{2}$/;
 
+  function isValidDate(dateStr: string): boolean {
+    if (!YYYY_MM_DD.test(dateStr)) return false;
+    const parsed = new Date(`${dateStr}T00:00:00Z`);
+    if (isNaN(parsed.getTime())) return false;
+    return parsed.toISOString().slice(0, 10) === dateStr;
+  }
+
   function getPrevDate(dateStr: string): string {
     const [y, m, d] = dateStr.split('-').map(Number);
     if (!Number.isInteger(y) || !Number.isInteger(m) || !Number.isInteger(d)) return '';
@@ -541,7 +548,11 @@ export function computeMobileStreakDays(
 
   const completedDates = new Set<string>();
   for (const record of records) {
-    if (record.completedAt != null && YYYY_MM_DD.test(record.puzzle.date)) {
+    if (
+      typeof record.completedAt === 'string' &&
+      record.completedAt.length > 0 &&
+      isValidDate(record.puzzle.date)
+    ) {
       completedDates.add(record.puzzle.date);
     }
   }
