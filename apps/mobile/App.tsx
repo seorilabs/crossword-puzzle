@@ -307,6 +307,13 @@ function findPuzzleSummaryById(
     : puzzleSummaries.find(summary => summary.puzzleId === puzzleId);
 }
 
+function formatDifficultyLabel(difficulty?: Puzzle['difficulty']) {
+  if (difficulty === 'easy') return '쉬움';
+  if (difficulty === 'normal') return '보통';
+  if (difficulty === 'hard') return '어려움';
+  return '';
+}
+
 function getPuzzleTelemetryParams(
   puzzle: Puzzle,
   summary?: PuzzleManifestItem,
@@ -2346,16 +2353,19 @@ function AppContent() {
             'compact',
           );
           const wordCountLabel = `${summary.metrics?.wordCount ?? '-'}단어`;
+          const difficultyLabel = formatDifficultyLabel(summary.difficulty);
           const fallbackMetaLabel =
             sequenceLabel === ''
-              ? `${wordCountLabel} · ${state?.attemptsUsed ?? 0}/${DAILY_ATTEMPT_LIMIT}회`
-              : `${sequenceLabel} · ${wordCountLabel}`;
+              ? [difficultyLabel, wordCountLabel, `${state?.attemptsUsed ?? 0}/${DAILY_ATTEMPT_LIMIT}회`]
+                  .filter(Boolean)
+                  .join(' · ')
+              : [difficultyLabel, sequenceLabel, wordCountLabel].filter(Boolean).join(' · ');
           const metaLabel =
             completionStatsLabel === ''
               ? fallbackMetaLabel
               : sequenceLabel === ''
-                ? completionStatsLabel
-                : `${sequenceLabel} · ${completionStatsLabel}`;
+                ? [difficultyLabel, completionStatsLabel].filter(Boolean).join(' · ')
+                : [difficultyLabel, sequenceLabel, completionStatsLabel].filter(Boolean).join(' · ');
           const titleLabel = formatPuzzleCardTitle(summary, puzzlePack.source);
 
           return (
@@ -2436,7 +2446,12 @@ function AppContent() {
                 <Text style={styles.todayPuzzleChipTitle}>{titleLabel}</Text>
                 <Text style={styles.todayPuzzleChipState}>{statusLabel}</Text>
                 <Text style={styles.todayPuzzleChipMeta}>
-                  {summary.metrics?.wordCount ?? '-'}단어
+                  {[
+                    formatDifficultyLabel(summary.difficulty),
+                    `${summary.metrics?.wordCount ?? '-'}단어`,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
                 </Text>
               </Pressable>
             );
