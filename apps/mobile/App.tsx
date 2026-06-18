@@ -2364,8 +2364,8 @@ function AppContent() {
             completionStatsLabel === ''
               ? fallbackMetaLabel
               : sequenceLabel === ''
-                ? completionStatsLabel
-                : `${sequenceLabel} · ${completionStatsLabel}`;
+                ? [difficultyLabel, completionStatsLabel].filter(Boolean).join(' · ')
+                : [difficultyLabel, sequenceLabel, completionStatsLabel].filter(Boolean).join(' · ');
           const titleLabel = formatPuzzleCardTitle(summary, puzzlePack.source);
 
           return (

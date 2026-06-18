@@ -3168,7 +3168,7 @@ function DateCarousel({
           const difficultyLabel = formatDifficultyLabel(summary.difficulty);
           const metaLabel =
             !isFallbackPack && completionStatsLabel !== ""
-              ? completionStatsLabel
+              ? [difficultyLabel, completionStatsLabel].filter(Boolean).join(" · ")
               : [difficultyLabel, statusLabel, wordCountLabel]
                   .filter(Boolean)
                   .join(" · ");
