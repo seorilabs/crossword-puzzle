@@ -2542,9 +2542,12 @@ function TodayPuzzleNavigator({
           const statusLabel =
             state?.completedAt != null
               ? "완료"
-              : state?.hasProgress
-                ? "진행 중"
-                : "대기";
+              : state?.attemptsUsed != null &&
+                  state.attemptsUsed >= DAILY_ATTEMPT_LIMIT
+                ? "도전 종료"
+                : state?.hasProgress
+                  ? "진행 중"
+                  : "대기";
           const titleLabel = isRemotePack
             ? formatPuzzleCardSequenceLabel(summary)
             : formatPuzzleAliasLabel(summary);
@@ -2928,6 +2931,10 @@ function formatPuzzleHistoryLabel(
 function getDateCardStatus(state?: DateCardState) {
   if (state?.completedAt != null) {
     return "완료";
+  }
+
+  if (state?.attemptsUsed != null && state.attemptsUsed >= DAILY_ATTEMPT_LIMIT) {
+    return "도전 종료";
   }
 
   if (state?.hasProgress) {
@@ -4519,7 +4526,9 @@ function ResultScreen({
         <span>
           {completedEntries.length}/{puzzle.entries.length} 단어 · 힌트{" "}
           {hintCount}회 ·{" "}
-          {isComplete ? `도전 ${mission?.attemptsUsed}회` : `남은 도전 ${remainingAttempts}`}
+          {isComplete || remainingAttempts === 0
+            ? `도전 ${mission?.attemptsUsed}회`
+            : `남은 도전 ${remainingAttempts}`}
         </span>
         {!isComplete && remainingAttempts === 0 && (
           <p className="resultDayLimitNotice" role="status" aria-live="polite">
@@ -4674,9 +4683,14 @@ function HistoryScreen({
 
   function openArchiveRecord(record: PuzzleArchiveRecord) {
     const state = dateCardStates[record.puzzleId];
+    const isCompleted = record.completedAt != null || state?.completedAt != null;
+    const isExhausted =
+      !isCompleted &&
+      state?.attemptsUsed != null &&
+      state.attemptsUsed >= DAILY_ATTEMPT_LIMIT;
 
     void selectPuzzle(record.puzzleId);
-    navigate(state?.completedAt != null ? "result" : "today");
+    navigate(isCompleted || isExhausted ? "result" : "today");
   }
 
   return (
@@ -4703,6 +4717,10 @@ function HistoryScreen({
             const state = dateCardStates[record.puzzleId];
             const isRecordCompleted =
               record.completedAt != null || state?.completedAt != null;
+            const isRecordExhausted =
+              !isRecordCompleted &&
+              state?.attemptsUsed != null &&
+              state.attemptsUsed >= DAILY_ATTEMPT_LIMIT;
 
             return (
               <button
@@ -4718,10 +4736,20 @@ function HistoryScreen({
                   )}{" "}
                   · 기기 저장 사본
                 </span>
-                <strong>{isRecordCompleted ? "완료" : "진행 중"}</strong>
+                <strong>
+                  {isRecordCompleted
+                    ? "완료"
+                    : isRecordExhausted
+                      ? "도전 종료"
+                      : "진행 중"}
+                </strong>
                 <em>
                   {record.puzzle.entries.length}개 단어 ·{" "}
-                  {isRecordCompleted ? "다시 보기" : "이어 풀기"}
+                  {isRecordCompleted
+                    ? "다시 보기"
+                    : isRecordExhausted
+                      ? "결과 보기"
+                      : "이어 풀기"}
                 </em>
               </button>
             );
