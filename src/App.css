@@ -907,6 +907,14 @@ button:disabled {
   padding: 4px 0 0;
 }
 
+.streakNudge {
+  margin: 0;
+  color: #00866f;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 20px;
+}
+
 .resultAchievements {
   display: flex;
   flex-wrap: wrap;
