@@ -191,18 +191,46 @@ button:disabled {
   border-color: #c9eee6;
 }
 
+@keyframes skeletonShimmer {
+  0% {
+    background-position: -100px 0;
+  }
+  100% {
+    background-position: 100px 0;
+  }
+}
+
 .dateLoading {
   pointer-events: none;
 }
 
+.dateLoading span,
+.dateLoading strong,
+.dateLoading em {
+  display: block;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #e5e8eb 25%, #f2f4f6 50%, #e5e8eb 75%);
+  background-size: 200px 100%;
+  animation: skeletonShimmer 1.2s ease-in-out infinite;
+  color: transparent;
+  font-size: 0;
+  line-height: 1;
+}
+
+.dateLoading span {
+  width: 50%;
+  height: 12px;
+}
+
 .dateLoading strong {
-  font-size: 14px;
-  line-height: 20px;
-  white-space: nowrap;
+  width: 65%;
+  height: 20px;
 }
 
 .dateLoading em {
-  color: #1b64da;
+  width: 80%;
+  height: 11px;
+  min-height: unset;
 }
 
 .packInfoRow {
