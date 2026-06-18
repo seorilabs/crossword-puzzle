@@ -8,6 +8,7 @@ import { TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import App, {
   BOARD_TEXT_INPUT_REFOCUS_DELAY_MS,
+  computeMobileStreakDays,
   formatCompletionStatsLabel,
   formatPuzzleCardSequenceLabel,
   formatPuzzleCardTitle,
@@ -643,4 +644,105 @@ test('archives started and completed puzzles with bounded ordered index', async 
   ).toBeNull();
   expect(await AsyncStorage.getItem(getArchiveKey('archive-0'))).toBeNull();
   expect(await AsyncStorage.getItem(getArchiveKey('archive-1'))).not.toBeNull();
+});
+
+describe('computeMobileStreakDays', () => {
+  function rec(date: string, completedAt?: string) {
+    return { puzzle: { date }, completedAt };
+  }
+
+  test('오늘 완료한 경우 스트릭 1을 반환한다', () => {
+    const today = '2026-06-10';
+    expect(computeMobileStreakDays([rec(today, '2026-06-10T10:00:00Z')], today)).toBe(1);
+  });
+
+  test('오늘 미완료, 어제 완료인 경우 스트릭 1을 반환한다', () => {
+    const today = '2026-06-10';
+    expect(computeMobileStreakDays([rec('2026-06-09', '2026-06-09T10:00:00Z')], today)).toBe(1);
+  });
+
+  test('어제도 미완료인 경우 0을 반환한다', () => {
+    const today = '2026-06-10';
+    expect(computeMobileStreakDays([rec('2026-06-08', '2026-06-08T10:00:00Z')], today)).toBe(0);
+  });
+
+  test('3일 연속 완료한 경우 스트릭 3을 반환한다', () => {
+    const today = '2026-06-10';
+    const records = [
+      rec('2026-06-10', '2026-06-10T10:00:00Z'),
+      rec('2026-06-09', '2026-06-09T10:00:00Z'),
+      rec('2026-06-08', '2026-06-08T10:00:00Z'),
+    ];
+    expect(computeMobileStreakDays(records, today)).toBe(3);
+  });
+
+  test('중간에 하루가 빠지면 최근 연속 구간만 카운트한다', () => {
+    const today = '2026-06-10';
+    const records = [
+      rec('2026-06-10', '2026-06-10T10:00:00Z'),
+      rec('2026-06-09', '2026-06-09T10:00:00Z'),
+      // 2026-06-08 누락
+      rec('2026-06-07', '2026-06-07T10:00:00Z'),
+    ];
+    expect(computeMobileStreakDays(records, today)).toBe(2);
+  });
+
+  test('completedAt이 undefined인 레코드는 스트릭에 포함되지 않는다', () => {
+    const today = '2026-06-10';
+    const records = [
+      rec('2026-06-10', undefined),
+      rec('2026-06-09', '2026-06-09T10:00:00Z'),
+    ];
+    expect(computeMobileStreakDays(records, today)).toBe(1);
+  });
+
+  test('레코드가 없으면 0을 반환한다', () => {
+    expect(computeMobileStreakDays([], '2026-06-10')).toBe(0);
+  });
+
+  test('비정상 날짜 포맷이 섞여 있어도 크래시 없이 유효한 날짜만 카운트한다', () => {
+    const today = '2026-06-10';
+    const records = [
+      rec('invalid-date', '2026-06-10T10:00:00Z'),
+      rec('', '2026-06-10T10:00:00Z'),
+      rec('2026-06-10', '2026-06-10T10:00:00Z'),
+    ];
+    expect(computeMobileStreakDays(records, today)).toBe(1);
+  });
+
+  test('completedAt이 빈 문자열이면 완료로 카운트하지 않는다', () => {
+    const today = '2026-06-10';
+    const records = [
+      rec('2026-06-10', ''),
+      rec('2026-06-09', '2026-06-09T10:00:00Z'),
+    ];
+    expect(computeMobileStreakDays(records, today)).toBe(1);
+  });
+
+  test('실재하지 않는 날짜(2026-13-40)는 스트릭에 포함되지 않는다', () => {
+    const today = '2026-06-10';
+    const records = [
+      rec('2026-13-40', '2026-06-10T10:00:00Z'),
+      rec('2026-00-00', '2026-06-10T10:00:00Z'),
+      rec('2026-06-10', '2026-06-10T10:00:00Z'),
+    ];
+    expect(computeMobileStreakDays(records, today)).toBe(1);
+  });
+
+  test('completedAt이 파싱 불가능한 손상 값이면 완료로 카운트하지 않는다', () => {
+    const today = '2026-06-10';
+    const records = [
+      rec('2026-06-10', 'not-a-date'),
+      rec('2026-06-10', 'invalid'),
+      rec('2026-06-09', '2026-06-09T10:00:00Z'),
+    ];
+    expect(computeMobileStreakDays(records, today)).toBe(1);
+  });
+
+  test('today가 유효하지 않은 포맷이면 0을 반환한다', () => {
+    const records = [rec('2026-06-10', '2026-06-10T10:00:00Z')];
+    expect(computeMobileStreakDays(records, 'not-a-date')).toBe(0);
+    expect(computeMobileStreakDays(records, '')).toBe(0);
+    expect(computeMobileStreakDays(records, '2026-13-40')).toBe(0);
+  });
 });
