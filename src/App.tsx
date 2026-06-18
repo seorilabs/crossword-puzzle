@@ -4194,6 +4194,7 @@ function TodayScreen({
 
       {showCompletionCelebration ? (
         <CompletionCelebrationDialog
+          attemptsUsed={mission.attemptsUsed}
           completedCount={completedEntries.length}
           consecutiveStreak={consecutiveStreak}
           elapsedLabel={formatElapsedTime(
@@ -4201,6 +4202,7 @@ function TodayScreen({
             mission.completedAt,
           )}
           hintCount={hintCount}
+          isNewBestTime={isNewBestTime}
           totalCount={puzzle.entries.length}
           onClose={dismissCompletionCelebration}
           onGoHome={() => {
@@ -4218,10 +4220,12 @@ function TodayScreen({
 }
 
 type CompletionCelebrationDialogProps = {
+  attemptsUsed: number;
   completedCount: number;
   consecutiveStreak: number;
   elapsedLabel: string | null;
   hintCount: number;
+  isNewBestTime: boolean;
   totalCount: number;
   onClose: () => void;
   onGoHome: () => void;
@@ -4229,15 +4233,31 @@ type CompletionCelebrationDialogProps = {
 };
 
 function CompletionCelebrationDialog({
+  attemptsUsed,
   completedCount,
   consecutiveStreak,
   elapsedLabel,
   hintCount,
+  isNewBestTime,
   totalCount,
   onClose,
   onGoHome,
   onSeeResult,
 }: CompletionCelebrationDialogProps) {
+  const streakBadge =
+    consecutiveStreak >= 100
+      ? `🏆 ${consecutiveStreak}일 연속`
+      : consecutiveStreak >= 30
+        ? `🏆 한 달 연속 (${consecutiveStreak}일)`
+        : consecutiveStreak >= 7
+          ? `🔥 일주일 연속 (${consecutiveStreak}일)`
+          : consecutiveStreak > 0
+            ? `🔥 ${consecutiveStreak}일 연속`
+            : null;
+
+  const hasAchievements =
+    isNewBestTime || hintCount === 0 || attemptsUsed === 1 || streakBadge != null;
+
   return (
     <div className="rewardDialogScrim" onClick={onClose}>
       <section
@@ -4265,16 +4285,23 @@ function CompletionCelebrationDialog({
           {elapsedLabel != null && (
             <p className="celebrationStat">⏱ {elapsedLabel}</p>
           )}
-          {consecutiveStreak > 0 && (
-            <p className="celebrationStat">
-              {consecutiveStreak >= 100
-                ? `🏆 ${consecutiveStreak}일 연속 달성!`
-                : consecutiveStreak >= 30
-                  ? `🏆 ${consecutiveStreak}일째 — 한 달 연속 도전 중!`
-                  : consecutiveStreak >= 7
-                    ? `🔥 ${consecutiveStreak}일째 — 일주일 연속 도전 중!`
-                    : `🔥 ${consecutiveStreak}일째 도전 중`}
-            </p>
+          {hasAchievements && (
+            <div className="resultAchievements">
+              {isNewBestTime && (
+                <span className="resultAchievement resultAchievementBest">
+                  🏆 최고 기록 갱신!
+                </span>
+              )}
+              {hintCount === 0 && (
+                <span className="resultAchievement">🎯 노힌트 클리어</span>
+              )}
+              {attemptsUsed === 1 && (
+                <span className="resultAchievement">💎 첫 도전 성공</span>
+              )}
+              {streakBadge != null && (
+                <span className="resultAchievement">{streakBadge}</span>
+              )}
+            </div>
           )}
         </div>
         <div className="rewardDialogActions">
