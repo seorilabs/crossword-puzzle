@@ -219,18 +219,25 @@ button:disabled {
 
 .dateLoading span {
   width: 50%;
-  height: 12px;
+  height: 16px;
 }
 
 .dateLoading strong {
   width: 65%;
-  height: 20px;
+  height: 24px;
 }
 
 .dateLoading em {
   width: 80%;
-  height: 11px;
-  min-height: unset;
+  height: 30px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dateLoading span,
+  .dateLoading strong,
+  .dateLoading em {
+    animation: none;
+  }
 }
 
 .packInfoRow {
