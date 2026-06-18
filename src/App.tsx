@@ -2384,6 +2384,12 @@ function HomeScreen({
               ? ""
               : ` · ${completionStatsLabel}`}
           </Paragraph>
+          {!isLoadingPuzzlePack &&
+            getNextStreakMilestoneHint(consecutiveStreak) != null && (
+              <p className="streakNudge">
+                {getNextStreakMilestoneHint(consecutiveStreak)}
+              </p>
+            )}
         </div>
 
         <MiniPuzzlePreview puzzle={puzzle} />
