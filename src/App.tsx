@@ -1876,6 +1876,11 @@ function App() {
       return;
     }
 
+    if (hasStarted && remainingAttempts === 0) {
+      navigate("result");
+      return;
+    }
+
     if (!hasStarted) {
       if (remainingAttempts === 0) {
         return;
@@ -2247,18 +2252,22 @@ function HomeScreen({
     ? "불러오는 중"
     : isCompleted
       ? "결과 보기"
-      : hasStarted
-        ? "이어 풀기"
-        : remainingAttempts > 0
-          ? "미션 시작"
-          : "내일 다시";
+      : hasStarted && remainingAttempts === 0
+        ? "결과 보기"
+        : hasStarted
+          ? "이어 풀기"
+          : remainingAttempts > 0
+            ? "미션 시작"
+            : "내일 다시";
   const missionStatusLabel = isLoadingPuzzlePack
     ? "퍼즐팩을 확인하고 있어요"
     : isCompleted
       ? "완료"
-      : hasStarted
-        ? `${progressPercent}% 진행 중`
-        : "도전 준비 완료";
+      : hasStarted && remainingAttempts === 0
+        ? "도전 종료"
+        : hasStarted
+          ? `${progressPercent}% 진행 중`
+          : "도전 준비 완료";
   const completionStatsLabel = formatCompletionStatsLabel(
     completionStatsByPuzzleId[puzzle.puzzleId],
     completionStatsMinDisplayCount,
