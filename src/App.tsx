@@ -4825,11 +4825,11 @@ function HistoryScreen({
             <strong>
               {isCompleted
                 ? "완료"
-                : remainingAttempts === 0
-                  ? "도전 종료"
-                  : hasStarted
-                    ? "진행 중"
-                    : "도전 준비"}
+                : !hasStarted
+                  ? "도전 준비"
+                  : remainingAttempts === 0
+                    ? "도전 종료"
+                    : "진행 중"}
             </strong>
             <em>
               {completedEntries.length}/{puzzle.entries.length} 단어 · 힌트{" "}

@@ -3066,9 +3066,10 @@ function AppContent() {
 
   function renderCompletionCelebrationModal() {
     const isVisible = completionCelebrationPuzzleId === puzzle.puzzleId;
-    const elapsedLabel = isVisible
-      ? formatElapsedTime(mission.lastStartedAt, mission.completedAt)
-      : null;
+    const elapsedLabel =
+      isVisible && mission.lastStartedAt != null && mission.completedAt != null
+        ? formatElapsedTime(mission.lastStartedAt, mission.completedAt)
+        : null;
 
     return (
       <Modal
