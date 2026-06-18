@@ -1208,7 +1208,7 @@ function AppContent() {
   const hasStarted = mission.attemptsUsed > 0 || hasProgress;
   const isCompleted = viewModel.isComplete || mission.completedAt != null;
   const isAttemptExhaustedUncompleted =
-    hasStarted && remainingAttempts <= 0 && !isCompleted;
+    !isCompleted && mission.attemptsUsed >= DAILY_ATTEMPT_LIMIT;
   const isReviewMode = isCompleted || isAttemptExhaustedUncompleted;
   const todayKey = getTodayDateKey();
   const completedPuzzleIds = useMemo(
