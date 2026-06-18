@@ -714,7 +714,6 @@ function App() {
   const [bonusNotice, setBonusNotice] = useState("");
   const [hintNotice, setHintNotice] = useState("");
   const [hintToast, setHintToast] = useState({ id: 0, message: "" });
-  const [puzzleToast, setPuzzleToast] = useState({ id: 0, message: "" });
   const [mission, setMission] =
     useState<DailyMissionState>(createInitialMission);
   const [puzzleSummaries, setPuzzleSummaries] = useState<PuzzleManifestItem[]>(
@@ -946,7 +945,7 @@ function App() {
         applyPuzzleSession(session);
         if (session == null) {
           setLoadState("fallback");
-          setPuzzleToast((prev) => ({
+          setHintToast((prev) => ({
             id: prev.id + 1,
             message: "선택한 날짜의 퍼즐을 불러오지 못했습니다.",
           }));
@@ -961,7 +960,7 @@ function App() {
         });
       } catch {
         setLoadState("fallback");
-        setPuzzleToast((prev) => ({
+        setHintToast((prev) => ({
           id: prev.id + 1,
           message: "선택한 날짜의 퍼즐을 불러오지 못했습니다.",
         }));
@@ -1274,21 +1273,6 @@ function App() {
 
     return () => window.clearTimeout(timerId);
   }, [hintToast]);
-
-  useEffect(() => {
-    if (puzzleToast.message === "") {
-      return;
-    }
-
-    const toastId = puzzleToast.id;
-    const timerId = window.setTimeout(() => {
-      setPuzzleToast((prev) =>
-        prev.id === toastId ? { id: prev.id, message: "" } : prev,
-      );
-    }, 2200);
-
-    return () => window.clearTimeout(timerId);
-  }, [puzzleToast]);
 
   useEffect(() => {
     telemetry.screen(route, {
@@ -1967,7 +1951,6 @@ function App() {
     completedEntries: viewModel.completedEntries,
     hintBalance,
     hintCount,
-    hintToastMessage: hintToast.message,
     mission,
     puzzle,
     remainingAttempts,
@@ -2091,9 +2074,9 @@ function App() {
           onConfirm={confirmRewardedHintPrompt}
         />
       ) : null}
-      {puzzleToast.message !== "" ? (
+      {hintToast.message !== "" ? (
         <div className="hintToast" role="status">
-          {puzzleToast.message}
+          {hintToast.message}
         </div>
       ) : null}
     </main>
@@ -3316,7 +3299,6 @@ type TodayScreenProps = DateSelectionProps & {
   hasStarted: boolean;
   hintBalance: HintBalance;
   hintCount: number;
-  hintToastMessage: string;
   isCompleted: boolean;
   mission: DailyMissionState;
   navigate: (route: AppRoute) => void;
@@ -3351,7 +3333,6 @@ function TodayScreen({
   hasStarted,
   hintBalance,
   hintCount,
-  hintToastMessage,
   isCompleted,
   loadState,
   mission,
@@ -4153,12 +4134,6 @@ function TodayScreen({
           </button>
         </div>
       ) : null}
-
-      {hintToastMessage === "" ? null : (
-        <div className="hintToast" role="status">
-          {hintToastMessage}
-        </div>
-      )}
 
       <section className="puzzlePlayArea" aria-label="퍼즐 풀이">
         <PuzzleBoard
