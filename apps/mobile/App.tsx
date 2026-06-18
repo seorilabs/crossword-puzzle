@@ -555,7 +555,7 @@ function computeMobileStreakDays(
     streak++;
     current = getPrevDate(current);
   }
-  return startDate === yesterday ? streak + 1 : streak;
+  return streak;
 }
 
 function formatKoreanInteger(value: number) {
