@@ -1207,7 +1207,9 @@ function AppContent() {
     viewModel.completedEntries.length > 0;
   const hasStarted = mission.attemptsUsed > 0 || hasProgress;
   const isCompleted = viewModel.isComplete || mission.completedAt != null;
-  const isReviewMode = isCompleted;
+  const isAttemptExhaustedUncompleted =
+    !isCompleted && mission.attemptsUsed >= DAILY_ATTEMPT_LIMIT;
+  const isReviewMode = isCompleted || isAttemptExhaustedUncompleted;
   const todayKey = getTodayDateKey();
   const completedPuzzleIds = useMemo(
     () => getCompletedPuzzleIds(dateCardStates),
@@ -2371,7 +2373,13 @@ function AppContent() {
               <Text style={styles.dateCardDate}>{titleLabel}</Text>
               <Text style={styles.dateCardMeta}>{metaLabel}</Text>
               <Text style={styles.dateCardState}>
-                {isDone ? '완료' : state?.hasProgress ? '진행 중' : '대기'}
+                {isDone
+                  ? '완료'
+                  : (state?.attemptsUsed ?? 0) >= DAILY_ATTEMPT_LIMIT
+                    ? '도전 종료'
+                    : state?.hasProgress
+                      ? '진행 중'
+                      : '대기'}
               </Text>
             </Pressable>
           );
@@ -2404,9 +2412,11 @@ function AppContent() {
             const statusLabel =
               state?.completedAt != null
                 ? '완료'
-                : state?.hasProgress
-                  ? '진행 중'
-                  : '대기';
+                : (state?.attemptsUsed ?? 0) >= DAILY_ATTEMPT_LIMIT
+                  ? '도전 종료'
+                  : state?.hasProgress
+                    ? '진행 중'
+                    : '대기';
             const titleLabel =
               puzzlePack.source === 'remote'
                 ? formatPuzzleCardSequenceLabel(summary)
@@ -2491,11 +2501,19 @@ function AppContent() {
           </View>
           <View style={styles.actions}>
             <Pressable
-              onPress={startOrResumeMission}
+              onPress={
+                isAttemptExhaustedUncompleted
+                  ? () => navigateTo('result')
+                  : startOrResumeMission
+              }
               style={styles.primaryButton}
             >
               <Text style={styles.primaryButtonText}>
-                {hasStarted ? '이어 풀기' : '퍼즐 시작'}
+                {isAttemptExhaustedUncompleted
+                  ? '결과 보기'
+                  : hasStarted
+                    ? '이어 풀기'
+                    : '퍼즐 시작'}
               </Text>
             </Pressable>
             <Pressable
@@ -3164,10 +3182,21 @@ function AppContent() {
 
     return (
       <ScrollView contentContainerStyle={styles.homeContent}>
-        {renderHeader(isCompleted ? '퍼즐 완료' : '진행 결과', puzzleLabel)}
+        {renderHeader(
+          isCompleted
+            ? '퍼즐 완료'
+            : isAttemptExhaustedUncompleted
+              ? '도전 종료'
+              : '진행 결과',
+          puzzleLabel,
+        )}
         <View style={styles.summaryPanel}>
           <Text style={styles.panelTitle}>
-            {isCompleted ? '미션 완료' : '아직 풀이 중입니다.'}
+            {isCompleted
+              ? '미션 완료'
+              : isAttemptExhaustedUncompleted
+                ? '도전 기회를 모두 사용했어요.'
+                : '아직 풀이 중입니다.'}
           </Text>
           <View style={styles.statusGrid}>
             {isCompleted ? (
@@ -3198,7 +3227,11 @@ function AppContent() {
               style={styles.primaryButton}
             >
               <Text style={styles.primaryButtonText}>
-                {isCompleted ? '퍼즐 다시 보기' : '계속 풀기'}
+                {isCompleted
+                  ? '퍼즐 다시 보기'
+                  : isAttemptExhaustedUncompleted
+                    ? '퍼즐 보기'
+                    : '계속 풀기'}
               </Text>
             </Pressable>
             <Pressable
@@ -3320,9 +3353,11 @@ function AppContent() {
               <Text style={styles.historyState}>
                 {state?.completedAt != null
                   ? '완료'
-                  : state?.hasProgress
-                    ? '진행 중'
-                    : '대기'}
+                  : (state?.attemptsUsed ?? 0) >= DAILY_ATTEMPT_LIMIT
+                    ? '도전 종료'
+                    : state?.hasProgress
+                      ? '진행 중'
+                      : '대기'}
               </Text>
             </Pressable>
           );
