@@ -2449,7 +2449,11 @@ function HomeScreen({
 
         <div
           className="progressTrack"
-          aria-label={`진행률 ${progressPercent}%`}
+          role="progressbar"
+          aria-label="진행률"
+          aria-valuenow={progressPercent}
+          aria-valuemin={0}
+          aria-valuemax={100}
         >
           <span style={{ width: `${progressPercent}%` }} />
         </div>
@@ -3139,11 +3143,11 @@ function DateCarousel({
     return (
       <section className="dateRail" aria-label="퍼즐팩 로딩" aria-busy="true">
         <div className="dateScroller">
-          {["원격", "퍼즐팩", "확인"].map((label) => (
-            <div key={label} className="dateCard dateLoading">
-              <span>{label}</span>
-              <strong>불러오는 중</strong>
-              <em>잠시만요</em>
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="dateCard dateLoading" aria-hidden="true">
+              <span />
+              <strong />
+              <em />
             </div>
           ))}
         </div>
