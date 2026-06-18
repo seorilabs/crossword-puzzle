@@ -728,4 +728,11 @@ describe('computeMobileStreakDays', () => {
     ];
     expect(computeMobileStreakDays(records, today)).toBe(1);
   });
+
+  test('today가 유효하지 않은 포맷이면 0을 반환한다', () => {
+    const records = [rec('2026-06-10', '2026-06-10T10:00:00Z')];
+    expect(computeMobileStreakDays(records, 'not-a-date')).toBe(0);
+    expect(computeMobileStreakDays(records, '')).toBe(0);
+    expect(computeMobileStreakDays(records, '2026-13-40')).toBe(0);
+  });
 });

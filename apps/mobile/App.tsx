@@ -546,6 +546,8 @@ export function computeMobileStreakDays(
     return prev.toISOString().slice(0, 10);
   }
 
+  if (!isValidDate(today)) return 0;
+
   const completedDates = new Set<string>();
   for (const record of records) {
     if (
@@ -1466,7 +1468,7 @@ function AppContent() {
     );
 
     setPuzzleArchiveRecords(nextArchiveRecords);
-    setConsecutiveStreak(computeMobileStreakDays(nextArchiveRecords));
+    setConsecutiveStreak(computeMobileStreakDays(nextArchiveRecords, getTodayDateKey()));
     setDateCardStates(previous => ({ ...previous, ...archiveStates }));
   }, []);
 
