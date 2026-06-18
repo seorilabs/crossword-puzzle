@@ -235,6 +235,13 @@ function getPuzzleTelemetryParams(puzzle: Puzzle) {
   };
 }
 
+function formatDifficultyLabel(difficulty?: Puzzle["difficulty"]) {
+  if (difficulty === "easy") return "쉬움";
+  if (difficulty === "normal") return "보통";
+  if (difficulty === "hard") return "어려움";
+  return "";
+}
+
 function getFullScreenAdResultParams(result: FullScreenAdResult) {
   if (result.status === "timeout") {
     return { reason: result.reason, status: result.status };
@@ -2567,7 +2574,14 @@ function TodayPuzzleNavigator({
             >
               <span>{titleLabel}</span>
               <strong>{statusLabel}</strong>
-              <em>{summary.metrics?.wordCount ?? "-"}개 낱말</em>
+              <em>
+                {[
+                  formatDifficultyLabel(summary.difficulty),
+                  `${summary.metrics?.wordCount ?? "-"}개 낱말`,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </em>
             </button>
           );
         })}
@@ -3151,10 +3165,13 @@ function DateCarousel({
           const titleLabel = isFallbackPack
             ? formatFallbackCardTitle(index, puzzleSummaries.length)
             : sequenceLabel;
+          const difficultyLabel = formatDifficultyLabel(summary.difficulty);
           const metaLabel =
             !isFallbackPack && completionStatsLabel !== ""
               ? completionStatsLabel
-              : `${statusLabel} · ${wordCountLabel}`;
+              : [difficultyLabel, statusLabel, wordCountLabel]
+                  .filter(Boolean)
+                  .join(" · ");
 
           return (
             <button
