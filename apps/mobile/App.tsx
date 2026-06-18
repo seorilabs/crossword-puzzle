@@ -2354,12 +2354,12 @@ function AppContent() {
           );
           const wordCountLabel = `${summary.metrics?.wordCount ?? '-'}단어`;
           const difficultyLabel = formatDifficultyLabel(summary.difficulty);
-          const wordCountWithDifficulty =
-            difficultyLabel !== '' ? `${difficultyLabel} · ${wordCountLabel}` : wordCountLabel;
           const fallbackMetaLabel =
             sequenceLabel === ''
-              ? `${wordCountWithDifficulty} · ${state?.attemptsUsed ?? 0}/${DAILY_ATTEMPT_LIMIT}회`
-              : `${sequenceLabel} · ${wordCountWithDifficulty}`;
+              ? [difficultyLabel, wordCountLabel, `${state?.attemptsUsed ?? 0}/${DAILY_ATTEMPT_LIMIT}회`]
+                  .filter(Boolean)
+                  .join(' · ')
+              : [difficultyLabel, sequenceLabel, wordCountLabel].filter(Boolean).join(' · ');
           const metaLabel =
             completionStatsLabel === ''
               ? fallbackMetaLabel
