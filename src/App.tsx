@@ -2449,7 +2449,11 @@ function HomeScreen({
 
         <div
           className="progressTrack"
-          aria-label={`진행률 ${progressPercent}%`}
+          role="progressbar"
+          aria-label="진행률"
+          aria-valuenow={progressPercent}
+          aria-valuemin={0}
+          aria-valuemax={100}
         >
           <span style={{ width: `${progressPercent}%` }} />
         </div>
