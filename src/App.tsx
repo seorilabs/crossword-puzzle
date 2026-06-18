@@ -2328,7 +2328,7 @@ function HomeScreen({
       : loadState === "loading"
         ? "원격 퍼즐팩이 준비되면 최신 퍼즐 목록으로 바뀝니다."
         : "원격 퍼즐팩을 사용할 수 없을 때 기기에 포함된 기본 퍼즐을 보여줘요.";
-  const streakMilestoneHint = getNextStreakMilestoneHint(consecutiveStreak);
+  const streakMilestoneHint = !isLoadingPuzzlePack ? getNextStreakMilestoneHint(consecutiveStreak) : null;
 
   return (
     <>
