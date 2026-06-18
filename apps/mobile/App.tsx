@@ -526,24 +526,26 @@ function buildResultShareText({
   return lines.join('\n');
 }
 
-function computeMobileStreakDays(
+export function computeMobileStreakDays(
   records: Array<{ completedAt: string | undefined; puzzle: { date: string } }>,
+  today = getTodayDateKey(),
 ): number {
+  const YYYY_MM_DD = /^\d{4}-\d{2}-\d{2}$/;
+
+  function getPrevDate(dateStr: string): string {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    if (!Number.isInteger(y) || !Number.isInteger(m) || !Number.isInteger(d)) return '';
+    const prev = new Date(Date.UTC(y, m - 1, d - 1));
+    return prev.toISOString().slice(0, 10);
+  }
+
   const completedDates = new Set<string>();
   for (const record of records) {
-    if (record.completedAt != null) {
+    if (record.completedAt != null && YYYY_MM_DD.test(record.puzzle.date)) {
       completedDates.add(record.puzzle.date);
     }
   }
   if (completedDates.size === 0) return 0;
-
-  const today = getTodayDateKey();
-
-  function getPrevDate(dateStr: string): string {
-    const [y, m, d] = dateStr.split('-').map(Number);
-    const prev = new Date(Date.UTC(y, m - 1, d - 1));
-    return prev.toISOString().slice(0, 10);
-  }
 
   const yesterday = getPrevDate(today);
   const startDate = completedDates.has(today) ? today : yesterday;
