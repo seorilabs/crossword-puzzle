@@ -552,7 +552,7 @@ export function computeMobileStreakDays(
   for (const record of records) {
     if (
       typeof record.completedAt === 'string' &&
-      record.completedAt.length > 0 &&
+      isFinite(Date.parse(record.completedAt)) &&
       isValidDate(record.puzzle.date)
     ) {
       completedDates.add(record.puzzle.date);

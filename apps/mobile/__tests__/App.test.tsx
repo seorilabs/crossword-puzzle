@@ -729,6 +729,16 @@ describe('computeMobileStreakDays', () => {
     expect(computeMobileStreakDays(records, today)).toBe(1);
   });
 
+  test('completedAt이 파싱 불가능한 손상 값이면 완료로 카운트하지 않는다', () => {
+    const today = '2026-06-10';
+    const records = [
+      rec('2026-06-10', 'not-a-date'),
+      rec('2026-06-10', 'invalid'),
+      rec('2026-06-09', '2026-06-09T10:00:00Z'),
+    ];
+    expect(computeMobileStreakDays(records, today)).toBe(1);
+  });
+
   test('today가 유효하지 않은 포맷이면 0을 반환한다', () => {
     const records = [rec('2026-06-10', '2026-06-10T10:00:00Z')];
     expect(computeMobileStreakDays(records, 'not-a-date')).toBe(0);
