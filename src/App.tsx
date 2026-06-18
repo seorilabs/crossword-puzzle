@@ -2034,6 +2034,7 @@ function App() {
           {...dateSelectionProps}
           archiveRecords={puzzleArchiveRecords}
           completedEntries={viewModel.completedEntries}
+          hasStarted={hasStarted}
           hintCount={hintCount}
           isCompleted={isCompleted}
           mission={mission}
@@ -4696,6 +4697,7 @@ function ResultScreen({
 type HistoryScreenProps = DateSelectionProps & {
   archiveRecords: PuzzleArchiveRecord[];
   completedEntries: PuzzleEntry[];
+  hasStarted: boolean;
   hintCount: number;
   isCompleted: boolean;
   mission: DailyMissionState;
@@ -4712,6 +4714,7 @@ function HistoryScreen({
   completionStatsByPuzzleId,
   completionStatsMinDisplayCount,
   dateCardStates,
+  hasStarted,
   hintCount,
   isCompleted,
   loadState,
@@ -4824,7 +4827,9 @@ function HistoryScreen({
                 ? "완료"
                 : remainingAttempts === 0
                   ? "도전 종료"
-                  : "진행 중"}
+                  : hasStarted
+                    ? "진행 중"
+                    : "도전 준비"}
             </strong>
             <em>
               {completedEntries.length}/{puzzle.entries.length} 단어 · 힌트{" "}
