@@ -714,6 +714,7 @@ function App() {
   const [bonusNotice, setBonusNotice] = useState("");
   const [hintNotice, setHintNotice] = useState("");
   const [hintToast, setHintToast] = useState({ id: 0, message: "" });
+  const [puzzleToast, setPuzzleToast] = useState({ id: 0, message: "" });
   const [mission, setMission] =
     useState<DailyMissionState>(createInitialMission);
   const [puzzleSummaries, setPuzzleSummaries] = useState<PuzzleManifestItem[]>(
@@ -945,6 +946,10 @@ function App() {
         applyPuzzleSession(session);
         if (session == null) {
           setLoadState("fallback");
+          setPuzzleToast((prev) => ({
+            id: prev.id + 1,
+            message: "선택한 날짜의 퍼즐을 불러오지 못했습니다.",
+          }));
         }
         telemetry.click("puzzle_select", {
           ...(session == null
@@ -956,6 +961,10 @@ function App() {
         });
       } catch {
         setLoadState("fallback");
+        setPuzzleToast((prev) => ({
+          id: prev.id + 1,
+          message: "선택한 날짜의 퍼즐을 불러오지 못했습니다.",
+        }));
         telemetry.click("puzzle_select", {
           puzzle_id: puzzleId,
           status: "error",
@@ -1265,6 +1274,21 @@ function App() {
 
     return () => window.clearTimeout(timerId);
   }, [hintToast]);
+
+  useEffect(() => {
+    if (puzzleToast.message === "") {
+      return;
+    }
+
+    const toastId = puzzleToast.id;
+    const timerId = window.setTimeout(() => {
+      setPuzzleToast((prev) =>
+        prev.id === toastId ? { id: prev.id, message: "" } : prev,
+      );
+    }, 2200);
+
+    return () => window.clearTimeout(timerId);
+  }, [puzzleToast]);
 
   useEffect(() => {
     telemetry.screen(route, {
@@ -2066,6 +2090,11 @@ function App() {
           onCancel={cancelRewardedHintPrompt}
           onConfirm={confirmRewardedHintPrompt}
         />
+      ) : null}
+      {puzzleToast.message !== "" ? (
+        <div className="hintToast" role="status">
+          {puzzleToast.message}
+        </div>
       ) : null}
     </main>
   );
