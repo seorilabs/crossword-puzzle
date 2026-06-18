@@ -43,10 +43,12 @@ import {
   getEntryAnswerValue,
   getEntryCells,
   getInitialEntryId,
+  getNextStreakMilestoneHint,
   getOpenPuzzleSummariesForDate,
   getPuzzleDailySequenceNumber,
   getPuzzlePackAlias,
   getRemainingAttempts,
+  getStreakBadgeLabel,
   getTodayDateKey,
   sortPuzzleSummariesByRecency,
   startMissionAttempt,
@@ -498,6 +500,7 @@ function buildResultShareText({
   attemptsUsed,
   completedCount,
   totalCount,
+  streak,
 }: {
   puzzleLabel: string;
   elapsedLabel: string | null;
@@ -505,6 +508,7 @@ function buildResultShareText({
   attemptsUsed: number;
   completedCount: number;
   totalCount: number;
+  streak?: number;
 }): string {
   const lines: string[] = [`가로세로 낱말 퍼즐 ${puzzleLabel}`, ''];
   const stats: string[] = [];
@@ -515,9 +519,43 @@ function buildResultShareText({
   const badges: string[] = [];
   if (hintCount === 0) badges.push('🎯 노힌트 클리어');
   if (attemptsUsed === 1) badges.push('💎 첫 도전 성공');
+  const streakBadge = streak != null ? getStreakBadgeLabel(streak) : null;
+  if (streakBadge != null) badges.push(streakBadge);
   if (badges.length > 0) lines.push(badges.join(' · '));
   lines.push(`낱말 ${completedCount}/${totalCount}개 완성 🎉`);
   return lines.join('\n');
+}
+
+function computeMobileStreakDays(
+  records: Array<{ completedAt: string | undefined; puzzle: { date: string } }>,
+): number {
+  const completedDates = new Set<string>();
+  for (const record of records) {
+    if (record.completedAt != null) {
+      completedDates.add(record.puzzle.date);
+    }
+  }
+  if (completedDates.size === 0) return 0;
+
+  const today = getTodayDateKey();
+
+  function getPrevDate(dateStr: string): string {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const prev = new Date(Date.UTC(y, m - 1, d - 1));
+    return prev.toISOString().slice(0, 10);
+  }
+
+  const yesterday = getPrevDate(today);
+  const startDate = completedDates.has(today) ? today : yesterday;
+  if (!completedDates.has(startDate)) return 0;
+
+  let streak = 0;
+  let current = startDate;
+  while (completedDates.has(current)) {
+    streak++;
+    current = getPrevDate(current);
+  }
+  return startDate === yesterday ? streak + 1 : streak;
 }
 
 function formatKoreanInteger(value: number) {
@@ -1026,6 +1064,7 @@ function AppContent() {
   const [puzzleArchiveRecords, setPuzzleArchiveRecords] = useState<
     PuzzleArchiveRecord[]
   >([]);
+  const [consecutiveStreak, setConsecutiveStreak] = useState(0);
   const [bonusPuzzleUnlocks, setBonusPuzzleUnlocks] = useState<
     BonusPuzzleUnlock[]
   >([]);
@@ -1414,6 +1453,7 @@ function AppContent() {
     );
 
     setPuzzleArchiveRecords(nextArchiveRecords);
+    setConsecutiveStreak(computeMobileStreakDays(nextArchiveRecords));
     setDateCardStates(previous => ({ ...previous, ...archiveStates }));
   }, []);
 
@@ -3037,6 +3077,32 @@ function AppContent() {
                 개를 모두 맞췄습니다
                 {hintCount > 0 ? ` · 힌트 ${hintCount}개 사용` : ''}.
               </Text>
+              {(hintCount === 0 ||
+                mission.attemptsUsed === 1 ||
+                consecutiveStreak > 0) && (
+                <View style={styles.completionAchievements}>
+                  {hintCount === 0 && (
+                    <Text style={styles.completionAchievementBadge}>
+                      🎯 노힌트 클리어
+                    </Text>
+                  )}
+                  {mission.attemptsUsed === 1 && (
+                    <Text style={styles.completionAchievementBadge}>
+                      💎 첫 도전 성공
+                    </Text>
+                  )}
+                  {getStreakBadgeLabel(consecutiveStreak) != null && (
+                    <Text style={styles.completionAchievementBadge}>
+                      {getStreakBadgeLabel(consecutiveStreak)}
+                    </Text>
+                  )}
+                </View>
+              )}
+              {getNextStreakMilestoneHint(consecutiveStreak) != null && (
+                <Text style={styles.streakNudge}>
+                  {getNextStreakMilestoneHint(consecutiveStreak)}
+                </Text>
+              )}
             </View>
             <View style={styles.completionDialogActions}>
               <Pressable
@@ -3189,6 +3255,7 @@ function AppContent() {
         attemptsUsed: mission.attemptsUsed,
         completedCount: viewModel.completedEntries.length,
         totalCount: puzzle.entries.length,
+        streak: consecutiveStreak,
       });
       try {
         await Share.share({ message: text });
@@ -3268,6 +3335,18 @@ function AppContent() {
             <Pressable onPress={handleShare} style={styles.shareButton}>
               <Text style={styles.shareButtonText}>결과 공유하기</Text>
             </Pressable>
+          )}
+          {isCompleted && consecutiveStreak > 0 && (
+            <View style={styles.resultStreakRow}>
+              <Text style={styles.resultStreakBadge}>
+                {getStreakBadgeLabel(consecutiveStreak)}
+              </Text>
+              {getNextStreakMilestoneHint(consecutiveStreak) != null && (
+                <Text style={styles.streakNudge}>
+                  {getNextStreakMilestoneHint(consecutiveStreak)}
+                </Text>
+              )}
+            </View>
           )}
         </View>
         {viewModel.completedEntries.length > 0 && (
@@ -4478,6 +4557,39 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 19,
     marginTop: 2,
+  },
+  completionAchievements: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    justifyContent: 'center',
+    paddingTop: 2,
+  },
+  completionAchievementBadge: {
+    backgroundColor: '#ecfdf5',
+    borderRadius: 4,
+    color: '#0f766e',
+    fontSize: 12,
+    fontWeight: '800',
+    overflow: 'hidden',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  streakNudge: {
+    color: '#0f766e',
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  resultStreakRow: {
+    alignItems: 'center',
+    gap: 4,
+    paddingTop: 4,
+  },
+  resultStreakBadge: {
+    color: '#0f766e',
+    fontSize: 14,
+    fontWeight: '800',
   },
   shareButton: {
     alignItems: 'center',

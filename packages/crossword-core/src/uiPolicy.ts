@@ -446,3 +446,27 @@ export function uniquePuzzleSummaries(summaries: PuzzleManifestItem[]) {
 
   return result;
 }
+
+export function getStreakBadgeLabel(streak: number): string | null {
+  if (streak <= 0) return null;
+  if (streak >= 100) return `🏆 ${streak}일 연속`;
+  if (streak >= 30) return `🏆 한 달 연속 (${streak}일)`;
+  if (streak >= 7) return `🔥 일주일 연속 (${streak}일)`;
+  return `🔥 ${streak}일 연속`;
+}
+
+export function getNextStreakMilestoneHint(streak: number): string | null {
+  if (streak <= 0) return null;
+  const milestones = [7, 30, 100] as const;
+  for (const milestone of milestones) {
+    if (streak >= milestone) continue;
+    const daysLeft = milestone - streak;
+    if (daysLeft > 3) return null;
+    const label =
+      milestone === 7 ? "일주일" : milestone === 30 ? "한 달" : "100일";
+    return daysLeft === 1
+      ? `내일 풀면 ${label} 연속이에요!`
+      : `${daysLeft}일만 더하면 ${label} 연속이에요!`;
+  }
+  return null;
+}

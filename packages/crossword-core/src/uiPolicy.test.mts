@@ -3,9 +3,11 @@ import { strict as assert } from "node:assert";
 
 import {
   getDailyFreePuzzleSummary,
+  getNextStreakMilestoneHint,
   getOpenPuzzleSummariesForDate,
   getPuzzleDailySequenceNumber,
   getPuzzlePackAlias,
+  getStreakBadgeLabel,
   isPublishedPuzzle,
 } from "./uiPolicy.ts";
 import type { PuzzleManifestItem } from "./types.ts";
@@ -182,6 +184,65 @@ describe("getPuzzlePackAlias", () => {
 
   it("falls back to date-based alias", () => {
     assert.equal(getPuzzlePackAlias({ date: "2026-06-12" }), "260612");
+  });
+});
+
+describe("getStreakBadgeLabel", () => {
+  it("returns null for streak 0", () => {
+    assert.equal(getStreakBadgeLabel(0), null);
+  });
+
+  it("returns N일 연속 for streak 1-6", () => {
+    assert.equal(getStreakBadgeLabel(1), "🔥 1일 연속");
+    assert.equal(getStreakBadgeLabel(6), "🔥 6일 연속");
+  });
+
+  it("returns 일주일 연속 for streak 7-29", () => {
+    assert.equal(getStreakBadgeLabel(7), "🔥 일주일 연속 (7일)");
+    assert.equal(getStreakBadgeLabel(29), "🔥 일주일 연속 (29일)");
+  });
+
+  it("returns 한 달 연속 for streak 30-99", () => {
+    assert.equal(getStreakBadgeLabel(30), "🏆 한 달 연속 (30일)");
+    assert.equal(getStreakBadgeLabel(99), "🏆 한 달 연속 (99일)");
+  });
+
+  it("returns N일 연속 trophy for streak >= 100", () => {
+    assert.equal(getStreakBadgeLabel(100), "🏆 100일 연속");
+    assert.equal(getStreakBadgeLabel(365), "🏆 365일 연속");
+  });
+});
+
+describe("getNextStreakMilestoneHint", () => {
+  it("returns null for streak 0", () => {
+    assert.equal(getNextStreakMilestoneHint(0), null);
+  });
+
+  it("returns null when streak is far from next milestone", () => {
+    assert.equal(getNextStreakMilestoneHint(1), null);
+    assert.equal(getNextStreakMilestoneHint(3), null);
+  });
+
+  it("returns 3-day hint for 3 days before 7-day milestone", () => {
+    assert.equal(getNextStreakMilestoneHint(4), "3일만 더하면 일주일 연속이에요!");
+    assert.equal(getNextStreakMilestoneHint(5), "2일만 더하면 일주일 연속이에요!");
+    assert.equal(getNextStreakMilestoneHint(6), "내일 풀면 일주일 연속이에요!");
+  });
+
+  it("returns null once milestone is reached", () => {
+    assert.equal(getNextStreakMilestoneHint(7), null);
+    assert.equal(getNextStreakMilestoneHint(30), null);
+    assert.equal(getNextStreakMilestoneHint(100), null);
+  });
+
+  it("returns hint for 3 days before 30-day milestone", () => {
+    assert.equal(getNextStreakMilestoneHint(27), "3일만 더하면 한 달 연속이에요!");
+    assert.equal(getNextStreakMilestoneHint(29), "내일 풀면 한 달 연속이에요!");
+  });
+
+  it("returns hint for 3 days before 100-day milestone", () => {
+    assert.equal(getNextStreakMilestoneHint(97), "3일만 더하면 100일 연속이에요!");
+    assert.equal(getNextStreakMilestoneHint(99), "내일 풀면 100일 연속이에요!");
   });
 });
 
