@@ -4508,7 +4508,7 @@ function ResultScreen({
         <span>
           {completedEntries.length}/{puzzle.entries.length} 단어 · 힌트{" "}
           {hintCount}회 ·{" "}
-          {isComplete ? `도전 ${mission.attemptsUsed}회` : `남은 도전 ${remainingAttempts}`}
+          {isComplete ? `도전 ${mission?.attemptsUsed}회` : `남은 도전 ${remainingAttempts}`}
         </span>
         {!isComplete && remainingAttempts === 0 && (
           <p className="resultDayLimitNotice" role="status" aria-live="polite">
@@ -4730,7 +4730,7 @@ function HistoryScreen({
             <em>
               {completedEntries.length}/{puzzle.entries.length} 단어 · 힌트{" "}
               {hintCount}회 ·{" "}
-              {isCompleted ? `도전 ${mission.attemptsUsed}회` : `남은 도전 ${remainingAttempts}`}
+              {isCompleted ? `도전 ${mission?.attemptsUsed}회` : `남은 도전 ${remainingAttempts}`}
             </em>
           </button>
         )}
