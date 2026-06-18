@@ -4681,13 +4681,14 @@ function HistoryScreen({
 
   function openArchiveRecord(record: PuzzleArchiveRecord) {
     const state = dateCardStates[record.puzzleId];
+    const isCompleted = record.completedAt != null || state?.completedAt != null;
     const isExhausted =
-      state?.completedAt == null &&
+      !isCompleted &&
       state?.attemptsUsed != null &&
       state.attemptsUsed >= DAILY_ATTEMPT_LIMIT;
 
     void selectPuzzle(record.puzzleId);
-    navigate(state?.completedAt != null || isExhausted ? "result" : "today");
+    navigate(isCompleted || isExhausted ? "result" : "today");
   }
 
   return (
