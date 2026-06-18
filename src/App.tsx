@@ -4591,7 +4591,7 @@ function ResultScreen({
               type="button"
               onClick={() => navigate("today")}
             >
-              {isComplete ? "퍼즐 다시 보기" : "이어 풀기"}
+              {isComplete ? "퍼즐 다시 보기" : "퍼즐 보기"}
             </button>
           </>
         )}
