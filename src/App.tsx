@@ -4720,17 +4720,27 @@ function HistoryScreen({
             className="historyItem"
             type="button"
             onClick={
-              isCompleted ? () => navigate("result") : startOrResumeMission
+              isCompleted || remainingAttempts === 0
+                ? () => navigate("result")
+                : startOrResumeMission
             }
           >
             <span>
               {formatPuzzleHistoryLabel(selectedPuzzleSummary, loadState)}
             </span>
-            <strong>{isCompleted ? "완료" : "진행 중"}</strong>
+            <strong>
+              {isCompleted
+                ? "완료"
+                : remainingAttempts === 0
+                  ? "도전 종료"
+                  : "진행 중"}
+            </strong>
             <em>
               {completedEntries.length}/{puzzle.entries.length} 단어 · 힌트{" "}
               {hintCount}회 ·{" "}
-              {isCompleted ? `도전 ${mission?.attemptsUsed}회` : `남은 도전 ${remainingAttempts}`}
+              {isCompleted || remainingAttempts === 0
+                ? `도전 ${mission?.attemptsUsed}회`
+                : `남은 도전 ${remainingAttempts}`}
             </em>
           </button>
         )}
