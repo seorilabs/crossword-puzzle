@@ -1005,6 +1005,7 @@ function App() {
     viewModel.completedEntries.length > 0;
   const hasStarted = mission.attemptsUsed > 0 || hasProgress;
   const isCompleted = viewModel.isComplete || mission.completedAt != null;
+  const isAttemptExhaustedUncompleted = hasStarted && remainingAttempts === 0 && !isCompleted;
   const todayKey = getTodayDateKey();
   const completedPuzzleIds = useMemo(
     () => getCompletedPuzzleIds(dateCardStates),
@@ -1876,6 +1877,11 @@ function App() {
       return;
     }
 
+    if (isAttemptExhaustedUncompleted) {
+      navigate("result");
+      return;
+    }
+
     if (!hasStarted) {
       if (remainingAttempts === 0) {
         return;
@@ -2243,22 +2249,27 @@ function HomeScreen({
 }: HomeScreenProps) {
   const [isPackInfoOpen, setIsPackInfoOpen] = useState(false);
   const isLoadingPuzzlePack = loadState === "loading";
+  const isAttemptExhaustedUncompleted = hasStarted && remainingAttempts === 0 && !isCompleted;
   const primaryLabel = isLoadingPuzzlePack
     ? "불러오는 중"
     : isCompleted
       ? "결과 보기"
-      : hasStarted
-        ? "이어 풀기"
-        : remainingAttempts > 0
-          ? "미션 시작"
-          : "내일 다시";
+      : isAttemptExhaustedUncompleted
+        ? "결과 보기"
+        : hasStarted
+          ? "이어 풀기"
+          : remainingAttempts > 0
+            ? "미션 시작"
+            : "내일 다시";
   const missionStatusLabel = isLoadingPuzzlePack
     ? "퍼즐팩을 확인하고 있어요"
     : isCompleted
       ? "완료"
-      : hasStarted
-        ? `${progressPercent}% 진행 중`
-        : "도전 준비 완료";
+      : isAttemptExhaustedUncompleted
+        ? "도전 종료"
+        : hasStarted
+          ? `${progressPercent}% 진행 중`
+          : "도전 준비 완료";
   const completionStatsLabel = formatCompletionStatsLabel(
     completionStatsByPuzzleId[puzzle.puzzleId],
     completionStatsMinDisplayCount,
