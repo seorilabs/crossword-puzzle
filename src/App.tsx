@@ -3219,11 +3219,15 @@ function DateCarousel({
       typeof window !== "undefined" && typeof window.matchMedia === "function"
         ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
         : true;
-    selectedCard.scrollIntoView({
-      behavior: prefersReducedMotion ? "auto" : "smooth",
-      inline: "nearest",
-      block: "nearest",
-    });
+    try {
+      selectedCard.scrollIntoView({
+        behavior: prefersReducedMotion ? "auto" : "smooth",
+        inline: "nearest",
+        block: "nearest",
+      });
+    } catch {
+      selectedCard.scrollIntoView();
+    }
   }, [selectedPuzzleId, loadState, puzzleIdsKey]);
 
   if (loadState === "loading") {
