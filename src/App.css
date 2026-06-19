@@ -2021,6 +2021,26 @@ button:disabled {
   gap: 8px;
 }
 
+.howToPlayDialog {
+  gap: 18px;
+}
+
+.howToPlayList {
+  margin: 0;
+  padding: 0 0 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: #4e5968;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 23px;
+}
+
+.howToPlayActions {
+  grid-template-columns: 1fr;
+}
+
 .completionDialog {
   position: relative;
   overflow: hidden;
