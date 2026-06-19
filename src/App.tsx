@@ -4103,18 +4103,22 @@ function TodayScreen({
                     .join(" ")}
                   type="button"
                   aria-label={
-                    hintBalance.isAdBusy
-                      ? "광고 준비 중"
-                      : hintBalance.remaining > 0
-                        ? `힌트 ${hintBalance.remaining}개 남음`
-                        : `힌트 얻기. 광고를 보고 ${hintBalance.rewardedCredits}개 받기`
+                    selectedEntry == null
+                      ? "힌트 (먼저 단서를 선택하세요)"
+                      : hintBalance.isAdBusy
+                        ? "광고 준비 중"
+                        : hintBalance.remaining > 0
+                          ? `힌트 ${hintBalance.remaining}개 남음`
+                          : `힌트 얻기. 광고를 보고 ${hintBalance.rewardedCredits}개 받기`
                   }
                   title={
-                    hintBalance.isAdBusy
-                      ? "광고 준비 중"
-                      : hintBalance.remaining > 0
-                        ? `힌트 ${hintBalance.remaining}개 남음`
-                        : `힌트 얻기. 광고를 보고 ${hintBalance.rewardedCredits}개 받기`
+                    selectedEntry == null
+                      ? "먼저 단서를 선택하세요"
+                      : hintBalance.isAdBusy
+                        ? "광고 준비 중"
+                        : hintBalance.remaining > 0
+                          ? `힌트 ${hintBalance.remaining}개 남음`
+                          : `힌트 얻기. 광고를 보고 ${hintBalance.rewardedCredits}개 받기`
                   }
                   disabled={
                     selectedEntry == null ||
@@ -4590,6 +4594,7 @@ function ResultScreen({
     [puzzle.entries],
   );
   const [shareCopied, setShareCopied] = useState(false);
+  const [shareFailed, setShareFailed] = useState(false);
   const shareTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -4614,12 +4619,15 @@ function ResultScreen({
     function copyToClipboard() {
       void navigator.clipboard.writeText(text).then(() => {
         setShareCopied(true);
+        setShareFailed(false);
         if (shareTimeoutRef.current != null) {
           window.clearTimeout(shareTimeoutRef.current);
         }
         shareTimeoutRef.current = window.setTimeout(() => {
           setShareCopied(false);
         }, 2000);
+      }).catch(() => {
+        setShareFailed(true);
       });
     }
 
@@ -4787,6 +4795,11 @@ function ResultScreen({
             {shareCopied && (
               <p className="shareToast" role="status" aria-live="polite">
                 클립보드에 복사됐어요!
+              </p>
+            )}
+            {shareFailed && (
+              <p className="shareToast shareToastError" role="alert" aria-live="assertive">
+                클립보드 복사에 실패했어요.
               </p>
             )}
           </div>
