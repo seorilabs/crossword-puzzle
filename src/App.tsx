@@ -4835,7 +4835,7 @@ function HistoryScreen({
               className="historyItem"
               type="button"
               onClick={
-                isCompleted || remainingAttempts <= 0
+                isCompleted || (hasStarted && remainingAttempts <= 0)
                   ? () => navigate("result")
                   : startOrResumeMission
               }
@@ -4855,8 +4855,8 @@ function HistoryScreen({
               <em>
                 {completedEntries.length}/{puzzle.entries.length} 단어 · 힌트{" "}
                 {hintCount}회 ·{" "}
-                {isCompleted || remainingAttempts <= 0
-                  ? `도전 ${mission?.attemptsUsed}회`
+                {isCompleted || (hasStarted && remainingAttempts <= 0)
+                  ? `도전 ${mission?.attemptsUsed ?? 0}회`
                   : `남은 도전 ${remainingAttempts}`}
               </em>
             </button>
