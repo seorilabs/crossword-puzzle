@@ -3203,10 +3203,17 @@ function DateCarousel({
   useEffect(() => {
     const scroller = scrollerRef.current;
     if (scroller == null) return;
-    const selectedCard = scroller.querySelector<HTMLButtonElement>(
-      `[data-puzzle-id="${selectedPuzzleId}"]`,
+    const allCards = scroller.querySelectorAll<HTMLButtonElement>("[data-puzzle-id]");
+    const selectedCard = Array.from(allCards).find(
+      (el) => el.dataset.puzzleId === selectedPuzzleId,
     );
-    selectedCard?.scrollIntoView({ behavior: "smooth", inline: "nearest", block: "nearest" });
+    if (selectedCard == null) return;
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    selectedCard.scrollIntoView({
+      behavior: prefersReducedMotion ? "auto" : "smooth",
+      inline: "nearest",
+      block: "nearest",
+    });
   }, [selectedPuzzleId]);
 
   if (loadState === "loading") {
