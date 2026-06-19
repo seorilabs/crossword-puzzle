@@ -2788,12 +2788,12 @@ function getBonusPuzzleMeta(summary?: PuzzleManifestItem) {
     : `${aliasLabel} · ${slotLabel} 도착 · ${wordCountLabel}`;
 }
 
-function formatWaitingDescription(nextAt: Date | undefined, intervalHours: number, now: Date): string {
+function formatWaitingDescription(nextAt: Date | undefined, intervalHours: number, now: Date | undefined): string {
   if (nextAt == null) {
     const safeHours = Number.isFinite(intervalHours) ? Math.max(1, Math.floor(intervalHours)) : 2;
     return `약 ${safeHours}시간 후 새 보너스 퍼즐이 발행돼요.`;
   }
-  const nowMs = now.getTime();
+  const nowMs = now instanceof Date ? now.getTime() : Date.now();
   const nextMs = nextAt.getTime();
   if (!Number.isFinite(nowMs) || !Number.isFinite(nextMs)) {
     return "새 보너스 퍼즐이 곧 발행돼요.";
