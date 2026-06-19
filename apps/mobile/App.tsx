@@ -1129,6 +1129,8 @@ function AppContent() {
   const keyboardVisibleRef = useRef(false);
   const [answerInputValue, setAnswerInputValue] = useState('');
   const [isClueListOpen, setIsClueListOpen] = useState(false);
+  const [hasSeenHowToPlay, setHasSeenHowToPlay] = useState(true);
+  const howToPlayDismissedRef = useRef(false);
 
   const navigateTo = useCallback((nextRoute: AppRoute) => {
     setRoute(nextRoute);
@@ -1846,6 +1848,30 @@ function AppContent() {
       scrollBoardCellIntoView(activeAnswerCellKey);
     }
   }, [activeAnswerCellKey, route, scrollBoardCellIntoView]);
+
+  useEffect(() => {
+    let cancelled = false;
+    AsyncStorage.getItem('crossword:how-to-play-seen')
+      .then(value => {
+        if (!cancelled && !howToPlayDismissedRef.current) {
+          setHasSeenHowToPlay(value === '1');
+        }
+      })
+      .catch(() => {
+        if (!cancelled && !howToPlayDismissedRef.current) {
+          // Read failed: default to showing the modal so first-time requirement is met.
+          setHasSeenHowToPlay(false);
+        }
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  function dismissHowToPlay() {
+    howToPlayDismissedRef.current = true;
+    setHasSeenHowToPlay(true);
+    // Fire-and-forget: write failure means session-only dismissal; modal may reappear on next launch.
+    AsyncStorage.setItem('crossword:how-to-play-seen', '1').catch(() => {});
+  }
 
   async function requestRewardedHintCredits() {
     if (!launchConfig.rewardedHintAdsEnabled) {
@@ -3158,6 +3184,54 @@ function AppContent() {
     );
   }
 
+  function renderHowToPlayModal() {
+    return (
+      <Modal
+        animationType="fade"
+        onRequestClose={dismissHowToPlay}
+        transparent
+        visible={route === 'today' && !hasSeenHowToPlay}
+      >
+        <View style={styles.completionModalOverlay}>
+          <View
+            accessibilityLabel="크로스워드 풀이 안내"
+            accessibilityViewIsModal
+            style={styles.howToPlayDialog}
+          >
+            <View style={styles.completionDialogText}>
+              <Text style={styles.completionDialogTitle}>
+                크로스워드 어떻게 풀까요?
+              </Text>
+            </View>
+            <View style={styles.howToPlayList}>
+              {[
+                '격자의 칸을 탭하면 해당 단어가 선택돼요',
+                '같은 칸을 다시 탭하면 가로↔세로 방향이 바뀌어요',
+                '아래 단서 목록에서 원하는 단어를 바로 선택할 수도 있어요',
+                '힌트 버튼으로 모르는 칸을 채울 수 있어요 (횟수 제한 있음)',
+              ].map((text, index) => (
+                <View key={index} style={styles.howToPlayItem}>
+                  <Text style={styles.howToPlayIndex}>{index + 1}</Text>
+                  <Text style={styles.howToPlayText}>{text}</Text>
+                </View>
+              ))}
+            </View>
+            <View style={styles.completionDialogActions}>
+              <Pressable
+                onPress={dismissHowToPlay}
+                style={[styles.primaryButton, {flex: 1}]}
+              >
+                <Text style={styles.primaryButtonText}>
+                  알겠어요, 시작할게요!
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    );
+  }
+
   function renderAdDiagnosticsModal() {
     return (
       <Modal
@@ -3252,6 +3326,7 @@ function AppContent() {
         </ScrollView>
         {renderClueListModal()}
         {renderCompletionCelebrationModal()}
+        {renderHowToPlayModal()}
       </View>
     );
   }
@@ -4684,6 +4759,38 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     lineHeight: 19,
+  },
+  howToPlayDialog: {
+    alignItems: 'stretch',
+    backgroundColor: '#ffffff',
+    borderRadius: 8,
+    gap: 16,
+    maxWidth: 420,
+    padding: 18,
+    width: '100%',
+  },
+  howToPlayList: {
+    gap: 10,
+  },
+  howToPlayItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  howToPlayIndex: {
+    color: '#0f766e',
+    fontSize: 14,
+    fontWeight: '900',
+    lineHeight: 21,
+    minWidth: 18,
+    textAlign: 'center',
+  },
+  howToPlayText: {
+    color: '#4e5968',
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 21,
   },
 });
 
