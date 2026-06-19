@@ -716,7 +716,7 @@ function App() {
     useState(false);
   const [bonusNotice, setBonusNotice] = useState("");
   const [hintNotice, setHintNotice] = useState("");
-  const [hintToast, setHintToast] = useState({ id: 0, message: "" });
+  const [hintToast, setHintToast] = useState<{ id: number; message: string }>({ id: 0, message: "" });
   const [mission, setMission] =
     useState<DailyMissionState>(createInitialMission);
   const [puzzleSummaries, setPuzzleSummaries] = useState<PuzzleManifestItem[]>(
