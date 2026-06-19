@@ -248,8 +248,17 @@ describe("getNextStreakMilestoneHint", () => {
 });
 
 describe("getStreakMilestoneProgress", () => {
-  it("returns null for streak 0", () => {
+  it("returns null for streak 0 or non-finite inputs", () => {
     assert.equal(getStreakMilestoneProgress(0), null);
+    assert.equal(getStreakMilestoneProgress(-1), null);
+    assert.equal(getStreakMilestoneProgress(NaN), null);
+    assert.equal(getStreakMilestoneProgress(Infinity), null);
+    assert.equal(getStreakMilestoneProgress(-Infinity), null);
+  });
+
+  it("floors non-integer streak values", () => {
+    assert.equal(getStreakMilestoneProgress(1.9), "일주일 연속까지 6일 남았어요");
+    assert.equal(getStreakMilestoneProgress(6.5), "내일 풀면 일주일 연속이에요!");
   });
 
   it("returns progress text for streak far from next milestone", () => {

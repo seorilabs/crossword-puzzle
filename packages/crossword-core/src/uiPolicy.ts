@@ -472,11 +472,12 @@ export function getNextStreakMilestoneHint(streak: number): string | null {
 }
 
 export function getStreakMilestoneProgress(streak: number): string | null {
-  if (streak <= 0) return null;
+  if (!Number.isFinite(streak) || streak <= 0) return null;
+  const safeStreak = Math.floor(streak);
   const milestones = [7, 30, 100] as const;
   for (const milestone of milestones) {
-    if (streak >= milestone) continue;
-    const daysLeft = milestone - streak;
+    if (safeStreak >= milestone) continue;
+    const daysLeft = milestone - safeStreak;
     const label =
       milestone === 7 ? "일주일" : milestone === 30 ? "한 달" : "100일";
     if (daysLeft === 1) return `내일 풀면 ${label} 연속이에요!`;
