@@ -3197,6 +3197,39 @@ function DateCarousel({
   selectedPuzzleId,
   selectPuzzle,
 }: DateSelectionProps) {
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const lastScrolledRef = useRef<{ key: string; scroller: HTMLDivElement } | null>(null);
+  const todayKey = getTodayDateKey();
+
+  const puzzleIdsKey = JSON.stringify(puzzleSummaries.map((p) => String(p.puzzleId)));
+
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    if (scroller == null) return;
+    const scrollKey = `${selectedPuzzleId}::${puzzleIdsKey}`;
+    const last = lastScrolledRef.current;
+    if (last?.key === scrollKey && last?.scroller === scroller) return;
+    const allCards = scroller.querySelectorAll<HTMLButtonElement>("[data-puzzle-id]");
+    const selectedCard = Array.from(allCards).find(
+      (el) => el.dataset.puzzleId === String(selectedPuzzleId),
+    );
+    if (selectedCard == null) return;
+    lastScrolledRef.current = { key: scrollKey, scroller };
+    const prefersReducedMotion =
+      typeof window !== "undefined" && typeof window.matchMedia === "function"
+        ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        : true;
+    try {
+      selectedCard.scrollIntoView({
+        behavior: prefersReducedMotion ? "auto" : "smooth",
+        inline: "nearest",
+        block: "nearest",
+      });
+    } catch {
+      selectedCard.scrollIntoView();
+    }
+  }, [selectedPuzzleId, loadState, puzzleIdsKey]);
+
   if (loadState === "loading") {
     return (
       <section className="dateRail" aria-label="퍼즐팩 로딩" aria-busy="true">
@@ -3217,10 +3250,11 @@ function DateCarousel({
 
   return (
     <section className="dateRail" aria-label="퍼즐 날짜 선택">
-      <div className="dateScroller">
+      <div className="dateScroller" ref={scrollerRef}>
         {puzzleSummaries.map((summary, index) => {
           const state = dateCardStates[summary.puzzleId];
           const isSelected = summary.puzzleId === selectedPuzzleId;
+          const isToday = !isFallbackPack && summary.date === todayKey;
           const sequenceLabel = isFallbackPack
             ? ""
             : formatPuzzleCardSequenceLabel(summary);
@@ -3233,9 +3267,11 @@ function DateCarousel({
           );
           const eyebrowLabel = isFallbackPack
             ? "기기저장"
-            : `${formatDateCardWeekday(summary.date)} ${formatDateCardDay(
-                summary.date,
-              )}`;
+            : isToday
+              ? "오늘"
+              : `${formatDateCardWeekday(summary.date)} ${formatDateCardDay(
+                  summary.date,
+                )}`;
           const titleLabel = isFallbackPack
             ? formatFallbackCardTitle(index, puzzleSummaries.length)
             : sequenceLabel;
@@ -3250,18 +3286,20 @@ function DateCarousel({
           return (
             <button
               key={summary.puzzleId}
+              data-puzzle-id={summary.puzzleId}
               className={[
                 "dateCard",
                 isSelected ? "dateSelected" : "",
                 state?.completedAt != null ? "dateCompleted" : "",
-              ].join(" ")}
+                isToday ? "dateToday" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
               type="button"
               aria-label={
                 isFallbackPack
                   ? `${eyebrowLabel} ${titleLabel} ${statusLabel}`
-                  : `${titleLabel} ${formatGameHeaderDate(
-                      summary.date,
-                    )} ${statusLabel}`
+                  : `${titleLabel} ${isToday ? `오늘 ${formatGameHeaderDate(summary.date)}` : formatGameHeaderDate(summary.date)} ${statusLabel}`
               }
               aria-pressed={isSelected}
               onClick={() => void selectPuzzle(summary.puzzleId)}
