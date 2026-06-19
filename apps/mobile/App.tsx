@@ -663,6 +663,7 @@ function createDateCardState(
     attemptsUsed: mission.attemptsUsed,
     completedAt: mission.completedAt,
     hasProgress:
+      mission.attemptsUsed > 0 ||
       Object.keys(progress.cellValues).length > 0 ||
       progress.earnedHintCredits > 0 ||
       progress.hintCount > 0,
