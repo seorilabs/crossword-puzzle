@@ -3208,13 +3208,16 @@ function DateCarousel({
       (el) => el.dataset.puzzleId === selectedPuzzleId,
     );
     if (selectedCard == null) return;
-    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const prefersReducedMotion =
+      typeof window.matchMedia === "function"
+        ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        : true;
     selectedCard.scrollIntoView({
       behavior: prefersReducedMotion ? "auto" : "smooth",
       inline: "nearest",
       block: "nearest",
     });
-  }, [selectedPuzzleId]);
+  }, [selectedPuzzleId, puzzleSummaries]);
 
   if (loadState === "loading") {
     return (
