@@ -4826,35 +4826,41 @@ function HistoryScreen({
             );
           })
         ) : (
-          <button
-            className="historyItem"
-            type="button"
-            onClick={
-              isCompleted || remainingAttempts === 0
-                ? () => navigate("result")
-                : startOrResumeMission
-            }
-          >
-            <span>
-              {formatPuzzleHistoryLabel(selectedPuzzleSummary, loadState)}
-            </span>
-            <strong>
-              {isCompleted
-                ? "완료"
-                : !hasStarted
-                  ? "도전 준비"
-                  : remainingAttempts === 0
-                    ? "도전 종료"
-                    : "진행 중"}
-            </strong>
-            <em>
-              {completedEntries.length}/{puzzle.entries.length} 단어 · 힌트{" "}
-              {hintCount}회 ·{" "}
-              {isCompleted || remainingAttempts === 0
-                ? `도전 ${mission?.attemptsUsed}회`
-                : `남은 도전 ${remainingAttempts}`}
-            </em>
-          </button>
+          <>
+            <p className="historyEmptyNotice">
+              아직 기기에 저장된 기록이 없어요. 퍼즐을 완료하거나 도전을 마치면
+              여기에 나타납니다.
+            </p>
+            <button
+              className="historyItem"
+              type="button"
+              onClick={
+                isCompleted || (hasStarted && remainingAttempts <= 0)
+                  ? () => navigate("result")
+                  : startOrResumeMission
+              }
+            >
+              <span>
+                {formatPuzzleHistoryLabel(selectedPuzzleSummary, loadState)}
+              </span>
+              <strong>
+                {isCompleted
+                  ? "완료"
+                  : !hasStarted
+                    ? "도전 준비"
+                    : remainingAttempts <= 0
+                      ? "도전 종료"
+                      : "진행 중"}
+              </strong>
+              <em>
+                {completedEntries.length}/{puzzle.entries.length} 단어 · 힌트{" "}
+                {hintCount}회 ·{" "}
+                {isCompleted || (hasStarted && remainingAttempts <= 0)
+                  ? `도전 ${mission?.attemptsUsed ?? 0}회`
+                  : `남은 도전 ${remainingAttempts}`}
+              </em>
+            </button>
+          </>
         )}
       </section>
 

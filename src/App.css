@@ -1068,6 +1068,17 @@ button:disabled {
   margin: 0 20px 18px;
 }
 
+.historyEmptyNotice {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #f7f8fa;
+  color: #6b7684;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 18px;
+}
+
 .historyNotice {
   margin: 0 20px 18px;
   padding: 12px 14px;
