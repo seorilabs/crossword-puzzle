@@ -3288,7 +3288,7 @@ function DateCarousel({
               aria-label={
                 isFallbackPack
                   ? `${eyebrowLabel} ${titleLabel} ${statusLabel}`
-                  : `${titleLabel} ${isToday ? "오늘" : formatGameHeaderDate(summary.date)} ${statusLabel}`
+                  : `${titleLabel} ${isToday ? `오늘 ${formatGameHeaderDate(summary.date)}` : formatGameHeaderDate(summary.date)} ${statusLabel}`
               }
               aria-pressed={isSelected}
               onClick={() => void selectPuzzle(summary.puzzleId)}
