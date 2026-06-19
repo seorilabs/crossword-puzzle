@@ -3209,7 +3209,7 @@ function DateCarousel({
     );
     if (selectedCard == null) return;
     const prefersReducedMotion =
-      typeof window.matchMedia === "function"
+      typeof window !== "undefined" && typeof window.matchMedia === "function"
         ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
         : true;
     selectedCard.scrollIntoView({
@@ -3217,7 +3217,7 @@ function DateCarousel({
       inline: "nearest",
       block: "nearest",
     });
-  }, [selectedPuzzleId, puzzleSummaries.length]);
+  }, [selectedPuzzleId, loadState]);
 
   if (loadState === "loading") {
     return (
