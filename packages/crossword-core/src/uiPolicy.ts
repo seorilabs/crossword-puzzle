@@ -474,6 +474,7 @@ export function getNextStreakMilestoneHint(streak: number): string | null {
 export function getStreakMilestoneProgress(streak: number): string | null {
   if (!Number.isFinite(streak) || streak <= 0) return null;
   const safeStreak = Math.floor(streak);
+  if (safeStreak <= 0) return null;
   const milestones = [7, 30, 100] as const;
   for (const milestone of milestones) {
     if (safeStreak >= milestone) continue;

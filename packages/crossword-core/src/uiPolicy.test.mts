@@ -254,6 +254,7 @@ describe("getStreakMilestoneProgress", () => {
     assert.equal(getStreakMilestoneProgress(NaN), null);
     assert.equal(getStreakMilestoneProgress(Infinity), null);
     assert.equal(getStreakMilestoneProgress(-Infinity), null);
+    assert.equal(getStreakMilestoneProgress(0.9), null);
   });
 
   it("floors non-integer streak values", () => {
