@@ -4725,7 +4725,16 @@ function ResultScreen({
         </span>
         {!isComplete && remainingAttempts === 0 && (
           <p className="resultDayLimitNotice" role="status" aria-live="polite">
-            오늘의 도전 기회를 모두 사용했어요. 내일 새로운 퍼즐이 기다려요.
+            오늘의 도전 기회를 모두 사용했어요.{" "}
+            {bonusPuzzlePanelState.status === "available"
+              ? "아래 보너스 퍼즐을 확인해보세요."
+              : bonusPuzzlePanelState.status === "waiting"
+                ? formatWaitingDescription(
+                    bonusPuzzlePanelState.nextBonusPublishedAt,
+                    bonusPuzzlePanelState.generationIntervalHours,
+                    bonusPuzzlePanelState.now,
+                  )
+                : "내일 새로운 퍼즐이 기다려요."}
           </p>
         )}
       </section>
