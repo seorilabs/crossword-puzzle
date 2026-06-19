@@ -1859,8 +1859,12 @@ function AppContent() {
   }, []);
 
   function dismissHowToPlay() {
-    AsyncStorage.setItem('crossword:how-to-play-seen', '1').catch(() => {});
-    setHasSeenHowToPlay(true);
+    AsyncStorage.setItem('crossword:how-to-play-seen', '1')
+      .then(() => { setHasSeenHowToPlay(true); })
+      .catch(() => {
+        // Storage write failed: dismiss for this session only; modal may reappear on next launch.
+        setHasSeenHowToPlay(true);
+      });
   }
 
   async function requestRewardedHintCredits() {

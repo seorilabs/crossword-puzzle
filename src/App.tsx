@@ -740,9 +740,13 @@ function App() {
   );
   const [isNewBestTime, setIsNewBestTime] = useState(false);
   const [now, setNow] = useState(() => new Date());
-  const [hasSeenHowToPlay, setHasSeenHowToPlay] = useState(
-    () => localStorage.getItem("crossword:how-to-play-seen") === "1",
-  );
+  const [hasSeenHowToPlay, setHasSeenHowToPlay] = useState(() => {
+    try {
+      return localStorage.getItem("crossword:how-to-play-seen") === "1";
+    } catch {
+      return false;
+    }
+  });
   const firstAnswerInputKeysRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -1667,7 +1671,11 @@ function App() {
   }
 
   function dismissHowToPlay() {
-    localStorage.setItem("crossword:how-to-play-seen", "1");
+    try {
+      localStorage.setItem("crossword:how-to-play-seen", "1");
+    } catch {
+      // Storage blocked; modal dismissed for this session only and will reappear next visit.
+    }
     setHasSeenHowToPlay(true);
   }
 
