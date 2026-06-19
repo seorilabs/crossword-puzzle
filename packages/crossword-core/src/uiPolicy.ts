@@ -470,3 +470,20 @@ export function getNextStreakMilestoneHint(streak: number): string | null {
   }
   return null;
 }
+
+export function getStreakMilestoneProgress(streak: number): string | null {
+  if (!Number.isFinite(streak) || streak <= 0) return null;
+  const safeStreak = Math.floor(streak);
+  if (safeStreak <= 0) return null;
+  const milestones = [7, 30, 100] as const;
+  for (const milestone of milestones) {
+    if (safeStreak >= milestone) continue;
+    const daysLeft = milestone - safeStreak;
+    const label =
+      milestone === 7 ? "일주일" : milestone === 30 ? "한 달" : "100일";
+    if (daysLeft === 1) return `내일 풀면 ${label} 연속이에요!`;
+    if (daysLeft <= 3) return `${daysLeft}일만 더하면 ${label} 연속이에요!`;
+    return `${label} 연속까지 ${daysLeft}일 남았어요`;
+  }
+  return null;
+}
