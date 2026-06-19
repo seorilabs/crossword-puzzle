@@ -191,6 +191,10 @@ button:disabled {
   border-color: #c9eee6;
 }
 
+.dateToday:not(.dateSelected) span {
+  color: #00866f;
+}
+
 @keyframes skeletonShimmer {
   0% {
     background-position: -100px 0;
