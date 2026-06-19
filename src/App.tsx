@@ -4617,11 +4617,12 @@ function ResultScreen({
     });
 
     function copyToClipboard() {
-      if (navigator.clipboard == null) {
+      if (typeof navigator.clipboard?.writeText !== "function") {
         setShareCopied(false);
         setShareFailed(true);
         if (shareTimeoutRef.current != null) {
           window.clearTimeout(shareTimeoutRef.current);
+          shareTimeoutRef.current = null;
         }
         return;
       }
@@ -4633,12 +4634,14 @@ function ResultScreen({
         }
         shareTimeoutRef.current = window.setTimeout(() => {
           setShareCopied(false);
+          shareTimeoutRef.current = null;
         }, 2000);
       }).catch(() => {
         setShareCopied(false);
         setShareFailed(true);
         if (shareTimeoutRef.current != null) {
           window.clearTimeout(shareTimeoutRef.current);
+          shareTimeoutRef.current = null;
         }
       });
     }
