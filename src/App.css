@@ -381,6 +381,39 @@ button:disabled {
   text-decoration: underline;
 }
 
+.exhaustedBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 16px 10px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: #f5f6f7;
+  color: #4e5968;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 18px;
+}
+
+.exhaustedBanner > span {
+  min-width: 0;
+}
+
+.exhaustedBannerLink {
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  color: #4e5968;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 18px;
+  padding: 2px 0;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
 .todayMission {
   display: grid;
   width: calc(100% - 40px);

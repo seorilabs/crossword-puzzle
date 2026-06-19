@@ -3373,6 +3373,7 @@ function TodayScreen({
   // A finished puzzle is shown read-only so the saved answers stay intact while
   // the player reviews the completed board.
   const isReviewMode = isCompleted;
+  const isAttemptExhaustedUncompleted = hasStarted && remainingAttempts === 0 && !isCompleted;
   const selectedPuzzleSummary =
     findPuzzleSummaryById(puzzleSummaries, selectedPuzzleId) ??
     createPuzzleSummary(puzzle);
@@ -3987,6 +3988,8 @@ function TodayScreen({
         eyebrow={
           isReviewMode ? (
             `다 푼 퍼즐 · ${selectedPuzzleLabel}`
+          ) : isAttemptExhaustedUncompleted ? (
+            `도전 종료 · ${selectedPuzzleLabel}`
           ) : mission.lastStartedAt != null ? (
             <>
               {selectedPuzzleLabel} ·{" "}
@@ -4137,6 +4140,21 @@ function TodayScreen({
           <span>완료한 퍼즐이에요 · 읽기 전용으로 답을 확인할 수 있어요</span>
           <button
             className="reviewBannerLink"
+            type="button"
+            onClick={() => navigate("result")}
+          >
+            결과 보기
+          </button>
+        </div>
+      ) : isAttemptExhaustedUncompleted ? (
+        <div
+          className="exhaustedBanner"
+          role="region"
+          aria-label="도전 종료 안내"
+        >
+          <span>오늘 도전 기회를 모두 사용했어요 · 내일 다시 도전해 보세요</span>
+          <button
+            className="exhaustedBannerLink"
             type="button"
             onClick={() => navigate("result")}
           >
