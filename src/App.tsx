@@ -2034,7 +2034,6 @@ function App() {
           {...dateSelectionProps}
           archiveRecords={puzzleArchiveRecords}
           completedEntries={viewModel.completedEntries}
-          hasStarted={hasStarted}
           hintCount={hintCount}
           isCompleted={isCompleted}
           mission={mission}
@@ -4697,7 +4696,6 @@ function ResultScreen({
 type HistoryScreenProps = DateSelectionProps & {
   archiveRecords: PuzzleArchiveRecord[];
   completedEntries: PuzzleEntry[];
-  hasStarted: boolean;
   hintCount: number;
   isCompleted: boolean;
   mission: DailyMissionState;
@@ -4714,7 +4712,6 @@ function HistoryScreen({
   completionStatsByPuzzleId,
   completionStatsMinDisplayCount,
   dateCardStates,
-  hasStarted,
   hintCount,
   isCompleted,
   loadState,
@@ -4728,6 +4725,7 @@ function HistoryScreen({
   selectPuzzle,
   startOrResumeMission,
 }: HistoryScreenProps) {
+  const hasStarted = mission.attemptsUsed > 0 || mission.lastStartedAt != null;
   const selectedPuzzleSummary =
     findPuzzleSummaryById(puzzleSummaries, selectedPuzzleId) ??
     createPuzzleSummary(puzzle);
