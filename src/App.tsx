@@ -2791,7 +2791,7 @@ function getBonusPuzzleMeta(summary?: PuzzleManifestItem) {
 function formatWaitingDescription(nextAt: Date | undefined, intervalHours: number, now: Date): string {
   if (nextAt == null) {
     const safeHours = Number.isFinite(intervalHours) ? Math.max(1, Math.floor(intervalHours)) : 2;
-    return `${safeHours}시간마다 새 보너스 퍼즐이 발행돼요.`;
+    return `약 ${safeHours}시간 후 새 보너스 퍼즐이 발행돼요.`;
   }
   const nowMs = now.getTime();
   const nextMs = nextAt.getTime();
