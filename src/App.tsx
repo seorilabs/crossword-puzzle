@@ -5514,6 +5514,8 @@ type ClueSectionProps = {
   selectEntry: (entry: PuzzleEntry) => void;
 };
 
+const TAB_DIRECTIONS: Direction[] = ["across", "down"];
+
 function ClueSection({
   clueEntries,
   completedEntries,
@@ -5526,26 +5528,25 @@ function ClueSection({
   selectEntry,
 }: ClueSectionProps) {
   const baseId = useId();
-  const tabDirections: Direction[] = ["across", "down"];
 
   function handleTabKeyDown(event: React.KeyboardEvent, currentDirection: Direction) {
-    const currentIndex = tabDirections.indexOf(currentDirection);
+    const currentIndex = TAB_DIRECTIONS.indexOf(currentDirection);
     let nextIndex: number | null = null;
     if (event.key === "ArrowRight" || event.key === "ArrowDown") {
       event.preventDefault();
-      nextIndex = (currentIndex + 1) % tabDirections.length;
+      nextIndex = (currentIndex + 1) % TAB_DIRECTIONS.length;
     } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
       event.preventDefault();
-      nextIndex = (currentIndex - 1 + tabDirections.length) % tabDirections.length;
+      nextIndex = (currentIndex - 1 + TAB_DIRECTIONS.length) % TAB_DIRECTIONS.length;
     } else if (event.key === "Home") {
       event.preventDefault();
       nextIndex = 0;
     } else if (event.key === "End") {
       event.preventDefault();
-      nextIndex = tabDirections.length - 1;
+      nextIndex = TAB_DIRECTIONS.length - 1;
     }
     if (nextIndex !== null) {
-      const nextDirection = tabDirections[nextIndex];
+      const nextDirection = TAB_DIRECTIONS[nextIndex];
       setSelectedDirection(nextDirection);
       document.getElementById(`${baseId}-tab-${nextDirection}`)?.focus();
     }
@@ -5554,7 +5555,7 @@ function ClueSection({
   return (
     <section className="clueSection" style={style}>
       <div className="segmentedControl" role="tablist" aria-label="힌트 방향">
-        {tabDirections.map((direction) => (
+        {TAB_DIRECTIONS.map((direction) => (
           <button
             key={direction}
             id={`${baseId}-tab-${direction}`}
