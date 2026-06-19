@@ -5531,6 +5531,10 @@ function ClueSection({
         {(["across", "down"] as Direction[]).map((direction) => (
           <button
             key={direction}
+            id={`clue-tab-${direction}`}
+            role="tab"
+            aria-selected={selectedDirection === direction}
+            aria-controls="clue-panel"
             className={selectedDirection === direction ? "segmentActive" : ""}
             type="button"
             onClick={() => setSelectedDirection(direction)}
@@ -5540,7 +5544,7 @@ function ClueSection({
         ))}
       </div>
 
-      <div className="clueList">
+      <div id="clue-panel" role="tabpanel" aria-labelledby={`clue-tab-${selectedDirection}`} className="clueList">
         {clueEntries.map((entry) => {
           const isComplete = completedEntries.some(
             (completed) => completed.id === entry.id,
@@ -5554,6 +5558,7 @@ function ClueSection({
                 isComplete ? "clueComplete" : "",
               ].join(" ")}
               type="button"
+              aria-pressed={entry.id === selectedEntry?.id}
               onClick={() => selectEntry(entry)}
             >
               <span className="clueIndex">
