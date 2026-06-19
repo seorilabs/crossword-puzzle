@@ -3201,7 +3201,7 @@ function DateCarousel({
   const lastScrolledRef = useRef<string | null>(null);
   const todayKey = getTodayDateKey();
 
-  const puzzleIdsKey = puzzleSummaries.map((p) => p.puzzleId).join("|");
+  const puzzleIdsKey = JSON.stringify(puzzleSummaries.map((p) => String(p.puzzleId)));
 
   useEffect(() => {
     const scrollKey = `${selectedPuzzleId}::${puzzleIdsKey}`;
