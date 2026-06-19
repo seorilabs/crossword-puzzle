@@ -3217,7 +3217,7 @@ function DateCarousel({
       inline: "nearest",
       block: "nearest",
     });
-  }, [selectedPuzzleId, puzzleSummaries]);
+  }, [selectedPuzzleId, puzzleSummaries.length]);
 
   if (loadState === "loading") {
     return (
