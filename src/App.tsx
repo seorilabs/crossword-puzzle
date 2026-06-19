@@ -2788,12 +2788,17 @@ function getBonusPuzzleMeta(summary?: PuzzleManifestItem) {
     : `${aliasLabel} · ${slotLabel} 도착 · ${wordCountLabel}`;
 }
 
-function formatWaitingDescription(nextAt: Date | undefined, intervalHours: number, now: Date): string {
+function formatWaitingDescription(nextAt: Date | undefined, intervalHours: number, now: Date | undefined): string {
   if (nextAt == null) {
     const safeHours = Number.isFinite(intervalHours) ? Math.max(1, Math.floor(intervalHours)) : 2;
-    return `${safeHours}시간마다 새 보너스 퍼즐이 발행돼요.`;
+    return `약 ${safeHours}시간 후 새 보너스 퍼즐이 발행돼요.`;
   }
-  const totalMinutes = Math.ceil((nextAt.getTime() - now.getTime()) / 60_000);
+  const nowMs = now instanceof Date ? now.getTime() : Date.now();
+  const nextMs = nextAt.getTime();
+  if (!Number.isFinite(nowMs) || !Number.isFinite(nextMs)) {
+    return "새 보너스 퍼즐이 곧 발행돼요.";
+  }
+  const totalMinutes = Math.ceil((nextMs - nowMs) / 60_000);
   if (totalMinutes <= 0) {
     return "새 보너스 퍼즐이 곧 발행돼요.";
   }
@@ -4725,7 +4730,16 @@ function ResultScreen({
         </span>
         {!isComplete && remainingAttempts === 0 && (
           <p className="resultDayLimitNotice" role="status" aria-live="polite">
-            오늘의 도전 기회를 모두 사용했어요. 내일 새로운 퍼즐이 기다려요.
+            오늘의 도전 기회를 모두 사용했어요.{" "}
+            {bonusPuzzlePanelState?.status === "available"
+              ? "아래 보너스 퍼즐을 확인해보세요."
+              : bonusPuzzlePanelState?.status === "waiting"
+                ? formatWaitingDescription(
+                    bonusPuzzlePanelState.nextBonusPublishedAt,
+                    bonusPuzzlePanelState.generationIntervalHours,
+                    bonusPuzzlePanelState.now,
+                  )
+                : "내일 새로운 퍼즐이 기다려요."}
           </p>
         )}
       </section>
