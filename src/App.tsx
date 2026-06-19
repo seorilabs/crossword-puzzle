@@ -3198,22 +3198,23 @@ function DateCarousel({
   selectPuzzle,
 }: DateSelectionProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
-  const lastScrolledRef = useRef<string | null>(null);
+  const lastScrolledRef = useRef<{ key: string; scroller: HTMLDivElement } | null>(null);
   const todayKey = getTodayDateKey();
 
   const puzzleIdsKey = JSON.stringify(puzzleSummaries.map((p) => String(p.puzzleId)));
 
   useEffect(() => {
-    const scrollKey = `${selectedPuzzleId}::${puzzleIdsKey}`;
-    if (lastScrolledRef.current === scrollKey) return;
     const scroller = scrollerRef.current;
     if (scroller == null) return;
+    const scrollKey = `${selectedPuzzleId}::${puzzleIdsKey}`;
+    const last = lastScrolledRef.current;
+    if (last?.key === scrollKey && last?.scroller === scroller) return;
     const allCards = scroller.querySelectorAll<HTMLButtonElement>("[data-puzzle-id]");
     const selectedCard = Array.from(allCards).find(
       (el) => el.dataset.puzzleId === String(selectedPuzzleId),
     );
     if (selectedCard == null) return;
-    lastScrolledRef.current = scrollKey;
+    lastScrolledRef.current = { key: scrollKey, scroller };
     const prefersReducedMotion =
       typeof window !== "undefined" && typeof window.matchMedia === "function"
         ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
