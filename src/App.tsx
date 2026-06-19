@@ -1,6 +1,7 @@
 import { Button, Paragraph, Top } from "@toss/tds-mobile";
 import type {
   CSSProperties,
+  KeyboardEvent,
   MouseEvent as ReactMouseEvent,
   PointerEvent as ReactPointerEvent,
   ReactNode,
@@ -5529,7 +5530,7 @@ function ClueSection({
 }: ClueSectionProps) {
   const baseId = useId();
 
-  function handleTabKeyDown(event: React.KeyboardEvent, currentDirection: Direction) {
+  function handleTabKeyDown(event: KeyboardEvent<HTMLButtonElement>, currentDirection: Direction) {
     const currentIndex = TAB_DIRECTIONS.indexOf(currentDirection);
     let nextIndex: number | null = null;
     if (event.key === "ArrowRight" || event.key === "ArrowDown") {
