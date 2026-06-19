@@ -1,4 +1,3 @@
-import { Button, Paragraph, Top } from "@toss/tds-mobile";
 import type {
   CSSProperties,
   KeyboardEvent,
@@ -3158,6 +3157,7 @@ function buildShareText({
   completedCount,
   totalCount,
   consecutiveStreak,
+  isComplete,
 }: {
   puzzleLabel: string;
   elapsedLabel: string | null;
@@ -3166,6 +3166,7 @@ function buildShareText({
   completedCount: number;
   totalCount: number;
   consecutiveStreak: number;
+  isComplete: boolean;
 }): string {
   const lines: string[] = [`가로세로 낱말 퍼즐 ${puzzleLabel}`, ""];
 
@@ -3176,8 +3177,8 @@ function buildShareText({
   lines.push(stats.join(" · "));
 
   const badges: string[] = [];
-  if (hintCount === 0) badges.push("🎯 노힌트 클리어");
-  if (attemptsUsed === 1) badges.push("💎 첫 도전 성공");
+  if (isComplete && hintCount === 0) badges.push("🎯 노힌트 클리어");
+  if (isComplete && attemptsUsed === 1) badges.push("💎 첫 도전 성공");
   if (badges.length > 0) lines.push(badges.join(" · "));
 
   if (consecutiveStreak >= 100) {
@@ -3190,7 +3191,9 @@ function buildShareText({
     lines.push(`🔥 ${consecutiveStreak}일째 도전 중`);
   }
 
-  lines.push(`낱말 ${completedCount}/${totalCount}개 완성 🎉`);
+  lines.push(isComplete
+    ? `낱말 ${completedCount}/${totalCount}개 완성 🎉`
+    : `낱말 ${completedCount}/${totalCount}개 도전`);
 
   return lines.join("\n");
 }
@@ -4623,6 +4626,7 @@ function ResultScreen({
       completedCount: completedEntries.length,
       totalCount: puzzle.entries.length,
       consecutiveStreak,
+      isComplete,
     });
 
     function copyToClipboard() {
@@ -4825,7 +4829,7 @@ function ResultScreen({
             </button>
           </>
         )}
-        {isComplete && (
+        {(isComplete || remainingAttempts <= 0) && completedEntries.length > 0 && (
           <div className="shareContainer">
             <button
               className="shareButton"
