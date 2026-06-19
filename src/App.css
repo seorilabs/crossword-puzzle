@@ -502,6 +502,13 @@ button:disabled {
   box-shadow: none;
 }
 
+.miniCellSkeleton {
+  background: linear-gradient(90deg, #e5e8eb 25%, #f2f4f6 50%, #e5e8eb 75%);
+  background-size: 200px 100%;
+  animation: skeletonShimmer 1.2s ease-in-out infinite;
+  box-shadow: none;
+}
+
 .attemptStrip {
   display: grid;
   grid-column: 1 / 3;
