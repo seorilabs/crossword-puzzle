@@ -4617,6 +4617,14 @@ function ResultScreen({
     });
 
     function copyToClipboard() {
+      if (navigator.clipboard == null) {
+        setShareCopied(false);
+        setShareFailed(true);
+        if (shareTimeoutRef.current != null) {
+          window.clearTimeout(shareTimeoutRef.current);
+        }
+        return;
+      }
       void navigator.clipboard.writeText(text).then(() => {
         setShareCopied(true);
         setShareFailed(false);
@@ -4627,7 +4635,11 @@ function ResultScreen({
           setShareCopied(false);
         }, 2000);
       }).catch(() => {
+        setShareCopied(false);
         setShareFailed(true);
+        if (shareTimeoutRef.current != null) {
+          window.clearTimeout(shareTimeoutRef.current);
+        }
       });
     }
 
