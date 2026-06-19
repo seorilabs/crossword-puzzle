@@ -1130,6 +1130,7 @@ function AppContent() {
   const [answerInputValue, setAnswerInputValue] = useState('');
   const [isClueListOpen, setIsClueListOpen] = useState(false);
   const [hasSeenHowToPlay, setHasSeenHowToPlay] = useState(true);
+  const howToPlayDismissedRef = useRef(false);
 
   const navigateTo = useCallback((nextRoute: AppRoute) => {
     setRoute(nextRoute);
@@ -1849,19 +1850,28 @@ function AppContent() {
   }, [activeAnswerCellKey, route, scrollBoardCellIntoView]);
 
   useEffect(() => {
+    let cancelled = false;
     AsyncStorage.getItem('crossword:how-to-play-seen')
-      .then(value => { setHasSeenHowToPlay(value === '1'); })
+      .then(value => {
+        if (!cancelled && !howToPlayDismissedRef.current) {
+          setHasSeenHowToPlay(value === '1');
+        }
+      })
       .catch(() => {
-        // Read failed: default to showing the modal so first-time requirement is met.
-        setHasSeenHowToPlay(false);
+        if (!cancelled && !howToPlayDismissedRef.current) {
+          // Read failed: default to showing the modal so first-time requirement is met.
+          setHasSeenHowToPlay(false);
+        }
       });
+    return () => { cancelled = true; };
   }, []);
 
   function dismissHowToPlay() {
+    howToPlayDismissedRef.current = true;
     AsyncStorage.setItem('crossword:how-to-play-seen', '1')
       .then(() => { setHasSeenHowToPlay(true); })
       .catch(() => {
-        // Storage write failed: dismiss for this session only; modal may reappear on next launch.
+        // Write failed: dismiss for this session only; modal may reappear on next launch.
         setHasSeenHowToPlay(true);
       });
   }
