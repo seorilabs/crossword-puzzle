@@ -1,12 +1,13 @@
 import { Button, Paragraph, Top } from "@toss/tds-mobile";
 import type {
   CSSProperties,
+  KeyboardEvent,
   MouseEvent as ReactMouseEvent,
   PointerEvent as ReactPointerEvent,
   ReactNode,
   TouchEvent as ReactTouchEvent,
 } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import "./App.css";
 import {
   buildCellEntries,
@@ -5514,6 +5515,8 @@ type ClueSectionProps = {
   selectEntry: (entry: PuzzleEntry) => void;
 };
 
+const TAB_DIRECTIONS: Direction[] = ["across", "down"];
+
 function ClueSection({
   clueEntries,
   completedEntries,
@@ -5525,35 +5528,73 @@ function ClueSection({
   setSelectedDirection,
   selectEntry,
 }: ClueSectionProps) {
+  const baseId = useId();
+
+  function handleTabKeyDown(event: KeyboardEvent<HTMLButtonElement>, currentDirection: Direction) {
+    const currentIndex = TAB_DIRECTIONS.indexOf(currentDirection);
+    let nextIndex: number | null = null;
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+      event.preventDefault();
+      nextIndex = (currentIndex + 1) % TAB_DIRECTIONS.length;
+    } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+      event.preventDefault();
+      nextIndex = (currentIndex - 1 + TAB_DIRECTIONS.length) % TAB_DIRECTIONS.length;
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      nextIndex = 0;
+    } else if (event.key === "End") {
+      event.preventDefault();
+      nextIndex = TAB_DIRECTIONS.length - 1;
+    }
+    if (nextIndex !== null) {
+      const nextDirection = TAB_DIRECTIONS[nextIndex];
+      setSelectedDirection(nextDirection);
+      document.getElementById(`${baseId}-tab-${nextDirection}`)?.focus();
+    }
+  }
+
   return (
     <section className="clueSection" style={style}>
       <div className="segmentedControl" role="tablist" aria-label="힌트 방향">
-        {(["across", "down"] as Direction[]).map((direction) => (
+        {TAB_DIRECTIONS.map((direction) => (
           <button
             key={direction}
+            id={`${baseId}-tab-${direction}`}
+            role="tab"
+            aria-selected={selectedDirection === direction}
+            aria-controls={`${baseId}-panel`}
+            tabIndex={selectedDirection === direction ? 0 : -1}
             className={selectedDirection === direction ? "segmentActive" : ""}
             type="button"
             onClick={() => setSelectedDirection(direction)}
+            onKeyDown={(e) => handleTabKeyDown(e, direction)}
           >
             {directionLabels[direction]}
           </button>
         ))}
       </div>
 
-      <div className="clueList">
+      <div
+        id={`${baseId}-panel`}
+        role="tabpanel"
+        aria-labelledby={`${baseId}-tab-${selectedDirection}`}
+        className="clueList"
+      >
         {clueEntries.map((entry) => {
           const isComplete = completedEntries.some(
             (completed) => completed.id === entry.id,
           );
+          const isSelected = entry.id === selectedEntry?.id;
           return (
             <button
               key={entry.id}
               className={[
                 "clueItem",
-                entry.id === selectedEntry?.id ? "clueSelected" : "",
+                isSelected ? "clueSelected" : "",
                 isComplete ? "clueComplete" : "",
               ].join(" ")}
               type="button"
+              aria-current={isSelected ? "true" : undefined}
               onClick={() => selectEntry(entry)}
             >
               <span className="clueIndex">
