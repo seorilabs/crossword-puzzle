@@ -4725,6 +4725,7 @@ function HistoryScreen({
   selectPuzzle,
   startOrResumeMission,
 }: HistoryScreenProps) {
+  const hasStarted = mission.attemptsUsed > 0 || mission.lastStartedAt != null;
   const selectedPuzzleSummary =
     findPuzzleSummaryById(puzzleSummaries, selectedPuzzleId) ??
     createPuzzleSummary(puzzle);
@@ -4822,9 +4823,11 @@ function HistoryScreen({
             <strong>
               {isCompleted
                 ? "완료"
-                : remainingAttempts === 0
-                  ? "도전 종료"
-                  : "진행 중"}
+                : !hasStarted
+                  ? "도전 준비"
+                  : remainingAttempts === 0
+                    ? "도전 종료"
+                    : "진행 중"}
             </strong>
             <em>
               {completedEntries.length}/{puzzle.entries.length} 단어 · 힌트{" "}

@@ -3066,6 +3066,10 @@ function AppContent() {
 
   function renderCompletionCelebrationModal() {
     const isVisible = completionCelebrationPuzzleId === puzzle.puzzleId;
+    const elapsedLabel =
+      isVisible && mission.lastStartedAt != null && mission.completedAt != null
+        ? formatElapsedTime(mission.lastStartedAt, mission.completedAt)
+        : null;
 
     return (
       <Modal
@@ -3092,6 +3096,11 @@ function AppContent() {
                 개를 모두 맞췄습니다
                 {hintCount > 0 ? ` · 힌트 ${hintCount}개 사용` : ''}.
               </Text>
+              {elapsedLabel != null && (
+                <Text style={styles.completionDialogElapsedLabel}>
+                  ⏱ {elapsedLabel}
+                </Text>
+              )}
               {(hintCount === 0 ||
                 mission.attemptsUsed === 1 ||
                 consecutiveStreak > 0) && (
@@ -4517,6 +4526,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     lineHeight: 21,
+    textAlign: 'center',
+  },
+  completionDialogElapsedLabel: {
+    color: '#191f28',
+    fontSize: 17,
+    fontWeight: '800',
     textAlign: 'center',
   },
   completionDialogActions: {
