@@ -2796,7 +2796,7 @@ function formatWaitingDescription(nextAt: Date | undefined, intervalHours: numbe
   const nowMs = now.getTime();
   const nextMs = nextAt.getTime();
   if (!Number.isFinite(nowMs) || !Number.isFinite(nextMs)) {
-    return "내일 새로운 퍼즐이 기다려요.";
+    return "새 보너스 퍼즐이 곧 발행돼요.";
   }
   const totalMinutes = Math.ceil((nextMs - nowMs) / 60_000);
   if (totalMinutes <= 0) {
