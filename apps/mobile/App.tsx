@@ -1868,12 +1868,9 @@ function AppContent() {
 
   function dismissHowToPlay() {
     howToPlayDismissedRef.current = true;
-    AsyncStorage.setItem('crossword:how-to-play-seen', '1')
-      .then(() => { setHasSeenHowToPlay(true); })
-      .catch(() => {
-        // Write failed: dismiss for this session only; modal may reappear on next launch.
-        setHasSeenHowToPlay(true);
-      });
+    setHasSeenHowToPlay(true);
+    // Fire-and-forget: write failure means session-only dismissal; modal may reappear on next launch.
+    AsyncStorage.setItem('crossword:how-to-play-seen', '1').catch(() => {});
   }
 
   async function requestRewardedHintCredits() {
@@ -3198,7 +3195,7 @@ function AppContent() {
         <View style={styles.completionModalOverlay}>
           <View
             accessibilityLabel="크로스워드 풀이 안내"
-            accessibilityRole="alert"
+            accessibilityViewIsModal
             style={styles.howToPlayDialog}
           >
             <View style={styles.completionDialogText}>
