@@ -2793,7 +2793,12 @@ function formatWaitingDescription(nextAt: Date | undefined, intervalHours: numbe
     const safeHours = Number.isFinite(intervalHours) ? Math.max(1, Math.floor(intervalHours)) : 2;
     return `${safeHours}시간마다 새 보너스 퍼즐이 발행돼요.`;
   }
-  const totalMinutes = Math.ceil((nextAt.getTime() - now.getTime()) / 60_000);
+  const nowMs = now.getTime();
+  const nextMs = nextAt.getTime();
+  if (!Number.isFinite(nowMs) || !Number.isFinite(nextMs)) {
+    return "내일 새로운 퍼즐이 기다려요.";
+  }
+  const totalMinutes = Math.ceil((nextMs - nowMs) / 60_000);
   if (totalMinutes <= 0) {
     return "새 보너스 퍼즐이 곧 발행돼요.";
   }
@@ -4726,9 +4731,9 @@ function ResultScreen({
         {!isComplete && remainingAttempts === 0 && (
           <p className="resultDayLimitNotice" role="status" aria-live="polite">
             오늘의 도전 기회를 모두 사용했어요.{" "}
-            {bonusPuzzlePanelState.status === "available"
+            {bonusPuzzlePanelState?.status === "available"
               ? "아래 보너스 퍼즐을 확인해보세요."
-              : bonusPuzzlePanelState.status === "waiting"
+              : bonusPuzzlePanelState?.status === "waiting"
                 ? formatWaitingDescription(
                     bonusPuzzlePanelState.nextBonusPublishedAt,
                     bonusPuzzlePanelState.generationIntervalHours,
