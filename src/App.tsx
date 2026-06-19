@@ -3198,16 +3198,22 @@ function DateCarousel({
   selectPuzzle,
 }: DateSelectionProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const lastScrolledRef = useRef<string | null>(null);
   const todayKey = getTodayDateKey();
 
+  const puzzleIdsKey = puzzleSummaries.map((p) => p.puzzleId).join("|");
+
   useEffect(() => {
+    const scrollKey = `${selectedPuzzleId}::${puzzleIdsKey}`;
+    if (lastScrolledRef.current === scrollKey) return;
     const scroller = scrollerRef.current;
     if (scroller == null) return;
     const allCards = scroller.querySelectorAll<HTMLButtonElement>("[data-puzzle-id]");
     const selectedCard = Array.from(allCards).find(
-      (el) => el.dataset.puzzleId === selectedPuzzleId,
+      (el) => el.dataset.puzzleId === String(selectedPuzzleId),
     );
     if (selectedCard == null) return;
+    lastScrolledRef.current = scrollKey;
     const prefersReducedMotion =
       typeof window !== "undefined" && typeof window.matchMedia === "function"
         ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
@@ -3217,7 +3223,7 @@ function DateCarousel({
       inline: "nearest",
       block: "nearest",
     });
-  }, [selectedPuzzleId, loadState]);
+  }, [selectedPuzzleId, loadState, puzzleIdsKey]);
 
   if (loadState === "loading") {
     return (
