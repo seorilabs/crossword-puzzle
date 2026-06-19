@@ -1956,7 +1956,7 @@ function App() {
       });
       navigate("today");
     } catch {
-      setHintNotice("재도전 중 오류가 발생했습니다. 다시 시도해 주세요.");
+      setHintToast((prev) => ({ id: prev.id + 1, message: "재도전 중 오류가 발생했습니다. 다시 시도해 주세요." }));
     }
   }
 
@@ -4369,6 +4369,7 @@ function CompletionCelebrationDialog({
   onSeeResult,
 }: CompletionCelebrationDialogProps) {
   const streakBadge = getStreakBadgeLabel(consecutiveStreak);
+  const nextStreakHint = getNextStreakMilestoneHint(consecutiveStreak);
 
   const hasAchievements =
     isNewBestTime || hintCount === 0 || attemptsUsed === 1 || streakBadge != null;
@@ -4418,9 +4419,9 @@ function CompletionCelebrationDialog({
               )}
             </div>
           )}
-          {getNextStreakMilestoneHint(consecutiveStreak) != null && (
+          {nextStreakHint != null && (
             <p className="streakNudge">
-              {getNextStreakMilestoneHint(consecutiveStreak)}
+              {nextStreakHint}
             </p>
           )}
         </div>
@@ -4595,6 +4596,7 @@ function ResultScreen({
   const streakAchievementLabel = isComplete
     ? getStreakBadgeLabel(consecutiveStreak)
     : null;
+  const nextStreakHint = isComplete ? getNextStreakMilestoneHint(consecutiveStreak) : null;
   const resultStartLabels = useMemo(
     () => buildStartLabels(puzzle.entries),
     [puzzle.entries],
@@ -4716,9 +4718,9 @@ function ResultScreen({
             )}
           </div>
         )}
-        {isComplete && getNextStreakMilestoneHint(consecutiveStreak) != null && (
+        {nextStreakHint != null && (
           <p className="streakNudge">
-            {getNextStreakMilestoneHint(consecutiveStreak)}
+            {nextStreakHint}
           </p>
         )}
         <span>
