@@ -8,6 +8,7 @@ import {
   getPuzzleDailySequenceNumber,
   getPuzzlePackAlias,
   getStreakBadgeLabel,
+  getStreakMilestoneProgress,
   isPublishedPuzzle,
 } from "./uiPolicy.ts";
 import type { PuzzleManifestItem } from "./types.ts";
@@ -243,6 +244,41 @@ describe("getNextStreakMilestoneHint", () => {
   it("returns hint for 3 days before 100-day milestone", () => {
     assert.equal(getNextStreakMilestoneHint(97), "3일만 더하면 100일 연속이에요!");
     assert.equal(getNextStreakMilestoneHint(99), "내일 풀면 100일 연속이에요!");
+  });
+});
+
+describe("getStreakMilestoneProgress", () => {
+  it("returns null for streak 0", () => {
+    assert.equal(getStreakMilestoneProgress(0), null);
+  });
+
+  it("returns progress text for streak far from next milestone", () => {
+    assert.equal(getStreakMilestoneProgress(1), "일주일 연속까지 6일 남았어요");
+    assert.equal(getStreakMilestoneProgress(3), "일주일 연속까지 4일 남았어요");
+    assert.equal(getStreakMilestoneProgress(7), "한 달 연속까지 23일 남았어요");
+    assert.equal(getStreakMilestoneProgress(10), "한 달 연속까지 20일 남았어요");
+    assert.equal(getStreakMilestoneProgress(30), "100일 연속까지 70일 남았어요");
+  });
+
+  it("returns urgent hint for streak within 3 days of 7-day milestone", () => {
+    assert.equal(getStreakMilestoneProgress(4), "3일만 더하면 일주일 연속이에요!");
+    assert.equal(getStreakMilestoneProgress(5), "2일만 더하면 일주일 연속이에요!");
+    assert.equal(getStreakMilestoneProgress(6), "내일 풀면 일주일 연속이에요!");
+  });
+
+  it("returns urgent hint for streak within 3 days of 30-day milestone", () => {
+    assert.equal(getStreakMilestoneProgress(27), "3일만 더하면 한 달 연속이에요!");
+    assert.equal(getStreakMilestoneProgress(29), "내일 풀면 한 달 연속이에요!");
+  });
+
+  it("returns urgent hint for streak within 3 days of 100-day milestone", () => {
+    assert.equal(getStreakMilestoneProgress(97), "3일만 더하면 100일 연속이에요!");
+    assert.equal(getStreakMilestoneProgress(99), "내일 풀면 100일 연속이에요!");
+  });
+
+  it("returns null once 100-day milestone is reached", () => {
+    assert.equal(getStreakMilestoneProgress(100), null);
+    assert.equal(getStreakMilestoneProgress(365), null);
   });
 });
 
