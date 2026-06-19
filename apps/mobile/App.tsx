@@ -1850,12 +1850,11 @@ function AppContent() {
 
   useEffect(() => {
     AsyncStorage.getItem('crossword:how-to-play-seen')
-      .then(value => {
-        if (value !== '1') {
-          setHasSeenHowToPlay(false);
-        }
-      })
-      .catch(() => {});
+      .then(value => { setHasSeenHowToPlay(value === '1'); })
+      .catch(() => {
+        // Read failed: default to showing the modal so first-time requirement is met.
+        setHasSeenHowToPlay(false);
+      });
   }, []);
 
   function dismissHowToPlay() {
