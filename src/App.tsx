@@ -4626,24 +4626,33 @@ function ResultScreen({
         }
         return;
       }
-      void navigator.clipboard.writeText(text).then(() => {
-        setShareCopied(true);
-        setShareFailed(false);
-        if (shareTimeoutRef.current != null) {
-          window.clearTimeout(shareTimeoutRef.current);
-        }
-        shareTimeoutRef.current = window.setTimeout(() => {
+      try {
+        void navigator.clipboard.writeText(text).then(() => {
+          setShareCopied(true);
+          setShareFailed(false);
+          if (shareTimeoutRef.current != null) {
+            window.clearTimeout(shareTimeoutRef.current);
+          }
+          shareTimeoutRef.current = window.setTimeout(() => {
+            setShareCopied(false);
+            shareTimeoutRef.current = null;
+          }, 2000);
+        }).catch(() => {
           setShareCopied(false);
-          shareTimeoutRef.current = null;
-        }, 2000);
-      }).catch(() => {
+          setShareFailed(true);
+          if (shareTimeoutRef.current != null) {
+            window.clearTimeout(shareTimeoutRef.current);
+            shareTimeoutRef.current = null;
+          }
+        });
+      } catch {
         setShareCopied(false);
         setShareFailed(true);
         if (shareTimeoutRef.current != null) {
           window.clearTimeout(shareTimeoutRef.current);
           shareTimeoutRef.current = null;
         }
-      });
+      }
     }
 
     if (navigator.share != null) {
