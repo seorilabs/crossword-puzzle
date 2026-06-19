@@ -1022,7 +1022,7 @@ function App() {
     viewModel.completedEntries.length > 0;
   const hasStarted = mission.attemptsUsed > 0 || hasProgress;
   const isCompleted = viewModel.isComplete || mission.completedAt != null;
-  const isAttemptExhaustedUncompleted = hasStarted && remainingAttempts === 0 && !isCompleted;
+  const isAttemptExhaustedUncompleted = hasStarted && remainingAttempts <= 0 && !isCompleted;
   const todayKey = getTodayDateKey();
   const completedPuzzleIds = useMemo(
     () => getCompletedPuzzleIds(dateCardStates),
@@ -2270,7 +2270,7 @@ function HomeScreen({
 }: HomeScreenProps) {
   const [isPackInfoOpen, setIsPackInfoOpen] = useState(false);
   const isLoadingPuzzlePack = loadState === "loading";
-  const isAttemptExhaustedUncompleted = hasStarted && remainingAttempts === 0 && !isCompleted;
+  const isAttemptExhaustedUncompleted = hasStarted && remainingAttempts <= 0 && !isCompleted;
   const primaryLabel = isLoadingPuzzlePack
     ? "불러오는 중"
     : isCompleted
@@ -3373,7 +3373,7 @@ function TodayScreen({
   // A finished puzzle is shown read-only so the saved answers stay intact while
   // the player reviews the completed board.
   const isReviewMode = isCompleted;
-  const isAttemptExhaustedUncompleted = hasStarted && remainingAttempts === 0 && !isCompleted;
+  const isAttemptExhaustedUncompleted = hasStarted && remainingAttempts <= 0 && !isCompleted;
   const selectedPuzzleSummary =
     findPuzzleSummaryById(puzzleSummaries, selectedPuzzleId) ??
     createPuzzleSummary(puzzle);
