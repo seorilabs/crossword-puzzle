@@ -1,6 +1,12 @@
 import type { PuzzleCompletionStats } from "./types";
 
-const numberFormatter = new Intl.NumberFormat("ko-KR");
+// Group thousands with commas without relying on Intl — React Native / Hermes
+// Intl support is inconsistent, and this module is shared with apps/mobile.
+function groupThousands(value: number): string {
+  return Math.round(value)
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
 
 /**
  * Floor a raw count down to a "nice" bucket so the home cards never expose an
@@ -31,7 +37,7 @@ export function bucketCount(value: number): number {
 
 /** "200+" style bucketed count label (no unit suffix). */
 export function formatBucketedCount(value: number): string {
-  return `${numberFormatter.format(bucketCount(value))}+`;
+  return `${groupThousands(bucketCount(value))}+`;
 }
 
 /** Round a 0~1 ratio to a whole-percent label, e.g. 0.413 → "41%". */

@@ -34,6 +34,8 @@ import {
   createPuzzleSummary,
   DAILY_ATTEMPT_LIMIT,
   defaultLaunchConfig,
+  formatCompletionStatsLabel,
+  formatCompletionStatsMetrics,
   getBonusPuzzleCandidateSummary,
   getBounds,
   getCellKey,
@@ -175,6 +177,12 @@ const REMOTE_PUZZLE_STATS_URL = `${REMOTE_PUZZLE_PACK_BASE_URL.replace(
 const HOME_HEADER_TITLE = '가로세로 낱말 퍼즐';
 const PROGRESS_KEY_PREFIX = 'crossword-puzzle:progress';
 const MISSION_KEY_PREFIX = 'crossword-puzzle:mission';
+
+// Answer entry mode, mirrored from the web app for market parity.
+// "box": one TextInput for the whole word (IME-safe, default).
+// "cell": hidden per-cell TextInput overlaid on the active cell.
+type AnswerInputMode = 'box' | 'cell';
+const ANSWER_INPUT_MODE_KEY = 'crossword:answer-input-mode';
 export const BOARD_TEXT_INPUT_REFOCUS_DELAY_MS = 32;
 export const ANDROID_TEXT_INPUT_REFOCUS_DELAY_MS =
   BOARD_TEXT_INPUT_REFOCUS_DELAY_MS;
@@ -573,12 +581,6 @@ export function computeMobileStreakDays(
   return streak;
 }
 
-function formatKoreanInteger(value: number) {
-  return Math.round(value)
-    .toString()
-    .replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-}
-
 export function formatPuzzleCardSequenceLabel(summary: PuzzleManifestItem) {
   const sequenceNumber = getPuzzleDailySequenceNumber(summary);
 
@@ -598,62 +600,10 @@ export function formatPuzzleHistoryTitle(
     : aliasLabel;
 }
 
-export function formatCompletionStatsLabel(
-  stats: PuzzleCompletionStats | undefined,
-  minDisplayCount: number,
-  variant: 'compact' | 'detail' = 'detail',
-) {
-  if (stats == null) {
-    return '';
-  }
-
-  const participantCount = stats.participantCount;
-
-  if (participantCount != null) {
-    if (participantCount === 0) {
-      return '';
-    }
-
-    if (participantCount < minDisplayCount) {
-      return `${minDisplayCount}명 미만 참여`;
-    }
-
-    if (stats.completionCount === 0) {
-      return variant === 'compact'
-        ? '완료 전'
-        : `${formatKoreanInteger(participantCount)}명 참여 · 완료 전`;
-    }
-
-    if (stats.completionCount < minDisplayCount) {
-      return variant === 'compact'
-        ? `${minDisplayCount}명 미만 완료`
-        : `${formatKoreanInteger(participantCount)}명 참여 · ${minDisplayCount}명 미만 완료`;
-    }
-
-    const completionRate =
-      stats.completionRate ??
-      Math.max(0, Math.min(1, stats.completionCount / participantCount));
-    const completionRateLabel = `${Math.round(completionRate * 100)}%`;
-
-    if (variant === 'compact') {
-      return `${completionRateLabel} 완료`;
-    }
-
-    return `${formatKoreanInteger(participantCount)}명 참여 · ${formatKoreanInteger(
-      stats.completionCount,
-    )}명 완료(${completionRateLabel})`;
-  }
-
-  if (stats.completionCount === 0) {
-    return '';
-  }
-
-  if (stats.completionCount < minDisplayCount) {
-    return `${minDisplayCount}명 미만 완료`;
-  }
-
-  return `${formatKoreanInteger(stats.completionCount)}명 완료`;
-}
+// formatCompletionStatsLabel / formatCompletionStatsMetrics는
+// packages/crossword-core 에서 import해 web과 동일 구현(버킷 표기 + 지표 라인)을
+// 공유한다. 아래 re-export는 기존 테스트 import 경로(../App)를 유지하기 위함.
+export { formatCompletionStatsLabel, formatCompletionStatsMetrics };
 
 function createDateCardState(
   mission: DailyMissionState,
@@ -1128,6 +1078,12 @@ function AppContent() {
   const boardFocusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const keyboardVisibleRef = useRef(false);
   const [answerInputValue, setAnswerInputValue] = useState('');
+  // Box (single word input) vs cell (per-cell hidden input) answer entry, kept
+  // at parity with the web app. Default to box; persisted in AsyncStorage.
+  const boxInputRef = useRef<React.ElementRef<typeof TextInput>>(null);
+  const [answerInputMode, setAnswerInputMode] =
+    useState<AnswerInputMode>('box');
+  const [answerBoxResetKey, setAnswerBoxResetKey] = useState(0);
   const [isClueListOpen, setIsClueListOpen] = useState(false);
   const [hasSeenHowToPlay, setHasSeenHowToPlay] = useState(true);
   const howToPlayDismissedRef = useRef(false);
@@ -1829,6 +1785,13 @@ function AppContent() {
 
   const focusBoardInput = useCallback(
     (cellKey?: string) => {
+      // Box mode types into a single visible TextInput; just focus it. The
+      // hidden per-cell input only exists in cell mode.
+      if (answerInputMode === 'box') {
+        boxInputRef.current?.focus();
+        return;
+      }
+
       scrollBoardCellIntoView(cellKey);
       clearBoardFocusTimer();
       boardFocusTimerRef.current = scheduleBoardNativeInputFocus({
@@ -1840,7 +1803,7 @@ function AppContent() {
         platformOS: Platform.OS,
       });
     },
-    [clearBoardFocusTimer, scrollBoardCellIntoView],
+    [answerInputMode, clearBoardFocusTimer, scrollBoardCellIntoView],
   );
 
   useEffect(() => {
@@ -1871,6 +1834,28 @@ function AppContent() {
     setHasSeenHowToPlay(true);
     // Fire-and-forget: write failure means session-only dismissal; modal may reappear on next launch.
     AsyncStorage.setItem('crossword:how-to-play-seen', '1').catch(() => {});
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    AsyncStorage.getItem(ANSWER_INPUT_MODE_KEY)
+      .then(value => {
+        if (!cancelled && (value === 'box' || value === 'cell')) {
+          setAnswerInputMode(value);
+        }
+      })
+      .catch(() => {
+        // Read failed: keep the default box mode for this session.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function selectAnswerInputMode(mode: AnswerInputMode) {
+    setAnswerInputMode(mode);
+    // Fire-and-forget: write failure means the preference applies this session only.
+    AsyncStorage.setItem(ANSWER_INPUT_MODE_KEY, mode).catch(() => {});
   }
 
   async function requestRewardedHintCredits() {
@@ -2177,6 +2162,42 @@ function AppContent() {
     }
   }
 
+  // Box mode applies the whole word at once (mirrors the web applyAnswer):
+  // positionally map typed letters onto the entry, clearing removed/trailing
+  // cells while keeping already-correct (locked) crossing letters intact.
+  function applyBoxAnswer(entry: PuzzleEntry, value: string) {
+    const cells = getEntryCells(entry);
+    const letters = getAnswerInputLetters(value, cells.length);
+
+    if (!hasLoggedFirstAnswerInputRef.current && letters.length > 0) {
+      hasLoggedFirstAnswerInputRef.current = true;
+      telemetry.impression('first_answer_input', {
+        ...getPuzzleTelemetryParams(puzzle, selectedPuzzleSummary),
+        attempt_number: mission.attemptsUsed,
+      });
+    }
+
+    const nextValues = { ...cellValues };
+    cells.forEach((cell, index) => {
+      const key = getCellKey(cell.row, cell.col);
+      const letter = letters[index];
+      if (letter == null) {
+        if (!isCellLocked(puzzle, cellValues, key)) {
+          delete nextValues[key];
+        }
+      } else {
+        nextValues[key] = letter;
+      }
+    });
+
+    setCellValues(nextValues);
+
+    if (isEntryFilled(entry, nextValues)) {
+      setNotice('정답입니다.');
+      moveToNextUncompletedEntry(nextValues);
+    }
+  }
+
   function clearSelectedAnswer() {
     if (selectedEntry == null) {
       return;
@@ -2187,6 +2208,8 @@ function AppContent() {
     // the entry start cell, so the reset effect won't fire on its own).
     clearAnswerCommitTimer();
     setAnswerInputValue('');
+    // Remount the box input so it reflects the cleared cells.
+    setAnswerBoxResetKey(previous => previous + 1);
 
     setCellValues(previous => {
       const nextValues = { ...previous };
@@ -2548,6 +2571,10 @@ function AppContent() {
       completionStatsByPuzzleId[puzzle.puzzleId],
       launchConfig.completionStatsMinDisplayCount,
     );
+    const completionStatsMetricsLabel = formatCompletionStatsMetrics(
+      completionStatsByPuzzleId[puzzle.puzzleId],
+      launchConfig.completionStatsMinDisplayCount,
+    );
     const selectedPuzzleLabel = formatPuzzleHomeSubtitle(
       selectedPuzzleSummary,
       puzzlePack.source,
@@ -2582,6 +2609,11 @@ function AppContent() {
             힌트부터 시작
             {completionStatsLabel === '' ? '' : ` · ${completionStatsLabel}`}
           </Text>
+          {completionStatsMetricsLabel === '' ? null : (
+            <Text style={styles.completionStatsMetrics}>
+              {completionStatsMetricsLabel}
+            </Text>
+          )}
           <View style={styles.statusGrid}>
             <Metric
               label="시도"
@@ -2735,42 +2767,44 @@ function AppContent() {
             </View>
           ))}
         </View>
-        <TextInput
-          accessible={false}
-          autoCapitalize="none"
-          autoCorrect={false}
-          blurOnSubmit={false}
-          caretHidden
-          contextMenuHidden
-          editable={!isReviewMode}
-          importantForAccessibility="no-hide-descendants"
-          importantForAutofill="no"
-          onChangeText={handleBoardInputChange}
-          onEndEditing={event => {
-            commitBoardInputValue(event.nativeEvent.text);
-          }}
-          onKeyPress={event => {
-            if (
-              event.nativeEvent.key === 'Backspace' &&
-              answerInputValue === '' &&
-              selectedEntry != null
-            ) {
-              clearAnswerCell(selectedEntry, activeAnswerCellKey);
-            }
-          }}
-          onSubmitEditing={() => {
-            commitBoardInputValue(answerInputValue);
-            focusBoardInput();
-          }}
-          pointerEvents="none"
-          ref={boardInputRef}
-          returnKeyType="next"
-          selectionColor="transparent"
-          showSoftInputOnFocus
-          style={[styles.boardNativeInput, boardNativeInputPosition]}
-          underlineColorAndroid="transparent"
-          value={answerInputValue}
-        />
+        {answerInputMode === 'cell' ? (
+          <TextInput
+            accessible={false}
+            autoCapitalize="none"
+            autoCorrect={false}
+            blurOnSubmit={false}
+            caretHidden
+            contextMenuHidden
+            editable={!isReviewMode}
+            importantForAccessibility="no-hide-descendants"
+            importantForAutofill="no"
+            onChangeText={handleBoardInputChange}
+            onEndEditing={event => {
+              commitBoardInputValue(event.nativeEvent.text);
+            }}
+            onKeyPress={event => {
+              if (
+                event.nativeEvent.key === 'Backspace' &&
+                answerInputValue === '' &&
+                selectedEntry != null
+              ) {
+                clearAnswerCell(selectedEntry, activeAnswerCellKey);
+              }
+            }}
+            onSubmitEditing={() => {
+              commitBoardInputValue(answerInputValue);
+              focusBoardInput();
+            }}
+            pointerEvents="none"
+            ref={boardInputRef}
+            returnKeyType="next"
+            selectionColor="transparent"
+            showSoftInputOnFocus
+            style={[styles.boardNativeInput, boardNativeInputPosition]}
+            underlineColorAndroid="transparent"
+            value={answerInputValue}
+          />
+        ) : null}
       </View>
     );
   }
@@ -2888,6 +2922,23 @@ function AppContent() {
               </View>
             </Pressable>
             <Pressable
+              accessibilityLabel={
+                answerInputMode === 'box'
+                  ? '입력 방식: 입력창 (탭하여 칸별로 전환)'
+                  : '입력 방식: 칸별 (탭하여 입력창으로 전환)'
+              }
+              accessibilityRole="button"
+              accessibilityState={{ selected: answerInputMode === 'cell' }}
+              onPress={() =>
+                selectAnswerInputMode(
+                  answerInputMode === 'box' ? 'cell' : 'box',
+                )
+              }
+              style={styles.solveHeaderIcon}
+            >
+              <InputModeIcon mode={answerInputMode} />
+            </Pressable>
+            <Pressable
               accessibilityLabel="지우기"
               accessibilityRole="button"
               onPress={clearSelectedAnswer}
@@ -2917,6 +2968,10 @@ function AppContent() {
     }
 
     const slotCount = answerSlots.length;
+    // Box mode seeds the single input with the word's committed letters.
+    const selectedEntryCommittedValue = selectedEntryCellKeys
+      .map(key => cellValues[key] ?? '')
+      .join('');
 
     return (
       <View style={styles.solveClueBar}>
@@ -2956,7 +3011,8 @@ function AppContent() {
             <Text style={styles.clueNavText}>›</Text>
           </Pressable>
         </View>
-        <View style={styles.answerSlots}>
+        {answerInputMode === 'cell' || isReviewMode ? (
+          <View style={styles.answerSlots}>
           {answerSlots.map((slot, index) => (
             <Pressable
               accessibilityLabel={`${index + 1}/${slotCount}번째 칸${
@@ -2992,7 +3048,24 @@ function AppContent() {
               </Text>
             </Pressable>
           ))}
-        </View>
+          </View>
+        ) : (
+          <TextInput
+            ref={boxInputRef}
+            key={`answer-box-${selectedEntry.id}-${answerBoxResetKey}-${hintCount}`}
+            autoCapitalize="none"
+            autoCorrect={false}
+            defaultValue={selectedEntryCommittedValue}
+            editable={!isReviewMode}
+            maxLength={selectedEntryCells.length}
+            onChangeText={text => applyBoxAnswer(selectedEntry, text)}
+            onSubmitEditing={() => goToAdjacentClue(1)}
+            placeholder={`${selectedEntryCells.length}글자 입력`}
+            placeholderTextColor="#b0b8c1"
+            returnKeyType="next"
+            style={styles.answerBoxInput}
+          />
+        )}
         {notice === '' ? null : (
           <Text style={styles.solveNotice}>{notice}</Text>
         )}
@@ -3798,6 +3871,26 @@ function EraserIcon() {
   );
 }
 
+function InputModeIcon({ mode }: { mode: AnswerInputMode }) {
+  if (mode === 'box') {
+    // Single input field bar.
+    return (
+      <View style={styles.inputModeIcon} pointerEvents="none">
+        <View style={styles.inputModeBoxBar} />
+      </View>
+    );
+  }
+
+  // Per-cell grid.
+  return (
+    <View style={styles.inputModeIconRow} pointerEvents="none">
+      <View style={styles.inputModeCell} />
+      <View style={styles.inputModeCell} />
+      <View style={styles.inputModeCell} />
+    </View>
+  );
+}
+
 function App() {
   return (
     <SafeAreaProvider>
@@ -4373,6 +4466,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 21,
   },
+  completionStatsMetrics: {
+    color: '#8b95a1',
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 18,
+    marginTop: 4,
+  },
   title: {
     color: '#0f172a',
     fontSize: 24,
@@ -4486,6 +4586,49 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 6,
     justifyContent: 'center',
+  },
+  answerBoxInput: {
+    alignSelf: 'center',
+    backgroundColor: '#ffffff',
+    borderColor: '#d6dee6',
+    borderRadius: 10,
+    borderWidth: 1,
+    color: '#191f28',
+    fontSize: 21,
+    fontWeight: '800',
+    letterSpacing: 4,
+    minWidth: 200,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    textAlign: 'center',
+  },
+  inputModeIcon: {
+    alignItems: 'center',
+    height: 20,
+    justifyContent: 'center',
+    width: 20,
+  },
+  inputModeIconRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 2,
+    height: 20,
+    justifyContent: 'center',
+    width: 20,
+  },
+  inputModeBoxBar: {
+    borderColor: '#4e5968',
+    borderRadius: 3,
+    borderWidth: 2,
+    height: 11,
+    width: 18,
+  },
+  inputModeCell: {
+    borderColor: '#4e5968',
+    borderRadius: 1.5,
+    borderWidth: 1.5,
+    height: 9,
+    width: 5,
   },
   answerSlot: {
     alignItems: 'center',
