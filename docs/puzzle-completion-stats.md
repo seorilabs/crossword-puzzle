@@ -6,10 +6,24 @@
 
 ## 사용자 표시
 
-- 홈 날짜 카드: `14시 · 42% 완료`
-- 선택한 미션: `도전 준비 완료 · 128명 참여 · 54명 완료(42%)`
-- `completion_stats_min_display_count` 미만이면 `10명 미만 참여` 또는 `10명 미만 완료`로 표시한다.
+- 홈 날짜 카드(compact): `보통 · 42% 완료`
+- 선택한 미션(detail): `도전 준비 완료 · 100+명 참여 · 50+명 완료(42%)`
+- 선택한 미션 보조 라인(enriched): `평균 4분 · 노힌트 32% · 1트 58%`
+- 참여자/완료자 수는 정확 수치 대신 **버킷·내림 표기**(`100+명`)로 노출해, 작은 수가 빈약해 보이지 않게 하고 동시에 실제보다 부풀리지 않는다. 버킷 경계는 `bucketCount`(`packages/crossword-core/src/completionStats.ts`) 참고.
+- `completion_stats_min_display_count` 미만이면 `10명 미만 참여` 또는 `10명 미만 완료`로 표시하고, enriched 보조 라인은 숨긴다.
 - stats가 없거나 `completion_stats_enabled=false`이면 표시하지 않는다.
+
+### Enriched 지표 (완료자 표본 기반)
+
+`mission_complete`의 `elapsed_seconds` / `hint_count` / `attempt_number` 파라미터에서 파생한다. 완료 표본이 임계값 미만이면 표시하지 않는다.
+
+| 필드                     | 의미                                  |
+| ------------------------ | ------------------------------------- |
+| `medianElapsedSeconds`   | 완료자 풀이 시간 중앙값(초)           |
+| `averageElapsedSeconds`  | 완료자 풀이 시간 평균(초)             |
+| `noHintCompletionRate`   | 힌트 0개로 완료한 비율(0~1)           |
+| `averageAttempts`        | 완료자 평균 시도 횟수                 |
+| `firstTryCompletionRate` | 첫 시도(`attempt_number=1`) 완료 비율 |
 
 ## 앱 읽기 계약
 
@@ -32,11 +46,18 @@ JSON schema:
       "participantCount": 128,
       "completionCount": 54,
       "completionRate": 0.421875,
+      "medianElapsedSeconds": 252,
+      "averageElapsedSeconds": 301,
+      "noHintCompletionRate": 0.32,
+      "averageAttempts": 1.4,
+      "firstTryCompletionRate": 0.58,
       "lastAggregatedAt": "2026-06-03T08:59:00.000Z"
     }
   ]
 }
 ```
+
+enriched 필드(`medianElapsedSeconds` 등)는 선택값이다. 완료 표본이 없거나 파라미터가 비면 생략되며, 구버전 payload(해당 필드 없음)도 그대로 유효하다.
 
 `stats`는 object map 형태도 허용한다.
 
@@ -80,6 +101,7 @@ flowchart LR
 - 완료자 event: `mission_complete`
 - distinct user key: Firebase Analytics `user_pseudo_id`
 - group key: `puzzle_id`
+- enriched 지표: 사용자별 **첫 완료 이벤트**로 dedupe한 뒤(`elapsed_seconds`/`hint_count`/`attempt_number`) 중앙값(`APPROX_QUANTILES`)·평균·비율을 계산한다.
 - optional dimensions: `slot_id`, `pack_id`
 - refresh interval: 15분에서 1시간
 - retention: 퍼즐팩 노출/보관 정책과 같은 최근 84개 기준

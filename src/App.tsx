@@ -24,6 +24,8 @@ import {
   createPuzzleSummary,
   createDailyMissionState,
   DAILY_ATTEMPT_LIMIT,
+  formatCompletionStatsLabel,
+  formatCompletionStatsMetrics,
   getBonusPuzzleCandidateSummary,
   getBounds,
   getCellKey,
@@ -2429,6 +2431,10 @@ function HomeScreen({
     completionStatsByPuzzleId[puzzle.puzzleId],
     completionStatsMinDisplayCount,
   );
+  const completionStatsMetricsLabel = formatCompletionStatsMetrics(
+    completionStatsByPuzzleId[puzzle.puzzleId],
+    completionStatsMinDisplayCount,
+  );
   const selectedPuzzleSummary =
     findPuzzleSummaryById(puzzleSummaries, selectedPuzzleId) ??
     createPuzzleSummary(puzzle);
@@ -2521,6 +2527,11 @@ function HomeScreen({
               ? ""
               : ` · ${completionStatsLabel}`}
           </Paragraph>
+          {!isLoadingPuzzlePack && completionStatsMetricsLabel !== "" && (
+            <Paragraph typography="t7" color="#8b95a1">
+              {completionStatsMetricsLabel}
+            </Paragraph>
+          )}
           {!isLoadingPuzzlePack && streakMilestoneHint != null && (
             <p className="streakNudge">{streakMilestoneHint}</p>
           )}
@@ -3146,64 +3157,6 @@ function getDateCardStatus(state?: DateCardState) {
   }
 
   return "대기";
-}
-
-function formatCompletionStatsLabel(
-  stats: PuzzleCompletionStats | undefined,
-  minDisplayCount: number,
-  variant: "compact" | "detail" = "detail",
-) {
-  if (stats == null) {
-    return "";
-  }
-
-  const numberFormatter = new Intl.NumberFormat("ko-KR");
-  const participantCount = stats.participantCount;
-
-  if (participantCount != null) {
-    if (participantCount === 0) {
-      return "";
-    }
-
-    if (participantCount < minDisplayCount) {
-      return `${minDisplayCount}명 미만 참여`;
-    }
-
-    if (stats.completionCount === 0) {
-      return variant === "compact"
-        ? "완료 전"
-        : `${numberFormatter.format(participantCount)}명 참여 · 완료 전`;
-    }
-
-    if (stats.completionCount < minDisplayCount) {
-      return variant === "compact"
-        ? `${minDisplayCount}명 미만 완료`
-        : `${numberFormatter.format(participantCount)}명 참여 · ${minDisplayCount}명 미만 완료`;
-    }
-
-    const completionRate =
-      stats.completionRate ??
-      Math.max(0, Math.min(1, stats.completionCount / participantCount));
-    const completionRateLabel = `${Math.round(completionRate * 100)}%`;
-
-    if (variant === "compact") {
-      return `${completionRateLabel} 완료`;
-    }
-
-    return `${numberFormatter.format(participantCount)}명 참여 · ${numberFormatter.format(
-      stats.completionCount,
-    )}명 완료(${completionRateLabel})`;
-  }
-
-  if (stats.completionCount === 0) {
-    return "";
-  }
-
-  if (stats.completionCount < minDisplayCount) {
-    return `${minDisplayCount}명 미만 완료`;
-  }
-
-  return `${numberFormatter.format(stats.completionCount)}명 완료`;
 }
 
 function formatLiveTimer(totalSeconds: number): string {

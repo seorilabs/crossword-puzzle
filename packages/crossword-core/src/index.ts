@@ -1,3 +1,4 @@
+export * from "./completionStats";
 export * from "./launchConfig";
 export * from "./mission";
 export * from "./platformContracts";

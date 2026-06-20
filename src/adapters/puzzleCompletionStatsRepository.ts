@@ -35,6 +35,21 @@ function getNonNegativeInteger(value: unknown) {
   return Math.max(0, Math.round(numberValue));
 }
 
+function getOptionalNonNegativeNumber(value: unknown) {
+  const numberValue =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? Number(value)
+        : Number.NaN;
+
+  if (!Number.isFinite(numberValue) || numberValue < 0) {
+    return undefined;
+  }
+
+  return numberValue;
+}
+
 function getOptionalRatio(value: unknown) {
   const numberValue =
     typeof value === "number"
@@ -85,6 +100,15 @@ function normalizeStatsEntry(
     lastAggregatedAt: getOptionalString(value.lastAggregatedAt),
     participantCount: participantCount ?? undefined,
     puzzleId,
+    averageElapsedSeconds: getOptionalNonNegativeNumber(
+      value.averageElapsedSeconds,
+    ),
+    medianElapsedSeconds: getOptionalNonNegativeNumber(
+      value.medianElapsedSeconds,
+    ),
+    noHintCompletionRate: getOptionalRatio(value.noHintCompletionRate),
+    averageAttempts: getOptionalNonNegativeNumber(value.averageAttempts),
+    firstTryCompletionRate: getOptionalRatio(value.firstTryCompletionRate),
   };
 }
 

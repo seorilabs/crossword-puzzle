@@ -486,7 +486,9 @@ async function getBigQueryReadiness(options, token) {
       options.analyticsTablePattern,
     );
 
-    return dateSuffix != null && dateSuffix >= fromSuffix && dateSuffix <= toSuffix;
+    return (
+      dateSuffix != null && dateSuffix >= fromSuffix && dateSuffix <= toSuffix
+    );
   });
 
   if (matchingTableIds.length === 0) {
@@ -519,6 +521,10 @@ function getQuery(options, puzzleIds) {
   const puzzleFilter =
     puzzleIds.length === 0 ? "" : "AND puzzle_id IN UNNEST(@puzzle_ids)";
 
+  // mission_complete carries elapsed_seconds / hint_count / attempt_number as
+  // GA4 event params, so we dedupe to each user's first completion per puzzle
+  // and derive the median solve time, no-hint clear rate, average attempts and
+  // first-try clear rate alongside the participant/completion counts.
   return `
 WITH event_base AS (
   SELECT
@@ -530,7 +536,25 @@ WITH event_base AS (
       FROM UNNEST(event_params)
       WHERE key = 'puzzle_id'
       LIMIT 1
-    ) AS puzzle_id
+    ) AS puzzle_id,
+    (
+      SELECT COALESCE(value.int_value, CAST(value.double_value AS INT64), SAFE_CAST(value.string_value AS INT64))
+      FROM UNNEST(event_params)
+      WHERE key = 'elapsed_seconds'
+      LIMIT 1
+    ) AS elapsed_seconds,
+    (
+      SELECT COALESCE(value.int_value, CAST(value.double_value AS INT64), SAFE_CAST(value.string_value AS INT64))
+      FROM UNNEST(event_params)
+      WHERE key = 'hint_count'
+      LIMIT 1
+    ) AS hint_count,
+    (
+      SELECT COALESCE(value.int_value, CAST(value.double_value AS INT64), SAFE_CAST(value.string_value AS INT64))
+      FROM UNNEST(event_params)
+      WHERE key = 'attempt_number'
+      LIMIT 1
+    ) AS attempt_number
   FROM ${table}
   WHERE (
       _TABLE_SUFFIX BETWEEN @from_suffix AND @to_suffix
@@ -543,19 +567,53 @@ filtered AS (
   FROM event_base
   WHERE puzzle_id IS NOT NULL
     ${puzzleFilter}
+),
+participants AS (
+  SELECT
+    puzzle_id,
+    COUNT(DISTINCT user_pseudo_id) AS participant_count,
+    MAX(event_at) AS last_event_at
+  FROM filtered
+  GROUP BY puzzle_id
+),
+completer AS (
+  SELECT
+    puzzle_id,
+    user_pseudo_id,
+    ARRAY_AGG(elapsed_seconds IGNORE NULLS ORDER BY event_at LIMIT 1)[SAFE_OFFSET(0)] AS elapsed_seconds,
+    ARRAY_AGG(hint_count IGNORE NULLS ORDER BY event_at LIMIT 1)[SAFE_OFFSET(0)] AS hint_count,
+    ARRAY_AGG(attempt_number IGNORE NULLS ORDER BY event_at LIMIT 1)[SAFE_OFFSET(0)] AS attempt_number
+  FROM filtered
+  WHERE event_name = 'mission_complete'
+  GROUP BY puzzle_id, user_pseudo_id
+),
+completion_agg AS (
+  SELECT
+    puzzle_id,
+    COUNT(*) AS completion_count,
+    AVG(elapsed_seconds) AS average_elapsed_seconds,
+    APPROX_QUANTILES(elapsed_seconds, 2)[SAFE_OFFSET(1)] AS median_elapsed_seconds,
+    SAFE_DIVIDE(COUNTIF(hint_count = 0), COUNT(*)) AS no_hint_completion_rate,
+    AVG(attempt_number) AS average_attempts,
+    -- attemptsUsed starts at 1 on the first attempt, so first-try clear = attempt_number 1.
+    SAFE_DIVIDE(COUNTIF(attempt_number = 1), COUNT(*)) AS first_try_completion_rate
+  FROM completer
+  GROUP BY puzzle_id
 )
 SELECT
-  puzzle_id,
-  COUNT(DISTINCT user_pseudo_id) AS participant_count,
-  COUNT(DISTINCT IF(event_name = 'mission_complete', user_pseudo_id, NULL)) AS completion_count,
-  SAFE_DIVIDE(
-    COUNT(DISTINCT IF(event_name = 'mission_complete', user_pseudo_id, NULL)),
-    COUNT(DISTINCT user_pseudo_id)
-  ) AS completion_rate,
-  FORMAT_TIMESTAMP('%FT%TZ', MAX(event_at), 'UTC') AS last_aggregated_at
-FROM filtered
-GROUP BY puzzle_id
-ORDER BY puzzle_id
+  p.puzzle_id,
+  p.participant_count,
+  COALESCE(c.completion_count, 0) AS completion_count,
+  SAFE_DIVIDE(COALESCE(c.completion_count, 0), p.participant_count) AS completion_rate,
+  c.average_elapsed_seconds,
+  c.median_elapsed_seconds,
+  c.no_hint_completion_rate,
+  c.average_attempts,
+  c.first_try_completion_rate,
+  FORMAT_TIMESTAMP('%FT%TZ', p.last_event_at, 'UTC') AS last_aggregated_at
+FROM participants p
+LEFT JOIN completion_agg c USING (puzzle_id)
+ORDER BY p.puzzle_id
 `;
 }
 
@@ -629,6 +687,26 @@ async function getQueryResults({ initialResult, options, token }) {
   };
 }
 
+function optionalNonNegative(key, rawValue) {
+  if (rawValue == null) {
+    return {};
+  }
+
+  const value = Number(rawValue);
+  return Number.isFinite(value) && value >= 0 ? { [key]: value } : {};
+}
+
+function optionalRatio(key, rawValue) {
+  if (rawValue == null) {
+    return {};
+  }
+
+  const value = Number(rawValue);
+  return Number.isFinite(value)
+    ? { [key]: Math.max(0, Math.min(1, value)) }
+    : {};
+}
+
 function parseBigQueryRows({ rows, schema }) {
   const fieldNames = schema?.fields?.map((field) => field.name) ?? [];
 
@@ -657,6 +735,20 @@ function parseBigQueryRows({ rows, schema }) {
         lastAggregatedAt: String(row.last_aggregated_at),
         participantCount,
         puzzleId: String(row.puzzle_id),
+        ...optionalNonNegative(
+          "averageElapsedSeconds",
+          row.average_elapsed_seconds,
+        ),
+        ...optionalNonNegative(
+          "medianElapsedSeconds",
+          row.median_elapsed_seconds,
+        ),
+        ...optionalRatio("noHintCompletionRate", row.no_hint_completion_rate),
+        ...optionalNonNegative("averageAttempts", row.average_attempts),
+        ...optionalRatio(
+          "firstTryCompletionRate",
+          row.first_try_completion_rate,
+        ),
       };
     })
     .filter((entry) => entry.puzzleId !== "null");
