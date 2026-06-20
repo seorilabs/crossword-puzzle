@@ -137,6 +137,14 @@ export type PuzzleCompletionStats = {
   lastAggregatedAt?: string;
   participantCount?: number;
   puzzleId: string;
+  // Enriched metrics derived from mission_complete event params. Optional: the
+  // aggregator omits them when a puzzle has no completers (or stays below the
+  // privacy threshold), so older payloads without these fields stay valid.
+  averageElapsedSeconds?: number;
+  medianElapsedSeconds?: number;
+  noHintCompletionRate?: number;
+  averageAttempts?: number;
+  firstTryCompletionRate?: number;
 };
 
 export type PuzzleCompletionStatsPayload = {
