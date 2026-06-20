@@ -4081,6 +4081,22 @@ function TodayScreen({
   const selectedEntryCommittedValue = selectedEntryCellKeys
     .map((key) => cellValues[key] ?? "")
     .join("");
+  // Box mode edits the whole word at once. Cell mode never overwrites an
+  // already-correct (locked) cell because its caret skips them; mirror that
+  // here so editing one word can't undo a correct crossing letter.
+  function applyBoxValue(entry: PuzzleEntry, value: string) {
+    const cells = getEntryCells(entry);
+    const letters = getAnswerInputLetters(value, cells.length);
+    const merged = selectedEntryCellKeys
+      .map((key, index) =>
+        isCellLocked(puzzle, cellValues, key)
+          ? getCellAnswerLetter(puzzle, key)
+          : (letters[index] ?? ""),
+      )
+      .join("");
+
+    applyAnswer(entry, merged);
+  }
   const answerInputElement =
     selectedEntry != null && !isReviewMode ? (
       <div className="answerInputArea">
@@ -4264,7 +4280,7 @@ function TodayScreen({
             aria-label={`${selectedEntryCells.length}글자 답 입력`}
             placeholder={`${selectedEntryCells.length}글자 입력`}
             onChange={(event) =>
-              applyAnswer(selectedEntry, event.currentTarget.value)
+              applyBoxValue(selectedEntry, event.currentTarget.value)
             }
             onKeyDown={(event) => {
               if (event.key === "Enter") {
