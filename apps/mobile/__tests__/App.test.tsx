@@ -146,7 +146,7 @@ test('formats completion stats for mobile home cards and selected mission', () =
       },
       10,
     ),
-  ).toBe('128명 참여 · 54명 완료(42%)');
+  ).toBe('100+명 참여 · 50+명 완료(42%)');
   expect(
     formatCompletionStatsLabel(
       {
