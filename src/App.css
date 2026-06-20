@@ -239,7 +239,8 @@ button:disabled {
 @media (prefers-reduced-motion: reduce) {
   .dateLoading span,
   .dateLoading strong,
-  .dateLoading em {
+  .dateLoading em,
+  .miniCellSkeleton {
     animation: none;
   }
 }
