@@ -6,7 +6,15 @@ import type {
   ReactNode,
   TouchEvent as ReactTouchEvent,
 } from "react";
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { Button, Paragraph, Top } from "@toss/tds-mobile";
 import "./App.css";
 import {
   buildCellEntries,
@@ -120,6 +128,31 @@ type CompletionStatsByPuzzleId = Record<string, PuzzleCompletionStats>;
 
 const DIRECT_INPUT_COMMIT_DELAY_MS = 140;
 const COMPOSITION_COMMIT_DELAY_MS = 0;
+
+// Two answer input strategies coexist because per-cell IME handling behaves
+// differently across the AIT / Play Store / App Store WebView engines.
+// "box": one plain text field per word (stable, IME-safe, default).
+// "cell": the hidden native input overlaid on the cells (faster, but fragile).
+type AnswerInputMode = "box" | "cell";
+const ANSWER_INPUT_MODE_STORAGE_KEY = "crossword:answer-input-mode";
+
+function loadAnswerInputMode(): AnswerInputMode {
+  try {
+    return localStorage.getItem(ANSWER_INPUT_MODE_STORAGE_KEY) === "cell"
+      ? "cell"
+      : "box";
+  } catch {
+    return "box";
+  }
+}
+
+function persistAnswerInputMode(mode: AnswerInputMode): void {
+  try {
+    localStorage.setItem(ANSWER_INPUT_MODE_STORAGE_KEY, mode);
+  } catch {
+    // Storage blocked; the preference applies for this session only.
+  }
+}
 
 type DateSelectionProps = {
   completionStatsByPuzzleId: CompletionStatsByPuzzleId;
@@ -716,7 +749,10 @@ function App() {
     useState(false);
   const [bonusNotice, setBonusNotice] = useState("");
   const [hintNotice, setHintNotice] = useState("");
-  const [hintToast, setHintToast] = useState<{ id: number; message: string }>({ id: 0, message: "" });
+  const [hintToast, setHintToast] = useState<{ id: number; message: string }>({
+    id: 0,
+    message: "",
+  });
   const [mission, setMission] =
     useState<DailyMissionState>(createInitialMission);
   const [puzzleSummaries, setPuzzleSummaries] = useState<PuzzleManifestItem[]>(
@@ -736,8 +772,8 @@ function App() {
   const [completionCelebrationId, setCompletionCelebrationId] = useState<
     string | null
   >(null);
-  const [consecutiveStreak, setConsecutiveStreak] = useState(
-    () => computeConsecutiveStreakDays(),
+  const [consecutiveStreak, setConsecutiveStreak] = useState(() =>
+    computeConsecutiveStreakDays(),
   );
   const [isNewBestTime, setIsNewBestTime] = useState(false);
   const [now, setNow] = useState(() => new Date());
@@ -748,6 +784,8 @@ function App() {
       return false;
     }
   });
+  const [answerInputMode, setAnswerInputMode] =
+    useState<AnswerInputMode>(loadAnswerInputMode);
   const firstAnswerInputKeysRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -985,16 +1023,24 @@ function App() {
 
   useEffect(() => {
     // 모든 값이 기본값이면 저장 스킵: clearProgress가 삭제한 키가 재생성되지 않도록 함
-    if (Object.keys(cellValues).length === 0 && earnedHintCredits === 0 && hintCount === 0) {
+    if (
+      Object.keys(cellValues).length === 0 &&
+      earnedHintCredits === 0 &&
+      hintCount === 0
+    ) {
       return;
     }
-    void progressRepository.saveProgress(puzzle.puzzleId, {
-      cellValues,
-      earnedHintCredits,
-      hintCount,
-    }).catch(() => {
-      telemetry.impression("progress_save_error", { puzzle_id: puzzle.puzzleId });
-    });
+    void progressRepository
+      .saveProgress(puzzle.puzzleId, {
+        cellValues,
+        earnedHintCredits,
+        hintCount,
+      })
+      .catch(() => {
+        telemetry.impression("progress_save_error", {
+          puzzle_id: puzzle.puzzleId,
+        });
+      });
   }, [cellValues, earnedHintCredits, hintCount, puzzle.puzzleId]);
 
   useEffect(() => {
@@ -1030,7 +1076,8 @@ function App() {
     viewModel.completedEntries.length > 0;
   const hasStarted = mission.attemptsUsed > 0 || hasProgress;
   const isCompleted = viewModel.isComplete || mission.completedAt != null;
-  const isAttemptExhaustedUncompleted = hasStarted && remainingAttempts <= 0 && !isCompleted;
+  const isAttemptExhaustedUncompleted =
+    hasStarted && remainingAttempts <= 0 && !isCompleted;
   const todayKey = getTodayDateKey();
   const completedPuzzleIds = useMemo(
     () => getCompletedPuzzleIds(dateCardStates),
@@ -1118,28 +1165,40 @@ function App() {
     unlockedBonusSummaries.length === 0;
   const nextBonusPuzzlePublishedAt = useMemo(() => {
     const nowMs = now.getTime();
-    const next = puzzleSummaries.reduce<PuzzleManifestItem | undefined>((min, s) => {
-      if (
-        s.date !== todayKey ||
-        s.puzzleId === dailyFreeSummary?.puzzleId ||
-        completedOrUnlockedPuzzleIds.has(s.puzzleId) ||
-        s.publishedAt == null
-      ) {
-        return min;
-      }
-      const publishedAtMs = new Date(s.publishedAt).getTime();
-      if (!Number.isFinite(publishedAtMs) || publishedAtMs < nowMs - 60_000) {
-        return min;
-      }
-      return min == null || publishedAtMs < new Date(min.publishedAt!).getTime()
-        ? s
-        : min;
-    }, undefined);
+    const next = puzzleSummaries.reduce<PuzzleManifestItem | undefined>(
+      (min, s) => {
+        if (
+          s.date !== todayKey ||
+          s.puzzleId === dailyFreeSummary?.puzzleId ||
+          completedOrUnlockedPuzzleIds.has(s.puzzleId) ||
+          s.publishedAt == null
+        ) {
+          return min;
+        }
+        const publishedAtMs = new Date(s.publishedAt).getTime();
+        if (!Number.isFinite(publishedAtMs) || publishedAtMs < nowMs - 60_000) {
+          return min;
+        }
+        return min == null ||
+          publishedAtMs < new Date(min.publishedAt!).getTime()
+          ? s
+          : min;
+      },
+      undefined,
+    );
     return next?.publishedAt != null ? new Date(next.publishedAt) : undefined;
-  }, [completedOrUnlockedPuzzleIds, dailyFreeSummary, now, puzzleSummaries, todayKey]);
-  const nextBonusPuzzlePublishedAtMs = nextBonusPuzzlePublishedAt?.getTime() ?? null;
+  }, [
+    completedOrUnlockedPuzzleIds,
+    dailyFreeSummary,
+    now,
+    puzzleSummaries,
+    todayKey,
+  ]);
+  const nextBonusPuzzlePublishedAtMs =
+    nextBonusPuzzlePublishedAt?.getTime() ?? null;
   useEffect(() => {
-    if (nextBonusPuzzlePublishedAtMs == null || !bonusPuzzlePanelIsWaiting) return;
+    if (nextBonusPuzzlePublishedAtMs == null || !bonusPuzzlePanelIsWaiting)
+      return;
     const nowMs = Date.now();
     const msUntilNextMinute = Math.ceil(nowMs / 60_000) * 60_000 - nowMs;
     const msUntilNextAt = Math.max(0, nextBonusPuzzlePublishedAtMs - nowMs);
@@ -1938,17 +1997,25 @@ function App() {
     }
 
     const rawCredits = earnedHintCredits;
-    const creditsToPreserve = Number.isFinite(rawCredits) ? Math.max(0, rawCredits) : 0;
+    const creditsToPreserve = Number.isFinite(rawCredits)
+      ? Math.max(0, rawCredits)
+      : 0;
     try {
       await clearProgress(creditsToPreserve);
       setIsNewBestTime(false);
       const nextMission = startMissionAttempt(mission);
       setMission(nextMission);
       void missionRepository.saveMission(nextMission).catch(() => {
-        telemetry.impression("mission_save_error", { puzzle_id: puzzle.puzzleId });
+        telemetry.impression("mission_save_error", {
+          puzzle_id: puzzle.puzzleId,
+        });
       });
-      void savePuzzleSnapshot(puzzle, { startedAt: nextMission.lastStartedAt }).catch(() => {
-        telemetry.impression("snapshot_save_error", { puzzle_id: puzzle.puzzleId });
+      void savePuzzleSnapshot(puzzle, {
+        startedAt: nextMission.lastStartedAt,
+      }).catch(() => {
+        telemetry.impression("snapshot_save_error", {
+          puzzle_id: puzzle.puzzleId,
+        });
       });
       trackAttemptStart(nextMission, "retry", {
         earnedHintCredits: creditsToPreserve,
@@ -1956,13 +2023,23 @@ function App() {
       });
       navigate("today");
     } catch {
-      setHintToast((prev) => ({ id: prev.id + 1, message: "재도전 중 오류가 발생했습니다. 다시 시도해 주세요." }));
+      setHintToast((prev) => ({
+        id: prev.id + 1,
+        message: "재도전 중 오류가 발생했습니다. 다시 시도해 주세요.",
+      }));
     }
   }
 
+  function selectAnswerInputMode(mode: AnswerInputMode) {
+    setAnswerInputMode(mode);
+    persistAnswerInputMode(mode);
+  }
+
   const commonScreenProps = {
+    answerInputMode,
     applyAnswer,
     applyAnswerSegment,
+    selectAnswerInputMode,
     cellValues,
     clearAnswerCell,
     clearEntryAnswer,
@@ -2002,8 +2079,10 @@ function App() {
         {...commonScreenProps}
         {...dateSelectionProps}
         clearProgress={clearProgress}
+        consecutiveStreak={consecutiveStreak}
         hasStarted={hasStarted}
         isCompleted={isCompleted}
+        isNewBestTime={isNewBestTime}
         navigate={navigate}
         revealAll={revealAll}
         revealSelected={revealSelected}
@@ -2027,6 +2106,7 @@ function App() {
           dismissCompletionCelebration={() => setCompletionCelebrationId(null)}
           hasStarted={hasStarted}
           isCompleted={isCompleted}
+          isNewBestTime={isNewBestTime}
           navigate={navigate}
           startOrResumeMission={startOrResumeMission}
         />
@@ -2323,7 +2403,8 @@ function HomeScreen({
 }: HomeScreenProps) {
   const [isPackInfoOpen, setIsPackInfoOpen] = useState(false);
   const isLoadingPuzzlePack = loadState === "loading";
-  const isAttemptExhaustedUncompleted = hasStarted && remainingAttempts <= 0 && !isCompleted;
+  const isAttemptExhaustedUncompleted =
+    hasStarted && remainingAttempts <= 0 && !isCompleted;
   const primaryLabel = isLoadingPuzzlePack
     ? "불러오는 중"
     : isCompleted
@@ -2381,7 +2462,9 @@ function HomeScreen({
       : loadState === "loading"
         ? "원격 퍼즐팩이 준비되면 최신 퍼즐 목록으로 바뀝니다."
         : "원격 퍼즐팩을 사용할 수 없을 때 기기에 포함된 기본 퍼즐을 보여줘요.";
-  const streakMilestoneHint = !isLoadingPuzzlePack ? getStreakMilestoneProgress(consecutiveStreak) : null;
+  const streakMilestoneHint = !isLoadingPuzzlePack
+    ? getStreakMilestoneProgress(consecutiveStreak)
+    : null;
 
   return (
     <>
@@ -2464,7 +2547,10 @@ function HomeScreen({
                   풀이 시간
                 </Paragraph>
                 <Paragraph typography="t5" fontWeight="bold">
-                  {formatElapsedTime(mission.lastStartedAt, mission.completedAt) ?? "−"}
+                  {formatElapsedTime(
+                    mission.lastStartedAt,
+                    mission.completedAt,
+                  ) ?? "−"}
                 </Paragraph>
               </div>
               <div>
@@ -2788,9 +2874,15 @@ function getBonusPuzzleMeta(summary?: PuzzleManifestItem) {
     : `${aliasLabel} · ${slotLabel} 도착 · ${wordCountLabel}`;
 }
 
-function formatWaitingDescription(nextAt: Date | undefined, intervalHours: number, now: Date | undefined): string {
+function formatWaitingDescription(
+  nextAt: Date | undefined,
+  intervalHours: number,
+  now: Date | undefined,
+): string {
   if (nextAt == null) {
-    const safeHours = Number.isFinite(intervalHours) ? Math.max(1, Math.floor(intervalHours)) : 2;
+    const safeHours = Number.isFinite(intervalHours)
+      ? Math.max(1, Math.floor(intervalHours))
+      : 2;
     return `약 ${safeHours}시간 후 새 보너스 퍼즐이 발행돼요.`;
   }
   const nowMs = now instanceof Date ? now.getTime() : Date.now();
@@ -2833,7 +2925,11 @@ function BonusPuzzlePanel({ onAction, state }: BonusPuzzlePanelProps) {
           ? `${getBonusPuzzleMeta(summary)} · 기록에서 다시 볼 수 있어요.`
           : state.status === "loading"
             ? "원격 퍼즐팩을 확인하고 있어요."
-            : formatWaitingDescription(state.nextBonusPublishedAt, state.generationIntervalHours, state.now);
+            : formatWaitingDescription(
+                state.nextBonusPublishedAt,
+                state.generationIntervalHours,
+                state.now,
+              );
   const buttonLabel =
     state.status === "available"
       ? state.isAdBusy
@@ -3038,7 +3134,10 @@ function getDateCardStatus(state?: DateCardState) {
     return "완료";
   }
 
-  if (state?.attemptsUsed != null && state.attemptsUsed >= DAILY_ATTEMPT_LIMIT) {
+  if (
+    state?.attemptsUsed != null &&
+    state.attemptsUsed >= DAILY_ATTEMPT_LIMIT
+  ) {
     return "도전 종료";
   }
 
@@ -3128,7 +3227,10 @@ function LiveTimer({ startedAt }: { startedAt: string }) {
   }, [startedAt]);
 
   return (
-    <span className="liveTimerDisplay" aria-label={`경과 시간 ${formatLiveTimer(seconds)}`}>
+    <span
+      className="liveTimerDisplay"
+      aria-label={`경과 시간 ${formatLiveTimer(seconds)}`}
+    >
       {formatLiveTimer(seconds)}
     </span>
   );
@@ -3202,9 +3304,11 @@ function buildShareText({
     lines.push(`🔥 ${consecutiveStreak}일째 도전 중`);
   }
 
-  lines.push(isComplete
-    ? `낱말 ${completedCount}/${totalCount}개 완성 🎉`
-    : `낱말 ${completedCount}/${totalCount}개 도전`);
+  lines.push(
+    isComplete
+      ? `낱말 ${completedCount}/${totalCount}개 완성 🎉`
+      : `낱말 ${completedCount}/${totalCount}개 도전`,
+  );
 
   return lines.join("\n");
 }
@@ -3219,10 +3323,15 @@ function DateCarousel({
   selectPuzzle,
 }: DateSelectionProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
-  const lastScrolledRef = useRef<{ key: string; scroller: HTMLDivElement } | null>(null);
+  const lastScrolledRef = useRef<{
+    key: string;
+    scroller: HTMLDivElement;
+  } | null>(null);
   const todayKey = getTodayDateKey();
 
-  const puzzleIdsKey = JSON.stringify(puzzleSummaries.map((p) => String(p.puzzleId)));
+  const puzzleIdsKey = JSON.stringify(
+    puzzleSummaries.map((p) => String(p.puzzleId)),
+  );
 
   useEffect(() => {
     const scroller = scrollerRef.current;
@@ -3230,7 +3339,8 @@ function DateCarousel({
     const scrollKey = `${selectedPuzzleId}::${puzzleIdsKey}`;
     const last = lastScrolledRef.current;
     if (last?.key === scrollKey && last?.scroller === scroller) return;
-    const allCards = scroller.querySelectorAll<HTMLButtonElement>("[data-puzzle-id]");
+    const allCards =
+      scroller.querySelectorAll<HTMLButtonElement>("[data-puzzle-id]");
     const selectedCard = Array.from(allCards).find(
       (el) => el.dataset.puzzleId === String(selectedPuzzleId),
     );
@@ -3299,7 +3409,9 @@ function DateCarousel({
           const difficultyLabel = formatDifficultyLabel(summary.difficulty);
           const metaLabel =
             !isFallbackPack && completionStatsLabel !== ""
-              ? [difficultyLabel, completionStatsLabel].filter(Boolean).join(" · ")
+              ? [difficultyLabel, completionStatsLabel]
+                  .filter(Boolean)
+                  .join(" · ")
               : [difficultyLabel, statusLabel, wordCountLabel]
                   .filter(Boolean)
                   .join(" · ");
@@ -3403,6 +3515,8 @@ function AppHeader({
 }
 
 type TodayScreenProps = DateSelectionProps & {
+  answerInputMode: AnswerInputMode;
+  selectAnswerInputMode: (mode: AnswerInputMode) => void;
   applyAnswer: (entry: PuzzleEntry, value: string) => void;
   applyAnswerSegment: (
     entry: PuzzleEntry,
@@ -3421,6 +3535,7 @@ type TodayScreenProps = DateSelectionProps & {
   hintBalance: HintBalance;
   hintCount: number;
   isCompleted: boolean;
+  isNewBestTime: boolean;
   mission: DailyMissionState;
   navigate: (route: AppRoute) => void;
   puzzle: Puzzle;
@@ -3440,6 +3555,9 @@ type TodayScreenProps = DateSelectionProps & {
 };
 
 function TodayScreen({
+  answerInputMode,
+  selectAnswerInputMode,
+  applyAnswer,
   applyAnswerSegment,
   cellValues,
   clearAnswerCell,
@@ -3455,6 +3573,7 @@ function TodayScreen({
   hintBalance,
   hintCount,
   isCompleted,
+  isNewBestTime,
   loadState,
   mission,
   navigate,
@@ -3475,6 +3594,7 @@ function TodayScreen({
   const [isClueListOpen, setIsClueListOpen] = useState(false);
   const [answerInputResetKey, setAnswerInputResetKey] = useState(0);
   const boardInputRef = useRef<HTMLInputElement>(null);
+  const boxInputRef = useRef<HTMLInputElement>(null);
   const commitTimerRef = useRef<number | null>(null);
   const isComposingRef = useRef(false);
   const [inputValue, setInputValue] = useState("");
@@ -3484,7 +3604,8 @@ function TodayScreen({
   // A finished puzzle is shown read-only so the saved answers stay intact while
   // the player reviews the completed board.
   const isReviewMode = isCompleted;
-  const isAttemptExhaustedUncompleted = hasStarted && remainingAttempts <= 0 && !isCompleted;
+  const isAttemptExhaustedUncompleted =
+    hasStarted && remainingAttempts <= 0 && !isCompleted;
   const selectedPuzzleSummary =
     findPuzzleSummaryById(puzzleSummaries, selectedPuzzleId) ??
     createPuzzleSummary(puzzle);
@@ -3650,6 +3771,30 @@ function TodayScreen({
 
   useEffect(() => () => clearCommitTimer(), [clearCommitTimer]);
 
+  // In box mode the word input is uncontrolled, so external cell changes (most
+  // notably hint reveals) don't reach it on their own. Mirror the committed
+  // letters into it whenever they change — but skip while it's focused so live
+  // typing / IME composition isn't clobbered.
+  useEffect(() => {
+    if (answerInputMode !== "box") {
+      return;
+    }
+
+    const input = boxInputRef.current;
+
+    if (input == null || document.activeElement === input) {
+      return;
+    }
+
+    const committed = selectedEntryCellKeys
+      .map((key) => cellValues[key] ?? "")
+      .join("");
+
+    if (input.value !== committed) {
+      input.value = committed;
+    }
+  }, [answerInputMode, cellValues, selectedEntryCellKeys]);
+
   function focusPuzzleBoard() {
     requestAnimationFrame(() => {
       document.querySelector<HTMLElement>(".puzzleBoard")?.focus({
@@ -3659,6 +3804,13 @@ function TodayScreen({
   }
 
   function focusNativeInput() {
+    // In box mode the hidden per-cell input is not mounted; route focus to the
+    // visible word input instead so all existing call sites keep working.
+    if (answerInputMode === "box") {
+      boxInputRef.current?.focus({ preventScroll: true });
+      return;
+    }
+
     boardInputRef.current?.focus({ preventScroll: true });
   }
 
@@ -3924,169 +4076,204 @@ function TodayScreen({
   const answerSlotInputStyle = {
     "--answer-slot-width": `${answerSlotColumnCount * 44 + Math.max(0, answerSlotColumnCount - 1) * 7}px`,
   } as CSSProperties;
+  // Box mode edits the whole word at once, so seed the field with the letters
+  // already committed for the selected entry.
+  const selectedEntryCommittedValue = selectedEntryCellKeys
+    .map((key) => cellValues[key] ?? "")
+    .join("");
   const answerInputElement =
     selectedEntry != null && !isReviewMode ? (
-      <div className="answerSlotInput">
-        <div
-          className="answerSlotGrid"
-          style={answerSlotInputStyle}
-          role="group"
-          aria-label={`${formatEntryReference(selectedEntry, startLabels)} 답 입력`}
-        >
-          {selectedEntryCellKeys.map((key, index) => {
-            const pendingValue = pendingAnswerCellValues[key] ?? "";
-            const committedValue = cellValues[key] ?? "";
-            const displayValue =
-              pendingValue !== "" ? pendingValue : committedValue;
-            const isActive = key === activeCellKey;
-            const isLocked = isCellLocked(puzzle, cellValues, key);
-            const isWrong =
-              pendingValue === "" &&
-              committedValue !== "" &&
-              committedValue !== getCellAnswerLetter(puzzle, key);
+      <div className="answerInputArea">
+        {answerInputMode === "cell" ? (
+          <div className="answerSlotInput">
+            <div
+              className="answerSlotGrid"
+              style={answerSlotInputStyle}
+              role="group"
+              aria-label={`${formatEntryReference(selectedEntry, startLabels)} 답 입력`}
+            >
+              {selectedEntryCellKeys.map((key, index) => {
+                const pendingValue = pendingAnswerCellValues[key] ?? "";
+                const committedValue = cellValues[key] ?? "";
+                const displayValue =
+                  pendingValue !== "" ? pendingValue : committedValue;
+                const isActive = key === activeCellKey;
+                const isLocked = isCellLocked(puzzle, cellValues, key);
+                const isWrong =
+                  pendingValue === "" &&
+                  committedValue !== "" &&
+                  committedValue !== getCellAnswerLetter(puzzle, key);
 
-            return (
-              <button
-                key={key}
-                data-cell-key={key}
-                className={[
-                  "answerSlot",
-                  committedValue !== "" ? "answerSlotFilled" : "",
-                  isActive ? "answerSlotActive" : "",
-                  pendingValue !== "" ? "answerSlotPending" : "",
-                  isLocked ? "answerSlotLocked" : "",
-                  isWrong ? "answerSlotWrong" : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-                type="button"
-                aria-label={`${index + 1}번째 글자 ${
-                  displayValue === "" ? "비어 있음" : displayValue
-                }`}
-                aria-pressed={isActive}
-                onClick={() => {
-                  selectEntry(selectedEntry, key);
-                  focusNativeInput();
-                }}
-              >
-                {displayValue}
-              </button>
-            );
-          })}
-        </div>
-        <input
-          ref={boardInputRef}
-          className="answerSlotNativeInput"
-          inputMode="text"
-          autoCapitalize="off"
-          autoComplete="off"
-          autoCorrect="off"
-          enterKeyHint="next"
-          maxLength={selectedRemainingCellCount}
-          spellCheck={false}
-          aria-label={`${selectedRemainingCellCount}글자 답 입력`}
-          onClick={handleAnswerSlotInputClick}
-          onPointerDown={handleAnswerSlotInputPointerDown}
-          onTouchStart={handleAnswerSlotInputTouchStart}
-          onFocus={(event) => moveBoardInputCaretToEnd(event.currentTarget)}
-          onCompositionStart={(event) => {
-            clearCommitTimer();
-            compositionStartCellKeyRef.current = activeCellKey;
-            compositionEndValueRef.current = null;
-            isComposingRef.current = true;
-            setIsComposing(true);
-            moveBoardInputCaretToEnd(event.currentTarget);
-          }}
-          onCompositionUpdate={(event) => {
-            setInputValue(event.currentTarget.value || event.data);
-            clearCommitTimer();
-          }}
-          onCompositionEnd={(event) => {
-            const nextValue = event.currentTarget.value;
-            const startCellKey = compositionStartCellKeyRef.current;
+                return (
+                  <button
+                    key={key}
+                    data-cell-key={key}
+                    className={[
+                      "answerSlot",
+                      committedValue !== "" ? "answerSlotFilled" : "",
+                      isActive ? "answerSlotActive" : "",
+                      pendingValue !== "" ? "answerSlotPending" : "",
+                      isLocked ? "answerSlotLocked" : "",
+                      isWrong ? "answerSlotWrong" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    type="button"
+                    aria-label={`${index + 1}번째 글자 ${
+                      displayValue === "" ? "비어 있음" : displayValue
+                    }`}
+                    aria-pressed={isActive}
+                    onClick={() => {
+                      selectEntry(selectedEntry, key);
+                      focusNativeInput();
+                    }}
+                  >
+                    {displayValue}
+                  </button>
+                );
+              })}
+            </div>
+            <input
+              ref={boardInputRef}
+              className="answerSlotNativeInput"
+              inputMode="text"
+              autoCapitalize="off"
+              autoComplete="off"
+              autoCorrect="off"
+              enterKeyHint="next"
+              maxLength={selectedRemainingCellCount}
+              spellCheck={false}
+              aria-label={`${selectedRemainingCellCount}글자 답 입력`}
+              onClick={handleAnswerSlotInputClick}
+              onPointerDown={handleAnswerSlotInputPointerDown}
+              onTouchStart={handleAnswerSlotInputTouchStart}
+              onFocus={(event) => moveBoardInputCaretToEnd(event.currentTarget)}
+              onCompositionStart={(event) => {
+                clearCommitTimer();
+                compositionStartCellKeyRef.current = activeCellKey;
+                compositionEndValueRef.current = null;
+                isComposingRef.current = true;
+                setIsComposing(true);
+                moveBoardInputCaretToEnd(event.currentTarget);
+              }}
+              onCompositionUpdate={(event) => {
+                setInputValue(event.currentTarget.value || event.data);
+                clearCommitTimer();
+              }}
+              onCompositionEnd={(event) => {
+                const nextValue = event.currentTarget.value;
+                const startCellKey = compositionStartCellKeyRef.current;
 
-            isComposingRef.current = false;
-            compositionStartCellKeyRef.current = null;
-            setIsComposing(false);
+                isComposingRef.current = false;
+                compositionStartCellKeyRef.current = null;
+                setIsComposing(false);
 
-            if (startCellKey == null) {
-              resetBoardInputValue();
-              return;
+                if (startCellKey == null) {
+                  resetBoardInputValue();
+                  return;
+                }
+
+                compositionEndValueRef.current = nextValue;
+                setInputValue(nextValue);
+                moveBoardInputCaretToEnd(event.currentTarget);
+                queueCommitInputValue(
+                  nextValue,
+                  startCellKey,
+                  COMPOSITION_COMMIT_DELAY_MS,
+                );
+              }}
+              onChange={(event) => {
+                const nextValue = event.currentTarget.value;
+                const nativeEvent = event.nativeEvent as InputEvent;
+
+                if (
+                  isComposing ||
+                  isComposingRef.current ||
+                  nativeEvent.isComposing ||
+                  nativeEvent.inputType === "insertCompositionText"
+                ) {
+                  setInputValue(nextValue);
+                  clearCommitTimer();
+                  return;
+                }
+
+                setInputValue(nextValue);
+                if (compositionEndValueRef.current === nextValue) {
+                  compositionEndValueRef.current = null;
+                  return;
+                }
+
+                moveBoardInputCaretToEnd(event.currentTarget);
+                queueCommitInputValue(nextValue);
+              }}
+              onKeyDown={(event) => {
+                const nativeEvent = event.nativeEvent as KeyboardEvent;
+
+                if (isComposing || nativeEvent.isComposing) {
+                  return;
+                }
+
+                if (
+                  event.key === "Backspace" &&
+                  inputValue === "" &&
+                  selectedEntry != null
+                ) {
+                  event.preventDefault();
+                  clearAnswerCell(selectedEntry, activeCellKey);
+                  return;
+                }
+
+                if (event.key === "ArrowLeft") {
+                  event.preventDefault();
+                  selectRelativeCell(-1);
+                  return;
+                }
+
+                if (event.key === "ArrowRight") {
+                  event.preventDefault();
+                  selectRelativeCell(1);
+                  return;
+                }
+
+                if (
+                  event.key === "Enter" ||
+                  event.key === " " ||
+                  event.code === "Space"
+                ) {
+                  event.preventDefault();
+                  handleAdvanceInput();
+                }
+              }}
+              onBlur={(event) => preserveInputOnBlur(event.currentTarget.value)}
+            />
+          </div>
+        ) : null}
+        {answerInputMode === "box" ? (
+          <input
+            ref={boxInputRef}
+            key={`answer-box-${selectedEntry.id}-${answerInputResetKey}-${hintCount}`}
+            className="answerBoxInput"
+            inputMode="text"
+            autoCapitalize="off"
+            autoComplete="off"
+            autoCorrect="off"
+            enterKeyHint="next"
+            spellCheck={false}
+            maxLength={selectedEntryCells.length}
+            defaultValue={selectedEntryCommittedValue}
+            aria-label={`${selectedEntryCells.length}글자 답 입력`}
+            placeholder={`${selectedEntryCells.length}글자 입력`}
+            onChange={(event) =>
+              applyAnswer(selectedEntry, event.currentTarget.value)
             }
-
-            compositionEndValueRef.current = nextValue;
-            setInputValue(nextValue);
-            moveBoardInputCaretToEnd(event.currentTarget);
-            queueCommitInputValue(
-              nextValue,
-              startCellKey,
-              COMPOSITION_COMMIT_DELAY_MS,
-            );
-          }}
-          onChange={(event) => {
-            const nextValue = event.currentTarget.value;
-            const nativeEvent = event.nativeEvent as InputEvent;
-
-            if (
-              isComposing ||
-              isComposingRef.current ||
-              nativeEvent.isComposing ||
-              nativeEvent.inputType === "insertCompositionText"
-            ) {
-              setInputValue(nextValue);
-              clearCommitTimer();
-              return;
-            }
-
-            setInputValue(nextValue);
-            if (compositionEndValueRef.current === nextValue) {
-              compositionEndValueRef.current = null;
-              return;
-            }
-
-            moveBoardInputCaretToEnd(event.currentTarget);
-            queueCommitInputValue(nextValue);
-          }}
-          onKeyDown={(event) => {
-            const nativeEvent = event.nativeEvent as KeyboardEvent;
-
-            if (isComposing || nativeEvent.isComposing) {
-              return;
-            }
-
-            if (
-              event.key === "Backspace" &&
-              inputValue === "" &&
-              selectedEntry != null
-            ) {
-              event.preventDefault();
-              clearAnswerCell(selectedEntry, activeCellKey);
-              return;
-            }
-
-            if (event.key === "ArrowLeft") {
-              event.preventDefault();
-              selectRelativeCell(-1);
-              return;
-            }
-
-            if (event.key === "ArrowRight") {
-              event.preventDefault();
-              selectRelativeCell(1);
-              return;
-            }
-
-            if (
-              event.key === "Enter" ||
-              event.key === " " ||
-              event.code === "Space"
-            ) {
-              event.preventDefault();
-              handleAdvanceInput();
-            }
-          }}
-          onBlur={(event) => preserveInputOnBlur(event.currentTarget.value)}
-        />
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                goToAdjacentClue(1);
+              }
+            }}
+          />
+        ) : null}
       </div>
     ) : null;
 
@@ -4158,6 +4345,28 @@ function TodayScreen({
                           ? "+"
                           : "0"}
                   </span>
+                </button>
+                <button
+                  className="iconButton"
+                  type="button"
+                  aria-label={
+                    answerInputMode === "box"
+                      ? "입력 방식: 입력창 (탭하여 칸별로 전환)"
+                      : "입력 방식: 칸별 (탭하여 입력창으로 전환)"
+                  }
+                  title={
+                    answerInputMode === "box"
+                      ? "입력창 입력 · 탭하여 칸별 전환"
+                      : "칸별 입력 · 탭하여 입력창 전환"
+                  }
+                  aria-pressed={answerInputMode === "cell"}
+                  onClick={() =>
+                    selectAnswerInputMode(
+                      answerInputMode === "box" ? "cell" : "box",
+                    )
+                  }
+                >
+                  <InputModeIcon mode={answerInputMode} />
                 </button>
                 <button
                   className="iconButton"
@@ -4267,7 +4476,9 @@ function TodayScreen({
           role="region"
           aria-label="도전 종료 안내"
         >
-          <span>오늘 도전 기회를 모두 사용했어요 · 내일 다시 도전해 보세요</span>
+          <span>
+            오늘 도전 기회를 모두 사용했어요 · 내일 다시 도전해 보세요
+          </span>
           <button
             className="exhaustedBannerLink"
             type="button"
@@ -4387,7 +4598,10 @@ function CompletionCelebrationDialog({
   const nextStreakHint = getNextStreakMilestoneHint(consecutiveStreak);
 
   const hasAchievements =
-    isNewBestTime || hintCount === 0 || attemptsUsed === 1 || streakBadge != null;
+    isNewBestTime ||
+    hintCount === 0 ||
+    attemptsUsed === 1 ||
+    streakBadge != null;
 
   return (
     <div className="rewardDialogScrim" onClick={onClose}>
@@ -4435,17 +4649,11 @@ function CompletionCelebrationDialog({
             </div>
           )}
           {nextStreakHint != null && (
-            <p className="streakNudge">
-              {nextStreakHint}
-            </p>
+            <p className="streakNudge">{nextStreakHint}</p>
           )}
         </div>
         <div className="rewardDialogActions">
-          <button
-            className="secondaryButton"
-            type="button"
-            onClick={onGoHome}
-          >
+          <button className="secondaryButton" type="button" onClick={onGoHome}>
             홈으로
           </button>
           <button
@@ -4561,6 +4769,74 @@ function ListIcon() {
   );
 }
 
+function InputModeIcon({ mode }: { mode: AnswerInputMode }) {
+  return (
+    <svg
+      aria-hidden="true"
+      focusable="false"
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+    >
+      {mode === "box" ? (
+        // 입력창: 단일 텍스트 필드 + 캐럿
+        <>
+          <rect
+            x="3"
+            y="8"
+            width="18"
+            height="8"
+            rx="2"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          />
+          <path
+            d="M7 12h6"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
+        </>
+      ) : (
+        // 칸별: 셀 그리드
+        <>
+          <rect
+            x="3"
+            y="9"
+            width="6"
+            height="6"
+            rx="1"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          />
+          <rect
+            x="9"
+            y="9"
+            width="6"
+            height="6"
+            rx="1"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          />
+          <rect
+            x="15"
+            y="9"
+            width="6"
+            height="6"
+            rx="1"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          />
+        </>
+      )}
+    </svg>
+  );
+}
+
 type ResultScreenProps = DateSelectionProps & {
   bonusPuzzlePanelState: BonusPuzzlePanelState;
   completedEntries: PuzzleEntry[];
@@ -4611,7 +4887,9 @@ function ResultScreen({
   const streakAchievementLabel = isComplete
     ? getStreakBadgeLabel(consecutiveStreak)
     : null;
-  const nextStreakHint = isComplete ? getNextStreakMilestoneHint(consecutiveStreak) : null;
+  const nextStreakHint = isComplete
+    ? getNextStreakMilestoneHint(consecutiveStreak)
+    : null;
   const resultStartLabels = useMemo(
     () => buildStartLabels(puzzle.entries),
     [puzzle.entries],
@@ -4651,24 +4929,27 @@ function ResultScreen({
         return;
       }
       try {
-        void navigator.clipboard.writeText(text).then(() => {
-          setShareCopied(true);
-          setShareFailed(false);
-          if (shareTimeoutRef.current != null) {
-            window.clearTimeout(shareTimeoutRef.current);
-          }
-          shareTimeoutRef.current = window.setTimeout(() => {
+        void navigator.clipboard
+          .writeText(text)
+          .then(() => {
+            setShareCopied(true);
+            setShareFailed(false);
+            if (shareTimeoutRef.current != null) {
+              window.clearTimeout(shareTimeoutRef.current);
+            }
+            shareTimeoutRef.current = window.setTimeout(() => {
+              setShareCopied(false);
+              shareTimeoutRef.current = null;
+            }, 2000);
+          })
+          .catch(() => {
             setShareCopied(false);
-            shareTimeoutRef.current = null;
-          }, 2000);
-        }).catch(() => {
-          setShareCopied(false);
-          setShareFailed(true);
-          if (shareTimeoutRef.current != null) {
-            window.clearTimeout(shareTimeoutRef.current);
-            shareTimeoutRef.current = null;
-          }
-        });
+            setShareFailed(true);
+            if (shareTimeoutRef.current != null) {
+              window.clearTimeout(shareTimeoutRef.current);
+              shareTimeoutRef.current = null;
+            }
+          });
       } catch {
         setShareCopied(false);
         setShareFailed(true);
@@ -4717,27 +4998,27 @@ function ResultScreen({
             hintCount === 0 ||
             mission?.attemptsUsed === 1 ||
             streakAchievementLabel != null) && (
-          <div className="resultAchievements">
-            {isNewBestTime && (
-              <span className="resultAchievement resultAchievementBest">
-                🏆 최고 기록 갱신!
-              </span>
-            )}
-            {hintCount === 0 && (
-              <span className="resultAchievement">🎯 노힌트 클리어</span>
-            )}
-            {mission?.attemptsUsed === 1 && (
-              <span className="resultAchievement">💎 첫 도전 성공</span>
-            )}
-            {streakAchievementLabel != null && (
-              <span className="resultAchievement">{streakAchievementLabel}</span>
-            )}
-          </div>
-        )}
+            <div className="resultAchievements">
+              {isNewBestTime && (
+                <span className="resultAchievement resultAchievementBest">
+                  🏆 최고 기록 갱신!
+                </span>
+              )}
+              {hintCount === 0 && (
+                <span className="resultAchievement">🎯 노힌트 클리어</span>
+              )}
+              {mission?.attemptsUsed === 1 && (
+                <span className="resultAchievement">💎 첫 도전 성공</span>
+              )}
+              {streakAchievementLabel != null && (
+                <span className="resultAchievement">
+                  {streakAchievementLabel}
+                </span>
+              )}
+            </div>
+          )}
         {nextStreakHint != null && (
-          <p className="streakNudge">
-            {nextStreakHint}
-          </p>
+          <p className="streakNudge">{nextStreakHint}</p>
         )}
         <span>
           {completedEntries.length}/{puzzle.entries.length} 단어 · 힌트{" "}
@@ -4840,27 +5121,32 @@ function ResultScreen({
             </button>
           </>
         )}
-        {(isComplete || remainingAttempts <= 0) && completedEntries.length > 0 && (
-          <div className="shareContainer">
-            <button
-              className="shareButton"
-              type="button"
-              onClick={handleShare}
-            >
-              결과 공유하기
-            </button>
-            {shareCopied && (
-              <p className="shareToast" role="status" aria-live="polite">
-                클립보드에 복사됐어요!
-              </p>
-            )}
-            {shareFailed && (
-              <p className="shareToast shareToastError" role="alert" aria-live="assertive">
-                클립보드 복사에 실패했어요.
-              </p>
-            )}
-          </div>
-        )}
+        {(isComplete || remainingAttempts <= 0) &&
+          completedEntries.length > 0 && (
+            <div className="shareContainer">
+              <button
+                className="shareButton"
+                type="button"
+                onClick={handleShare}
+              >
+                결과 공유하기
+              </button>
+              {shareCopied && (
+                <p className="shareToast" role="status" aria-live="polite">
+                  클립보드에 복사됐어요!
+                </p>
+              )}
+              {shareFailed && (
+                <p
+                  className="shareToast shareToastError"
+                  role="alert"
+                  aria-live="assertive"
+                >
+                  클립보드 복사에 실패했어요.
+                </p>
+              )}
+            </div>
+          )}
       </section>
 
       <BonusPuzzlePanel
@@ -4914,7 +5200,8 @@ function HistoryScreen({
 
   function openArchiveRecord(record: PuzzleArchiveRecord) {
     const state = dateCardStates[record.puzzleId];
-    const isCompleted = record.completedAt != null || state?.completedAt != null;
+    const isCompleted =
+      record.completedAt != null || state?.completedAt != null;
     const isExhausted =
       !isCompleted &&
       state?.attemptsUsed != null &&
@@ -5206,7 +5493,11 @@ function DevSimulatorScreen({
             <button
               className="toolButton"
               type="button"
-              onClick={() => { void clearProgress().catch((error) => { console.error("clearProgress 실패:", error); }); }}
+              onClick={() => {
+                void clearProgress().catch((error) => {
+                  console.error("clearProgress 실패:", error);
+                });
+              }}
             >
               초기화
             </button>
@@ -5562,7 +5853,10 @@ function ClueSection({
 }: ClueSectionProps) {
   const baseId = useId();
 
-  function handleTabKeyDown(event: KeyboardEvent<HTMLButtonElement>, currentDirection: Direction) {
+  function handleTabKeyDown(
+    event: KeyboardEvent<HTMLButtonElement>,
+    currentDirection: Direction,
+  ) {
     const currentIndex = TAB_DIRECTIONS.indexOf(currentDirection);
     let nextIndex: number | null = null;
     if (event.key === "ArrowRight" || event.key === "ArrowDown") {
@@ -5570,7 +5864,8 @@ function ClueSection({
       nextIndex = (currentIndex + 1) % TAB_DIRECTIONS.length;
     } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
       event.preventDefault();
-      nextIndex = (currentIndex - 1 + TAB_DIRECTIONS.length) % TAB_DIRECTIONS.length;
+      nextIndex =
+        (currentIndex - 1 + TAB_DIRECTIONS.length) % TAB_DIRECTIONS.length;
     } else if (event.key === "Home") {
       event.preventDefault();
       nextIndex = 0;
