@@ -2192,10 +2192,10 @@ function AppContent() {
 
     setCellValues(nextValues);
 
-    if (isEntryFilled(entry, nextValues)) {
-      setNotice('정답입니다.');
-      moveToNextUncompletedEntry(nextValues);
-    }
+    // No auto-advance in box mode: moving to the next entry would change the box
+    // key and remount the TextInput mid-IME-composition (Android drops the last
+    // composing Hangul syllable and focus escapes). The player advances with the
+    // next-clue control or the keyboard's "next" key instead.
   }
 
   function clearSelectedAnswer() {
