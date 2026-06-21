@@ -45,6 +45,7 @@ import {
   getEntryAnswerValue,
   getEntryCells,
   getInitialEntryId,
+  getNextFocusEntryAfterCompletion,
   getNextStreakMilestoneHint,
   getOpenPuzzleSummariesForDate,
   getPuzzleDailySequenceNumber,
@@ -1004,12 +1005,6 @@ function getNextAnswerSlotCellKey(
   return getEntryCellKeyAt(
     entry,
     firstEmptyIndex === -1 ? afterInputIndex : firstEmptyIndex,
-  );
-}
-
-function isEntryFilled(entry: PuzzleEntry, cellValues: Record<string, string>) {
-  return getEntryCells(entry).every(
-    cell => cellValues[getCellKey(cell.row, cell.col)] != null,
   );
 }
 
@@ -2100,9 +2095,16 @@ function AppContent() {
     focusBoardInput(key);
   }
 
-  function moveToNextUncompletedEntry(nextCellValues: Record<string, string>) {
-    const nextEntry = puzzle.entries.find(
-      entry => getEntryAnswerValue(entry, nextCellValues) !== entry.answer,
+  function moveToNextUncompletedEntry(
+    currentEntry: PuzzleEntry,
+    nextCellValues: Record<string, string>,
+    anchorCellKey: string | null,
+  ) {
+    const nextEntry = getNextFocusEntryAfterCompletion(
+      puzzle.entries,
+      nextCellValues,
+      currentEntry,
+      anchorCellKey,
     );
 
     if (nextEntry != null) {
@@ -2154,9 +2156,15 @@ function AppContent() {
       ),
     );
 
-    if (isEntryFilled(entry, nextValues)) {
+    // "칸이 모두 찼다"가 아니라 "정답과 일치"할 때만 다음 칸으로 넘어간다.
+    // (한글 마지막 글자를 조합하는 중 마지막 칸이 채워지면 isEntryFilled가
+    //  먼저 true가 되어 자동 이동이 받침 입력을 끊어버리는 문제를 막는다.)
+    if (getEntryAnswerValue(entry, nextValues) === entry.answer) {
       setNotice('정답입니다.');
-      moveToNextUncompletedEntry(nextValues);
+      const lastCell = cells[startIndex + nextLetters.length - 1];
+      const anchorCellKey =
+        lastCell != null ? getCellKey(lastCell.row, lastCell.col) : null;
+      moveToNextUncompletedEntry(entry, nextValues, anchorCellKey);
     } else {
       setNotice(`${directionLabels[entry.direction]} 답을 입력 중입니다.`);
     }
@@ -2270,7 +2278,7 @@ function AppContent() {
     if (
       getEntryAnswerValue(selectedEntry, nextValues) === selectedEntry.answer
     ) {
-      moveToNextUncompletedEntry(nextValues);
+      moveToNextUncompletedEntry(selectedEntry, nextValues, targetKey);
     }
   }
 
@@ -2968,10 +2976,6 @@ function AppContent() {
     }
 
     const slotCount = answerSlots.length;
-    // Box mode seeds the single input with the word's committed letters.
-    const selectedEntryCommittedValue = selectedEntryCellKeys
-      .map(key => cellValues[key] ?? '')
-      .join('');
 
     return (
       <View style={styles.solveClueBar}>
@@ -3055,7 +3059,6 @@ function AppContent() {
             key={`answer-box-${selectedEntry.id}-${answerBoxResetKey}-${hintCount}`}
             autoCapitalize="none"
             autoCorrect={false}
-            defaultValue={selectedEntryCommittedValue}
             editable={!isReviewMode}
             maxLength={selectedEntryCells.length}
             onChangeText={text => applyBoxAnswer(selectedEntry, text)}
