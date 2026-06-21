@@ -228,6 +228,137 @@ export function getEntryAnswerValue(
     .join("");
 }
 
+export function getEntryCellDistance(
+  entry: PuzzleEntry,
+  targetEntry: PuzzleEntry,
+) {
+  const cells = getEntryCells(entry);
+  const targetCells = getEntryCells(targetEntry);
+  let nearestDistance = Number.POSITIVE_INFINITY;
+
+  for (const cell of cells) {
+    for (const targetCell of targetCells) {
+      const distance =
+        Math.abs(cell.row - targetCell.row) +
+        Math.abs(cell.col - targetCell.col);
+
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+      }
+    }
+  }
+
+  return nearestDistance;
+}
+
+export function getEntryCenterDistance(
+  entry: PuzzleEntry,
+  targetEntry: PuzzleEntry,
+) {
+  const cells = getEntryCells(entry);
+  const targetCells = getEntryCells(targetEntry);
+  const center = cells.reduce(
+    (total, cell) => ({
+      row: total.row + cell.row / cells.length,
+      col: total.col + cell.col / cells.length,
+    }),
+    { row: 0, col: 0 },
+  );
+  const targetCenter = targetCells.reduce(
+    (total, cell) => ({
+      row: total.row + cell.row / targetCells.length,
+      col: total.col + cell.col / targetCells.length,
+    }),
+    { row: 0, col: 0 },
+  );
+
+  return (
+    Math.abs(center.row - targetCenter.row) +
+    Math.abs(center.col - targetCenter.col)
+  );
+}
+
+// 한 단어 완성 후 다음 포커스 대상 결정: 방금 완성한 단어(currentEntry)와
+// 셀 거리가 가장 가까운 미완성 단어를 고른다. 교차(셀 공유) 단어는 거리 0이라
+// 항상 1순위가 되고, 동률이면 중심 거리 → 배열 순서로 정렬한다.
+export function getNearestUncompletedEntry(
+  entries: PuzzleEntry[],
+  cellValues: Record<string, string>,
+  currentEntry: PuzzleEntry,
+) {
+  const completedEntryIds = new Set(
+    getCompletedEntries(entries, cellValues).map((entry) => entry.id),
+  );
+
+  return entries
+    .map((entry, index) => ({
+      cellDistance: getEntryCellDistance(currentEntry, entry),
+      centerDistance: getEntryCenterDistance(currentEntry, entry),
+      entry,
+      index,
+    }))
+    .filter(
+      ({ entry }) =>
+        (!completedEntryIds.has(currentEntry.id) ||
+          entry.id !== currentEntry.id) &&
+        !completedEntryIds.has(entry.id),
+    )
+    .sort(
+      (a, b) =>
+        a.cellDistance - b.cellDistance ||
+        a.centerDistance - b.centerDistance ||
+        a.index - b.index,
+    )[0]?.entry;
+}
+
+// 한 단어 완성 후 다음 포커스: "마지막으로 입력한 칸(anchorCellKey)"을 지나는
+// 교차(수직) 미완성 단어를 우선한다. anchor 칸부터 단어 시작 쪽으로 역순 훑고,
+// 이어서 anchor 뒤쪽 칸을 훑어 첫 교차 미완성 단어를 고른다. 완성 단어를 지나는
+// 교차 미완성 단어가 하나도 없으면 거리 기반(getNearestUncompletedEntry)으로 폴백한다.
+export function getNextFocusEntryAfterCompletion(
+  entries: PuzzleEntry[],
+  cellValues: Record<string, string>,
+  completedEntry: PuzzleEntry,
+  anchorCellKey: string | null,
+) {
+  const completedEntryIds = new Set(
+    getCompletedEntries(entries, cellValues).map((entry) => entry.id),
+  );
+  const cellKeys = getEntryCells(completedEntry).map((cell) =>
+    getCellKey(cell.row, cell.col),
+  );
+
+  let anchorIndex =
+    anchorCellKey != null ? cellKeys.indexOf(anchorCellKey) : -1;
+  if (anchorIndex < 0) {
+    anchorIndex = cellKeys.length - 1;
+  }
+
+  // anchor → 단어 시작 방향(역순), 그다음 anchor 뒤쪽 칸 순서로 방문한다.
+  const visitOrder = [
+    ...cellKeys.slice(0, anchorIndex + 1).reverse(),
+    ...cellKeys.slice(anchorIndex + 1),
+  ];
+
+  for (const key of visitOrder) {
+    const crossing = entries.find(
+      (entry) =>
+        entry.id !== completedEntry.id &&
+        entry.direction !== completedEntry.direction &&
+        !completedEntryIds.has(entry.id) &&
+        getEntryCells(entry).some(
+          (cell) => getCellKey(cell.row, cell.col) === key,
+        ),
+    );
+
+    if (crossing != null) {
+      return crossing;
+    }
+  }
+
+  return getNearestUncompletedEntry(entries, cellValues, completedEntry);
+}
+
 export function buildReviewEntries(
   entries: PuzzleEntry[],
   entriesByCell: Map<string, PuzzleEntry[]>,

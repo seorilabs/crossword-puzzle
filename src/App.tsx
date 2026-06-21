@@ -38,6 +38,7 @@ import {
   getOpenPuzzleSummariesForDate,
   getPuzzleDailySequenceNumber,
   getPuzzlePackAlias,
+  getNextFocusEntryAfterCompletion,
   getRemainingAttempts,
   getTodayDateKey,
   getNextStreakMilestoneHint,
@@ -613,86 +614,6 @@ function getNextAnswerSlotCellKey(
   return getEntryCellKeyAt(
     entry,
     firstEmptyIndex === -1 ? afterInputIndex : firstEmptyIndex,
-  );
-}
-
-function getEntryCellDistance(entry: PuzzleEntry, targetEntry: PuzzleEntry) {
-  const cells = getEntryCells(entry);
-  const targetCells = getEntryCells(targetEntry);
-  let nearestDistance = Number.POSITIVE_INFINITY;
-
-  for (const cell of cells) {
-    for (const targetCell of targetCells) {
-      const distance =
-        Math.abs(cell.row - targetCell.row) +
-        Math.abs(cell.col - targetCell.col);
-
-      if (distance < nearestDistance) {
-        nearestDistance = distance;
-      }
-    }
-  }
-
-  return nearestDistance;
-}
-
-function getEntryCenterDistance(entry: PuzzleEntry, targetEntry: PuzzleEntry) {
-  const cells = getEntryCells(entry);
-  const targetCells = getEntryCells(targetEntry);
-  const center = cells.reduce(
-    (total, cell) => ({
-      row: total.row + cell.row / cells.length,
-      col: total.col + cell.col / cells.length,
-    }),
-    { row: 0, col: 0 },
-  );
-  const targetCenter = targetCells.reduce(
-    (total, cell) => ({
-      row: total.row + cell.row / targetCells.length,
-      col: total.col + cell.col / targetCells.length,
-    }),
-    { row: 0, col: 0 },
-  );
-
-  return (
-    Math.abs(center.row - targetCenter.row) +
-    Math.abs(center.col - targetCenter.col)
-  );
-}
-
-function getNearestUncompletedEntry(
-  entries: PuzzleEntry[],
-  cellValues: Record<string, string>,
-  currentEntry: PuzzleEntry,
-) {
-  const completedEntryIds = new Set(
-    getCompletedEntries(entries, cellValues).map((entry) => entry.id),
-  );
-
-  return entries
-    .map((entry, index) => ({
-      cellDistance: getEntryCellDistance(currentEntry, entry),
-      centerDistance: getEntryCenterDistance(currentEntry, entry),
-      entry,
-      index,
-    }))
-    .filter(
-      ({ entry }) =>
-        (!completedEntryIds.has(currentEntry.id) ||
-          entry.id !== currentEntry.id) &&
-        !completedEntryIds.has(entry.id),
-    )
-    .sort(
-      (a, b) =>
-        a.cellDistance - b.cellDistance ||
-        a.centerDistance - b.centerDistance ||
-        a.index - b.index,
-    )[0]?.entry;
-}
-
-function isEntryFilled(entry: PuzzleEntry, cellValues: Record<string, string>) {
-  return getEntryCells(entry).every(
-    (cell) => cellValues[getCellKey(cell.row, cell.col)] != null,
   );
 }
 
@@ -1487,12 +1408,14 @@ function App() {
   function scheduleNextUncompletedEntry(
     currentEntry: PuzzleEntry,
     cellValuesSnapshot: Record<string, string>,
+    anchorCellKey: string | null,
   ) {
     setTimeout(() => {
-      const nextUncompleted = getNearestUncompletedEntry(
+      const nextUncompleted = getNextFocusEntryAfterCompletion(
         puzzle.entries,
         cellValuesSnapshot,
         currentEntry,
+        anchorCellKey,
       );
 
       if (nextUncompleted != null) {
@@ -1525,8 +1448,11 @@ function App() {
 
     setCellValues(nextValues);
 
-    if (nextLetters.length === cells.length) {
-      scheduleNextUncompletedEntry(entry, nextValues);
+    if (getEntryAnswerValue(entry, nextValues) === entry.answer) {
+      const lastCell = cells[cells.length - 1];
+      const anchorCellKey =
+        lastCell != null ? getCellKey(lastCell.row, lastCell.col) : null;
+      scheduleNextUncompletedEntry(entry, nextValues, anchorCellKey);
     }
   }
 
@@ -1566,8 +1492,11 @@ function App() {
       ),
     );
 
-    if (isEntryFilled(entry, nextValues)) {
-      scheduleNextUncompletedEntry(entry, nextValues);
+    if (getEntryAnswerValue(entry, nextValues) === entry.answer) {
+      const lastCell = cells[startIndex + nextLetters.length - 1];
+      const anchorCellKey =
+        lastCell != null ? getCellKey(lastCell.row, lastCell.col) : null;
+      scheduleNextUncompletedEntry(entry, nextValues, anchorCellKey);
     }
   }
 
