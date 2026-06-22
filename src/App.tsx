@@ -725,6 +725,24 @@ function App() {
   // 다시 emit하지 않도록 baseline을 초기화한다.
   const progressMilestoneKeyRef = useRef<string>("");
   const reachedProgressMilestoneRef = useRef<number>(0);
+  // 비완료 이탈 계측: 시작했지만 완료하지 않은 채 보드를 떠날 때(인앱 이동/앱 종료)
+  // 진행 스냅샷을 puzzle_abandon으로 한 번(시도당) 기록한다. 행동 변경 없음.
+  const abandonTrackedKeysRef = useRef<Set<string>>(new Set());
+  const prevRouteRef = useRef<AppRoute>("home");
+  const abandonSnapshotRef = useRef({
+    attemptsUsed: 0,
+    elapsedStartedAt: undefined as string | undefined,
+    hasStarted: false,
+    hintCount: 0,
+    isCompleted: false,
+    progressPercent: 0,
+    puzzleId: "",
+    remainingAttempts: 0,
+    route: "home" as AppRoute,
+    telemetryParams: {} as ReturnType<typeof getPuzzleTelemetryParams>,
+    totalWords: 0,
+    wordsFilled: 0,
+  });
 
   useEffect(() => {
     function syncRoute() {
@@ -1032,6 +1050,82 @@ function App() {
   const isCompleted = viewModel.isComplete || mission.completedAt != null;
   const isAttemptExhaustedUncompleted =
     hasStarted && remainingAttempts <= 0 && !isCompleted;
+
+  // 최신 상태 스냅샷(ref): pagehide/visibilitychange 리스너가 stale closure 없이
+  // 이탈 시점의 진행 상태를 읽을 수 있게 매 렌더마다 갱신한다.
+  abandonSnapshotRef.current = {
+    attemptsUsed: mission.attemptsUsed,
+    elapsedStartedAt: mission.lastStartedAt,
+    hasStarted,
+    hintCount,
+    isCompleted,
+    progressPercent,
+    puzzleId: puzzle.puzzleId,
+    remainingAttempts,
+    route,
+    telemetryParams: puzzleTelemetryParams,
+    totalWords: puzzle.entries.length,
+    wordsFilled: viewModel.completedEntries.length,
+  };
+
+  const emitPuzzleAbandon = useCallback((lastScreen: AppRoute) => {
+    const snapshot = abandonSnapshotRef.current;
+
+    // 시작했고 아직 완료하지 않은 경우만 이탈로 본다. 시도당 1회만 기록.
+    if (!snapshot.hasStarted || snapshot.isCompleted) {
+      return;
+    }
+
+    const key = `${snapshot.puzzleId}:${snapshot.attemptsUsed}`;
+    if (abandonTrackedKeysRef.current.has(key)) {
+      return;
+    }
+    abandonTrackedKeysRef.current.add(key);
+
+    telemetry.impression("puzzle_abandon", {
+      ...snapshot.telemetryParams,
+      attempt_number: snapshot.attemptsUsed,
+      elapsed_seconds: getElapsedSeconds(snapshot.elapsedStartedAt),
+      hint_count: snapshot.hintCount,
+      last_screen: lastScreen,
+      progress_percent: snapshot.progressPercent,
+      remaining_attempts: snapshot.remainingAttempts,
+      total_words: snapshot.totalWords,
+      words_filled: snapshot.wordsFilled,
+    });
+  }, []);
+
+  // 인앱 이동: 보드(today)를 떠나 다른 화면으로 갈 때 이탈로 기록한다.
+  useEffect(() => {
+    const previousRoute = prevRouteRef.current;
+    if (previousRoute === "today" && route !== "today") {
+      emitPuzzleAbandon(previousRoute);
+    }
+    prevRouteRef.current = route;
+  }, [emitPuzzleAbandon, route]);
+
+  // 앱 종료/백그라운드: 보드에 있는 상태로 페이지가 숨겨지면 이탈로 기록한다.
+  useEffect(() => {
+    const handleHide = () => {
+      if (abandonSnapshotRef.current.route === "today") {
+        emitPuzzleAbandon("today");
+      }
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        handleHide();
+      }
+    };
+
+    window.addEventListener("pagehide", handleHide);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("pagehide", handleHide);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [emitPuzzleAbandon]);
+
   const todayKey = getTodayDateKey();
   const completedPuzzleIds = useMemo(
     () => getCompletedPuzzleIds(dateCardStates),
