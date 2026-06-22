@@ -10,6 +10,7 @@ import {
   getStreakBadgeLabel,
   getStreakMilestoneProgress,
   isPublishedPuzzle,
+  shouldServeOnboardingPuzzle,
 } from "./uiPolicy.ts";
 import type { PuzzleManifestItem } from "./types.ts";
 
@@ -24,6 +25,52 @@ function createSummary(
     ...overrides,
   };
 }
+
+describe("shouldServeOnboardingPuzzle", () => {
+  it("신규 사용자(완료·진행 이력 없음)에게 입문 퍼즐을 제공한다", () => {
+    assert.equal(
+      shouldServeOnboardingPuzzle({
+        hasCompletedAnyDaily: false,
+        hasDailyProgress: false,
+        onboardingCompleted: false,
+      }),
+      true,
+    );
+  });
+
+  it("입문 퍼즐을 이미 완료했으면 제공하지 않는다", () => {
+    assert.equal(
+      shouldServeOnboardingPuzzle({
+        hasCompletedAnyDaily: false,
+        hasDailyProgress: false,
+        onboardingCompleted: true,
+      }),
+      false,
+    );
+  });
+
+  it("일반 퍼즐을 완료한 적이 있으면 제공하지 않는다", () => {
+    assert.equal(
+      shouldServeOnboardingPuzzle({
+        hasCompletedAnyDaily: true,
+        hasDailyProgress: false,
+        onboardingCompleted: false,
+      }),
+      false,
+    );
+  });
+
+  it("일반 퍼즐을 진행 중이면 제공하지 않는다", () => {
+    assert.equal(
+      shouldServeOnboardingPuzzle({
+        hasCompletedAnyDaily: false,
+        hasDailyProgress: true,
+        onboardingCompleted: false,
+      }),
+      false,
+    );
+  });
+});
 
 describe("getOpenPuzzleSummariesForDate", () => {
   const now = Date.parse("2026-06-12T02:00:00.000Z");

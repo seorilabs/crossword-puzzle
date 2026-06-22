@@ -264,6 +264,25 @@ export function sortPuzzleSummariesByRecency(summaries: PuzzleManifestItem[]) {
   );
 }
 
+// 신규 사용자에게 입문(easy) 티어 퍼즐을 먼저 제공할지 결정한다. 첫 성공(활성화)
+// 도달 전 사용자만 대상으로 하며, 일반 퍼즐을 한 번이라도 완료했거나 진행 중이면
+// 일반 일일 퍼즐 흐름으로 돌려보낸다. 입문 퍼즐을 이미 끝낸 사용자도 제외한다.
+export function shouldServeOnboardingPuzzle({
+  hasCompletedAnyDaily,
+  hasDailyProgress,
+  onboardingCompleted,
+}: {
+  hasCompletedAnyDaily: boolean;
+  hasDailyProgress: boolean;
+  onboardingCompleted: boolean;
+}): boolean {
+  if (onboardingCompleted) {
+    return false;
+  }
+
+  return !hasCompletedAnyDaily && !hasDailyProgress;
+}
+
 export function getDailyFreePuzzleSummary(
   puzzleSummaries: PuzzleManifestItem[],
   today: string,

@@ -44,6 +44,7 @@ import {
   getNextStreakMilestoneHint,
   getStreakBadgeLabel,
   getStreakMilestoneProgress,
+  shouldServeOnboardingPuzzle,
   sortPuzzleSummariesByRecency,
   startMissionAttempt,
   uniquePuzzleSummaries,
@@ -89,10 +90,12 @@ import {
 import { createPuzzleCompletionStatsRepository } from "./adapters/puzzleCompletionStatsRepository";
 import {
   createFallbackPuzzleRepository,
+  createOnboardingPuzzleRepository,
   createStaticPuzzleRepository,
 } from "./adapters/staticPuzzleRepository";
 import { telemetry } from "./adapters/telemetry";
 import { fallbackPuzzle } from "./data/fallbackPuzzle";
+import { onboardingPuzzle } from "./data/onboardingPuzzle";
 
 type AppRoute =
   | "home"
@@ -221,12 +224,17 @@ const remotePuzzleRepository = createStaticPuzzleRepository({
   assetBaseUrl: puzzlePackBaseUrl,
   manifestUrl: puzzleManifestUrl,
 });
-const puzzleRepository = hasRemotePuzzlePack
+const basePuzzleRepository = hasRemotePuzzlePack
   ? createFallbackPuzzleRepository(
       remotePuzzleRepository,
       localPuzzleRepository,
     )
   : localPuzzleRepository;
+// 입문(easy) 티어 퍼즐은 회전 팩과 무관하게 항상 번들 상수로 제공한다.
+const puzzleRepository = createOnboardingPuzzleRepository(
+  basePuzzleRepository,
+  onboardingPuzzle,
+);
 const progressRepository = createLocalProgressRepository();
 const missionRepository = createLocalMissionRepository();
 const puzzleArchiveRepository = createLocalPuzzleArchiveRepository();
@@ -870,8 +878,7 @@ function App() {
             ? loadedSummaries
             : [createPuzzleSummary(fallbackPuzzle)];
         const today = getTodayDateKey();
-        const initialPuzzleId = getInitialPuzzleId(nextSummaries, today);
-        const [nextDateCardStates, session, nextBonusPuzzleUnlocks] =
+        const [nextDateCardStates, nextBonusPuzzleUnlocks, onboardingSession] =
           await Promise.all([
             loadDateCardStates([
               ...nextSummaries,
@@ -879,9 +886,26 @@ function App() {
                 createPuzzleSummary(record.puzzle),
               ),
             ]),
-            loadPuzzleSession(initialPuzzleId),
             bonusPuzzleUnlockRepository.loadUnlocks(today),
+            loadPuzzleSession(onboardingPuzzle.puzzleId),
           ]);
+
+        // 신규 사용자(아직 첫 성공 전)면 입문 퍼즐을, 그 외에는 일반 일일 퍼즐을
+        // 첫 활성 퍼즐로 둔다. 입문 퍼즐 세션은 위에서 미리 불러와 재사용한다.
+        const dateCardValues = Object.values(nextDateCardStates);
+        const useOnboarding =
+          onboardingSession != null &&
+          shouldServeOnboardingPuzzle({
+            hasCompletedAnyDaily: dateCardValues.some(
+              (state) => state.completedAt != null,
+            ),
+            hasDailyProgress: dateCardValues.some((state) => state.hasProgress),
+            onboardingCompleted:
+              onboardingSession.savedMission.completedAt != null,
+          });
+        const session = useOnboarding
+          ? onboardingSession
+          : await loadPuzzleSession(getInitialPuzzleId(nextSummaries, today));
 
         if (!isCancelled) {
           setPuzzleSummaries(nextSummaries);
