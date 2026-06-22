@@ -35,7 +35,9 @@ import {
   getEntryAnswerValue,
   getEntryCells,
   getInitialEntryId,
+  getNewlyReachedProgressMilestones,
   getOpenPuzzleSummariesForDate,
+  getProgressMilestoneRewardMessage,
   getPuzzleDailySequenceNumber,
   getPuzzlePackAlias,
   getNextFocusEntryAfterCompletion,
@@ -718,6 +720,11 @@ function App() {
   const [answerInputMode, setAnswerInputMode] =
     useState<AnswerInputMode>(loadAnswerInputMode);
   const firstAnswerInputKeysRef = useRef<Set<string>>(new Set());
+  // 진행 마일스톤(부분 완료) 추적: 동일 퍼즐·시도 안에서 새로 넘어선 마일스톤만
+  // 보상 피드백·이벤트로 노출하고, 이어풀기(resume)·재시작 시 이미 도달한 구간은
+  // 다시 emit하지 않도록 baseline을 초기화한다.
+  const progressMilestoneKeyRef = useRef<string>("");
+  const reachedProgressMilestoneRef = useRef<number>(0);
 
   useEffect(() => {
     function syncRoute() {
@@ -1350,6 +1357,69 @@ function App() {
     puzzleTelemetryParams,
     savePuzzleSnapshot,
     route,
+    viewModel.completedEntries.length,
+    viewModel.isComplete,
+  ]);
+
+  useEffect(() => {
+    const key = `${puzzle.puzzleId}:${mission.attemptsUsed}`;
+
+    // 새 퍼즐/시도이거나 이어풀기 로드면, 이미 도달한 마일스톤을 baseline으로 잡고
+    // 이번 라운드는 보상/이벤트를 내보내지 않는다(resume 시 중복 emit 방지).
+    if (progressMilestoneKeyRef.current !== key) {
+      progressMilestoneKeyRef.current = key;
+      const alreadyReached = getNewlyReachedProgressMilestones(
+        0,
+        progressPercent,
+      );
+      reachedProgressMilestoneRef.current =
+        alreadyReached[alreadyReached.length - 1] ?? 0;
+      return;
+    }
+
+    // 완료(100%)는 mission_complete가 별도로 다루므로 마일스톤에서 제외한다.
+    if (viewModel.isComplete) {
+      return;
+    }
+
+    const newlyReached = getNewlyReachedProgressMilestones(
+      reachedProgressMilestoneRef.current,
+      progressPercent,
+    );
+    if (newlyReached.length === 0) {
+      return;
+    }
+
+    const highestMilestone = newlyReached[newlyReached.length - 1];
+    reachedProgressMilestoneRef.current = highestMilestone;
+
+    for (const milestone of newlyReached) {
+      telemetry.impression("puzzle_progress", {
+        ...puzzleTelemetryParams,
+        attempt_number: mission.attemptsUsed,
+        completed_word_count: viewModel.completedEntries.length,
+        word_count: puzzle.entries.length,
+        progress_percent: progressPercent,
+        milestone,
+        elapsed_seconds: getElapsedSeconds(mission.lastStartedAt),
+        hint_count: hintCount,
+        remaining_attempts: remainingAttempts,
+      });
+    }
+
+    // 중간 성취 보상 피드백(힌트 토스트 UI 재사용).
+    setHintToast((prev) => ({
+      id: prev.id + 1,
+      message: getProgressMilestoneRewardMessage(highestMilestone),
+    }));
+  }, [
+    hintCount,
+    mission.attemptsUsed,
+    mission.lastStartedAt,
+    progressPercent,
+    puzzle,
+    puzzleTelemetryParams,
+    remainingAttempts,
     viewModel.completedEntries.length,
     viewModel.isComplete,
   ]);
@@ -2378,7 +2448,7 @@ function HomeScreen({
       : isAttemptExhaustedUncompleted
         ? "도전 종료"
         : hasStarted
-          ? `${progressPercent}% 진행 중`
+          ? `${completedEntries.length}/${puzzle.entries.length} 단어 · ${progressPercent}% 진행 중`
           : "도전 준비 완료";
   const completionStatsLabel = formatCompletionStatsLabel(
     completionStatsByPuzzleId[puzzle.puzzleId],

@@ -8,8 +8,11 @@ import {
   getPuzzleDailySequenceNumber,
   getPuzzlePackAlias,
   getStreakBadgeLabel,
+  getNewlyReachedProgressMilestones,
+  getProgressMilestoneRewardMessage,
   getStreakMilestoneProgress,
   isPublishedPuzzle,
+  PUZZLE_PROGRESS_MILESTONES,
   shouldServeOnboardingPuzzle,
 } from "./uiPolicy.ts";
 import type { PuzzleManifestItem } from "./types.ts";
@@ -25,6 +28,39 @@ function createSummary(
     ...overrides,
   };
 }
+
+describe("getNewlyReachedProgressMilestones", () => {
+  it("진행률이 마일스톤을 새로 넘으면 해당 마일스톤을 돌려준다", () => {
+    assert.deepEqual(getNewlyReachedProgressMilestones(0, 30), [25]);
+    assert.deepEqual(getNewlyReachedProgressMilestones(50, 80), [75]);
+  });
+
+  it("한 번에 여러 마일스톤을 넘으면 모두 오름차순으로 돌려준다", () => {
+    assert.deepEqual(getNewlyReachedProgressMilestones(0, 60), [25, 50]);
+    assert.deepEqual(
+      getNewlyReachedProgressMilestones(0, 100),
+      [...PUZZLE_PROGRESS_MILESTONES],
+    );
+  });
+
+  it("진행률이 줄거나 그대로면 빈 배열을 돌려준다(중복 emit 방지)", () => {
+    assert.deepEqual(getNewlyReachedProgressMilestones(50, 50), []);
+    assert.deepEqual(getNewlyReachedProgressMilestones(75, 40), []);
+  });
+
+  it("이미 넘어선 마일스톤은 다시 돌려주지 않는다", () => {
+    assert.deepEqual(getNewlyReachedProgressMilestones(25, 49), []);
+    assert.deepEqual(getNewlyReachedProgressMilestones(25, 50), [50]);
+  });
+});
+
+describe("getProgressMilestoneRewardMessage", () => {
+  it("마일스톤 구간별 보상 메시지를 돌려준다", () => {
+    assert.match(getProgressMilestoneRewardMessage(25), /4분의 1/);
+    assert.match(getProgressMilestoneRewardMessage(50), /절반/);
+    assert.match(getProgressMilestoneRewardMessage(75), /거의/);
+  });
+});
 
 describe("shouldServeOnboardingPuzzle", () => {
   it("신규 사용자(완료·진행 이력 없음)에게 입문 퍼즐을 제공한다", () => {

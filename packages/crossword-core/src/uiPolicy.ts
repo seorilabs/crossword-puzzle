@@ -283,6 +283,37 @@ export function shouldServeOnboardingPuzzle({
   return !hasCompletedAnyDaily && !hasDailyProgress;
 }
 
+// 부분 완료(중간 성취) 구간. 완료가 all-or-nothing이라 "거의 다 풀었지만 못 끝낸"
+// 사용자가 보상 없이 이탈하는 문제를 줄이기 위해, 진행률이 마일스톤을 새로 넘을 때
+// 중간 보상 피드백과 진행 마일스톤 이벤트를 노출한다.
+export const PUZZLE_PROGRESS_MILESTONES = [25, 50, 75] as const;
+
+// 이전에 도달한 진행률(previousPercent)과 현재 진행률(currentPercent) 사이에서
+// 새로 넘어선 마일스톤만 오름차순으로 돌려준다. 진행률이 줄거나 그대로면 빈 배열.
+export function getNewlyReachedProgressMilestones(
+  previousPercent: number,
+  currentPercent: number,
+  milestones: readonly number[] = PUZZLE_PROGRESS_MILESTONES,
+): number[] {
+  if (currentPercent <= previousPercent) {
+    return [];
+  }
+
+  return milestones.filter(
+    (milestone) => previousPercent < milestone && currentPercent >= milestone,
+  );
+}
+
+export function getProgressMilestoneRewardMessage(milestone: number): string {
+  if (milestone >= 75) {
+    return "거의 다 왔어요! 조금만 더 🔥";
+  }
+  if (milestone >= 50) {
+    return "절반 넘었어요! 잘하고 있어요 💪";
+  }
+  return "좋아요! 벌써 4분의 1을 채웠어요 🎉";
+}
+
 export function getDailyFreePuzzleSummary(
   puzzleSummaries: PuzzleManifestItem[],
   today: string,
