@@ -271,6 +271,9 @@ const krdictCopyrightUrl =
   "https://krdict.korean.go.kr/kor/kboardPolicy/copyRightTermsInfo";
 const ccBySaKrUrl = "https://creativecommons.org/licenses/by-sa/2.0/kr/";
 
+// 막혔을 때 힌트 자동 노출: 입력 정체가 이 시간을 넘으면 비침습 힌트 CTA를 띄운다.
+const STUCK_HINT_IDLE_MS = 20000;
+
 function getPuzzleTelemetryParams(puzzle: Puzzle) {
   return {
     difficulty: puzzle.difficulty,
@@ -682,6 +685,9 @@ function App() {
     useState(false);
   const [bonusNotice, setBonusNotice] = useState("");
   const [hintNotice, setHintNotice] = useState("");
+  // 막혔을 때 힌트 자동 노출: 일정 시간 입력 정체 시 비침습 CTA를 띄운다.
+  const [isStuckHintPromptVisible, setIsStuckHintPromptVisible] =
+    useState(false);
   const [hintToast, setHintToast] = useState<{ id: number; message: string }>({
     id: 0,
     message: "",
@@ -1391,6 +1397,46 @@ function App() {
     return () => window.clearTimeout(timerId);
   }, [hintToast]);
 
+  // 막혔을 때 힌트 자동 노출: 보드(today)에서 시작·미완료 상태일 때 입력/조작이
+  // 일정 시간 정체되면 비침습 힌트 CTA를 띄운다. 입력·단어 선택 등 활동이 있으면
+  // 타이머가 리셋되어 다시 정체될 때까지 노출되지 않는다.
+  useEffect(() => {
+    if (route !== "today" || !hasStarted || isCompleted) {
+      setIsStuckHintPromptVisible(false);
+      return;
+    }
+
+    setIsStuckHintPromptVisible(false);
+    const timerId = window.setTimeout(() => {
+      setIsStuckHintPromptVisible(true);
+      telemetry.impression("stuck_hint_prompt", {
+        ...puzzleTelemetryParams,
+        attempt_number: mission.attemptsUsed,
+        hint_count: hintCount,
+        idle_seconds: STUCK_HINT_IDLE_MS / 1000,
+        progress_percent: progressPercent,
+        remaining_hint_credits: remainingHintCredits,
+        total_words: puzzle.entries.length,
+        words_filled: viewModel.completedEntries.length,
+      });
+    }, STUCK_HINT_IDLE_MS);
+
+    return () => window.clearTimeout(timerId);
+  }, [
+    cellValues,
+    hasStarted,
+    hintCount,
+    isCompleted,
+    mission.attemptsUsed,
+    progressPercent,
+    puzzle.entries.length,
+    puzzleTelemetryParams,
+    remainingHintCredits,
+    route,
+    selectedEntryId,
+    viewModel.completedEntries.length,
+  ]);
+
   useEffect(() => {
     telemetry.screen(route, {
       date: puzzle.date,
@@ -1849,6 +1895,31 @@ function App() {
     setIsRewardedHintPromptOpen(true);
   }
 
+  function acceptStuckHintPrompt() {
+    setIsStuckHintPromptVisible(false);
+    telemetry.click("stuck_hint_prompt_accept", {
+      ...puzzleTelemetryParams,
+      attempt_number: mission.attemptsUsed,
+      progress_percent: progressPercent,
+      remaining_hint_credits: remainingHintCredits,
+    });
+    // useHintOrRequestReward와 동일 동작(이름의 use 접두사로 인한 hook 오탐 회피).
+    if (remainingHintCredits > 0) {
+      revealLetter();
+    } else {
+      setIsRewardedHintPromptOpen(true);
+    }
+  }
+
+  function dismissStuckHintPrompt() {
+    setIsStuckHintPromptVisible(false);
+    telemetry.click("stuck_hint_prompt_dismiss", {
+      ...puzzleTelemetryParams,
+      attempt_number: mission.attemptsUsed,
+      progress_percent: progressPercent,
+    });
+  }
+
   function dismissHowToPlay() {
     try {
       localStorage.setItem("crossword:how-to-play-seen", "1");
@@ -2295,6 +2366,28 @@ function App() {
       {hintToast.message !== "" ? (
         <div className="hintToast" role="status">
           {hintToast.message}
+        </div>
+      ) : null}
+      {route === "today" && isStuckHintPromptVisible ? (
+        <div className="stuckHintPrompt" role="status">
+          <span className="stuckHintPromptText">막혔나요? 힌트를 받아보세요</span>
+          <div className="stuckHintPromptActions">
+            <button
+              type="button"
+              className="stuckHintPromptCta"
+              onClick={acceptStuckHintPrompt}
+            >
+              힌트 보기
+            </button>
+            <button
+              type="button"
+              className="stuckHintPromptClose"
+              aria-label="힌트 안내 닫기"
+              onClick={dismissStuckHintPrompt}
+            >
+              ✕
+            </button>
+          </div>
         </div>
       ) : null}
       {route === "today" && !hasSeenHowToPlay ? (
