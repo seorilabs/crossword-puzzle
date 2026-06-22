@@ -195,6 +195,33 @@ export function createStaticPuzzleRepository({
   };
 }
 
+// 입문(easy) 티어 퍼즐은 회전하는 퍼즐 팩(원격/로컬 manifest)과 무관하게 항상
+// 번들 상수로 제공된다. getPuzzleById가 해당 id를 만나면 네트워크 조회 없이 상수를
+// 돌려주고, 그 외에는 위임한다. 일반 목록(listPuzzleSummaries)에는 노출하지 않아
+// 기록/아카이브 레일을 어지럽히지 않는다.
+export function createOnboardingPuzzleRepository(
+  baseRepository: PuzzleRepository,
+  onboardingPuzzle: Puzzle,
+): PuzzleRepository {
+  return {
+    listPuzzleSummaries() {
+      return baseRepository.listPuzzleSummaries();
+    },
+
+    async getPuzzleById(puzzleId) {
+      if (puzzleId === onboardingPuzzle.puzzleId) {
+        return onboardingPuzzle;
+      }
+
+      return baseRepository.getPuzzleById(puzzleId);
+    },
+
+    getPuzzleForDate(date) {
+      return baseRepository.getPuzzleForDate(date);
+    },
+  };
+}
+
 export function createFallbackPuzzleRepository(
   primaryRepository: PuzzleRepository,
   fallbackRepository: PuzzleRepository,
