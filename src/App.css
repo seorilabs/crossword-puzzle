@@ -1066,6 +1066,15 @@ button:disabled {
   margin: 0 20px 18px;
 }
 
+.resultNextHint {
+  margin: -4px 0 2px;
+  text-align: center;
+  color: #6b7684;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 18px;
+}
+
 .shareContainer {
   display: flex;
   flex-direction: column;

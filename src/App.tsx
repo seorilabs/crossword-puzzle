@@ -458,6 +458,24 @@ function getCompletedPuzzleIds(dateCardStates: Record<string, DateCardState>) {
   );
 }
 
+// 완료 직후 "다음 퍼즐"로 이어줄 추천 퍼즐: 현재 퍼즐을 빼고, 아직 완료하지 않은
+// 퍼즐을 우선 추천한다(없으면 현재 외 첫 퍼즐). 연속 플레이 동선을 끊지 않기 위함.
+function getNextRecommendedSummary(
+  puzzleSummaries: PuzzleManifestItem[],
+  dateCardStates: Record<string, DateCardState>,
+  currentPuzzleId: string,
+): PuzzleManifestItem | undefined {
+  const completedIds = getCompletedPuzzleIds(dateCardStates);
+  const candidates = puzzleSummaries.filter(
+    (summary) => summary.puzzleId !== currentPuzzleId,
+  );
+
+  return (
+    candidates.find((summary) => !completedIds.has(summary.puzzleId)) ??
+    candidates[0]
+  );
+}
+
 function findPuzzleSummaryById(
   puzzleSummaries: PuzzleManifestItem[],
   puzzleId?: string,
@@ -5315,6 +5333,34 @@ function ResultScreen({
   selectPuzzle,
 }: ResultScreenProps) {
   const isComplete = completedEntries.length === puzzle.entries.length;
+  // 완료 시 이어서 풀 다음 추천 퍼즐(미완료 우선). 단발 세션을 줄이기 위한 연속 동선.
+  const nextRecommendedSummary = isComplete
+    ? getNextRecommendedSummary(puzzleSummaries, dateCardStates, puzzle.puzzleId)
+    : undefined;
+  const nextRecommendedLabel =
+    nextRecommendedSummary == null
+      ? ""
+      : [
+          formatPuzzleAliasLabel(nextRecommendedSummary),
+          formatDifficultyLabel(nextRecommendedSummary.difficulty),
+        ]
+          .filter(Boolean)
+          .join(" · ");
+
+  function startNextPuzzle() {
+    if (nextRecommendedSummary == null) {
+      return;
+    }
+
+    telemetry.click("next_puzzle_cta", {
+      ...getPuzzleTelemetryParams(puzzle),
+      next_difficulty: nextRecommendedSummary.difficulty,
+      next_puzzle_id: nextRecommendedSummary.puzzleId,
+    });
+    selectPuzzle(nextRecommendedSummary.puzzleId);
+    navigate("today");
+  }
+
   const selectedPuzzleSummary =
     findPuzzleSummaryById(puzzleSummaries, selectedPuzzleId) ??
     createPuzzleSummary(puzzle);
@@ -5535,6 +5581,33 @@ function ResultScreen({
               onClick={restartMissionAttempt}
             >
               다시 도전
+            </button>
+            <button
+              className="secondaryButton"
+              type="button"
+              onClick={() => navigate("home")}
+            >
+              홈으로
+            </button>
+          </>
+        ) : isComplete && nextRecommendedSummary != null ? (
+          <>
+            <button
+              className="primaryButton"
+              type="button"
+              onClick={startNextPuzzle}
+            >
+              다음 퍼즐 풀기
+            </button>
+            {nextRecommendedLabel !== "" && (
+              <p className="resultNextHint">추천 {nextRecommendedLabel}</p>
+            )}
+            <button
+              className="secondaryButton"
+              type="button"
+              onClick={() => navigate("today")}
+            >
+              퍼즐 다시 보기
             </button>
             <button
               className="secondaryButton"
