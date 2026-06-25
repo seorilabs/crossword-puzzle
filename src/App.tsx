@@ -639,6 +639,18 @@ function getInitialEntryStartCellKey(puzzle: Puzzle) {
   return getEntryStartCellKey(initialEntry);
 }
 
+// 첫 입력을 유도할 "시작 단어"는 가장 짧은(쉬운) 단어로 고른다. 동률이면 퍼즐
+// 순서상 앞선 단어를 유지해 "여기부터" 포인트를 안정적으로 한 곳에 모은다.
+function getStarterEntry(puzzle: Puzzle): PuzzleEntry | undefined {
+  return puzzle.entries.reduce<PuzzleEntry | undefined>((best, entry) => {
+    if (best == null) {
+      return entry;
+    }
+
+    return entry.answer.length < best.answer.length ? entry : best;
+  }, undefined);
+}
+
 function getCellAnswerLetter(puzzle: Puzzle, cellKey: string) {
   const [row, col] = cellKey.split(":").map(Number);
 
@@ -2440,6 +2452,7 @@ function App() {
           dismissCompletionCelebration={() => setCompletionCelebrationId(null)}
           hasStarted={hasStarted}
           isCompleted={isCompleted}
+          isFirstInputGuideVisible={isFirstInputGuideVisible}
           isNewBestTime={isNewBestTime}
           navigate={navigate}
           startOrResumeMission={startOrResumeMission}
@@ -3889,6 +3902,7 @@ type TodayScreenProps = DateSelectionProps & {
   hintBalance: HintBalance;
   hintCount: number;
   isCompleted: boolean;
+  isFirstInputGuideVisible: boolean;
   isNewBestTime: boolean;
   mission: DailyMissionState;
   navigate: (route: AppRoute) => void;
@@ -3927,6 +3941,7 @@ function TodayScreen({
   hintBalance,
   hintCount,
   isCompleted,
+  isFirstInputGuideVisible,
   isNewBestTime,
   loadState,
   mission,
@@ -3949,6 +3964,7 @@ function TodayScreen({
   const [answerInputResetKey, setAnswerInputResetKey] = useState(0);
   const boardInputRef = useRef<HTMLInputElement>(null);
   const boxInputRef = useRef<HTMLInputElement>(null);
+  const starterFocusPuzzleIdRef = useRef<string>("");
   const commitTimerRef = useRef<number | null>(null);
   const isComposingRef = useRef(false);
   const [inputValue, setInputValue] = useState("");
@@ -4148,6 +4164,33 @@ function TodayScreen({
       input.value = committed;
     }
   }, [answerInputMode, cellValues, selectedEntryCellKeys]);
+
+  // 시작 직후 침묵 이탈(첫 입력 0) 방지: 첫 입력 가이드가 처음 노출될 때 가장 쉬운
+  // 단어를 선택해 "여기부터" 하이라이트를 모으고, 입력창에 포커스해 키보드를 띄운다.
+  // 키보드 자동 노출은 브라우저/웹뷰 정책상 best-effort이며, 퍼즐당 1회만 실행한다.
+  useEffect(() => {
+    if (!isFirstInputGuideVisible) {
+      return;
+    }
+
+    if (starterFocusPuzzleIdRef.current === puzzle.puzzleId) {
+      return;
+    }
+    starterFocusPuzzleIdRef.current = puzzle.puzzleId;
+
+    const starterEntry = getStarterEntry(puzzle);
+    if (starterEntry != null) {
+      selectEntry(starterEntry);
+    }
+
+    requestAnimationFrame(() => {
+      if (answerInputMode === "box") {
+        boxInputRef.current?.focus({ preventScroll: true });
+      } else {
+        boardInputRef.current?.focus({ preventScroll: true });
+      }
+    });
+  }, [answerInputMode, isFirstInputGuideVisible, puzzle, selectEntry]);
 
   function focusPuzzleBoard() {
     requestAnimationFrame(() => {
