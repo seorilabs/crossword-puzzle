@@ -2240,6 +2240,87 @@ function App() {
     navigate("today");
   }
 
+  // 홈 최상단 "오늘의 퍼즐 바로 시작" 원탭 CTA: 선택 단계를 건너뛰고 오늘의 무료
+  // 퍼즐로 바로 진입시킨다. 다른 날짜를 보던 중이면 오늘의 퍼즐 세션을 불러와 시작한다.
+  async function startTodayPuzzle() {
+    if (loadState === "loading") {
+      return;
+    }
+
+    const todaysSummary = dailyFreeSummary;
+
+    // 오늘의 퍼즐이 이미 선택돼 있으면 기존 시작/이어풀기 흐름을 그대로 사용한다.
+    if (todaysSummary == null || puzzle.puzzleId === todaysSummary.puzzleId) {
+      telemetry.click("home_quick_start", {
+        ...puzzleTelemetryParams,
+        source: "today",
+      });
+      startOrResumeMission();
+      return;
+    }
+
+    // 다른 날짜 퍼즐을 보던 중이면 오늘의 퍼즐 세션을 불러와 바로 시작한다.
+    const session = await loadPuzzleSession(todaysSummary.puzzleId);
+
+    if (session == null) {
+      setLoadState("fallback");
+      setHintToast((prev) => ({
+        id: prev.id + 1,
+        message: "오늘의 퍼즐을 불러오지 못했어요.",
+      }));
+      telemetry.click("home_quick_start", {
+        puzzle_id: todaysSummary.puzzleId,
+        source: "switched_to_today",
+        status: "missing",
+      });
+      return;
+    }
+
+    const alreadyStarted = hasSavedProgress(
+      session.savedMission,
+      session.savedProgress,
+    );
+    let nextMission = session.savedMission;
+
+    if (
+      !alreadyStarted &&
+      nextMission.completedAt == null &&
+      getRemainingAttempts(nextMission) > 0
+    ) {
+      nextMission = startMissionAttempt(nextMission);
+      void missionRepository.saveMission(nextMission);
+      telemetry.impression("mission_start", {
+        ...getPuzzleTelemetryParams(session.nextPuzzle),
+        attempt_number: nextMission.attemptsUsed,
+        earned_hint_credits: session.savedProgress.earnedHintCredits,
+        hint_count: session.savedProgress.hintCount,
+        remaining_attempts: getRemainingAttempts(nextMission),
+        started_at: nextMission.lastStartedAt,
+      });
+      telemetry.impression("attempt_start", {
+        ...getPuzzleTelemetryParams(session.nextPuzzle),
+        attempt_kind: "first",
+        attempt_number: nextMission.attemptsUsed,
+        earned_hint_credits: session.savedProgress.earnedHintCredits,
+        hint_count: session.savedProgress.hintCount,
+        remaining_attempts: getRemainingAttempts(nextMission),
+        started_at: nextMission.lastStartedAt,
+      });
+    }
+
+    await savePuzzleSnapshot(session.nextPuzzle, {
+      completedAt: nextMission.completedAt,
+      startedAt: nextMission.lastStartedAt,
+    });
+    applyPuzzleSession(session, { mission: nextMission });
+    navigate(nextMission.completedAt == null ? "today" : "result");
+    telemetry.click("home_quick_start", {
+      ...getPuzzleTelemetryParams(session.nextPuzzle),
+      source: "switched_to_today",
+      status: "loaded",
+    });
+  }
+
   async function restartMissionAttempt() {
     if (remainingAttempts === 0) {
       return;
@@ -2404,6 +2485,7 @@ function App() {
           hasStarted={hasStarted}
           hintBalance={hintBalance}
           isCompleted={isCompleted}
+          isSelectedDailyFree={puzzle.puzzleId === dailyFreeSummary?.puzzleId}
           launchConfig={launchConfig}
           mission={mission}
           navigate={navigate}
@@ -2415,6 +2497,7 @@ function App() {
           selectedEntry={viewModel.selectedEntry}
           startLabels={viewModel.startLabels}
           startOrResumeMission={startOrResumeMission}
+          startTodayPuzzle={() => void startTodayPuzzle()}
           todayPuzzleSummaries={todayOpenPuzzleSummaries}
         />
       )}
@@ -2650,6 +2733,7 @@ type HomeScreenProps = DateSelectionProps & {
   hasStarted: boolean;
   hintBalance: HintBalance;
   isCompleted: boolean;
+  isSelectedDailyFree: boolean;
   launchConfig: LaunchConfig;
   mission: DailyMissionState;
   navigate: (route: AppRoute) => void;
@@ -2661,6 +2745,7 @@ type HomeScreenProps = DateSelectionProps & {
   selectedEntry?: PuzzleEntry;
   startLabels: Map<string, number>;
   startOrResumeMission: () => void;
+  startTodayPuzzle: () => void;
   todayPuzzleSummaries: PuzzleManifestItem[];
 };
 
@@ -2674,6 +2759,7 @@ function HomeScreen({
   hasStarted,
   hintBalance,
   isCompleted,
+  isSelectedDailyFree,
   launchConfig,
   loadState,
   mission,
@@ -2689,6 +2775,7 @@ function HomeScreen({
   selectPuzzle,
   startLabels,
   startOrResumeMission,
+  startTodayPuzzle,
   todayPuzzleSummaries,
 }: HomeScreenProps) {
   const [isPackInfoOpen, setIsPackInfoOpen] = useState(false);
@@ -2759,6 +2846,20 @@ function HomeScreen({
   const streakMilestoneHint = !isLoadingPuzzlePack
     ? getStreakMilestoneProgress(consecutiveStreak)
     : null;
+  // 홈 최상단 원탭 CTA: 선택 단계 없이 오늘의 퍼즐로 바로 진입시킨다. 라벨은
+  // 오늘의 퍼즐이 선택된 경우에만 진행 상태(이어 풀기/결과 보기)를 반영한다.
+  const quickStartLabel = isLoadingPuzzlePack
+    ? "오늘의 퍼즐 준비 중"
+    : isSelectedDailyFree
+      ? isCompleted || isAttemptExhaustedUncompleted
+        ? "오늘의 퍼즐 결과 보기"
+        : hasStarted
+          ? "오늘의 퍼즐 이어 풀기"
+          : "오늘의 퍼즐 바로 시작"
+      : "오늘의 퍼즐 바로 시작";
+  const isQuickStartDisabled = isSelectedDailyFree
+    ? isPrimaryDisabled
+    : isLoadingPuzzlePack;
 
   return (
     <>
@@ -2770,6 +2871,18 @@ function HomeScreen({
             : formatMissionDateLabel(mission.date, loadState)
         }${consecutiveStreak > 0 ? ` · 🔥 ${consecutiveStreak}일째 도전 중` : ""}`}
       />
+
+      <button
+        type="button"
+        className="homeQuickStart"
+        disabled={isQuickStartDisabled}
+        onClick={startTodayPuzzle}
+      >
+        <span className="homeQuickStartLabel">{quickStartLabel}</span>
+        <span className="homeQuickStartHint">
+          한 번 눌러 바로 풀기 시작
+        </span>
+      </button>
 
       <DateCarousel
         completionStatsByPuzzleId={completionStatsByPuzzleId}
