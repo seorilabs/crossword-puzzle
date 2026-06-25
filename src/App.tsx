@@ -273,6 +273,10 @@ const ccBySaKrUrl = "https://creativecommons.org/licenses/by-sa/2.0/kr/";
 
 // 막혔을 때 힌트 자동 노출: 입력 정체가 이 시간을 넘으면 비침습 힌트 CTA를 띄운다.
 const STUCK_HINT_IDLE_MS = 20000;
+// 오답이 쌓이면(막힘 신호) 20초를 기다리지 않고 더 빨리 힌트 CTA를 띄운다.
+const STUCK_HINT_WRONG_IDLE_MS = 5000;
+// 이 개수 이상의 셀이 오답으로 남아 있으면 "막힘"으로 보고 빠른 노출을 적용한다.
+const WRONG_CELL_COUNT_FOR_STUCK_HINT = 2;
 
 function getPuzzleTelemetryParams(puzzle: Puzzle) {
   return {
@@ -1427,14 +1431,31 @@ function App() {
     return () => window.clearTimeout(timerId);
   }, [hintToast]);
 
+  // 확정됐지만 정답과 다른("오답"으로 남은) 셀 수. 일정 개수 이상이면 막힘 신호로 본다.
+  const wrongCellCount = useMemo(() => {
+    let count = 0;
+    for (const [key, value] of Object.entries(cellValues)) {
+      if (value !== "" && value !== getCellAnswerLetter(puzzle, key)) {
+        count += 1;
+      }
+    }
+    return count;
+  }, [cellValues, puzzle]);
+
   // 막혔을 때 힌트 자동 노출: 보드(today)에서 시작·미완료 상태일 때 입력/조작이
   // 일정 시간 정체되면 비침습 힌트 CTA를 띄운다. 입력·단어 선택 등 활동이 있으면
-  // 타이머가 리셋되어 다시 정체될 때까지 노출되지 않는다.
+  // 타이머가 리셋되어 다시 정체될 때까지 노출되지 않는다. 오답이 쌓여 막힌 신호가
+  // 보이면(미완료자 다수가 힌트 없이 이탈) 더 짧은 지연으로 빠르게 띄운다.
   useEffect(() => {
     if (route !== "today" || !hasStarted || isCompleted) {
       setIsStuckHintPromptVisible(false);
       return;
     }
+
+    const hasWrongStreak = wrongCellCount >= WRONG_CELL_COUNT_FOR_STUCK_HINT;
+    const stuckHintDelayMs = hasWrongStreak
+      ? STUCK_HINT_WRONG_IDLE_MS
+      : STUCK_HINT_IDLE_MS;
 
     setIsStuckHintPromptVisible(false);
     const timerId = window.setTimeout(() => {
@@ -1443,13 +1464,15 @@ function App() {
         ...puzzleTelemetryParams,
         attempt_number: mission.attemptsUsed,
         hint_count: hintCount,
-        idle_seconds: STUCK_HINT_IDLE_MS / 1000,
+        idle_seconds: stuckHintDelayMs / 1000,
         progress_percent: progressPercent,
         remaining_hint_credits: remainingHintCredits,
         total_words: puzzle.entries.length,
+        trigger: hasWrongStreak ? "wrong_answer" : "idle",
         words_filled: viewModel.completedEntries.length,
+        wrong_cell_count: wrongCellCount,
       });
-    }, STUCK_HINT_IDLE_MS);
+    }, stuckHintDelayMs);
 
     return () => window.clearTimeout(timerId);
   }, [
@@ -1465,6 +1488,7 @@ function App() {
     route,
     selectedEntryId,
     viewModel.completedEntries.length,
+    wrongCellCount,
   ]);
 
   // 첫 입력 가이드 노출 이벤트(최초 1회).
@@ -2529,14 +2553,18 @@ function App() {
       ) : null}
       {route === "today" && isStuckHintPromptVisible ? (
         <div className="stuckHintPrompt" role="status">
-          <span className="stuckHintPromptText">막혔나요? 힌트를 받아보세요</span>
+          <span className="stuckHintPromptText">
+            {remainingHintCredits > 0
+              ? "막혔나요? 지금 힌트는 무료예요 💡"
+              : "막혔나요? 광고를 보면 힌트를 받을 수 있어요"}
+          </span>
           <div className="stuckHintPromptActions">
             <button
               type="button"
               className="stuckHintPromptCta"
               onClick={acceptStuckHintPrompt}
             >
-              힌트 보기
+              {remainingHintCredits > 0 ? "무료 힌트 보기" : "힌트 보기"}
             </button>
             <button
               type="button"

@@ -1729,6 +1729,25 @@ button:disabled {
   font-weight: 800;
   padding: 8px 12px;
   cursor: pointer;
+  /* 등장 시 시선만 유도하고 멈추도록 4회만 재생한다(무한 반복·지속 repaint 방지). */
+  animation: stuckHintCtaPulse 1.6s ease-in-out 4;
+}
+
+/* 막힘 신호일 때 힌트 CTA로 시선을 유도하는 비침습 펄스. */
+@keyframes stuckHintCtaPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(49, 130, 246, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(49, 130, 246, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stuckHintPromptCta {
+    animation: none;
+  }
 }
 
 .stuckHintPromptClose {
