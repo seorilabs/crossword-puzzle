@@ -776,11 +776,15 @@ function App() {
   const reachedProgressMilestoneRef = useRef<number>(0);
   // 비완료 이탈 계측: 시작했지만 완료하지 않은 채 보드를 떠날 때(인앱 이동/앱 종료)
   // 진행 스냅샷을 puzzle_abandon으로 한 번(시도당) 기록한다. 행동 변경 없음.
+  // had_first_input=false인 이탈은 무입력(침묵) 이탈이며, 이때 elapsed_seconds가
+  // 첫 입력 없이 머문 시간(TTFI 상한)이 된다. 첫 입력 지연 자체는 first_answer_input의
+  // elapsed_seconds로 측정한다.
   const abandonTrackedKeysRef = useRef<Set<string>>(new Set());
   const prevRouteRef = useRef<AppRoute>("home");
   const abandonSnapshotRef = useRef({
     attemptsUsed: 0,
     elapsedStartedAt: undefined as string | undefined,
+    hadFirstInput: false,
     hasStarted: false,
     hintCount: 0,
     isCompleted: false,
@@ -1114,6 +1118,9 @@ function App() {
   abandonSnapshotRef.current = {
     attemptsUsed: mission.attemptsUsed,
     elapsedStartedAt: mission.lastStartedAt,
+    hadFirstInput: firstAnswerInputKeysRef.current.has(
+      `${puzzle.puzzleId}:${mission.attemptsUsed}`,
+    ),
     hasStarted,
     hintCount,
     isCompleted,
@@ -1144,6 +1151,7 @@ function App() {
       ...snapshot.telemetryParams,
       attempt_number: snapshot.attemptsUsed,
       elapsed_seconds: getElapsedSeconds(snapshot.elapsedStartedAt),
+      had_first_input: snapshot.hadFirstInput,
       hint_count: snapshot.hintCount,
       last_screen: lastScreen,
       progress_percent: snapshot.progressPercent,
