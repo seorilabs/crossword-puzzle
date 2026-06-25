@@ -736,8 +736,9 @@ function App() {
   });
   const firstAnswerInputKeysRef = useRef<Set<string>>(new Set());
   const firstInputGuideShownRef = useRef(false);
-  // 첫 입력 가이드가 뜬 시도마다 "가장 쉬운 단어"를 한 번만 자동 선택하기 위한 플래그.
-  const firstInputEntrySelectedRef = useRef(false);
+  // 첫 입력 가이드가 뜬 "시도(퍼즐:attempt)"마다 가장 쉬운 단어를 한 번만 자동 선택하기
+  // 위한 키. isFirstInputGuideVisible 토글이 아니라 시도 단위로 가드한다.
+  const firstInputSelectKeyRef = useRef<string | null>(null);
   // 진행 마일스톤(부분 완료) 추적: 동일 퍼즐·시도 안에서 새로 넘어선 마일스톤만
   // 보상 피드백·이벤트로 노출하고, 이어풀기(resume)·재시작 시 이미 도달한 구간은
   // 다시 emit하지 않도록 baseline을 초기화한다.
@@ -1078,8 +1079,16 @@ function App() {
     !hasSeenFirstInputGuide &&
     Object.keys(cellValues).length === 0;
   // 침묵 이탈 방지(#91): 첫 입력 유도 시 "여기부터" 하이라이트가 가리킬, 채우기
-  // 쉬운 단어를 미리 계산해 둔다.
-  const easiestEntryId = useMemo(() => getEasiestEntryId(puzzle), [puzzle]);
+  // 쉬운 단어를 미리 계산해 둔다. resume/일부 입력 상태에서도 이미 완성된 단어는
+  // 후보에서 제외해 항상 풀어야 할 단어를 가리키게 한다.
+  const completedEntryIds = useMemo(
+    () => new Set(viewModel.completedEntries.map((entry) => entry.id)),
+    [viewModel.completedEntries],
+  );
+  const easiestEntryId = useMemo(
+    () => getEasiestEntryId(puzzle, { excludeEntryIds: completedEntryIds }),
+    [completedEntryIds, puzzle],
+  );
 
   // 최신 상태 스냅샷(ref): pagehide/visibilitychange 리스너가 stale closure 없이
   // 이탈 시점의 진행 상태를 읽을 수 있게 매 렌더마다 갱신한다.
@@ -1474,27 +1483,34 @@ function App() {
   }, [isFirstInputGuideVisible, mission.attemptsUsed, puzzleTelemetryParams]);
 
   // 첫 입력 유도: 가이드가 처음 뜨는 시점에 "가장 쉬운 단어"를 자동 선택해 빈 그리드
-  // 앞에서 어디부터 풀지 막막한 침묵 이탈을 줄인다. 사용자가 다른 칸을 탭하면 그대로
-  // 두고(시도당 1회만), 입력이 시작되면 가이드가 사라진다.
+  // 앞에서 어디부터 풀지 막막한 침묵 이탈을 줄인다. 시도(퍼즐:attempt)당 1회만 수행해
+  // 이후 사용자가 다른 칸을 탭해도 덮어쓰지 않는다. 가이드 가시성 토글이 아니라 시도
+  // 키로 가드하므로, 입력을 지웠다 다시 빈 칸이 돼도 사용자의 선택을 강제로 되돌리지 않는다.
   useEffect(() => {
     if (!isFirstInputGuideVisible) {
-      firstInputEntrySelectedRef.current = false;
       return;
     }
-    if (firstInputEntrySelectedRef.current) {
+    const attemptKey = `${puzzle.puzzleId}:${mission.attemptsUsed}`;
+    if (firstInputSelectKeyRef.current === attemptKey) {
       return;
     }
-    firstInputEntrySelectedRef.current = true;
+    firstInputSelectKeyRef.current = attemptKey;
     const easiestEntry = puzzle.entries.find(
       (entry) => entry.id === easiestEntryId,
     );
     if (easiestEntry != null && easiestEntry.id !== selectedEntryId) {
       selectEntry(easiestEntry);
     }
-    // selectEntry/selectedEntryId는 의도적으로 deps에서 제외: 가이드가 뜨는 최초 1회만
-    // 자동 선택하고 이후 사용자의 칸 선택을 덮어쓰지 않기 위함.
+    // selectEntry/selectedEntryId는 의도적으로 deps에서 제외: 시도당 최초 1회만 자동
+    // 선택하고 이후 사용자의 칸 선택을 덮어쓰지 않기 위함.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [easiestEntryId, isFirstInputGuideVisible, puzzle.entries]);
+  }, [
+    easiestEntryId,
+    isFirstInputGuideVisible,
+    mission.attemptsUsed,
+    puzzle.entries,
+    puzzle.puzzleId,
+  ]);
 
   useEffect(() => {
     telemetry.screen(route, {
@@ -3981,7 +3997,7 @@ function TodayScreen({
   const [answerInputResetKey, setAnswerInputResetKey] = useState(0);
   const boardInputRef = useRef<HTMLInputElement>(null);
   const boxInputRef = useRef<HTMLInputElement>(null);
-  const firstInputAutoFocusRef = useRef(false);
+  const firstInputAutoFocusKeyRef = useRef<string | null>(null);
   const commitTimerRef = useRef<number | null>(null);
   const isComposingRef = useRef(false);
   const [inputValue, setInputValue] = useState("");
@@ -4207,22 +4223,22 @@ function TodayScreen({
   }
 
   // 첫 입력 유도(#91): 가이드가 처음 뜨는 시점에 입력 필드를 자동 포커스해 키보드를
-  // 띄운다(플랫폼에 따라 사용자 제스처가 필요할 수 있어 best-effort). 시도당 1회만
-  // 수행하고, 사용자가 직접 탭하면 그대로 둔다.
+  // 띄운다(플랫폼에 따라 사용자 제스처가 필요할 수 있어 best-effort). 시도(퍼즐:attempt)
+  // 키로 가드해 시도당 정확히 1회만 포커스한다 — 가시성 토글이나 리렌더로는 다시 발화하지
+  // 않아, 입력 중 가이드가 잠깐 깜빡여도 키보드를 강제로 다시 띄우지 않는다.
   useEffect(() => {
     if (!isFirstInputGuideVisible) {
-      firstInputAutoFocusRef.current = false;
       return;
     }
-    if (firstInputAutoFocusRef.current) {
+    const attemptKey = `${puzzle.puzzleId}:${mission.attemptsUsed}`;
+    if (firstInputAutoFocusKeyRef.current === attemptKey) {
       return;
     }
-    firstInputAutoFocusRef.current = true;
+    firstInputAutoFocusKeyRef.current = attemptKey;
     requestAnimationFrame(() => focusNativeInput());
-    // focusNativeInput은 매 렌더 재생성되는 클로저라 deps에서 제외하고, 가이드 노출
-    // 최초 1회만 포커스한다.
+    // focusNativeInput은 매 렌더 재생성되는 클로저라 deps에서 제외한다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isFirstInputGuideVisible]);
+  }, [isFirstInputGuideVisible, mission.attemptsUsed, puzzle.puzzleId]);
 
   function getAnswerSlotCellKeyFromPoint(clientX: number, clientY: number) {
     for (const slot of document.querySelectorAll<HTMLElement>(".answerSlot")) {

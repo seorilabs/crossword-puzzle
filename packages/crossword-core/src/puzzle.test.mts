@@ -94,6 +94,29 @@ describe("getEasiestEntryId", () => {
     assert.equal(getEasiestEntryId(puzzle([a3, d2, a1, d1])), "a1");
   });
 
+  it("excludeEntryIds로 완성된 단어는 후보에서 제외한다", () => {
+    const long = entry({ id: "long", answer: "가나다", direction: "across", row: 0, col: 0 });
+    const short = entry({ id: "short", answer: "마바", direction: "down", row: 3, col: 3 });
+    // 가장 쉬운 short를 제외하면 그다음(long)을 고른다.
+    assert.equal(
+      getEasiestEntryId(puzzle([long, short]), {
+        excludeEntryIds: new Set(["short"]),
+      }),
+      "long",
+    );
+  });
+
+  it("모든 단어가 제외되면 전체에서 고른다", () => {
+    const long = entry({ id: "long", answer: "가나다", direction: "across", row: 0, col: 0 });
+    const short = entry({ id: "short", answer: "마바", direction: "down", row: 3, col: 3 });
+    assert.equal(
+      getEasiestEntryId(puzzle([long, short]), {
+        excludeEntryIds: new Set(["short", "long"]),
+      }),
+      "short",
+    );
+  });
+
   it("단어가 없으면 빈 문자열을 반환한다", () => {
     assert.equal(getEasiestEntryId(puzzle([])), "");
   });

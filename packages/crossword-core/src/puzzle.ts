@@ -180,8 +180,14 @@ export function getInitialEntryId(puzzle: Puzzle) {
  * 첫 입력을 유도할 "가장 쉬운" 단어를 고른다. 글자 수가 적어 채우기 쉽고, 교차가
  * 많아 다른 단어에서 힌트를 얻기 쉬운 단어를 우선한다. 동률이면 좌상단(읽기 순서)
  * 단어를 택해 같은 퍼즐에서 항상 같은 단어를 가리키도록 한다.
+ *
+ * `excludeEntryIds`를 넘기면 이미 완성된 단어 등을 후보에서 제외한다(교차 수 계산은
+ * 그대로 전체 격자 기준). 모든 단어가 제외되면 전체에서 고른다.
  */
-export function getEasiestEntryId(puzzle: Puzzle) {
+export function getEasiestEntryId(
+  puzzle: Puzzle,
+  options: { excludeEntryIds?: ReadonlySet<string> } = {},
+) {
   const entries = puzzle.entries;
 
   if (entries.length === 0) {
@@ -195,7 +201,14 @@ export function getEasiestEntryId(puzzle: Puzzle) {
         (cellEntries.get(getCellKey(cell.row, cell.col))?.length ?? 0) > 1,
     ).length;
 
-  const sorted = [...entries].sort(
+  const excludeEntryIds = options.excludeEntryIds;
+  const candidates =
+    excludeEntryIds != null && excludeEntryIds.size > 0
+      ? entries.filter((entry) => !excludeEntryIds.has(entry.id))
+      : entries;
+  const pool = candidates.length > 0 ? candidates : entries;
+
+  const sorted = [...pool].sort(
     (left, right) =>
       getEntryCells(left).length - getEntryCells(right).length ||
       crossingCount(right) - crossingCount(left) ||
