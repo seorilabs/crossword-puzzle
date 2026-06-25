@@ -176,6 +176,36 @@ export function getInitialEntryId(puzzle: Puzzle) {
   return puzzle.entries[0]?.id ?? "";
 }
 
+/**
+ * 첫 입력을 유도할 "가장 쉬운" 단어를 고른다. 글자 수가 적어 채우기 쉽고, 교차가
+ * 많아 다른 단어에서 힌트를 얻기 쉬운 단어를 우선한다. 동률이면 좌상단(읽기 순서)
+ * 단어를 택해 같은 퍼즐에서 항상 같은 단어를 가리키도록 한다.
+ */
+export function getEasiestEntryId(puzzle: Puzzle) {
+  const entries = puzzle.entries;
+
+  if (entries.length === 0) {
+    return "";
+  }
+
+  const cellEntries = buildCellEntries(entries);
+  const crossingCount = (entry: PuzzleEntry) =>
+    getEntryCells(entry).filter(
+      (cell) =>
+        (cellEntries.get(getCellKey(cell.row, cell.col))?.length ?? 0) > 1,
+    ).length;
+
+  const sorted = [...entries].sort(
+    (left, right) =>
+      getEntryCells(left).length - getEntryCells(right).length ||
+      crossingCount(right) - crossingCount(left) ||
+      left.row - right.row ||
+      left.col - right.col,
+  );
+
+  return sorted[0]?.id ?? "";
+}
+
 export function buildCellEntries(entries: PuzzleEntry[]) {
   const entriesByCell = new Map<string, PuzzleEntry[]>();
 

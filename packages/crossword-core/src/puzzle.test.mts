@@ -2,10 +2,11 @@ import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
 
 import {
+  getEasiestEntryId,
   getNearestUncompletedEntry,
   getNextFocusEntryAfterCompletion,
 } from "./puzzle.ts";
-import type { PuzzleEntry } from "./types.ts";
+import type { Puzzle, PuzzleEntry } from "./types.ts";
 
 function entry(partial: Partial<PuzzleEntry> & Pick<PuzzleEntry, "id" | "answer" | "direction" | "row" | "col">): PuzzleEntry {
   return { clue: "", generatedBy: "placed", ...partial };
@@ -72,5 +73,28 @@ describe("getNextFocusEntryAfterCompletion", () => {
     };
     const next = getNextFocusEntryAfterCompletion(entries, cellValues, d2, "1:1");
     assert.equal(next?.id, "d3");
+  });
+});
+
+describe("getEasiestEntryId", () => {
+  const puzzle = (entries: PuzzleEntry[]) => ({ entries }) as Puzzle;
+
+  it("글자 수가 적은(채우기 쉬운) 단어를 우선한다", () => {
+    const long = entry({ id: "long", answer: "가나다", direction: "across", row: 0, col: 0 });
+    const short = entry({ id: "short", answer: "마바", direction: "down", row: 3, col: 3 });
+    assert.equal(getEasiestEntryId(puzzle([long, short])), "short");
+  });
+
+  it("글자 수가 같으면 교차가 많은 단어를 우선한다", () => {
+    // 모두 2글자. a1은 (0,0)·(0,1) 두 칸 모두 교차, d2는 한 칸만 교차, a3은 고립.
+    const a1 = entry({ id: "a1", answer: "가나", direction: "across", row: 0, col: 0 });
+    const d1 = entry({ id: "d1", answer: "가다", direction: "down", row: 0, col: 0 });
+    const d2 = entry({ id: "d2", answer: "나마", direction: "down", row: 0, col: 1 });
+    const a3 = entry({ id: "a3", answer: "바사", direction: "across", row: 5, col: 5 });
+    assert.equal(getEasiestEntryId(puzzle([a3, d2, a1, d1])), "a1");
+  });
+
+  it("단어가 없으면 빈 문자열을 반환한다", () => {
+    assert.equal(getEasiestEntryId(puzzle([])), "");
   });
 });
