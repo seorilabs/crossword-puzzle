@@ -74,11 +74,14 @@ AIT는 AppsInToss Analytics와 Firebase Analytics를 함께 호출한다. 샌드
 | `rewarded_bonus_puzzle_ad_event`   | 보너스 퍼즐 보상형 광고 load/show 이벤트    |
 | `rewarded_bonus_puzzle_ad_reward`  | `userEarnedReward` 수신 후 보너스 퍼즐 해금 |
 | `mission_complete`                 | 퍼즐 완료. 완료자 집계 기준                 |
+| `puzzle_abandon`                   | 시작 후 미완료로 보드 이탈(시도당 1회)      |
 | `result_interstitial_ad_request`   | 결과 전면 광고 요청. 현재 기본 비활성       |
 | `result_interstitial_ad_event`     | 결과 전면 광고 load/show 이벤트. 현재 기본 비활성 |
 | `result_interstitial_ad_result`    | 결과 전면 광고 종료/실패. 현재 기본 비활성 |
 
 집계용 이벤트는 공통으로 `puzzle_id`, `slot_id`, `pack_id`, `published_at`, `difficulty`, `grid_size`, `word_count`를 포함한다. 미션/시도 이벤트는 `attempt_number`, `remaining_attempts`, `hint_count`, `earned_hint_credits`를 추가한다. `mission_complete`는 `completed_at`, `elapsed_seconds`, `completed_word_count`도 포함한다.
+
+`first_answer_input`은 `elapsed_seconds`로 첫 입력까지 걸린 시간(TTFI)을 싣는다. `puzzle_abandon`은 `last_screen`, `progress_percent`, `words_filled`, `total_words`, `elapsed_seconds`와 함께 `had_first_input`(첫 입력 발생 여부)를 포함한다. `had_first_input=false`인 이탈은 무입력(침묵) 이탈이며, 그 `elapsed_seconds`가 첫 입력 없이 머문 시간이므로 TTFI 상한 분포 및 침묵 이탈 구간 정량화에 사용한다.
 
 ## Android / iOS
 
