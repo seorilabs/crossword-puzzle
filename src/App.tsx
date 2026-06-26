@@ -26,6 +26,7 @@ import {
   DAILY_ATTEMPT_LIMIT,
   formatCompletionStatsLabel,
   formatCompletionStatsMetrics,
+  formatEstimatedSolveLabel,
   getBonusPuzzleCandidateSummary,
   getBounds,
   getCellKey,
@@ -3828,6 +3829,11 @@ function DateCarousel({
             completionStatsMinDisplayCount,
             "compact",
           );
+          const estimatedSolveLabel = formatEstimatedSolveLabel(
+            completionStatsByPuzzleId[summary.puzzleId],
+            completionStatsMinDisplayCount,
+          );
+          const isEasy = !isFallbackPack && summary.difficulty === "easy";
           const eyebrowLabel = isFallbackPack
             ? "기기저장"
             : isToday
@@ -3841,12 +3847,25 @@ function DateCarousel({
           const difficultyLabel = formatDifficultyLabel(summary.difficulty);
           const metaLabel =
             !isFallbackPack && completionStatsLabel !== ""
-              ? [difficultyLabel, completionStatsLabel]
-                  .filter(Boolean)
-                  .join(" · ")
-              : [difficultyLabel, statusLabel, wordCountLabel]
-                  .filter(Boolean)
-                  .join(" · ");
+              ? completionStatsLabel
+              : [statusLabel, wordCountLabel].filter(Boolean).join(" · ");
+          const ariaLabel = isFallbackPack
+            ? [eyebrowLabel, titleLabel, difficultyLabel, statusLabel]
+                .filter(Boolean)
+                .join(" ")
+            : [
+                titleLabel,
+                isToday
+                  ? `오늘 ${formatGameHeaderDate(summary.date)}`
+                  : formatGameHeaderDate(summary.date),
+                difficultyLabel,
+                estimatedSolveLabel !== ""
+                  ? `예상 소요 ${estimatedSolveLabel}`
+                  : "",
+                statusLabel,
+              ]
+                .filter(Boolean)
+                .join(" ");
 
           return (
             <button
@@ -3857,20 +3876,38 @@ function DateCarousel({
                 isSelected ? "dateSelected" : "",
                 state?.completedAt != null ? "dateCompleted" : "",
                 isToday ? "dateToday" : "",
+                isEasy ? "dateEasy" : "",
               ]
                 .filter(Boolean)
                 .join(" ")}
               type="button"
-              aria-label={
-                isFallbackPack
-                  ? `${eyebrowLabel} ${titleLabel} ${statusLabel}`
-                  : `${titleLabel} ${isToday ? `오늘 ${formatGameHeaderDate(summary.date)}` : formatGameHeaderDate(summary.date)} ${statusLabel}`
-              }
+              aria-label={ariaLabel}
               aria-pressed={isSelected}
               onClick={() => void selectPuzzle(summary.puzzleId)}
             >
               <span>{eyebrowLabel}</span>
               <strong>{titleLabel}</strong>
+              {difficultyLabel !== "" || estimatedSolveLabel !== "" ? (
+                <span className="dateCardValue">
+                  {difficultyLabel !== "" ? (
+                    <span
+                      className={[
+                        "dateDifficulty",
+                        summary.difficulty
+                          ? `difficulty-${summary.difficulty}`
+                          : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                    >
+                      {difficultyLabel}
+                    </span>
+                  ) : null}
+                  {estimatedSolveLabel !== "" ? (
+                    <span className="dateEstimate">{estimatedSolveLabel}</span>
+                  ) : null}
+                </span>
+              ) : null}
               <em>{metaLabel}</em>
             </button>
           );

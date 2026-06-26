@@ -177,3 +177,26 @@ export function formatCompletionStatsMetrics(
 
   return parts.join(" · ");
 }
+
+/**
+ * Short "expected time to solve" preview for the home card value proposition.
+ * Uses the median (falling back to average) solve time, gated by the same
+ * privacy threshold as the other stat lines. Returns "" when no usable figure
+ * is available so callers can omit the preview entirely.
+ */
+export function formatEstimatedSolveLabel(
+  stats: PuzzleCompletionStats | undefined,
+  minDisplayCount: number,
+): string {
+  if (stats == null || stats.completionCount < minDisplayCount) {
+    return "";
+  }
+
+  const seconds = stats.medianElapsedSeconds ?? stats.averageElapsedSeconds;
+  if (seconds == null) {
+    return "";
+  }
+
+  const durationLabel = formatStatsDuration(seconds);
+  return durationLabel === "" ? "" : `약 ${durationLabel}`;
+}
