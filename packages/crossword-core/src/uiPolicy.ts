@@ -283,6 +283,30 @@ export function shouldServeOnboardingPuzzle({
   return !hasCompletedAnyDaily && !hasDailyProgress;
 }
 
+// 홈 상단 "오늘의 퍼즐 바로 시작" 원탭 CTA가 현재 활성 퍼즐을 그대로 시작해야
+// 하는지 판단한다. 신규 사용자에게는 입문(easy) 온보딩 퍼즐이 첫 활성 퍼즐로
+// 배정되는데, 이 퍼즐의 puzzleId는 오늘의 일반 퍼즐과 다르므로 단순 비교만으로는
+// CTA가 일반 퍼즐로 전환해 버려 첫 경험이 normal로 빠진다(easy attempt 0건의 원인).
+// 활성 퍼즐이 온보딩 퍼즐이면 일반 퍼즐로 전환하지 않고 현재 퍼즐을 시작해 첫
+// 경험을 easy로 유지한다. 오늘의 퍼즐이 아직 없으면(undefined) 현재 퍼즐을 시작한다.
+export function shouldQuickStartActivePuzzle({
+  activePuzzleId,
+  onboardingPuzzleId,
+  todayPuzzleId,
+}: {
+  activePuzzleId: string;
+  onboardingPuzzleId: string;
+  todayPuzzleId?: string;
+}): boolean {
+  if (todayPuzzleId == null) {
+    return true;
+  }
+
+  return (
+    activePuzzleId === todayPuzzleId || activePuzzleId === onboardingPuzzleId
+  );
+}
+
 // 부분 완료(중간 성취) 구간. 완료가 all-or-nothing이라 "거의 다 풀었지만 못 끝낸"
 // 사용자가 보상 없이 이탈하는 문제를 줄이기 위해, 진행률이 마일스톤을 새로 넘을 때
 // 중간 보상 피드백과 진행 마일스톤 이벤트를 노출한다.
