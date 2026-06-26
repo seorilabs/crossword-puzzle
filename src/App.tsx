@@ -46,6 +46,7 @@ import {
   getNextStreakMilestoneHint,
   getStreakBadgeLabel,
   getStreakMilestoneProgress,
+  shouldQuickStartActivePuzzle,
   shouldServeOnboardingPuzzle,
   sortPuzzleSummariesByRecency,
   startMissionAttempt,
@@ -2311,11 +2312,21 @@ function App() {
 
     const todaysSummary = dailyFreeSummary;
 
-    // 오늘의 퍼즐이 이미 선택돼 있으면 기존 시작/이어풀기 흐름을 그대로 사용한다.
-    if (todaysSummary == null || puzzle.puzzleId === todaysSummary.puzzleId) {
+    // 오늘의 퍼즐이 이미 선택돼 있거나, 신규 사용자에게 배정된 입문(easy) 온보딩
+    // 퍼즐이 활성 상태면 일반 퍼즐로 전환하지 않고 현재 퍼즐을 그대로 시작한다.
+    // 온보딩 퍼즐은 puzzleId가 오늘의 일반 퍼즐과 달라, 이 가드가 없으면 신규의
+    // 첫 경험이 easy 대신 normal로 빠진다(#92).
+    if (
+      shouldQuickStartActivePuzzle({
+        activePuzzleId: puzzle.puzzleId,
+        onboardingPuzzleId: onboardingPuzzle.puzzleId,
+        todayPuzzleId: todaysSummary?.puzzleId,
+      })
+    ) {
       telemetry.click("home_quick_start", {
         ...puzzleTelemetryParams,
-        source: "today",
+        source:
+          puzzle.puzzleId === onboardingPuzzle.puzzleId ? "onboarding" : "today",
       });
       startOrResumeMission();
       return;

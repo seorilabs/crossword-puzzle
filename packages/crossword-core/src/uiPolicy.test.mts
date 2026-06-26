@@ -13,6 +13,7 @@ import {
   getStreakMilestoneProgress,
   isPublishedPuzzle,
   PUZZLE_PROGRESS_MILESTONES,
+  shouldQuickStartActivePuzzle,
   shouldServeOnboardingPuzzle,
 } from "./uiPolicy.ts";
 import type { PuzzleManifestItem } from "./types.ts";
@@ -104,6 +105,55 @@ describe("shouldServeOnboardingPuzzle", () => {
         onboardingCompleted: false,
       }),
       false,
+    );
+  });
+});
+
+describe("shouldQuickStartActivePuzzle", () => {
+  const onboardingPuzzleId = "onboarding-easy-01";
+  const todayPuzzleId = "2026-06-26-normal-01";
+
+  it("활성 퍼즐이 오늘의 일반 퍼즐이면 현재 퍼즐을 시작한다", () => {
+    assert.equal(
+      shouldQuickStartActivePuzzle({
+        activePuzzleId: todayPuzzleId,
+        onboardingPuzzleId,
+        todayPuzzleId,
+      }),
+      true,
+    );
+  });
+
+  it("신규 사용자의 입문(easy) 퍼즐이 활성 상태면 일반 퍼즐로 전환하지 않는다", () => {
+    assert.equal(
+      shouldQuickStartActivePuzzle({
+        activePuzzleId: onboardingPuzzleId,
+        onboardingPuzzleId,
+        todayPuzzleId,
+      }),
+      true,
+    );
+  });
+
+  it("다른 날짜의 일반 퍼즐을 보던 중이면 오늘의 퍼즐로 전환한다", () => {
+    assert.equal(
+      shouldQuickStartActivePuzzle({
+        activePuzzleId: "2026-06-20-normal-01",
+        onboardingPuzzleId,
+        todayPuzzleId,
+      }),
+      false,
+    );
+  });
+
+  it("오늘의 퍼즐이 아직 없으면 현재 퍼즐을 시작한다", () => {
+    assert.equal(
+      shouldQuickStartActivePuzzle({
+        activePuzzleId: onboardingPuzzleId,
+        onboardingPuzzleId,
+        todayPuzzleId: undefined,
+      }),
+      true,
     );
   });
 });
