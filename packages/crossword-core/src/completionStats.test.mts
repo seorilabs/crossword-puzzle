@@ -6,6 +6,7 @@ import {
   formatBucketedCount,
   formatCompletionStatsLabel,
   formatCompletionStatsMetrics,
+  formatEstimatedSolveLabel,
   formatRatePercent,
   formatStatsDuration,
 } from "./completionStats.ts";
@@ -133,5 +134,42 @@ describe("formatCompletionStatsMetrics", () => {
       formatCompletionStatsMetrics(createStats({ completionCount: 95 }), 10),
       "",
     );
+  });
+});
+
+describe("formatEstimatedSolveLabel", () => {
+  it("previews the median solve time with a 약 prefix", () => {
+    assert.equal(
+      formatEstimatedSolveLabel(
+        createStats({ completionCount: 95, medianElapsedSeconds: 252 }),
+        10,
+      ),
+      "약 4분",
+    );
+  });
+
+  it("falls back to the average when no median is present", () => {
+    assert.equal(
+      formatEstimatedSolveLabel(
+        createStats({ completionCount: 95, averageElapsedSeconds: 75 }),
+        10,
+      ),
+      "약 75초",
+    );
+  });
+
+  it("returns empty below the privacy threshold or without a figure", () => {
+    assert.equal(
+      formatEstimatedSolveLabel(
+        createStats({ completionCount: 3, medianElapsedSeconds: 252 }),
+        10,
+      ),
+      "",
+    );
+    assert.equal(
+      formatEstimatedSolveLabel(createStats({ completionCount: 95 }), 10),
+      "",
+    );
+    assert.equal(formatEstimatedSolveLabel(undefined, 10), "");
   });
 });

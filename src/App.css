@@ -195,6 +195,53 @@ button:disabled {
   color: #00866f;
 }
 
+.dateEasy:not(.dateSelected) {
+  border-color: #7fe3cf;
+  background: #f4fdfb;
+}
+
+.dateCardValue {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: 1px 0;
+}
+
+.dateCard .dateDifficulty {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 1px 7px;
+  color: #4e5968;
+  background: #f2f4f6;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 15px;
+}
+
+.dateCard .dateDifficulty.difficulty-easy {
+  color: #007a64;
+  background: #e3f8f2;
+}
+
+.dateCard .dateDifficulty.difficulty-normal {
+  color: #1b64da;
+  background: #e8f1ff;
+}
+
+.dateCard .dateDifficulty.difficulty-hard {
+  color: #c2255c;
+  background: #ffe9f1;
+}
+
+.dateCard .dateEstimate {
+  color: #6b7684;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 15px;
+}
+
 @keyframes skeletonShimmer {
   0% {
     background-position: -100px 0;
