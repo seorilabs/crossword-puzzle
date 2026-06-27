@@ -16,6 +16,11 @@ export type DifficultyProfile = {
   minWordLength: number;
   // 합격 보드의 최소 단어(run) 수. 티어별 평균 단어 수를 가르는 하한.
   minWordCount: number;
+  // 합격 보드의 최소 교차율(interlock). 교차에 참여하는 셀 비율의 하한으로,
+  // 높을수록 단어가 촘촘히 얽혀 단서 연결이 쉬워진다(체감 난도↓).
+  minCrossRatio: number;
+  // 합격 보드의 최소 bbox 밀도. 보드 사용 영역 대비 채워진 셀 비율의 하한.
+  minBboxDensity: number;
   // 이 티어에서 허용하는 워드뱅크 difficulty 값(단어 선택 편향)
   wordDifficulties: readonly Difficulty[];
 };
@@ -33,6 +38,10 @@ export const DIFFICULTY_PROFILES: Record<Difficulty, DifficultyProfile> = {
     maxWords: 9,
     minWordLength: 2,
     minWordCount: 8,
+    // easy 는 더 촘촘한 교차(쉬운 단서 연결)가 유리해 교차율을 normal 보다 약간
+    // 상향한다. 작은 보드라 밀도는 normal 과 동일하게 둔다(생성 리포트로 보정).
+    minCrossRatio: 0.6,
+    minBboxDensity: 0.5,
     wordDifficulties: ["easy"],
   },
   normal: {
@@ -41,6 +50,9 @@ export const DIFFICULTY_PROFILES: Record<Difficulty, DifficultyProfile> = {
     maxWords: 12,
     minWordLength: 2,
     minWordCount: 12,
+    // normal 은 기존 전역 기본값과 동일하게 유지해 생성 결과 회귀를 방지한다.
+    minCrossRatio: 0.55,
+    minBboxDensity: 0.5,
     wordDifficulties: ["easy", "normal", "hard"],
   },
   hard: {
@@ -49,6 +61,9 @@ export const DIFFICULTY_PROFILES: Record<Difficulty, DifficultyProfile> = {
     maxWords: 16,
     minWordLength: 2,
     minWordCount: 18,
+    // hard 는 큰 보드에 더 성긴 배치를 허용해도 되므로 교차율·밀도를 완화한다.
+    minCrossRatio: 0.5,
+    minBboxDensity: 0.45,
     wordDifficulties: ["normal", "hard"],
   },
 };

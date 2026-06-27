@@ -56,6 +56,8 @@ function parseArgs(argv) {
   options.maxWords = profile.maxWords;
   options.minWordLength = profile.minWordLength;
   options.minWordCount = profile.minWordCount;
+  options.minCrossRatio = profile.minCrossRatio;
+  options.minBboxDensity = profile.minBboxDensity;
   options.wordDifficulties = profile.wordDifficulties;
 
   for (const arg of argv) {
