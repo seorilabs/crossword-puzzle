@@ -52,6 +52,16 @@ export function computeTentativeUpdate(
   return { adds, removes };
 }
 
+// 선택한 단어에서 '임시 확정'으로 승격할 셀 키를 고른다. 임시 셋에 있고 아직
+// 정답으로 잠기지 않은(화면에 임시로 보이는) 셀만 대상으로 한다.
+export function selectPromotableTentativeKeys(
+  entryCellKeys: readonly string[],
+  tentative: ReadonlySet<string>,
+  isLocked: (key: string) => boolean,
+): string[] {
+  return entryCellKeys.filter((key) => tentative.has(key) && !isLocked(key));
+}
+
 // 임시 셋에 removes를 먼저, adds를 나중에 적용한 새 Set을 만든다.
 export function applyTentativeUpdate(
   prev: ReadonlySet<string>,

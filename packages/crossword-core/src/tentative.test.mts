@@ -5,6 +5,7 @@ import { strict as assert } from "node:assert";
 import {
   applyTentativeUpdate,
   computeTentativeUpdate,
+  selectPromotableTentativeKeys,
   shouldRenderTentative,
 } from "./tentative.ts";
 
@@ -71,6 +72,30 @@ describe("computeTentativeUpdate — 입력에 따른 임시 셋 변화량", () 
     );
     assert.deepEqual(onPencil.adds, []);
     assert.deepEqual(onPencil.removes, ["0,0"]);
+  });
+});
+
+describe("selectPromotableTentativeKeys — 승격 대상 선별", () => {
+  const keys = ["0,0", "0,1", "0,2"];
+
+  it("임시 셋에 있고 잠기지 않은 셀만 고른다", () => {
+    const tentative = new Set(["0,0", "0,1"]);
+    const locked = new Set(["0,1"]); // 0,1은 정답으로 잠김
+    const result = selectPromotableTentativeKeys(keys, tentative, (k) =>
+      locked.has(k),
+    );
+    assert.deepEqual(result, ["0,0"]);
+  });
+
+  it("임시 셀이 없으면 빈 배열", () => {
+    const result = selectPromotableTentativeKeys(keys, new Set(), () => false);
+    assert.deepEqual(result, []);
+  });
+
+  it("모든 임시 셀이 잠겨 있으면 빈 배열", () => {
+    const tentative = new Set(["0,0"]);
+    const result = selectPromotableTentativeKeys(keys, tentative, () => true);
+    assert.deepEqual(result, []);
   });
 });
 

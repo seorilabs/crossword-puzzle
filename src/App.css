@@ -1664,16 +1664,17 @@ button:disabled {
   box-shadow: inset 0 0 0 1px #f4a6a6;
 }
 
-/* 연필(임시) 입력 글자 — 확신 없는 추측을 기울임으로 구분한다.
-   정오/완료 판정에는 영향이 없고 표시만 다르다. */
+/* 연필(임시) 입력 글자 — 확신 없는 추측을 회색·기울임으로 구분한다.
+   정오/완료 판정에는 영향이 없고 표시만 다르다. 잠긴 정답/완료 셀에는 임시
+   클래스가 붙지 않으므로(shouldRenderTentative) 회색이 정답색을 덮지 않는다.
+   autocheck ON으로 .cellWrong가 함께 붙은 임시 셀에서도 회색·기울임이 보이도록
+   :not(.cellWrong) 가드를 두지 않는다. 오답 여부는 빨간 배경·테두리로 유지된다. */
 .cellTentative .cellLetter {
   font-style: italic;
   opacity: 0.85;
 }
 
-/* 오답(빨강)·정답(초록) 강조가 없을 때만 회색으로 보인다. autocheck가 켜져
-   오답으로 강조되는 임시 글자는 빨강을 유지하고 기울임으로 임시임을 나타낸다. */
-.cellTentative:not(.cellWrong):not(.cellCorrect):not(.cellComplete) {
+.cellTentative {
   color: #8b95a1;
 }
 
