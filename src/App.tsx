@@ -50,12 +50,16 @@ import {
   getStreakMilestoneProgress,
   getWordCheckResult,
   isWrongCellVisible,
+  applyTentativeUpdate,
+  computeTentativeUpdate,
+  shouldRenderTentative,
   shouldQuickStartActivePuzzle,
   shouldServeOnboardingPuzzle,
   sortPuzzleSummariesByRecency,
   startMissionAttempt,
   uniquePuzzleSummaries,
   validatePuzzleSlots,
+  type CellLetterChange,
   type DailyMissionState,
   type Direction,
   type Puzzle,
@@ -1854,17 +1858,12 @@ function App() {
     }, 150);
   }
 
-  // 임시(연필) 셀 집합을 한 번의 업데이트로 갱신한다. removes 먼저, adds 나중.
+  // 임시(연필) 셀 집합을 한 번의 업데이트로 갱신한다(공유 순수 로직 사용).
   function updateTentativeCells(adds: string[], removes: string[]) {
     if (adds.length === 0 && removes.length === 0) {
       return;
     }
-    setTentativeCellKeys((prev) => {
-      const next = new Set(prev);
-      for (const key of removes) next.delete(key);
-      for (const key of adds) next.add(key);
-      return next;
-    });
+    setTentativeCellKeys((prev) => applyTentativeUpdate(prev, adds, removes));
   }
 
   function applyAnswer(
@@ -1879,24 +1878,35 @@ function App() {
     trackFirstAnswerInput(entry, nextLetters.length, source);
 
     const markTentative = source === "manual" && pencilMode;
-    const tentativeAdds: string[] = [];
-    const tentativeRemoves: string[] = [];
+    const tentativeChanges: CellLetterChange[] = [];
 
     cells.forEach((cell, index) => {
       const key = getCellKey(cell.row, cell.col);
       const nextLetter = nextLetters[index];
+      const prevLetter = cellValues[key] ?? null;
 
       if (nextLetter == null) {
         delete nextValues[key];
-        tentativeRemoves.push(key);
+        // 값이 실제로 지워진 셀만 임시 셋에서 정리한다.
+        if (prevLetter != null) {
+          tentativeChanges.push({ key, hasValue: false });
+        }
       } else {
         nextValues[key] = nextLetter;
-        (markTentative ? tentativeAdds : tentativeRemoves).push(key);
+        // 값이 바뀐 셀만 임시/확정 전환한다. 값이 유지된 교차 셀은 기존 임시
+        // 상태를 보존해 "어디부터 의심할지" 추적 맥락을 잃지 않는다.
+        if (nextLetter !== prevLetter) {
+          tentativeChanges.push({ key, hasValue: true });
+        }
       }
     });
 
     setCellValues(nextValues);
-    updateTentativeCells(tentativeAdds, tentativeRemoves);
+    const { adds, removes } = computeTentativeUpdate(
+      tentativeChanges,
+      markTentative,
+    );
+    updateTentativeCells(adds, removes);
 
     if (getEntryAnswerValue(entry, nextValues) === entry.answer) {
       const lastCell = cells[cells.length - 1];
@@ -1925,8 +1935,7 @@ function App() {
     trackFirstAnswerInput(entry, nextLetters.length, source);
 
     const markTentative = source === "manual" && pencilMode;
-    const tentativeAdds: string[] = [];
-    const tentativeRemoves: string[] = [];
+    const tentativeChanges: CellLetterChange[] = [];
 
     nextLetters.forEach((letter, offset) => {
       const cell = cells[startIndex + offset];
@@ -1934,12 +1943,16 @@ function App() {
       if (cell != null) {
         const key = getCellKey(cell.row, cell.col);
         nextValues[key] = letter;
-        (markTentative ? tentativeAdds : tentativeRemoves).push(key);
+        tentativeChanges.push({ key, hasValue: true });
       }
     });
 
     setCellValues(nextValues);
-    updateTentativeCells(tentativeAdds, tentativeRemoves);
+    const { adds, removes } = computeTentativeUpdate(
+      tentativeChanges,
+      markTentative,
+    );
+    updateTentativeCells(adds, removes);
     setSelectedCellKey(
       getNextAnswerSlotCellKey(
         entry,
@@ -2423,9 +2436,21 @@ function App() {
       return;
     }
 
+    if (
+      getEntryAnswerValue(selectedEntry, cellValues) === selectedEntry.answer
+    ) {
+      showHintToast("이미 완성된 단어예요.");
+      return;
+    }
+
+    // 정답으로 잠긴(이미 확정 표시) 셀은 제외하고, 화면에 임시로 보이는 셀만
+    // 확정으로 승격한다.
     const removes = getEntryCells(selectedEntry)
       .map((cell) => getCellKey(cell.row, cell.col))
-      .filter((key) => tentativeCellKeys.has(key));
+      .filter(
+        (key) =>
+          tentativeCellKeys.has(key) && !isCellLocked(puzzle, cellValues, key),
+      );
 
     if (removes.length === 0) {
       showHintToast("이 단어에는 임시 글자가 없어요.");
@@ -6639,14 +6664,15 @@ function PuzzleBoard({
             isChecked: checkedCellKeys.has(key),
           });
           const isJustCompleted = (completionKeyRefCount.get(key) ?? 0) > 0;
-          // 임시(연필) 글자: 채워졌지만 아직 정답이 아니고, 오답 강조 중도 아니며
-          // IME 미확정 상태도 아닐 때만 회색으로 구분한다.
-          const isTentative =
-            isFilled &&
-            !isCorrect &&
-            !isPending &&
-            !showWrong &&
-            tentativeCellKeys.has(key);
+          // 임시(연필) 글자: 채워졌지만 아직 정답이 아니고 IME 미확정도 아닐 때
+          // 구분한다. autocheck(오답 강조)와 독립적이라 기본 ON 상태에서도 임시
+          // 표시가 노출되며, 오답 색상은 CSS에서 우선 적용된다.
+          const isTentative = shouldRenderTentative({
+            isFilled,
+            isCorrect,
+            isPending,
+            isTentative: tentativeCellKeys.has(key),
+          });
 
           if (answer === "") {
             return <div key={key} className="cell cellBlock" />;

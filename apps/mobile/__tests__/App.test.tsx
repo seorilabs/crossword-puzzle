@@ -508,6 +508,7 @@ test('loads an archived puzzle when it is missing from the current pack', async 
     earnedHintCredits: 0,
     hintCount: 0,
     revealUsed: false,
+    tentativeCells: [],
   });
 });
 
