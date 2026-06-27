@@ -93,6 +93,13 @@ import {
   saveAutocheckEnabled,
 } from "./adapters/autocheckSettingRepository";
 import {
+  loadHapticEnabled,
+  loadSoundEnabled,
+  saveHapticEnabled,
+  saveSoundEnabled,
+} from "./adapters/feedbackSettingsRepository";
+import { emitFeedback } from "./adapters/feedback";
+import {
   showRewardedBonusPuzzleAd,
   showRewardedHintAd,
   type FullScreenAdResult,
@@ -784,6 +791,10 @@ function App() {
   // 저장값은 마운트 후 useEffect에서 동기화한다(클라이언트 전용 저장소 접근을
   // 초기 렌더에서 분리).
   const [autocheckEnabled, setAutocheckEnabled] = useState(true);
+  // 사운드·햅틱 피드백 on/off. autocheck와 같이 기본값(true)으로 시작하고 저장값은
+  // 마운트 후 useEffect에서 동기화한다.
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [hapticEnabled, setHapticEnabled] = useState(true);
   // "이 단어 확인"으로 잠시 강조 중인 셀. 일정 시간 후 비워 원상 복구한다.
   // 비강조 상태는 항상 동일한 빈 Set 참조(EMPTY_CELL_KEY_SET)를 써서 불필요한
   // 참조 변경을 막는다.
@@ -1141,6 +1152,12 @@ function App() {
   // autocheck 저장값은 마운트 후에만 반영한다(첫 렌더 기본값 true와 분리).
   useEffect(() => {
     setAutocheckEnabled(loadAutocheckEnabled());
+  }, []);
+
+  // 사운드·햅틱 저장값도 마운트 후 동기화한다(클라이언트 전용 저장소 접근 분리).
+  useEffect(() => {
+    setSoundEnabled(loadSoundEnabled());
+    setHapticEnabled(loadHapticEnabled());
   }, []);
 
   useEffect(() => {
@@ -1616,6 +1633,9 @@ function App() {
       return;
     }
 
+    // 퍼즐 완료 사운드·햅틱(설정에 따름). 완료 effect가 1회만 실행되므로 중복 없음.
+    emitFeedback("puzzleComplete", { soundEnabled, hapticEnabled });
+
     const nextMission = completeMission(mission);
     setMission(nextMission);
     // 데일리 스트릭은 "완료 사실"(completedAt 보유 일자)만으로 산정한다.
@@ -1669,6 +1689,7 @@ function App() {
     }
   }, [
     earnedHintCredits,
+    hapticEnabled,
     hintCount,
     mission,
     puzzle,
@@ -1676,6 +1697,7 @@ function App() {
     revealUsed,
     savePuzzleSnapshot,
     route,
+    soundEnabled,
     viewModel.completedEntries.length,
     viewModel.isComplete,
   ]);
@@ -1866,6 +1888,45 @@ function App() {
     setTentativeCellKeys((prev) => applyTentativeUpdate(prev, adds, removes));
   }
 
+  // 입력 결과에 따라 사운드·햅틱 피드백을 발생시킨다. 단어가 새로 완성되면 완성음,
+  // 그렇지 않고 오답 글자가 새로 들어오면 오답음을 준다. 단, 이 입력이 퍼즐 전체를
+  // 완성하면 완성음 대신 퍼즐 완료 피드백(완료 effect)에 맡겨 중복을 막는다.
+  function emitWordInputFeedback(
+    entry: PuzzleEntry,
+    prevValues: Record<string, string>,
+    nextValues: Record<string, string>,
+  ) {
+    const settings = { soundEnabled, hapticEnabled };
+    const wasComplete = getEntryAnswerValue(entry, prevValues) === entry.answer;
+    const isComplete = getEntryAnswerValue(entry, nextValues) === entry.answer;
+
+    if (!wasComplete && isComplete) {
+      const puzzleComplete =
+        getCompletedEntries(puzzle.entries, nextValues).length ===
+        puzzle.entries.length;
+      if (!puzzleComplete) {
+        emitFeedback("wordComplete", settings);
+      }
+      return;
+    }
+
+    if (!isComplete) {
+      const answerLetters = [...entry.answer];
+      const hasNewWrong = getEntryCells(entry).some((cell, index) => {
+        const key = getCellKey(cell.row, cell.col);
+        const value = nextValues[key];
+        return (
+          value != null &&
+          value !== answerLetters[index] &&
+          prevValues[key] !== value
+        );
+      });
+      if (hasNewWrong) {
+        emitFeedback("wrong", settings);
+      }
+    }
+  }
+
   function applyAnswer(
     entry: PuzzleEntry,
     value: string,
@@ -1907,6 +1968,7 @@ function App() {
       markTentative,
     );
     updateTentativeCells(adds, removes);
+    emitWordInputFeedback(entry, cellValues, nextValues);
 
     if (getEntryAnswerValue(entry, nextValues) === entry.answer) {
       const lastCell = cells[cells.length - 1];
@@ -1953,6 +2015,7 @@ function App() {
       markTentative,
     );
     updateTentativeCells(adds, removes);
+    emitWordInputFeedback(entry, cellValues, nextValues);
     setSelectedCellKey(
       getNextAnswerSlotCellKey(
         entry,
@@ -2424,6 +2487,22 @@ function App() {
     });
   }
 
+  function toggleSound() {
+    setSoundEnabled((prev) => {
+      const next = !prev;
+      saveSoundEnabled(next);
+      return next;
+    });
+  }
+
+  function toggleHaptic() {
+    setHapticEnabled((prev) => {
+      const next = !prev;
+      saveHapticEnabled(next);
+      return next;
+    });
+  }
+
   function togglePencilMode() {
     setPencilMode((prev) => !prev);
   }
@@ -2701,6 +2780,7 @@ function App() {
     completedEntries: viewModel.completedEntries,
     hintBalance,
     hintCount,
+    hapticEnabled,
     mission,
     pencilMode,
     promoteSelectedWord,
@@ -2710,8 +2790,11 @@ function App() {
     revealLetter,
     revealSelectedWord,
     revealUsed,
+    soundEnabled,
     tentativeCellKeys,
+    toggleHaptic,
     togglePencilMode,
+    toggleSound,
     selectedAnswer: viewModel.selectedAnswer,
     selectedCellKey,
     selectedDirection,
@@ -4274,6 +4357,7 @@ type TodayScreenProps = DateSelectionProps & {
   isCompleted: boolean;
   isFirstInputGuideVisible: boolean;
   isNewBestTime: boolean;
+  hapticEnabled: boolean;
   mission: DailyMissionState;
   navigate: (route: AppRoute) => void;
   pencilMode: boolean;
@@ -4283,8 +4367,11 @@ type TodayScreenProps = DateSelectionProps & {
   revealLetter: () => void;
   revealSelectedWord: () => void;
   revealUsed: boolean;
+  soundEnabled: boolean;
   tentativeCellKeys: ReadonlySet<string>;
+  toggleHaptic: () => void;
   togglePencilMode: () => void;
+  toggleSound: () => void;
   selectedAnswer: string;
   selectedCellKey: string;
   selectedDirection: Direction;
@@ -4323,6 +4410,7 @@ function TodayScreen({
   isCompleted,
   isFirstInputGuideVisible,
   isNewBestTime,
+  hapticEnabled,
   loadState,
   mission,
   navigate,
@@ -4333,8 +4421,11 @@ function TodayScreen({
   remainingAttempts,
   revealSelectedWord,
   revealUsed,
+  soundEnabled,
   tentativeCellKeys,
+  toggleHaptic,
   togglePencilMode,
+  toggleSound,
   selectedCellKey,
   selectedPuzzleId,
   selectedEntry,
@@ -5316,6 +5407,36 @@ function TodayScreen({
             onClick={promoteSelectedWord}
           >
             임시 확정
+          </button>
+          <button
+            className={[
+              "assistButton",
+              "assistToggle",
+              soundEnabled ? "assistToggleOn" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            type="button"
+            aria-pressed={soundEnabled}
+            title="단어 완성·퍼즐 완료·오답 시 효과음을 켜고 꺼요"
+            onClick={toggleSound}
+          >
+            사운드 {soundEnabled ? "켜짐" : "꺼짐"}
+          </button>
+          <button
+            className={[
+              "assistButton",
+              "assistToggle",
+              hapticEnabled ? "assistToggleOn" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            type="button"
+            aria-pressed={hapticEnabled}
+            title="단어 완성·퍼즐 완료 시 진동(햅틱)을 켜고 꺼요"
+            onClick={toggleHaptic}
+          >
+            햅틱 {hapticEnabled ? "켜짐" : "꺼짐"}
           </button>
         </div>
       ) : null}

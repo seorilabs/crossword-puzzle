@@ -1,6 +1,7 @@
 export * from "./clueCuration";
 export * from "./completionStats";
 export * from "./difficultyProfiles";
+export * from "./feedbackPolicy";
 export * from "./launchConfig";
 export * from "./mission";
 export * from "./platformContracts";
