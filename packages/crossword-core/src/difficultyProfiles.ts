@@ -96,3 +96,56 @@ export function summarizeWordDifficulties<
 
   return counts;
 }
+
+// 보드를 안정적으로 생성하기 위한 최소 후보 단어 수. 프로파일 difficulty 필터가
+// 워드뱅크 대부분을 잘라낸 결과 이 수치를 밑돌면(예: easy 풀이 비정상적으로 작아진
+// 경우) 생성이 막힐 수 있으므로, 인접 티어 단어로 풀을 보강한다.
+export const MIN_GENERATION_WORD_POOL = 150;
+
+export type WordSelection<T> = {
+  // 생성에 사용할 최종 단어 목록
+  words: T[];
+  // 최종 풀에 포함된 difficulty 집합(프로파일 + 보강분)
+  difficulties: Difficulty[];
+  // 보강이 발생했는지 여부와 추가된 difficulty 목록
+  broadened: boolean;
+  broadenedWith: Difficulty[];
+};
+
+// 프로파일 difficulty 로 단어를 거른다. 1차 풀이 minPool 미만이면 생성 실패를
+// 막기 위해 인접(난이도 순) 티어 단어를 차례로 더해 minPool 이상이 되도록
+// 보강한다. 1차 풀이 충분하면(예: easy 907단어) 보강 없이 순수 티어 풀을 쓴다.
+export function selectWordsForProfile<
+  T extends { difficulty?: string | null },
+>(
+  words: readonly T[],
+  profile: DifficultyProfile,
+  minPool: number = MIN_GENERATION_WORD_POOL,
+): WordSelection<T> {
+  const allowed = new Set<Difficulty>(profile.wordDifficulties);
+  let selected = words.filter((word) => allowed.has(getWordDifficulty(word)));
+  const broadenedWith: Difficulty[] = [];
+
+  for (const difficulty of DIFFICULTY_ORDER) {
+    if (selected.length >= minPool) {
+      break;
+    }
+
+    if (allowed.has(difficulty)) {
+      continue;
+    }
+
+    allowed.add(difficulty);
+    broadenedWith.push(difficulty);
+    selected = words.filter((word) => allowed.has(getWordDifficulty(word)));
+  }
+
+  return {
+    words: selected,
+    difficulties: DIFFICULTY_ORDER.filter((difficulty) =>
+      allowed.has(difficulty),
+    ),
+    broadened: broadenedWith.length > 0,
+    broadenedWith,
+  };
+}

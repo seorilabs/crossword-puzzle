@@ -6,12 +6,21 @@ import { strict as assert } from "node:assert";
 import {
   DIFFICULTY_ORDER,
   DIFFICULTY_PROFILES,
+  MIN_GENERATION_WORD_POOL,
   filterWordsByDifficulty,
   getWordDifficulty,
   isDifficulty,
   resolveDifficultyProfile,
+  selectWordsForProfile,
   summarizeWordDifficulties,
 } from "./difficultyProfiles.ts";
+
+function makeWords(difficulty: string, count: number) {
+  return Array.from({ length: count }, (_, index) => ({
+    answer: `${difficulty}${index}`,
+    difficulty,
+  }));
+}
 
 describe("resolveDifficultyProfile", () => {
   it("유효한 난이도는 해당 프로파일을 반환한다", () => {
@@ -116,6 +125,48 @@ describe("filterWordsByDifficulty", () => {
   it("normal 프로파일은 모든 단어를 허용한다", () => {
     const result = filterWordsByDifficulty(words, DIFFICULTY_PROFILES.normal);
     assert.equal(result.length, words.length);
+  });
+});
+
+describe("selectWordsForProfile", () => {
+  it("1차 풀이 충분하면 보강 없이 순수 티어 풀을 쓴다(easy=easy만)", () => {
+    const words = [
+      ...makeWords("easy", MIN_GENERATION_WORD_POOL + 50),
+      ...makeWords("normal", 1000),
+      ...makeWords("hard", 1000),
+    ];
+    const selection = selectWordsForProfile(words, DIFFICULTY_PROFILES.easy);
+    assert.equal(selection.broadened, false);
+    assert.deepEqual(selection.broadenedWith, []);
+    assert.deepEqual(selection.difficulties, ["easy"]);
+    const counts = summarizeWordDifficulties(selection.words);
+    assert.ok(counts.easy > 0);
+    assert.equal(counts.normal, 0);
+    assert.equal(counts.hard, 0);
+  });
+
+  it("1차 풀이 임계값 미만이면 인접 티어로 보강한다", () => {
+    const words = [
+      ...makeWords("easy", 10),
+      ...makeWords("normal", 1000),
+      ...makeWords("hard", 1000),
+    ];
+    const selection = selectWordsForProfile(words, DIFFICULTY_PROFILES.easy);
+    assert.equal(selection.broadened, true);
+    // easy 다음 난이도(normal)부터 더해 임계값을 채운다
+    assert.equal(selection.broadenedWith[0], "normal");
+    assert.ok(selection.words.length >= MIN_GENERATION_WORD_POOL);
+    assert.ok(summarizeWordDifficulties(selection.words).normal > 0);
+  });
+
+  it("minPool 을 0 으로 주면 보강 없이 빈 풀도 그대로 반환(테스트 편의)", () => {
+    const selection = selectWordsForProfile(
+      makeWords("hard", 5),
+      DIFFICULTY_PROFILES.easy,
+      0,
+    );
+    assert.equal(selection.broadened, false);
+    assert.equal(selection.words.length, 0);
   });
 });
 

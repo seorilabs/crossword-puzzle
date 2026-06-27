@@ -8,8 +8,8 @@ import {
   makeWordMap,
 } from "../../scripts/crossword-generator-prototype.mjs";
 import {
-  filterWordsByDifficulty,
   resolveDifficultyProfile,
+  selectWordsForProfile,
   summarizeWordDifficulties,
 } from "../../packages/crossword-core/src/difficultyProfiles.ts";
 
@@ -662,10 +662,8 @@ async function run() {
   const generationReport = [];
   const wordBank = await loadConfiguredWordBank(options.wordBankPath);
   const profile = resolveDifficultyProfile(options.difficulty);
-  const difficultyFilteredWords = filterWordsByDifficulty(
-    wordBank.words,
-    profile,
-  );
+  const wordSelection = selectWordsForProfile(wordBank.words, profile);
+  const difficultyFilteredWords = wordSelection.words;
   const wordBankDifficultyCounts = summarizeWordDifficulties(
     difficultyFilteredWords,
   );
@@ -673,6 +671,12 @@ async function run() {
   if (difficultyFilteredWords.length === 0) {
     throw new Error(
       `No words match difficulty profile ${profile.difficulty} (allowed=${profile.wordDifficulties.join(",")})`,
+    );
+  }
+
+  if (wordSelection.broadened) {
+    console.warn(
+      `Difficulty profile ${profile.difficulty} pool below ${profile.wordDifficulties.join(",")} threshold; broadened with [${wordSelection.broadenedWith.join(",")}] -> ${difficultyFilteredWords.length} words`,
     );
   }
 
@@ -694,7 +698,7 @@ async function run() {
     `Generator options append=${options.append} keep=${options.keepPuzzles} intervalHours=${options.intervalHours} attempts=${options.attempts} retries=${options.retries} samples=${options.samples} beam=${options.beamWidth} branch=${options.branchLimit} candidates=${options.candidateWordLimit}`,
   );
   console.log(
-    `Difficulty profile=${profile.difficulty} boardSize=${options.boardSize} maxWords=${options.maxWords} minWordLength=${options.minWordLength} wordBank allowed=[${profile.wordDifficulties.join(",")}] words=${difficultyFilteredWords.length}/${wordBank.words.length} byDifficulty=${JSON.stringify(wordBankDifficultyCounts)}`,
+    `Difficulty profile=${profile.difficulty} boardSize=${options.boardSize} maxWords=${options.maxWords} minWordLength=${options.minWordLength} minWordCount=${options.minWordCount} wordBank allowed=[${wordSelection.difficulties.join(",")}] words=${difficultyFilteredWords.length}/${wordBank.words.length} byDifficulty=${JSON.stringify(wordBankDifficultyCounts)}`,
   );
 
   for (let dayIndex = 0; dayIndex < options.days; dayIndex += 1) {
@@ -869,6 +873,8 @@ async function run() {
       minWordLength: options.minWordLength,
       minWordCount: options.minWordCount,
       wordDifficulties: profile.wordDifficulties,
+      effectiveWordDifficulties: wordSelection.difficulties,
+      broadened: wordSelection.broadened,
     },
     wordBank: {
       path: options.wordBankPath,
