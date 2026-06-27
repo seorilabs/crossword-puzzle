@@ -67,6 +67,9 @@ SELECT
   COUNT(DISTINCT user_pseudo_id) AS users,
   ANY_VALUE(after_cutoff) AS after_cutoff
 FROM result_interstitial_events
+-- 방어적 가드: WHERE 화이트리스트가 이미 stage를 세 계약값으로 보장하지만, 향후
+-- CASE/WHERE가 desync되어도 stage=NULL(비계약) 행이 집계·verdict에 섞이지 않게 한다.
+WHERE stage IS NOT NULL
 GROUP BY event_date, stage
 ORDER BY event_date, stage;
 
@@ -83,4 +86,5 @@ SELECT
   COUNT(DISTINCT IF(after_cutoff, user_pseudo_id, NULL)) AS users_after_cutoff,
   -- 한눈에 보는 준수 여부 판정.
   IF(COUNTIF(after_cutoff) = 0, 'COMPLIANT', 'VIOLATION') AS verdict
-FROM result_interstitial_events;
+FROM result_interstitial_events
+WHERE stage IS NOT NULL;
