@@ -13,5 +13,11 @@ export type ProgressRepository = {
 };
 
 export function createEmptyProgress(): SavedProgress {
-  return { cellValues: {}, earnedHintCredits: 0, hintCount: 0, revealUsed: false };
+  return {
+    cellValues: {},
+    earnedHintCredits: 0,
+    hintCount: 0,
+    revealUsed: false,
+    tentativeCells: [],
+  };
 }

@@ -180,6 +180,62 @@ describe("localProgressRepository — restartMissionAttempt 시나리오", () =>
     assert.equal(loaded.revealUsed, false, "boolean이 아니면 false");
   });
 
+  it("saveProgress로 저장한 tentativeCells는 loadProgress로 복원된다", async () => {
+    await repo.saveProgress("puzzle-tentative", {
+      cellValues: { "0,0": "가", "0,1": "나" },
+      earnedHintCredits: 0,
+      hintCount: 0,
+      tentativeCells: ["0,0", "0,1"],
+    });
+    const loaded = await repo.loadProgress("puzzle-tentative");
+    assert.deepEqual(
+      loaded.tentativeCells,
+      ["0,0", "0,1"],
+      "연필(임시) 셀 목록이 보존되어야 함",
+    );
+  });
+
+  it("tentativeCells 필드가 없는 구버전 데이터는 빈 배열로 정규화된다", async () => {
+    storage.setItem(
+      "crossword-puzzle:progress:puzzle-legacy-tentative",
+      JSON.stringify({ cellValues: {}, earnedHintCredits: 0, hintCount: 0 }),
+    );
+    const loaded = await repo.loadProgress("puzzle-legacy-tentative");
+    assert.deepEqual(loaded.tentativeCells, [], "필드 누락 시 빈 배열");
+  });
+
+  it("tentativeCells가 배열이 아니면(오염) 빈 배열로 정규화된다", async () => {
+    storage.setItem(
+      "crossword-puzzle:progress:puzzle-bad-tentative",
+      JSON.stringify({
+        cellValues: {},
+        earnedHintCredits: 0,
+        hintCount: 0,
+        tentativeCells: "0,0",
+      }),
+    );
+    const loaded = await repo.loadProgress("puzzle-bad-tentative");
+    assert.deepEqual(loaded.tentativeCells, [], "배열이 아니면 빈 배열");
+  });
+
+  it("tentativeCells의 문자열이 아닌 항목(오염)은 제외된다", async () => {
+    storage.setItem(
+      "crossword-puzzle:progress:puzzle-dirty-tentative",
+      JSON.stringify({
+        cellValues: {},
+        earnedHintCredits: 0,
+        hintCount: 0,
+        tentativeCells: ["0,0", 1, null, "1,2"],
+      }),
+    );
+    const loaded = await repo.loadProgress("puzzle-dirty-tentative");
+    assert.deepEqual(
+      loaded.tentativeCells,
+      ["0,0", "1,2"],
+      "문자열 항목만 남아야 함",
+    );
+  });
+
   it("saveProgress가 실패하면 예외를 전파한다", async () => {
     const failStorage = {
       getItem: () => null,

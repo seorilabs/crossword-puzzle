@@ -83,6 +83,11 @@ function normalizeProgress(progress: Partial<SavedProgress>): SavedProgress {
         : 0,
     // 구버전 저장 데이터(필드 누락)나 오염된 값은 false로 정규화한다.
     revealUsed: progress.revealUsed === true,
+    // 연필(임시) 모드 셀 키 목록. 배열이 아니거나(구버전/오염) 문자열이 아닌
+    // 항목은 제외해 표시용 메타데이터의 무결성을 지킨다.
+    tentativeCells: Array.isArray(progress.tentativeCells)
+      ? progress.tentativeCells.filter((key) => typeof key === "string")
+      : [],
   };
 }
 

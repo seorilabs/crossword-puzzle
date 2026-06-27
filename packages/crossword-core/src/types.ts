@@ -165,6 +165,11 @@ export type SavedProgress = {
   // 최고 기록 판정에서 제외하기 위해 진행상태에 보존한다. 구버전 저장 데이터에는
   // 없으므로 optional이며, 로드 시 false로 정규화한다.
   revealUsed?: boolean;
+  // 연필(임시) 모드로 입력한 셀 키 목록(`"row,col"`). 확신 없는 글자를 회색으로
+  // 구분 렌더하기 위한 표시용 메타데이터이며, 정오/완료 판정에는 영향을 주지
+  // 않는다(판정은 cellValues 값만 본다). 구버전 저장 데이터에는 없으므로
+  // optional이며, 로드 시 빈 배열로 정규화한다.
+  tentativeCells?: string[];
 };
 
 export type ReviewEntry = PuzzleEntry & {
