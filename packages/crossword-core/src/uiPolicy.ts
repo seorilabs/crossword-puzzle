@@ -545,6 +545,20 @@ export function getNextStreakMilestoneHint(streak: number): string | null {
   return null;
 }
 
+// 셀에 오답 빨간 표시(cellWrong)를 보여줄지 결정한다. 상시 오답표시(autocheck)가
+// 켜져 있거나, "이 단어 확인"으로 일시 강조(isChecked) 중인 셀만 오답을 노출한다.
+// 정답이거나 미입력 셀(isWrong=false)은 항상 표시하지 않는다.
+export function isWrongCellVisible(input: {
+  isWrong: boolean;
+  autocheckEnabled: boolean;
+  isChecked: boolean;
+}): boolean {
+  if (!input.isWrong) {
+    return false;
+  }
+  return input.autocheckEnabled || input.isChecked;
+}
+
 export function getStreakMilestoneProgress(streak: number): string | null {
   if (!Number.isFinite(streak) || streak <= 0) return null;
   const safeStreak = Math.floor(streak);

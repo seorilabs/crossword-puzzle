@@ -48,6 +48,7 @@ import {
   getNextStreakMilestoneHint,
   getStreakBadgeLabel,
   getStreakMilestoneProgress,
+  isWrongCellVisible,
   shouldQuickStartActivePuzzle,
   shouldServeOnboardingPuzzle,
   sortPuzzleSummariesByRecency,
@@ -1593,12 +1594,10 @@ function App() {
     }
 
     const nextMission = completeMission(mission);
-    const achievements = getCompletionAchievements({
-      hintCount,
-      attemptsUsed: nextMission.attemptsUsed,
-      revealUsed,
-    });
     setMission(nextMission);
+    // 데일리 스트릭은 "완료 사실"(completedAt 보유 일자)만으로 산정한다.
+    // 정답 보기(revealUsed)로 완료해도 완료는 완료로 인정하므로 스트릭은 끊기지
+    // 않는다(노힌트·첫 도전·best-time만 revealUsed로 제외 — getCompletionAchievements).
     void missionRepository.saveMission(nextMission).then(() => {
       invalidateStreakCache();
       setConsecutiveStreak(computeConsecutiveStreakDays());
@@ -1620,9 +1619,10 @@ function App() {
       remaining_attempts: getRemainingAttempts(nextMission),
     });
 
-    // 정답 공개(revealUsed)로 완료한 경우 최고 기록 갱신에서 제외한다.
+    // 정답 공개(revealUsed)면 무조건 최고 기록 갱신에서 제외한다(revealUsed를
+    // 최우선 가드로 두어 정책 의도를 명시). bestTimeEligible === !revealUsed.
     if (
-      achievements.bestTimeEligible &&
+      !revealUsed &&
       nextMission.lastStartedAt != null &&
       nextMission.completedAt != null
     ) {
@@ -2285,6 +2285,9 @@ function App() {
   function checkSelectedWord() {
     const selectedEntry = viewModel.selectedEntry;
     if (selectedEntry == null) {
+      // 툴바 버튼은 disabled 가드로 막혀 있지만, 다른 호출 경로(단축키 등)에서도
+      // 무음 no-op이 되지 않도록 안내 토스트를 띄운다.
+      showHintToast("먼저 단서를 선택하세요.");
       return;
     }
 
@@ -2329,11 +2332,15 @@ function App() {
   function revealSelectedWord() {
     const selectedEntry = viewModel.selectedEntry;
     if (selectedEntry == null) {
+      showHintToast("먼저 단서를 선택하세요.");
       return;
     }
 
-    if (getEntryAnswerValue(selectedEntry, cellValues) === selectedEntry.answer) {
-      setHintNotice("이미 정답이 채워진 단어예요.");
+    if (
+      getEntryAnswerValue(selectedEntry, cellValues) === selectedEntry.answer
+    ) {
+      // hintNotice는 노출 채널이 화면마다 달라, 항상 보이는 토스트로 피드백한다.
+      showHintToast("이미 정답이 채워진 단어예요.");
       return;
     }
 
@@ -6502,8 +6509,11 @@ function PuzzleBoard({
           const isWrong = !isPending && isFilled && committedValue !== answer;
           // autocheck가 꺼져 있으면 오답 빨간 표시를 숨긴다. 단, "이 단어 확인"으로
           // 강조 중인 셀(checkedCellKeys)은 일시적으로 오답을 보여준다.
-          const showWrong =
-            isWrong && (autocheckEnabled || checkedCellKeys.has(key));
+          const showWrong = isWrongCellVisible({
+            isWrong,
+            autocheckEnabled,
+            isChecked: checkedCellKeys.has(key),
+          });
           const isJustCompleted = (completionKeyRefCount.get(key) ?? 0) > 0;
 
           if (answer === "") {
