@@ -12,6 +12,7 @@ import {
   getProgressMilestoneRewardMessage,
   getStreakMilestoneProgress,
   isPublishedPuzzle,
+  isWrongCellVisible,
   PUZZLE_PROGRESS_MILESTONES,
   shouldQuickStartActivePuzzle,
   shouldServeOnboardingPuzzle,
@@ -451,5 +452,51 @@ describe("getDailyFreePuzzleSummary", () => {
 
     const result = getDailyFreePuzzleSummary([past, future], today, now);
     assert.equal(result?.puzzleId, "past");
+  });
+});
+
+describe("isWrongCellVisible", () => {
+  it("정답/미입력 셀(isWrong=false)은 autocheck·강조와 무관하게 표시하지 않는다", () => {
+    assert.equal(
+      isWrongCellVisible({
+        isWrong: false,
+        autocheckEnabled: true,
+        isChecked: true,
+      }),
+      false,
+    );
+  });
+
+  it("autocheck 켜짐이면 오답 셀을 표시한다", () => {
+    assert.equal(
+      isWrongCellVisible({
+        isWrong: true,
+        autocheckEnabled: true,
+        isChecked: false,
+      }),
+      true,
+    );
+  });
+
+  it("autocheck 꺼짐 + 미강조면 오답 셀을 표시하지 않는다", () => {
+    assert.equal(
+      isWrongCellVisible({
+        isWrong: true,
+        autocheckEnabled: false,
+        isChecked: false,
+      }),
+      false,
+    );
+  });
+
+  it("autocheck 꺼짐이어도 '이 단어 확인'으로 강조 중이면 오답을 일시 표시한다", () => {
+    assert.equal(
+      isWrongCellVisible({
+        isWrong: true,
+        autocheckEnabled: false,
+        isChecked: true,
+      }),
+      true,
+    );
   });
 });

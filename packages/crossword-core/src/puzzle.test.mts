@@ -4,6 +4,7 @@ import { strict as assert } from "node:assert";
 import {
   getNearestUncompletedEntry,
   getNextFocusEntryAfterCompletion,
+  getWordCheckResult,
 } from "./puzzle.ts";
 import type { PuzzleEntry } from "./types.ts";
 
@@ -72,5 +73,39 @@ describe("getNextFocusEntryAfterCompletion", () => {
     };
     const next = getNextFocusEntryAfterCompletion(entries, cellValues, d2, "1:1");
     assert.equal(next?.id, "d3");
+  });
+});
+
+describe("getWordCheckResult", () => {
+  const word = entry({
+    id: "a1",
+    answer: "가나다",
+    direction: "across",
+    row: 0,
+    col: 0,
+  });
+  // 셀 키 형식은 getCellKey와 동일한 "row:col".
+
+  it("모든 셀 키를 단어 순서대로 돌려준다", () => {
+    const result = getWordCheckResult(word, {});
+    assert.deepEqual(result.cellKeys, ["0:0", "0:1", "0:2"]);
+    assert.equal(result.filledCount, 0);
+    assert.equal(result.wrongCount, 0);
+  });
+
+  it("입력된 셀만 세고, 정답과 다른 글자를 오답으로 센다", () => {
+    const result = getWordCheckResult(word, { "0:0": "가", "0:1": "X" });
+    assert.equal(result.filledCount, 2);
+    assert.equal(result.wrongCount, 1);
+  });
+
+  it("모두 정답이면 오답 0", () => {
+    const result = getWordCheckResult(word, {
+      "0:0": "가",
+      "0:1": "나",
+      "0:2": "다",
+    });
+    assert.equal(result.filledCount, 3);
+    assert.equal(result.wrongCount, 0);
   });
 });

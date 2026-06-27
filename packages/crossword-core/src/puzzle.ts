@@ -228,6 +228,41 @@ export function getEntryAnswerValue(
     .join("");
 }
 
+export type WordCheckResult = {
+  // 단어를 이루는 모든 셀 키(강조 대상)
+  cellKeys: string[];
+  // 글자가 입력된 셀 수
+  filledCount: number;
+  // 입력된 글자 중 정답과 다른 셀 수
+  wrongCount: number;
+};
+
+// "이 단어 확인"의 순수 계산부: 선택 단어의 강조 대상 셀 키와 입력/오답 수를
+// 돌려준다(타이머·렌더 같은 부수효과는 호출부에서 처리).
+export function getWordCheckResult(
+  entry: PuzzleEntry,
+  cellValues: Record<string, string>,
+): WordCheckResult {
+  const answerLetters = [...entry.answer];
+  const cellKeys: string[] = [];
+  let filledCount = 0;
+  let wrongCount = 0;
+
+  getEntryCells(entry).forEach((cell, index) => {
+    const key = getCellKey(cell.row, cell.col);
+    cellKeys.push(key);
+    const value = cellValues[key];
+    if (value != null) {
+      filledCount += 1;
+      if (value !== answerLetters[index]) {
+        wrongCount += 1;
+      }
+    }
+  });
+
+  return { cellKeys, filledCount, wrongCount };
+}
+
 export function getEntryCellDistance(
   entry: PuzzleEntry,
   targetEntry: PuzzleEntry,

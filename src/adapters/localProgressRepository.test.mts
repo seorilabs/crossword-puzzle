@@ -146,6 +146,40 @@ describe("localProgressRepository — restartMissionAttempt 시나리오", () =>
     assert.equal(loaded.hintCount, 1, "소수점 힌트카운트는 내림하여 정수로 정규화");
   });
 
+  it("saveProgress로 저장한 revealUsed는 loadProgress로 복원된다", async () => {
+    await repo.saveProgress("puzzle-reveal", {
+      cellValues: { "0,0": "가" },
+      earnedHintCredits: 0,
+      hintCount: 0,
+      revealUsed: true,
+    });
+    const loaded = await repo.loadProgress("puzzle-reveal");
+    assert.equal(loaded.revealUsed, true, "정답 공개 여부가 보존되어야 함");
+  });
+
+  it("revealUsed 필드가 없는 구버전 데이터는 false로 정규화된다", async () => {
+    storage.setItem(
+      "crossword-puzzle:progress:puzzle-legacy-reveal",
+      JSON.stringify({ cellValues: {}, earnedHintCredits: 0, hintCount: 0 }),
+    );
+    const loaded = await repo.loadProgress("puzzle-legacy-reveal");
+    assert.equal(loaded.revealUsed, false, "필드 누락 시 false");
+  });
+
+  it("revealUsed가 boolean이 아니면(오염) false로 정규화된다", async () => {
+    storage.setItem(
+      "crossword-puzzle:progress:puzzle-bad-reveal",
+      JSON.stringify({
+        cellValues: {},
+        earnedHintCredits: 0,
+        hintCount: 0,
+        revealUsed: "yes",
+      }),
+    );
+    const loaded = await repo.loadProgress("puzzle-bad-reveal");
+    assert.equal(loaded.revealUsed, false, "boolean이 아니면 false");
+  });
+
   it("saveProgress가 실패하면 예외를 전파한다", async () => {
     const failStorage = {
       getItem: () => null,
