@@ -31,6 +31,7 @@ import {
   getBounds,
   getCellKey,
   getCompletedEntries,
+  getCompletionAchievements,
   getDailyFreePuzzleSummaries,
   getDailyFreePuzzleSummary,
   getEntryAnswerValue,
@@ -163,6 +164,32 @@ function persistAnswerInputMode(mode: AnswerInputMode): void {
     // Storage blocked; the preference applies for this session only.
   }
 }
+
+// 상시 오답표시(autocheck) 설정. 기본값은 켜짐(기존 동작 유지)이며, "0"으로
+// 저장된 경우에만 끈 것으로 본다.
+const AUTOCHECK_STORAGE_KEY = "crossword:autocheck-enabled";
+
+function loadAutocheckEnabled(): boolean {
+  try {
+    return localStorage.getItem(AUTOCHECK_STORAGE_KEY) !== "0";
+  } catch {
+    return true;
+  }
+}
+
+function persistAutocheckEnabled(enabled: boolean): void {
+  try {
+    localStorage.setItem(AUTOCHECK_STORAGE_KEY, enabled ? "1" : "0");
+  } catch {
+    // Storage blocked; the preference applies for this session only.
+  }
+}
+
+// "이 단어 확인"으로 강조한 셀을 잠시(원복 전) 표시하는 시간(ms).
+const CHECK_HIGHLIGHT_MS = 2500;
+
+// PuzzleBoard의 checkedCellKeys 기본값. 매 렌더 새 Set 생성을 피한다.
+const EMPTY_CELL_KEY_SET: ReadonlySet<string> = new Set();
 
 type DateSelectionProps = {
   completionStatsByPuzzleId: CompletionStatsByPuzzleId;
@@ -751,6 +778,16 @@ function App() {
     computeConsecutiveStreakDays(),
   );
   const [isNewBestTime, setIsNewBestTime] = useState(false);
+  // "정답 보기"로 단어를 공개했는지. 노힌트/첫 도전 배지·최고 기록 판정에서
+  // 제외하기 위한 플래그로, 진행상태(SavedProgress)에 보존한다.
+  const [revealUsed, setRevealUsed] = useState(false);
+  // 상시 오답표시(autocheck) on/off 설정.
+  const [autocheckEnabled, setAutocheckEnabled] = useState(loadAutocheckEnabled);
+  // "이 단어 확인"으로 잠시 강조 중인 셀. 일정 시간 후 비워 원상 복구한다.
+  const [checkedCellKeys, setCheckedCellKeys] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const checkHighlightTimerRef = useRef<number | null>(null);
   const [now, setNow] = useState(() => new Date());
   const [hasSeenHowToPlay, setHasSeenHowToPlay] = useState(() => {
     try {
@@ -886,6 +923,7 @@ function App() {
       setCellValues(session.savedProgress.cellValues);
       setEarnedHintCredits(session.savedProgress.earnedHintCredits);
       setHintCount(session.savedProgress.hintCount);
+      setRevealUsed(session.savedProgress.revealUsed ?? false);
       setSelectedDirection("across");
       setSelectedEntryId(getInitialEntryId(session.nextPuzzle));
       setSelectedCellKey(getInitialEntryStartCellKey(session.nextPuzzle));
@@ -1053,7 +1091,8 @@ function App() {
     if (
       Object.keys(cellValues).length === 0 &&
       earnedHintCredits === 0 &&
-      hintCount === 0
+      hintCount === 0 &&
+      !revealUsed
     ) {
       return;
     }
@@ -1062,13 +1101,23 @@ function App() {
         cellValues,
         earnedHintCredits,
         hintCount,
+        revealUsed,
       })
       .catch(() => {
         telemetry.impression("progress_save_error", {
           puzzle_id: puzzle.puzzleId,
         });
       });
-  }, [cellValues, earnedHintCredits, hintCount, puzzle.puzzleId]);
+  }, [cellValues, earnedHintCredits, hintCount, revealUsed, puzzle.puzzleId]);
+
+  // "이 단어 확인" 강조 타이머 정리(언마운트 시).
+  useEffect(() => {
+    return () => {
+      if (checkHighlightTimerRef.current != null) {
+        window.clearTimeout(checkHighlightTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     setDateCardStates((prev) => ({
@@ -1544,6 +1593,11 @@ function App() {
     }
 
     const nextMission = completeMission(mission);
+    const achievements = getCompletionAchievements({
+      hintCount,
+      attemptsUsed: nextMission.attemptsUsed,
+      revealUsed,
+    });
     setMission(nextMission);
     void missionRepository.saveMission(nextMission).then(() => {
       invalidateStreakCache();
@@ -1561,10 +1615,17 @@ function App() {
       ),
       earned_hint_credits: earnedHintCredits,
       hint_count: hintCount,
+      // 정답 공개로 완료한 미션은 reveal_used=true로 구분해 분석에서 분리한다.
+      reveal_used: revealUsed,
       remaining_attempts: getRemainingAttempts(nextMission),
     });
 
-    if (nextMission.lastStartedAt != null && nextMission.completedAt != null) {
+    // 정답 공개(revealUsed)로 완료한 경우 최고 기록 갱신에서 제외한다.
+    if (
+      achievements.bestTimeEligible &&
+      nextMission.lastStartedAt != null &&
+      nextMission.completedAt != null
+    ) {
       const elapsedMs =
         new Date(nextMission.completedAt).getTime() -
         new Date(nextMission.lastStartedAt).getTime();
@@ -1589,6 +1650,7 @@ function App() {
     mission,
     puzzle,
     puzzleTelemetryParams,
+    revealUsed,
     savePuzzleSnapshot,
     route,
     viewModel.completedEntries.length,
@@ -1721,7 +1783,7 @@ function App() {
   function trackFirstAnswerInput(
     entry: PuzzleEntry,
     inputLength: number,
-    source: "debug" | "manual",
+    source: "debug" | "manual" | "reveal",
   ) {
     if (source === "manual" && inputLength > 0) {
       const firstInputKey = `${puzzle.puzzleId}:${mission.attemptsUsed}`;
@@ -1776,7 +1838,7 @@ function App() {
   function applyAnswer(
     entry: PuzzleEntry,
     value: string,
-    source: "debug" | "manual" = "manual",
+    source: "debug" | "manual" | "reveal" = "manual",
   ) {
     const cells = getEntryCells(entry);
     const nextLetters = getAnswerInputLetters(value, cells.length);
@@ -1809,7 +1871,7 @@ function App() {
     entry: PuzzleEntry,
     value: string,
     startCellKey = selectedCellKey,
-    source: "debug" | "manual" = "manual",
+    source: "debug" | "manual" | "reveal" = "manual",
   ) {
     const cells = getEntryCells(entry);
     const startIndex = getEntryCellIndex(entry, startCellKey);
@@ -2217,6 +2279,85 @@ function App() {
     setCellValues(nextValues);
   }
 
+  // 일반 플레이 화면용: 사용자가 명시적으로 호출하는 "이 단어 확인". 선택 단어
+  // 셀에 정/오를 잠시 강조한 뒤 CHECK_HIGHLIGHT_MS 후 원상 복구한다. autocheck를
+  // 꺼둔 상태에서도 이 강조는 동작한다(PuzzleBoard 렌더가 checkedCellKeys를 함께 본다).
+  function checkSelectedWord() {
+    const selectedEntry = viewModel.selectedEntry;
+    if (selectedEntry == null) {
+      return;
+    }
+
+    const cells = getEntryCells(selectedEntry);
+    const answerLetters = [...selectedEntry.answer];
+    const keys: string[] = [];
+    let filledCount = 0;
+    let wrongCount = 0;
+
+    cells.forEach((cell, index) => {
+      const key = getCellKey(cell.row, cell.col);
+      keys.push(key);
+      const value = cellValues[key];
+      if (value != null) {
+        filledCount += 1;
+        if (value !== answerLetters[index]) {
+          wrongCount += 1;
+        }
+      }
+    });
+
+    setCheckedCellKeys(new Set(keys));
+    if (checkHighlightTimerRef.current != null) {
+      window.clearTimeout(checkHighlightTimerRef.current);
+    }
+    checkHighlightTimerRef.current = window.setTimeout(() => {
+      setCheckedCellKeys(new Set());
+      checkHighlightTimerRef.current = null;
+    }, CHECK_HIGHLIGHT_MS);
+
+    telemetry.click("check_word", {
+      puzzle_id: puzzle.puzzleId,
+      entry_id: selectedEntry.id,
+      filled_count: filledCount,
+      wrong_count: wrongCount,
+    });
+  }
+
+  // 일반 플레이 화면용: 사용자가 명시적으로 호출하는 "이 단어 정답 보기". 선택
+  // 단어를 정답으로 채우고 revealUsed를 세워, 노힌트/첫 도전 배지와 최고 기록
+  // 판정에서 제외한다(getCompletionAchievements).
+  function revealSelectedWord() {
+    const selectedEntry = viewModel.selectedEntry;
+    if (selectedEntry == null) {
+      return;
+    }
+
+    if (getEntryAnswerValue(selectedEntry, cellValues) === selectedEntry.answer) {
+      setHintNotice("이미 정답이 채워진 단어예요.");
+      return;
+    }
+
+    setRevealUsed(true);
+    applyAnswer(selectedEntry, selectedEntry.answer, "reveal");
+    telemetry.click("reveal_word", {
+      puzzle_id: puzzle.puzzleId,
+      entry_id: selectedEntry.id,
+      progress_percent: progressPercent,
+    });
+  }
+
+  function toggleAutocheck() {
+    setAutocheckEnabled((prev) => {
+      const next = !prev;
+      persistAutocheckEnabled(next);
+      telemetry.click("autocheck_toggle", {
+        puzzle_id: puzzle.puzzleId,
+        enabled: next,
+      });
+      return next;
+    });
+  }
+
   async function clearProgress(preserveEarnedHintCredits?: number) {
     const raw = preserveEarnedHintCredits ?? 0;
     const creditsValue = Number.isFinite(raw) ? Math.max(0, raw) : 0;
@@ -2227,6 +2368,7 @@ function App() {
         cellValues: {},
         earnedHintCredits: creditsValue,
         hintCount: 0,
+        revealUsed: false,
       });
     } else {
       await progressRepository.clearProgress(puzzle.puzzleId);
@@ -2235,6 +2377,7 @@ function App() {
     setCellValues({});
     setEarnedHintCredits(creditsValue);
     setHintCount(0);
+    setRevealUsed(false);
     setHintNotice("");
     setHintToast({ id: 0, message: "" });
     setSelectedDirection("across");
@@ -2443,8 +2586,11 @@ function App() {
     answerInputMode,
     applyAnswer,
     applyAnswerSegment,
+    autocheckEnabled,
     selectAnswerInputMode,
     cellValues,
+    checkedCellKeys,
+    checkSelectedWord,
     clearAnswerCell,
     clearEntryAnswer,
     clueEntries: viewModel.clueEntries,
@@ -2456,6 +2602,8 @@ function App() {
     remainingAttempts,
     requestRewardedHint,
     revealLetter,
+    revealSelectedWord,
+    revealUsed,
     selectedAnswer: viewModel.selectedAnswer,
     selectedCellKey,
     selectedDirection,
@@ -2464,6 +2612,7 @@ function App() {
     selectCell,
     selectEntry,
     startLabels: viewModel.startLabels,
+    toggleAutocheck,
     useHint: useHintOrRequestReward,
     viewModel,
   };
@@ -2534,6 +2683,7 @@ function App() {
           remainingAttempts={remainingAttempts}
           requestBonusPuzzle={() => void requestBonusPuzzle()}
           restartMissionAttempt={restartMissionAttempt}
+          revealUsed={revealUsed}
         />
       ) : route === "history" ? (
         <HistoryScreen
@@ -3704,6 +3854,7 @@ function buildShareText({
   totalCount,
   consecutiveStreak,
   isComplete,
+  revealUsed,
 }: {
   puzzleLabel: string;
   elapsedLabel: string | null;
@@ -3713,6 +3864,7 @@ function buildShareText({
   totalCount: number;
   consecutiveStreak: number;
   isComplete: boolean;
+  revealUsed: boolean;
 }): string {
   const lines: string[] = [`가로세로 낱말 퍼즐 ${puzzleLabel}`, ""];
 
@@ -3722,9 +3874,14 @@ function buildShareText({
   if (hintCount > 0) stats.push(`힌트 ${hintCount}회`);
   lines.push(stats.join(" · "));
 
+  const achievements = getCompletionAchievements({
+    hintCount,
+    attemptsUsed,
+    revealUsed,
+  });
   const badges: string[] = [];
-  if (isComplete && hintCount === 0) badges.push("🎯 노힌트 클리어");
-  if (isComplete && attemptsUsed === 1) badges.push("💎 첫 도전 성공");
+  if (isComplete && achievements.noHint) badges.push("🎯 노힌트 클리어");
+  if (isComplete && achievements.firstTry) badges.push("💎 첫 도전 성공");
   if (badges.length > 0) lines.push(badges.join(" · "));
 
   if (consecutiveStreak >= 100) {
@@ -3992,7 +4149,10 @@ type TodayScreenProps = DateSelectionProps & {
     value: string,
     startCellKey?: string,
   ) => void;
+  autocheckEnabled: boolean;
   cellValues: Record<string, string>;
+  checkedCellKeys: ReadonlySet<string>;
+  checkSelectedWord: () => void;
   clearAnswerCell: (entry: PuzzleEntry, cellKey?: string) => void;
   clearEntryAnswer: (entry: PuzzleEntry) => void;
   consecutiveStreak: number;
@@ -4011,6 +4171,8 @@ type TodayScreenProps = DateSelectionProps & {
   puzzle: Puzzle;
   remainingAttempts: number;
   revealLetter: () => void;
+  revealSelectedWord: () => void;
+  revealUsed: boolean;
   selectedAnswer: string;
   selectedCellKey: string;
   selectedDirection: Direction;
@@ -4020,6 +4182,7 @@ type TodayScreenProps = DateSelectionProps & {
   selectCell: (row: number, col: number) => void;
   selectEntry: (entry: PuzzleEntry, cellKey?: string) => void;
   startOrResumeMission: () => void;
+  toggleAutocheck: () => void;
   useHint: () => void;
   viewModel: PuzzleViewModel;
 };
@@ -4029,7 +4192,10 @@ function TodayScreen({
   selectAnswerInputMode,
   applyAnswer,
   applyAnswerSegment,
+  autocheckEnabled,
   cellValues,
+  checkedCellKeys,
+  checkSelectedWord,
   clearAnswerCell,
   clearEntryAnswer,
   completedEntries,
@@ -4051,6 +4217,8 @@ function TodayScreen({
   puzzle,
   puzzleSummaries,
   remainingAttempts,
+  revealSelectedWord,
+  revealUsed,
   selectedCellKey,
   selectedPuzzleId,
   selectedEntry,
@@ -4059,6 +4227,7 @@ function TodayScreen({
   selectCell,
   selectEntry,
   startOrResumeMission,
+  toggleAutocheck,
   useHint,
   viewModel,
 }: TodayScreenProps) {
@@ -4970,6 +5139,42 @@ function TodayScreen({
         </div>
       ) : null}
 
+      {!isReviewMode ? (
+        <div className="solveAssistBar" role="group" aria-label="정답 확인 도구">
+          <button
+            className="assistButton"
+            type="button"
+            disabled={selectedEntry == null}
+            onClick={checkSelectedWord}
+          >
+            이 단어 확인
+          </button>
+          <button
+            className="assistButton"
+            type="button"
+            disabled={selectedEntry == null}
+            onClick={revealSelectedWord}
+          >
+            정답 보기
+          </button>
+          <button
+            className={[
+              "assistButton",
+              "assistToggle",
+              autocheckEnabled ? "assistToggleOn" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            type="button"
+            aria-pressed={autocheckEnabled}
+            title="입력한 글자의 오답을 빨갛게 표시할지 설정해요"
+            onClick={toggleAutocheck}
+          >
+            오답 표시 {autocheckEnabled ? "켜짐" : "꺼짐"}
+          </button>
+        </div>
+      ) : null}
+
       {isReviewMode ? (
         <div
           className="reviewBanner"
@@ -5006,8 +5211,10 @@ function TodayScreen({
 
       <section className="puzzlePlayArea" aria-label="퍼즐 풀이">
         <PuzzleBoard
+          autocheckEnabled={autocheckEnabled}
           cellEntries={viewModel.cellEntries}
           cellValues={cellValues}
+          checkedCellKeys={checkedCellKeys}
           cols={viewModel.cols}
           completedEntries={completedEntries}
           pendingCellValues={pendingAnswerCellValues}
@@ -5068,6 +5275,7 @@ function TodayScreen({
           )}
           hintCount={hintCount}
           isNewBestTime={isNewBestTime}
+          revealUsed={revealUsed}
           totalCount={puzzle.entries.length}
           onClose={dismissCompletionCelebration}
           onGoHome={() => {
@@ -5091,6 +5299,7 @@ type CompletionCelebrationDialogProps = {
   elapsedLabel: string | null;
   hintCount: number;
   isNewBestTime: boolean;
+  revealUsed: boolean;
   totalCount: number;
   onClose: () => void;
   onGoHome: () => void;
@@ -5104,6 +5313,7 @@ function CompletionCelebrationDialog({
   elapsedLabel,
   hintCount,
   isNewBestTime,
+  revealUsed,
   totalCount,
   onClose,
   onGoHome,
@@ -5111,11 +5321,16 @@ function CompletionCelebrationDialog({
 }: CompletionCelebrationDialogProps) {
   const streakBadge = getStreakBadgeLabel(consecutiveStreak);
   const nextStreakHint = getNextStreakMilestoneHint(consecutiveStreak);
+  const achievements = getCompletionAchievements({
+    hintCount,
+    attemptsUsed,
+    revealUsed,
+  });
 
   const hasAchievements =
     isNewBestTime ||
-    hintCount === 0 ||
-    attemptsUsed === 1 ||
+    achievements.noHint ||
+    achievements.firstTry ||
     streakBadge != null;
 
   return (
@@ -5152,10 +5367,10 @@ function CompletionCelebrationDialog({
                   🏆 최고 기록 갱신!
                 </span>
               )}
-              {hintCount === 0 && (
+              {achievements.noHint && (
                 <span className="resultAchievement">🎯 노힌트 클리어</span>
               )}
-              {attemptsUsed === 1 && (
+              {achievements.firstTry && (
                 <span className="resultAchievement">💎 첫 도전 성공</span>
               )}
               {streakBadge != null && (
@@ -5365,6 +5580,7 @@ type ResultScreenProps = DateSelectionProps & {
   remainingAttempts: number;
   requestBonusPuzzle: () => void;
   restartMissionAttempt: () => void;
+  revealUsed: boolean;
 };
 
 function ResultScreen({
@@ -5385,6 +5601,7 @@ function ResultScreen({
   remainingAttempts,
   requestBonusPuzzle,
   restartMissionAttempt,
+  revealUsed,
   selectedPuzzleId,
   selectPuzzle,
 }: ResultScreenProps) {
@@ -5433,6 +5650,11 @@ function ResultScreen({
   const nextStreakHint = isComplete
     ? getNextStreakMilestoneHint(consecutiveStreak)
     : null;
+  const resultAchievements = getCompletionAchievements({
+    hintCount,
+    attemptsUsed: mission?.attemptsUsed ?? 0,
+    revealUsed,
+  });
   const resultStartLabels = useMemo(
     () => buildStartLabels(puzzle.entries),
     [puzzle.entries],
@@ -5459,6 +5681,7 @@ function ResultScreen({
       totalCount: puzzle.entries.length,
       consecutiveStreak,
       isComplete,
+      revealUsed,
     });
 
     function copyToClipboard() {
@@ -5538,8 +5761,8 @@ function ResultScreen({
         )}
         {isComplete &&
           (isNewBestTime ||
-            hintCount === 0 ||
-            mission?.attemptsUsed === 1 ||
+            resultAchievements.noHint ||
+            resultAchievements.firstTry ||
             streakAchievementLabel != null) && (
             <div className="resultAchievements">
               {isNewBestTime && (
@@ -5547,10 +5770,10 @@ function ResultScreen({
                   🏆 최고 기록 갱신!
                 </span>
               )}
-              {hintCount === 0 && (
+              {resultAchievements.noHint && (
                 <span className="resultAchievement">🎯 노힌트 클리어</span>
               )}
-              {mission?.attemptsUsed === 1 && (
+              {resultAchievements.firstTry && (
                 <span className="resultAchievement">💎 첫 도전 성공</span>
               )}
               {streakAchievementLabel != null && (
@@ -6141,8 +6364,14 @@ function SlotValidationSummary({ validation }: SlotValidationSummaryProps) {
 }
 
 type PuzzleBoardProps = {
+  // 상시 오답표시 설정. 꺼지면 cellWrong 빨간 표시를 자동 적용하지 않는다.
+  // 미지정(개발 시뮬레이터 등)은 기존 동작대로 항상 표시(true)로 본다.
+  autocheckEnabled?: boolean;
   cellEntries: Map<string, PuzzleEntry[]>;
   cellValues: Record<string, string>;
+  // "이 단어 확인"으로 일시 강조 중인 셀. 이 셀들은 autocheck가 꺼져 있어도
+  // 오답을 잠시 표시한다.
+  checkedCellKeys?: ReadonlySet<string>;
   cols: number[];
   completedEntries: PuzzleEntry[];
   pendingCellValues: Record<string, string>;
@@ -6154,8 +6383,10 @@ type PuzzleBoardProps = {
 };
 
 function PuzzleBoard({
+  autocheckEnabled = true,
   cellEntries,
   cellValues,
+  checkedCellKeys = EMPTY_CELL_KEY_SET,
   cols,
   completedEntries,
   pendingCellValues,
@@ -6269,6 +6500,10 @@ function PuzzleBoard({
           // right/wrong styling.
           const isCorrect = !isPending && isFilled && committedValue === answer;
           const isWrong = !isPending && isFilled && committedValue !== answer;
+          // autocheck가 꺼져 있으면 오답 빨간 표시를 숨긴다. 단, "이 단어 확인"으로
+          // 강조 중인 셀(checkedCellKeys)은 일시적으로 오답을 보여준다.
+          const showWrong =
+            isWrong && (autocheckEnabled || checkedCellKeys.has(key));
           const isJustCompleted = (completionKeyRefCount.get(key) ?? 0) > 0;
 
           if (answer === "") {
@@ -6287,14 +6522,14 @@ function PuzzleBoard({
                 isCorrect ? "cellCorrect" : "",
                 isComplete ? "cellComplete" : "",
                 isJustCompleted ? "cellJustCompleted" : "",
-                isWrong ? "cellWrong" : "",
+                showWrong ? "cellWrong" : "",
               ]
                 .filter(Boolean)
                 .join(" ")}
               type="button"
               onClick={() => selectCell(row, col)}
               aria-label={`${row + 1}행 ${col + 1}열${
-                isWrong
+                showWrong
                   ? " 오답"
                   : isComplete
                     ? " 정답 완료"

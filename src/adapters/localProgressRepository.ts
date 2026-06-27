@@ -81,6 +81,8 @@ function normalizeProgress(progress: Partial<SavedProgress>): SavedProgress {
       Number.isFinite(progress.hintCount)
         ? Math.max(0, Math.floor(progress.hintCount))
         : 0,
+    // 구버전 저장 데이터(필드 누락)나 오염된 값은 false로 정규화한다.
+    revealUsed: progress.revealUsed === true,
   };
 }
 

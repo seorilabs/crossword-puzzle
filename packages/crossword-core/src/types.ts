@@ -161,6 +161,10 @@ export type SavedProgress = {
   cellValues: Record<string, string>;
   earnedHintCredits: number;
   hintCount: number;
+  // 사용자가 "정답 보기"로 단어를 공개했는지 여부. 노힌트/첫 도전 배지와
+  // 최고 기록 판정에서 제외하기 위해 진행상태에 보존한다. 구버전 저장 데이터에는
+  // 없으므로 optional이며, 로드 시 false로 정규화한다.
+  revealUsed?: boolean;
 };
 
 export type ReviewEntry = PuzzleEntry & {
