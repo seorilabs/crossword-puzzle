@@ -84,6 +84,45 @@ describe("DIFFICULTY_PROFILES 단조성", () => {
     assert.equal(DIFFICULTY_PROFILES.normal.minWordCount, 12);
   });
 
+  it("normal 의 교차율·밀도가 기존 전역 기본값(0.55/0.5)과 동일하다(회귀 방지)", () => {
+    assert.equal(DIFFICULTY_PROFILES.normal.minCrossRatio, 0.55);
+    assert.equal(DIFFICULTY_PROFILES.normal.minBboxDensity, 0.5);
+  });
+
+  it("easy/normal/hard 모두 교차율·밀도 임계값이 숫자로 정의되어 있다", () => {
+    for (const difficulty of DIFFICULTY_ORDER) {
+      const profile = DIFFICULTY_PROFILES[difficulty];
+      assert.equal(
+        typeof profile.minCrossRatio,
+        "number",
+        `${difficulty} minCrossRatio`,
+      );
+      assert.equal(
+        typeof profile.minBboxDensity,
+        "number",
+        `${difficulty} minBboxDensity`,
+      );
+    }
+  });
+
+  it("교차율은 easy ≥ normal ≥ hard(easy 더 촘촘, hard 완화)", () => {
+    assert.ok(
+      DIFFICULTY_PROFILES.easy.minCrossRatio >=
+        DIFFICULTY_PROFILES.normal.minCrossRatio,
+    );
+    assert.ok(
+      DIFFICULTY_PROFILES.normal.minCrossRatio >=
+        DIFFICULTY_PROFILES.hard.minCrossRatio,
+    );
+  });
+
+  it("밀도는 hard 가 normal 이하로 완화된다", () => {
+    assert.ok(
+      DIFFICULTY_PROFILES.hard.minBboxDensity <=
+        DIFFICULTY_PROFILES.normal.minBboxDensity,
+    );
+  });
+
   it("DIFFICULTY_ORDER 는 easy→normal→hard 순이다", () => {
     assert.deepEqual([...DIFFICULTY_ORDER], ["easy", "normal", "hard"]);
   });
