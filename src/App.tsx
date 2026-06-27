@@ -85,6 +85,10 @@ import {
   saveBestTimeMs,
 } from "./adapters/localProgressRepository";
 import {
+  loadAutocheckEnabled,
+  saveAutocheckEnabled,
+} from "./adapters/autocheckSettingRepository";
+import {
   showRewardedBonusPuzzleAd,
   showRewardedHintAd,
   type FullScreenAdResult,
@@ -162,26 +166,6 @@ function loadAnswerInputMode(): AnswerInputMode {
 function persistAnswerInputMode(mode: AnswerInputMode): void {
   try {
     localStorage.setItem(ANSWER_INPUT_MODE_STORAGE_KEY, mode);
-  } catch {
-    // Storage blocked; the preference applies for this session only.
-  }
-}
-
-// 상시 오답표시(autocheck) 설정. 기본값은 켜짐(기존 동작 유지)이며, "0"으로
-// 저장된 경우에만 끈 것으로 본다.
-const AUTOCHECK_STORAGE_KEY = "crossword:autocheck-enabled";
-
-function loadAutocheckEnabled(): boolean {
-  try {
-    return localStorage.getItem(AUTOCHECK_STORAGE_KEY) !== "0";
-  } catch {
-    return true;
-  }
-}
-
-function persistAutocheckEnabled(enabled: boolean): void {
-  try {
-    localStorage.setItem(AUTOCHECK_STORAGE_KEY, enabled ? "1" : "0");
   } catch {
     // Storage blocked; the preference applies for this session only.
   }
@@ -783,12 +767,15 @@ function App() {
   // "정답 보기"로 단어를 공개했는지. 노힌트/첫 도전 배지·최고 기록 판정에서
   // 제외하기 위한 플래그로, 진행상태(SavedProgress)에 보존한다.
   const [revealUsed, setRevealUsed] = useState(false);
-  // 상시 오답표시(autocheck) on/off 설정.
-  const [autocheckEnabled, setAutocheckEnabled] = useState(loadAutocheckEnabled);
+  // 상시 오답표시(autocheck) on/off 설정. 첫 렌더는 기본값(true)으로 시작하고
+  // 저장값은 마운트 후 useEffect에서 동기화한다(클라이언트 전용 저장소 접근을
+  // 초기 렌더에서 분리).
+  const [autocheckEnabled, setAutocheckEnabled] = useState(true);
   // "이 단어 확인"으로 잠시 강조 중인 셀. 일정 시간 후 비워 원상 복구한다.
-  const [checkedCellKeys, setCheckedCellKeys] = useState<ReadonlySet<string>>(
-    () => new Set(),
-  );
+  // 비강조 상태는 항상 동일한 빈 Set 참조(EMPTY_CELL_KEY_SET)를 써서 불필요한
+  // 참조 변경을 막는다.
+  const [checkedCellKeys, setCheckedCellKeys] =
+    useState<ReadonlySet<string>>(EMPTY_CELL_KEY_SET);
   const checkHighlightTimerRef = useRef<number | null>(null);
   // 연속 "이 단어 확인" 호출을 구분하는 세대 값. 이전 타이머가 살아남아 새 강조를
   // 조기에 비우지 못하도록, 타이머 콜백은 자신의 세대가 최신일 때만 강조를 지운다.
@@ -1122,6 +1109,11 @@ function App() {
         window.clearTimeout(checkHighlightTimerRef.current);
       }
     };
+  }, []);
+
+  // autocheck 저장값은 마운트 후에만 반영한다(첫 렌더 기본값 true와 분리).
+  useEffect(() => {
+    setAutocheckEnabled(loadAutocheckEnabled());
   }, []);
 
   useEffect(() => {
@@ -2309,7 +2301,7 @@ function App() {
     checkHighlightTimerRef.current = window.setTimeout(() => {
       // 더 최근 "이 단어 확인"이 시작됐다면(세대 불일치) 그 강조를 건드리지 않는다.
       if (checkHighlightGenerationRef.current === generation) {
-        setCheckedCellKeys(new Set());
+        setCheckedCellKeys(EMPTY_CELL_KEY_SET);
       }
       checkHighlightTimerRef.current = null;
     }, CHECK_HIGHLIGHT_MS);
@@ -2352,7 +2344,7 @@ function App() {
   function toggleAutocheck() {
     setAutocheckEnabled((prev) => {
       const next = !prev;
-      persistAutocheckEnabled(next);
+      saveAutocheckEnabled(next);
       telemetry.click("autocheck_toggle", {
         puzzle_id: puzzle.puzzleId,
         enabled: next,
@@ -5156,7 +5148,12 @@ function TodayScreen({
             className="assistButton"
             type="button"
             disabled={selectedEntry == null}
-            onClick={revealSelectedWord}
+            onClick={() => {
+              // 미확정 입력 오버레이(inputValue 기반)를 먼저 비워, 정답으로 채운
+              // 셀이 pending 값 없이 즉시 잠금·정답 표시되도록 한다.
+              setInputValue("");
+              revealSelectedWord();
+            }}
           >
             정답 보기
           </button>
