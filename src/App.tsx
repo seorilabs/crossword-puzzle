@@ -767,6 +767,15 @@ function App() {
   // "정답 보기"로 단어를 공개했는지. 노힌트/첫 도전 배지·최고 기록 판정에서
   // 제외하기 위한 플래그로, 진행상태(SavedProgress)에 보존한다.
   const [revealUsed, setRevealUsed] = useState(false);
+  // 연필(임시) 입력 모드 on/off. on이면 새로 입력한 글자를 "임시"로 표시(회색)해
+  // 확신 없는 추측을 구분한다. 정오/완료 판정은 글자 값만 보므로 영향이 없다.
+  const [pencilMode, setPencilMode] = useState(false);
+  // 임시(연필)로 입력된 셀 키 집합. cellValues와 별도로 관리해, 완료 판정은
+  // 값(cellValues)만 보고 임시 여부는 표시에만 쓰이게 한다. SavedProgress에
+  // 보존되어 재진입 후에도 임시 표시가 유지된다.
+  const [tentativeCellKeys, setTentativeCellKeys] = useState<Set<string>>(
+    () => new Set(),
+  );
   // 상시 오답표시(autocheck) on/off 설정. 첫 렌더는 기본값(true)으로 시작하고
   // 저장값은 마운트 후 useEffect에서 동기화한다(클라이언트 전용 저장소 접근을
   // 초기 렌더에서 분리).
@@ -916,6 +925,9 @@ function App() {
       setEarnedHintCredits(session.savedProgress.earnedHintCredits);
       setHintCount(session.savedProgress.hintCount);
       setRevealUsed(session.savedProgress.revealUsed ?? false);
+      setTentativeCellKeys(
+        new Set(session.savedProgress.tentativeCells ?? []),
+      );
       setSelectedDirection("across");
       setSelectedEntryId(getInitialEntryId(session.nextPuzzle));
       setSelectedCellKey(getInitialEntryStartCellKey(session.nextPuzzle));
@@ -1094,13 +1106,24 @@ function App() {
         earnedHintCredits,
         hintCount,
         revealUsed,
+        // 값이 없는(지워진) 셀의 임시 표시는 저장하지 않아 stale 키를 정리한다.
+        tentativeCells: [...tentativeCellKeys].filter(
+          (key) => cellValues[key] != null,
+        ),
       })
       .catch(() => {
         telemetry.impression("progress_save_error", {
           puzzle_id: puzzle.puzzleId,
         });
       });
-  }, [cellValues, earnedHintCredits, hintCount, revealUsed, puzzle.puzzleId]);
+  }, [
+    cellValues,
+    earnedHintCredits,
+    hintCount,
+    revealUsed,
+    tentativeCellKeys,
+    puzzle.puzzleId,
+  ]);
 
   // "이 단어 확인" 강조 타이머 정리(언마운트 시).
   useEffect(() => {
@@ -1831,6 +1854,19 @@ function App() {
     }, 150);
   }
 
+  // 임시(연필) 셀 집합을 한 번의 업데이트로 갱신한다. removes 먼저, adds 나중.
+  function updateTentativeCells(adds: string[], removes: string[]) {
+    if (adds.length === 0 && removes.length === 0) {
+      return;
+    }
+    setTentativeCellKeys((prev) => {
+      const next = new Set(prev);
+      for (const key of removes) next.delete(key);
+      for (const key of adds) next.add(key);
+      return next;
+    });
+  }
+
   function applyAnswer(
     entry: PuzzleEntry,
     value: string,
@@ -1842,18 +1878,25 @@ function App() {
 
     trackFirstAnswerInput(entry, nextLetters.length, source);
 
+    const markTentative = source === "manual" && pencilMode;
+    const tentativeAdds: string[] = [];
+    const tentativeRemoves: string[] = [];
+
     cells.forEach((cell, index) => {
       const key = getCellKey(cell.row, cell.col);
       const nextLetter = nextLetters[index];
 
       if (nextLetter == null) {
         delete nextValues[key];
+        tentativeRemoves.push(key);
       } else {
         nextValues[key] = nextLetter;
+        (markTentative ? tentativeAdds : tentativeRemoves).push(key);
       }
     });
 
     setCellValues(nextValues);
+    updateTentativeCells(tentativeAdds, tentativeRemoves);
 
     if (getEntryAnswerValue(entry, nextValues) === entry.answer) {
       const lastCell = cells[cells.length - 1];
@@ -1881,15 +1924,22 @@ function App() {
 
     trackFirstAnswerInput(entry, nextLetters.length, source);
 
+    const markTentative = source === "manual" && pencilMode;
+    const tentativeAdds: string[] = [];
+    const tentativeRemoves: string[] = [];
+
     nextLetters.forEach((letter, offset) => {
       const cell = cells[startIndex + offset];
 
       if (cell != null) {
-        nextValues[getCellKey(cell.row, cell.col)] = letter;
+        const key = getCellKey(cell.row, cell.col);
+        nextValues[key] = letter;
+        (markTentative ? tentativeAdds : tentativeRemoves).push(key);
       }
     });
 
     setCellValues(nextValues);
+    updateTentativeCells(tentativeAdds, tentativeRemoves);
     setSelectedCellKey(
       getNextAnswerSlotCellKey(
         entry,
@@ -1942,11 +1992,13 @@ function App() {
 
     delete nextValues[targetKey];
     setCellValues(nextValues);
+    updateTentativeCells([], [targetKey]);
     setSelectedCellKey(targetKey);
   }
 
   function clearEntryAnswer(entry: PuzzleEntry) {
     const nextValues = { ...cellValues };
+    const tentativeRemoves: string[] = [];
 
     for (const cell of getEntryCells(entry)) {
       const key = getCellKey(cell.row, cell.col);
@@ -1954,10 +2006,12 @@ function App() {
       // Leave already-correct (locked) letters so a wrong-cell wipe keeps them.
       if (!isCellLocked(puzzle, cellValues, key)) {
         delete nextValues[key];
+        tentativeRemoves.push(key);
       }
     }
 
     setCellValues(nextValues);
+    updateTentativeCells([], tentativeRemoves);
     setSelectedCellKey(getEntryStartCellKey(entry));
   }
 
@@ -1987,11 +2041,14 @@ function App() {
     }
 
     const targetCell = cells[targetIndex];
+    const targetCellKey = getCellKey(targetCell.row, targetCell.col);
     setHintCount((prev) => prev + 1);
     setCellValues((prev) => ({
       ...prev,
-      [getCellKey(targetCell.row, targetCell.col)]: answerLetters[targetIndex],
+      [targetCellKey]: answerLetters[targetIndex],
     }));
+    // 힌트로 채운 정답 글자는 임시가 아니므로 확정 처리한다.
+    updateTentativeCells([], [targetCellKey]);
     setHintNotice(
       `힌트 1개를 사용했어요. 남은 힌트 ${remainingHintCredits - 1}개`,
     );
@@ -2273,6 +2330,7 @@ function App() {
     }
 
     setCellValues(nextValues);
+    setTentativeCellKeys(new Set());
   }
 
   // 일반 플레이 화면용: 사용자가 명시적으로 호출하는 "이 단어 확인". 선택 단어
@@ -2353,6 +2411,30 @@ function App() {
     });
   }
 
+  function togglePencilMode() {
+    setPencilMode((prev) => !prev);
+  }
+
+  // 선택한 단어의 임시(연필) 글자를 확정으로 승격한다(회색 표시 해제).
+  function promoteSelectedWord() {
+    const selectedEntry = viewModel.selectedEntry;
+    if (selectedEntry == null) {
+      showHintToast("먼저 단서를 선택하세요.");
+      return;
+    }
+
+    const removes = getEntryCells(selectedEntry)
+      .map((cell) => getCellKey(cell.row, cell.col))
+      .filter((key) => tentativeCellKeys.has(key));
+
+    if (removes.length === 0) {
+      showHintToast("이 단어에는 임시 글자가 없어요.");
+      return;
+    }
+
+    updateTentativeCells([], removes);
+  }
+
   async function clearProgress(preserveEarnedHintCredits?: number) {
     const raw = preserveEarnedHintCredits ?? 0;
     const creditsValue = Number.isFinite(raw) ? Math.max(0, raw) : 0;
@@ -2370,6 +2452,7 @@ function App() {
     }
 
     setCellValues({});
+    setTentativeCellKeys(new Set());
     setEarnedHintCredits(creditsValue);
     setHintCount(0);
     setRevealUsed(false);
@@ -2593,12 +2676,16 @@ function App() {
     hintBalance,
     hintCount,
     mission,
+    pencilMode,
+    promoteSelectedWord,
     puzzle,
     remainingAttempts,
     requestRewardedHint,
     revealLetter,
     revealSelectedWord,
     revealUsed,
+    tentativeCellKeys,
+    togglePencilMode,
     selectedAnswer: viewModel.selectedAnswer,
     selectedCellKey,
     selectedDirection,
@@ -4163,11 +4250,15 @@ type TodayScreenProps = DateSelectionProps & {
   isNewBestTime: boolean;
   mission: DailyMissionState;
   navigate: (route: AppRoute) => void;
+  pencilMode: boolean;
+  promoteSelectedWord: () => void;
   puzzle: Puzzle;
   remainingAttempts: number;
   revealLetter: () => void;
   revealSelectedWord: () => void;
   revealUsed: boolean;
+  tentativeCellKeys: ReadonlySet<string>;
+  togglePencilMode: () => void;
   selectedAnswer: string;
   selectedCellKey: string;
   selectedDirection: Direction;
@@ -4209,11 +4300,15 @@ function TodayScreen({
   loadState,
   mission,
   navigate,
+  pencilMode,
+  promoteSelectedWord,
   puzzle,
   puzzleSummaries,
   remainingAttempts,
   revealSelectedWord,
   revealUsed,
+  tentativeCellKeys,
+  togglePencilMode,
   selectedCellKey,
   selectedPuzzleId,
   selectedEntry,
@@ -5172,6 +5267,30 @@ function TodayScreen({
           >
             오답 표시 {autocheckEnabled ? "켜짐" : "꺼짐"}
           </button>
+          <button
+            className={[
+              "assistButton",
+              "assistToggle",
+              pencilMode ? "assistToggleOn" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            type="button"
+            aria-pressed={pencilMode}
+            title="연필 모드를 켜면 확신 없는 글자를 임시(회색)로 입력해요"
+            onClick={togglePencilMode}
+          >
+            연필 {pencilMode ? "켜짐" : "꺼짐"}
+          </button>
+          <button
+            className="assistButton"
+            type="button"
+            disabled={selectedEntry == null}
+            title="선택한 단어의 임시(회색) 글자를 확정으로 바꿔요"
+            onClick={promoteSelectedWord}
+          >
+            임시 확정
+          </button>
         </div>
       ) : null}
 
@@ -5222,6 +5341,7 @@ function TodayScreen({
           selectedCells={viewModel.selectedCells}
           selectCell={selectCellAndFocus}
           startLabels={viewModel.startLabels}
+          tentativeCellKeys={tentativeCellKeys}
           puzzle={puzzle}
         />
 
@@ -6380,6 +6500,9 @@ type PuzzleBoardProps = {
   selectedCells: Set<string>;
   selectCell: (row: number, col: number) => void;
   startLabels: Map<string, number>;
+  // 연필(임시) 모드로 입력된 셀 키. 채워졌지만 아직 정답이 아닌 셀을 회색으로
+  // 구분 렌더한다. 미지정(개발 시뮬레이터 등)은 빈 집합으로 본다.
+  tentativeCellKeys?: ReadonlySet<string>;
 };
 
 function PuzzleBoard({
@@ -6395,6 +6518,7 @@ function PuzzleBoard({
   selectedCells,
   selectCell,
   startLabels,
+  tentativeCellKeys = EMPTY_CELL_KEY_SET,
 }: PuzzleBoardProps) {
   const completedCellKeys = useMemo(() => {
     const keys = new Set<string>();
@@ -6515,6 +6639,14 @@ function PuzzleBoard({
             isChecked: checkedCellKeys.has(key),
           });
           const isJustCompleted = (completionKeyRefCount.get(key) ?? 0) > 0;
+          // 임시(연필) 글자: 채워졌지만 아직 정답이 아니고, 오답 강조 중도 아니며
+          // IME 미확정 상태도 아닐 때만 회색으로 구분한다.
+          const isTentative =
+            isFilled &&
+            !isCorrect &&
+            !isPending &&
+            !showWrong &&
+            tentativeCellKeys.has(key);
 
           if (answer === "") {
             return <div key={key} className="cell cellBlock" />;
@@ -6533,6 +6665,7 @@ function PuzzleBoard({
                 isComplete ? "cellComplete" : "",
                 isJustCompleted ? "cellJustCompleted" : "",
                 showWrong ? "cellWrong" : "",
+                isTentative ? "cellTentative" : "",
               ]
                 .filter(Boolean)
                 .join(" ")}
@@ -6545,7 +6678,9 @@ function PuzzleBoard({
                     ? " 정답 완료"
                     : isCorrect
                       ? " 정답 잠금"
-                      : ""
+                      : isTentative
+                        ? " 임시 입력"
+                        : ""
               }`}
             >
               <span className="cellNumber">{startLabels.get(key) ?? ""}</span>
