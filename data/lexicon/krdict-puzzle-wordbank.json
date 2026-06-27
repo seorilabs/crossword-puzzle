@@ -1340,10 +1340,10 @@
       "sourceId": "41234",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "법이나 규칙이나 명령으로 어떤 행위를 하지 못하게 함",
-      "clueSource": "krdict-definition",
+      "clue": "어떤 행위를 하지 못하게 막음",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -4640,10 +4640,10 @@
       "sourceId": "62444",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "지구 위에 있는 모든 나라",
-      "clueSource": "krdict-definition",
+      "clue": "지구 위의 모든 나라와 지역",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -5676,9 +5676,9 @@
       "allowForPuzzle": true,
       "blockedReason": null,
       "clue": "나이가 어린 사람",
-      "clueSource": "krdict-definition",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -9575,10 +9575,10 @@
       "sourceId": "71349",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "겉으로만 그럴듯하게 꾸밈",
-      "clueSource": "krdict-definition",
+      "clue": "물건을 싸거나 꾸리는 일",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -19445,10 +19445,10 @@
       "sourceId": "14398",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "정면으로 맞서서 싸움을 걺",
-      "clueSource": "krdict-definition",
+      "clue": "어려운 일이나 기록에 맞서 싸움",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -20030,10 +20030,10 @@
       "sourceId": "49941",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "조직이나 모임에서 나이가 가장 어린 사람",
-      "clueSource": "krdict-definition",
+      "clue": "형제 중 맨 마지막에 태어난 사람",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -24110,10 +24110,10 @@
       "sourceId": "62378",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "계층, 직업, 신분 등이 비슷한 사람들이 모여 이루는 집단",
-      "clueSource": "krdict-definition",
+      "clue": "여러 사람이 어울려 살아가는 집단",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -28880,10 +28880,10 @@
       "sourceId": "14142",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "컴퓨터 전자 게임",
-      "clueSource": "krdict-definition",
+      "clue": "즐겁게 노는 놀이나 여흥",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -31760,10 +31760,10 @@
       "sourceId": "71699",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "이익을 얻으려고 물건을 사서 팖. 또는 그런 일",
-      "clueSource": "krdict-definition",
+      "clue": "이익을 얻으려고 물건을 사고파는 일",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -32090,10 +32090,10 @@
       "sourceId": "86433",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "나간 돈이 들어온 돈보다 많아서 생기는 손실 금액",
-      "clueSource": "krdict-definition",
+      "clue": "버는 돈보다 쓴 돈이 많아 생긴 손해",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -59210,10 +59210,10 @@
       "sourceId": "56378",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "여행할 때 일반 가정집에서 돈을 내고 숙박함. 또는 그런 시설",
-      "clueSource": "krdict-definition",
+      "clue": "일반 가정집에서 묵는 숙박",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -73400,10 +73400,10 @@
       "sourceId": "91891",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "밥이나 빵과 같이 끼니에 주가 되는 음식",
-      "clueSource": "krdict-definition",
+      "clue": "회사의 자본을 이루는 지분 증권",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -78050,10 +78050,10 @@
       "sourceId": "81106",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "평평한 표면",
-      "clueSource": "krdict-definition",
+      "clue": "굴곡이 없는 반반한 표면",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -165290,10 +165290,10 @@
       "sourceId": "17409",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "행동이 예의 없고 잔인함",
-      "clueSource": "krdict-definition",
+      "clue": "문화 수준이 낮고 거친 상태",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {

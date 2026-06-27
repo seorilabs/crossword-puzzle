@@ -1,10 +1,17 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
+import {
+  DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO,
+  isSelfReferentialClue,
+  needsManualClueRatio,
+} from "../packages/crossword-core/src/clueCuration.ts";
+
 function parseArgs(argv) {
   const options = {
     assetRoot: "public",
     manifest: "public/puzzles/manifest.json",
+    maxNeedsManualClueRatio: DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO,
   };
 
   for (const arg of argv) {
@@ -13,6 +20,12 @@ function parseArgs(argv) {
     }
     if (arg.startsWith("--manifest=")) {
       options.manifest = arg.slice("--manifest=".length);
+    }
+    if (arg.startsWith("--maxNeedsManualClueRatio=")) {
+      const value = Number(arg.slice("--maxNeedsManualClueRatio=".length));
+      if (Number.isFinite(value)) {
+        options.maxNeedsManualClueRatio = value;
+      }
     }
   }
 
@@ -89,7 +102,7 @@ function slotKey(item) {
   return `${item.direction}:${item.row}:${item.col}`;
 }
 
-function validatePuzzle(puzzle) {
+function validatePuzzle(puzzle, maxNeedsManualClueRatio) {
   const slots = scanSlots(puzzle.grid);
   const slotsByKey = new Map(slots.map((slot) => [slotKey(slot), slot]));
   const entriesByKey = new Map();
@@ -117,17 +130,28 @@ function validatePuzzle(puzzle) {
   const duplicateEntries = Array.from(entriesByKey.values()).filter(
     (entries) => entries.length > 1,
   );
+  const selfReferentialEntries = puzzle.entries.filter((entry) =>
+    isSelfReferentialClue(entry.answer, entry.clue),
+  );
+  const manualClueRatio = needsManualClueRatio(puzzle.entries);
+  const needsManualClueExceeded = manualClueRatio > maxNeedsManualClueRatio;
 
   return {
     answerMismatches,
     duplicateEntries,
     entryWithoutSlots,
     missingEntries,
+    selfReferentialEntries,
+    manualClueRatio,
+    maxNeedsManualClueRatio,
+    needsManualClueExceeded,
     pass:
       missingEntries.length === 0 &&
       entryWithoutSlots.length === 0 &&
       answerMismatches.length === 0 &&
-      duplicateEntries.length === 0,
+      duplicateEntries.length === 0 &&
+      selfReferentialEntries.length === 0 &&
+      !needsManualClueExceeded,
     slots,
   };
 }
@@ -154,7 +178,7 @@ async function run() {
   for (const item of manifest.puzzles) {
     const puzzlePath = resolvePuzzlePath(manifestPath, item.path, assetRoot);
     const puzzle = await readJson(puzzlePath);
-    const validation = validatePuzzle(puzzle);
+    const validation = validatePuzzle(puzzle, options.maxNeedsManualClueRatio);
 
     if (!validation.pass) {
       failures.push({ item, puzzle, validation });
@@ -184,13 +208,27 @@ async function run() {
           `  duplicate entries: ${entries.map((entry) => entry.id).join(", ")}`,
         );
       }
+
+      for (const entry of failure.validation.selfReferentialEntries) {
+        console.error(
+          `  self-referential clue: ${entry.id} ${entry.answer} ⊆ "${entry.clue}"`,
+        );
+      }
+
+      if (failure.validation.needsManualClueExceeded) {
+        console.error(
+          `  needsManualClue ratio too high: ${(failure.validation.manualClueRatio * 100).toFixed(1)}% > ${(failure.validation.maxNeedsManualClueRatio * 100).toFixed(1)}%`,
+        );
+      }
     }
 
     process.exitCode = 1;
     return;
   }
 
-  console.log(`validated ${manifest.puzzles.length} puzzle(s)`);
+  console.log(
+    `validated ${manifest.puzzles.length} puzzle(s) (maxNeedsManualClueRatio=${(options.maxNeedsManualClueRatio * 100).toFixed(0)}%)`,
+  );
 }
 
 run().catch((error) => {
