@@ -48,6 +48,7 @@ import {
   getNextStreakMilestoneHint,
   getStreakBadgeLabel,
   getStreakMilestoneProgress,
+  getWordCheckResult,
   isWrongCellVisible,
   shouldQuickStartActivePuzzle,
   shouldServeOnboardingPuzzle,
@@ -789,6 +790,9 @@ function App() {
     () => new Set(),
   );
   const checkHighlightTimerRef = useRef<number | null>(null);
+  // 연속 "이 단어 확인" 호출을 구분하는 세대 값. 이전 타이머가 살아남아 새 강조를
+  // 조기에 비우지 못하도록, 타이머 콜백은 자신의 세대가 최신일 때만 강조를 지운다.
+  const checkHighlightGenerationRef = useRef(0);
   const [now, setNow] = useState(() => new Date());
   const [hasSeenHowToPlay, setHasSeenHowToPlay] = useState(() => {
     try {
@@ -2291,30 +2295,22 @@ function App() {
       return;
     }
 
-    const cells = getEntryCells(selectedEntry);
-    const answerLetters = [...selectedEntry.answer];
-    const keys: string[] = [];
-    let filledCount = 0;
-    let wrongCount = 0;
+    const { cellKeys, filledCount, wrongCount } = getWordCheckResult(
+      selectedEntry,
+      cellValues,
+    );
 
-    cells.forEach((cell, index) => {
-      const key = getCellKey(cell.row, cell.col);
-      keys.push(key);
-      const value = cellValues[key];
-      if (value != null) {
-        filledCount += 1;
-        if (value !== answerLetters[index]) {
-          wrongCount += 1;
-        }
-      }
-    });
-
-    setCheckedCellKeys(new Set(keys));
+    const generation = checkHighlightGenerationRef.current + 1;
+    checkHighlightGenerationRef.current = generation;
+    setCheckedCellKeys(new Set(cellKeys));
     if (checkHighlightTimerRef.current != null) {
       window.clearTimeout(checkHighlightTimerRef.current);
     }
     checkHighlightTimerRef.current = window.setTimeout(() => {
-      setCheckedCellKeys(new Set());
+      // 더 최근 "이 단어 확인"이 시작됐다면(세대 불일치) 그 강조를 건드리지 않는다.
+      if (checkHighlightGenerationRef.current === generation) {
+        setCheckedCellKeys(new Set());
+      }
       checkHighlightTimerRef.current = null;
     }, CHECK_HIGHLIGHT_MS);
 
@@ -6495,7 +6491,14 @@ function PuzzleBoard({
           const key = getCellKey(row, col);
           const entries = cellEntries.get(key) ?? [];
           const committedValue = cellValues[key];
-          const pendingValue = pendingCellValues[key] ?? "";
+          // 확정값이 이미 정답이면(예: "정답 보기"로 채운 셀) 미확정 입력 오버레이를
+          // 무시하고 즉시 잠금·정답 표시한다. 잠긴 정답 셀은 편집 대상이 아니므로
+          // pending을 버려도 일반 입력 흐름에 영향이 없다.
+          const isLockedCorrect =
+            committedValue != null && committedValue === answer;
+          const pendingValue = isLockedCorrect
+            ? ""
+            : (pendingCellValues[key] ?? "");
           const displayValue =
             pendingValue !== "" ? pendingValue : (committedValue ?? "");
           const isFilled = committedValue != null;
