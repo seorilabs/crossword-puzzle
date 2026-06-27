@@ -38,6 +38,7 @@
     "publish:puzzles": "node server/batch/publish-puzzle-pack.mjs",
     "prototype:crossword": "node scripts/crossword-generator-prototype.mjs",
     "validate:puzzles": "node scripts/validate-puzzle-pack.mjs",
+    "clues:apply": "node scripts/apply-manual-clues.mjs",
     "wordbank:krdict": "node scripts/build-krdict-wordbank.mjs"
   },
   "dependencies": {

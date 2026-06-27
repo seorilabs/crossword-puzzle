@@ -188,13 +188,13 @@
     {
       "id": "a10",
       "answer": "민박",
-      "clue": "여행할 때 일반 가정집에서 돈을 내고 숙박함. 또는 그런 시설",
-      "clueSource": "krdict-definition",
+      "clue": "일반 가정집에서 묵는 숙박",
+      "clueSource": "manual",
       "direction": "across",
       "row": 7,
       "col": 3,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d11",
@@ -288,12 +288,12 @@
       "id": "d19",
       "answer": "아이",
       "clue": "나이가 어린 사람",
-      "clueSource": "krdict-definition",
+      "clueSource": "manual",
       "direction": "down",
       "row": 3,
       "col": 5,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d20",

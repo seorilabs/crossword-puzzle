@@ -144,13 +144,13 @@
     {
       "id": "a6",
       "answer": "도전",
-      "clue": "정면으로 맞서서 싸움을 걺",
-      "clueSource": "krdict-definition",
+      "clue": "어려운 일이나 기록에 맞서 싸움",
+      "clueSource": "manual",
       "direction": "across",
       "row": 3,
       "col": 3,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a7",
@@ -177,13 +177,13 @@
     {
       "id": "a9",
       "answer": "적자",
-      "clue": "나간 돈이 들어온 돈보다 많아서 생기는 손실 금액",
-      "clueSource": "krdict-definition",
+      "clue": "버는 돈보다 쓴 돈이 많아 생긴 손해",
+      "clueSource": "manual",
       "direction": "across",
       "row": 4,
       "col": 3,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a10",

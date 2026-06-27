@@ -111,13 +111,13 @@
     {
       "id": "a3",
       "answer": "평면",
-      "clue": "평평한 표면",
-      "clueSource": "krdict-definition",
+      "clue": "굴곡이 없는 반반한 표면",
+      "clueSource": "manual",
       "direction": "across",
       "row": 2,
       "col": 6,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a4",
@@ -144,13 +144,13 @@
     {
       "id": "a6",
       "answer": "사회",
-      "clue": "계층, 직업, 신분 등이 비슷한 사람들이 모여 이루는 집단",
-      "clueSource": "krdict-definition",
+      "clue": "여러 사람이 어울려 살아가는 집단",
+      "clueSource": "manual",
       "direction": "across",
       "row": 4,
       "col": 0,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a7",

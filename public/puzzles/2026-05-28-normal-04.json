@@ -122,13 +122,13 @@
     {
       "id": "a4",
       "answer": "막내",
-      "clue": "조직이나 모임에서 나이가 가장 어린 사람",
-      "clueSource": "krdict-definition",
+      "clue": "형제 중 맨 마지막에 태어난 사람",
+      "clueSource": "manual",
       "direction": "across",
       "row": 1,
       "col": 6,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a5",
@@ -331,13 +331,13 @@
     {
       "id": "d23",
       "answer": "주식",
-      "clue": "밥이나 빵과 같이 끼니에 주가 되는 음식",
-      "clueSource": "krdict-definition",
+      "clue": "회사의 자본을 이루는 지분 증권",
+      "clueSource": "manual",
       "direction": "down",
       "row": 6,
       "col": 4,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     }
   ],
   "metrics": {

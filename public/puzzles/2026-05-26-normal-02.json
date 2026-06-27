@@ -166,13 +166,13 @@
     {
       "id": "a8",
       "answer": "장사",
-      "clue": "이익을 얻으려고 물건을 사서 팖. 또는 그런 일",
-      "clueSource": "krdict-definition",
+      "clue": "이익을 얻으려고 물건을 사고파는 일",
+      "clueSource": "manual",
       "direction": "across",
       "row": 6,
       "col": 6,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a9",
@@ -298,13 +298,13 @@
     {
       "id": "d20",
       "answer": "포장",
-      "clue": "겉으로만 그럴듯하게 꾸밈",
-      "clueSource": "krdict-definition",
+      "clue": "물건을 싸거나 꾸리는 일",
+      "clueSource": "manual",
       "direction": "down",
       "row": 5,
       "col": 6,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d21",

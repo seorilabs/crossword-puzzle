@@ -100,13 +100,13 @@
     {
       "id": "a2",
       "answer": "야만",
-      "clue": "행동이 예의 없고 잔인함",
-      "clueSource": "krdict-definition",
+      "clue": "문화 수준이 낮고 거친 상태",
+      "clueSource": "manual",
       "direction": "across",
       "row": 1,
       "col": 3,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a3",
@@ -298,13 +298,13 @@
     {
       "id": "d20",
       "answer": "금지",
-      "clue": "법이나 규칙이나 명령으로 어떤 행위를 하지 못하게 함",
-      "clueSource": "krdict-definition",
+      "clue": "어떤 행위를 하지 못하게 막음",
+      "clueSource": "manual",
       "direction": "down",
       "row": 5,
       "col": 1,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d21",
