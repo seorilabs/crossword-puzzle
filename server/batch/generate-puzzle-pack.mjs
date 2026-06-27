@@ -7,12 +7,18 @@ import {
   generateBoards,
   makeWordMap,
 } from "../../scripts/crossword-generator-prototype.mjs";
+import {
+  resolveDifficultyProfile,
+  selectWordsForProfile,
+  summarizeWordDifficulties,
+} from "../../packages/crossword-core/src/difficultyProfiles.ts";
 
 const DEFAULT_BATCH_OPTIONS = {
   append: false,
   appendManifestUrl: undefined,
   attempts: 30,
   boardSize: 8,
+  difficulty: "normal",
   beamWidth: 16,
   branchLimit: 14,
   candidateWordLimit: 600,
@@ -40,6 +46,17 @@ const DEFAULT_BATCH_OPTIONS = {
 
 function parseArgs(argv) {
   const options = { ...DEFAULT_BATCH_OPTIONS };
+
+  // 난이도 프로파일을 먼저 적용한 뒤 개별 CLI 플래그가 이를 덮어쓰도록 한다.
+  const difficultyArg = argv.find((arg) => arg.startsWith("--difficulty="));
+  const difficultyValue = difficultyArg?.split("=")[1];
+  const profile = resolveDifficultyProfile(difficultyValue);
+  options.difficulty = profile.difficulty;
+  options.boardSize = profile.boardSize;
+  options.maxWords = profile.maxWords;
+  options.minWordLength = profile.minWordLength;
+  options.minWordCount = profile.minWordCount;
+  options.wordDifficulties = profile.wordDifficulties;
 
   for (const arg of argv) {
     const [key, rawValue] = arg.replace(/^--/, "").split("=");
@@ -320,6 +337,7 @@ function serializeBoard(
   wordBank,
   wordBankMetadata,
   quality,
+  difficulty,
 ) {
   const wordMap = makeWordMap(wordBank);
   const runAnalysis = analyzeRuns(board, wordMap);
@@ -343,7 +361,7 @@ function serializeBoard(
     alias: slotInfo.alias,
     puzzleId: slotInfo.alias,
     date: slotInfo.date,
-    difficulty: "normal",
+    difficulty,
     gridSize: board.grid.length,
     grid: board.grid.map((row) => row.map((cell) => cell ?? "")),
     entries,
@@ -643,6 +661,25 @@ async function run() {
   const puzzles = [];
   const generationReport = [];
   const wordBank = await loadConfiguredWordBank(options.wordBankPath);
+  const profile = resolveDifficultyProfile(options.difficulty);
+  const wordSelection = selectWordsForProfile(wordBank.words, profile);
+  const difficultyFilteredWords = wordSelection.words;
+  const wordBankDifficultyCounts = summarizeWordDifficulties(
+    difficultyFilteredWords,
+  );
+
+  if (difficultyFilteredWords.length === 0) {
+    throw new Error(
+      `No words match difficulty profile ${profile.difficulty} (allowed=${profile.wordDifficulties.join(",")})`,
+    );
+  }
+
+  if (wordSelection.broadened) {
+    console.warn(
+      `Difficulty profile ${profile.difficulty} pool below ${profile.wordDifficulties.join(",")} threshold; broadened with [${wordSelection.broadenedWith.join(",")}] -> ${difficultyFilteredWords.length} words`,
+    );
+  }
+
   const qualityThresholds = makeQualityThresholds(options);
   const existingManifest = await loadExistingManifest(options, outDir);
   const existingPuzzles = existingManifest?.puzzles ?? [];
@@ -659,6 +696,9 @@ async function run() {
   );
   console.log(
     `Generator options append=${options.append} keep=${options.keepPuzzles} intervalHours=${options.intervalHours} attempts=${options.attempts} retries=${options.retries} samples=${options.samples} beam=${options.beamWidth} branch=${options.branchLimit} candidates=${options.candidateWordLimit}`,
+  );
+  console.log(
+    `Difficulty profile=${profile.difficulty} boardSize=${options.boardSize} maxWords=${options.maxWords} minWordLength=${options.minWordLength} minWordCount=${options.minWordCount} wordBank allowed=[${wordSelection.difficulties.join(",")}] words=${difficultyFilteredWords.length}/${wordBank.words.length} byDifficulty=${JSON.stringify(wordBankDifficultyCounts)}`,
   );
 
   for (let dayIndex = 0; dayIndex < options.days; dayIndex += 1) {
@@ -696,7 +736,7 @@ async function run() {
         minWordLength: options.minWordLength,
         samples: options.samples,
         seed,
-        wordBank: wordBank.words,
+        wordBank: difficultyFilteredWords,
       });
       const retryElapsedSeconds = (
         (Date.now() - retryStartTime) /
@@ -765,9 +805,10 @@ async function run() {
       board,
       slotInfo,
       packId,
-      wordBank.words,
+      difficultyFilteredWords,
       wordBank.metadata,
       selectedQuality,
+      options.difficulty,
     );
     const filename = `${puzzle.puzzleId}.json`;
     const filePath = path.join(outDir, filename);
@@ -779,6 +820,7 @@ async function run() {
     puzzles.push({
       alias: puzzle.alias,
       date: slotInfo.date,
+      difficulty: puzzle.difficulty,
       packId,
       publishedAt: slotInfo.publishedAt,
       puzzleId: puzzle.puzzleId,
@@ -790,6 +832,7 @@ async function run() {
     generationReport.push({
       alias: puzzle.alias,
       date: slotInfo.date,
+      difficulty: puzzle.difficulty,
       packId,
       publishedAt: slotInfo.publishedAt,
       slotId: slotInfo.slotId,
@@ -797,6 +840,7 @@ async function run() {
       failureReasonCounts: countReasons(attempts),
       selected: {
         puzzleId: puzzle.puzzleId,
+        difficulty: puzzle.difficulty,
         quality: puzzle.quality,
         metrics: puzzle.metrics,
       },
@@ -821,6 +865,17 @@ async function run() {
     startDate: options.startDate,
     days: manifestPuzzles.length,
     keep: options.keepPuzzles,
+    difficulty: profile.difficulty,
+    difficultyProfile: {
+      difficulty: profile.difficulty,
+      boardSize: options.boardSize,
+      maxWords: options.maxWords,
+      minWordLength: options.minWordLength,
+      minWordCount: options.minWordCount,
+      wordDifficulties: profile.wordDifficulties,
+      effectiveWordDifficulties: wordSelection.difficulties,
+      broadened: wordSelection.broadened,
+    },
     wordBank: {
       path: options.wordBankPath,
       sourceName: wordBank.metadata?.sourceName ?? "sample",
@@ -828,6 +883,8 @@ async function run() {
       license: wordBank.metadata?.license,
       rawWordCount: wordBank.rawWordCount,
       wordCount: wordBank.words.length,
+      difficultyWordCount: difficultyFilteredWords.length,
+      byDifficulty: wordBankDifficultyCounts,
     },
     qualityThresholds,
     puzzles: manifestPuzzles,

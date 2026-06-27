@@ -1,0 +1,151 @@
+import type { Puzzle } from "./types";
+
+// 퍼즐 난이도 티어(easy/normal/hard)의 공통 정책. 3마켓(AIT/Android/iOS)이 같은
+// 티어 정의를 공유하도록 생성 튜닝 파라미터를 한곳에 둔다. 생성기(server/batch)는
+// 이 프로파일로 보드 크기·단어 수·최소 단어 길이와 워드뱅크 difficulty 필터를 정한다.
+
+export type Difficulty = Puzzle["difficulty"];
+
+export type DifficultyProfile = {
+  difficulty: Difficulty;
+  // 생성 보드 한 변 크기
+  boardSize: number;
+  // 한 퍼즐에 배치할 최대 단어 수
+  maxWords: number;
+  // 후보 단어의 최소 글자 수
+  minWordLength: number;
+  // 합격 보드의 최소 단어(run) 수. 티어별 평균 단어 수를 가르는 하한.
+  minWordCount: number;
+  // 이 티어에서 허용하는 워드뱅크 difficulty 값(단어 선택 편향)
+  wordDifficulties: readonly Difficulty[];
+};
+
+export const DIFFICULTY_ORDER: readonly Difficulty[] = ["easy", "normal", "hard"];
+
+// easy < normal < hard 로 boardSize/maxWords 가 단조 증가하도록 유지한다.
+// "사이즈와 난이도를 동시에 올리지 말 것" 원칙에 따라 easy 는 작은 보드+적은 단어+
+// 초급 어휘로, hard 는 큰 보드+많은 단어+고급 어휘로 구성한다. normal 은 기존
+// 기본 생성값과 동일하게 유지해 회귀가 없도록 한다.
+export const DIFFICULTY_PROFILES: Record<Difficulty, DifficultyProfile> = {
+  easy: {
+    difficulty: "easy",
+    boardSize: 7,
+    maxWords: 9,
+    minWordLength: 2,
+    minWordCount: 8,
+    wordDifficulties: ["easy"],
+  },
+  normal: {
+    difficulty: "normal",
+    boardSize: 8,
+    maxWords: 12,
+    minWordLength: 2,
+    minWordCount: 12,
+    wordDifficulties: ["easy", "normal", "hard"],
+  },
+  hard: {
+    difficulty: "hard",
+    boardSize: 9,
+    maxWords: 16,
+    minWordLength: 2,
+    minWordCount: 18,
+    wordDifficulties: ["normal", "hard"],
+  },
+};
+
+export function isDifficulty(value: unknown): value is Difficulty {
+  return value === "easy" || value === "normal" || value === "hard";
+}
+
+// 입력 difficulty 가 유효하지 않으면 normal 프로파일로 폴백한다.
+export function resolveDifficultyProfile(
+  difficulty: string | undefined | null,
+): DifficultyProfile {
+  if (isDifficulty(difficulty)) {
+    return DIFFICULTY_PROFILES[difficulty];
+  }
+
+  return DIFFICULTY_PROFILES.normal;
+}
+
+// 워드뱅크 단어의 difficulty 값을 표준화한다(없거나 비정상이면 normal 취급).
+export function getWordDifficulty(word: {
+  difficulty?: string | null;
+}): Difficulty {
+  return isDifficulty(word.difficulty) ? word.difficulty : "normal";
+}
+
+// 프로파일이 허용하는 difficulty 단어만 남긴다.
+export function filterWordsByDifficulty<
+  T extends { difficulty?: string | null },
+>(words: readonly T[], profile: DifficultyProfile): T[] {
+  const allowed = new Set<Difficulty>(profile.wordDifficulties);
+
+  return words.filter((word) => allowed.has(getWordDifficulty(word)));
+}
+
+// 단어 목록의 difficulty 분포를 집계한다(생성 리포트에서 편향 확인용).
+export function summarizeWordDifficulties<
+  T extends { difficulty?: string | null },
+>(words: readonly T[]): Record<Difficulty, number> {
+  const counts: Record<Difficulty, number> = { easy: 0, normal: 0, hard: 0 };
+
+  for (const word of words) {
+    counts[getWordDifficulty(word)] += 1;
+  }
+
+  return counts;
+}
+
+// 보드를 안정적으로 생성하기 위한 최소 후보 단어 수. 프로파일 difficulty 필터가
+// 워드뱅크 대부분을 잘라낸 결과 이 수치를 밑돌면(예: easy 풀이 비정상적으로 작아진
+// 경우) 생성이 막힐 수 있으므로, 인접 티어 단어로 풀을 보강한다.
+export const MIN_GENERATION_WORD_POOL = 150;
+
+export type WordSelection<T> = {
+  // 생성에 사용할 최종 단어 목록
+  words: T[];
+  // 최종 풀에 포함된 difficulty 집합(프로파일 + 보강분)
+  difficulties: Difficulty[];
+  // 보강이 발생했는지 여부와 추가된 difficulty 목록
+  broadened: boolean;
+  broadenedWith: Difficulty[];
+};
+
+// 프로파일 difficulty 로 단어를 거른다. 1차 풀이 minPool 미만이면 생성 실패를
+// 막기 위해 인접(난이도 순) 티어 단어를 차례로 더해 minPool 이상이 되도록
+// 보강한다. 1차 풀이 충분하면(예: easy 907단어) 보강 없이 순수 티어 풀을 쓴다.
+export function selectWordsForProfile<
+  T extends { difficulty?: string | null },
+>(
+  words: readonly T[],
+  profile: DifficultyProfile,
+  minPool: number = MIN_GENERATION_WORD_POOL,
+): WordSelection<T> {
+  const allowed = new Set<Difficulty>(profile.wordDifficulties);
+  let selected = words.filter((word) => allowed.has(getWordDifficulty(word)));
+  const broadenedWith: Difficulty[] = [];
+
+  for (const difficulty of DIFFICULTY_ORDER) {
+    if (selected.length >= minPool) {
+      break;
+    }
+
+    if (allowed.has(difficulty)) {
+      continue;
+    }
+
+    allowed.add(difficulty);
+    broadenedWith.push(difficulty);
+    selected = words.filter((word) => allowed.has(getWordDifficulty(word)));
+  }
+
+  return {
+    words: selected,
+    difficulties: DIFFICULTY_ORDER.filter((difficulty) =>
+      allowed.has(difficulty),
+    ),
+    broadened: broadenedWith.length > 0,
+    broadenedWith,
+  };
+}

@@ -1,4 +1,5 @@
 export * from "./completionStats";
+export * from "./difficultyProfiles";
 export * from "./launchConfig";
 export * from "./mission";
 export * from "./platformContracts";
