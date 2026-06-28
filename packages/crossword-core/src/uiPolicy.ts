@@ -283,6 +283,40 @@ export function shouldServeOnboardingPuzzle({
   return !hasCompletedAnyDaily && !hasDailyProgress;
 }
 
+// 앱 부팅(초기 세션 라우팅)·앱 재진입 시 어떤 퍼즐을 "첫 활성 퍼즐"로 둘지 정한다.
+// 신규 사용자(첫 성공 전·입문 미완료)이고 입문 퍼즐을 제공할 수 있으면 입문(easy)
+// 퍼즐 id를, 그 외에는 일반 일일 퍼즐 id를 돌려준다. 일반 일일 퍼즐 후보(날짜 카드
+// 리스트)가 존재하더라도 신규 사용자에게는 입문 퍼즐이 첫 활성 퍼즐로 유지된다.
+// onboardingAvailable=false(입문 세션 로드 실패)면 안전하게 일반 퍼즐로 폴백한다.
+export function resolveInitialActivePuzzleId({
+  dailyPuzzleId,
+  hasCompletedAnyDaily,
+  hasDailyProgress,
+  onboardingAvailable,
+  onboardingCompleted,
+  onboardingPuzzleId,
+}: {
+  dailyPuzzleId: string;
+  hasCompletedAnyDaily: boolean;
+  hasDailyProgress: boolean;
+  onboardingAvailable: boolean;
+  onboardingCompleted: boolean;
+  onboardingPuzzleId: string;
+}): string {
+  if (
+    onboardingAvailable &&
+    shouldServeOnboardingPuzzle({
+      hasCompletedAnyDaily,
+      hasDailyProgress,
+      onboardingCompleted,
+    })
+  ) {
+    return onboardingPuzzleId;
+  }
+
+  return dailyPuzzleId;
+}
+
 // 홈 상단 "오늘의 퍼즐 바로 시작" 원탭 CTA가 현재 활성 퍼즐을 그대로 시작해야
 // 하는지 판단한다. 신규 사용자에게는 입문(easy) 온보딩 퍼즐이 첫 활성 퍼즐로
 // 배정되는데, 이 퍼즐의 puzzleId는 오늘의 일반 퍼즐과 다르므로 단순 비교만으로는
