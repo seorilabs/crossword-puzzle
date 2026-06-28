@@ -14,6 +14,7 @@ import {
   isPublishedPuzzle,
   isWrongCellVisible,
   PUZZLE_PROGRESS_MILESTONES,
+  resolveInitialActivePuzzleId,
   shouldQuickStartActivePuzzle,
   shouldServeOnboardingPuzzle,
 } from "./uiPolicy.ts";
@@ -155,6 +156,76 @@ describe("shouldQuickStartActivePuzzle", () => {
         todayPuzzleId: undefined,
       }),
       true,
+    );
+  });
+});
+
+describe("resolveInitialActivePuzzleId", () => {
+  const onboardingPuzzleId = "onboarding-easy-01";
+  const dailyPuzzleId = "pack-2026062608-01";
+
+  const newUser = {
+    dailyPuzzleId,
+    hasCompletedAnyDaily: false,
+    hasDailyProgress: false,
+    onboardingAvailable: true,
+    onboardingCompleted: false,
+    onboardingPuzzleId,
+  };
+
+  // 신규 사용자의 첫 활성 퍼즐은 부팅·앱 재진입 등 모든 진입 경로에서 입문(easy)
+  // 퍼즐로 유지되어야 한다(easy attempt 0건 회귀 방지).
+  it("신규 사용자(완료·진행 이력 없음)의 첫 활성 퍼즐은 입문 퍼즐이다", () => {
+    assert.equal(resolveInitialActivePuzzleId(newUser), onboardingPuzzleId);
+  });
+
+  it("일반 일일 퍼즐(날짜 카드) 후보가 있어도 신규 사용자에게는 입문 퍼즐을 유지한다", () => {
+    // 날짜 카드 리스트가 채워져 일반 퍼즐 id가 후보로 주어져도 입문이 우선이다.
+    assert.equal(
+      resolveInitialActivePuzzleId({
+        ...newUser,
+        dailyPuzzleId: "pack-2026062608-99",
+      }),
+      onboardingPuzzleId,
+    );
+  });
+
+  it("입문 퍼즐 진행 중(미완료)인 재진입 사용자도 입문 퍼즐을 유지한다", () => {
+    // 입문을 시작했지만 끝내지 않은 신규 사용자가 앱을 다시 열면 입문이 복원된다.
+    assert.equal(
+      resolveInitialActivePuzzleId({ ...newUser, onboardingCompleted: false }),
+      onboardingPuzzleId,
+    );
+  });
+
+  it("입문 퍼즐을 이미 완료했으면 일반 일일 퍼즐로 보낸다", () => {
+    assert.equal(
+      resolveInitialActivePuzzleId({ ...newUser, onboardingCompleted: true }),
+      dailyPuzzleId,
+    );
+  });
+
+  it("일반 퍼즐을 완료한 적이 있는 복귀 사용자는 일반 일일 퍼즐로 보낸다", () => {
+    assert.equal(
+      resolveInitialActivePuzzleId({
+        ...newUser,
+        hasCompletedAnyDaily: true,
+      }),
+      dailyPuzzleId,
+    );
+  });
+
+  it("일반 퍼즐을 진행 중인 사용자는 일반 일일 퍼즐로 보낸다", () => {
+    assert.equal(
+      resolveInitialActivePuzzleId({ ...newUser, hasDailyProgress: true }),
+      dailyPuzzleId,
+    );
+  });
+
+  it("입문 세션을 불러올 수 없으면(미가용) 안전하게 일반 일일 퍼즐로 폴백한다", () => {
+    assert.equal(
+      resolveInitialActivePuzzleId({ ...newUser, onboardingAvailable: false }),
+      dailyPuzzleId,
     );
   });
 });

@@ -51,9 +51,9 @@ import {
   getWordCheckResult,
   applyTentativeUpdate,
   computeTentativeUpdate,
+  resolveInitialActivePuzzleId,
   selectPromotableTentativeKeys,
   shouldQuickStartActivePuzzle,
-  shouldServeOnboardingPuzzle,
   sortPuzzleSummariesByRecency,
   startMissionAttempt,
   uniquePuzzleSummaries,
@@ -1030,19 +1030,22 @@ function App() {
         // 신규 사용자(아직 첫 성공 전)면 입문 퍼즐을, 그 외에는 일반 일일 퍼즐을
         // 첫 활성 퍼즐로 둔다. 입문 퍼즐 세션은 위에서 미리 불러와 재사용한다.
         const dateCardValues = Object.values(nextDateCardStates);
-        const useOnboarding =
-          onboardingSession != null &&
-          shouldServeOnboardingPuzzle({
-            hasCompletedAnyDaily: dateCardValues.some(
-              (state) => state.completedAt != null,
-            ),
-            hasDailyProgress: dateCardValues.some((state) => state.hasProgress),
-            onboardingCompleted:
-              onboardingSession.savedMission.completedAt != null,
-          });
-        const session = useOnboarding
-          ? onboardingSession
-          : await loadPuzzleSession(getInitialPuzzleId(nextSummaries, today));
+        const initialPuzzleId = resolveInitialActivePuzzleId({
+          dailyPuzzleId: getInitialPuzzleId(nextSummaries, today),
+          hasCompletedAnyDaily: dateCardValues.some(
+            (state) => state.completedAt != null,
+          ),
+          hasDailyProgress: dateCardValues.some((state) => state.hasProgress),
+          onboardingAvailable: onboardingSession != null,
+          onboardingCompleted:
+            onboardingSession?.savedMission.completedAt != null,
+          onboardingPuzzleId: onboardingPuzzle.puzzleId,
+        });
+        const session =
+          initialPuzzleId === onboardingPuzzle.puzzleId &&
+          onboardingSession != null
+            ? onboardingSession
+            : await loadPuzzleSession(initialPuzzleId);
 
         if (!isCancelled) {
           setPuzzleSummaries(nextSummaries);
