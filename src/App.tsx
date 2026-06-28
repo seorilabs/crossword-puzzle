@@ -1030,8 +1030,9 @@ function App() {
         // 신규 사용자(아직 첫 성공 전)면 입문 퍼즐을, 그 외에는 일반 일일 퍼즐을
         // 첫 활성 퍼즐로 둔다. 입문 퍼즐 세션은 위에서 미리 불러와 재사용한다.
         const dateCardValues = Object.values(nextDateCardStates);
+        const dailyPuzzleId = getInitialPuzzleId(nextSummaries, today);
         const initialPuzzleId = resolveInitialActivePuzzleId({
-          dailyPuzzleId: getInitialPuzzleId(nextSummaries, today),
+          dailyPuzzleId,
           hasCompletedAnyDaily: dateCardValues.some(
             (state) => state.completedAt != null,
           ),
@@ -1041,11 +1042,19 @@ function App() {
             onboardingSession?.savedMission.completedAt != null,
           onboardingPuzzleId: onboardingPuzzle.puzzleId,
         });
-        const session =
+        // helper가 입문 퍼즐을 고르면(=onboardingAvailable) 미리 불러온 입문 세션을
+        // 재사용한다. 만약 그 세션이 비어 있으면(미가용) 입문 id가 아니라 일반 일일
+        // 퍼즐로 폴백해 빈 세션으로 빠지지 않게 한다. 그 외에는 일반 퍼즐을 로드한다.
+        const useOnboarding =
           initialPuzzleId === onboardingPuzzle.puzzleId &&
-          onboardingSession != null
-            ? onboardingSession
-            : await loadPuzzleSession(initialPuzzleId);
+          onboardingSession != null;
+        const session = useOnboarding
+          ? onboardingSession
+          : await loadPuzzleSession(
+              initialPuzzleId === onboardingPuzzle.puzzleId
+                ? dailyPuzzleId
+                : initialPuzzleId,
+            );
 
         if (!isCancelled) {
           setPuzzleSummaries(nextSummaries);
