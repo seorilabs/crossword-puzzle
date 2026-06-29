@@ -77,11 +77,13 @@ describe("DIFFICULTY_PROFILES 단조성", () => {
     );
   });
 
-  it("normal 프로파일은 기존 기본 생성값과 동일하다(회귀 방지)", () => {
+  it("normal 프로파일은 완료 시간 단축을 위해 단어 수를 낮춘 값으로 고정한다(회귀 방지)", () => {
+    // 첫 완료 소요(~10분) 단축을 위해 maxWords/minWordCount 를 12→10 으로 낮췄다.
+    // 보드 크기는 easy(7)와의 단조성을 위해 8로 유지한다.
     assert.equal(DIFFICULTY_PROFILES.normal.boardSize, 8);
-    assert.equal(DIFFICULTY_PROFILES.normal.maxWords, 12);
+    assert.equal(DIFFICULTY_PROFILES.normal.maxWords, 10);
     assert.equal(DIFFICULTY_PROFILES.normal.minWordLength, 2);
-    assert.equal(DIFFICULTY_PROFILES.normal.minWordCount, 12);
+    assert.equal(DIFFICULTY_PROFILES.normal.minWordCount, 10);
   });
 
   it("normal 의 교차율·밀도가 기존 전역 기본값(0.55/0.5)과 동일하다(회귀 방지)", () => {
