@@ -38,6 +38,7 @@ import {
   getEntryCells,
   getInitialEntryId,
   getNewlyReachedProgressMilestones,
+  getNextRecommendedPuzzleSummary,
   getOpenPuzzleSummariesForDate,
   getProgressMilestoneRewardMessage,
   getPuzzleDailySequenceNumber,
@@ -495,21 +496,18 @@ function getCompletedPuzzleIds(dateCardStates: Record<string, DateCardState>) {
   );
 }
 
-// 완료 직후 "다음 퍼즐"로 이어줄 추천 퍼즐: 현재 퍼즐을 빼고, 아직 완료하지 않은
-// 퍼즐을 우선 추천한다(없으면 현재 외 첫 퍼즐). 연속 플레이 동선을 끊지 않기 위함.
+// 완료 직후 "다음 퍼즐"로 이어줄 추천 퍼즐. 추천 규칙(난이도 상승 → 동일 티어 →
+// 그 외 미완료 → 끊김 방지 폴백)은 코어 정책(getNextRecommendedPuzzleSummary)에
+// 두어 3마켓이 공유한다. 여기서는 완료 집합만 만들어 위임한다.
 function getNextRecommendedSummary(
   puzzleSummaries: PuzzleManifestItem[],
   dateCardStates: Record<string, DateCardState>,
-  currentPuzzleId: string,
+  current: { puzzleId: string; difficulty?: Puzzle["difficulty"] },
 ): PuzzleManifestItem | undefined {
-  const completedIds = getCompletedPuzzleIds(dateCardStates);
-  const candidates = puzzleSummaries.filter(
-    (summary) => summary.puzzleId !== currentPuzzleId,
-  );
-
-  return (
-    candidates.find((summary) => !completedIds.has(summary.puzzleId)) ??
-    candidates[0]
+  return getNextRecommendedPuzzleSummary(
+    puzzleSummaries,
+    getCompletedPuzzleIds(dateCardStates),
+    current,
   );
 }
 
@@ -5927,9 +5925,13 @@ function ResultScreen({
   selectPuzzle,
 }: ResultScreenProps) {
   const isComplete = completedEntries.length === puzzle.entries.length;
-  // 완료 시 이어서 풀 다음 추천 퍼즐(미완료 우선). 단발 세션을 줄이기 위한 연속 동선.
+  // 완료 시 이어서 풀 다음 추천 퍼즐(난이도 상승 우선). 단발 세션을 줄이고 재플레이를
+  // 잇기 위한 연속 동선.
   const nextRecommendedSummary = isComplete
-    ? getNextRecommendedSummary(puzzleSummaries, dateCardStates, puzzle.puzzleId)
+    ? getNextRecommendedSummary(puzzleSummaries, dateCardStates, {
+        puzzleId: puzzle.puzzleId,
+        difficulty: puzzle.difficulty,
+      })
     : undefined;
   const nextRecommendedLabel =
     nextRecommendedSummary == null
