@@ -89,6 +89,31 @@ describe("getNextRecommendedPuzzleSummary", () => {
     assert.equal(next?.puzzleId, "p3", "p2는 완료 → 첫 미완료 p3");
   });
 
+  it("난이도 불명 후보가 다수여도 진척 분기에 매칭되지 않고 첫 미완료를 반환한다", () => {
+    // 완료 티어는 normal인데 후보가 모두 난이도 불명(rank -1)이면, nextTierUp/
+    // sameTier 어디에도 매칭되지 않고 미완료 첫 후보로 폴백해야 한다.
+    const summaries = [summary("u1"), summary("u2"), summary("u3")];
+    const next = getNextRecommendedPuzzleSummary(summaries, SET("u1"), {
+      puzzleId: "cur",
+      difficulty: "normal",
+    });
+    assert.equal(next?.puzzleId, "u2", "불명 후보는 진척 매칭 없이 첫 미완료");
+  });
+
+  it("최고 티어(hard) 완료 시 난이도 불명 후보를 '한 단계 위'로 오인하지 않는다", () => {
+    // hard 완료(rank 2): 한 단계 위는 없다. 난이도 불명 후보(rank -1)가 섞여 있어도
+    // 동일 티어(hard) 미완료를 우선 추천해야 한다.
+    const summaries = [
+      summary("unknown1"),
+      summary("hard2", "hard"),
+    ];
+    const next = getNextRecommendedPuzzleSummary(summaries, SET(), {
+      puzzleId: "hard1",
+      difficulty: "hard",
+    });
+    assert.equal(next?.puzzleId, "hard2", "불명 후보가 아닌 동일 hard 우선");
+  });
+
   it("후보가 현재 퍼즐뿐이면 undefined를 반환한다", () => {
     const summaries = [summary("only", "normal")];
     const next = getNextRecommendedPuzzleSummary(summaries, SET(), {

@@ -36,11 +36,17 @@ export function getNextRecommendedPuzzleSummary(
 
   const currentRank = difficultyRank(current.difficulty);
 
-  // 난이도를 알 수 없으면(불명) 진척 분기를 건너뛰고 기존 동작(미완료 우선)으로 둔다.
+  // 난이도를 알 수 없으면(불명, rank<0) 진척 분기를 건너뛰고 기존 동작(미완료 우선)으로
+  // 둔다. 후보 비교는 항상 0 이상의 알려진 티어 rank끼리만 일치하므로, 난이도 불명
+  // 후보(rank -1)는 진척/동일 티어 분기에 절대 매칭되지 않는다.
   if (currentRank >= 0) {
-    const nextTierUp = uncompleted.find(
-      (summary) => difficultyRank(summary.difficulty) === currentRank + 1,
-    );
+    // 최고 티어(hard)에는 한 단계 위가 없으므로 nextTierUp 탐색 자체를 건너뛴다.
+    const hasHigherTier = currentRank < DIFFICULTY_ORDER.length - 1;
+    const nextTierUp = hasHigherTier
+      ? uncompleted.find(
+          (summary) => difficultyRank(summary.difficulty) === currentRank + 1,
+        )
+      : undefined;
     if (nextTierUp != null) {
       return nextTierUp;
     }
