@@ -22,7 +22,6 @@ import {
   buildStartLabels,
   completeMission,
   computeElapsedMs,
-  computeElapsedSeconds,
   computeLeaderboardScore,
   createPuzzleSummary,
   createDailyMissionState,
@@ -82,6 +81,7 @@ import {
   type SavedProgress,
 } from "../packages/crossword-core/src";
 import { PuzzleBoard } from "./components/PuzzleBoard";
+import { formatElapsedTime, formatLiveTimer, getElapsedSeconds } from "./timer";
 import {
   computeConsecutiveStreakDays,
   createLocalMissionRepository,
@@ -386,21 +386,6 @@ function getRewardedBonusPuzzleFailureMessage(
     case "failed":
       return "광고를 표시하지 못해 퍼즐이 열리지 않았어요. 잠시 후 다시 시도해 주세요.";
   }
-}
-
-// 일시정지 누적/진행 중 정지를 제외한 경과 계산은 공유 코어(computeElapsedSeconds)에
-// 위임한다. pause 인자를 생략하면 일시정지 0으로 계산돼 기존 동작과 동일하다.
-function getElapsedSeconds(
-  startedAt?: string,
-  endedAt?: string,
-  pause?: { pausedMs?: number; pausedAt?: string | null },
-) {
-  return computeElapsedSeconds({
-    startedAt,
-    endedAt,
-    pausedMs: pause?.pausedMs,
-    pausedAt: pause?.pausedAt ?? undefined,
-  });
 }
 
 function getRouteFromPathname(pathname: string): AppRoute {
@@ -4139,13 +4124,6 @@ function getDateCardStatus(state?: DateCardState) {
   return "대기";
 }
 
-function formatLiveTimer(totalSeconds: number): string {
-  const total = Math.floor(totalSeconds);
-  const minutes = Math.floor(total / 60);
-  const seconds = total % 60;
-  return `${minutes}:${String(seconds).padStart(2, "0")}`;
-}
-
 function LiveTimer({
   startedAt,
   pausedMs = 0,
@@ -4155,20 +4133,28 @@ function LiveTimer({
   pausedMs?: number;
   pausedAt?: string | null;
 }) {
-  const pause = { pausedMs, pausedAt };
   const [seconds, setSeconds] = useState(
-    () => getElapsedSeconds(startedAt, undefined, pause) ?? 0,
+    () => getElapsedSeconds(startedAt, undefined, { pausedMs, pausedAt }) ?? 0,
   );
 
+  // 시작 시각·일시정지 상태가 바뀌면 즉시 재계산한다(재개 직후 stale 표시 방지).
   useEffect(() => {
-    setSeconds(getElapsedSeconds(startedAt, undefined, { pausedMs, pausedAt }) ?? 0);
+    setSeconds(
+      getElapsedSeconds(startedAt, undefined, { pausedMs, pausedAt }) ?? 0,
+    );
+  }, [startedAt, pausedMs, pausedAt]);
+
+  // 진행 중일 때만 1초 간격으로 카운트업한다. 일시정지(pausedAt != null) 중에는
+  // interval 자체를 멈춰 표시값을 고정하고, 재개 시 위 effect가 즉시 보정한 뒤
+  // 새 interval이 최신 pausedMs를 참조하므로 stale closure로 값이 줄지 않는다.
+  useEffect(() => {
+    if (pausedAt != null) {
+      return;
+    }
     const id = window.setInterval(() => {
-      setSeconds(
-        getElapsedSeconds(startedAt, undefined, { pausedMs, pausedAt }) ?? 0,
-      );
+      setSeconds(getElapsedSeconds(startedAt, undefined, { pausedMs }) ?? 0);
     }, 1000);
     return () => window.clearInterval(id);
-    // 일시정지 누적/상태가 바뀌면 즉시 다시 계산한다.
   }, [startedAt, pausedMs, pausedAt]);
 
   return (
@@ -4179,37 +4165,6 @@ function LiveTimer({
       {formatLiveTimer(seconds)}
     </span>
   );
-}
-
-function formatElapsedTime(
-  startedAt: string | undefined,
-  completedAt: string | undefined,
-  pausedMs = 0,
-): string | null {
-  if (startedAt == null || completedAt == null) {
-    return null;
-  }
-
-  // 결과 화면 경과 표시도 일시정지 누적을 제외한다.
-  const elapsedMs = computeElapsedMs({
-    startedAt,
-    endedAt: completedAt,
-    pausedMs,
-  });
-
-  if (elapsedMs == null) {
-    return null;
-  }
-
-  const totalSeconds = Math.floor(elapsedMs / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-
-  if (minutes === 0) {
-    return `${totalSeconds}초`;
-  }
-
-  return `${minutes}분 ${String(seconds).padStart(2, "0")}초`;
 }
 
 function buildShareText({
