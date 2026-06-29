@@ -58,6 +58,12 @@ import {
   startMissionAttempt,
   uniquePuzzleSummaries,
   validatePuzzleSlots,
+  shouldPromptReturnReminder,
+  markReturnReminderPrompted,
+  applyReturnReminderOutcome,
+  buildReturnReminderResultParams,
+  RETURN_REMINDER_PROMPT_EVENT,
+  RETURN_REMINDER_RESULT_EVENT,
   type CellLetterChange,
   type DailyMissionState,
   type Direction,
@@ -105,6 +111,11 @@ import {
   type FullScreenAdResult,
 } from "./adapters/appsInTossAds";
 import { loadFirebaseLaunchConfig } from "./adapters/firebaseClient";
+import {
+  loadReturnReminderState,
+  saveReturnReminderState,
+} from "./adapters/returnReminderRepository";
+import { requestReturnReminderAgreement } from "./adapters/notificationAgreement";
 import {
   defaultLaunchConfig,
   type LaunchConfig,
@@ -1636,6 +1647,37 @@ function App() {
     });
   }, [puzzle.date, puzzle.puzzleId, route]);
 
+  // 퍼즐 완료(고관여 시점)에 1회 "오늘의 퍼즐" 복귀 리마인드 푸시 동의를 유도한다.
+  // 결정 로직은 코어(shouldPromptReturnReminder)에, 실제 동의 요청은 AIT 어댑터
+  // (requestReturnReminderAgreement)에 위임한다. 비활성(기본값)이면 아무것도 하지
+  // 않으며, 동의/거부/미지원으로 종결되면 다시 묻지 않는다.
+  const maybePromptReturnReminder = useCallback(() => {
+    const state = loadReturnReminderState();
+    if (
+      !shouldPromptReturnReminder({
+        enabled: launchConfig.returnReminderEnabled,
+        state,
+      })
+    ) {
+      return;
+    }
+
+    const prompted = markReturnReminderPrompted(state, getTodayDateKey());
+    saveReturnReminderState(prompted);
+    telemetry.impression(RETURN_REMINDER_PROMPT_EVENT, {
+      trigger: "mission_complete",
+    });
+
+    void requestReturnReminderAgreement().then((outcome) => {
+      const resolved = applyReturnReminderOutcome(prompted, outcome);
+      saveReturnReminderState(resolved);
+      telemetry.impression(
+        RETURN_REMINDER_RESULT_EVENT,
+        buildReturnReminderResultParams(resolved),
+      );
+    });
+  }, [launchConfig.returnReminderEnabled]);
+
   useEffect(() => {
     if (!viewModel.isComplete || mission.completedAt != null) {
       return;
@@ -1670,6 +1712,9 @@ function App() {
       remaining_attempts: getRemainingAttempts(nextMission),
     });
 
+    // 완료 직후 복귀 리마인드 푸시 동의 유도(원격 설정으로 게이트, 1회 한정).
+    maybePromptReturnReminder();
+
     // 정답 공개(revealUsed)면 무조건 최고 기록 갱신에서 제외한다(revealUsed를
     // 최우선 가드로 두어 정책 의도를 명시). bestTimeEligible === !revealUsed.
     if (
@@ -1699,6 +1744,7 @@ function App() {
     earnedHintCredits,
     hapticEnabled,
     hintCount,
+    maybePromptReturnReminder,
     mission,
     puzzle,
     puzzleTelemetryParams,

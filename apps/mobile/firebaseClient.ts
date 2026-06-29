@@ -65,6 +65,9 @@ export async function loadFirebaseLaunchConfig(): Promise<LaunchConfig> {
         leaderboardEnabled: remoteConfigClient
           .getValue(launchConfigKeys.leaderboardEnabled)
           .asBoolean(),
+        returnReminderEnabled: remoteConfigClient
+          .getValue(launchConfigKeys.returnReminderEnabled)
+          .asBoolean(),
       });
     } catch {
       return defaultLaunchConfig;

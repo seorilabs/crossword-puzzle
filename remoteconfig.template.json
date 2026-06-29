@@ -93,6 +93,13 @@
       },
       "description": "게임센터/스토어 리더보드 UI 노출 여부",
       "valueType": "BOOLEAN"
+    },
+    "return_reminder_enabled": {
+      "defaultValue": {
+        "value": "false"
+      },
+      "description": "복귀 리마인드(D1 재방문) 푸시 동의 유도 노출 여부. 스마트발송 템플릿 등록 후 활성화. 기본값은 비활성",
+      "valueType": "BOOLEAN"
     }
   }
 }

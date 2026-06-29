@@ -17,6 +17,7 @@ export type LaunchConfig = {
   rewardedHintAdsEnabled: boolean;
   resultInterstitialAdsEnabled: boolean;
   leaderboardEnabled: boolean;
+  returnReminderEnabled: boolean;
 };
 
 export const launchConfigKeys = {
@@ -31,6 +32,7 @@ export const launchConfigKeys = {
   rewardedHintAdsEnabled: "rewarded_hint_ads_enabled",
   resultInterstitialAdsEnabled: "result_interstitial_ads_enabled",
   leaderboardEnabled: "leaderboard_enabled",
+  returnReminderEnabled: "return_reminder_enabled",
 } as const;
 
 export const defaultLaunchConfig: LaunchConfig = {
@@ -45,6 +47,9 @@ export const defaultLaunchConfig: LaunchConfig = {
   rewardedHintAdsEnabled: true,
   resultInterstitialAdsEnabled: false,
   leaderboardEnabled: false,
+  // 복귀 리마인드 푸시 동의 유도는 스마트발송 템플릿 등록 + 운영 판단 후
+  // 원격 설정으로 켠다. 기본값은 비활성(3개 시장 동작 동일 유지).
+  returnReminderEnabled: false,
 };
 
 export function clampInteger(
@@ -116,6 +121,9 @@ export function normalizeLaunchConfig(
       defaultLaunchConfig.resultInterstitialAdsEnabled,
     leaderboardEnabled:
       value.leaderboardEnabled ?? defaultLaunchConfig.leaderboardEnabled,
+    returnReminderEnabled:
+      value.returnReminderEnabled ??
+      defaultLaunchConfig.returnReminderEnabled,
   };
 }
 
@@ -142,5 +150,7 @@ export function getLaunchConfigDefaultsForRemoteConfig() {
       defaultLaunchConfig.resultInterstitialAdsEnabled,
     [launchConfigKeys.leaderboardEnabled]:
       defaultLaunchConfig.leaderboardEnabled,
+    [launchConfigKeys.returnReminderEnabled]:
+      defaultLaunchConfig.returnReminderEnabled,
   };
 }
