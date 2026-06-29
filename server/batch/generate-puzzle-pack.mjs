@@ -28,7 +28,8 @@ const DEFAULT_BATCH_OPTIONS = {
   intervalHours: 2,
   keepPuzzles: 84,
   // maxWords/minWordCount/boardSize 는 parseArgs 에서 난이도 프로파일(기본 normal)이
-  // 덮어쓴다. normal 프로파일과 동일한 기본값으로 맞춰 둔다(완료 시간 단축 튜닝 반영).
+  // 먼저 덮어쓰고, 이후 개별 CLI 플래그(--words/--minEntries/--size)로 다시 덮어쓸 수
+  // 있다. 여기 기본값은 normal 프로파일과 동일하게 맞춰 둔다(완료 시간 단축 튜닝 반영).
   maxWords: 10,
   maxAutoRunRatio: 0.5,
   minBboxDensity: 0.5,
