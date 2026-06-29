@@ -3,7 +3,11 @@
 import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
 
-import { getCompletionAchievements } from "./mission.ts";
+import {
+  computeElapsedMs,
+  computeElapsedSeconds,
+  getCompletionAchievements,
+} from "./mission.ts";
 
 describe("getCompletionAchievements", () => {
   it("힌트 0·첫 도전·정답 미공개면 노힌트·첫 도전·최고기록 모두 인정", () => {
@@ -59,5 +63,68 @@ describe("getCompletionAchievements", () => {
     assert.equal(result.noHint, false);
     assert.equal(result.firstTry, false);
     assert.equal(result.bestTimeEligible, false);
+  });
+});
+
+describe("computeElapsedMs / computeElapsedSeconds (일시정지 반영)", () => {
+  const startedAt = "2026-06-29T00:00:00.000Z";
+
+  it("일시정지가 없으면 단순 경과(now - start)를 반환한다", () => {
+    const now = new Date("2026-06-29T00:01:40.000Z").getTime(); // +100s
+    assert.equal(computeElapsedMs({ startedAt, now }), 100_000);
+    assert.equal(computeElapsedSeconds({ startedAt, now }), 100);
+  });
+
+  it("누적 일시정지(pausedMs)를 경과에서 제외한다", () => {
+    const now = new Date("2026-06-29T00:01:40.000Z").getTime(); // +100s
+    assert.equal(
+      computeElapsedMs({ startedAt, pausedMs: 30_000, now }),
+      70_000,
+    );
+    assert.equal(
+      computeElapsedSeconds({ startedAt, pausedMs: 30_000, now }),
+      70,
+    );
+  });
+
+  it("진행 중 일시정지(pausedAt)면 멈춘 순간 이후 시간은 늘지 않는다", () => {
+    const pausedAt = "2026-06-29T00:01:00.000Z"; // +60s에 정지
+    // 정지 후 시간이 흘러도(now=+100s) 경과는 60s로 고정된다.
+    const now = new Date("2026-06-29T00:01:40.000Z").getTime();
+    assert.equal(computeElapsedSeconds({ startedAt, pausedAt, now }), 60);
+    const later = new Date("2026-06-29T00:05:00.000Z").getTime();
+    assert.equal(
+      computeElapsedSeconds({ startedAt, pausedAt, now: later }),
+      60,
+    );
+  });
+
+  it("누적 + 진행 중 정지를 함께 제외한다", () => {
+    const now = new Date("2026-06-29T00:03:00.000Z").getTime(); // +180s
+    const pausedAt = "2026-06-29T00:02:00.000Z"; // +120s부터 정지
+    // 180 - 20(누적) - 60(진행 중 정지: 180-120) = 100
+    assert.equal(
+      computeElapsedSeconds({ startedAt, pausedMs: 20_000, pausedAt, now }),
+      100,
+    );
+  });
+
+  it("종료(endedAt)가 있으면 진행 중 정지는 더하지 않고 누적만 제외한다", () => {
+    const endedAt = "2026-06-29T00:02:00.000Z"; // 완료 +120s
+    // 완료 시점에는 진행 중 정지가 없다고 보고 누적(40s)만 제외 → 80s
+    assert.equal(
+      computeElapsedSeconds({ startedAt, endedAt, pausedMs: 40_000 }),
+      80,
+    );
+  });
+
+  it("정지 시간이 경과를 초과해도 0 미만으로 내려가지 않는다", () => {
+    const now = new Date("2026-06-29T00:00:10.000Z").getTime(); // +10s
+    assert.equal(computeElapsedMs({ startedAt, pausedMs: 99_000, now }), 0);
+  });
+
+  it("시작 시각이 없으면 undefined", () => {
+    assert.equal(computeElapsedMs({ now: 1 }), undefined);
+    assert.equal(computeElapsedSeconds({}), undefined);
   });
 });
