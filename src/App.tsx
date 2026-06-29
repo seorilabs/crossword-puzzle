@@ -21,6 +21,7 @@ import {
   buildReviewEntries,
   buildStartLabels,
   completeMission,
+  computeLeaderboardScore,
   createPuzzleSummary,
   createDailyMissionState,
   DAILY_ATTEMPT_LIMIT,
@@ -55,6 +56,7 @@ import {
   resolveInitialActivePuzzleId,
   selectPromotableTentativeKeys,
   shouldQuickStartActivePuzzle,
+  shouldSubmitLeaderboardScore,
   sortPuzzleSummariesByRecency,
   startMissionAttempt,
   uniquePuzzleSummaries,
@@ -112,6 +114,7 @@ import {
   type FullScreenAdResult,
 } from "./adapters/appsInTossAds";
 import { loadFirebaseLaunchConfig } from "./adapters/firebaseClient";
+import { leaderboardAdapter } from "./adapters/leaderboardAdapter";
 import {
   loadReturnReminderState,
   saveReturnReminderState,
@@ -838,6 +841,9 @@ function App() {
   // 다시 emit하지 않도록 baseline을 초기화한다.
   const progressMilestoneKeyRef = useRef<string>("");
   const reachedProgressMilestoneRef = useRef<number>(0);
+  // 리더보드 점수는 완료한 퍼즐당 1회만 제출한다. 이미 제출한 puzzleId를 기억해
+  // 같은 시도 안에서의 중복 제출(완료 effect 재실행 등)을 막는다.
+  const submittedLeaderboardPuzzleIdsRef = useRef<Set<string>>(new Set());
   // 비완료 이탈 계측: 시작했지만 완료하지 않은 채 보드를 떠날 때(인앱 이동/앱 종료)
   // 진행 스냅샷을 puzzle_abandon으로 한 번(시도당) 기록한다. 행동 변경 없음.
   // had_first_input=false인 이탈은 무입력(침묵) 이탈이며, 이때 elapsed_seconds가
@@ -1710,6 +1716,41 @@ function App() {
       remaining_attempts: getRemainingAttempts(nextMission),
     });
 
+    // 리더보드가 켜져 있고 현재 플랫폼이 지원할 때만, 정답 보기 없이 완료한 퍼즐의
+    // 점수를 제출한다. 완료 effect는 시도당 1회 실행되지만, ref로 puzzleId 단위
+    // 중복 제출까지 막는다(미완료/revealUsed는 shouldSubmitLeaderboardScore가 제외).
+    if (
+      launchConfig.leaderboardEnabled &&
+      leaderboardAdapter.supported &&
+      shouldSubmitLeaderboardScore({
+        completed: true,
+        revealUsed,
+        alreadySubmitted: submittedLeaderboardPuzzleIdsRef.current.has(
+          puzzle.puzzleId,
+        ),
+      })
+    ) {
+      submittedLeaderboardPuzzleIdsRef.current.add(puzzle.puzzleId);
+      const leaderboardScore = computeLeaderboardScore({
+        completedWordCount: viewModel.completedEntries.length,
+        remainingAttempts: getRemainingAttempts(nextMission),
+        hintCount,
+      });
+      telemetry.impression("leaderboard_score_submit", {
+        puzzle_id: puzzle.puzzleId,
+        difficulty: puzzle.difficulty,
+        score: leaderboardScore,
+      });
+      void leaderboardAdapter.submitScore(leaderboardScore, {
+        puzzleId: puzzle.puzzleId,
+        difficulty: puzzle.difficulty,
+        elapsedSeconds: getElapsedSeconds(
+          nextMission.lastStartedAt,
+          nextMission.completedAt,
+        ),
+      });
+    }
+
     // 완료 직후 복귀 리마인드 푸시 동의 유도(원격 설정으로 게이트, 1회 한정).
     maybePromptReturnReminder();
 
@@ -1742,6 +1783,7 @@ function App() {
     earnedHintCredits,
     hapticEnabled,
     hintCount,
+    launchConfig,
     maybePromptReturnReminder,
     mission,
     puzzle,
@@ -2919,8 +2961,18 @@ function App() {
           consecutiveStreak={consecutiveStreak}
           hintCount={hintCount}
           isNewBestTime={isNewBestTime}
+          leaderboardVisible={
+            launchConfig.leaderboardEnabled && leaderboardAdapter.supported
+          }
           mission={mission}
           navigate={navigate}
+          onOpenLeaderboard={() => {
+            telemetry.click("leaderboard_open", {
+              puzzle_id: puzzle.puzzleId,
+              difficulty: puzzle.difficulty,
+            });
+            void leaderboardAdapter.openLeaderboard();
+          }}
           progressPercent={progressPercent}
           puzzle={puzzle}
           remainingAttempts={remainingAttempts}
@@ -5892,8 +5944,10 @@ type ResultScreenProps = DateSelectionProps & {
   consecutiveStreak: number;
   hintCount: number;
   isNewBestTime: boolean;
+  leaderboardVisible: boolean;
   mission: DailyMissionState;
   navigate: (route: AppRoute) => void;
+  onOpenLeaderboard: () => void;
   progressPercent: number;
   puzzle: Puzzle;
   remainingAttempts: number;
@@ -5911,9 +5965,11 @@ function ResultScreen({
   dateCardStates,
   hintCount,
   isNewBestTime,
+  leaderboardVisible,
   loadState,
   mission,
   navigate,
+  onOpenLeaderboard,
   progressPercent,
   puzzle,
   puzzleSummaries,
@@ -6236,6 +6292,15 @@ function ResultScreen({
               {isComplete ? "퍼즐 다시 보기" : "퍼즐 보기"}
             </button>
           </>
+        )}
+        {leaderboardVisible && isComplete && (
+          <button
+            className="secondaryButton"
+            type="button"
+            onClick={onOpenLeaderboard}
+          >
+            순위 보기
+          </button>
         )}
         {(isComplete || remainingAttempts <= 0) &&
           completedEntries.length > 0 && (

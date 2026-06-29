@@ -3,6 +3,7 @@ export * from "./completionStats";
 export * from "./difficultyProfiles";
 export * from "./feedbackPolicy";
 export * from "./launchConfig";
+export * from "./leaderboard";
 export * from "./mission";
 export * from "./platformContracts";
 export * from "./puzzle";
