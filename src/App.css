@@ -1,3 +1,47 @@
+/* 디자인 토큰: 라이트 값을 기본으로 두고, 하단 prefers-color-scheme: dark
+   미디어쿼리에서 같은 토큰을 다크 팔레트로 덮어쓴다. 라이트 외관은 토큰 기본값이
+   기존 하드코딩 색과 동일하므로 회귀가 없다. */
+:root {
+  /* 표면 · 텍스트 */
+  --cw-bg: #ffffff;
+  --cw-text: #191f28;
+  --cw-text-2: #4e5968;
+  --cw-text-3: #6b7684;
+  --cw-text-4: #8b95a1;
+  --cw-surface: #ffffff;
+  --cw-surface-soft: #f7f8fa;
+  --cw-surface-muted: #f2f4f6;
+  --cw-divider: #eef2f4;
+  --cw-border: #e5e8eb;
+  --cw-border-strong: #d6dee6;
+  --cw-track: #dce5e8;
+  --cw-brand-line: #c9eee6;
+  --cw-brand-line-2: #b7eadf;
+  /* 브랜드(그린) */
+  --cw-brand: #00a88f;
+  --cw-brand-strong: #00866f;
+  --cw-brand-soft: #effcf8;
+  --cw-brand-soft-2: #f2fbf8;
+  /* 보드 셀 상태 */
+  --cw-cell-bg: #ffffff;
+  --cw-cell-text: #191f28;
+  --cw-cell-block: #4e5968;
+  --cw-cell-number: #8b95a1;
+  --cw-board-frame: #d6dee6;
+  --cw-cell-selected-bg: #dff6f0;
+  --cw-cell-selected-ring: #00a88f;
+  --cw-cell-cross-bg: #f2fbff;
+  --cw-cell-pending-bg: #fff9db;
+  --cw-cell-correct-bg: #e6f8f2;
+  --cw-cell-correct-text: #00866f;
+  --cw-cell-complete-bg: #e6f8f2;
+  --cw-cell-complete-ring: #7edac8;
+  --cw-cell-wrong-bg: #fff1f0;
+  --cw-cell-wrong-ring: #f4a6a6;
+  --cw-cell-wrong-text: #e5484d;
+  --cw-cell-tentative-text: #8b95a1;
+}
+
 #root {
   width: 100%;
   min-height: 100vh;
@@ -11,8 +55,8 @@
   box-sizing: border-box;
   min-height: 100vh;
   overflow-x: hidden;
-  background: #ffffff;
-  color: #191f28;
+  background: var(--cw-bg);
+  color: var(--cw-text);
   padding: 0 0 var(--fixed-bottom-reserve);
 }
 
@@ -42,7 +86,7 @@ button:disabled {
 }
 
 .appHeader span {
-  color: #6b7684;
+  color: var(--cw-text-3);
   font-size: 13px;
   font-weight: 700;
   line-height: 18px;
@@ -50,7 +94,7 @@ button:disabled {
 
 .appHeader h1 {
   margin: 0;
-  color: #191f28;
+  color: var(--cw-text);
   font-size: 24px;
   font-weight: 900;
   line-height: 32px;
@@ -80,7 +124,7 @@ button:disabled {
 .liveTimerDisplay {
   font-size: 13px;
   font-variant-numeric: tabular-nums;
-  color: #6b7684;
+  color: var(--cw-text-3);
   letter-spacing: 0.02em;
   min-width: 42px;
   display: inline-block;
@@ -88,7 +132,7 @@ button:disabled {
 
 .solveProgressBar {
   height: 3px;
-  background: #dce5e8;
+  background: var(--cw-track);
   overflow: hidden;
 }
 
@@ -143,17 +187,17 @@ button:disabled {
   flex-direction: column;
   gap: 2px;
   scroll-snap-align: start;
-  border: 1px solid #e5e8eb;
+  border: 1px solid var(--cw-border);
   border-radius: 8px;
-  background: #ffffff;
-  color: #191f28;
+  background: var(--cw-surface);
+  color: var(--cw-text);
   font: inherit;
   padding: 9px 10px;
   text-align: left;
 }
 
 .dateCard span {
-  color: #8b95a1;
+  color: var(--cw-text-4);
   font-size: 12px;
   font-weight: 800;
   line-height: 16px;
@@ -168,7 +212,7 @@ button:disabled {
 .dateCard em {
   display: block;
   min-height: 30px;
-  color: #6b7684;
+  color: var(--cw-text-3);
   font-size: 11px;
   font-style: normal;
   font-weight: 800;
@@ -177,22 +221,22 @@ button:disabled {
 }
 
 .dateSelected {
-  border-color: #00a88f;
-  background: #effcf8;
+  border-color: var(--cw-brand);
+  background: var(--cw-brand-soft);
   box-shadow: inset 0 0 0 1px #00a88f;
 }
 
 .dateSelected span,
 .dateSelected em {
-  color: #00866f;
+  color: var(--cw-brand-strong);
 }
 
 .dateCompleted:not(.dateSelected) {
-  border-color: #c9eee6;
+  border-color: var(--cw-brand-line);
 }
 
 .dateToday:not(.dateSelected) span {
-  color: #00866f;
+  color: var(--cw-brand-strong);
 }
 
 .dateEasy:not(.dateSelected) {
@@ -213,8 +257,8 @@ button:disabled {
   align-items: center;
   border-radius: 999px;
   padding: 1px 7px;
-  color: #4e5968;
-  background: #f2f4f6;
+  color: var(--cw-text-2);
+  background: var(--cw-surface-muted);
   font-size: 10px;
   font-weight: 800;
   line-height: 15px;
@@ -236,7 +280,7 @@ button:disabled {
 }
 
 .dateCard .dateEstimate {
-  color: #6b7684;
+  color: var(--cw-text-3);
   font-size: 10px;
   font-weight: 700;
   line-height: 15px;
@@ -260,7 +304,7 @@ button:disabled {
 .dateLoading em {
   display: block;
   border-radius: 4px;
-  background: linear-gradient(90deg, #e5e8eb 25%, #f2f4f6 50%, #e5e8eb 75%);
+  background: linear-gradient(90deg, var(--cw-border) 25%, #f2f4f6 50%, var(--cw-border) 75%);
   background-size: 200px 100%;
   animation: skeletonShimmer 1.2s ease-in-out infinite;
   color: transparent;
@@ -302,7 +346,7 @@ button:disabled {
 }
 
 .packInfoRow span {
-  color: #6b7684;
+  color: var(--cw-text-3);
   font-size: 12px;
   font-weight: 800;
   line-height: 18px;
@@ -314,10 +358,10 @@ button:disabled {
   height: 28px;
   flex: 0 0 auto;
   place-items: center;
-  border: 1px solid #d6dee6;
+  border: 1px solid var(--cw-border-strong);
   border-radius: 50%;
-  background: #ffffff;
-  color: #4e5968;
+  background: var(--cw-surface);
+  color: var(--cw-text-2);
   font: inherit;
   font-size: 13px;
   font-weight: 900;
@@ -345,7 +389,7 @@ button:disabled {
 }
 
 .packInfoPanel span {
-  color: #4e5968;
+  color: var(--cw-text-2);
   font-size: 13px;
   font-weight: 700;
   line-height: 19px;
@@ -355,7 +399,7 @@ button:disabled {
 .backButton {
   border: 0;
   background: transparent;
-  color: #4e5968;
+  color: var(--cw-text-2);
   font: inherit;
   font-weight: 800;
 }
@@ -373,7 +417,7 @@ button:disabled {
   flex: 0 0 auto;
   place-items: center;
   border-radius: 50%;
-  background: #f2f4f6;
+  background: var(--cw-surface-muted);
   font-size: 25px;
   line-height: 1;
 }
@@ -386,8 +430,8 @@ button:disabled {
   height: 34px;
   border: 0;
   border-radius: 999px;
-  background: #f2f4f6;
-  color: #4e5968;
+  background: var(--cw-surface-muted);
+  color: var(--cw-text-2);
   font: inherit;
   font-size: 14px;
   font-weight: 800;
@@ -409,7 +453,7 @@ button:disabled {
   padding: 10px 14px;
   border-radius: 8px;
   background: #eef6f3;
-  color: #00866f;
+  color: var(--cw-brand-strong);
   font-size: 13px;
   font-weight: 700;
   line-height: 18px;
@@ -423,7 +467,7 @@ button:disabled {
   flex: 0 0 auto;
   border: 0;
   background: transparent;
-  color: #00866f;
+  color: var(--cw-brand-strong);
   font: inherit;
   font-size: 13px;
   font-weight: 900;
@@ -442,7 +486,7 @@ button:disabled {
   padding: 10px 14px;
   border-radius: 8px;
   background: #f5f6f7;
-  color: #4e5968;
+  color: var(--cw-text-2);
   font-size: 13px;
   font-weight: 700;
   line-height: 18px;
@@ -456,7 +500,7 @@ button:disabled {
   flex: 0 0 auto;
   border: 0;
   background: transparent;
-  color: #4e5968;
+  color: var(--cw-text-2);
   font: inherit;
   font-size: 13px;
   font-weight: 900;
@@ -476,7 +520,7 @@ button:disabled {
   margin: 0 20px 18px;
   padding: 18px;
   border-radius: 8px;
-  background: #f2fbf8;
+  background: var(--cw-brand-soft-2);
 }
 
 .homeSummary {
@@ -488,14 +532,14 @@ button:disabled {
 }
 
 .homeSummary strong {
-  color: #191f28;
+  color: var(--cw-text);
   font-size: 18px;
   font-weight: 900;
   line-height: 25px;
 }
 
 .homeSummary span {
-  color: #6b7684;
+  color: var(--cw-text-3);
   font-size: 13px;
   font-weight: 700;
   line-height: 18px;
@@ -510,14 +554,14 @@ button:disabled {
 }
 
 .missionLead span {
-  color: #00866f;
+  color: var(--cw-brand-strong);
   font-size: 13px;
   font-weight: 900;
   line-height: 18px;
 }
 
 .missionLead strong {
-  color: #191f28;
+  color: var(--cw-text);
   font-size: 30px;
   font-weight: 900;
   line-height: 36px;
@@ -525,7 +569,7 @@ button:disabled {
 
 .missionLead p {
   margin: 0;
-  color: #4e5968;
+  color: var(--cw-text-2);
   font-size: 14px;
   font-weight: 700;
   line-height: 20px;
@@ -541,8 +585,8 @@ button:disabled {
 .miniCell {
   aspect-ratio: 1;
   border-radius: 3px;
-  background: #ffffff;
-  box-shadow: inset 0 0 0 1px #c9eee6;
+  background: var(--cw-surface);
+  box-shadow: inset 0 0 0 1px var(--cw-brand-line);
 }
 
 .miniBlock {
@@ -551,7 +595,7 @@ button:disabled {
 }
 
 .miniCellSkeleton {
-  background: linear-gradient(90deg, #e5e8eb 25%, #f2f4f6 50%, #e5e8eb 75%);
+  background: linear-gradient(90deg, var(--cw-border) 25%, #f2f4f6 50%, var(--cw-border) 75%);
   background-size: 200px 100%;
   animation: skeletonShimmer 1.2s ease-in-out infinite;
   box-shadow: none;
@@ -563,9 +607,9 @@ button:disabled {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1px;
   overflow: hidden;
-  border: 1px solid #c9eee6;
+  border: 1px solid var(--cw-brand-line);
   border-radius: 8px;
-  background: #c9eee6;
+  background: var(--cw-brand-line);
 }
 
 .attemptStrip > div {
@@ -576,20 +620,20 @@ button:disabled {
   align-items: center;
   padding: 10px;
   text-align: center;
-  background: #ffffff;
+  background: var(--cw-surface);
 }
 
 .attemptStrip span,
 .homeList span,
 .cluePeek span {
-  color: #6b7684;
+  color: var(--cw-text-3);
   font-size: 12px;
   font-weight: 700;
   line-height: 16px;
 }
 
 .attemptStrip strong {
-  color: #191f28;
+  color: var(--cw-text);
   font-size: 17px;
   line-height: 23px;
 }
@@ -622,14 +666,14 @@ button:disabled {
 }
 
 .todayPuzzleRailHeader strong {
-  color: #191f28;
+  color: var(--cw-text);
   font-size: 15px;
   font-weight: 900;
   line-height: 21px;
 }
 
 .todayPuzzleRailHeader span {
-  color: #6b7684;
+  color: var(--cw-text-3);
   font-size: 12px;
   font-weight: 800;
   line-height: 17px;
@@ -659,17 +703,17 @@ button:disabled {
   flex-direction: column;
   gap: 3px;
   scroll-snap-align: start;
-  border: 1px solid #e5e8eb;
+  border: 1px solid var(--cw-border);
   border-radius: 8px;
-  background: #ffffff;
-  color: #191f28;
+  background: var(--cw-surface);
+  color: var(--cw-text);
   font: inherit;
   padding: 11px 12px;
   text-align: left;
 }
 
 .todayPuzzleChip span {
-  color: #00866f;
+  color: var(--cw-brand-strong);
   font-size: 13px;
   font-weight: 900;
   line-height: 18px;
@@ -683,7 +727,7 @@ button:disabled {
 }
 
 .todayPuzzleChip em {
-  color: #6b7684;
+  color: var(--cw-text-3);
   font-size: 12px;
   font-style: normal;
   font-weight: 800;
@@ -691,8 +735,8 @@ button:disabled {
 }
 
 .todayPuzzleChipSelected {
-  border-color: #00a88f;
-  background: #effcf8;
+  border-color: var(--cw-brand);
+  background: var(--cw-brand-soft);
   box-shadow: inset 0 0 0 1px #00a88f;
 }
 
@@ -705,8 +749,8 @@ button:disabled {
   margin: 0 20px 14px;
   border: 0;
   border-radius: 8px;
-  background: #f7f8fa;
-  color: #191f28;
+  background: var(--cw-surface-soft);
+  color: var(--cw-text);
   font: inherit;
   padding: 16px;
   text-align: left;
@@ -805,7 +849,7 @@ button:disabled {
 }
 
 .hintRewardPanel strong {
-  color: #191f28;
+  color: var(--cw-text);
   font-size: 22px;
   font-weight: 900;
   line-height: 28px;
@@ -815,7 +859,7 @@ button:disabled {
 .hintRewardPanel em,
 .hintRewardPanel p {
   margin: 0;
-  color: #4e5968;
+  color: var(--cw-text-2);
   font-size: 12px;
   font-style: normal;
   font-weight: 700;
@@ -865,8 +909,8 @@ button:disabled {
 }
 
 .bonusPuzzlePanelAvailable {
-  border-color: #b7eadf;
-  background: #effcf8;
+  border-color: var(--cw-brand-line-2);
+  background: var(--cw-brand-soft);
 }
 
 .bonusPuzzlePanel > div {
@@ -884,11 +928,11 @@ button:disabled {
 }
 
 .bonusPuzzlePanelAvailable span {
-  color: #00866f;
+  color: var(--cw-brand-strong);
 }
 
 .bonusPuzzlePanel strong {
-  color: #191f28;
+  color: var(--cw-text);
   font-size: 18px;
   font-weight: 900;
   line-height: 24px;
@@ -897,7 +941,7 @@ button:disabled {
 .bonusPuzzlePanel em,
 .bonusPuzzlePanel p {
   margin: 0;
-  color: #4e5968;
+  color: var(--cw-text-2);
   font-size: 12px;
   font-style: normal;
   font-weight: 700;
@@ -913,7 +957,7 @@ button:disabled {
   height: 8px;
   overflow: hidden;
   border-radius: 999px;
-  background: #dce5e8;
+  background: var(--cw-track);
 }
 
 .progressTrack span {
@@ -927,7 +971,7 @@ button:disabled {
   display: flex;
   flex-direction: column;
   margin: 0 20px 18px;
-  border-top: 1px solid #eef2f4;
+  border-top: 1px solid var(--cw-divider);
 }
 
 .homeList button,
@@ -939,9 +983,9 @@ button:disabled {
   justify-content: space-between;
   gap: 12px;
   border: 0;
-  border-bottom: 1px solid #eef2f4;
-  background: #ffffff;
-  color: #191f28;
+  border-bottom: 1px solid var(--cw-divider);
+  background: var(--cw-surface);
+  color: var(--cw-text);
   font: inherit;
   padding: 16px 0;
   text-align: left;
@@ -963,7 +1007,7 @@ button:disabled {
 
 .homeList em,
 .historyItem em {
-  color: #00866f;
+  color: var(--cw-brand-strong);
   font-size: 13px;
   font-style: normal;
   font-weight: 900;
@@ -977,12 +1021,12 @@ button:disabled {
   align-items: center;
   margin: -2px 20px 20px;
   padding: 12px 0 0;
-  border-top: 1px solid #eef2f4;
+  border-top: 1px solid var(--cw-divider);
 }
 
 .sourceNotice span {
   min-width: 0;
-  color: #6b7684;
+  color: var(--cw-text-3);
   font-size: 12px;
   font-weight: 700;
   line-height: 17px;
@@ -991,7 +1035,7 @@ button:disabled {
 .sourceNotice button {
   border: 0;
   background: transparent;
-  color: #00866f;
+  color: var(--cw-brand-strong);
   font: inherit;
   font-size: 12px;
   font-weight: 900;
@@ -1008,7 +1052,7 @@ button:disabled {
   margin: 0 20px 18px;
   padding: 18px;
   border-radius: 8px;
-  background: #f7f8fa;
+  background: var(--cw-surface-soft);
 }
 
 .startPanel strong,
@@ -1019,7 +1063,7 @@ button:disabled {
 
 .startPanel span,
 .resultPanel span {
-  color: #6b7684;
+  color: var(--cw-text-3);
   font-size: 14px;
   font-weight: 700;
   line-height: 20px;
@@ -1035,7 +1079,7 @@ button:disabled {
 
 .resultDayLimitNotice {
   margin: 0;
-  color: #6b7684;
+  color: var(--cw-text-3);
   font-size: 13px;
   font-weight: 700;
   line-height: 18px;
@@ -1044,7 +1088,7 @@ button:disabled {
 
 .streakNudge {
   margin: 0;
-  color: #00866f;
+  color: var(--cw-brand-strong);
   font-size: 14px;
   font-weight: 700;
   line-height: 20px;
@@ -1079,9 +1123,9 @@ button:disabled {
   gap: 1px;
   margin: 0 20px 16px;
   overflow: hidden;
-  border: 1px solid #e5e8eb;
+  border: 1px solid var(--cw-border);
   border-radius: 8px;
-  background: #e5e8eb;
+  background: var(--cw-border);
 }
 
 .missionCompact > div {
@@ -1092,7 +1136,7 @@ button:disabled {
   align-items: center;
   justify-content: center;
   padding: 10px 4px;
-  background: #ffffff;
+  background: var(--cw-surface);
 }
 
 .missionCompact strong {
@@ -1101,7 +1145,7 @@ button:disabled {
 }
 
 .missionCompact span {
-  color: #6b7684;
+  color: var(--cw-text-3);
   font-size: 12px;
   line-height: 16px;
 }
@@ -1116,7 +1160,7 @@ button:disabled {
 .resultNextHint {
   margin: -4px 0 2px;
   text-align: center;
-  color: #6b7684;
+  color: var(--cw-text-3);
   font-size: 13px;
   font-weight: 700;
   line-height: 18px;
@@ -1138,7 +1182,7 @@ button:disabled {
   border: 1.5px solid #d1d5db;
   border-radius: 8px;
   background: transparent;
-  color: #4e5968;
+  color: var(--cw-text-2);
   font: inherit;
   font-size: 15px;
   font-weight: 600;
@@ -1155,7 +1199,7 @@ button:disabled {
 .shareToast {
   text-align: center;
   font-size: 13px;
-  color: #00a88f;
+  color: var(--cw-brand);
   font-weight: 500;
   margin: 0;
   animation: shareToastIn 0.2s ease;
@@ -1187,8 +1231,8 @@ button:disabled {
   margin: 0;
   padding: 12px 14px;
   border-radius: 8px;
-  background: #f7f8fa;
-  color: #6b7684;
+  background: var(--cw-surface-soft);
+  color: var(--cw-text-3);
   font-size: 12px;
   font-weight: 700;
   line-height: 18px;
@@ -1198,8 +1242,8 @@ button:disabled {
   margin: 0 20px 18px;
   padding: 12px 14px;
   border-radius: 8px;
-  background: #f7f8fa;
-  color: #6b7684;
+  background: var(--cw-surface-soft);
+  color: var(--cw-text-3);
   font-size: 12px;
   font-weight: 700;
   line-height: 18px;
@@ -1214,9 +1258,9 @@ button:disabled {
   gap: 16px;
   margin: 0 20px 16px;
   padding: 16px;
-  border: 1px solid #e5e8eb;
+  border: 1px solid var(--cw-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--cw-surface);
 }
 
 .licensePanel div {
@@ -1227,7 +1271,7 @@ button:disabled {
 }
 
 .licensePanel span {
-  color: #00866f;
+  color: var(--cw-brand-strong);
   font-size: 12px;
   font-weight: 900;
   line-height: 17px;
@@ -1235,7 +1279,7 @@ button:disabled {
 
 .licensePanel p {
   margin: 0;
-  color: #4e5968;
+  color: var(--cw-text-2);
   font-size: 14px;
   font-weight: 700;
   line-height: 21px;
@@ -1248,11 +1292,11 @@ button:disabled {
   gap: 10px;
   margin: 0 20px 18px;
   padding-top: 12px;
-  border-top: 1px solid #eef2f4;
+  border-top: 1px solid var(--cw-divider);
 }
 
 .licenseLinks a {
-  color: #00866f;
+  color: var(--cw-brand-strong);
   font-size: 14px;
   font-weight: 900;
   line-height: 20px;
@@ -1266,9 +1310,9 @@ button:disabled {
   gap: 1px;
   margin: 0 20px 16px;
   overflow: hidden;
-  border: 1px solid #e5e8eb;
+  border: 1px solid var(--cw-border);
   border-radius: 8px;
-  background: #e5e8eb;
+  background: var(--cw-border);
 }
 
 .metricsBar > div {
@@ -1279,7 +1323,7 @@ button:disabled {
   align-items: center;
   justify-content: center;
   padding: 10px 4px;
-  background: #ffffff;
+  background: var(--cw-surface);
 }
 
 .metricsBar strong {
@@ -1288,7 +1332,7 @@ button:disabled {
 }
 
 .metricsBar span {
-  color: #6b7684;
+  color: var(--cw-text-3);
   font-size: 12px;
   line-height: 16px;
 }
@@ -1299,19 +1343,19 @@ button:disabled {
   gap: 4px;
   margin: 0 20px 16px;
   padding: 14px;
-  border: 1px solid #b7eadf;
+  border: 1px solid var(--cw-brand-line-2);
   border-radius: 8px;
-  background: #effcf8;
+  background: var(--cw-brand-soft);
 }
 
 .completionPanel strong {
-  color: #00866f;
+  color: var(--cw-brand-strong);
   font-size: 18px;
   line-height: 25px;
 }
 
 .completionPanel span {
-  color: #4e5968;
+  color: var(--cw-text-2);
   font-size: 13px;
   line-height: 18px;
 }
@@ -1323,7 +1367,7 @@ button:disabled {
   margin: 0 20px 16px;
   padding: 4px;
   border-radius: 8px;
-  background: #e5e8eb;
+  background: var(--cw-border);
 }
 
 .modeButton {
@@ -1331,7 +1375,7 @@ button:disabled {
   border: 0;
   border-radius: 6px;
   background: transparent;
-  color: #4e5968;
+  color: var(--cw-text-2);
   font: inherit;
   font-size: 15px;
   font-weight: 800;
@@ -1340,8 +1384,8 @@ button:disabled {
 }
 
 .modeActive {
-  background: #ffffff;
-  color: #191f28;
+  background: var(--cw-surface);
+  color: var(--cw-text);
 }
 
 .reviewPanel {
@@ -1359,14 +1403,14 @@ button:disabled {
 }
 
 .qualitySummary strong {
-  color: #191f28;
+  color: var(--cw-text);
   font-size: 18px;
   line-height: 25px;
 }
 
 .qualitySummary span,
 .reviewNote {
-  color: #6b7684;
+  color: var(--cw-text-3);
   font-size: 13px;
   line-height: 18px;
 }
@@ -1382,13 +1426,13 @@ button:disabled {
   min-width: 0;
   gap: 4px;
   padding: 10px;
-  border: 1px solid #e5e8eb;
+  border: 1px solid var(--cw-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--cw-surface);
 }
 
 .qualityItem span {
-  color: #4e5968;
+  color: var(--cw-text-2);
   font-size: 12px;
   font-weight: 700;
   line-height: 16px;
@@ -1400,14 +1444,14 @@ button:disabled {
 }
 
 .qualityItem em {
-  color: #8b95a1;
+  color: var(--cw-text-4);
   font-size: 12px;
   font-style: normal;
   line-height: 16px;
 }
 
 .qualityPass {
-  color: #00866f;
+  color: var(--cw-brand-strong);
 }
 
 .qualityFail {
@@ -1418,7 +1462,7 @@ button:disabled {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  border: 1px solid #e5e8eb;
+  border: 1px solid var(--cw-border);
   border-radius: 8px;
   padding: 12px;
 }
@@ -1430,7 +1474,7 @@ button:disabled {
 
 .slotValidation span,
 .slotIssueList em {
-  color: #6b7684;
+  color: var(--cw-text-3);
   font-size: 12px;
   font-style: normal;
   font-weight: 700;
@@ -1438,12 +1482,12 @@ button:disabled {
 }
 
 .slotValidationPass {
-  background: #f2fbf8;
-  border-color: #b7eadf;
+  background: var(--cw-brand-soft-2);
+  border-color: var(--cw-brand-line-2);
 }
 
 .slotValidationPass strong {
-  color: #00866f;
+  color: var(--cw-brand-strong);
 }
 
 .slotValidationFail {
@@ -1474,18 +1518,18 @@ button:disabled {
   align-items: center;
   width: 100%;
   min-width: 0;
-  border: 1px solid #e5e8eb;
+  border: 1px solid var(--cw-border);
   border-radius: 8px;
-  background: #ffffff;
-  color: #191f28;
+  background: var(--cw-surface);
+  color: var(--cw-text);
   font: inherit;
   padding: 12px;
   text-align: left;
 }
 
 .reviewSelected {
-  border-color: #00a88f;
-  background: #f2fbf8;
+  border-color: var(--cw-brand);
+  background: var(--cw-brand-soft-2);
 }
 
 .reviewIndex {
@@ -1494,8 +1538,8 @@ button:disabled {
   height: 26px;
   place-items: center;
   border-radius: 50%;
-  background: #eef2f4;
-  color: #4e5968;
+  background: var(--cw-divider);
+  color: var(--cw-text-2);
   font-size: 12px;
   font-weight: 800;
   grid-row: span 2;
@@ -1511,7 +1555,7 @@ button:disabled {
 .reviewMeta,
 .reviewCoords {
   min-width: 0;
-  color: #6b7684;
+  color: var(--cw-text-3);
   font-size: 12px;
   font-weight: 700;
   line-height: 18px;
@@ -1537,9 +1581,9 @@ button:disabled {
   width: min(calc(100vw - 32px), 430px);
   margin: 0 auto 18px;
   padding: 6px;
-  border: 1px solid #d6dee6;
+  border: 1px solid var(--cw-board-frame);
   border-radius: 8px;
-  background: #d6dee6;
+  background: var(--cw-board-frame);
 }
 
 .puzzleBoard:focus {
@@ -1558,8 +1602,8 @@ button:disabled {
   place-items: center;
   border: 0;
   border-radius: 4px;
-  background: #ffffff;
-  color: #191f28;
+  background: var(--cw-cell-bg);
+  color: var(--cw-cell-text);
   font: inherit;
   font-size: 20px;
   font-weight: 800;
@@ -1568,36 +1612,36 @@ button:disabled {
 }
 
 .cellBlock {
-  background: #4e5968;
+  background: var(--cw-cell-block);
   cursor: default;
 }
 
 .cellSelected {
-  background: #dff6f0;
-  box-shadow: inset 0 0 0 2px #00a88f;
+  background: var(--cw-cell-selected-bg);
+  box-shadow: inset 0 0 0 2px var(--cw-cell-selected-ring);
 }
 
 .cellCross:not(.cellSelected) {
-  background: #f2fbff;
+  background: var(--cw-cell-cross-bg);
 }
 
 .cellFilled {
-  color: #00866f;
+  color: var(--cw-cell-correct-text);
 }
 
 .cellPending {
-  background: #fff9db;
-  color: #191f28;
+  background: var(--cw-cell-pending-bg);
+  color: var(--cw-cell-text);
 }
 
 /* A single correct letter (locked) — distinct from empty white cells and red
    wrong cells, even before the whole word is finished. */
 .cellCorrect {
-  color: #00866f;
+  color: var(--cw-cell-correct-text);
 }
 
 .cellCorrect:not(.cellSelected) {
-  background: #e6f8f2;
+  background: var(--cw-cell-correct-bg);
 }
 
 .cellLockMark {
@@ -1627,9 +1671,9 @@ button:disabled {
 }
 
 .cellComplete {
-  background: #e6f8f2;
-  color: #00866f;
-  box-shadow: inset 0 0 0 1px #7edac8;
+  background: var(--cw-cell-complete-bg);
+  color: var(--cw-cell-correct-text);
+  box-shadow: inset 0 0 0 1px var(--cw-cell-complete-ring);
 }
 
 .cellComplete::after {
@@ -1656,12 +1700,12 @@ button:disabled {
 }
 
 .cellWrong {
-  color: #e5484d;
+  color: var(--cw-cell-wrong-text);
 }
 
 .cellWrong:not(.cellSelected) {
-  background: #fff1f0;
-  box-shadow: inset 0 0 0 1px #f4a6a6;
+  background: var(--cw-cell-wrong-bg);
+  box-shadow: inset 0 0 0 1px var(--cw-cell-wrong-ring);
 }
 
 /* 연필(임시) 입력 글자 — 확신 없는 추측을 회색·기울임으로 구분한다.
@@ -1675,14 +1719,14 @@ button:disabled {
 }
 
 .cellTentative {
-  color: #8b95a1;
+  color: var(--cw-cell-tentative-text);
 }
 
 .cellNumber {
   position: absolute;
   top: 3px;
   left: 4px;
-  color: #8b95a1;
+  color: var(--cw-cell-number);
   font-size: 9px;
   font-weight: 700;
   line-height: 1;
@@ -1697,7 +1741,7 @@ button:disabled {
   bottom: 0;
   left: 0;
   right: 0;
-  background: #ffffff;
+  background: var(--cw-surface);
   z-index: 1000;
   padding-bottom: env(safe-area-inset-bottom, 16px);
   border-top: 1px solid #f2f4f6;
@@ -1768,9 +1812,9 @@ button:disabled {
   justify-content: space-between;
   gap: 12px;
   border-radius: 12px;
-  background: #ffffff;
-  border: 1px solid #e5e8eb;
-  color: #191f28;
+  background: var(--cw-surface);
+  border: 1px solid var(--cw-border);
+  color: var(--cw-text);
   font-size: 14px;
   font-weight: 700;
   line-height: 20px;
@@ -1823,7 +1867,7 @@ button:disabled {
 .stuckHintPromptClose {
   border: none;
   background: transparent;
-  color: #8b95a1;
+  color: var(--cw-text-4);
   font-size: 14px;
   line-height: 1;
   padding: 6px;
@@ -1925,19 +1969,19 @@ button:disabled {
   gap: 4px;
   border: 0;
   border-radius: 8px;
-  background: #f7f8fa;
-  color: #191f28;
+  background: var(--cw-surface-soft);
+  color: var(--cw-text);
   font: inherit;
   padding: 8px 10px;
   text-align: left;
 }
 
 .selectedClueActive {
-  color: #00866f;
+  color: var(--cw-brand-strong);
 }
 
 .selectedClue span {
-  color: #6b7684;
+  color: var(--cw-text-3);
   font-size: 12px;
   font-weight: 800;
   line-height: 16px;
@@ -1966,8 +2010,8 @@ button:disabled {
   place-items: center;
   border: 0;
   border-radius: 50%;
-  background: #f2f4f6;
-  color: #4e5968;
+  background: var(--cw-surface-muted);
+  color: var(--cw-text-2);
   font: inherit;
   font-size: 16px;
   font-weight: 900;
@@ -1987,8 +2031,8 @@ button:disabled {
   place-items: center;
   border: 0;
   border-radius: 50%;
-  background: #effcf8;
-  color: #00866f;
+  background: var(--cw-brand-soft);
+  color: var(--cw-brand-strong);
   font: inherit;
   line-height: 1;
 }
@@ -2034,8 +2078,8 @@ button:disabled {
   gap: 8px;
   margin: 0 0 10px;
   padding: 10px 16px 12px;
-  background: #ffffff;
-  border-bottom: 1px solid #eef2f4;
+  background: var(--cw-surface);
+  border-bottom: 1px solid var(--cw-divider);
 }
 
 .solveClueRow {
@@ -2053,8 +2097,8 @@ button:disabled {
   place-items: center;
   border: 0;
   border-radius: 50%;
-  background: #f2f4f6;
-  color: #4e5968;
+  background: var(--cw-surface-muted);
+  color: var(--cw-text-2);
   font: inherit;
   font-size: 22px;
   line-height: 1;
@@ -2068,7 +2112,7 @@ button:disabled {
   flex-direction: column;
   border: 0;
   background: transparent;
-  color: #191f28;
+  color: var(--cw-text);
   font: inherit;
   padding: 0;
   text-align: center;
@@ -2087,7 +2131,7 @@ button:disabled {
 }
 
 .solveClueTextComplete {
-  color: #00866f;
+  color: var(--cw-brand-strong);
 }
 
 .solveAssistBar {
@@ -2101,10 +2145,10 @@ button:disabled {
 
 .assistButton {
   flex: 0 0 auto;
-  border: 1px solid #e5e8eb;
+  border: 1px solid var(--cw-border);
   border-radius: 999px;
-  background: #f2f4f6;
-  color: #4e5968;
+  background: var(--cw-surface-muted);
+  color: var(--cw-text-2);
   font: inherit;
   font-size: 13px;
   font-weight: 700;
@@ -2125,7 +2169,7 @@ button:disabled {
 .assistToggleOn {
   border-color: #b8e0d8;
   background: #e7f6f2;
-  color: #00866f;
+  color: var(--cw-brand-strong);
 }
 
 .answerSlotInput {
@@ -2150,10 +2194,10 @@ button:disabled {
   width: 44px;
   height: 44px;
   place-items: center;
-  border: 1px solid #d6dee6;
+  border: 1px solid var(--cw-border-strong);
   border-radius: 8px;
-  background: #ffffff;
-  color: #191f28;
+  background: var(--cw-surface);
+  color: var(--cw-text);
   font: inherit;
   font-size: 21px;
   font-weight: 900;
@@ -2162,30 +2206,30 @@ button:disabled {
 }
 
 .answerSlotFilled {
-  border-color: #c9eee6;
-  background: #effcf8;
-  color: #00866f;
+  border-color: var(--cw-brand-line);
+  background: var(--cw-brand-soft);
+  color: var(--cw-brand-strong);
 }
 
 .answerSlotActive {
-  border-color: #00a88f;
+  border-color: var(--cw-brand);
   box-shadow: 0 0 0 3px rgba(0, 168, 143, 0.14);
 }
 
 .answerSlotPending {
   border-color: #f2c94c;
   background: #fff9db;
-  color: #191f28;
+  color: var(--cw-text);
 }
 
 .answerSlotActive.answerSlotPending {
-  border-color: #00a88f;
+  border-color: var(--cw-brand);
 }
 
 .answerSlotLocked {
   border-color: #7edac8;
   background: #e6f8f2;
-  color: #00866f;
+  color: var(--cw-brand-strong);
 }
 
 .answerSlotWrong {
@@ -2217,10 +2261,10 @@ button:disabled {
 .answerInput {
   width: 100%;
   box-sizing: border-box;
-  border: 1px solid #d6dee6;
+  border: 1px solid var(--cw-border-strong);
   border-radius: 8px;
-  background: #ffffff;
-  color: #191f28;
+  background: var(--cw-surface);
+  color: var(--cw-text);
   font-size: 20px;
   font-weight: 800;
   letter-spacing: 0;
@@ -2230,7 +2274,7 @@ button:disabled {
 }
 
 .answerInput:focus {
-  border-color: #00a88f;
+  border-color: var(--cw-brand);
   box-shadow: 0 0 0 3px rgba(0, 168, 143, 0.12);
 }
 
@@ -2245,10 +2289,10 @@ button:disabled {
 .answerBoxInput {
   width: 100%;
   box-sizing: border-box;
-  border: 1px solid #d6dee6;
+  border: 1px solid var(--cw-border-strong);
   border-radius: 10px;
-  background: #ffffff;
-  color: #191f28;
+  background: var(--cw-surface);
+  color: var(--cw-text);
   font-size: 21px;
   font-weight: 800;
   letter-spacing: 4px;
@@ -2265,7 +2309,7 @@ button:disabled {
 }
 
 .answerBoxInput:focus {
-  border-color: #00a88f;
+  border-color: var(--cw-brand);
   box-shadow: 0 0 0 3px rgba(0, 168, 143, 0.12);
 }
 
@@ -2312,8 +2356,8 @@ button:disabled {
   z-index: 1200;
   display: flex;
   flex-direction: column;
-  background: #ffffff;
-  color: #191f28;
+  background: var(--cw-surface);
+  color: var(--cw-text);
 }
 
 .rewardDialogScrim {
@@ -2333,8 +2377,8 @@ button:disabled {
   flex-direction: column;
   gap: 22px;
   border-radius: 8px;
-  background: #ffffff;
-  color: #191f28;
+  background: var(--cw-surface);
+  color: var(--cw-text);
   padding: 22px 20px 18px;
   box-shadow: 0 18px 42px rgba(0, 0, 0, 0.2);
 }
@@ -2358,7 +2402,7 @@ button:disabled {
 }
 
 .rewardDialog p {
-  color: #4e5968;
+  color: var(--cw-text-2);
   font-size: 15px;
   font-weight: 700;
   line-height: 23px;
@@ -2380,7 +2424,7 @@ button:disabled {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  color: #4e5968;
+  color: var(--cw-text-2);
   font-size: 15px;
   font-weight: 700;
   line-height: 23px;
@@ -2515,7 +2559,7 @@ button:disabled {
   height: 56px;
   place-items: center;
   border-radius: 50%;
-  background: #effcf8;
+  background: var(--cw-brand-soft);
   font-size: 30px;
   line-height: 1;
 }
@@ -2525,7 +2569,7 @@ button:disabled {
 }
 
 .celebrationStat {
-  color: #191f28;
+  color: var(--cw-text);
   font-size: 17px;
   font-weight: 800;
   line-height: 25px;
@@ -2534,7 +2578,7 @@ button:disabled {
 .completionDialogReview {
   border: 0;
   background: transparent;
-  color: #6b7684;
+  color: var(--cw-text-3);
   font: inherit;
   font-size: 14px;
   font-weight: 800;
@@ -2550,7 +2594,7 @@ button:disabled {
   justify-content: space-between;
   gap: 12px;
   padding: 18px 20px 12px;
-  border-bottom: 1px solid #eef2f4;
+  border-bottom: 1px solid var(--cw-divider);
 }
 
 .clueOverlayHeader > div {
@@ -2579,7 +2623,7 @@ button:disabled {
 
 .clueGroup h2 {
   margin: 0;
-  color: #4e5968;
+  color: var(--cw-text-2);
   font-size: 13px;
   font-weight: 900;
   line-height: 18px;
@@ -2598,7 +2642,7 @@ button:disabled {
   gap: 4px;
   padding: 4px;
   border-radius: 8px;
-  background: #e5e8eb;
+  background: var(--cw-border);
 }
 
 .segmentedControl button {
@@ -2606,7 +2650,7 @@ button:disabled {
   border: 0;
   border-radius: 6px;
   background: transparent;
-  color: #4e5968;
+  color: var(--cw-text-2);
   font: inherit;
   font-size: 15px;
   font-weight: 700;
@@ -2615,8 +2659,8 @@ button:disabled {
 }
 
 .segmentedControl .segmentActive {
-  background: #ffffff;
-  color: #191f28;
+  background: var(--cw-surface);
+  color: var(--cw-text);
 }
 
 .clueList {
@@ -2632,23 +2676,23 @@ button:disabled {
   align-items: center;
   width: 100%;
   min-width: 0;
-  border: 1px solid #e5e8eb;
+  border: 1px solid var(--cw-border);
   border-radius: 8px;
-  background: #ffffff;
-  color: #191f28;
+  background: var(--cw-surface);
+  color: var(--cw-text);
   font: inherit;
   padding: 12px;
   text-align: left;
 }
 
 .clueSelected {
-  border-color: #00a88f;
-  background: #f2fbf8;
+  border-color: var(--cw-brand);
+  background: var(--cw-brand-soft-2);
 }
 
 .clueComplete {
-  border-color: #b7eadf;
-  background: #f2fbf8;
+  border-color: var(--cw-brand-line-2);
+  background: var(--cw-brand-soft-2);
 }
 
 .clueIndex {
@@ -2657,8 +2701,8 @@ button:disabled {
   height: 26px;
   place-items: center;
   border-radius: 50%;
-  background: #eef2f4;
-  color: #4e5968;
+  background: var(--cw-divider);
+  color: var(--cw-text-2);
   font-size: 12px;
   font-weight: 800;
 }
@@ -2674,7 +2718,7 @@ button:disabled {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: #6b7684;
+  color: var(--cw-text-3);
   font-size: 12px;
   font-weight: 700;
   line-height: 18px;
@@ -2684,7 +2728,7 @@ button:disabled {
 .clueDoneBadge {
   border-radius: 999px;
   background: #dff6f0;
-  color: #00866f;
+  color: var(--cw-brand-strong);
   font-size: 11px;
   font-weight: 900;
   line-height: 16px;
@@ -2703,8 +2747,8 @@ button:disabled {
 
 .secondaryButton {
   width: 100%;
-  background: #eef2f4;
-  color: #4e5968;
+  background: var(--cw-divider);
+  color: var(--cw-text-2);
 }
 
 @media (min-width: 481px) {
@@ -2731,7 +2775,7 @@ button:disabled {
 
 .resultWordListTitle {
   margin: 0;
-  color: #4e5968;
+  color: var(--cw-text-2);
   font-size: 13px;
   font-weight: 900;
   line-height: 18px;
@@ -2745,7 +2789,7 @@ button:disabled {
 
 .resultWordGroupLabel {
   margin: 0;
-  color: #6b7684;
+  color: var(--cw-text-3);
   font-size: 12px;
   font-weight: 800;
   line-height: 16px;
@@ -2758,9 +2802,9 @@ button:disabled {
   column-gap: 10px;
   row-gap: 2px;
   padding: 10px 12px;
-  border: 1px solid #e5e8eb;
+  border: 1px solid var(--cw-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--cw-surface);
 }
 
 .resultWordNumber {
@@ -2771,8 +2815,8 @@ button:disabled {
   place-items: center;
   align-self: center;
   border-radius: 50%;
-  background: #eef2f4;
-  color: #4e5968;
+  background: var(--cw-divider);
+  color: var(--cw-text-2);
   font-size: 11px;
   font-weight: 800;
   line-height: 1;
@@ -2782,12 +2826,12 @@ button:disabled {
   font-size: 15px;
   font-weight: 800;
   line-height: 20px;
-  color: #00866f;
+  color: var(--cw-brand-strong);
   min-width: 0;
 }
 
 .resultWordClue {
-  color: #6b7684;
+  color: var(--cw-text-3);
   font-size: 12px;
   font-weight: 700;
   line-height: 17px;
@@ -2796,4 +2840,180 @@ button:disabled {
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+}
+
+/* ===========================================================================
+   다크 모드 — 시스템 테마(prefers-color-scheme: dark) 연동.
+   토큰을 다크 팔레트로 재정의해 .appShell·보드 셀·텍스트·주요 표면이 함께
+   전환된다. 토큰으로 덮이지 않는 raw 색(파랑/빨강/노랑 파스텔 표면 등)만
+   아래에서 선택자별로 보정한다. 라이트 외관은 이 블록 밖에서 그대로 유지된다. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --cw-bg: #16181d;
+    --cw-text: #e9ebee;
+    --cw-text-2: #c2c8d0;
+    --cw-text-3: #9aa3ad;
+    --cw-text-4: #79828d;
+    --cw-surface: #1e2128;
+    --cw-surface-soft: #23262e;
+    --cw-surface-muted: #2a2e37;
+    --cw-divider: #2c3039;
+    --cw-border: #353a44;
+    --cw-border-strong: #404654;
+    --cw-track: #2c3039;
+    --cw-brand-line: #1f4f46;
+    --cw-brand-line-2: #246b5d;
+    --cw-brand: #19c2a6;
+    --cw-brand-strong: #4fd9c2;
+    --cw-brand-soft: #15302b;
+    --cw-brand-soft-2: #14302b;
+    --cw-cell-bg: #242931;
+    --cw-cell-text: #e9ebee;
+    --cw-cell-block: #0d0f13;
+    --cw-cell-number: #79828d;
+    --cw-board-frame: #3a4150;
+    --cw-cell-selected-bg: #1c3f3a;
+    --cw-cell-selected-ring: #19c2a6;
+    --cw-cell-cross-bg: #1d2733;
+    --cw-cell-pending-bg: #463c14;
+    --cw-cell-correct-bg: #173a31;
+    --cw-cell-correct-text: #4fd9c2;
+    --cw-cell-complete-bg: #173a31;
+    --cw-cell-complete-ring: #2b7d6b;
+    --cw-cell-wrong-bg: #46211f;
+    --cw-cell-wrong-ring: #a85450;
+    --cw-cell-wrong-text: #ff9a96;
+    --cw-cell-tentative-text: #8a939e;
+  }
+
+  /* 와이드 화면 거터/루트 배경 */
+  #root {
+    background-color: var(--cw-bg) !important;
+  }
+
+  /* 미니 보드 블록 셀 — 빈칸(surface)보다 더 어둡게 유지 */
+  .miniBlock {
+    background: #0d0f13;
+  }
+
+  /* 분절 컨트롤/모드 탭: 활성 탭이 트랙보다 밝게 보이도록 보정 */
+  .modeActive,
+  .segmentedControl .segmentActive {
+    background: #3a414e;
+  }
+
+  /* 고정 하단 바 상단 경계 */
+  .fixedBottom {
+    border-top-color: var(--cw-divider);
+  }
+
+  /* 파랑(정보/보상/툴) 파스텔 표면 */
+  .packInfoPanel,
+  .hintRewardPanel {
+    background: #14233a;
+    border-color: #294a73;
+  }
+  .packInfoPanel strong,
+  .hintRewardPanel span {
+    color: #8fb6ff;
+  }
+  .toolButton {
+    background: #16314f;
+    color: #9cc4ff;
+  }
+  .resultAchievement {
+    background: #16314f;
+    color: #9cc4ff;
+  }
+  .dateCard .dateDifficulty.difficulty-normal {
+    background: #16314f;
+    color: #9cc4ff;
+  }
+
+  /* 빨강(오류/위험) 파스텔 표면 */
+  .dangerButton,
+  .hintIconButtonEmpty {
+    background: #3a1a1c;
+    color: #ff8b8e;
+  }
+  .qualityFail {
+    color: #ff8b8e;
+  }
+  .shareToastError {
+    color: #ff8b8e;
+  }
+  .slotValidationFail {
+    background: #3a1a1c;
+    border-color: #6b2e30;
+  }
+  .slotValidationFail strong {
+    color: #ff8b8e;
+  }
+  .dateCard .dateDifficulty.difficulty-hard {
+    background: #3a1a28;
+    color: #ff8fb3;
+  }
+
+  /* 노랑(보너스/베스트) 파스텔 표면 */
+  .bonusPuzzlePanel {
+    background: #332a12;
+    border-color: #5c4d1f;
+  }
+  .bonusPuzzlePanel span {
+    color: #e3b341;
+  }
+  .resultAchievementBest {
+    background: #3a2f10;
+    color: #e3b341;
+  }
+
+  /* 초록/청록 파스텔 표면 */
+  .dateCard.dateEasy:not(.dateSelected) {
+    background: #14241f;
+    border-color: #2f6b5c;
+  }
+  .dateCard .dateDifficulty.difficulty-easy {
+    background: #14302a;
+    color: #5fd9c2;
+  }
+  .assistToggleOn {
+    background: #16302b;
+    border-color: #2f6b5c;
+  }
+  .reviewBanner {
+    background: #14302a;
+  }
+  .clueDoneBadge {
+    background: #14302a;
+  }
+  .cellComplete.cellSelected {
+    background: #1f4f46;
+  }
+
+  /* 회색 표면/입력 보정 */
+  .exhaustedBanner,
+  .shareButton:active {
+    background: var(--cw-surface-muted);
+  }
+  .shareButton {
+    border-color: var(--cw-border-strong);
+  }
+  .homeQuickStart:disabled {
+    background: #2a3a36;
+  }
+
+  /* 답안 슬롯 상태(셀 토큰과 동일 팔레트로 맞춤) */
+  .answerSlotPending {
+    background: var(--cw-cell-pending-bg);
+    border-color: #9c7d1f;
+  }
+  .answerSlotLocked {
+    background: var(--cw-cell-correct-bg);
+    border-color: #2f6b5c;
+  }
+  .answerSlotWrong {
+    background: var(--cw-cell-wrong-bg);
+    border-color: var(--cw-cell-wrong-ring);
+    color: var(--cw-cell-wrong-text);
+  }
 }
