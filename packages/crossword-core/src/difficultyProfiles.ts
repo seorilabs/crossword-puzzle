@@ -47,10 +47,13 @@ export const DIFFICULTY_PROFILES: Record<Difficulty, DifficultyProfile> = {
   normal: {
     difficulty: "normal",
     boardSize: 8,
-    maxWords: 12,
+    // 첫 완료 소요(중앙값 ~10분)를 줄이기 위해 normal 단어 수를 낮춘다. 보드 크기는
+    // easy(7)와의 단조성(easy<normal<hard)을 지켜야 하므로 8로 유지하고, 대신 단어
+    // 수 상한(maxWords)을 낮춰 한 판당 채울 단어를 줄인다. 같은 8x8에서 maxWords 12→10
+    // 은 생성 단어 수를 ~22→~18로 낮추면서도 교차율·밀도 게이트는 그대로 통과한다.
+    maxWords: 10,
     minWordLength: 2,
-    minWordCount: 12,
-    // normal 은 기존 전역 기본값과 동일하게 유지해 생성 결과 회귀를 방지한다.
+    minWordCount: 10,
     minCrossRatio: 0.55,
     minBboxDensity: 0.5,
     wordDifficulties: ["easy", "normal", "hard"],

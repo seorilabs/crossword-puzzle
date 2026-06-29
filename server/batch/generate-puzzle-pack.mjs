@@ -27,13 +27,15 @@ const DEFAULT_BATCH_OPTIONS = {
   hostingBaseUrl: undefined,
   intervalHours: 2,
   keepPuzzles: 84,
-  maxWords: 12,
+  // maxWords/minWordCount/boardSize 는 parseArgs 에서 난이도 프로파일(기본 normal)이
+  // 덮어쓴다. normal 프로파일과 동일한 기본값으로 맞춰 둔다(완료 시간 단축 튜닝 반영).
+  maxWords: 10,
   maxAutoRunRatio: 0.5,
   minBboxDensity: 0.5,
   minCrossRatio: 0.55,
   minMultiCrossRatio: 0.65,
   minWordLength: 2,
-  minWordCount: 12,
+  minWordCount: 10,
   outDir: "public/puzzles",
   retries: 8,
   samples: 5,
