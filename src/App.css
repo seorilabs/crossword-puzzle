@@ -1865,6 +1865,20 @@ button:disabled {
   }
 }
 
+/* 막힘 안내의 보조 탈출구("이 단어 정답 보기"). 1차 CTA(힌트)보다 약하게 보이도록
+   외곽선 버튼으로 두어 위계를 유지한다(#163). */
+.stuckHintPromptReveal {
+  border: 1px solid #3182f6;
+  border-radius: 8px;
+  background: transparent;
+  color: #3182f6;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 7px 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
 .stuckHintPromptClose {
   border: none;
   background: transparent;

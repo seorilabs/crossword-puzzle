@@ -18,6 +18,9 @@ import {
   shouldQuickStartActivePuzzle,
   shouldServeOnboardingPuzzle,
   shouldShowFirstInputGuide,
+  getStuckHintDelayMs,
+  shouldOfferStuckWordReveal,
+  shouldCelebrateOnboardingWordCompletion,
 } from "./uiPolicy.ts";
 import type { PuzzleManifestItem } from "./types.ts";
 
@@ -79,6 +82,89 @@ describe("shouldShowFirstInputGuide", () => {
     );
     assert.equal(
       shouldShowFirstInputGuide({ ...baseInput, route: "home" }),
+      false,
+    );
+  });
+});
+
+describe("getStuckHintDelayMs", () => {
+  const params = { wrongCellThreshold: 2, idleMs: 20000, wrongIdleMs: 5000 };
+
+  it("확정 오답이 임계치 이상이면 더 짧은 지연을 쓴다(빠르게 도움 노출)", () => {
+    assert.equal(getStuckHintDelayMs({ ...params, wrongCellCount: 2 }), 5000);
+    assert.equal(getStuckHintDelayMs({ ...params, wrongCellCount: 3 }), 5000);
+  });
+
+  it("오답이 임계치 미만이면 기본 정체 지연을 쓴다", () => {
+    assert.equal(getStuckHintDelayMs({ ...params, wrongCellCount: 0 }), 20000);
+    assert.equal(getStuckHintDelayMs({ ...params, wrongCellCount: 1 }), 20000);
+  });
+});
+
+describe("shouldOfferStuckWordReveal", () => {
+  it("선택된 단어가 아직 미완성이면 정답 보기 탈출구를 노출한다", () => {
+    assert.equal(
+      shouldOfferStuckWordReveal({
+        hasSelectedEntry: true,
+        isSelectedEntryComplete: false,
+      }),
+      true,
+    );
+  });
+
+  it("선택 단어가 없거나 이미 정답이면 노출하지 않는다", () => {
+    assert.equal(
+      shouldOfferStuckWordReveal({
+        hasSelectedEntry: false,
+        isSelectedEntryComplete: false,
+      }),
+      false,
+    );
+    assert.equal(
+      shouldOfferStuckWordReveal({
+        hasSelectedEntry: true,
+        isSelectedEntryComplete: true,
+      }),
+      false,
+    );
+  });
+});
+
+describe("shouldCelebrateOnboardingWordCompletion", () => {
+  it("온보딩 퍼즐에서 단어를 새로 완성하면(퍼즐 전체 완성 제외) 시각 피드백을 준다", () => {
+    assert.equal(
+      shouldCelebrateOnboardingWordCompletion({
+        isOnboardingPuzzle: true,
+        justCompletedWord: true,
+        puzzleComplete: false,
+      }),
+      true,
+    );
+  });
+
+  it("온보딩이 아니거나, 완성한 단어가 없거나, 퍼즐 전체 완성 순간이면 주지 않는다", () => {
+    assert.equal(
+      shouldCelebrateOnboardingWordCompletion({
+        isOnboardingPuzzle: false,
+        justCompletedWord: true,
+        puzzleComplete: false,
+      }),
+      false,
+    );
+    assert.equal(
+      shouldCelebrateOnboardingWordCompletion({
+        isOnboardingPuzzle: true,
+        justCompletedWord: false,
+        puzzleComplete: false,
+      }),
+      false,
+    );
+    assert.equal(
+      shouldCelebrateOnboardingWordCompletion({
+        isOnboardingPuzzle: true,
+        justCompletedWord: true,
+        puzzleComplete: true,
+      }),
       false,
     );
   });

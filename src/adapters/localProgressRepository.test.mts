@@ -35,6 +35,26 @@ describe("localProgressRepository — restartMissionAttempt 시나리오", () =>
     assert.deepEqual(loaded.cellValues, { "0,0": "가" });
   });
 
+  it("재진입(새 세션) 시 저장된 진행 셀이 복원되고 빈 그리드로 리셋되지 않는다(#163)", async () => {
+    // 진행 중 여러 셀을 채워 저장한다.
+    await repo.saveProgress("puzzle-1", {
+      cellValues: { "0,0": "토", "0,1": "끼", "2,0": "토" },
+      earnedHintCredits: 0,
+      hintCount: 0,
+    });
+
+    // 앱을 다시 켠 상황: 같은 저장소를 읽는 새 repository 인스턴스로 복원한다.
+    const reopenedRepo = createLocalProgressRepository({ storage });
+    const restored = await reopenedRepo.loadProgress("puzzle-1");
+
+    assert.deepEqual(restored.cellValues, {
+      "0,0": "토",
+      "0,1": "끼",
+      "2,0": "토",
+    });
+    assert.notDeepEqual(restored.cellValues, {});
+  });
+
   it("재도전 시나리오(크레딧 > 0): saveProgress로 셀/힌트 초기화하면서 크레딧 유지", async () => {
     await repo.saveProgress("puzzle-2", {
       cellValues: { "0,0": "가", "0,1": "나" },
