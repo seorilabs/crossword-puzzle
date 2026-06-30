@@ -210,9 +210,6 @@ function persistAnswerInputMode(mode: AnswerInputMode): void {
   }
 }
 
-// "이 단어 확인"으로 강조한 셀을 잠시(원복 전) 표시하는 시간(ms).
-const CHECK_HIGHLIGHT_MS = 2500;
-
 // PuzzleBoard의 checkedCellKeys 기본값. 매 렌더 새 Set 생성을 피한다.
 const EMPTY_CELL_KEY_SET: ReadonlySet<string> = new Set();
 
@@ -324,13 +321,6 @@ const contentSourceLicense =
 const krdictCopyrightUrl =
   "https://krdict.korean.go.kr/kor/kboardPolicy/copyRightTermsInfo";
 const ccBySaKrUrl = "https://creativecommons.org/licenses/by-sa/2.0/kr/";
-
-// 막혔을 때 힌트 자동 노출: 입력 정체가 이 시간을 넘으면 비침습 힌트 CTA를 띄운다.
-const STUCK_HINT_IDLE_MS = 20000;
-// 오답이 쌓이면(막힘 신호) 20초를 기다리지 않고 더 빨리 힌트 CTA를 띄운다.
-const STUCK_HINT_WRONG_IDLE_MS = 5000;
-// 이 개수 이상의 셀이 오답으로 남아 있으면 "막힘"으로 보고 빠른 노출을 적용한다.
-const WRONG_CELL_COUNT_FOR_STUCK_HINT = 2;
 
 function getPuzzleTelemetryParams(puzzle: Puzzle) {
   return {
@@ -1606,12 +1596,13 @@ function App() {
       return;
     }
 
-    const hasWrongStreak = wrongCellCount >= WRONG_CELL_COUNT_FOR_STUCK_HINT;
+    const hasWrongStreak =
+      wrongCellCount >= launchConfig.stuckHintWrongCellThreshold;
     const stuckHintDelayMs = getStuckHintDelayMs({
       wrongCellCount,
-      wrongCellThreshold: WRONG_CELL_COUNT_FOR_STUCK_HINT,
-      idleMs: STUCK_HINT_IDLE_MS,
-      wrongIdleMs: STUCK_HINT_WRONG_IDLE_MS,
+      wrongCellThreshold: launchConfig.stuckHintWrongCellThreshold,
+      idleMs: launchConfig.stuckHintIdleMs,
+      wrongIdleMs: launchConfig.stuckHintWrongIdleMs,
     });
 
     setIsStuckHintPromptVisible(false);
@@ -1637,6 +1628,9 @@ function App() {
     hasStarted,
     hintCount,
     isCompleted,
+    launchConfig.stuckHintIdleMs,
+    launchConfig.stuckHintWrongIdleMs,
+    launchConfig.stuckHintWrongCellThreshold,
     mission.attemptsUsed,
     progressPercent,
     puzzle.entries.length,
@@ -2598,7 +2592,7 @@ function App() {
   }
 
   // 일반 플레이 화면용: 사용자가 명시적으로 호출하는 "이 단어 확인". 선택 단어
-  // 셀에 정/오를 잠시 강조한 뒤 CHECK_HIGHLIGHT_MS 후 원상 복구한다. autocheck를
+  // 셀에 정/오를 잠시 강조한 뒤 checkHighlightMs(원격 설정) 후 원상 복구한다. autocheck를
   // 꺼둔 상태에서도 이 강조는 동작한다(PuzzleBoard 렌더가 checkedCellKeys를 함께 본다).
   function checkSelectedWord() {
     const selectedEntry = viewModel.selectedEntry;
@@ -2626,7 +2620,7 @@ function App() {
         setCheckedCellKeys(EMPTY_CELL_KEY_SET);
       }
       checkHighlightTimerRef.current = null;
-    }, CHECK_HIGHLIGHT_MS);
+    }, launchConfig.checkHighlightMs);
 
     telemetry.click("check_word", {
       puzzle_id: puzzle.puzzleId,
