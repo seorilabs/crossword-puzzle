@@ -5706,6 +5706,7 @@ function TodayScreen({
 
       <section className="puzzlePlayArea" aria-label="퍼즐 풀이">
         <PuzzleBoard
+          activeCellKey={selectedCellKey}
           autocheckEnabled={autocheckEnabled}
           cellEntries={viewModel.cellEntries}
           cellValues={cellValues}
@@ -6800,6 +6801,7 @@ function DevSimulatorScreen({
       </section>
 
       <PuzzleBoard
+        activeCellKey={selectedCellKey}
         cellEntries={viewModel.cellEntries}
         cellValues={cellValues}
         cols={viewModel.cols}

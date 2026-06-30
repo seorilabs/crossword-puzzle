@@ -76,3 +76,35 @@ describe("PuzzleBoard 임시(연필) 셀 렌더", () => {
     expect(cell.classList.contains("cellTentative")).toBe(false);
   });
 });
+
+describe("PuzzleBoard 활성(커서) 셀 강조", () => {
+  it("activeCellKey 셀에만 cellActive가 붙는다", () => {
+    const [first, second] = renderBoard({
+      selectedCells: new Set(["0:0", "0:1"]),
+      activeCellKey: "0:0",
+    });
+    expect(first.classList.contains("cellActive")).toBe(true);
+    expect(second.classList.contains("cellActive")).toBe(false);
+    // 활성 셀도 선택 단어의 일부이므로 cellSelected는 함께 유지된다.
+    expect(first.classList.contains("cellSelected")).toBe(true);
+  });
+
+  it("활성 셀에 aria-current='true'가 부여된다", () => {
+    const [first, second] = renderBoard({
+      selectedCells: new Set(["0:0", "0:1"]),
+      activeCellKey: "0:0",
+    });
+    expect(first.getAttribute("aria-current")).toBe("true");
+    expect(second.getAttribute("aria-current")).toBe(null);
+  });
+
+  it("activeCellKey 미지정이면 어떤 셀에도 cellActive가 없다(하위호환)", () => {
+    const cells = renderBoard({
+      selectedCells: new Set(["0:0", "0:1"]),
+    });
+    for (const cell of cells) {
+      expect(cell.classList.contains("cellActive")).toBe(false);
+      expect(cell.getAttribute("aria-current")).toBe(null);
+    }
+  });
+});
