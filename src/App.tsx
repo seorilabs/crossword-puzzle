@@ -23,6 +23,7 @@ import {
   completeMission,
   computeElapsedMs,
   computeLeaderboardScore,
+  computePersonalStats,
   createPuzzleSummary,
   createDailyMissionState,
   DAILY_ATTEMPT_LIMIT,
@@ -82,6 +83,7 @@ import {
   type PuzzleManifestItem,
   type PuzzleQualityCheck,
   type PuzzleSlotValidation,
+  type PersonalStatsRecord,
   type ReviewEntry,
   type SavedProgress,
 } from "../packages/crossword-core/src";
@@ -172,6 +174,8 @@ type DateCardState = {
   completedAt?: string;
   hasProgress: boolean;
   hintCount: number;
+  // 정답 보기로 단어를 공개했는지. 노힌트 완료 집계에서 제외하기 위해 보존한다.
+  revealUsed: boolean;
 };
 
 type CompletionStatsByPuzzleId = Record<string, PuzzleCompletionStats>;
@@ -539,6 +543,7 @@ function createDateCardState(
       progress.hintCount > 0 ||
       Object.keys(progress.cellValues).length > 0,
     hintCount: progress.hintCount,
+    revealUsed: progress.revealUsed === true,
   };
 }
 
@@ -1186,9 +1191,17 @@ function App() {
         cellValues,
         earnedHintCredits,
         hintCount,
+        revealUsed,
       }),
     }));
-  }, [cellValues, earnedHintCredits, hintCount, mission, puzzle.puzzleId]);
+  }, [
+    cellValues,
+    earnedHintCredits,
+    hintCount,
+    mission,
+    puzzle.puzzleId,
+    revealUsed,
+  ]);
 
   const viewModel = usePuzzleViewModel(
     puzzle,
@@ -3061,6 +3074,7 @@ function App() {
           {...dateSelectionProps}
           archiveRecords={puzzleArchiveRecords}
           completedEntries={viewModel.completedEntries}
+          consecutiveStreak={consecutiveStreak}
           hintCount={hintCount}
           isCompleted={isCompleted}
           mission={mission}
@@ -6460,6 +6474,7 @@ function ResultScreen({
 type HistoryScreenProps = DateSelectionProps & {
   archiveRecords: PuzzleArchiveRecord[];
   completedEntries: PuzzleEntry[];
+  consecutiveStreak: number;
   hintCount: number;
   isCompleted: boolean;
   mission: DailyMissionState;
@@ -6475,6 +6490,7 @@ function HistoryScreen({
   completedEntries,
   completionStatsByPuzzleId,
   completionStatsMinDisplayCount,
+  consecutiveStreak,
   dateCardStates,
   hintCount,
   isCompleted,
@@ -6498,6 +6514,25 @@ function HistoryScreen({
       ? formatPuzzleAliasLabel(selectedPuzzleSummary)
       : formatMissionDateLabel(mission.date, loadState);
 
+  // 기기에 남은 퍼즐 기록에서 사용자 단위 누적 통계를 집계한다. 노힌트 완료는
+  // 힌트 0 + 정답 보기 미사용(unaided)일 때만 인정한다(getCompletionAchievements와 일치).
+  const personalStats = useMemo(() => {
+    const records: PersonalStatsRecord[] = archiveRecords.map((record) => {
+      const state = dateCardStates[record.puzzleId];
+      const completed =
+        record.completedAt != null || state?.completedAt != null;
+      const unaided = (state?.hintCount ?? 0) === 0 && !state?.revealUsed;
+      return {
+        completed,
+        noHintCompletion: completed && unaided,
+        hasBestTime: getBestTimeMs(record.puzzleId) != null,
+      };
+    });
+    return computePersonalStats(records);
+  }, [archiveRecords, dateCardStates]);
+
+  const completionPercent = Math.round(personalStats.completionRate * 100);
+
   function openArchiveRecord(record: PuzzleArchiveRecord) {
     const state = dateCardStates[record.puzzleId];
     const isCompleted =
@@ -6518,6 +6553,39 @@ function HistoryScreen({
         title="기록"
         onBack={() => navigate("home")}
       />
+
+      <section className="personalStatsCard" aria-label="내 기록 요약">
+        <h2 className="personalStatsTitle">내 기록</h2>
+        {personalStats.completedCount > 0 ? (
+          <dl className="personalStatsGrid">
+            <div className="personalStat">
+              <dt>총 완료</dt>
+              <dd>{personalStats.completedCount}판</dd>
+            </div>
+            <div className="personalStat">
+              <dt>완료율</dt>
+              <dd>{completionPercent}%</dd>
+            </div>
+            <div className="personalStat">
+              <dt>현재 스트릭</dt>
+              <dd>{consecutiveStreak}일</dd>
+            </div>
+            <div className="personalStat">
+              <dt>노힌트 완료</dt>
+              <dd>{personalStats.noHintCompletedCount}판</dd>
+            </div>
+            <div className="personalStat">
+              <dt>최고 기록</dt>
+              <dd>{personalStats.bestTimeCount}개</dd>
+            </div>
+          </dl>
+        ) : (
+          <p className="personalStatsEmpty">
+            첫 퍼즐을 완료하면 누적 기록이 여기에 쌓여요.
+            {consecutiveStreak > 0 ? ` 🔥 ${consecutiveStreak}일째 도전 중!` : ""}
+          </p>
+        )}
+      </section>
 
       <DateCarousel
         completionStatsByPuzzleId={completionStatsByPuzzleId}
