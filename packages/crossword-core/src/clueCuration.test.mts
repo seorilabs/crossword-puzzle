@@ -2,6 +2,7 @@
 // Node.js 22+ built-in test runner + --experimental-strip-types
 import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
+import { readFileSync } from "node:fs";
 
 import {
   CURATED_CLUE_SOURCE,
@@ -92,5 +93,42 @@ describe("applyManualClues", () => {
     assert.equal(next[0].needsManualClue, false);
     assert.equal(next[1].needsManualClue, false);
     assert.equal(next[2].needsManualClue, true);
+  });
+});
+
+// 발행에 쓰이는 검수 단서 데이터(data/lexicon/manual-clues.json) 자체가
+// 자기참조 금지 규칙과 커버리지 기준을 지키는지 고정한다(#152). node:test는
+// 저장소 루트에서 실행되므로 cwd 기준 경로로 읽는다.
+describe("manual-clues.json 검수 단서 데이터", () => {
+  const raw = JSON.parse(
+    readFileSync("data/lexicon/manual-clues.json", "utf8"),
+  ) as Record<string, string>;
+  const clues = Object.entries(raw).filter(([answer]) => !answer.startsWith("_"));
+
+  it("검수 단서 항목 수가 14개에서 유의미하게 늘었다(커버리지 확대)", () => {
+    assert.ok(
+      clues.length >= 30,
+      `검수 단서 ${clues.length}개 — 30개 이상이어야 함`,
+    );
+  });
+
+  it("모든 검수 단서가 비어 있지 않다", () => {
+    for (const [answer, clue] of clues) {
+      assert.ok(
+        typeof clue === "string" && clue.trim().length > 0,
+        `빈 단서: ${answer}`,
+      );
+    }
+  });
+
+  it("어떤 검수 단서도 정답을 부분 문자열로 포함하지 않는다(자기참조 금지)", () => {
+    const offenders = clues.filter(([answer, clue]) =>
+      isSelfReferentialClue(answer, clue),
+    );
+    assert.deepEqual(
+      offenders.map(([answer]) => answer),
+      [],
+      "자기참조 단서가 있으면 안 됨",
+    );
   });
 });

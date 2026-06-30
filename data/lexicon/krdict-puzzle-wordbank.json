@@ -6216,9 +6216,9 @@
       "allowForPuzzle": true,
       "blockedReason": null,
       "clue": "한 해의 끝 무렵",
-      "clueSource": "krdict-definition",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -8255,10 +8255,10 @@
       "sourceId": "90778",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "집이나 직장, 기관 등이 위치한 곳의 행정 구역상 이름",
-      "clueSource": "krdict-definition",
+      "clue": "집이나 기관이 있는 곳의 행정 구역 이름",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -14555,10 +14555,10 @@
       "sourceId": "14869",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "아픈 사람을 보살핌",
-      "clueSource": "krdict-definition",
+      "clue": "아픈 사람을 보살피는 일",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -15800,10 +15800,10 @@
       "sourceId": "27141",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "한번 정한 내용을 변경하지 않음",
-      "clueSource": "krdict-definition",
+      "clue": "한번 정한 것을 바꾸지 않음",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -16805,10 +16805,10 @@
       "sourceId": "60100",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "한 나라를 구성하는 사람. 또는 그 나라 국적을 가진 사람",
-      "clueSource": "krdict-definition",
+      "clue": "한 나라를 이루는 사람들",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -31461,9 +31461,9 @@
       "allowForPuzzle": true,
       "blockedReason": null,
       "clue": "몸을 움직이거나 가누는 태도",
-      "clueSource": "krdict-definition",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -33636,9 +33636,9 @@
       "allowForPuzzle": true,
       "blockedReason": null,
       "clue": "어떤 지역의 가운데 부분",
-      "clueSource": "krdict-definition",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -49955,10 +49955,10 @@
       "sourceId": "92467",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "힘이나 영향이 강함",
-      "clueSource": "krdict-definition",
+      "clue": "힘이나 영향이 매우 셈",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -62165,10 +62165,10 @@
       "sourceId": "61288",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "사람의 두 팔과 두 다리",
-      "clueSource": "krdict-definition",
+      "clue": "두 팔과 두 다리",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -62736,9 +62736,9 @@
       "allowForPuzzle": true,
       "blockedReason": null,
       "clue": "생명이 있는 동물과 식물",
-      "clueSource": "krdict-definition",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -63515,10 +63515,10 @@
       "sourceId": "64442",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "정성스러운 뜻",
-      "clueSource": "krdict-definition",
+      "clue": "정성스러운 마음과 뜻",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -65721,9 +65721,9 @@
       "allowForPuzzle": true,
       "blockedReason": null,
       "clue": "마음의 상태",
-      "clueSource": "krdict-definition",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -68496,9 +68496,9 @@
       "allowForPuzzle": true,
       "blockedReason": null,
       "clue": "일 년 중 비가 많이 내리는 시기",
-      "clueSource": "krdict-definition",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -101811,9 +101811,9 @@
       "allowForPuzzle": true,
       "blockedReason": null,
       "clue": "몹시 화를 냄",
-      "clueSource": "krdict-definition",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -155135,10 +155135,10 @@
       "sourceId": "64499",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "물로 얼굴을 씻음",
-      "clueSource": "krdict-definition",
+      "clue": "물로 얼굴을 씻는 일",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -161646,9 +161646,9 @@
       "allowForPuzzle": true,
       "blockedReason": null,
       "clue": "새것과 헌것",
-      "clueSource": "krdict-definition",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -165516,9 +165516,9 @@
       "allowForPuzzle": true,
       "blockedReason": null,
       "clue": "스무 살의 나이",
-      "clueSource": "krdict-definition",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -180680,10 +180680,10 @@
       "sourceId": "72816",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "한꺼번에 없앰",
-      "clueSource": "krdict-definition",
+      "clue": "한꺼번에 모두 없앰",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -184925,10 +184925,10 @@
       "sourceId": "74789",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "두 번째",
-      "clueSource": "krdict-definition",
+      "clue": "두 번째로 다시",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -190041,9 +190041,9 @@
       "allowForPuzzle": true,
       "blockedReason": null,
       "clue": "아침과 저녁",
-      "clueSource": "krdict-definition",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -196760,10 +196760,10 @@
       "sourceId": "80217",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "다음 시기",
-      "clueSource": "krdict-definition",
+      "clue": "다음 시기나 차례",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {

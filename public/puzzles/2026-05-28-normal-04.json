@@ -133,13 +133,13 @@
     {
       "id": "a5",
       "answer": "강력",
-      "clue": "힘이나 영향이 강함",
-      "clueSource": "krdict-definition",
+      "clue": "힘이나 영향이 매우 셈",
+      "clueSource": "manual",
       "direction": "across",
       "row": 2,
       "col": 6,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a6",
@@ -277,23 +277,23 @@
       "id": "d18",
       "answer": "연말",
       "clue": "한 해의 끝 무렵",
-      "clueSource": "krdict-definition",
+      "clueSource": "manual",
       "direction": "down",
       "row": 3,
       "col": 2,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d19",
       "answer": "사지",
-      "clue": "사람의 두 팔과 두 다리",
-      "clueSource": "krdict-definition",
+      "clue": "두 팔과 두 다리",
+      "clueSource": "manual",
       "direction": "down",
       "row": 3,
       "col": 3,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d20",

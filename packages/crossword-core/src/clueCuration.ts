@@ -6,9 +6,10 @@
 export const CURATED_CLUE_SOURCE = "manual";
 
 // 발행 퍼즐에서 허용하는 needsManualClue:true 엔트리 비율 상한. 한 퍼즐이라도
-// 이 비율을 넘으면 발행 검증이 실패한다(전건 미검수 팩 발행 차단). 현재 발행 팩은
-// 퍼즐당 2건 이상 검수되어 ~90%대이며, 큐레이션 커버리지가 늘면 더 낮출 수 있다.
-export const DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO = 0.95;
+// 이 비율을 넘으면 발행 검증이 실패한다(전건 미검수 팩 발행 차단). 검수 단서
+// 커버리지를 확대해(#152) 퍼즐당 5건 이상 검수하고, 상한을 0.95 → 0.8 로 낮춰
+// 미검수(사전 정의문) 단서 비중을 강제로 제한한다.
+export const DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO = 0.8;
 
 // 단서가 정답을 부분 문자열로 포함하면 자기참조(답을 그대로 노출)로 본다.
 export function isSelfReferentialClue(

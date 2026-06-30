@@ -90,12 +90,12 @@
       "id": "a1",
       "answer": "심경",
       "clue": "마음의 상태",
-      "clueSource": "krdict-definition",
+      "clueSource": "manual",
       "direction": "across",
       "row": 1,
       "col": 0,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a2",
@@ -189,12 +189,12 @@
       "id": "a10",
       "answer": "약관",
       "clue": "스무 살의 나이",
-      "clueSource": "krdict-definition",
+      "clueSource": "manual",
       "direction": "across",
       "row": 5,
       "col": 4,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a11",
@@ -276,13 +276,13 @@
     {
       "id": "d18",
       "answer": "재차",
-      "clue": "두 번째",
-      "clueSource": "krdict-definition",
+      "clue": "두 번째로 다시",
+      "clueSource": "manual",
       "direction": "down",
       "row": 1,
       "col": 7,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d19",
