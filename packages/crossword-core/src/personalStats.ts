@@ -13,8 +13,6 @@ export type PersonalStatsRecord = {
   hintCount: number;
   // 정답 보기로 단어를 공개했는지(노힌트 판정 입력)
   revealUsed: boolean;
-  // 이 퍼즐에 보유한 최고 기록(best-time)이 있는지
-  hasBestTime: boolean;
 };
 
 /** 사용자 단위 누적 통계. HistoryScreen 요약 카드가 표시한다. */
@@ -31,6 +29,13 @@ export type PersonalStats = {
   bestTimeCount: number;
 };
 
+function toNonNegativeInt(value: number): number {
+  if (!Number.isFinite(value) || value <= 0) {
+    return 0;
+  }
+  return Math.floor(value);
+}
+
 /**
  * 기기에 남은 퍼즐 기록 배열에서 개인 누적 통계를 집계한다.
  *
@@ -38,15 +43,17 @@ export type PersonalStats = {
  * - 노힌트 완료 수는 완료한 기록 중 `getCompletionAchievements`가 노힌트로 판정한
  *   것만 센다. 결과 화면 배지와 동일한 단일 규칙을 공유해, 같은 퍼즐에서
  *   '히스토리 노힌트 수'와 '결과 노힌트 배지'가 어긋나지 않도록 한다.
+ * - `bestTimeCount`는 기기에 보유한 전체 최고 기록 수를 호출자가 직접 넘긴다.
+ *   archive 기록 집합과 무관하게 실제 보유 수를 반영하도록 분리한 입력이다.
  */
 export function computePersonalStats(
   records: readonly PersonalStatsRecord[],
+  bestTimeCount = 0,
 ): PersonalStats {
   const totalPuzzles = records.length;
 
   let completedCount = 0;
   let noHintCompletedCount = 0;
-  let bestTimeCount = 0;
 
   for (const record of records) {
     if (record.completed) {
@@ -62,9 +69,6 @@ export function computePersonalStats(
         noHintCompletedCount += 1;
       }
     }
-    if (record.hasBestTime) {
-      bestTimeCount += 1;
-    }
   }
 
   const completionRate =
@@ -75,6 +79,6 @@ export function computePersonalStats(
     completedCount,
     completionRate,
     noHintCompletedCount,
-    bestTimeCount,
+    bestTimeCount: toNonNegativeInt(bestTimeCount),
   };
 }

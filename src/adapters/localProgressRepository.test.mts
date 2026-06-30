@@ -3,7 +3,11 @@
 import { describe, it, beforeEach } from "node:test";
 import { strict as assert } from "node:assert";
 
-import { createLocalProgressRepository } from "./localProgressRepository.ts";
+import {
+  createLocalProgressRepository,
+  getAllBestTimePuzzleIds,
+  saveBestTimeMs,
+} from "./localProgressRepository.ts";
 
 function createMemoryStorage() {
   const store = new Map<string, string>();
@@ -11,6 +15,20 @@ function createMemoryStorage() {
     getItem: (key: string) => store.get(key) ?? null,
     setItem: (key: string, value: string) => store.set(key, value),
     removeItem: (key: string) => store.delete(key),
+  };
+}
+
+// length/key(i) 열거를 지원하는 Web Storage 호환 메모리 저장소(키 열거 테스트용).
+function createEnumerableStorage() {
+  const store = new Map<string, string>();
+  return {
+    getItem: (key: string) => store.get(key) ?? null,
+    setItem: (key: string, value: string) => store.set(key, value),
+    removeItem: (key: string) => store.delete(key),
+    get length() {
+      return store.size;
+    },
+    key: (index: number) => [...store.keys()][index] ?? null,
   };
 }
 
@@ -284,5 +302,34 @@ describe("localProgressRepository — restartMissionAttempt 시나리오", () =>
     };
     const failRepo = createLocalProgressRepository({ storage: failStorage });
     await assert.rejects(() => failRepo.clearProgress("puzzle-fail"));
+  });
+});
+
+describe("getAllBestTimePuzzleIds — 전체 최고기록 키 열거", () => {
+  it("저장된 best-time 키들의 puzzleId만 추출한다(다른 키는 무시)", () => {
+    const storage = createEnumerableStorage();
+    saveBestTimeMs("puzzle-a", 1000, storage);
+    saveBestTimeMs("puzzle-b", 2000, storage);
+    // best-time이 아닌 다른 네임스페이스 키는 집계에서 제외돼야 한다.
+    storage.setItem("crossword-puzzle:progress:puzzle-a", "{}");
+    storage.setItem("unrelated", "x");
+
+    const ids = getAllBestTimePuzzleIds(storage).sort();
+    assert.deepEqual(ids, ["puzzle-a", "puzzle-b"]);
+  });
+
+  it("archive와 무관하게 보유한 모든 기록을 센다(archive 소실 케이스)", () => {
+    const storage = createEnumerableStorage();
+    saveBestTimeMs("kept", 1000, storage);
+    saveBestTimeMs("archive-gone", 1500, storage);
+    assert.equal(getAllBestTimePuzzleIds(storage).length, 2);
+  });
+
+  it("키 열거를 지원하지 않는 저장소는 빈 배열을 반환한다", () => {
+    assert.deepEqual(getAllBestTimePuzzleIds(createMemoryStorage()), []);
+  });
+
+  it("저장소가 없으면 빈 배열을 반환한다", () => {
+    assert.deepEqual(getAllBestTimePuzzleIds(null), []);
   });
 });

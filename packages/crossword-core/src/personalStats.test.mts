@@ -11,7 +11,6 @@ function record(
     completed: false,
     hintCount: 0,
     revealUsed: false,
-    hasBestTime: false,
     ...overrides,
   };
 }
@@ -27,25 +26,33 @@ describe("computePersonalStats", () => {
     });
   });
 
-  it("aggregates total / completed / completion rate / no-hint / best-time counts", () => {
+  it("aggregates total / completed / completion rate / no-hint counts and passes through best-time count", () => {
     const records = [
-      // 완료 + 노힌트(힌트0·정답보기X) + 최고기록 보유
-      record({ completed: true, hasBestTime: true }),
-      // 완료(힌트 사용) + 최고기록 보유 → 노힌트 아님
-      record({ completed: true, hintCount: 2, hasBestTime: true }),
-      // 완료 + 노힌트(최고기록 없음)
+      // 완료 + 노힌트(힌트0·정답보기X)
+      record({ completed: true }),
+      // 완료(힌트 사용) → 노힌트 아님
+      record({ completed: true, hintCount: 2 }),
+      // 완료 + 노힌트
       record({ completed: true }),
       // 미완료(진행 중/도전 종료)
       record({ completed: false }),
     ];
 
-    assert.deepEqual(computePersonalStats(records), {
+    // bestTimeCount는 archive 집합과 무관한 전체 보유 수로 호출자가 직접 넘긴다.
+    assert.deepEqual(computePersonalStats(records, 5), {
       totalPuzzles: 4,
       completedCount: 3,
       completionRate: 3 / 4,
       noHintCompletedCount: 2,
-      bestTimeCount: 2,
+      bestTimeCount: 5,
     });
+  });
+
+  it("normalizes best-time count and defaults to 0 when omitted", () => {
+    assert.equal(computePersonalStats([]).bestTimeCount, 0);
+    assert.equal(computePersonalStats([], 3.9).bestTimeCount, 3);
+    assert.equal(computePersonalStats([], -2).bestTimeCount, 0);
+    assert.equal(computePersonalStats([], Number.NaN).bestTimeCount, 0);
   });
 
   it("excludes a reveal-used completion from the no-hint count (matches getCompletionAchievements)", () => {
@@ -75,11 +82,9 @@ describe("computePersonalStats", () => {
     assert.equal(stats.noHintCompletedCount, 0);
   });
 
-  it("counts best-time independently of completion", () => {
-    // 최고기록 보유는 완료 여부와 무관하게 집계한다(이전 시도에서 세운 기록 등).
-    const stats = computePersonalStats([
-      record({ completed: false, hasBestTime: true }),
-    ]);
+  it("reports best-time count independently of completion", () => {
+    // 최고기록 수는 완료 여부와 무관한 전체 보유 수(호출자 입력)다.
+    const stats = computePersonalStats([record({ completed: false })], 1);
     assert.equal(stats.bestTimeCount, 1);
     assert.equal(stats.completedCount, 0);
   });

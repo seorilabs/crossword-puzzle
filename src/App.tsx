@@ -104,6 +104,7 @@ import {
 } from "./adapters/localPuzzleAccessRepository";
 import {
   createLocalProgressRepository,
+  getAllBestTimePuzzleIds,
   getBestTimeMs,
   saveBestTimeMs,
 } from "./adapters/localProgressRepository";
@@ -1714,7 +1715,13 @@ function App() {
       invalidateStreakCache();
       setConsecutiveStreak(computeConsecutiveStreakDays());
     });
-    void savePuzzleSnapshot(puzzle, { completedAt: nextMission.completedAt });
+    // 완료 시점의 노힌트 판정 신호(힌트 수·정답 보기 여부)를 archive 기록에 동결해,
+    // 진행상태 저장소가 비워져도 히스토리 노힌트 집계가 결과 화면과 일치하게 한다.
+    void savePuzzleSnapshot(puzzle, {
+      completedAt: nextMission.completedAt,
+      hintCount,
+      revealUsed,
+    });
     telemetry.impression("mission_complete", {
       ...puzzleTelemetryParams,
       attempt_number: nextMission.attemptsUsed,
@@ -6517,21 +6524,20 @@ function HistoryScreen({
 
   // 기기에 남은 퍼즐 기록에서 사용자 단위 누적 통계를 집계한다. 노힌트 판정(힌트
   // 0 + 정답 보기 미사용)은 core의 getCompletionAchievements가 단일 규칙으로
-  // 수행하므로, 여기서는 원시 신호(hintCount·revealUsed)만 모아 넘긴다.
+  // 수행하므로, 여기서는 원시 신호(hintCount·revealUsed)만 모아 넘긴다. 노힌트 신호는
+  // archive 기록에 동결된 값을 우선하고, 없으면(구버전 기록) 진행상태 카드로 폴백한다.
   const personalStats = useMemo(() => {
     const records: PersonalStatsRecord[] = archiveRecords.map((record) => {
       const state = dateCardStates[record.puzzleId];
       return {
         completed: record.completedAt != null || state?.completedAt != null,
-        hintCount: state?.hintCount ?? 0,
-        revealUsed: state?.revealUsed === true,
-        // 최고기록 수는 archive 기록이 남은 퍼즐로 한정한다 — 완료율 분모와 동일한
-        // 모집단을 공유하기 위해 의도적으로 그렇게 둔다. 기기에서 archive가 소실됐지만
-        // best-time만 남은 퍼즐은 제외된다(향후 전체 키 열거 API 도입 시 확장 가능).
-        hasBestTime: getBestTimeMs(record.puzzleId) != null,
+        hintCount: record.hintCount ?? state?.hintCount ?? 0,
+        revealUsed: record.revealUsed ?? state?.revealUsed === true,
       };
     });
-    return computePersonalStats(records);
+    // 최고기록 수는 archive 집합과 무관하게 기기에 보유한 전체 best-time 키로 센다.
+    const bestTimeCount = getAllBestTimePuzzleIds().length;
+    return computePersonalStats(records, bestTimeCount);
   }, [archiveRecords, dateCardStates]);
 
   function openArchiveRecord(record: PuzzleArchiveRecord) {
