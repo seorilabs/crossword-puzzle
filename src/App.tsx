@@ -1606,6 +1606,9 @@ function App() {
     });
 
     setIsStuckHintPromptVisible(false);
+    // 임계값(launchConfig.stuckHint*)은 effect 의존성에 포함돼 있어, 원격 설정이
+    // 바뀌면 cleanup이 이 타이머를 취소하고 effect가 새 값으로 재스케줄한다. 따라서
+    // 콜백이 캡처한 stuckHintDelayMs는 항상 그 스케줄 시점의 최신 값이며 stale하지 않다.
     const timerId = window.setTimeout(() => {
       setIsStuckHintPromptVisible(true);
       telemetry.impression("stuck_hint_prompt", {
