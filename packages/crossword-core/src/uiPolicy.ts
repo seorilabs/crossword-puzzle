@@ -617,6 +617,47 @@ export function shouldShowFirstInputGuide(input: {
   );
 }
 
+// 막힘(stuck) 힌트 CTA를 띄우기까지의 정체 지연(ms)을 정한다. 확정 오답 셀이
+// 임계치 이상으로 쌓이면(막힌 신호) 더 짧은 지연으로 빠르게 띄워 힌트/정답 보기
+// 도움 접근성을 높인다(#163).
+export function getStuckHintDelayMs(input: {
+  wrongCellCount: number;
+  wrongCellThreshold: number;
+  idleMs: number;
+  wrongIdleMs: number;
+}): number {
+  return input.wrongCellCount >= input.wrongCellThreshold
+    ? input.wrongIdleMs
+    : input.idleMs;
+}
+
+// 막힘 안내(stuck prompt)에서 "이 단어 정답 보기" 보조 동작을 함께 노출할지 정한다.
+// 선택된 단어가 아직 미완성일 때만, 막힌 사용자가 그 단어를 즉시 공개해 빠져나갈
+// 탈출구를 제공한다(#163). 선택 단어가 없거나 이미 정답이면 노출하지 않는다.
+export function shouldOfferStuckWordReveal(input: {
+  hasSelectedEntry: boolean;
+  isSelectedEntryComplete: boolean;
+}): boolean {
+  return input.hasSelectedEntry && !input.isSelectedEntryComplete;
+}
+
+// 입문(easy) 온보딩 퍼즐에서 단어 1개를 새로 완성했을 때(퍼즐 전체 완성 순간은
+// 제외) 즉시 긍정 피드백(시각 토스트)을 줄지 결정한다. 사운드·햅틱에 더해 시각
+// 피드백으로 첫 성공(활성화) 동기를 강화한다(#163).
+export function shouldCelebrateOnboardingWordCompletion(input: {
+  isOnboardingPuzzle: boolean;
+  justCompletedWord: boolean;
+  puzzleComplete: boolean;
+}): boolean {
+  return (
+    input.isOnboardingPuzzle &&
+    input.justCompletedWord &&
+    !input.puzzleComplete
+  );
+}
+
+export const ONBOARDING_WORD_COMPLETE_MESSAGE = "좋아요! 한 단어 완성했어요 🎉";
+
 export function getStreakMilestoneProgress(streak: number): string | null {
   if (!Number.isFinite(streak) || streak <= 0) return null;
   const safeStreak = Math.floor(streak);

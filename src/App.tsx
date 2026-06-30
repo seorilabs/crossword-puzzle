@@ -56,9 +56,13 @@ import {
   computeTentativeUpdate,
   resolveInitialActivePuzzleId,
   selectPromotableTentativeKeys,
+  shouldCelebrateOnboardingWordCompletion,
+  shouldOfferStuckWordReveal,
   shouldQuickStartActivePuzzle,
   shouldShowFirstInputGuide,
   shouldSubmitLeaderboardScore,
+  getStuckHintDelayMs,
+  ONBOARDING_WORD_COMPLETE_MESSAGE,
   sortPuzzleSummariesByRecency,
   startMissionAttempt,
   uniquePuzzleSummaries,
@@ -1588,9 +1592,12 @@ function App() {
     }
 
     const hasWrongStreak = wrongCellCount >= WRONG_CELL_COUNT_FOR_STUCK_HINT;
-    const stuckHintDelayMs = hasWrongStreak
-      ? STUCK_HINT_WRONG_IDLE_MS
-      : STUCK_HINT_IDLE_MS;
+    const stuckHintDelayMs = getStuckHintDelayMs({
+      wrongCellCount,
+      wrongCellThreshold: WRONG_CELL_COUNT_FOR_STUCK_HINT,
+      idleMs: STUCK_HINT_IDLE_MS,
+      wrongIdleMs: STUCK_HINT_WRONG_IDLE_MS,
+    });
 
     setIsStuckHintPromptVisible(false);
     const timerId = window.setTimeout(() => {
@@ -2032,6 +2039,17 @@ function App() {
         puzzle.entries.length;
       if (!puzzleComplete) {
         emitFeedback("wordComplete", settings);
+        // 입문(easy) 온보딩 퍼즐에서는 단어를 완성할 때마다 즉시 시각 피드백을 더해
+        // 첫 성공(활성화) 동기를 강화한다(#163). 사운드·햅틱은 위 wordComplete로 처리.
+        if (
+          shouldCelebrateOnboardingWordCompletion({
+            isOnboardingPuzzle: puzzle.puzzleId === onboardingPuzzle.puzzleId,
+            justCompletedWord: true,
+            puzzleComplete,
+          })
+        ) {
+          showHintToast(ONBOARDING_WORD_COMPLETE_MESSAGE);
+        }
       }
       return;
     }
@@ -2349,6 +2367,18 @@ function App() {
     } else {
       setIsRewardedHintPromptOpen(true);
     }
+  }
+
+  // 막힘 안내에서 "이 단어 정답 보기"로 빠져나가기. 선택된 미완성 단어를 즉시
+  // 공개해(revealSelectedWord) 막힌 사용자가 완료까지 진행하도록 돕는다(#163).
+  function acceptStuckWordReveal() {
+    setIsStuckHintPromptVisible(false);
+    telemetry.click("stuck_hint_prompt_reveal_word", {
+      ...puzzleTelemetryParams,
+      attempt_number: mission.attemptsUsed,
+      progress_percent: progressPercent,
+    });
+    revealSelectedWord();
   }
 
   function dismissStuckHintPrompt() {
@@ -3092,6 +3122,23 @@ function App() {
             >
               {remainingHintCredits > 0 ? "무료 힌트 보기" : "힌트 보기"}
             </button>
+            {shouldOfferStuckWordReveal({
+              hasSelectedEntry: viewModel.selectedEntry != null,
+              isSelectedEntryComplete:
+                viewModel.selectedEntry != null &&
+                getEntryAnswerValue(
+                  viewModel.selectedEntry,
+                  cellValues,
+                ) === viewModel.selectedEntry.answer,
+            }) ? (
+              <button
+                type="button"
+                className="stuckHintPromptReveal"
+                onClick={acceptStuckWordReveal}
+              >
+                이 단어 정답 보기
+              </button>
+            ) : null}
             <button
               type="button"
               className="stuckHintPromptClose"
