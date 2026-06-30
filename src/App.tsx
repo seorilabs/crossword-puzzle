@@ -55,6 +55,7 @@ import {
   applyTentativeUpdate,
   computeTentativeUpdate,
   resolveInitialActivePuzzleId,
+  resolveStuckHintExposure,
   selectPromotableTentativeKeys,
   shouldQuickStartActivePuzzle,
   shouldShowFirstInputGuide,
@@ -314,13 +315,6 @@ const contentSourceLicense =
 const krdictCopyrightUrl =
   "https://krdict.korean.go.kr/kor/kboardPolicy/copyRightTermsInfo";
 const ccBySaKrUrl = "https://creativecommons.org/licenses/by-sa/2.0/kr/";
-
-// 막혔을 때 힌트 자동 노출: 입력 정체가 이 시간을 넘으면 비침습 힌트 CTA를 띄운다.
-const STUCK_HINT_IDLE_MS = 20000;
-// 오답이 쌓이면(막힘 신호) 20초를 기다리지 않고 더 빨리 힌트 CTA를 띄운다.
-const STUCK_HINT_WRONG_IDLE_MS = 5000;
-// 이 개수 이상의 셀이 오답으로 남아 있으면 "막힘"으로 보고 빠른 노출을 적용한다.
-const WRONG_CELL_COUNT_FOR_STUCK_HINT = 2;
 
 function getPuzzleTelemetryParams(puzzle: Puzzle) {
   return {
@@ -1579,18 +1573,21 @@ function App() {
 
   // 막혔을 때 힌트 자동 노출: 보드(today)에서 시작·미완료 상태일 때 입력/조작이
   // 일정 시간 정체되면 비침습 힌트 CTA를 띄운다. 입력·단어 선택 등 활동이 있으면
-  // 타이머가 리셋되어 다시 정체될 때까지 노출되지 않는다. 오답이 쌓여 막힌 신호가
-  // 보이면(미완료자 다수가 힌트 없이 이탈) 더 짧은 지연으로 빠르게 띄운다.
+  // 타이머가 리셋되어 다시 정체될 때까지 노출되지 않는다. 노출 지연·트리거는 코어
+  // 정책(resolveStuckHintExposure)이 결정한다: 오답이 쌓여 막힌 신호가 보이거나,
+  // 아직 한 단어도 완성하지 못한(진척 0) 신규 사용자면 더 짧은 지연으로 빠르게 띄워
+  // 첫 성공 전 이탈(이슈 #163)을 줄인다.
   useEffect(() => {
     if (route !== "today" || !hasStarted || isCompleted) {
       setIsStuckHintPromptVisible(false);
       return;
     }
 
-    const hasWrongStreak = wrongCellCount >= WRONG_CELL_COUNT_FOR_STUCK_HINT;
-    const stuckHintDelayMs = hasWrongStreak
-      ? STUCK_HINT_WRONG_IDLE_MS
-      : STUCK_HINT_IDLE_MS;
+    const { delayMs: stuckHintDelayMs, trigger: stuckHintTrigger } =
+      resolveStuckHintExposure({
+        wordsFilled: viewModel.completedEntries.length,
+        wrongCellCount,
+      });
 
     setIsStuckHintPromptVisible(false);
     const timerId = window.setTimeout(() => {
@@ -1603,7 +1600,7 @@ function App() {
         progress_percent: progressPercent,
         remaining_hint_credits: remainingHintCredits,
         total_words: puzzle.entries.length,
-        trigger: hasWrongStreak ? "wrong_answer" : "idle",
+        trigger: stuckHintTrigger,
         words_filled: viewModel.completedEntries.length,
         wrong_cell_count: wrongCellCount,
       });
