@@ -61,9 +61,13 @@ export const DIFFICULTY_PROFILES: Record<Difficulty, DifficultyProfile> = {
   hard: {
     difficulty: "hard",
     boardSize: 9,
-    maxWords: 16,
+    // normal→hard 난도 점프를 완화한다(#154). 기존 maxWords 16/minWordCount 18 은
+    // normal(10/10) 대비 +60%/+80% 로 점프가 커 normal 직후 hard 진입 시 난도 벽이
+    // 컸다. 13/14 로 낮춰 +30%/+40% 로 줄이면서 단조성(easy<normal<hard)과 hard
+    // 품질 게이트(minCrossRatio 0.5, minBboxDensity 0.45)는 그대로 통과한다.
+    maxWords: 13,
     minWordLength: 2,
-    minWordCount: 18,
+    minWordCount: 14,
     // hard 는 큰 보드에 더 성긴 배치를 허용해도 되므로 교차율·밀도를 완화한다.
     minCrossRatio: 0.5,
     minBboxDensity: 0.45,
