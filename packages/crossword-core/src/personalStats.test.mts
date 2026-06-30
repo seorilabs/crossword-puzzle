@@ -9,7 +9,8 @@ function record(
 ): PersonalStatsRecord {
   return {
     completed: false,
-    noHintCompletion: false,
+    hintCount: 0,
+    revealUsed: false,
     hasBestTime: false,
     ...overrides,
   };
@@ -28,12 +29,12 @@ describe("computePersonalStats", () => {
 
   it("aggregates total / completed / completion rate / no-hint / best-time counts", () => {
     const records = [
-      // 완료 + 노힌트 + 최고기록 보유
-      record({ completed: true, noHintCompletion: true, hasBestTime: true }),
-      // 완료(힌트 사용) + 최고기록 보유
-      record({ completed: true, noHintCompletion: false, hasBestTime: true }),
+      // 완료 + 노힌트(힌트0·정답보기X) + 최고기록 보유
+      record({ completed: true, hasBestTime: true }),
+      // 완료(힌트 사용) + 최고기록 보유 → 노힌트 아님
+      record({ completed: true, hintCount: 2, hasBestTime: true }),
       // 완료 + 노힌트(최고기록 없음)
-      record({ completed: true, noHintCompletion: true }),
+      record({ completed: true }),
       // 미완료(진행 중/도전 종료)
       record({ completed: false }),
     ];
@@ -47,10 +48,28 @@ describe("computePersonalStats", () => {
     });
   });
 
-  it("never counts a no-hint flag on an incomplete record", () => {
-    // 완료가 아니면 noHintCompletion이 true여도 노힌트 완료로 세지 않는다.
+  it("excludes a reveal-used completion from the no-hint count (matches getCompletionAchievements)", () => {
+    // 과거 완료 기록이라도 정답 보기를 썼으면 노힌트로 세지 않는다 — 결과 화면
+    // 배지 규칙(getCompletionAchievements)과 동일하게 unaided가 아니기 때문.
     const stats = computePersonalStats([
-      record({ completed: false, noHintCompletion: true }),
+      record({ completed: true, hintCount: 0, revealUsed: true }),
+    ]);
+    assert.equal(stats.completedCount, 1);
+    assert.equal(stats.noHintCompletedCount, 0);
+  });
+
+  it("excludes a hint-used completion from the no-hint count", () => {
+    const stats = computePersonalStats([
+      record({ completed: true, hintCount: 1, revealUsed: false }),
+    ]);
+    assert.equal(stats.completedCount, 1);
+    assert.equal(stats.noHintCompletedCount, 0);
+  });
+
+  it("never counts no-hint on an incomplete record", () => {
+    // 완료가 아니면 힌트0·정답보기X여도 노힌트 완료로 세지 않는다.
+    const stats = computePersonalStats([
+      record({ completed: false, hintCount: 0, revealUsed: false }),
     ]);
     assert.equal(stats.completedCount, 0);
     assert.equal(stats.noHintCompletedCount, 0);

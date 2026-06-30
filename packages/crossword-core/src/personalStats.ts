@@ -3,12 +3,16 @@
 // 진척 가시성(progression visibility)으로 코어 사용자의 재방문 동기를 높인다.
 // core에는 React / React Native / AppsInToss / Firebase SDK import를 넣지 않는다.
 
+import { getCompletionAchievements } from "./mission.ts";
+
 /** 집계 입력 1건(기기에 기록이 남은 퍼즐 1개). 플랫폼 어댑터가 채워서 넘긴다. */
 export type PersonalStatsRecord = {
   // 이 퍼즐을 정답으로 끝까지 완료했는지
   completed: boolean;
-  // 힌트·정답 보기 없이(unaided) 완료했는지. `completed`가 아니면 무시된다.
-  noHintCompletion: boolean;
+  // 이 퍼즐에서 사용한 힌트 수(노힌트 판정 입력)
+  hintCount: number;
+  // 정답 보기로 단어를 공개했는지(노힌트 판정 입력)
+  revealUsed: boolean;
   // 이 퍼즐에 보유한 최고 기록(best-time)이 있는지
   hasBestTime: boolean;
 };
@@ -31,8 +35,9 @@ export type PersonalStats = {
  * 기기에 남은 퍼즐 기록 배열에서 개인 누적 통계를 집계한다.
  *
  * - 완료율은 `completedCount / totalPuzzles`이며, 대상이 0건이면 0이다.
- * - 노힌트 완료 수는 `completed && noHintCompletion`인 기록만 센다(미완료 기록의
- *   noHintCompletion 값은 무시 — 완료 사실이 항상 우선한다).
+ * - 노힌트 완료 수는 완료한 기록 중 `getCompletionAchievements`가 노힌트로 판정한
+ *   것만 센다. 결과 화면 배지와 동일한 단일 규칙을 공유해, 같은 퍼즐에서
+ *   '히스토리 노힌트 수'와 '결과 노힌트 배지'가 어긋나지 않도록 한다.
  */
 export function computePersonalStats(
   records: readonly PersonalStatsRecord[],
@@ -46,7 +51,14 @@ export function computePersonalStats(
   for (const record of records) {
     if (record.completed) {
       completedCount += 1;
-      if (record.noHintCompletion) {
+      // 노힌트/정답 보기 판정은 결과 화면과 동일한 core 규칙을 재사용한다.
+      // attemptsUsed는 firstTry 전용이라 노힌트 집계에는 영향이 없다.
+      const { noHint } = getCompletionAchievements({
+        hintCount: record.hintCount,
+        attemptsUsed: 0,
+        revealUsed: record.revealUsed,
+      });
+      if (noHint) {
         noHintCompletedCount += 1;
       }
     }

@@ -87,6 +87,7 @@ import {
   type ReviewEntry,
   type SavedProgress,
 } from "../packages/crossword-core/src";
+import { PersonalStatsCard } from "./components/PersonalStatsCard";
 import { PuzzleBoard } from "./components/PuzzleBoard";
 import { formatElapsedTime, formatLiveTimer, getElapsedSeconds } from "./timer";
 import {
@@ -6514,24 +6515,24 @@ function HistoryScreen({
       ? formatPuzzleAliasLabel(selectedPuzzleSummary)
       : formatMissionDateLabel(mission.date, loadState);
 
-  // 기기에 남은 퍼즐 기록에서 사용자 단위 누적 통계를 집계한다. 노힌트 완료는
-  // 힌트 0 + 정답 보기 미사용(unaided)일 때만 인정한다(getCompletionAchievements와 일치).
+  // 기기에 남은 퍼즐 기록에서 사용자 단위 누적 통계를 집계한다. 노힌트 판정(힌트
+  // 0 + 정답 보기 미사용)은 core의 getCompletionAchievements가 단일 규칙으로
+  // 수행하므로, 여기서는 원시 신호(hintCount·revealUsed)만 모아 넘긴다.
   const personalStats = useMemo(() => {
     const records: PersonalStatsRecord[] = archiveRecords.map((record) => {
       const state = dateCardStates[record.puzzleId];
-      const completed =
-        record.completedAt != null || state?.completedAt != null;
-      const unaided = (state?.hintCount ?? 0) === 0 && !state?.revealUsed;
       return {
-        completed,
-        noHintCompletion: completed && unaided,
+        completed: record.completedAt != null || state?.completedAt != null,
+        hintCount: state?.hintCount ?? 0,
+        revealUsed: state?.revealUsed === true,
+        // 최고기록 수는 archive 기록이 남은 퍼즐로 한정한다 — 완료율 분모와 동일한
+        // 모집단을 공유하기 위해 의도적으로 그렇게 둔다. 기기에서 archive가 소실됐지만
+        // best-time만 남은 퍼즐은 제외된다(향후 전체 키 열거 API 도입 시 확장 가능).
         hasBestTime: getBestTimeMs(record.puzzleId) != null,
       };
     });
     return computePersonalStats(records);
   }, [archiveRecords, dateCardStates]);
-
-  const completionPercent = Math.round(personalStats.completionRate * 100);
 
   function openArchiveRecord(record: PuzzleArchiveRecord) {
     const state = dateCardStates[record.puzzleId];
@@ -6554,38 +6555,10 @@ function HistoryScreen({
         onBack={() => navigate("home")}
       />
 
-      <section className="personalStatsCard" aria-label="내 기록 요약">
-        <h2 className="personalStatsTitle">내 기록</h2>
-        {personalStats.completedCount > 0 ? (
-          <dl className="personalStatsGrid">
-            <div className="personalStat">
-              <dt>총 완료</dt>
-              <dd>{personalStats.completedCount}판</dd>
-            </div>
-            <div className="personalStat">
-              <dt>완료율</dt>
-              <dd>{completionPercent}%</dd>
-            </div>
-            <div className="personalStat">
-              <dt>현재 스트릭</dt>
-              <dd>{consecutiveStreak}일</dd>
-            </div>
-            <div className="personalStat">
-              <dt>노힌트 완료</dt>
-              <dd>{personalStats.noHintCompletedCount}판</dd>
-            </div>
-            <div className="personalStat">
-              <dt>최고 기록</dt>
-              <dd>{personalStats.bestTimeCount}개</dd>
-            </div>
-          </dl>
-        ) : (
-          <p className="personalStatsEmpty">
-            첫 퍼즐을 완료하면 누적 기록이 여기에 쌓여요.
-            {consecutiveStreak > 0 ? ` 🔥 ${consecutiveStreak}일째 도전 중!` : ""}
-          </p>
-        )}
-      </section>
+      <PersonalStatsCard
+        stats={personalStats}
+        consecutiveStreak={consecutiveStreak}
+      />
 
       <DateCarousel
         completionStatsByPuzzleId={completionStatsByPuzzleId}
