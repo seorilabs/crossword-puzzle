@@ -96,9 +96,9 @@
     },
     "return_reminder_enabled": {
       "defaultValue": {
-        "value": "false"
+        "value": "true"
       },
-      "description": "복귀 리마인드(D1 재방문) 푸시 동의 유도 노출 여부. 스마트발송 템플릿 등록 후 활성화. 기본값은 비활성",
+      "description": "복귀 리마인드(D1 재방문) 푸시 동의 유도 노출 여부. 스마트발송 템플릿 등록 완료로 기본 활성. 필요 시 false로 끈다",
       "valueType": "BOOLEAN"
     }
   }

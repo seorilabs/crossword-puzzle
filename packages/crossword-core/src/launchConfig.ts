@@ -3,7 +3,7 @@ import {
   DEFAULT_VISIBLE_PUZZLE_COUNT,
   PUZZLE_GENERATION_INTERVAL_HOURS,
   PUZZLE_KEEP_COUNT,
-} from "./uiPolicy";
+} from "./uiPolicy.ts";
 
 export type LaunchConfig = {
   defaultHintCredits: number;
@@ -47,9 +47,11 @@ export const defaultLaunchConfig: LaunchConfig = {
   rewardedHintAdsEnabled: true,
   resultInterstitialAdsEnabled: false,
   leaderboardEnabled: false,
-  // 복귀 리마인드 푸시 동의 유도는 스마트발송 템플릿 등록 + 운영 판단 후
-  // 원격 설정으로 켠다. 기본값은 비활성(3개 시장 동작 동일 유지).
-  returnReminderEnabled: false,
+  // 복귀 리마인드 푸시 동의 유도(D1 재방문) 기본 활성. 스마트발송 템플릿이 등록돼
+  // AIT/Web 동의 요청 경로가 갖춰졌고, D1 잔존(8.6%) 개선을 위해 켠다(#162). 필요 시
+  // Remote Config `return_reminder_enabled`로 끌 수 있다. mobile(RN)은 알림 동의
+  // adapter가 없어 이 값과 무관하게 no-op이다(docs/market-parity.md 참고).
+  returnReminderEnabled: true,
 };
 
 export function clampInteger(
