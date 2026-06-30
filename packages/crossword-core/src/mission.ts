@@ -33,6 +33,67 @@ export function getRemainingAttempts(mission: DailyMissionState) {
   return Math.max(0, mission.maxAttempts - mission.attemptsUsed);
 }
 
+export type ElapsedInput = {
+  /** 풀이 시작 시각(ISO). 없으면 경과를 계산할 수 없다. */
+  startedAt?: string;
+  /** 종료(완료) 시각(ISO). 없으면 진행 중으로 보고 `now`까지 계산한다. */
+  endedAt?: string;
+  /** 이미 누적된 일시정지 시간(ms). */
+  pausedMs?: number;
+  /** 현재 일시정지 중이면 그 시작 시각(ISO). 진행 중이면 생략한다. */
+  pausedAt?: string;
+  /** 기준 현재 시각(ms). 테스트 주입용. 기본값 Date.now(). */
+  now?: number;
+};
+
+/**
+ * 일시정지 구간을 제외한 순수 경과 시간(ms)을 계산한다.
+ * 경과 = (종료 또는 now) - 시작 - 누적 일시정지(pausedMs) - 진행 중 정지 구간.
+ * 진행 중 정지 구간은 현재 일시정지 중(`pausedAt` 존재)이고 종료 전일 때만 더한다.
+ * 시작 시각이 없거나 값이 비정상(역전 등)이면 undefined를 반환한다.
+ */
+export function computeElapsedMs(input: ElapsedInput): number | undefined {
+  const { startedAt, endedAt, pausedAt } = input;
+  if (startedAt == null) {
+    return undefined;
+  }
+
+  const startTime = new Date(startedAt).getTime();
+  const now = input.now ?? Date.now();
+  const endTime = endedAt == null ? now : new Date(endedAt).getTime();
+
+  if (
+    !Number.isFinite(startTime) ||
+    !Number.isFinite(endTime) ||
+    endTime < startTime
+  ) {
+    return undefined;
+  }
+
+  let pausedMs =
+    typeof input.pausedMs === "number" && Number.isFinite(input.pausedMs)
+      ? Math.max(0, input.pausedMs)
+      : 0;
+
+  // 종료되지 않은(진행 중) 미션이 현재 일시정지 상태면, 멈춘 순간부터 기준
+  // 시각까지의 구간도 경과에서 제외한다(타이머가 멈춰 보이도록).
+  if (endedAt == null && pausedAt != null) {
+    const pausedAtTime = new Date(pausedAt).getTime();
+    if (Number.isFinite(pausedAtTime) && endTime > pausedAtTime) {
+      pausedMs += endTime - pausedAtTime;
+    }
+  }
+
+  const elapsed = endTime - startTime - pausedMs;
+  return elapsed > 0 ? elapsed : 0;
+}
+
+/** computeElapsedMs를 초 단위로 반올림해 반환한다. */
+export function computeElapsedSeconds(input: ElapsedInput): number | undefined {
+  const ms = computeElapsedMs(input);
+  return ms == null ? undefined : Math.round(ms / 1000);
+}
+
 export function startMissionAttempt(
   mission: DailyMissionState,
   now = new Date(),

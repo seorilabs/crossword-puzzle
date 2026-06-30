@@ -17,6 +17,7 @@
   --cw-track: #dce5e8;
   --cw-brand-line: #c9eee6;
   --cw-brand-line-2: #b7eadf;
+  --cw-overlay-scrim: rgba(255, 255, 255, 0.82);
   /* 브랜드(그린) */
   --cw-brand: #00a88f;
   --cw-brand-strong: #00866f;
@@ -2863,6 +2864,7 @@ button:disabled {
     --cw-track: #2c3039;
     --cw-brand-line: #1f4f46;
     --cw-brand-line-2: #246b5d;
+    --cw-overlay-scrim: rgba(22, 24, 29, 0.84);
     --cw-brand: #19c2a6;
     --cw-brand-strong: #4fd9c2;
     --cw-brand-soft: #15302b;
@@ -3016,4 +3018,52 @@ button:disabled {
     border-color: var(--cw-cell-wrong-ring);
     color: var(--cw-cell-wrong-text);
   }
+}
+
+/* 일시정지 오버레이 — 풀이 영역(.puzzlePlayArea) 위를 덮어 보드 입력을 차단하고
+   타이머가 멈췄음을 알린다. 토큰 기반이라 다크 모드에서도 함께 전환된다. */
+.pauseOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  border-radius: 8px;
+  background: var(--cw-overlay-scrim);
+  backdrop-filter: blur(2px);
+}
+
+.pauseOverlayCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: 280px;
+  box-sizing: border-box;
+  padding: 20px;
+  border: 1px solid var(--cw-border);
+  border-radius: 12px;
+  background: var(--cw-surface);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  text-align: center;
+}
+
+.pauseOverlayCard strong {
+  color: var(--cw-text);
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 25px;
+}
+
+.pauseOverlayCard span {
+  color: var(--cw-text-3);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 18px;
+}
+
+.pauseOverlayCard .primaryButton {
+  width: auto;
+  padding: 10px 22px;
 }

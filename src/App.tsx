@@ -21,6 +21,7 @@ import {
   buildReviewEntries,
   buildStartLabels,
   completeMission,
+  computeElapsedMs,
   computeLeaderboardScore,
   createPuzzleSummary,
   createDailyMissionState,
@@ -80,6 +81,7 @@ import {
   type SavedProgress,
 } from "../packages/crossword-core/src";
 import { PuzzleBoard } from "./components/PuzzleBoard";
+import { formatElapsedTime, formatLiveTimer, getElapsedSeconds } from "./timer";
 import {
   computeConsecutiveStreakDays,
   createLocalMissionRepository,
@@ -384,25 +386,6 @@ function getRewardedBonusPuzzleFailureMessage(
     case "failed":
       return "광고를 표시하지 못해 퍼즐이 열리지 않았어요. 잠시 후 다시 시도해 주세요.";
   }
-}
-
-function getElapsedSeconds(startedAt?: string, endedAt?: string) {
-  if (startedAt == null) {
-    return undefined;
-  }
-
-  const startTime = new Date(startedAt).getTime();
-  const endTime = endedAt == null ? Date.now() : new Date(endedAt).getTime();
-
-  if (
-    !Number.isFinite(startTime) ||
-    !Number.isFinite(endTime) ||
-    endTime < startTime
-  ) {
-    return undefined;
-  }
-
-  return Math.round((endTime - startTime) / 1000);
 }
 
 function getRouteFromPathname(pathname: string): AppRoute {
@@ -787,6 +770,14 @@ function App() {
     computeConsecutiveStreakDays(),
   );
   const [isNewBestTime, setIsNewBestTime] = useState(false);
+  // 풀이 일시정지 상태. pausedMs는 누적 정지 시간(ms), pausedAt은 현재 정지 시작
+  // 시각(없으면 진행 중). 영속 mission과 분리한 세션 한정 상태라 저장 스키마 변경
+  // 없이 동작하며, 새 시도 시작·퍼즐 전환 시 초기화한다.
+  const [pause, setPause] = useState<{
+    pausedMs: number;
+    pausedAt: string | null;
+  }>({ pausedMs: 0, pausedAt: null });
+  const isPaused = pause.pausedAt != null;
   // "정답 보기"로 단어를 공개했는지. 노힌트/첫 도전 배지·최고 기록 판정에서
   // 제외하기 위한 플래그로, 진행상태(SavedProgress)에 보존한다.
   const [revealUsed, setRevealUsed] = useState(false);
@@ -1708,6 +1699,7 @@ function App() {
       elapsed_seconds: getElapsedSeconds(
         nextMission.lastStartedAt,
         nextMission.completedAt,
+        { pausedMs: pause.pausedMs },
       ),
       earned_hint_credits: earnedHintCredits,
       hint_count: hintCount,
@@ -1747,6 +1739,7 @@ function App() {
         elapsedSeconds: getElapsedSeconds(
           nextMission.lastStartedAt,
           nextMission.completedAt,
+          { pausedMs: pause.pausedMs },
         ),
       });
     }
@@ -1761,9 +1754,13 @@ function App() {
       nextMission.lastStartedAt != null &&
       nextMission.completedAt != null
     ) {
+      // 최고 기록도 일시정지 누적(pausedMs)을 제외한 순수 풀이 시간으로 판정한다.
       const elapsedMs =
-        new Date(nextMission.completedAt).getTime() -
-        new Date(nextMission.lastStartedAt).getTime();
+        computeElapsedMs({
+          startedAt: nextMission.lastStartedAt,
+          endedAt: nextMission.completedAt,
+          pausedMs: pause.pausedMs,
+        }) ?? 0;
       if (elapsedMs > 0) {
         const currentBest = getBestTimeMs(puzzle.puzzleId);
         if (currentBest == null || elapsedMs < currentBest) {
@@ -1786,6 +1783,7 @@ function App() {
     launchConfig,
     maybePromptReturnReminder,
     mission,
+    pause.pausedMs,
     puzzle,
     puzzleTelemetryParams,
     revealUsed,
@@ -1876,12 +1874,43 @@ function App() {
     entry: PuzzleEntry,
     cellKey = getEntryStartCellKey(entry),
   ) {
+    // 일시정지 중에는 문제 선택 변경을 막는다.
+    if (isPaused) {
+      return;
+    }
     setSelectedEntryId(entry.id);
     setSelectedDirection(entry.direction);
     setSelectedCellKey(cellKey);
   }
 
+  // 새 시도 시작 또는 퍼즐 전환 시 일시정지 상태를 초기화한다.
+  useEffect(() => {
+    setPause({ pausedMs: 0, pausedAt: null });
+  }, [mission.lastStartedAt, mission.puzzleId]);
+
+  // 풀이 화면 "일시정지/계속" 토글. 정지 중에는 입력이 비활성화되고 타이머가 멈춘다.
+  function togglePause() {
+    if (mission.completedAt != null || mission.lastStartedAt == null) {
+      return;
+    }
+    setPause((prev) => {
+      if (prev.pausedAt == null) {
+        return { ...prev, pausedAt: new Date().toISOString() };
+      }
+      const delta = Date.now() - new Date(prev.pausedAt).getTime();
+      return {
+        pausedMs:
+          prev.pausedMs + (Number.isFinite(delta) ? Math.max(0, delta) : 0),
+        pausedAt: null,
+      };
+    });
+  }
+
   function selectCell(row: number, col: number) {
+    // 일시정지 중에는 셀 선택을 막는다.
+    if (isPaused) {
+      return;
+    }
     const key = getCellKey(row, col);
     const entries = viewModel.cellEntries.get(key) ?? [];
 
@@ -2026,6 +2055,10 @@ function App() {
     value: string,
     source: "debug" | "manual" | "reveal" = "manual",
   ) {
+    // 일시정지 중에는 수동 글자 입력을 막는다(정답 공개 등 비수동 경로는 허용).
+    if (isPaused && source === "manual") {
+      return;
+    }
     const cells = getEntryCells(entry);
     const nextLetters = getAnswerInputLetters(value, cells.length);
     const nextValues = { ...cellValues };
@@ -2078,6 +2111,10 @@ function App() {
     startCellKey = selectedCellKey,
     source: "debug" | "manual" | "reveal" = "manual",
   ) {
+    // 일시정지 중에는 수동 글자 입력을 막는다.
+    if (isPaused && source === "manual") {
+      return;
+    }
     const cells = getEntryCells(entry);
     const startIndex = getEntryCellIndex(entry, startCellKey);
     const nextLetters = getAnswerInputLetters(value, cells.length - startIndex);
@@ -2950,8 +2987,11 @@ function App() {
           isCompleted={isCompleted}
           isFirstInputGuideVisible={isFirstInputGuideVisible}
           isNewBestTime={isNewBestTime}
+          isPaused={isPaused}
           navigate={navigate}
+          pause={pause}
           startOrResumeMission={startOrResumeMission}
+          togglePause={togglePause}
         />
       ) : route === "result" ? (
         <ResultScreen
@@ -4084,25 +4124,38 @@ function getDateCardStatus(state?: DateCardState) {
   return "대기";
 }
 
-function formatLiveTimer(totalSeconds: number): string {
-  const total = Math.floor(totalSeconds);
-  const minutes = Math.floor(total / 60);
-  const seconds = total % 60;
-  return `${minutes}:${String(seconds).padStart(2, "0")}`;
-}
-
-function LiveTimer({ startedAt }: { startedAt: string }) {
+function LiveTimer({
+  startedAt,
+  pausedMs = 0,
+  pausedAt = null,
+}: {
+  startedAt: string;
+  pausedMs?: number;
+  pausedAt?: string | null;
+}) {
   const [seconds, setSeconds] = useState(
-    () => getElapsedSeconds(startedAt) ?? 0,
+    () => getElapsedSeconds(startedAt, undefined, { pausedMs, pausedAt }) ?? 0,
   );
 
+  // 시작 시각·일시정지 상태가 바뀌면 즉시 재계산한다(재개 직후 stale 표시 방지).
   useEffect(() => {
-    setSeconds(getElapsedSeconds(startedAt) ?? 0);
+    setSeconds(
+      getElapsedSeconds(startedAt, undefined, { pausedMs, pausedAt }) ?? 0,
+    );
+  }, [startedAt, pausedMs, pausedAt]);
+
+  // 진행 중일 때만 1초 간격으로 카운트업한다. 일시정지(pausedAt != null) 중에는
+  // interval 자체를 멈춰 표시값을 고정하고, 재개 시 위 effect가 즉시 보정한 뒤
+  // 새 interval이 최신 pausedMs를 참조하므로 stale closure로 값이 줄지 않는다.
+  useEffect(() => {
+    if (pausedAt != null) {
+      return;
+    }
     const id = window.setInterval(() => {
-      setSeconds(getElapsedSeconds(startedAt) ?? 0);
+      setSeconds(getElapsedSeconds(startedAt, undefined, { pausedMs }) ?? 0);
     }, 1000);
     return () => window.clearInterval(id);
-  }, [startedAt]);
+  }, [startedAt, pausedMs, pausedAt]);
 
   return (
     <span
@@ -4112,32 +4165,6 @@ function LiveTimer({ startedAt }: { startedAt: string }) {
       {formatLiveTimer(seconds)}
     </span>
   );
-}
-
-function formatElapsedTime(
-  startedAt: string | undefined,
-  completedAt: string | undefined,
-): string | null {
-  if (startedAt == null || completedAt == null) {
-    return null;
-  }
-
-  const elapsedMs =
-    new Date(completedAt).getTime() - new Date(startedAt).getTime();
-
-  if (Number.isNaN(elapsedMs) || elapsedMs < 0) {
-    return null;
-  }
-
-  const totalSeconds = Math.floor(elapsedMs / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-
-  if (minutes === 0) {
-    return `${totalSeconds}초`;
-  }
-
-  return `${minutes}분 ${String(seconds).padStart(2, "0")}초`;
 }
 
 function buildShareText({
@@ -4461,9 +4488,12 @@ type TodayScreenProps = DateSelectionProps & {
   isCompleted: boolean;
   isFirstInputGuideVisible: boolean;
   isNewBestTime: boolean;
+  isPaused: boolean;
   hapticEnabled: boolean;
   mission: DailyMissionState;
   navigate: (route: AppRoute) => void;
+  pause: { pausedMs: number; pausedAt: string | null };
+  togglePause: () => void;
   pencilMode: boolean;
   promoteSelectedWord: () => void;
   puzzle: Puzzle;
@@ -4514,10 +4544,13 @@ function TodayScreen({
   isCompleted,
   isFirstInputGuideVisible,
   isNewBestTime,
+  isPaused,
   hapticEnabled,
   loadState,
   mission,
   navigate,
+  pause,
+  togglePause,
   pencilMode,
   promoteSelectedWord,
   puzzle,
@@ -5138,6 +5171,7 @@ function TodayScreen({
               enterKeyHint="next"
               maxLength={selectedRemainingCellCount}
               spellCheck={false}
+              disabled={isPaused}
               aria-label={`${selectedRemainingCellCount}글자 답 입력`}
               onClick={handleAnswerSlotInputClick}
               onPointerDown={handleAnswerSlotInputPointerDown}
@@ -5286,7 +5320,11 @@ function TodayScreen({
           ) : mission.lastStartedAt != null ? (
             <>
               {selectedPuzzleLabel} ·{" "}
-              <LiveTimer startedAt={mission.lastStartedAt} />
+              <LiveTimer
+                startedAt={mission.lastStartedAt}
+                pausedMs={pause.pausedMs}
+                pausedAt={pause.pausedAt}
+              />
             </>
           ) : (
             selectedPuzzleLabel
@@ -5452,10 +5490,22 @@ function TodayScreen({
 
       {!isReviewMode ? (
         <div className="solveAssistBar" role="group" aria-label="정답 확인 도구">
+          {mission.lastStartedAt != null && !isCompleted ? (
+            <button
+              className={["assistButton", isPaused ? "assistToggleOn" : ""]
+                .filter(Boolean)
+                .join(" ")}
+              type="button"
+              aria-pressed={isPaused}
+              onClick={togglePause}
+            >
+              {isPaused ? "계속하기" : "일시정지"}
+            </button>
+          ) : null}
           <button
             className="assistButton"
             type="button"
-            disabled={selectedEntry == null}
+            disabled={selectedEntry == null || isPaused}
             onClick={checkSelectedWord}
           >
             이 단어 확인
@@ -5595,6 +5645,22 @@ function TodayScreen({
           tentativeCellKeys={tentativeCellKeys}
           puzzle={puzzle}
         />
+
+        {isPaused ? (
+          <div className="pauseOverlay" role="status" aria-live="polite">
+            <div className="pauseOverlayCard">
+              <strong>일시정지됨</strong>
+              <span>타이머가 멈췄어요. 계속하려면 아래 버튼을 눌러요.</span>
+              <button
+                className="primaryButton"
+                type="button"
+                onClick={togglePause}
+              >
+                계속하기
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         {selectedEntry != null ? (
           <div className="selectedClueList" aria-label="선택한 문제">
@@ -6021,7 +6087,7 @@ function ResultScreen({
       ? formatPuzzleAliasLabel(selectedPuzzleSummary)
       : formatMissionDateLabel(mission.date, loadState);
   const elapsedLabel = isComplete
-    ? formatElapsedTime(mission.lastStartedAt, mission.completedAt)
+    ? formatElapsedTime(mission.lastStartedAt, mission.completedAt, pause.pausedMs)
     : null;
   const streakAchievementLabel = isComplete
     ? getStreakBadgeLabel(consecutiveStreak)
