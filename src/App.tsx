@@ -1733,10 +1733,17 @@ function App() {
       })
     ) {
       submittedLeaderboardPuzzleIdsRef.current.add(puzzle.puzzleId);
+      // 동일 단어수/도전/힌트인 완료자끼리는 풀이 시간으로 점수를 변별한다.
+      const submissionElapsedSeconds = getElapsedSeconds(
+        nextMission.lastStartedAt,
+        nextMission.completedAt,
+        { pausedMs: pause.pausedMs },
+      );
       const leaderboardScore = computeLeaderboardScore({
         completedWordCount: viewModel.completedEntries.length,
         remainingAttempts: getRemainingAttempts(nextMission),
         hintCount,
+        elapsedSeconds: submissionElapsedSeconds,
       });
       telemetry.impression("leaderboard_score_submit", {
         puzzle_id: puzzle.puzzleId,
@@ -1746,11 +1753,7 @@ function App() {
       void leaderboardAdapter.submitScore(leaderboardScore, {
         puzzleId: puzzle.puzzleId,
         difficulty: puzzle.difficulty,
-        elapsedSeconds: getElapsedSeconds(
-          nextMission.lastStartedAt,
-          nextMission.completedAt,
-          { pausedMs: pause.pausedMs },
-        ),
+        elapsedSeconds: submissionElapsedSeconds,
       });
     }
 
