@@ -156,12 +156,12 @@
       "id": "a7",
       "answer": "생물",
       "clue": "생명이 있는 동물과 식물",
-      "clueSource": "krdict-definition",
+      "clueSource": "manual",
       "direction": "across",
       "row": 5,
       "col": 3,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a8",
@@ -233,12 +233,12 @@
       "id": "d14",
       "answer": "격분",
       "clue": "몹시 화를 냄",
-      "clueSource": "krdict-definition",
+      "clueSource": "manual",
       "direction": "down",
       "row": 0,
       "col": 6,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d15",
@@ -288,12 +288,12 @@
       "id": "d19",
       "answer": "자세",
       "clue": "몸을 움직이거나 가누는 태도",
-      "clueSource": "krdict-definition",
+      "clueSource": "manual",
       "direction": "down",
       "row": 6,
       "col": 2,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d20",

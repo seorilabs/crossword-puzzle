@@ -155,13 +155,13 @@
     {
       "id": "a7",
       "answer": "간호",
-      "clue": "아픈 사람을 보살핌",
-      "clueSource": "krdict-definition",
+      "clue": "아픈 사람을 보살피는 일",
+      "clueSource": "manual",
       "direction": "across",
       "row": 4,
       "col": 3,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a8",
@@ -188,13 +188,13 @@
     {
       "id": "a10",
       "answer": "주소",
-      "clue": "집이나 직장, 기관 등이 위치한 곳의 행정 구역상 이름",
-      "clueSource": "krdict-definition",
+      "clue": "집이나 기관이 있는 곳의 행정 구역 이름",
+      "clueSource": "manual",
       "direction": "across",
       "row": 5,
       "col": 3,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a11",
@@ -254,13 +254,13 @@
     {
       "id": "d16",
       "answer": "세면",
-      "clue": "물로 얼굴을 씻음",
-      "clueSource": "krdict-definition",
+      "clue": "물로 얼굴을 씻는 일",
+      "clueSource": "manual",
       "direction": "down",
       "row": 1,
       "col": 7,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d17",

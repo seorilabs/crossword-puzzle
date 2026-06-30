@@ -232,13 +232,13 @@
     {
       "id": "d14",
       "answer": "고정",
-      "clue": "한번 정한 내용을 변경하지 않음",
-      "clueSource": "krdict-definition",
+      "clue": "한번 정한 것을 바꾸지 않음",
+      "clueSource": "manual",
       "direction": "down",
       "row": 3,
       "col": 2,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d15",
@@ -254,13 +254,13 @@
     {
       "id": "d16",
       "answer": "성의",
-      "clue": "정성스러운 뜻",
-      "clueSource": "krdict-definition",
+      "clue": "정성스러운 마음과 뜻",
+      "clueSource": "manual",
       "direction": "down",
       "row": 3,
       "col": 5,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d17",
@@ -310,12 +310,12 @@
       "id": "d21",
       "answer": "신구",
       "clue": "새것과 헌것",
-      "clueSource": "krdict-definition",
+      "clueSource": "manual",
       "direction": "down",
       "row": 6,
       "col": 1,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d22",

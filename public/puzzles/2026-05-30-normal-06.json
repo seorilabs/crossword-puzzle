@@ -123,12 +123,12 @@
       "id": "a4",
       "answer": "중부",
       "clue": "어떤 지역의 가운데 부분",
-      "clueSource": "krdict-definition",
+      "clueSource": "manual",
       "direction": "across",
       "row": 2,
       "col": 3,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a5",
@@ -167,12 +167,12 @@
       "id": "a8",
       "answer": "조석",
       "clue": "아침과 저녁",
-      "clueSource": "krdict-definition",
+      "clueSource": "manual",
       "direction": "across",
       "row": 4,
       "col": 0,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a9",
@@ -221,13 +221,13 @@
     {
       "id": "d13",
       "answer": "일소",
-      "clue": "한꺼번에 없앰",
-      "clueSource": "krdict-definition",
+      "clue": "한꺼번에 모두 없앰",
+      "clueSource": "manual",
       "direction": "down",
       "row": 0,
       "col": 2,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d14",
