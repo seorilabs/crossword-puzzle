@@ -89,24 +89,24 @@
     {
       "id": "a1",
       "answer": "말실수",
-      "clue": "말을 조심하지 않아서 저지르는 실수. 또는 그 말",
-      "clueSource": "krdict-definition",
+      "clue": "조심하지 않아 잘못 내뱉은 말",
+      "clueSource": "manual",
       "direction": "across",
       "row": 0,
       "col": 1,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a2",
       "answer": "장난꾸러기",
-      "clue": "장난이 심한 아이",
-      "clueSource": "krdict-definition",
+      "clue": "짓궂은 장난이 몹시 심한 아이",
+      "clueSource": "manual",
       "direction": "across",
       "row": 1,
       "col": 2,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a3",
@@ -122,13 +122,13 @@
     {
       "id": "a4",
       "answer": "성장기",
-      "clue": "성장하는 시기",
-      "clueSource": "krdict-definition",
+      "clue": "몸과 마음이 한창 자라나는 시기",
+      "clueSource": "manual",
       "direction": "across",
       "row": 3,
       "col": 5,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a5",
@@ -155,13 +155,13 @@
     {
       "id": "a7",
       "answer": "정신병",
-      "clue": "정신의 이상으로 인격이나 판단력 등에 결함이 생겨 정상을 벗어난 말이나 행동을 하는 상태",
-      "clueSource": "krdict-definition",
+      "clue": "정신에 이상이 생겨 판단과 행동이 정상을 벗어난 상태",
+      "clueSource": "manual",
       "direction": "across",
       "row": 6,
       "col": 0,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a8",
@@ -188,24 +188,24 @@
     {
       "id": "d10",
       "answer": "실장",
-      "clue": "관청이나 기관, 회사에서 ‘실’자가 붙은 일정한 부서의 책임자",
-      "clueSource": "krdict-definition",
+      "clue": "기관이나 회사에서 '실' 단위 부서를 책임지는 사람",
+      "clueSource": "manual",
       "direction": "down",
       "row": 0,
       "col": 2,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d11",
       "answer": "수난",
-      "clue": "견디기 힘든 어려운 일을 당함",
-      "clueSource": "krdict-definition",
+      "clue": "견디기 힘든 어려움을 당함",
+      "clueSource": "manual",
       "direction": "down",
       "row": 0,
       "col": 3,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d12",
@@ -265,13 +265,13 @@
     {
       "id": "d17",
       "answer": "기말고사",
-      "clue": "한 학기의 마지막에 보는 시험",
-      "clueSource": "krdict-definition",
+      "clue": "한 학기를 마무리하며 치르는 시험",
+      "clueSource": "manual",
       "direction": "down",
       "row": 3,
       "col": 7,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d18",
@@ -287,13 +287,13 @@
     {
       "id": "d19",
       "answer": "인정",
-      "clue": "세상 사람들의 마음",
-      "clueSource": "krdict-definition",
+      "clue": "사람으로서 지니는 따뜻한 마음씨",
+      "clueSource": "manual",
       "direction": "down",
       "row": 5,
       "col": 0,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d20",

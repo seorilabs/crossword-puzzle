@@ -100,24 +100,24 @@
     {
       "id": "a2",
       "answer": "만성적",
-      "clue": "병의 증세가 심하지 않으면서 천천히 진행되고 잘 낫지 않는 것",
-      "clueSource": "krdict-definition",
+      "clue": "오래 끌며 잘 낫지 않는 것",
+      "clueSource": "manual",
       "direction": "across",
       "row": 0,
       "col": 4,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a3",
       "answer": "정면충돌",
-      "clue": "두 물체가 정면으로 부딪침",
-      "clueSource": "krdict-definition",
+      "clue": "두 물체가 마주 보고 세게 부딪침",
+      "clueSource": "manual",
       "direction": "across",
       "row": 1,
       "col": 1,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a4",
@@ -144,24 +144,24 @@
     {
       "id": "a6",
       "answer": "자연사",
-      "clue": "늙고 힘이 약해져 자연히 죽음",
-      "clueSource": "krdict-definition",
+      "clue": "늙어 저절로 맞이하는 죽음",
+      "clueSource": "manual",
       "direction": "across",
       "row": 3,
       "col": 1,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a7",
       "answer": "합산",
-      "clue": "둘 이상을 더하여 계산함",
-      "clueSource": "krdict-definition",
+      "clue": "여럿을 한데 모아 더함",
+      "clueSource": "manual",
       "direction": "across",
       "row": 3,
       "col": 5,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a8",
@@ -221,13 +221,13 @@
     {
       "id": "d13",
       "answer": "장면",
-      "clue": "영화나 연극의 순간, 광경",
-      "clueSource": "krdict-definition",
+      "clue": "영화나 연극 속 한 순간의 광경",
+      "clueSource": "manual",
       "direction": "down",
       "row": 0,
       "col": 2,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d14",
@@ -254,13 +254,13 @@
     {
       "id": "d16",
       "answer": "내력",
-      "clue": "지금까지 지내온 과정이나 경력",
-      "clueSource": "krdict-definition",
+      "clue": "지금까지 살아온 과정이나 경력",
+      "clueSource": "manual",
       "direction": "down",
       "row": 1,
       "col": 7,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d17",
@@ -309,24 +309,24 @@
     {
       "id": "d21",
       "answer": "현자",
-      "clue": "지혜롭고 현명한 사람",
-      "clueSource": "krdict-definition",
+      "clue": "지혜롭고 사리에 밝은 사람",
+      "clueSource": "manual",
       "direction": "down",
       "row": 6,
       "col": 2,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d22",
       "answer": "실의",
-      "clue": "뜻이나 의욕을 잃음",
-      "clueSource": "krdict-definition",
+      "clue": "뜻이나 의욕을 잃고 낙심함",
+      "clueSource": "manual",
       "direction": "down",
       "row": 6,
       "col": 3,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d23",

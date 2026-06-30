@@ -111,46 +111,46 @@
     {
       "id": "a3",
       "answer": "호재",
-      "clue": "좋은 기회나 조건",
-      "clueSource": "krdict-definition",
+      "clue": "좋은 기회나 유리한 조건",
+      "clueSource": "manual",
       "direction": "across",
       "row": 1,
       "col": 6,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a4",
       "answer": "성비",
-      "clue": "한 집단에서, 남녀 또는 암수의 비율",
-      "clueSource": "krdict-definition",
+      "clue": "한 집단의 남녀 또는 암수 비율",
+      "clueSource": "manual",
       "direction": "across",
       "row": 2,
       "col": 0,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a5",
       "answer": "기병",
-      "clue": "말을 타고 싸우는 병사",
-      "clueSource": "krdict-definition",
+      "clue": "말을 타고 싸우는 군사",
+      "clueSource": "manual",
       "direction": "across",
       "row": 2,
       "col": 3,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a6",
       "answer": "박차",
-      "clue": "어떤 일을 빨리 되어 나가도록 더하는 힘",
-      "clueSource": "krdict-definition",
+      "clue": "일이 빨리 되도록 더하는 힘",
+      "clueSource": "manual",
       "direction": "across",
       "row": 2,
       "col": 6,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a7",
@@ -199,13 +199,13 @@
     {
       "id": "a11",
       "answer": "지자체",
-      "clue": "‘지방 자치 단체’를 줄여 이르는 말",
-      "clueSource": "krdict-definition",
+      "clue": "'지방 자치 단체'를 줄여 이르는 말",
+      "clueSource": "manual",
       "direction": "across",
       "row": 6,
       "col": 1,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a12",
@@ -232,24 +232,24 @@
     {
       "id": "d14",
       "answer": "이야기",
-      "clue": "다른 사람과 말을 주고받는 말",
-      "clueSource": "krdict-definition",
+      "clue": "서로 주고받는 말, 또는 줄거리가 있는 말",
+      "clueSource": "manual",
       "direction": "down",
       "row": 0,
       "col": 3,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d15",
       "answer": "경비대",
-      "clue": "적의 침략이나 사고에 대비하여 주변을 살피고 지키는 일을 맡은 부대",
-      "clueSource": "krdict-definition",
+      "clue": "주변을 지키고 살피는 일을 맡은 부대",
+      "clueSource": "manual",
       "direction": "down",
       "row": 1,
       "col": 1,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d16",
@@ -309,13 +309,13 @@
     {
       "id": "d21",
       "answer": "관측소",
-      "clue": "기상대나 천문대 등과 같이 날씨나 천체 등을 자세히 살펴보기 위해 여러 가지 장비를 설치한 곳",
-      "clueSource": "krdict-definition",
+      "clue": "날씨나 천체를 살펴보려 장비를 갖춘 곳",
+      "clueSource": "manual",
       "direction": "down",
       "row": 5,
       "col": 5,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d22",

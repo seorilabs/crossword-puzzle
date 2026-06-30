@@ -100,24 +100,24 @@
     {
       "id": "a2",
       "answer": "연구소",
-      "clue": "어떤 사물이나 일을 자세히 조사하고 분석하는 일을 전문으로 하는 기관",
-      "clueSource": "krdict-definition",
+      "clue": "어떤 분야를 전문으로 조사하고 분석하는 기관",
+      "clueSource": "manual",
       "direction": "across",
       "row": 1,
       "col": 0,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a3",
       "answer": "상대방",
-      "clue": "일을 하거나 말을 할 때 짝을 이루는 사람",
-      "clueSource": "krdict-definition",
+      "clue": "짝을 이루어 마주하는 쪽",
+      "clueSource": "manual",
       "direction": "across",
       "row": 1,
       "col": 5,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a4",
@@ -199,13 +199,13 @@
     {
       "id": "a11",
       "answer": "유사시",
-      "clue": "뜻밖에 아주 긴급한 일이 일어날 때",
-      "clueSource": "krdict-definition",
+      "clue": "급하고 위급한 일이 생겼을 때",
+      "clueSource": "manual",
       "direction": "across",
       "row": 6,
       "col": 5,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a12",
@@ -232,35 +232,35 @@
     {
       "id": "d14",
       "answer": "진상",
-      "clue": "사물이나 사건, 현상의 거짓 없는 모습이나 내용",
-      "clueSource": "krdict-definition",
+      "clue": "사건이나 현상의 참모습",
+      "clueSource": "manual",
       "direction": "down",
       "row": 0,
       "col": 5,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d15",
       "answer": "구석구석",
-      "clue": "이 구석 저 구석",
-      "clueSource": "krdict-definition",
+      "clue": "이쪽저쪽 빠짐없는 모든 곳",
+      "clueSource": "manual",
       "direction": "down",
       "row": 1,
       "col": 1,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d16",
       "answer": "대졸자",
-      "clue": "대학교를 졸업한 사람",
-      "clueSource": "krdict-definition",
+      "clue": "대학교를 마친 사람",
+      "clueSource": "manual",
       "direction": "down",
       "row": 1,
       "col": 6,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d17",
@@ -276,13 +276,13 @@
     {
       "id": "d18",
       "answer": "부전자전",
-      "clue": "아버지의 겉모습, 성격, 버릇 등이 아들에게 그대로 전해짐",
-      "clueSource": "krdict-definition",
+      "clue": "아버지의 성격이나 모습이 아들에게 그대로 이어짐",
+      "clueSource": "manual",
       "direction": "down",
       "row": 2,
       "col": 4,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d19",
@@ -309,13 +309,13 @@
     {
       "id": "d21",
       "answer": "사유지",
-      "clue": "개인이 가지고 있는 땅",
-      "clueSource": "krdict-definition",
+      "clue": "개인이 소유한 땅",
+      "clueSource": "manual",
       "direction": "down",
       "row": 5,
       "col": 5,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d22",

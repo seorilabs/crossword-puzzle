@@ -8210,10 +8210,10 @@
       "sourceId": "25943",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "다른 사람에게 어떤 일을 하도록 요구하거나 부탁하는 일이나 내용",
-      "clueSource": "krdict-definition",
+      "clue": "필요한 물건이나 일을 해 달라고 부탁함",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -10160,10 +10160,10 @@
       "sourceId": "73243",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "어떤 모임을 이루는 사람",
-      "clueSource": "krdict-definition",
+      "clue": "어떤 모임이나 단체를 이루는 한 사람",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -12665,10 +12665,10 @@
       "sourceId": "60321",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "다른 사람과 말을 주고받는 말",
-      "clueSource": "krdict-definition",
+      "clue": "서로 주고받는 말, 또는 줄거리가 있는 말",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -23900,10 +23900,10 @@
       "sourceId": "61196",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "직장에서 주로 책상에 앉아 서류 등을 처리하는 일",
-      "clueSource": "krdict-definition",
+      "clue": "책상에 앉아 서류 따위를 다루는 일",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -26900,10 +26900,10 @@
       "sourceId": "14106",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "관청이나 기관, 회사에서 ‘실’자가 붙은 일정한 부서의 책임자",
-      "clueSource": "krdict-definition",
+      "clue": "기관이나 회사에서 '실' 단위 부서를 책임지는 사람",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -30860,10 +30860,10 @@
       "sourceId": "72539",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "세상 사람들의 마음",
-      "clueSource": "krdict-definition",
+      "clue": "사람으로서 지니는 따뜻한 마음씨",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -31730,10 +31730,10 @@
       "sourceId": "24815",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "영화나 연극의 순간, 광경",
-      "clueSource": "krdict-definition",
+      "clue": "영화나 연극 속 한 순간의 광경",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -34160,10 +34160,10 @@
       "sourceId": "28991",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "거짓이 아닌 사실",
-      "clueSource": "krdict-definition",
+      "clue": "거짓이 없는 참된 사실",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -42170,10 +42170,10 @@
       "sourceId": "15671",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "모임이나 회의, 예식 등의 진행을 보는 사람",
-      "clueSource": "krdict-definition",
+      "clue": "모임이나 행사의 진행을 맡아 보는 사람",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -42230,10 +42230,10 @@
       "sourceId": "71096",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "일을 하거나 말을 할 때 짝을 이루는 사람",
-      "clueSource": "krdict-definition",
+      "clue": "짝을 이루어 마주하는 쪽",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -44030,10 +44030,10 @@
       "sourceId": "67443",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "어떤 사물이나 일을 자세히 조사하고 분석하는 일을 전문으로 하는 기관",
-      "clueSource": "krdict-definition",
+      "clue": "어떤 분야를 전문으로 조사하고 분석하는 기관",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -58490,10 +58490,10 @@
       "sourceId": "55835",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "어떤 일이나 일이 벌어진 현장을 눈으로 직접 봄",
-      "clueSource": "krdict-definition",
+      "clue": "어떤 일을 현장에서 직접 봄",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -61400,10 +61400,10 @@
       "sourceId": "60883",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "액체나 기체가 세차게 뿜어져 나옴",
-      "clueSource": "krdict-definition",
+      "clue": "액체나 기체가 세차게 뿜어 나옴",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -63485,10 +63485,10 @@
       "sourceId": "63666",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "한 집단에서, 남녀 또는 암수의 비율",
-      "clueSource": "krdict-definition",
+      "clue": "한 집단의 남녀 또는 암수 비율",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -71195,10 +71195,10 @@
       "sourceId": "73323",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "시끄러운 여러 가지 소리",
-      "clueSource": "krdict-definition",
+      "clue": "시끄럽게 뒤섞여 들리는 소리",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -72200,10 +72200,10 @@
       "sourceId": "74804",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "매우 무섭거나 두려워 몸이 떨림",
-      "clueSource": "krdict-definition",
+      "clue": "무섭거나 감격하여 몸이 떨림",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -74405,10 +74405,10 @@
       "sourceId": "76815",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "사물이나 사건, 현상의 거짓 없는 모습이나 내용",
-      "clueSource": "krdict-definition",
+      "clue": "사건이나 현상의 참모습",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -82565,10 +82565,10 @@
       "sourceId": "18755",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "부모가 없는 아이들을 기르는 기관",
-      "clueSource": "krdict-definition",
+      "clue": "부모 없는 아이들을 돌보아 기르는 시설",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -85670,10 +85670,10 @@
       "sourceId": "57157",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "배꼽 아랫부분을 체온보다 조금 높은 온도의 물에 담그고 하는 목욕",
-      "clueSource": "krdict-definition",
+      "clue": "배꼽 아래만 따뜻한 물에 담그는 목욕",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -87140,10 +87140,10 @@
       "sourceId": "62686",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "일정한 지역이나 환경에서 여러 생물들이 서로 적응하고 관계를 맺으며 어우러진 자연의 세계",
-      "clueSource": "krdict-definition",
+      "clue": "한 지역의 생물과 환경이 어우러진 체계",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -87470,10 +87470,10 @@
       "sourceId": "64452",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "성장하는 시기",
-      "clueSource": "krdict-definition",
+      "clue": "몸과 마음이 한창 자라나는 시기",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -94475,10 +94475,10 @@
       "sourceId": "24507",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "이 구석 저 구석",
-      "clueSource": "krdict-definition",
+      "clue": "이쪽저쪽 빠짐없는 모든 곳",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -113585,10 +113585,10 @@
       "sourceId": "23589",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "말을 타고 싸우는 병사",
-      "clueSource": "krdict-definition",
+      "clue": "말을 타고 싸우는 군사",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -117215,10 +117215,10 @@
       "sourceId": "41897",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "지금까지 지내온 과정이나 경력",
-      "clueSource": "krdict-definition",
+      "clue": "지금까지 살아온 과정이나 경력",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -122540,10 +122540,10 @@
       "sourceId": "47067",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "돈을 내고 교통수단을 통째로 빌려 쓰는 일",
-      "clueSource": "krdict-definition",
+      "clue": "돈을 내고 차나 배를 통째로 빌리는 일",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -137255,10 +137255,10 @@
       "sourceId": "57352",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "어떤 일을 빨리 되어 나가도록 더하는 힘",
-      "clueSource": "krdict-definition",
+      "clue": "일이 빨리 되도록 더하는 힘",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -157850,10 +157850,10 @@
       "sourceId": "64164",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "견디기 힘든 어려운 일을 당함",
-      "clueSource": "krdict-definition",
+      "clue": "견디기 힘든 어려움을 당함",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -162590,10 +162590,10 @@
       "sourceId": "65796",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "뜻이나 의욕을 잃음",
-      "clueSource": "krdict-definition",
+      "clue": "뜻이나 의욕을 잃고 낙심함",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -170540,10 +170540,10 @@
       "sourceId": "68242",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "몸에 열이 나면서 춥고 떨리는 증상",
-      "clueSource": "krdict-definition",
+      "clue": "열이 나며 으슬으슬 춥고 떨리는 증세",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -188300,10 +188300,10 @@
       "sourceId": "75768",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "배가 닻을 내리고 머무름",
-      "clueSource": "krdict-definition",
+      "clue": "배가 닻을 내리고 한곳에 머무름",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -188660,10 +188660,10 @@
       "sourceId": "75903",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "글자, 글, 말 등의 잘못된 곳을 고쳐서 바로잡음",
-      "clueSource": "krdict-definition",
+      "clue": "잘못된 글이나 내용을 바로잡아 고침",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -194541,9 +194541,9 @@
       "allowForPuzzle": true,
       "blockedReason": null,
       "clue": "아주 가까운 거리",
-      "clueSource": "krdict-definition",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -198200,10 +198200,10 @@
       "sourceId": "83782",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "전에 없던 것을 처음으로 만들거나 정함",
-      "clueSource": "krdict-definition",
+      "clue": "전에 없던 것을 처음으로 만들어 냄",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -215330,10 +215330,10 @@
       "sourceId": "84564",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "둘 이상을 더하여 계산함",
-      "clueSource": "krdict-definition",
+      "clue": "여럿을 한데 모아 더함",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -217655,10 +217655,10 @@
       "sourceId": "86876",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "지혜롭고 현명한 사람",
-      "clueSource": "krdict-definition",
+      "clue": "지혜롭고 사리에 밝은 사람",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -218825,10 +218825,10 @@
       "sourceId": "86736",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "좋은 기회나 조건",
-      "clueSource": "krdict-definition",
+      "clue": "좋은 기회나 유리한 조건",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -224675,10 +224675,10 @@
       "sourceId": "14157",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "연극이나 오페라의 중간이나 막과 막 사이에 연주되는 음악",
-      "clueSource": "krdict-definition",
+      "clue": "연극이나 오페라의 막 사이에 연주하는 음악",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -229505,10 +229505,10 @@
       "sourceId": "29828",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "적의 침략이나 사고에 대비하여 주변을 살피고 지키는 일을 맡은 부대",
-      "clueSource": "krdict-definition",
+      "clue": "주변을 지키고 살피는 일을 맡은 부대",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -235415,10 +235415,10 @@
       "sourceId": "30769",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "기상대나 천문대 등과 같이 날씨나 천체 등을 자세히 살펴보기 위해 여러 가지 장비를 설치한 곳",
-      "clueSource": "krdict-definition",
+      "clue": "날씨나 천체를 살펴보려 장비를 갖춘 곳",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -250940,10 +250940,10 @@
       "sourceId": "47507",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "대학교를 졸업한 사람",
-      "clueSource": "krdict-definition",
+      "clue": "대학교를 마친 사람",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -250970,10 +250970,10 @@
       "sourceId": "47537",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "한 회사의 주식을 많이 가지고 있는 주주",
-      "clueSource": "krdict-definition",
+      "clue": "회사 주식을 가장 많이 가진 사람",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -258065,10 +258065,10 @@
       "sourceId": "52892",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "병의 증세가 심하지 않으면서 천천히 진행되고 잘 낫지 않는 것",
-      "clueSource": "krdict-definition",
+      "clue": "오래 끌며 잘 낫지 않는 것",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -258470,10 +258470,10 @@
       "sourceId": "51735",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "말을 조심하지 않아서 저지르는 실수. 또는 그 말",
-      "clueSource": "krdict-definition",
+      "clue": "조심하지 않아 잘못 내뱉은 말",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -272600,10 +272600,10 @@
       "sourceId": "59636",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "일반적으로 통용되거나 대부분의 사람들이 공감할 수 있는 성질",
-      "clueSource": "krdict-definition",
+      "clue": "특별하지 않고 두루 통하는 성질",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -277790,10 +277790,10 @@
       "sourceId": "61651",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "개인이 가지고 있는 땅",
-      "clueSource": "krdict-definition",
+      "clue": "개인이 소유한 땅",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -295640,10 +295640,10 @@
       "sourceId": "67167",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "희거나 붉은 색의 아름다운 꽃이 피며, 열매는 아편을 만드는 데 쓰이는 풀",
-      "clueSource": "krdict-definition",
+      "clue": "붉은 꽃이 피고 열매로 아편을 만드는 풀",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -304400,10 +304400,10 @@
       "sourceId": "70427",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "뜻밖에 아주 긴급한 일이 일어날 때",
-      "clueSource": "krdict-definition",
+      "clue": "급하고 위급한 일이 생겼을 때",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -310085,10 +310085,10 @@
       "sourceId": "73487",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "늙고 힘이 약해져 자연히 죽음",
-      "clueSource": "krdict-definition",
+      "clue": "늙어 저절로 맞이하는 죽음",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -315665,10 +315665,10 @@
       "sourceId": "76607",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "정신의 이상으로 인격이나 판단력 등에 결함이 생겨 정상을 벗어난 말이나 행동을 하는 상태",
-      "clueSource": "krdict-definition",
+      "clue": "정신에 이상이 생겨 판단과 행동이 정상을 벗어난 상태",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -321425,10 +321425,10 @@
       "sourceId": "90670",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "‘지방 자치 단체’를 줄여 이르는 말",
-      "clueSource": "krdict-definition",
+      "clue": "'지방 자치 단체'를 줄여 이르는 말",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -336440,10 +336440,10 @@
       "sourceId": "84088",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "쉬지 않고 한 번에 가는 걸음이나 움직임",
-      "clueSource": "krdict-definition",
+      "clue": "쉬지 않고 단숨에 내딛는 걸음",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -346760,10 +346760,10 @@
       "sourceId": "40053",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "한 학기의 마지막에 보는 시험",
-      "clueSource": "krdict-definition",
+      "clue": "한 학기를 마무리하며 치르는 시험",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -353015,10 +353015,10 @@
       "sourceId": "57065",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "문인들이 서재에서 쓰는 종이, 붓, 먹, 벼루의 네 가지 도구",
-      "clueSource": "krdict-definition",
+      "clue": "종이·붓·먹·벼루를 함께 이르는 말",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -355475,10 +355475,10 @@
       "sourceId": "59798",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "아버지의 겉모습, 성격, 버릇 등이 아들에게 그대로 전해짐",
-      "clueSource": "krdict-definition",
+      "clue": "아버지의 성격이나 모습이 아들에게 그대로 이어짐",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -365930,10 +365930,10 @@
       "sourceId": "76348",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "두 물체가 정면으로 부딪침",
-      "clueSource": "krdict-definition",
+      "clue": "두 물체가 마주 보고 세게 부딪침",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -373775,10 +373775,10 @@
       "sourceId": "75059",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "장난이 심한 아이",
-      "clueSource": "krdict-definition",
+      "clue": "짓궂은 장난이 몹시 심한 아이",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
