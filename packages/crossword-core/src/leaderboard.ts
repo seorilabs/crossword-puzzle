@@ -13,6 +13,11 @@ export const LEADERBOARD_SCORE_WEIGHTS = {
   remainingAttempt: 200,
   // 사용한 힌트 1개당 감점
   hint: 80,
+  // 빠른 완료 보너스의 최댓값(0초 완료 시 부여). 데일리 퍼즐에서 전 단어를 맞힌
+  // 완료자끼리의 동점을 풀이 시간으로 변별하기 위한 가산점이다.
+  timeBonusBase: 600,
+  // 풀이 1초당 보너스 감쇠량. timeBonusBase / timeDecayPerSecond 초가 지나면 0이 된다.
+  timeDecayPerSecond: 1,
 } as const;
 
 export type LeaderboardScoreInput = {
@@ -22,6 +27,8 @@ export type LeaderboardScoreInput = {
   remainingAttempts: number;
   // 사용한 힌트 수
   hintCount: number;
+  // 일시정지를 제외한 순수 풀이 시간(초). 미제공 시 시간 보너스를 적용하지 않는다.
+  elapsedSeconds?: number;
 };
 
 function toCount(value: number): number {
@@ -33,21 +40,46 @@ function toCount(value: number): number {
 }
 
 /**
+ * 빠른 완료 보너스를 계산한다. `max(0, base - elapsedSeconds * decay)`.
+ *
+ * - `elapsedSeconds` 미제공 시 0(하위호환: 기존 점수 유지).
+ * - 음수/NaN 등 유효하지 않은 값은 보너스 0으로 처리한다(가짜 만점 보너스 방지).
+ * - 보너스 항 자체가 음수가 되지 않도록 0으로 클램프한다.
+ */
+function computeTimeBonus(elapsedSeconds: number | undefined): number {
+  if (elapsedSeconds === undefined) {
+    return 0;
+  }
+  if (!Number.isFinite(elapsedSeconds) || elapsedSeconds < 0) {
+    return 0;
+  }
+
+  return Math.max(
+    0,
+    LEADERBOARD_SCORE_WEIGHTS.timeBonusBase -
+      elapsedSeconds * LEADERBOARD_SCORE_WEIGHTS.timeDecayPerSecond,
+  );
+}
+
+/**
  * 리더보드 제출 점수를 계산한다.
  *
- * `score = 완료 단어 수 * 1000 + 남은 도전 수 * 200 - 사용 힌트 수 * 80`
+ * `score = 완료 단어 수 * 1000 + 남은 도전 수 * 200 - 사용 힌트 수 * 80 + 빠른 완료 보너스`
  *
+ * 빠른 완료 보너스는 `max(0, 600 - 풀이초 * 1)`로, `elapsedSeconds` 미제공 시 0이다.
  * 음수가 되면 0으로 클램프한다. 입력은 음수/NaN을 0으로 정규화한다.
  */
 export function computeLeaderboardScore(input: LeaderboardScoreInput): number {
   const completedWordCount = toCount(input.completedWordCount);
   const remainingAttempts = toCount(input.remainingAttempts);
   const hintCount = toCount(input.hintCount);
+  const timeBonus = computeTimeBonus(input.elapsedSeconds);
 
   const raw =
     completedWordCount * LEADERBOARD_SCORE_WEIGHTS.completedWord +
     remainingAttempts * LEADERBOARD_SCORE_WEIGHTS.remainingAttempt -
-    hintCount * LEADERBOARD_SCORE_WEIGHTS.hint;
+    hintCount * LEADERBOARD_SCORE_WEIGHTS.hint +
+    timeBonus;
 
   return Math.max(0, raw);
 }
