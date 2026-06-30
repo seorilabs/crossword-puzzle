@@ -17,6 +17,7 @@ import {
   resolveInitialActivePuzzleId,
   shouldQuickStartActivePuzzle,
   shouldServeOnboardingPuzzle,
+  shouldShowFirstInputGuide,
 } from "./uiPolicy.ts";
 import type { PuzzleManifestItem } from "./types.ts";
 
@@ -31,6 +32,57 @@ function createSummary(
     ...overrides,
   };
 }
+
+describe("shouldShowFirstInputGuide", () => {
+  const baseInput = {
+    route: "today",
+    hasStarted: true,
+    isCompleted: false,
+    hasSeenFirstInputGuide: false,
+    isBoardEmpty: true,
+  };
+
+  it("시작·빈 그리드·미완료·가이드 미열람의 today 진입에서 노출한다", () => {
+    assert.equal(shouldShowFirstInputGuide(baseInput), true);
+  });
+
+  it("how-to 열람 여부와 무관하게 노출된다(#161 트리거 완화: how-to 전제 제거)", () => {
+    // 입력 파라미터 자체에 hasSeenHowToPlay가 없다. 즉 how-to를 보지 않은 신규도
+    // 동일 입력으로 노출 대상이 된다(과거에는 hasSeenHowToPlay=true가 필수였다).
+    const newcomerWhoSkippedHowTo = { ...baseInput };
+    assert.equal(shouldShowFirstInputGuide(newcomerWhoSkippedHowTo), true);
+    assert.ok(!("hasSeenHowToPlay" in newcomerWhoSkippedHowTo));
+  });
+
+  it("이미 가이드를 본 사용자에게는 노출하지 않는다(중복 노출 방지 가드 유지)", () => {
+    assert.equal(
+      shouldShowFirstInputGuide({ ...baseInput, hasSeenFirstInputGuide: true }),
+      false,
+    );
+  });
+
+  it("한 글자라도 입력되면(빈 그리드 아님) 노출하지 않는다", () => {
+    assert.equal(
+      shouldShowFirstInputGuide({ ...baseInput, isBoardEmpty: false }),
+      false,
+    );
+  });
+
+  it("아직 시작하지 않았거나 이미 완료했거나 today가 아니면 노출하지 않는다", () => {
+    assert.equal(
+      shouldShowFirstInputGuide({ ...baseInput, hasStarted: false }),
+      false,
+    );
+    assert.equal(
+      shouldShowFirstInputGuide({ ...baseInput, isCompleted: true }),
+      false,
+    );
+    assert.equal(
+      shouldShowFirstInputGuide({ ...baseInput, route: "home" }),
+      false,
+    );
+  });
+});
 
 describe("getNewlyReachedProgressMilestones", () => {
   it("진행률이 마일스톤을 새로 넘으면 해당 마일스톤을 돌려준다", () => {
