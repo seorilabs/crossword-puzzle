@@ -31,6 +31,7 @@
   --cw-board-frame: #d6dee6;
   --cw-cell-selected-bg: #dff6f0;
   --cw-cell-selected-ring: #00a88f;
+  --cw-cell-active-bg: #a8e6da;
   --cw-cell-cross-bg: #f2fbff;
   --cw-cell-pending-bg: #fff9db;
   --cw-cell-correct-bg: #e6f8f2;
@@ -1674,6 +1675,13 @@ button:disabled {
   box-shadow: inset 0 0 0 2px var(--cw-cell-selected-ring);
 }
 
+/* 활성(커서) 셀: 선택 단어의 연한 강조보다 진한 배경 + 두꺼운 링으로, 보드만 봐도
+   지금 입력이 향하는 한 칸을 구별한다(NYT식 활성 셀 vs 단어 하이라이트 2단계). */
+.cellActive {
+  background: var(--cw-cell-active-bg);
+  box-shadow: inset 0 0 0 3px var(--cw-cell-selected-ring);
+}
+
 .cellCross:not(.cellSelected) {
   background: var(--cw-cell-cross-bg);
 }
@@ -2942,6 +2950,7 @@ button:disabled {
     --cw-board-frame: #3a4150;
     --cw-cell-selected-bg: #1c3f3a;
     --cw-cell-selected-ring: #19c2a6;
+    --cw-cell-active-bg: #2f6f63;
     --cw-cell-cross-bg: #1d2733;
     --cw-cell-pending-bg: #463c14;
     --cw-cell-correct-bg: #173a31;

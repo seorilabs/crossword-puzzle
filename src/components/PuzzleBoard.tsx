@@ -19,6 +19,10 @@ import {
 const EMPTY_CELL_KEY_SET: ReadonlySet<string> = new Set();
 
 export type PuzzleBoardProps = {
+  // 현재 입력 커서가 놓인 셀 키. 선택 단어(selectedCells)의 연한 강조와 별개로
+  // 이 한 셀만 더 진하게(cellActive) 구분해 커서 위치를 보이게 한다. 미지정이면
+  // 활성 셀 강조 없이 기존 렌더와 동일하다(하위호환).
+  activeCellKey?: string;
   // 상시 오답표시 설정. 꺼지면 cellWrong 빨간 표시를 자동 적용하지 않는다.
   // 미지정(개발 시뮬레이터 등)은 기존 동작대로 항상 표시(true)로 본다.
   autocheckEnabled?: boolean;
@@ -41,6 +45,7 @@ export type PuzzleBoardProps = {
 };
 
 export function PuzzleBoard({
+  activeCellKey,
   autocheckEnabled = true,
   cellEntries,
   cellValues,
@@ -161,6 +166,8 @@ export function PuzzleBoard({
           const isPending = pendingValue !== "";
           const isComplete = completedCellKeys.has(key);
           const isSelected = selectedCells.has(key);
+          // 활성(커서) 셀: 선택 단어 중에서도 지금 입력이 향하는 한 칸.
+          const isActive = activeCellKey != null && key === activeCellKey;
           const isCross = entries.length > 1;
           // Pending IME text is temporary, so only committed values get
           // right/wrong styling.
@@ -194,6 +201,7 @@ export function PuzzleBoard({
               className={[
                 "cell",
                 isSelected ? "cellSelected" : "",
+                isActive ? "cellActive" : "",
                 isCross ? "cellCross" : "",
                 isFilled ? "cellFilled" : "",
                 isPending ? "cellPending" : "",
@@ -207,6 +215,7 @@ export function PuzzleBoard({
                 .join(" ")}
               type="button"
               onClick={() => selectCell(row, col)}
+              aria-current={isActive ? "true" : undefined}
               aria-label={`${row + 1}행 ${col + 1}열${
                 showWrong
                   ? " 오답"
