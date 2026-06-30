@@ -593,6 +593,30 @@ export function isWrongCellVisible(input: {
   return input.autocheckEnabled || input.isChecked;
 }
 
+// 첫 진입 1스텝 온보딩 가이드("첫 칸에 입력")를 노출할지 결정한다. 시작했지만 아직
+// 한 글자도 입력하지 않은(빈 그리드) 최초 진입에서만, 가이드를 아직 보지 않은
+// 사용자에게 노출한다(입력이 생기면 즉시 사라짐). 과거에는 how-to 다이얼로그를 먼저
+// 본 사용자(hasSeenHowToPlay 전제)에게만 노출돼 attempt_start 진입자 대비 노출률이
+// 매우 낮았다(#161). how-to 전제를 제거해 how-to를 아직 보지 않은/건너뛴 신규에게도
+// 가이드가 노출되도록 트리거를 완화한다. how-to 다이얼로그는 더 높은 레이어로 떠
+// 가이드를 덮으므로 동시 표시 충돌은 없고, 다이얼로그를 닫으면 가이드가 드러난다.
+// hasSeenFirstInputGuide(중복 노출 방지) 가드는 유지한다.
+export function shouldShowFirstInputGuide(input: {
+  route: string;
+  hasStarted: boolean;
+  isCompleted: boolean;
+  hasSeenFirstInputGuide: boolean;
+  isBoardEmpty: boolean;
+}): boolean {
+  return (
+    input.route === "today" &&
+    input.hasStarted &&
+    !input.isCompleted &&
+    !input.hasSeenFirstInputGuide &&
+    input.isBoardEmpty
+  );
+}
+
 export function getStreakMilestoneProgress(streak: number): string | null {
   if (!Number.isFinite(streak) || streak <= 0) return null;
   const safeStreak = Math.floor(streak);

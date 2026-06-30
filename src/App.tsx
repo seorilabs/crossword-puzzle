@@ -57,6 +57,7 @@ import {
   resolveInitialActivePuzzleId,
   selectPromotableTentativeKeys,
   shouldQuickStartActivePuzzle,
+  shouldShowFirstInputGuide,
   shouldSubmitLeaderboardScore,
   sortPuzzleSummariesByRecency,
   startMissionAttempt,
@@ -1209,15 +1210,17 @@ function App() {
   const isCompleted = viewModel.isComplete || mission.completedAt != null;
   const isAttemptExhaustedUncompleted =
     hasStarted && remainingAttempts <= 0 && !isCompleted;
-  // 첫 진입 1스텝 온보딩: how-to를 본 뒤, 시작했지만 아직 한 글자도 입력하지 않은
-  // 최초 진입에서만 첫 입력 가이드를 노출한다(입력이 생기면 즉시 사라짐).
-  const isFirstInputGuideVisible =
-    route === "today" &&
-    hasStarted &&
-    !isCompleted &&
-    hasSeenHowToPlay &&
-    !hasSeenFirstInputGuide &&
-    Object.keys(cellValues).length === 0;
+  // 첫 진입 1스텝 온보딩: 시작했지만 아직 한 글자도 입력하지 않은 최초 진입에서만 첫
+  // 입력 가이드를 노출한다(입력이 생기면 즉시 사라짐). how-to를 아직 보지 않은 신규에게도
+  // 노출되도록 how-to 전제를 제거했다(#161). how-to 다이얼로그는 더 위 레이어로 떠
+  // 가이드를 덮으므로 충돌이 없고, 닫으면 가이드가 드러난다.
+  const isFirstInputGuideVisible = shouldShowFirstInputGuide({
+    route,
+    hasStarted,
+    isCompleted,
+    hasSeenFirstInputGuide,
+    isBoardEmpty: Object.keys(cellValues).length === 0,
+  });
 
   // 최신 상태 스냅샷(ref): pagehide/visibilitychange 리스너가 stale closure 없이
   // 이탈 시점의 진행 상태를 읽을 수 있게 매 렌더마다 갱신한다.
