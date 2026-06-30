@@ -48,6 +48,41 @@ export function getBestTimeMs(
   }
 }
 
+// localStorage 등 표준 Web Storage는 length/key(i)로 키 열거를 지원한다. 추상
+// KeyValueStorage에는 없으므로 선택적으로 좁혀 사용한다(없으면 빈 목록 반환).
+type EnumerableStorage = KeyValueStorage & {
+  readonly length?: number;
+  key?(index: number): string | null;
+};
+
+// 기기에 보유한 모든 최고 기록(best-time)의 puzzleId를 열거한다. archive 기록이
+// 사라졌어도 남아 있는 best-time까지 포함해 '최고 기록 N개'를 정확히 세기 위함이다.
+export function getAllBestTimePuzzleIds(
+  storage: KeyValueStorage | null = getDefaultStorage(),
+): string[] {
+  if (storage == null) return [];
+  try {
+    const enumerable = storage as EnumerableStorage;
+    if (
+      typeof enumerable.length !== "number" ||
+      typeof enumerable.key !== "function"
+    ) {
+      return [];
+    }
+    const prefix = `${BEST_TIME_KEY_PREFIX}:`;
+    const ids: string[] = [];
+    for (let index = 0; index < enumerable.length; index += 1) {
+      const key = enumerable.key(index);
+      if (key != null && key.startsWith(prefix)) {
+        ids.push(key.slice(prefix.length));
+      }
+    }
+    return ids;
+  } catch {
+    return [];
+  }
+}
+
 export function saveBestTimeMs(
   puzzleId: string,
   elapsedMs: number,

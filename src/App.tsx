@@ -23,6 +23,7 @@ import {
   completeMission,
   computeElapsedMs,
   computeLeaderboardScore,
+  computePersonalStats,
   createPuzzleSummary,
   createDailyMissionState,
   DAILY_ATTEMPT_LIMIT,
@@ -82,9 +83,11 @@ import {
   type PuzzleManifestItem,
   type PuzzleQualityCheck,
   type PuzzleSlotValidation,
+  type PersonalStatsRecord,
   type ReviewEntry,
   type SavedProgress,
 } from "../packages/crossword-core/src";
+import { PersonalStatsCard } from "./components/PersonalStatsCard";
 import { PuzzleBoard } from "./components/PuzzleBoard";
 import { formatElapsedTime, formatLiveTimer, getElapsedSeconds } from "./timer";
 import {
@@ -101,6 +104,7 @@ import {
 } from "./adapters/localPuzzleAccessRepository";
 import {
   createLocalProgressRepository,
+  getAllBestTimePuzzleIds,
   getBestTimeMs,
   saveBestTimeMs,
 } from "./adapters/localProgressRepository";
@@ -172,6 +176,8 @@ type DateCardState = {
   completedAt?: string;
   hasProgress: boolean;
   hintCount: number;
+  // 정답 보기로 단어를 공개했는지. 노힌트 완료 집계에서 제외하기 위해 보존한다.
+  revealUsed: boolean;
 };
 
 type CompletionStatsByPuzzleId = Record<string, PuzzleCompletionStats>;
@@ -539,6 +545,7 @@ function createDateCardState(
       progress.hintCount > 0 ||
       Object.keys(progress.cellValues).length > 0,
     hintCount: progress.hintCount,
+    revealUsed: progress.revealUsed === true,
   };
 }
 
@@ -1186,9 +1193,17 @@ function App() {
         cellValues,
         earnedHintCredits,
         hintCount,
+        revealUsed,
       }),
     }));
-  }, [cellValues, earnedHintCredits, hintCount, mission, puzzle.puzzleId]);
+  }, [
+    cellValues,
+    earnedHintCredits,
+    hintCount,
+    mission,
+    puzzle.puzzleId,
+    revealUsed,
+  ]);
 
   const viewModel = usePuzzleViewModel(
     puzzle,
@@ -1700,7 +1715,13 @@ function App() {
       invalidateStreakCache();
       setConsecutiveStreak(computeConsecutiveStreakDays());
     });
-    void savePuzzleSnapshot(puzzle, { completedAt: nextMission.completedAt });
+    // 완료 시점의 노힌트 판정 신호(힌트 수·정답 보기 여부)를 archive 기록에 동결해,
+    // 진행상태 저장소가 비워져도 히스토리 노힌트 집계가 결과 화면과 일치하게 한다.
+    void savePuzzleSnapshot(puzzle, {
+      completedAt: nextMission.completedAt,
+      hintCount,
+      revealUsed,
+    });
     telemetry.impression("mission_complete", {
       ...puzzleTelemetryParams,
       attempt_number: nextMission.attemptsUsed,
@@ -3061,6 +3082,7 @@ function App() {
           {...dateSelectionProps}
           archiveRecords={puzzleArchiveRecords}
           completedEntries={viewModel.completedEntries}
+          consecutiveStreak={consecutiveStreak}
           hintCount={hintCount}
           isCompleted={isCompleted}
           mission={mission}
@@ -6460,6 +6482,7 @@ function ResultScreen({
 type HistoryScreenProps = DateSelectionProps & {
   archiveRecords: PuzzleArchiveRecord[];
   completedEntries: PuzzleEntry[];
+  consecutiveStreak: number;
   hintCount: number;
   isCompleted: boolean;
   mission: DailyMissionState;
@@ -6475,6 +6498,7 @@ function HistoryScreen({
   completedEntries,
   completionStatsByPuzzleId,
   completionStatsMinDisplayCount,
+  consecutiveStreak,
   dateCardStates,
   hintCount,
   isCompleted,
@@ -6498,6 +6522,24 @@ function HistoryScreen({
       ? formatPuzzleAliasLabel(selectedPuzzleSummary)
       : formatMissionDateLabel(mission.date, loadState);
 
+  // 기기에 남은 퍼즐 기록에서 사용자 단위 누적 통계를 집계한다. 노힌트 판정(힌트
+  // 0 + 정답 보기 미사용)은 core의 getCompletionAchievements가 단일 규칙으로
+  // 수행하므로, 여기서는 원시 신호(hintCount·revealUsed)만 모아 넘긴다. 노힌트 신호는
+  // archive 기록에 동결된 값을 우선하고, 없으면(구버전 기록) 진행상태 카드로 폴백한다.
+  const personalStats = useMemo(() => {
+    const records: PersonalStatsRecord[] = archiveRecords.map((record) => {
+      const state = dateCardStates[record.puzzleId];
+      return {
+        completed: record.completedAt != null || state?.completedAt != null,
+        hintCount: record.hintCount ?? state?.hintCount ?? 0,
+        revealUsed: record.revealUsed ?? state?.revealUsed === true,
+      };
+    });
+    // 최고기록 수는 archive 집합과 무관하게 기기에 보유한 전체 best-time 키로 센다.
+    const bestTimeCount = getAllBestTimePuzzleIds().length;
+    return computePersonalStats(records, bestTimeCount);
+  }, [archiveRecords, dateCardStates]);
+
   function openArchiveRecord(record: PuzzleArchiveRecord) {
     const state = dateCardStates[record.puzzleId];
     const isCompleted =
@@ -6517,6 +6559,11 @@ function HistoryScreen({
         eyebrow={`${selectedPuzzleLabel} · ${isCompleted ? "완료" : `${progressPercent}%`}`}
         title="기록"
         onBack={() => navigate("home")}
+      />
+
+      <PersonalStatsCard
+        stats={personalStats}
+        consecutiveStreak={consecutiveStreak}
       />
 
       <DateCarousel

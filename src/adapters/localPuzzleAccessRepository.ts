@@ -9,13 +9,20 @@ type KeyValueStorage = {
 export type PuzzleArchiveRecord = {
   cachedAt: string;
   completedAt?: string;
+  // 완료 시점에 동결한 힌트 사용 수. 노힌트 완료 집계를 진행상태(progress) 저장소
+  // 의존 없이 archive 기록만으로 판정하기 위해 보존한다(구버전 기록엔 없을 수 있음).
+  hintCount?: number;
   puzzle: Puzzle;
   puzzleId: string;
+  // 완료 시점에 동결한 정답 보기 사용 여부. 위 hintCount와 함께 노힌트 판정에 쓴다.
+  revealUsed?: boolean;
   startedAt?: string;
 };
 
 export type PuzzleArchiveSaveOptions = {
   completedAt?: string;
+  hintCount?: number;
+  revealUsed?: boolean;
   startedAt?: string;
 };
 
@@ -134,8 +141,14 @@ function normalizeArchiveRecord(value: unknown): PuzzleArchiveRecord | null {
     cachedAt: record.cachedAt,
     completedAt:
       typeof record.completedAt === "string" ? record.completedAt : undefined,
+    hintCount:
+      typeof record.hintCount === "number" && Number.isFinite(record.hintCount)
+        ? Math.max(0, Math.floor(record.hintCount))
+        : undefined,
     puzzle: record.puzzle as Puzzle,
     puzzleId: record.puzzleId,
+    revealUsed:
+      typeof record.revealUsed === "boolean" ? record.revealUsed : undefined,
     startedAt:
       typeof record.startedAt === "string" ? record.startedAt : undefined,
   };
@@ -213,8 +226,11 @@ export function createLocalPuzzleArchiveRepository({
         const nextRecord: PuzzleArchiveRecord = {
           cachedAt: now,
           completedAt: options.completedAt ?? previous?.completedAt,
+          // 노힌트 판정 신호는 완료 저장 시 동결하고, 이후 메타 저장에선 기존 값을 보존한다.
+          hintCount: options.hintCount ?? previous?.hintCount,
           puzzle,
           puzzleId: puzzle.puzzleId,
+          revealUsed: options.revealUsed ?? previous?.revealUsed,
           startedAt: previous?.startedAt ?? options.startedAt,
         };
         const nextIndex = [
