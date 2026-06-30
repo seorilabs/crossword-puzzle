@@ -223,3 +223,25 @@ describe("summarizeWordDifficulties", () => {
     assert.deepEqual(counts, { easy: 2, normal: 2, hard: 1 });
   });
 });
+
+describe("DIFFICULTY_PROFILES hard 점프 완화 (#154)", () => {
+  it("hard 프로파일은 점프 완화 값으로 고정한다(회귀 방지)", () => {
+    assert.equal(DIFFICULTY_PROFILES.hard.maxWords, 13);
+    assert.equal(DIFFICULTY_PROFILES.hard.minWordCount, 14);
+  });
+
+  it("normal→hard maxWords/minWordCount 증가율이 과거(16/18)보다 완화된다", () => {
+    const n = DIFFICULTY_PROFILES.normal;
+    const h = DIFFICULTY_PROFILES.hard;
+    const maxWordsJump = (h.maxWords - n.maxWords) / n.maxWords;
+    const minWordCountJump = (h.minWordCount - n.minWordCount) / n.minWordCount;
+    // 과거 값(maxWords 16, minWordCount 18) 기준 점프: 0.6, 0.8
+    assert.ok(maxWordsJump < 0.6, `maxWords 증가율 ${maxWordsJump} < 0.6`);
+    assert.ok(minWordCountJump < 0.8, `minWordCount 증가율 ${minWordCountJump} < 0.8`);
+  });
+
+  it("hard 품질 게이트(교차율·밀도) 하한은 유지한다", () => {
+    assert.equal(DIFFICULTY_PROFILES.hard.minCrossRatio, 0.5);
+    assert.equal(DIFFICULTY_PROFILES.hard.minBboxDensity, 0.45);
+  });
+});
