@@ -1,13 +1,7 @@
 name: Release Tag
 
+# merge마다 자동 태깅 제거(명시적 Release/Tag 원칙). 태그는 의도적으로 생성.
 on:
-  workflow_run:
-    workflows:
-      - CI
-    types:
-      - completed
-    branches:
-      - main
   workflow_dispatch:
     inputs:
       bump:
