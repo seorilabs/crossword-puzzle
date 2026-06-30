@@ -89,57 +89,57 @@
     {
       "id": "a1",
       "answer": "목격",
-      "clue": "어떤 일이나 일이 벌어진 현장을 눈으로 직접 봄",
-      "clueSource": "krdict-definition",
+      "clue": "어떤 일을 현장에서 직접 봄",
+      "clueSource": "manual",
       "direction": "across",
       "row": 0,
       "col": 5,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a2",
       "answer": "사무",
-      "clue": "직장에서 주로 책상에 앉아 서류 등을 처리하는 일",
-      "clueSource": "krdict-definition",
+      "clue": "책상에 앉아 서류 따위를 다루는 일",
+      "clueSource": "manual",
       "direction": "across",
       "row": 1,
       "col": 3,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a3",
       "answer": "분출",
-      "clue": "액체나 기체가 세차게 뿜어져 나옴",
-      "clueSource": "krdict-definition",
+      "clue": "액체나 기체가 세차게 뿜어 나옴",
+      "clueSource": "manual",
       "direction": "across",
       "row": 1,
       "col": 6,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a4",
       "answer": "지척",
       "clue": "아주 가까운 거리",
-      "clueSource": "krdict-definition",
+      "clueSource": "manual",
       "direction": "across",
       "row": 2,
       "col": 3,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a5",
       "answer": "전율",
-      "clue": "매우 무섭거나 두려워 몸이 떨림",
-      "clueSource": "krdict-definition",
+      "clue": "무섭거나 감격하여 몸이 떨림",
+      "clueSource": "manual",
       "direction": "across",
       "row": 3,
       "col": 6,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a6",
@@ -166,13 +166,13 @@
     {
       "id": "a8",
       "answer": "오한",
-      "clue": "몸에 열이 나면서 춥고 떨리는 증상",
-      "clueSource": "krdict-definition",
+      "clue": "열이 나며 으슬으슬 춥고 떨리는 증세",
+      "clueSource": "manual",
       "direction": "across",
       "row": 5,
       "col": 6,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a9",
@@ -210,13 +210,13 @@
     {
       "id": "a12",
       "answer": "진실",
-      "clue": "거짓이 아닌 사실",
-      "clueSource": "krdict-definition",
+      "clue": "거짓이 없는 참된 사실",
+      "clueSource": "manual",
       "direction": "across",
       "row": 7,
       "col": 5,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d13",
@@ -276,13 +276,13 @@
     {
       "id": "d18",
       "answer": "생태계",
-      "clue": "일정한 지역이나 환경에서 여러 생물들이 서로 적응하고 관계를 맺으며 어우러진 자연의 세계",
-      "clueSource": "krdict-definition",
+      "clue": "한 지역의 생물과 환경이 어우러진 체계",
+      "clueSource": "manual",
       "direction": "down",
       "row": 5,
       "col": 3,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d19",

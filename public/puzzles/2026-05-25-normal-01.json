@@ -122,24 +122,24 @@
     {
       "id": "a4",
       "answer": "정정",
-      "clue": "글자, 글, 말 등의 잘못된 곳을 고쳐서 바로잡음",
-      "clueSource": "krdict-definition",
+      "clue": "잘못된 글이나 내용을 바로잡아 고침",
+      "clueSource": "manual",
       "direction": "across",
       "row": 3,
       "col": 1,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a5",
       "answer": "보편성",
-      "clue": "일반적으로 통용되거나 대부분의 사람들이 공감할 수 있는 성질",
-      "clueSource": "krdict-definition",
+      "clue": "특별하지 않고 두루 통하는 성질",
+      "clueSource": "manual",
       "direction": "across",
       "row": 3,
       "col": 4,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a6",
@@ -177,13 +177,13 @@
     {
       "id": "a9",
       "answer": "회원",
-      "clue": "어떤 모임을 이루는 사람",
-      "clueSource": "krdict-definition",
+      "clue": "어떤 모임이나 단체를 이루는 한 사람",
+      "clueSource": "manual",
       "direction": "across",
       "row": 5,
       "col": 0,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a10",
@@ -199,24 +199,24 @@
     {
       "id": "a11",
       "answer": "잡음",
-      "clue": "시끄러운 여러 가지 소리",
-      "clueSource": "krdict-definition",
+      "clue": "시끄럽게 뒤섞여 들리는 소리",
+      "clueSource": "manual",
       "direction": "across",
       "row": 6,
       "col": 6,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a12",
       "answer": "양귀비",
-      "clue": "희거나 붉은 색의 아름다운 꽃이 피며, 열매는 아편을 만드는 데 쓰이는 풀",
-      "clueSource": "krdict-definition",
+      "clue": "붉은 꽃이 피고 열매로 아편을 만드는 풀",
+      "clueSource": "manual",
       "direction": "across",
       "row": 7,
       "col": 4,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d13",
@@ -276,35 +276,35 @@
     {
       "id": "d18",
       "answer": "사회자",
-      "clue": "모임이나 회의, 예식 등의 진행을 보는 사람",
-      "clueSource": "krdict-definition",
+      "clue": "모임이나 행사의 진행을 맡아 보는 사람",
+      "clueSource": "manual",
       "direction": "down",
       "row": 4,
       "col": 0,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d19",
       "answer": "간주곡",
-      "clue": "연극이나 오페라의 중간이나 막과 막 사이에 연주되는 음악",
-      "clueSource": "krdict-definition",
+      "clue": "연극이나 오페라의 막 사이에 연주하는 음악",
+      "clueSource": "manual",
       "direction": "down",
       "row": 4,
       "col": 3,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d20",
       "answer": "한걸음",
-      "clue": "쉬지 않고 한 번에 가는 걸음이나 움직임",
-      "clueSource": "krdict-definition",
+      "clue": "쉬지 않고 단숨에 내딛는 걸음",
+      "clueSource": "manual",
       "direction": "down",
       "row": 4,
       "col": 7,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d21",

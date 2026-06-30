@@ -6,6 +6,7 @@ import { readFileSync } from "node:fs";
 
 import {
   CURATED_CLUE_SOURCE,
+  DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO,
   applyManualClue,
   applyManualClues,
   countNeedsManualClue,
@@ -30,6 +31,16 @@ describe("isSelfReferentialClue", () => {
     assert.equal(isSelfReferentialClue("사회", ""), false);
     assert.equal(isSelfReferentialClue("사회", undefined), false);
     assert.equal(isSelfReferentialClue("사회", null), false);
+  });
+});
+
+describe("DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO", () => {
+  it("미검수 단서 상한이 0.5 이하로 단계적으로 조여졌다(#173)", () => {
+    assert.ok(
+      DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO <= 0.5,
+      `상한 ${DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO} — 0.5 이하여야 함`,
+    );
+    assert.ok(DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO > 0);
   });
 });
 
@@ -105,10 +116,10 @@ describe("manual-clues.json 검수 단서 데이터", () => {
   ) as Record<string, string>;
   const clues = Object.entries(raw).filter(([answer]) => !answer.startsWith("_"));
 
-  it("검수 단서 항목 수가 14개에서 유의미하게 늘었다(커버리지 확대)", () => {
+  it("검수 단서 항목 수가 커버리지 확대 기준(80개 이상)을 충족한다(#173)", () => {
     assert.ok(
-      clues.length >= 30,
-      `검수 단서 ${clues.length}개 — 30개 이상이어야 함`,
+      clues.length >= 80,
+      `검수 단서 ${clues.length}개 — 80개 이상이어야 함`,
     );
   });
 
