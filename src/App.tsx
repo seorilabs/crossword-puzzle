@@ -863,9 +863,11 @@ function App() {
     if (route !== "today") {
       setCompletionCelebrationId(null);
     }
-    if (route === "home") {
-      // Recalculate streak whenever the home screen is shown so that a date
-      // change at midnight is reflected without requiring an app restart.
+    if (route === "home" || route === "history") {
+      // Recalculate streak whenever the home or history screen is shown so that a
+      // date change at midnight is reflected without requiring an app restart. On
+      // the history screen this also keeps the streak number in lockstep with the
+      // (uncached) completion-date heatmap, which reads fresh localStorage.
       setConsecutiveStreak(computeConsecutiveStreakDays());
     }
   }, [route]);

@@ -40,4 +40,16 @@ describe("StreakHeatmap", () => {
 
     expect(screen.getByLabelText("2026-06-29 미완료")).toBeTruthy();
   });
+
+  it("미래 셀은 aria-hidden이고 완료여부 라벨을 노출하지 않는다", () => {
+    // 2026-07-01(수) 기준 이번 주 목·금·토(07-02~04)는 미래.
+    const weeks = buildStreakCalendarWeeks([], today, 4);
+    const { container } = render(<StreakHeatmap weeks={weeks} />);
+
+    expect(screen.queryByLabelText(/2026-07-02/)).toBeNull();
+    const futureCells = container.querySelectorAll(
+      ".streakHeatmapCellFuture[aria-hidden='true']",
+    );
+    expect(futureCells).toHaveLength(3);
+  });
 });
