@@ -1,9 +1,9 @@
 import {
   createDailyMissionState,
-  getTodayDateKey,
   type DailyMissionRepository,
   type DailyMissionState,
-} from "../../packages/crossword-core/src";
+} from "../../packages/crossword-core/src/mission.ts";
+import { getTodayDateKey } from "../../packages/crossword-core/src/puzzle.ts";
 
 type KeyValueStorage = {
   getItem(key: string): string | null;
@@ -75,35 +75,26 @@ function getPreviousDateKey(dateKey: string): string {
   return prev.toISOString().slice(0, 10);
 }
 
-// Module-level memory cache: avoids re-scanning localStorage on every home
-// screen visit within the same calendar day.
-let _streakCache: { date: string; value: number } | null = null;
-
-export function invalidateStreakCache(): void {
-  _streakCache = null;
-}
-
-export function computeConsecutiveStreakDays(
-  keyPrefix = "crossword-puzzle:mission",
-  maxLookbackDays = 366,
-): number {
-  const today = getTodayDateKey();
-
-  if (_streakCache != null && _streakCache.date === today) {
-    return _streakCache.value;
-  }
-
-  const storage = getIterableStorage();
-  if (storage == null) return 0;
-
-  // Build the set of dates within the lookback window to avoid parsing old data.
+// Build the set of dates within the lookback window to avoid parsing old data.
+function buildLookbackDates(today: string, maxLookbackDays: number): Set<string> {
   const lookbackDates = new Set<string>();
   let d = today;
   for (let i = 0; i < maxLookbackDays; i++) {
     lookbackDates.add(d);
     d = getPreviousDateKey(d);
   }
+  return lookbackDates;
+}
 
+// Scan storage for mission keys whose date falls in the lookback window and that
+// have a `completedAt` timestamp, returning the set of completed date keys.
+// Shared by computeConsecutiveStreakDays and getRecentCompletionDates so both use
+// the exact same completion判定(`completedAt` 존재).
+function scanCompletedDates(
+  storage: IterableStorage,
+  keyPrefix: string,
+  lookbackDates: Set<string>,
+): Set<string> {
   const prefix = `${keyPrefix}:`;
   const completedDates = new Set<string>();
 
@@ -128,6 +119,48 @@ export function computeConsecutiveStreakDays(
       continue;
     }
   }
+
+  return completedDates;
+}
+
+// Module-level memory cache: avoids re-scanning localStorage on every home
+// screen visit within the same calendar day.
+let _streakCache: { date: string; value: number } | null = null;
+
+export function invalidateStreakCache(): void {
+  _streakCache = null;
+}
+
+// 최근 lookbackDays일 이내에 완료(completedAt 존재)한 날짜를 오름차순 정렬해 반환한다.
+// computeConsecutiveStreakDays와 동일한 스캔·완료 판정(scanCompletedDates)을 공유하므로
+// 캘린더 히트맵과 스트릭 숫자가 같은 완료일 집합을 근거로 삼는다. storage는 테스트에서
+// 주입할 수 있고, 기본값은 window.localStorage다.
+export function getRecentCompletionDates(
+  lookbackDays = 90,
+  keyPrefix = "crossword-puzzle:mission",
+  storage: IterableStorage | null = getIterableStorage(),
+): string[] {
+  if (storage == null) return [];
+  const today = getTodayDateKey();
+  const lookbackDates = buildLookbackDates(today, lookbackDays);
+  return [...scanCompletedDates(storage, keyPrefix, lookbackDates)].sort();
+}
+
+export function computeConsecutiveStreakDays(
+  keyPrefix = "crossword-puzzle:mission",
+  maxLookbackDays = 366,
+): number {
+  const today = getTodayDateKey();
+
+  if (_streakCache != null && _streakCache.date === today) {
+    return _streakCache.value;
+  }
+
+  const storage = getIterableStorage();
+  if (storage == null) return 0;
+
+  const lookbackDates = buildLookbackDates(today, maxLookbackDays);
+  const completedDates = scanCompletedDates(storage, keyPrefix, lookbackDates);
 
   const yesterday = getPreviousDateKey(today);
 
