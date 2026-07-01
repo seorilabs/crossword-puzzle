@@ -19,6 +19,7 @@ import "./App.css";
 import {
   buildCellEntries,
   buildReviewEntries,
+  buildShareGrid,
   buildStartLabels,
   completeMission,
   computeElapsedMs,
@@ -2881,6 +2882,7 @@ function App() {
       ) : route === "result" ? (
         <ResultScreen
           {...dateSelectionProps}
+          cellValues={cellValues}
           bonusPuzzlePanelState={bonusPuzzlePanelState}
           completedEntries={viewModel.completedEntries}
           consecutiveStreak={consecutiveStreak}
@@ -4076,6 +4078,7 @@ function buildShareText({
   consecutiveStreak,
   isComplete,
   revealUsed,
+  shareGrid,
 }: {
   puzzleLabel: string;
   elapsedLabel: string | null;
@@ -4086,8 +4089,12 @@ function buildShareText({
   consecutiveStreak: number;
   isComplete: boolean;
   revealUsed: boolean;
+  shareGrid: string;
 }): string {
-  const lines: string[] = [`가로세로 낱말 퍼즐 ${puzzleLabel}`, ""];
+  const lines: string[] = [`가로세로 낱말 퍼즐 ${puzzleLabel}`];
+  // 제목 바로 아래에 완성 상태를 표현하는 이모지 격자를 덧붙인다(정답 글자 노출 없음).
+  if (shareGrid.length > 0) lines.push(shareGrid);
+  lines.push("");
 
   const stats: string[] = [];
   if (elapsedLabel != null) stats.push(`⏱ ${elapsedLabel}`);
@@ -5751,6 +5758,7 @@ function SettingsIcon() {
 }
 
 type ResultScreenProps = DateSelectionProps & {
+  cellValues: Record<string, string>;
   bonusPuzzlePanelState: BonusPuzzlePanelState;
   completedEntries: PuzzleEntry[];
   consecutiveStreak: number;
@@ -5769,6 +5777,7 @@ type ResultScreenProps = DateSelectionProps & {
 };
 
 function ResultScreen({
+  cellValues,
   bonusPuzzlePanelState,
   completedEntries,
   completionStatsByPuzzleId,
@@ -5877,6 +5886,7 @@ function ResultScreen({
       consecutiveStreak,
       isComplete,
       revealUsed,
+      shareGrid: buildShareGrid(puzzle, cellValues),
     });
 
     function copyToClipboard() {
