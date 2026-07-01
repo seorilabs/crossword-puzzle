@@ -1,5 +1,10 @@
 :root {
   font-family: sans-serif;
+  /* 지원 색 구성표를 명시한다. prefers-color-scheme 기반 커스텀 토큰(App.css)이
+     닿지 않는 UA 렌더(폼 컨트롤·스크롤바·기본 배경 등)도 사용자 OS 테마에 맞춰
+     그려지게 하고, 미디어쿼리를 모르는 구형 환경에서도 UA가 다크 기본값을 고를 수
+     있게 하는 표준 폴백이다(#157). */
+  color-scheme: light dark;
 }
 
 * {
