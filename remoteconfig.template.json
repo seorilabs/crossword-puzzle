@@ -100,6 +100,34 @@
       },
       "description": "복귀 리마인드(D1 재방문) 푸시 동의 유도 노출 여부. 스마트발송 템플릿 등록 완료로 기본 활성. 필요 시 false로 끈다",
       "valueType": "BOOLEAN"
+    },
+    "stuck_hint_idle_ms": {
+      "defaultValue": {
+        "value": "20000"
+      },
+      "description": "막힘 힌트 자동 노출: 입력 정체가 이 시간(ms)을 넘으면 비침습 힌트 CTA를 띄운다. 허용 3000~120000",
+      "valueType": "NUMBER"
+    },
+    "stuck_hint_wrong_idle_ms": {
+      "defaultValue": {
+        "value": "5000"
+      },
+      "description": "오답이 쌓여 막힘 신호가 보이면 stuck_hint_idle_ms 대신 적용하는 더 짧은 지연(ms). 허용 1000~60000",
+      "valueType": "NUMBER"
+    },
+    "stuck_hint_wrong_cell_threshold": {
+      "defaultValue": {
+        "value": "2"
+      },
+      "description": "이 개수 이상의 셀이 오답으로 남으면 '막힘'으로 보고 빠른 힌트 노출을 적용한다. 허용 1~20",
+      "valueType": "NUMBER"
+    },
+    "check_highlight_ms": {
+      "defaultValue": {
+        "value": "2500"
+      },
+      "description": "'이 단어 확인'으로 강조한 셀을 원복 전까지 보여주는 시간(ms). 허용 500~10000",
+      "valueType": "NUMBER"
     }
   }
 }

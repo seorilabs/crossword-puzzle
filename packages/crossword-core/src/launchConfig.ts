@@ -18,6 +18,14 @@ export type LaunchConfig = {
   resultInterstitialAdsEnabled: boolean;
   leaderboardEnabled: boolean;
   returnReminderEnabled: boolean;
+  // 막힘 힌트 자동 노출: 입력 정체가 이 시간(ms)을 넘으면 비침습 힌트 CTA를 띄운다.
+  stuckHintIdleMs: number;
+  // 오답이 쌓여 막힘 신호가 보이면 위 시간 대신 더 짧은 이 지연(ms)으로 띄운다.
+  stuckHintWrongIdleMs: number;
+  // 이 개수 이상의 셀이 오답으로 남아 있으면 "막힘"으로 보고 빠른 노출을 적용한다.
+  stuckHintWrongCellThreshold: number;
+  // "이 단어 확인"으로 강조한 셀을 원복 전까지 보여주는 시간(ms).
+  checkHighlightMs: number;
 };
 
 export const launchConfigKeys = {
@@ -33,6 +41,10 @@ export const launchConfigKeys = {
   resultInterstitialAdsEnabled: "result_interstitial_ads_enabled",
   leaderboardEnabled: "leaderboard_enabled",
   returnReminderEnabled: "return_reminder_enabled",
+  stuckHintIdleMs: "stuck_hint_idle_ms",
+  stuckHintWrongIdleMs: "stuck_hint_wrong_idle_ms",
+  stuckHintWrongCellThreshold: "stuck_hint_wrong_cell_threshold",
+  checkHighlightMs: "check_highlight_ms",
 } as const;
 
 export const defaultLaunchConfig: LaunchConfig = {
@@ -52,6 +64,11 @@ export const defaultLaunchConfig: LaunchConfig = {
   // Remote Config `return_reminder_enabled`로 끌 수 있다. mobile(RN)은 알림 동의
   // adapter가 없어 이 값과 무관하게 no-op이다(docs/market-parity.md 참고).
   returnReminderEnabled: true,
+  // 막힘 힌트/피드백 튜닝값(원격 조정 가능). 기존 App.tsx 하드코딩 값을 그대로 옮겼다.
+  stuckHintIdleMs: 20000,
+  stuckHintWrongIdleMs: 5000,
+  stuckHintWrongCellThreshold: 2,
+  checkHighlightMs: 2500,
 };
 
 export function clampInteger(
@@ -126,6 +143,31 @@ export function normalizeLaunchConfig(
     returnReminderEnabled:
       value.returnReminderEnabled ??
       defaultLaunchConfig.returnReminderEnabled,
+    stuckHintIdleMs: clampInteger(
+      value.stuckHintIdleMs ?? defaultLaunchConfig.stuckHintIdleMs,
+      defaultLaunchConfig.stuckHintIdleMs,
+      3000,
+      120000,
+    ),
+    stuckHintWrongIdleMs: clampInteger(
+      value.stuckHintWrongIdleMs ?? defaultLaunchConfig.stuckHintWrongIdleMs,
+      defaultLaunchConfig.stuckHintWrongIdleMs,
+      1000,
+      60000,
+    ),
+    stuckHintWrongCellThreshold: clampInteger(
+      value.stuckHintWrongCellThreshold ??
+        defaultLaunchConfig.stuckHintWrongCellThreshold,
+      defaultLaunchConfig.stuckHintWrongCellThreshold,
+      1,
+      20,
+    ),
+    checkHighlightMs: clampInteger(
+      value.checkHighlightMs ?? defaultLaunchConfig.checkHighlightMs,
+      defaultLaunchConfig.checkHighlightMs,
+      500,
+      10000,
+    ),
   };
 }
 
@@ -154,5 +196,11 @@ export function getLaunchConfigDefaultsForRemoteConfig() {
       defaultLaunchConfig.leaderboardEnabled,
     [launchConfigKeys.returnReminderEnabled]:
       defaultLaunchConfig.returnReminderEnabled,
+    [launchConfigKeys.stuckHintIdleMs]: defaultLaunchConfig.stuckHintIdleMs,
+    [launchConfigKeys.stuckHintWrongIdleMs]:
+      defaultLaunchConfig.stuckHintWrongIdleMs,
+    [launchConfigKeys.stuckHintWrongCellThreshold]:
+      defaultLaunchConfig.stuckHintWrongCellThreshold,
+    [launchConfigKeys.checkHighlightMs]: defaultLaunchConfig.checkHighlightMs,
   };
 }

@@ -186,6 +186,22 @@ export async function loadFirebaseLaunchConfig(): Promise<LaunchConfig> {
         remoteConfig,
         launchConfigKeys.returnReminderEnabled,
       ),
+      stuckHintIdleMs: getNumber(
+        remoteConfig,
+        launchConfigKeys.stuckHintIdleMs,
+      ),
+      stuckHintWrongIdleMs: getNumber(
+        remoteConfig,
+        launchConfigKeys.stuckHintWrongIdleMs,
+      ),
+      stuckHintWrongCellThreshold: getNumber(
+        remoteConfig,
+        launchConfigKeys.stuckHintWrongCellThreshold,
+      ),
+      checkHighlightMs: getNumber(
+        remoteConfig,
+        launchConfigKeys.checkHighlightMs,
+      ),
     });
   } catch {
     return defaultLaunchConfig;

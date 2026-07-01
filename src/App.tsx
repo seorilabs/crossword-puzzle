@@ -62,7 +62,6 @@ import {
   shouldQuickStartActivePuzzle,
   shouldShowFirstInputGuide,
   shouldSubmitLeaderboardScore,
-  getStuckHintDelayMs,
   ONBOARDING_WORD_COMPLETE_MESSAGE,
   sortPuzzleSummariesByRecency,
   startMissionAttempt,
@@ -87,6 +86,7 @@ import {
   type ReviewEntry,
   type SavedProgress,
 } from "../packages/crossword-core/src";
+import { useStuckHintPrompt } from "./useStuckHintPrompt";
 import { PersonalStatsCard } from "./components/PersonalStatsCard";
 import { PuzzleBoard } from "./components/PuzzleBoard";
 import { formatElapsedTime, formatLiveTimer, getElapsedSeconds } from "./timer";
@@ -210,9 +210,6 @@ function persistAnswerInputMode(mode: AnswerInputMode): void {
   }
 }
 
-// "이 단어 확인"으로 강조한 셀을 잠시(원복 전) 표시하는 시간(ms).
-const CHECK_HIGHLIGHT_MS = 2500;
-
 // PuzzleBoard의 checkedCellKeys 기본값. 매 렌더 새 Set 생성을 피한다.
 const EMPTY_CELL_KEY_SET: ReadonlySet<string> = new Set();
 
@@ -324,13 +321,6 @@ const contentSourceLicense =
 const krdictCopyrightUrl =
   "https://krdict.korean.go.kr/kor/kboardPolicy/copyRightTermsInfo";
 const ccBySaKrUrl = "https://creativecommons.org/licenses/by-sa/2.0/kr/";
-
-// 막혔을 때 힌트 자동 노출: 입력 정체가 이 시간을 넘으면 비침습 힌트 CTA를 띄운다.
-const STUCK_HINT_IDLE_MS = 20000;
-// 오답이 쌓이면(막힘 신호) 20초를 기다리지 않고 더 빨리 힌트 CTA를 띄운다.
-const STUCK_HINT_WRONG_IDLE_MS = 5000;
-// 이 개수 이상의 셀이 오답으로 남아 있으면 "막힘"으로 보고 빠른 노출을 적용한다.
-const WRONG_CELL_COUNT_FOR_STUCK_HINT = 2;
 
 function getPuzzleTelemetryParams(puzzle: Puzzle) {
   return {
@@ -752,9 +742,6 @@ function App() {
     useState(false);
   const [bonusNotice, setBonusNotice] = useState("");
   const [hintNotice, setHintNotice] = useState("");
-  // 막혔을 때 힌트 자동 노출: 일정 시간 입력 정체 시 비침습 CTA를 띄운다.
-  const [isStuckHintPromptVisible, setIsStuckHintPromptVisible] =
-    useState(false);
   const [hintToast, setHintToast] = useState<{ id: number; message: string }>({
     id: 0,
     message: "",
@@ -1600,53 +1587,31 @@ function App() {
   // 일정 시간 정체되면 비침습 힌트 CTA를 띄운다. 입력·단어 선택 등 활동이 있으면
   // 타이머가 리셋되어 다시 정체될 때까지 노출되지 않는다. 오답이 쌓여 막힌 신호가
   // 보이면(미완료자 다수가 힌트 없이 이탈) 더 짧은 지연으로 빠르게 띄운다.
-  useEffect(() => {
-    if (route !== "today" || !hasStarted || isCompleted) {
-      setIsStuckHintPromptVisible(false);
-      return;
-    }
-
-    const hasWrongStreak = wrongCellCount >= WRONG_CELL_COUNT_FOR_STUCK_HINT;
-    const stuckHintDelayMs = getStuckHintDelayMs({
+  // 타이머·재스케줄·발화 페이로드 최신화는 useStuckHintPrompt 훅에 캡슐화해 회귀
+  // 테스트로 고정한다(임계·지연은 launchConfig 원격 조정, idle_seconds는 실제 지연).
+  const { isVisible: isStuckHintPromptVisible, hide: hideStuckHintPrompt } =
+    useStuckHintPrompt({
+      active: route === "today" && hasStarted && !isCompleted,
+      resetKeys: [cellValues, selectedEntryId],
       wrongCellCount,
-      wrongCellThreshold: WRONG_CELL_COUNT_FOR_STUCK_HINT,
-      idleMs: STUCK_HINT_IDLE_MS,
-      wrongIdleMs: STUCK_HINT_WRONG_IDLE_MS,
+      wrongCellThreshold: launchConfig.stuckHintWrongCellThreshold,
+      idleMs: launchConfig.stuckHintIdleMs,
+      wrongIdleMs: launchConfig.stuckHintWrongIdleMs,
+      onShow: ({ trigger, delayMs }) => {
+        telemetry.impression("stuck_hint_prompt", {
+          ...puzzleTelemetryParams,
+          attempt_number: mission.attemptsUsed,
+          hint_count: hintCount,
+          idle_seconds: delayMs / 1000,
+          progress_percent: progressPercent,
+          remaining_hint_credits: remainingHintCredits,
+          total_words: puzzle.entries.length,
+          trigger,
+          words_filled: viewModel.completedEntries.length,
+          wrong_cell_count: wrongCellCount,
+        });
+      },
     });
-
-    setIsStuckHintPromptVisible(false);
-    const timerId = window.setTimeout(() => {
-      setIsStuckHintPromptVisible(true);
-      telemetry.impression("stuck_hint_prompt", {
-        ...puzzleTelemetryParams,
-        attempt_number: mission.attemptsUsed,
-        hint_count: hintCount,
-        idle_seconds: stuckHintDelayMs / 1000,
-        progress_percent: progressPercent,
-        remaining_hint_credits: remainingHintCredits,
-        total_words: puzzle.entries.length,
-        trigger: hasWrongStreak ? "wrong_answer" : "idle",
-        words_filled: viewModel.completedEntries.length,
-        wrong_cell_count: wrongCellCount,
-      });
-    }, stuckHintDelayMs);
-
-    return () => window.clearTimeout(timerId);
-  }, [
-    cellValues,
-    hasStarted,
-    hintCount,
-    isCompleted,
-    mission.attemptsUsed,
-    progressPercent,
-    puzzle.entries.length,
-    puzzleTelemetryParams,
-    remainingHintCredits,
-    route,
-    selectedEntryId,
-    viewModel.completedEntries.length,
-    wrongCellCount,
-  ]);
 
   // 첫 입력 가이드 노출 이벤트(최초 1회).
   useEffect(() => {
@@ -2378,7 +2343,7 @@ function App() {
   }
 
   function acceptStuckHintPrompt() {
-    setIsStuckHintPromptVisible(false);
+    hideStuckHintPrompt();
     telemetry.click("stuck_hint_prompt_accept", {
       ...puzzleTelemetryParams,
       attempt_number: mission.attemptsUsed,
@@ -2396,7 +2361,7 @@ function App() {
   // 막힘 안내에서 "이 단어 정답 보기"로 빠져나가기. 선택된 미완성 단어를 즉시
   // 공개해(revealSelectedWord) 막힌 사용자가 완료까지 진행하도록 돕는다(#163).
   function acceptStuckWordReveal() {
-    setIsStuckHintPromptVisible(false);
+    hideStuckHintPrompt();
     telemetry.click("stuck_hint_prompt_reveal_word", {
       ...puzzleTelemetryParams,
       attempt_number: mission.attemptsUsed,
@@ -2406,7 +2371,7 @@ function App() {
   }
 
   function dismissStuckHintPrompt() {
-    setIsStuckHintPromptVisible(false);
+    hideStuckHintPrompt();
     telemetry.click("stuck_hint_prompt_dismiss", {
       ...puzzleTelemetryParams,
       attempt_number: mission.attemptsUsed,
@@ -2598,8 +2563,12 @@ function App() {
   }
 
   // 일반 플레이 화면용: 사용자가 명시적으로 호출하는 "이 단어 확인". 선택 단어
-  // 셀에 정/오를 잠시 강조한 뒤 CHECK_HIGHLIGHT_MS 후 원상 복구한다. autocheck를
+  // 셀에 정/오를 잠시 강조한 뒤 checkHighlightMs(원격 설정) 후 원상 복구한다. autocheck를
   // 꺼둔 상태에서도 이 강조는 동작한다(PuzzleBoard 렌더가 checkedCellKeys를 함께 본다).
+  // 강조는 사용자 트리거 일회성(one-shot) 동작이라, 호출 시점의 최신 checkHighlightMs를
+  // 사용하고 진행 중인 강조를 원격 설정 변경으로 재스케줄하지는 않는다(다음 호출부터
+  // 새 지속시간 적용). 연속 호출 시에는 checkHighlightGenerationRef/타이머 취소로
+  // 직전 강조가 새 강조를 조기에 지우지 않도록 가드한다.
   function checkSelectedWord() {
     const selectedEntry = viewModel.selectedEntry;
     if (selectedEntry == null) {
@@ -2626,7 +2595,7 @@ function App() {
         setCheckedCellKeys(EMPTY_CELL_KEY_SET);
       }
       checkHighlightTimerRef.current = null;
-    }, CHECK_HIGHLIGHT_MS);
+    }, launchConfig.checkHighlightMs);
 
     telemetry.click("check_word", {
       puzzle_id: puzzle.puzzleId,

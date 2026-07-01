@@ -99,6 +99,29 @@ describe("getStuckHintDelayMs", () => {
     assert.equal(getStuckHintDelayMs({ ...params, wrongCellCount: 0 }), 20000);
     assert.equal(getStuckHintDelayMs({ ...params, wrongCellCount: 1 }), 20000);
   });
+
+  // 원격 설정(launchConfig)으로 임계·지연을 조정하면 그 값이 그대로 반영돼야 한다.
+  // App.tsx의 막힘 힌트 effect는 이 순수 로직으로 지연을 계산하고, 임계/지연이 바뀌면
+  // 타이머를 취소·재스케줄하므로 여기서 config 주입에 따른 지연 선택을 회귀로 고정한다.
+  it("원격 조정된 지연·임계 값을 그대로 반영한다", () => {
+    const tuned = { wrongCellThreshold: 4, idleMs: 30000, wrongIdleMs: 8000 };
+    // 임계(4) 미만이면 조정된 기본 지연(30000)
+    assert.equal(getStuckHintDelayMs({ ...tuned, wrongCellCount: 3 }), 30000);
+    // 임계(4) 이상이면 조정된 짧은 지연(8000)
+    assert.equal(getStuckHintDelayMs({ ...tuned, wrongCellCount: 4 }), 8000);
+  });
+
+  it("임계값만 바뀌어도 같은 오답 수에서 선택되는 지연 티어가 달라진다", () => {
+    // wrongCellCount=2 고정. 임계 2면 짧은 지연, 임계 3이면 기본 지연으로 전환된다.
+    assert.equal(
+      getStuckHintDelayMs({ ...params, wrongCellThreshold: 2, wrongCellCount: 2 }),
+      5000,
+    );
+    assert.equal(
+      getStuckHintDelayMs({ ...params, wrongCellThreshold: 3, wrongCellCount: 2 }),
+      20000,
+    );
+  });
 });
 
 describe("shouldOfferStuckWordReveal", () => {
