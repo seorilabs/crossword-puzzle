@@ -863,11 +863,18 @@ function App() {
     if (route !== "today") {
       setCompletionCelebrationId(null);
     }
-    if (route === "home" || route === "history") {
-      // Recalculate streak whenever the home or history screen is shown so that a
-      // date change at midnight is reflected without requiring an app restart. On
-      // the history screen this also keeps the streak number in lockstep with the
-      // (uncached) completion-date heatmap, which reads fresh localStorage.
+    if (route === "home") {
+      // Recalculate streak whenever the home screen is shown so that a date
+      // change at midnight is reflected without requiring an app restart. The
+      // same-day module cache keeps repeat home visits cheap.
+      setConsecutiveStreak(computeConsecutiveStreakDays());
+    }
+    if (route === "history") {
+      // 기록 화면은 히트맵(getRecentCompletionDates)이 매 렌더 localStorage를 새로
+      // 스캔한다. 스트릭 숫자도 같은 최신 완료일 집합을 근거로 삼도록, 같은 날
+      // 즉시 반환하는 모듈 캐시를 무효화한 뒤 재계산해 숫자와 히트맵이 어긋나지
+      // 않게 한다(scanCompletedDates 공유).
+      invalidateStreakCache();
       setConsecutiveStreak(computeConsecutiveStreakDays());
     }
   }, [route]);
