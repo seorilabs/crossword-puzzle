@@ -56,6 +56,7 @@ import {
   getStreakMilestoneProgress,
   applyTentativeUpdate,
   computeTentativeUpdate,
+  pickHintCellIndex,
   resolveInitialActivePuzzleId,
   shouldCelebrateOnboardingWordCompletion,
   shouldOfferStuckWordReveal,
@@ -2226,9 +2227,11 @@ function App() {
 
     const cells = getEntryCells(selectedEntry);
     const answerLetters = [...selectedEntry.answer];
-    const targetIndex = cells.findIndex(
-      (cell, index) =>
-        cellValues[getCellKey(cell.row, cell.col)] !== answerLetters[index],
+    // 앞 칸부터가 아니라 교차 칸을 우선해 공개한다(교차 시 두 단어에 도움).
+    const targetIndex = pickHintCellIndex(
+      selectedEntry,
+      cellValues,
+      viewModel.cellEntries,
     );
 
     if (targetIndex === -1) {

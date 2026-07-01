@@ -189,6 +189,37 @@ export function buildCellEntries(entries: PuzzleEntry[]) {
   return entriesByCell;
 }
 
+// 한 글자 힌트로 공개할 칸의 인덱스를 고른다(선택 단어의 셀 배열 기준).
+// 미충족(빈칸 또는 오답) 칸만 후보로 하고, 교차 칸(해당 셀을 지나는 entry가 2개
+// 이상)을 우선한다. 교차 칸을 공개하면 세로·가로 두 단어에 모두 도움이 되어 힌트
+// 1개의 체감 가치와 연쇄 해금 기대값이 커진다. 교차 후보가 여럿이면 위치가 앞선
+// 칸을, 교차 후보가 없으면 기존대로 앞선 미충족 칸을 고른다. 미충족 칸이 없으면 -1.
+export function pickHintCellIndex(
+  entry: PuzzleEntry,
+  cellValues: Record<string, string>,
+  cellEntries: Map<string, PuzzleEntry[]>,
+): number {
+  const cells = getEntryCells(entry);
+  const answerLetters = [...entry.answer];
+
+  let firstUnmetIndex = -1;
+  for (let index = 0; index < cells.length; index += 1) {
+    const key = getCellKey(cells[index].row, cells[index].col);
+    if (cellValues[key] === answerLetters[index]) {
+      continue; // 이미 정답인 칸은 건너뛴다.
+    }
+    if (firstUnmetIndex === -1) {
+      firstUnmetIndex = index;
+    }
+    if ((cellEntries.get(key)?.length ?? 0) >= 2) {
+      // 앞선 교차 미충족 칸을 찾으면 즉시 채택한다(위치 우선).
+      return index;
+    }
+  }
+
+  return firstUnmetIndex;
+}
+
 export function buildStartLabels(entries: PuzzleEntry[]) {
   const labels = new Map<string, number>();
   const startCells = Array.from(
