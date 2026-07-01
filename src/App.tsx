@@ -62,6 +62,7 @@ import {
   shouldQuickStartActivePuzzle,
   shouldShowFirstInputGuide,
   shouldSubmitLeaderboardScore,
+  resolveVerticalArrowAction,
   ONBOARDING_WORD_COMPLETE_MESSAGE,
   sortPuzzleSummariesByRecency,
   startMissionAttempt,
@@ -5305,6 +5306,28 @@ function TodayScreen({
                 if (event.key === "ArrowRight") {
                   event.preventDefault();
                   selectRelativeCell(1);
+                  return;
+                }
+
+                if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+                  event.preventDefault();
+                  const crossingDownEntry = (
+                    viewModel.cellEntries.get(activeCellKey) ?? []
+                  ).find((entry) => entry.direction === "down");
+                  const action = resolveVerticalArrowAction({
+                    key: event.key,
+                    selectedDirection,
+                    hasCrossingDownEntry: crossingDownEntry != null,
+                  });
+                  if (action.type === "move") {
+                    selectRelativeCell(action.delta);
+                  } else if (
+                    action.type === "toggleDown" &&
+                    crossingDownEntry != null
+                  ) {
+                    selectEntry(crossingDownEntry, activeCellKey);
+                    focusNativeInput();
+                  }
                   return;
                 }
 

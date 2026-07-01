@@ -1,4 +1,4 @@
-import type { Puzzle, PuzzleManifestItem } from "./types";
+import type { Direction, Puzzle, PuzzleManifestItem } from "./types";
 
 export const DAILY_ATTEMPT_LIMIT = 3;
 export const DEFAULT_HINT_CREDITS = 3;
@@ -629,6 +629,29 @@ export function getStuckHintDelayMs(input: {
   return input.wrongCellCount >= input.wrongCellThreshold
     ? input.wrongIdleMs
     : input.idleMs;
+}
+
+// 물리 키보드 세로 화살표(↑/↓)로 보드에서 세로 이동·방향 토글을 수행할지 결정한다(#175).
+// 현재 방향이 세로(down)면 세로 화살표는 단어 내 인접 셀로 이동한다(↑=이전 칸, ↓=다음 칸).
+// 현재 방향이 가로(across)면 세로 축과 직교하므로, 활성 셀을 지나는 세로 단어가 있으면
+// 그 세로 단어로 방향을 토글한다(Tab/교차 셀 탭 토글과 일관). 교차 세로 단어가 없으면
+// 아무 동작도 하지 않는다(캐럿 점프만 preventDefault로 막고 상태는 유지). IME 조합 중
+// 무시 처리는 호출부(onKeyDown)의 조합 가드가 담당한다.
+export type VerticalArrowAction =
+  | { type: "move"; delta: -1 | 1 }
+  | { type: "toggleDown" }
+  | { type: "none" };
+
+export function resolveVerticalArrowAction(input: {
+  key: "ArrowUp" | "ArrowDown";
+  selectedDirection: Direction;
+  hasCrossingDownEntry: boolean;
+}): VerticalArrowAction {
+  const delta: -1 | 1 = input.key === "ArrowUp" ? -1 : 1;
+  if (input.selectedDirection === "down") {
+    return { type: "move", delta };
+  }
+  return input.hasCrossingDownEntry ? { type: "toggleDown" } : { type: "none" };
 }
 
 // 막힘 안내(stuck prompt)에서 "이 단어 정답 보기" 보조 동작을 함께 노출할지 정한다.

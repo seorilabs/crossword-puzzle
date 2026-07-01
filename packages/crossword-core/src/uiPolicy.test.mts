@@ -19,6 +19,7 @@ import {
   shouldServeOnboardingPuzzle,
   shouldShowFirstInputGuide,
   getStuckHintDelayMs,
+  resolveVerticalArrowAction,
   shouldOfferStuckWordReveal,
   shouldCelebrateOnboardingWordCompletion,
 } from "./uiPolicy.ts";
@@ -120,6 +121,58 @@ describe("getStuckHintDelayMs", () => {
     assert.equal(
       getStuckHintDelayMs({ ...params, wrongCellThreshold: 3, wrongCellCount: 2 }),
       20000,
+    );
+  });
+});
+
+describe("resolveVerticalArrowAction", () => {
+  it("세로(down) 단어에서는 ↓가 다음 칸, ↑가 이전 칸으로 이동한다", () => {
+    assert.deepEqual(
+      resolveVerticalArrowAction({
+        key: "ArrowDown",
+        selectedDirection: "down",
+        hasCrossingDownEntry: true,
+      }),
+      { type: "move", delta: 1 },
+    );
+    assert.deepEqual(
+      resolveVerticalArrowAction({
+        key: "ArrowUp",
+        selectedDirection: "down",
+        hasCrossingDownEntry: false,
+      }),
+      { type: "move", delta: -1 },
+    );
+  });
+
+  it("가로(across) 단어에서 교차 세로 단어가 있으면 세로로 방향을 토글한다", () => {
+    assert.deepEqual(
+      resolveVerticalArrowAction({
+        key: "ArrowDown",
+        selectedDirection: "across",
+        hasCrossingDownEntry: true,
+      }),
+      { type: "toggleDown" },
+    );
+    // ↑도 동일하게 교차 세로 단어로 토글한다(이동 축이 세로이므로).
+    assert.deepEqual(
+      resolveVerticalArrowAction({
+        key: "ArrowUp",
+        selectedDirection: "across",
+        hasCrossingDownEntry: true,
+      }),
+      { type: "toggleDown" },
+    );
+  });
+
+  it("가로 단어에서 교차 세로 단어가 없으면 아무 동작도 하지 않는다", () => {
+    assert.deepEqual(
+      resolveVerticalArrowAction({
+        key: "ArrowDown",
+        selectedDirection: "across",
+        hasCrossingDownEntry: false,
+      }),
+      { type: "none" },
     );
   });
 });
