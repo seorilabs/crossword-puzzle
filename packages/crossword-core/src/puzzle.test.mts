@@ -2,15 +2,55 @@ import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
 
 import {
+  buildCellEntries,
   getNearestUncompletedEntry,
   getNextFocusEntryAfterCompletion,
   getWordCheckResult,
+  pickHintCellIndex,
 } from "./puzzle.ts";
 import type { PuzzleEntry } from "./types.ts";
 
 function entry(partial: Partial<PuzzleEntry> & Pick<PuzzleEntry, "id" | "answer" | "direction" | "row" | "col">): PuzzleEntry {
   return { clue: "", generatedBy: "placed", ...partial };
 }
+
+describe("pickHintCellIndex", () => {
+  // a1 "가나다"(가로, (0,0)~(0,2))와 d1 "다라"(세로, (0,2)~(1,2))가 (0,2)에서 교차.
+  const a1 = entry({ id: "a1", answer: "가나다", direction: "across", row: 0, col: 0 });
+  const d1 = entry({ id: "d1", answer: "다라", direction: "down", row: 0, col: 2 });
+  const cellEntries = buildCellEntries([a1, d1]);
+
+  it("교차 칸이 앞 칸보다 뒤에 있어도 교차 칸을 먼저 공개한다", () => {
+    // 전부 비어 있음 → 앞 미충족은 index 0(0,0), 교차 미충족은 index 2(0,2).
+    const index = pickHintCellIndex(a1, {}, cellEntries);
+    assert.equal(index, 2);
+  });
+
+  it("교차 후보가 없으면 앞선 미충족 칸을 고른다", () => {
+    // a1만 있는 격자(교차 없음) → 앞 칸(index 0).
+    const soloEntries = buildCellEntries([a1]);
+    const index = pickHintCellIndex(a1, {}, soloEntries);
+    assert.equal(index, 0);
+  });
+
+  it("이미 정답인 칸은 건너뛴다", () => {
+    // 교차 칸(0,2)이 이미 정답이면 남은 미충족(0,0)을 고른다(교차 후보 소진).
+    const values = { "0:2": "다" };
+    const index = pickHintCellIndex(a1, values, cellEntries);
+    assert.equal(index, 0);
+  });
+
+  it("모든 칸이 정답이면 -1", () => {
+    const values = { "0:0": "가", "0:1": "나", "0:2": "다" };
+    assert.equal(pickHintCellIndex(a1, values, cellEntries), -1);
+  });
+
+  it("오답으로 채워진 칸도 미충족으로 보고 후보에 포함한다", () => {
+    // (0,0) 오답, 교차 칸(0,2)은 정답 → 교차 소진, 앞 미충족(0,0) 선택.
+    const values = { "0:0": "오", "0:2": "다" };
+    assert.equal(pickHintCellIndex(a1, values, cellEntries), 0);
+  });
+});
 
 describe("getNearestUncompletedEntry", () => {
   // a1(가로) 완성 후 다음 포커스를 고르는 상황.
