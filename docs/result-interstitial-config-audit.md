@@ -11,7 +11,17 @@
 - **이벤트 emit 없음.** `result_interstitial_ad_request` / `_event` / `_result` 는 현재 코드 어디에서도 emit되지 않는다(계약 문서 `docs/firebase-analytics-remote-config.md`에만 존재).
 - 따라서 baseline의 83건은 **호출부 제거 이전 구버전 잔존 빌드의 이력**으로 판단된다. 본 감사 쿼리가 그 가설을 데이터로 확정한다.
 
-향후 result interstitial을 실제로 노출시키는 시점에는 (1) `resultInterstitialAdsEnabled` 게이팅과 (2) config 값을 이벤트 파라미터로 함께 로깅하는 것을 동시에 도입한다. 그 전까지 config 준수의 검증 수단은 본 감사 쿼리다.
+향후 result interstitial을 실제로 노출시키는 시점에는 (1) `resultInterstitialAdsEnabled` 게이팅과 (2) config 값을 이벤트 파라미터로 함께 로깅하는 것을 동시에 도입한다. 구체적 착수 항목은 아래 [향후 도입 체크리스트](#향후-도입-체크리스트-result_interstitial-실노출-시)로 분리해 추적한다. 그 전까지 config 준수의 검증 수단은 본 감사 쿼리다.
+
+## 향후 도입 체크리스트 (result_interstitial 실노출 시)
+
+result interstitial을 실제 노출로 전환할 때, "재발 시 즉시 가시화"를 유지하려면 게이팅·로깅·정합 게이트·계약 문서를 **한 PR에서 동시에** 맞춰야 한다. 정합화 PR의 출발선으로 아래 항목을 사용한다.
+
+- [ ] **게이팅 도입** — 결과 화면 진입에서 노출 함수(웹 `showResultInterstitialAd` @ `src/adapters/appsInTossAds.ts`, 모바일 `showInterstitialAd` @ `apps/mobile/mobileAds.ts`)를 호출하기 직전에 `launchConfig.resultInterstitialAdsEnabled`(Remote Config `result_interstitial_ads_enabled`, 기본 `false`)를 평가해 `true`일 때만 호출한다. 평가 지점을 웹/모바일 양쪽에 배선한다.
+- [ ] **config 값 파라미터 로깅** — `result_interstitial_ad_request`(및 `_event`/`_result`) emit 시 파라미터에 평가된 `config_value`(게이팅에 사용한 enabled 값)와 `source`(호출 화면/트리거 식별자)를 함께 포함한다. 이벤트명·파라미터 키는 영문 원문 유지.
+- [ ] **parity 게이트 갱신** — `scripts/check-release-parity.mjs`가 현재 호출을 회귀로 차단한다(웹 `assertNotIncludes(webApp, "showResultInterstitialAd", …)`, 모바일 `assertNotIncludes(mobileApp, "showInterstitialAd", …)`). 노출 도입 시 이 규칙을 "호출 금지 → 게이팅 경유 호출 허용/정합"으로 갱신해 웹·모바일 노출 동선이 어긋나지 않게 한다.
+- [ ] **텔레메트리 계약 문서 동기화** — `docs/firebase-analytics-remote-config.md`의 config 표(`result_interstitial_ads_enabled`)와 이벤트 표(`result_interstitial_ad_request`/`_event`/`_result`)에 활성 상태·신규 파라미터(`config_value`/`source`)를 반영한다.
+- [ ] **감사 기준 갱신** — 본 문서의 `compliance_cutoff`/`verdict` 해석을 "노출 도입 이후"에 맞게 갱신한다(도입 이후 이벤트는 잔존 위반이 아니라 정상 노출이므로, 판정 기준을 config 값 기준 정합 검증으로 전환).
 
 ## 표준 쿼리
 
