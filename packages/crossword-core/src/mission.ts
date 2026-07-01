@@ -94,6 +94,30 @@ export function computeElapsedSeconds(input: ElapsedInput): number | undefined {
   return ms == null ? undefined : Math.round(ms / 1000);
 }
 
+/** 풀이 일시정지 세션 상태(누적 정지 ms + 진행 중 정지 시작 ISO). */
+export type PauseSessionState = {
+  pausedMs: number;
+  pausedAt: string | null;
+};
+
+/**
+ * 일시정지 상태를 토글한다(순수 함수, 3마켓 공유).
+ * - 진행 중(`pausedAt == null`)이면 `now`에 정지를 시작한다(`pausedAt` 설정).
+ * - 정지 중이면 멈춰 있던 구간(`now - pausedAt`)을 `pausedMs`에 누적하고 재개한다
+ *   (`pausedAt = null`). 시계 역전 등으로 음수/비정상이면 0으로 보정한다.
+ */
+export function togglePauseState(
+  pause: PauseSessionState,
+  now: Date,
+): PauseSessionState {
+  if (pause.pausedAt == null) {
+    return { pausedMs: pause.pausedMs, pausedAt: now.toISOString() };
+  }
+  const pausedForMs = now.getTime() - new Date(pause.pausedAt).getTime();
+  const delta = Number.isFinite(pausedForMs) && pausedForMs > 0 ? pausedForMs : 0;
+  return { pausedMs: pause.pausedMs + delta, pausedAt: null };
+}
+
 export function startMissionAttempt(
   mission: DailyMissionState,
   now = new Date(),
