@@ -7,6 +7,7 @@ import {
   computeElapsedMs,
   computeElapsedSeconds,
   getCompletionAchievements,
+  togglePauseState,
 } from "./mission.ts";
 
 describe("getCompletionAchievements", () => {
@@ -126,5 +127,44 @@ describe("computeElapsedMs / computeElapsedSeconds (일시정지 반영)", () =>
   it("시작 시각이 없으면 undefined", () => {
     assert.equal(computeElapsedMs({ now: 1 }), undefined);
     assert.equal(computeElapsedSeconds({}), undefined);
+  });
+});
+
+describe("togglePauseState", () => {
+  it("진행 중이면 now에 정지를 시작한다(pausedAt 설정, pausedMs 유지)", () => {
+    const now = new Date("2026-07-01T00:01:00.000Z");
+    const next = togglePauseState({ pausedMs: 5_000, pausedAt: null }, now);
+    assert.equal(next.pausedAt, now.toISOString());
+    assert.equal(next.pausedMs, 5_000);
+  });
+
+  it("정지 중이면 멈춘 구간을 pausedMs에 누적하고 재개한다(pausedAt=null)", () => {
+    const pausedAt = "2026-07-01T00:00:00.000Z";
+    const now = new Date("2026-07-01T00:00:30.000Z"); // 30초 정지
+    const next = togglePauseState({ pausedMs: 5_000, pausedAt }, now);
+    assert.equal(next.pausedAt, null);
+    assert.equal(next.pausedMs, 35_000);
+  });
+
+  it("시계 역전 등으로 정지 구간이 음수면 0으로 보정한다", () => {
+    const pausedAt = "2026-07-01T00:01:00.000Z";
+    const now = new Date("2026-07-01T00:00:00.000Z"); // now < pausedAt
+    const next = togglePauseState({ pausedMs: 5_000, pausedAt }, now);
+    assert.equal(next.pausedAt, null);
+    assert.equal(next.pausedMs, 5_000);
+  });
+
+  it("정지→재개 왕복 후 pausedAt은 다시 null이다", () => {
+    const start = togglePauseState(
+      { pausedMs: 0, pausedAt: null },
+      new Date("2026-07-01T00:00:00.000Z"),
+    );
+    assert.notEqual(start.pausedAt, null);
+    const resumed = togglePauseState(
+      start,
+      new Date("2026-07-01T00:00:10.000Z"),
+    );
+    assert.equal(resumed.pausedAt, null);
+    assert.equal(resumed.pausedMs, 10_000);
   });
 });

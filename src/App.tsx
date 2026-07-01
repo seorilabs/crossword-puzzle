@@ -61,6 +61,7 @@ import {
   shouldQuickStartActivePuzzle,
   shouldShowFirstInputGuide,
   shouldSubmitLeaderboardScore,
+  togglePauseState,
   resolveVerticalArrowAction,
   ONBOARDING_WORD_COMPLETE_MESSAGE,
   sortPuzzleSummariesByRecency,
@@ -1862,6 +1863,15 @@ function App() {
     setPause({ pausedMs: 0, pausedAt: null });
   }, [mission.lastStartedAt, mission.puzzleId]);
 
+  // 일시정지↔재개 토글. 진행 중(시작·미완료)일 때만 조작을 허용한다. 상태 전이
+  // 계산은 공유 코어(togglePauseState)에 위임해 순수하게 유지한다.
+  const togglePause = useCallback(() => {
+    if (!hasStarted || isCompleted) {
+      return;
+    }
+    setPause((prev) => togglePauseState(prev, new Date()));
+  }, [hasStarted, isCompleted]);
+
   function selectCell(row: number, col: number) {
     // 일시정지 중에는 셀 선택을 막는다.
     if (isPaused) {
@@ -2877,6 +2887,7 @@ function App() {
           isPaused={isPaused}
           navigate={navigate}
           pause={pause}
+          togglePause={togglePause}
           startOrResumeMission={startOrResumeMission}
         />
       ) : route === "result" ? (
@@ -4398,6 +4409,7 @@ type TodayScreenProps = DateSelectionProps & {
   mission: DailyMissionState;
   navigate: (route: AppRoute) => void;
   pause: { pausedMs: number; pausedAt: string | null };
+  togglePause: () => void;
   puzzle: Puzzle;
   remainingAttempts: number;
   revealLetter: () => void;
@@ -4448,6 +4460,7 @@ function TodayScreen({
   mission,
   navigate,
   pause,
+  togglePause,
   puzzle,
   puzzleSummaries,
   remainingAttempts,
@@ -5304,6 +5317,19 @@ function TodayScreen({
                 >
                   <EraserIcon />
                 </button>
+                {mission.lastStartedAt != null &&
+                !isAttemptExhaustedUncompleted ? (
+                  <button
+                    className="iconButton"
+                    type="button"
+                    aria-label={isPaused ? "재개" : "일시정지"}
+                    aria-pressed={isPaused}
+                    title={isPaused ? "재개" : "일시정지"}
+                    onClick={togglePause}
+                  >
+                    {isPaused ? <PlayIcon /> : <PauseIcon />}
+                  </button>
+                ) : null}
                 <button
                   className="iconButton"
                   type="button"
@@ -5425,6 +5451,20 @@ function TodayScreen({
       ) : null}
 
       <section className="puzzlePlayArea" aria-label="퍼즐 풀이">
+        {isPaused ? (
+          <button
+            type="button"
+            className="pauseOverlay"
+            aria-label="일시정지됨. 눌러서 재개"
+            onClick={togglePause}
+          >
+            <span className="pauseOverlayIcon" aria-hidden="true">
+              <PlayIcon />
+            </span>
+            <strong>일시정지됨</strong>
+            <span>눌러서 재개</span>
+          </button>
+        ) : null}
         <PuzzleBoard
           activeCellKey={selectedCellKey}
           autocheckEnabled={autocheckEnabled}
@@ -5721,6 +5761,47 @@ function ListIcon() {
         fill="none"
         stroke="currentColor"
         strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    </svg>
+  );
+}
+
+function PauseIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      focusable="false"
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+    >
+      <path
+        d="M8 5v14M16 5v14"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    </svg>
+  );
+}
+
+function PlayIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      focusable="false"
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+    >
+      <path
+        d="M7 5l12 7-12 7z"
+        fill="currentColor"
+        stroke="currentColor"
         strokeLinejoin="round"
         strokeWidth="2"
       />
