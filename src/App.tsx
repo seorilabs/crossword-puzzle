@@ -809,6 +809,21 @@ function App() {
   // 연속 "이 단어 확인" 호출을 구분하는 세대 값. 이전 타이머가 살아남아 새 강조를
   // 조기에 비우지 못하도록, 타이머 콜백은 자신의 세대가 최신일 때만 강조를 지운다.
   const checkHighlightGenerationRef = useRef(0);
+  // 막힘 힌트 타이머가 발화하는 시점(스케줄 이후 지연 경과 시)에 텔레메트리·트리거
+  // 판정에 쓸 최신 값을 담는 ref. setTimeout 콜백은 이 ref를 통해 값을 읽으므로,
+  // 지연은 스케줄 시점에 고정되되 노출 페이로드·trigger는 항상 발화 시점의 최신
+  // launchConfig/진행 상태를 반영한다(임계·활동만 effect 재스케줄 트리거로 유지).
+  const stuckHintFireInputsRef = useRef<{
+    wrongCellCount: number;
+    wrongCellThreshold: number;
+    telemetryParams: Record<string, unknown>;
+    attemptsUsed: number;
+    hintCount: number;
+    progressPercent: number;
+    remainingHintCredits: number;
+    totalWords: number;
+    wordsFilled: number;
+  } | null>(null);
   const [now, setNow] = useState(() => new Date());
   const [hasSeenHowToPlay, setHasSeenHowToPlay] = useState(() => {
     try {
@@ -1590,14 +1605,24 @@ function App() {
   // 일정 시간 정체되면 비침습 힌트 CTA를 띄운다. 입력·단어 선택 등 활동이 있으면
   // 타이머가 리셋되어 다시 정체될 때까지 노출되지 않는다. 오답이 쌓여 막힌 신호가
   // 보이면(미완료자 다수가 힌트 없이 이탈) 더 짧은 지연으로 빠르게 띄운다.
+  // 발화 시점에 읽을 최신 값을 매 렌더마다 ref에 반영한다(스케줄 시점 캡처가 아님).
+  stuckHintFireInputsRef.current = {
+    wrongCellCount,
+    wrongCellThreshold: launchConfig.stuckHintWrongCellThreshold,
+    telemetryParams: puzzleTelemetryParams,
+    attemptsUsed: mission.attemptsUsed,
+    hintCount,
+    progressPercent,
+    remainingHintCredits,
+    totalWords: puzzle.entries.length,
+    wordsFilled: viewModel.completedEntries.length,
+  };
   useEffect(() => {
     if (route !== "today" || !hasStarted || isCompleted) {
       setIsStuckHintPromptVisible(false);
       return;
     }
 
-    const hasWrongStreak =
-      wrongCellCount >= launchConfig.stuckHintWrongCellThreshold;
     const stuckHintDelayMs = getStuckHintDelayMs({
       wrongCellCount,
       wrongCellThreshold: launchConfig.stuckHintWrongCellThreshold,
@@ -1606,22 +1631,30 @@ function App() {
     });
 
     setIsStuckHintPromptVisible(false);
-    // 임계값(launchConfig.stuckHint*)은 effect 의존성에 포함돼 있어, 원격 설정이
-    // 바뀌면 cleanup이 이 타이머를 취소하고 effect가 새 값으로 재스케줄한다. 따라서
-    // 콜백이 캡처한 stuckHintDelayMs는 항상 그 스케줄 시점의 최신 값이며 stale하지 않다.
+    // 지연(stuckHintDelayMs)은 스케줄 시점에 고정된다(발화 시점에 지연을 다시 읽는 것은
+    // 무의미하고, idle_seconds 텔레메트리는 실제 사용된 지연을 보고해야 정확하다). 임계값·
+    // 활동(launchConfig.stuckHint*/wrongCellCount/cellValues/selectedEntryId)이 바뀌면
+    // cleanup이 이 타이머를 취소하고 effect가 새 지연으로 재스케줄한다. 노출 페이로드·
+    // trigger 판정은 stuckHintFireInputsRef를 통해 발화 시점의 최신 값을 읽으므로,
+    // 텔레메트리 전용 값 변화가 idle 타이머를 불필요하게 리셋하지 않으면서도 stale하지 않다.
     const timerId = window.setTimeout(() => {
+      const fire = stuckHintFireInputsRef.current;
+      if (fire == null) return;
       setIsStuckHintPromptVisible(true);
       telemetry.impression("stuck_hint_prompt", {
-        ...puzzleTelemetryParams,
-        attempt_number: mission.attemptsUsed,
-        hint_count: hintCount,
+        ...fire.telemetryParams,
+        attempt_number: fire.attemptsUsed,
+        hint_count: fire.hintCount,
         idle_seconds: stuckHintDelayMs / 1000,
-        progress_percent: progressPercent,
-        remaining_hint_credits: remainingHintCredits,
-        total_words: puzzle.entries.length,
-        trigger: hasWrongStreak ? "wrong_answer" : "idle",
-        words_filled: viewModel.completedEntries.length,
-        wrong_cell_count: wrongCellCount,
+        progress_percent: fire.progressPercent,
+        remaining_hint_credits: fire.remainingHintCredits,
+        total_words: fire.totalWords,
+        trigger:
+          fire.wrongCellCount >= fire.wrongCellThreshold
+            ? "wrong_answer"
+            : "idle",
+        words_filled: fire.wordsFilled,
+        wrong_cell_count: fire.wrongCellCount,
       });
     }, stuckHintDelayMs);
 
@@ -1629,19 +1662,12 @@ function App() {
   }, [
     cellValues,
     hasStarted,
-    hintCount,
     isCompleted,
     launchConfig.stuckHintIdleMs,
     launchConfig.stuckHintWrongIdleMs,
     launchConfig.stuckHintWrongCellThreshold,
-    mission.attemptsUsed,
-    progressPercent,
-    puzzle.entries.length,
-    puzzleTelemetryParams,
-    remainingHintCredits,
     route,
     selectedEntryId,
-    viewModel.completedEntries.length,
     wrongCellCount,
   ]);
 
