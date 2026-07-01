@@ -1254,6 +1254,56 @@ button:disabled {
   margin: 0;
 }
 
+/* 완료 달력 히트맵 — 열=주, 행=요일(일→토). 색은 테마 토큰을 써서 다크 모드에서도
+   대비를 유지한다. */
+.streakHeatmap {
+  margin: 0 20px 18px;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--cw-surface-soft);
+}
+
+.streakHeatmapTitle {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 20px;
+  color: var(--cw-text);
+}
+
+.streakHeatmapGrid {
+  display: flex;
+  gap: 4px;
+  justify-content: space-between;
+}
+
+.streakHeatmapWeek {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.streakHeatmapCell {
+  aspect-ratio: 1;
+  border-radius: 3px;
+  background: var(--cw-track);
+}
+
+.streakHeatmapCellDone {
+  background: var(--cw-brand);
+}
+
+.streakHeatmapCellToday {
+  outline: 2px solid var(--cw-brand-strong);
+  outline-offset: 1px;
+}
+
+.streakHeatmapCellFuture {
+  background: transparent;
+}
+
 .personalStat {
   display: flex;
   min-width: 0;

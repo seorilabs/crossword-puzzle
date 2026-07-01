@@ -21,6 +21,7 @@ import {
   buildReviewEntries,
   buildShareGrid,
   buildStartLabels,
+  buildStreakCalendarWeeks,
   completeMission,
   computeElapsedMs,
   computeLeaderboardScore,
@@ -89,11 +90,13 @@ import {
 } from "../packages/crossword-core/src";
 import { useStuckHintPrompt } from "./useStuckHintPrompt";
 import { PersonalStatsCard } from "./components/PersonalStatsCard";
+import { StreakHeatmap } from "./components/StreakHeatmap";
 import { PuzzleBoard } from "./components/PuzzleBoard";
 import { formatElapsedTime, formatLiveTimer, getElapsedSeconds } from "./timer";
 import {
   computeConsecutiveStreakDays,
   createLocalMissionRepository,
+  getRecentCompletionDates,
   invalidateStreakCache,
 } from "./adapters/localMissionRepository";
 import {
@@ -862,7 +865,16 @@ function App() {
     }
     if (route === "home") {
       // Recalculate streak whenever the home screen is shown so that a date
-      // change at midnight is reflected without requiring an app restart.
+      // change at midnight is reflected without requiring an app restart. The
+      // same-day module cache keeps repeat home visits cheap.
+      setConsecutiveStreak(computeConsecutiveStreakDays());
+    }
+    if (route === "history") {
+      // 기록 화면은 히트맵(getRecentCompletionDates)이 매 렌더 localStorage를 새로
+      // 스캔한다. 스트릭 숫자도 같은 최신 완료일 집합을 근거로 삼도록, 같은 날
+      // 즉시 반환하는 모듈 캐시를 무효화한 뒤 재계산해 숫자와 히트맵이 어긋나지
+      // 않게 한다(scanCompletedDates 공유).
+      invalidateStreakCache();
       setConsecutiveStreak(computeConsecutiveStreakDays());
     }
   }, [route]);
@@ -6306,6 +6318,15 @@ function HistoryScreen({
     return computePersonalStats(records, bestTimeCount);
   }, [archiveRecords, dateCardStates]);
 
+  // 최근 12주 완료 여부 캘린더 히트맵. 완료일 집합은 스트릭 숫자와 동일한 스캔
+  // (getRecentCompletionDates)에서 얻는다. 기록 화면은 렌더가 잦지 않아 매 렌더
+  // 계산해도 부담이 없고, 이렇게 하면 완료 직후에도 항상 최신 완료일을 반영한다.
+  const streakWeeks = buildStreakCalendarWeeks(
+    getRecentCompletionDates(90),
+    getTodayDateKey(),
+    12,
+  );
+
   function openArchiveRecord(record: PuzzleArchiveRecord) {
     const state = dateCardStates[record.puzzleId];
     const isCompleted =
@@ -6331,6 +6352,8 @@ function HistoryScreen({
         stats={personalStats}
         consecutiveStreak={consecutiveStreak}
       />
+
+      <StreakHeatmap weeks={streakWeeks} />
 
       <DateCarousel
         completionStatsByPuzzleId={completionStatsByPuzzleId}
