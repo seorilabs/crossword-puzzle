@@ -24,7 +24,7 @@ const appDelegatePath =
 const mobilePodfilePath = "apps/mobile/ios/Podfile";
 const mobilePackagePath = "apps/mobile/package.json";
 const gitignorePath = ".gitignore";
-const ciWorkflowPath = ".github/workflows/ci.yml";
+const staticChecksWorkflowPath = ".github/workflows/static-checks.yml";
 const deployAllWorkflowPath = ".github/workflows/deploy-all.yml";
 const deployGooglePlayWorkflowPath = ".github/workflows/deploy-google-play.yml";
 const deployAppStoreWorkflowPath = ".github/workflows/deploy-app-store.yml";
@@ -247,7 +247,7 @@ const appDelegate = read(appDelegatePath);
 const mobilePodfile = read(mobilePodfilePath);
 const mobilePackage = read(mobilePackagePath);
 const gitignore = read(gitignorePath);
-const ciWorkflow = read(ciWorkflowPath);
+const staticChecksWorkflow = read(staticChecksWorkflowPath);
 const deployAllWorkflow = read(deployAllWorkflowPath);
 const deployGooglePlayWorkflow = read(deployGooglePlayWorkflowPath);
 const deployAppStoreWorkflow = read(deployAppStoreWorkflowPath);
@@ -517,9 +517,17 @@ assertIncludes(
   "apps/mobile/ios/CrosswordPuzzleMobile/GoogleService-Info.plist",
   gitignorePath,
 );
-assertIncludes(ciWorkflow, "npm run check:release-parity", ciWorkflowPath);
-assertIncludes(ciWorkflow, "npm run build", ciWorkflowPath);
-assertIncludes(ciWorkflow, "npm run check:mobile", ciWorkflowPath);
+assertIncludes(
+  staticChecksWorkflow,
+  "npm run check:release-parity",
+  staticChecksWorkflowPath,
+);
+assertIncludes(staticChecksWorkflow, "npm run build", staticChecksWorkflowPath);
+assertIncludes(
+  staticChecksWorkflow,
+  "npm run check:mobile",
+  staticChecksWorkflowPath,
+);
 assertIncludes(
   deployGooglePlayWorkflow,
   "node scripts/restore-mobile-firebase-config.mjs --android --require",
