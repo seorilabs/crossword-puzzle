@@ -1,0 +1,37 @@
+# main 정적 게이트: org 표준 재사용 워크플로우 caller.
+# 로직은 seorilabs/.github의 rn-static-checks.yml에 있고, 여기서는 명령만 주입한다.
+# 기존 ci.yml(web + mobile 두 잡)의 체크를 그대로 재현한다. 배포/무거운 빌드 없음.
+name: Static Checks
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: static-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    uses: seorilabs/.github/.github/workflows/rn-static-checks.yml@main
+    secrets: inherit
+    with:
+      runs_on: ${{ github.event.repository.private && 'seorilabs-rpi-arm64' || 'ubuntu-latest' }}
+      node_version: "24"
+      package_manager: npm
+      install_command: |
+        npm ci
+        npm ci --prefix apps/mobile
+      check_command: |
+        npm run lint
+        npm run validate:puzzles
+        npm run test:adapters
+        npm run test:core
+        npm run build
+        npm run check:release-parity
+        npm run check:mobile
