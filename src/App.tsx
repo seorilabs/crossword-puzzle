@@ -52,11 +52,9 @@ import {
   getNextStreakMilestoneHint,
   getStreakBadgeLabel,
   getStreakMilestoneProgress,
-  getWordCheckResult,
   applyTentativeUpdate,
   computeTentativeUpdate,
   resolveInitialActivePuzzleId,
-  selectPromotableTentativeKeys,
   shouldCelebrateOnboardingWordCompletion,
   shouldOfferStuckWordReveal,
   shouldQuickStartActivePuzzle,
@@ -109,10 +107,7 @@ import {
   getBestTimeMs,
   saveBestTimeMs,
 } from "./adapters/localProgressRepository";
-import {
-  loadAutocheckEnabled,
-  saveAutocheckEnabled,
-} from "./adapters/autocheckSettingRepository";
+import { loadAutocheckEnabled } from "./adapters/autocheckSettingRepository";
 import {
   loadHapticEnabled,
   loadSoundEnabled,
@@ -781,9 +776,6 @@ function App() {
   // "정답 보기"로 단어를 공개했는지. 노힌트/첫 도전 배지·최고 기록 판정에서
   // 제외하기 위한 플래그로, 진행상태(SavedProgress)에 보존한다.
   const [revealUsed, setRevealUsed] = useState(false);
-  // 연필(임시) 입력 모드 on/off. on이면 새로 입력한 글자를 "임시"로 표시(회색)해
-  // 확신 없는 추측을 구분한다. 정오/완료 판정은 글자 값만 보므로 영향이 없다.
-  const [pencilMode, setPencilMode] = useState(false);
   // 임시(연필)로 입력된 셀 키 집합. cellValues와 별도로 관리해, 완료 판정은
   // 값(cellValues)만 보고 임시 여부는 표시에만 쓰이게 한다. SavedProgress에
   // 보존되어 재진입 후에도 임시 표시가 유지된다.
@@ -799,14 +791,6 @@ function App() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [hapticEnabled, setHapticEnabled] = useState(true);
   // "이 단어 확인"으로 잠시 강조 중인 셀. 일정 시간 후 비워 원상 복구한다.
-  // 비강조 상태는 항상 동일한 빈 Set 참조(EMPTY_CELL_KEY_SET)를 써서 불필요한
-  // 참조 변경을 막는다.
-  const [checkedCellKeys, setCheckedCellKeys] =
-    useState<ReadonlySet<string>>(EMPTY_CELL_KEY_SET);
-  const checkHighlightTimerRef = useRef<number | null>(null);
-  // 연속 "이 단어 확인" 호출을 구분하는 세대 값. 이전 타이머가 살아남아 새 강조를
-  // 조기에 비우지 못하도록, 타이머 콜백은 자신의 세대가 최신일 때만 강조를 지운다.
-  const checkHighlightGenerationRef = useRef(0);
   const [now, setNow] = useState(() => new Date());
   const [hasSeenHowToPlay, setHasSeenHowToPlay] = useState(() => {
     try {
@@ -946,9 +930,7 @@ function App() {
       setEarnedHintCredits(session.savedProgress.earnedHintCredits);
       setHintCount(session.savedProgress.hintCount);
       setRevealUsed(session.savedProgress.revealUsed ?? false);
-      setTentativeCellKeys(
-        new Set(session.savedProgress.tentativeCells ?? []),
-      );
+      setTentativeCellKeys(new Set(session.savedProgress.tentativeCells ?? []));
       setSelectedDirection("across");
       setSelectedEntryId(getInitialEntryId(session.nextPuzzle));
       setSelectedCellKey(getInitialEntryStartCellKey(session.nextPuzzle));
@@ -1153,15 +1135,6 @@ function App() {
     tentativeCellKeys,
     puzzle.puzzleId,
   ]);
-
-  // "이 단어 확인" 강조 타이머 정리(언마운트 시).
-  useEffect(() => {
-    return () => {
-      if (checkHighlightTimerRef.current != null) {
-        window.clearTimeout(checkHighlightTimerRef.current);
-      }
-    };
-  }, []);
 
   // autocheck 저장값은 마운트 후에만 반영한다(첫 렌더 기본값 true와 분리).
   useEffect(() => {
@@ -1888,24 +1861,6 @@ function App() {
     setPause({ pausedMs: 0, pausedAt: null });
   }, [mission.lastStartedAt, mission.puzzleId]);
 
-  // 풀이 화면 "일시정지/계속" 토글. 정지 중에는 입력이 비활성화되고 타이머가 멈춘다.
-  function togglePause() {
-    if (mission.completedAt != null || mission.lastStartedAt == null) {
-      return;
-    }
-    setPause((prev) => {
-      if (prev.pausedAt == null) {
-        return { ...prev, pausedAt: new Date().toISOString() };
-      }
-      const delta = Date.now() - new Date(prev.pausedAt).getTime();
-      return {
-        pausedMs:
-          prev.pausedMs + (Number.isFinite(delta) ? Math.max(0, delta) : 0),
-        pausedAt: null,
-      };
-    });
-  }
-
   function selectCell(row: number, col: number) {
     // 일시정지 중에는 셀 선택을 막는다.
     if (isPaused) {
@@ -2076,7 +2031,7 @@ function App() {
 
     trackFirstAnswerInput(entry, nextLetters.length, source);
 
-    const markTentative = source === "manual" && pencilMode;
+    const markTentative = false;
     const tentativeChanges: CellLetterChange[] = [];
 
     cells.forEach((cell, index) => {
@@ -2138,7 +2093,7 @@ function App() {
 
     trackFirstAnswerInput(entry, nextLetters.length, source);
 
-    const markTentative = source === "manual" && pencilMode;
+    const markTentative = false;
     const tentativeChanges: CellLetterChange[] = [];
 
     nextLetters.forEach((letter, offset) => {
@@ -2563,52 +2518,9 @@ function App() {
     setTentativeCellKeys(new Set());
   }
 
-  // 일반 플레이 화면용: 사용자가 명시적으로 호출하는 "이 단어 확인". 선택 단어
-  // 셀에 정/오를 잠시 강조한 뒤 checkHighlightMs(원격 설정) 후 원상 복구한다. autocheck를
-  // 꺼둔 상태에서도 이 강조는 동작한다(PuzzleBoard 렌더가 checkedCellKeys를 함께 본다).
-  // 강조는 사용자 트리거 일회성(one-shot) 동작이라, 호출 시점의 최신 checkHighlightMs를
-  // 사용하고 진행 중인 강조를 원격 설정 변경으로 재스케줄하지는 않는다(다음 호출부터
-  // 새 지속시간 적용). 연속 호출 시에는 checkHighlightGenerationRef/타이머 취소로
-  // 직전 강조가 새 강조를 조기에 지우지 않도록 가드한다.
-  function checkSelectedWord() {
-    const selectedEntry = viewModel.selectedEntry;
-    if (selectedEntry == null) {
-      // 툴바 버튼은 disabled 가드로 막혀 있지만, 다른 호출 경로(단축키 등)에서도
-      // 무음 no-op이 되지 않도록 안내 토스트를 띄운다.
-      showHintToast("먼저 단서를 선택하세요.");
-      return;
-    }
-
-    const { cellKeys, filledCount, wrongCount } = getWordCheckResult(
-      selectedEntry,
-      cellValues,
-    );
-
-    const generation = checkHighlightGenerationRef.current + 1;
-    checkHighlightGenerationRef.current = generation;
-    setCheckedCellKeys(new Set(cellKeys));
-    if (checkHighlightTimerRef.current != null) {
-      window.clearTimeout(checkHighlightTimerRef.current);
-    }
-    checkHighlightTimerRef.current = window.setTimeout(() => {
-      // 더 최근 "이 단어 확인"이 시작됐다면(세대 불일치) 그 강조를 건드리지 않는다.
-      if (checkHighlightGenerationRef.current === generation) {
-        setCheckedCellKeys(EMPTY_CELL_KEY_SET);
-      }
-      checkHighlightTimerRef.current = null;
-    }, launchConfig.checkHighlightMs);
-
-    telemetry.click("check_word", {
-      puzzle_id: puzzle.puzzleId,
-      entry_id: selectedEntry.id,
-      filled_count: filledCount,
-      wrong_count: wrongCount,
-    });
-  }
-
-  // 일반 플레이 화면용: 사용자가 명시적으로 호출하는 "이 단어 정답 보기". 선택
-  // 단어를 정답으로 채우고 revealUsed를 세워, 노힌트/첫 도전 배지와 최고 기록
-  // 판정에서 제외한다(getCompletionAchievements).
+  // 막힘 안내(acceptStuckWordReveal)에서 호출하는 "이 단어 정답 보기". 선택 단어를
+  // 정답으로 채우고 revealUsed를 세워, 노힌트/첫 도전 배지와 최고 기록 판정에서
+  // 제외한다(getCompletionAchievements).
   function revealSelectedWord() {
     const selectedEntry = viewModel.selectedEntry;
     if (selectedEntry == null) {
@@ -2633,18 +2545,6 @@ function App() {
     });
   }
 
-  function toggleAutocheck() {
-    setAutocheckEnabled((prev) => {
-      const next = !prev;
-      saveAutocheckEnabled(next);
-      telemetry.click("autocheck_toggle", {
-        puzzle_id: puzzle.puzzleId,
-        enabled: next,
-      });
-      return next;
-    });
-  }
-
   function toggleSound() {
     setSoundEnabled((prev) => {
       const next = !prev;
@@ -2659,43 +2559,6 @@ function App() {
       saveHapticEnabled(next);
       return next;
     });
-  }
-
-  function togglePencilMode() {
-    setPencilMode((prev) => !prev);
-  }
-
-  // 선택한 단어의 임시(연필) 글자를 확정으로 승격한다(회색 표시 해제).
-  function promoteSelectedWord() {
-    const selectedEntry = viewModel.selectedEntry;
-    if (selectedEntry == null) {
-      showHintToast("먼저 단서를 선택하세요.");
-      return;
-    }
-
-    if (
-      getEntryAnswerValue(selectedEntry, cellValues) === selectedEntry.answer
-    ) {
-      showHintToast("이미 완성된 단어예요.");
-      return;
-    }
-
-    // 정답으로 잠긴(이미 확정 표시) 셀은 제외하고, 화면에 임시로 보이는 셀만
-    // 확정으로 승격한다.
-    const removes = selectPromotableTentativeKeys(
-      getEntryCells(selectedEntry).map((cell) =>
-        getCellKey(cell.row, cell.col),
-      ),
-      tentativeCellKeys,
-      (key) => isCellLocked(puzzle, cellValues, key),
-    );
-
-    if (removes.length === 0) {
-      showHintToast("이 단어에는 임시 글자가 없어요.");
-      return;
-    }
-
-    updateTentativeCells([], removes);
   }
 
   async function clearProgress(preserveEarnedHintCredits?: number) {
@@ -2811,7 +2674,9 @@ function App() {
       telemetry.click("home_quick_start", {
         ...puzzleTelemetryParams,
         source:
-          puzzle.puzzleId === onboardingPuzzle.puzzleId ? "onboarding" : "today",
+          puzzle.puzzleId === onboardingPuzzle.puzzleId
+            ? "onboarding"
+            : "today",
       });
       startOrResumeMission();
       return;
@@ -2930,8 +2795,7 @@ function App() {
     autocheckEnabled,
     selectAnswerInputMode,
     cellValues,
-    checkedCellKeys,
-    checkSelectedWord,
+    checkedCellKeys: EMPTY_CELL_KEY_SET,
     clearAnswerCell,
     clearEntryAnswer,
     clueEntries: viewModel.clueEntries,
@@ -2940,18 +2804,14 @@ function App() {
     hintCount,
     hapticEnabled,
     mission,
-    pencilMode,
-    promoteSelectedWord,
     puzzle,
     remainingAttempts,
     requestRewardedHint,
     revealLetter,
-    revealSelectedWord,
     revealUsed,
     soundEnabled,
     tentativeCellKeys,
     toggleHaptic,
-    togglePencilMode,
     toggleSound,
     selectedAnswer: viewModel.selectedAnswer,
     selectedCellKey,
@@ -2961,7 +2821,6 @@ function App() {
     selectCell,
     selectEntry,
     startLabels: viewModel.startLabels,
-    toggleAutocheck,
     useHint: useHintOrRequestReward,
     viewModel,
   };
@@ -3018,7 +2877,6 @@ function App() {
           navigate={navigate}
           pause={pause}
           startOrResumeMission={startOrResumeMission}
-          togglePause={togglePause}
         />
       ) : route === "result" ? (
         <ResultScreen
@@ -3121,10 +2979,8 @@ function App() {
               hasSelectedEntry: viewModel.selectedEntry != null,
               isSelectedEntryComplete:
                 viewModel.selectedEntry != null &&
-                getEntryAnswerValue(
-                  viewModel.selectedEntry,
-                  cellValues,
-                ) === viewModel.selectedEntry.answer,
+                getEntryAnswerValue(viewModel.selectedEntry, cellValues) ===
+                  viewModel.selectedEntry.answer,
             }) ? (
               <button
                 type="button"
@@ -3488,9 +3344,7 @@ function HomeScreen({
         onClick={startTodayPuzzle}
       >
         <span className="homeQuickStartLabel">{quickStartLabel}</span>
-        <span className="homeQuickStartHint">
-          한 번 눌러 바로 풀기 시작
-        </span>
+        <span className="homeQuickStartHint">한 번 눌러 바로 풀기 시작</span>
       </button>
 
       <DateCarousel
@@ -4519,7 +4373,6 @@ type TodayScreenProps = DateSelectionProps & {
   autocheckEnabled: boolean;
   cellValues: Record<string, string>;
   checkedCellKeys: ReadonlySet<string>;
-  checkSelectedWord: () => void;
   clearAnswerCell: (entry: PuzzleEntry, cellKey?: string) => void;
   clearEntryAnswer: (entry: PuzzleEntry) => void;
   consecutiveStreak: number;
@@ -4538,18 +4391,13 @@ type TodayScreenProps = DateSelectionProps & {
   mission: DailyMissionState;
   navigate: (route: AppRoute) => void;
   pause: { pausedMs: number; pausedAt: string | null };
-  togglePause: () => void;
-  pencilMode: boolean;
-  promoteSelectedWord: () => void;
   puzzle: Puzzle;
   remainingAttempts: number;
   revealLetter: () => void;
-  revealSelectedWord: () => void;
   revealUsed: boolean;
   soundEnabled: boolean;
   tentativeCellKeys: ReadonlySet<string>;
   toggleHaptic: () => void;
-  togglePencilMode: () => void;
   toggleSound: () => void;
   selectedAnswer: string;
   selectedCellKey: string;
@@ -4560,7 +4408,6 @@ type TodayScreenProps = DateSelectionProps & {
   selectCell: (row: number, col: number) => void;
   selectEntry: (entry: PuzzleEntry, cellKey?: string) => void;
   startOrResumeMission: () => void;
-  toggleAutocheck: () => void;
   useHint: () => void;
   viewModel: PuzzleViewModel;
 };
@@ -4573,7 +4420,6 @@ function TodayScreen({
   autocheckEnabled,
   cellValues,
   checkedCellKeys,
-  checkSelectedWord,
   clearAnswerCell,
   clearEntryAnswer,
   completedEntries,
@@ -4595,18 +4441,13 @@ function TodayScreen({
   mission,
   navigate,
   pause,
-  togglePause,
-  pencilMode,
-  promoteSelectedWord,
   puzzle,
   puzzleSummaries,
   remainingAttempts,
-  revealSelectedWord,
   revealUsed,
   soundEnabled,
   tentativeCellKeys,
   toggleHaptic,
-  togglePencilMode,
   toggleSound,
   selectedCellKey,
   selectedPuzzleId,
@@ -4616,11 +4457,11 @@ function TodayScreen({
   selectCell,
   selectEntry,
   startOrResumeMission,
-  toggleAutocheck,
   useHint,
   viewModel,
 }: TodayScreenProps) {
   const [isClueListOpen, setIsClueListOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [answerInputResetKey, setAnswerInputResetKey] = useState(0);
   const boardInputRef = useRef<HTMLInputElement>(null);
   const boxInputRef = useRef<HTMLInputElement>(null);
@@ -5449,34 +5290,21 @@ function TodayScreen({
                 <button
                   className="iconButton"
                   type="button"
-                  aria-label={
-                    answerInputMode === "box"
-                      ? "입력 방식: 입력창 (탭하여 칸별로 전환)"
-                      : "입력 방식: 칸별 (탭하여 입력창으로 전환)"
-                  }
-                  title={
-                    answerInputMode === "box"
-                      ? "입력창 입력 · 탭하여 칸별 전환"
-                      : "칸별 입력 · 탭하여 입력창 전환"
-                  }
-                  aria-pressed={answerInputMode === "cell"}
-                  onClick={() =>
-                    selectAnswerInputMode(
-                      answerInputMode === "box" ? "cell" : "box",
-                    )
-                  }
-                >
-                  <InputModeIcon mode={answerInputMode} />
-                </button>
-                <button
-                  className="iconButton"
-                  type="button"
                   aria-label="지우기"
                   title="지우기"
                   disabled={selectedEntry == null}
                   onClick={clearSelectedAnswer}
                 >
                   <EraserIcon />
+                </button>
+                <button
+                  className="iconButton"
+                  type="button"
+                  aria-label="설정"
+                  title="설정 (입력 방식 · 사운드 · 햅틱)"
+                  onClick={() => setIsSettingsOpen(true)}
+                >
+                  <SettingsIcon />
                 </button>
               </>
             )}
@@ -5555,113 +5383,6 @@ function TodayScreen({
         </div>
       ) : null}
 
-      {!isReviewMode ? (
-        <div className="solveAssistBar" role="group" aria-label="정답 확인 도구">
-          {mission.lastStartedAt != null && !isCompleted ? (
-            <button
-              className={["assistButton", isPaused ? "assistToggleOn" : ""]
-                .filter(Boolean)
-                .join(" ")}
-              type="button"
-              aria-pressed={isPaused}
-              onClick={togglePause}
-            >
-              {isPaused ? "계속하기" : "일시정지"}
-            </button>
-          ) : null}
-          <button
-            className="assistButton"
-            type="button"
-            disabled={selectedEntry == null || isPaused}
-            onClick={checkSelectedWord}
-          >
-            이 단어 확인
-          </button>
-          <button
-            className="assistButton"
-            type="button"
-            disabled={selectedEntry == null}
-            onClick={() => {
-              // 미확정 입력 오버레이(inputValue 기반)를 먼저 비워, 정답으로 채운
-              // 셀이 pending 값 없이 즉시 잠금·정답 표시되도록 한다.
-              setInputValue("");
-              revealSelectedWord();
-            }}
-          >
-            정답 보기
-          </button>
-          <button
-            className={[
-              "assistButton",
-              "assistToggle",
-              autocheckEnabled ? "assistToggleOn" : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            type="button"
-            aria-pressed={autocheckEnabled}
-            title="입력한 글자의 오답을 빨갛게 표시할지 설정해요"
-            onClick={toggleAutocheck}
-          >
-            오답 표시 {autocheckEnabled ? "켜짐" : "꺼짐"}
-          </button>
-          <button
-            className={[
-              "assistButton",
-              "assistToggle",
-              pencilMode ? "assistToggleOn" : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            type="button"
-            aria-pressed={pencilMode}
-            title="연필 모드를 켜면 확신 없는 글자를 임시(회색)로 입력해요"
-            onClick={togglePencilMode}
-          >
-            연필 {pencilMode ? "켜짐" : "꺼짐"}
-          </button>
-          <button
-            className="assistButton"
-            type="button"
-            disabled={selectedEntry == null}
-            title="선택한 단어의 임시(회색) 글자를 확정으로 바꿔요"
-            onClick={promoteSelectedWord}
-          >
-            임시 확정
-          </button>
-          <button
-            className={[
-              "assistButton",
-              "assistToggle",
-              soundEnabled ? "assistToggleOn" : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            type="button"
-            aria-pressed={soundEnabled}
-            title="단어 완성·퍼즐 완료·오답 시 효과음을 켜고 꺼요"
-            onClick={toggleSound}
-          >
-            사운드 {soundEnabled ? "켜짐" : "꺼짐"}
-          </button>
-          <button
-            className={[
-              "assistButton",
-              "assistToggle",
-              hapticEnabled ? "assistToggleOn" : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            type="button"
-            aria-pressed={hapticEnabled}
-            title="단어 완성·퍼즐 완료 시 진동(햅틱)을 켜고 꺼요"
-            onClick={toggleHaptic}
-          >
-            햅틱 {hapticEnabled ? "켜짐" : "꺼짐"}
-          </button>
-        </div>
-      ) : null}
-
       {isReviewMode ? (
         <div
           className="reviewBanner"
@@ -5714,22 +5435,6 @@ function TodayScreen({
           puzzle={puzzle}
         />
 
-        {isPaused ? (
-          <div className="pauseOverlay" role="status" aria-live="polite">
-            <div className="pauseOverlayCard">
-              <strong>일시정지됨</strong>
-              <span>타이머가 멈췄어요. 계속하려면 아래 버튼을 눌러요.</span>
-              <button
-                className="primaryButton"
-                type="button"
-                onClick={togglePause}
-              >
-                계속하기
-              </button>
-            </div>
-          </div>
-        ) : null}
-
         {selectedEntry != null ? (
           <div className="selectedClueList" aria-label="선택한 문제">
             {selectedCellEntries.map((entry) => (
@@ -5766,6 +5471,18 @@ function TodayScreen({
           puzzle={puzzle}
           selectedEntry={selectedEntry}
           startLabels={startLabels}
+        />
+      ) : null}
+
+      {isSettingsOpen ? (
+        <SettingsSheet
+          answerInputMode={answerInputMode}
+          hapticEnabled={hapticEnabled}
+          onClose={() => setIsSettingsOpen(false)}
+          selectAnswerInputMode={selectAnswerInputMode}
+          soundEnabled={soundEnabled}
+          toggleHaptic={toggleHaptic}
+          toggleSound={toggleSound}
         />
       ) : null}
 
@@ -6004,7 +5721,7 @@ function ListIcon() {
   );
 }
 
-function InputModeIcon({ mode }: { mode: AnswerInputMode }) {
+function SettingsIcon() {
   return (
     <svg
       aria-hidden="true"
@@ -6013,61 +5730,22 @@ function InputModeIcon({ mode }: { mode: AnswerInputMode }) {
       width="18"
       height="18"
     >
-      {mode === "box" ? (
-        // 입력창: 단일 텍스트 필드 + 캐럿
-        <>
-          <rect
-            x="3"
-            y="8"
-            width="18"
-            height="8"
-            rx="2"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          />
-          <path
-            d="M7 12h6"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-          />
-        </>
-      ) : (
-        // 칸별: 셀 그리드
-        <>
-          <rect
-            x="3"
-            y="9"
-            width="6"
-            height="6"
-            rx="1"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          />
-          <rect
-            x="9"
-            y="9"
-            width="6"
-            height="6"
-            rx="1"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          />
-          <rect
-            x="15"
-            y="9"
-            width="6"
-            height="6"
-            rx="1"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          />
-        </>
-      )}
+      <circle
+        cx="12"
+        cy="12"
+        r="3"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
+      <path
+        d="M19.4 13a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
     </svg>
   );
 }
@@ -6155,7 +5833,11 @@ function ResultScreen({
       ? formatPuzzleAliasLabel(selectedPuzzleSummary)
       : formatMissionDateLabel(mission.date, loadState);
   const elapsedLabel = isComplete
-    ? formatElapsedTime(mission.lastStartedAt, mission.completedAt, pause.pausedMs)
+    ? formatElapsedTime(
+        mission.lastStartedAt,
+        mission.completedAt,
+        pause.pausedMs,
+      )
     : null;
   const streakAchievementLabel = isComplete
     ? getStreakBadgeLabel(consecutiveStreak)
@@ -6986,6 +6668,136 @@ function AllCluesOverlay({
               })}
           </section>
         ))}
+      </div>
+    </div>
+  );
+}
+
+type SettingsSheetProps = {
+  answerInputMode: AnswerInputMode;
+  hapticEnabled: boolean;
+  onClose: () => void;
+  selectAnswerInputMode: (mode: AnswerInputMode) => void;
+  soundEnabled: boolean;
+  toggleHaptic: () => void;
+  toggleSound: () => void;
+};
+
+function SettingsSheet({
+  answerInputMode,
+  hapticEnabled,
+  onClose,
+  selectAnswerInputMode,
+  soundEnabled,
+  toggleHaptic,
+  toggleSound,
+}: SettingsSheetProps) {
+  return (
+    <div
+      className="clueOverlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label="설정"
+    >
+      <div className="clueOverlayHeader">
+        <div>
+          <Paragraph typography="t7" color="#6b7684">
+            설정
+          </Paragraph>
+          <Paragraph typography="t4" fontWeight="bold">
+            입력 방식 · 사운드 · 햅틱
+          </Paragraph>
+        </div>
+        <button className="ghostButton" type="button" onClick={onClose}>
+          닫기
+        </button>
+      </div>
+
+      <div className="settingsSheetBody">
+        <div className="settingsRow">
+          <div className="settingsRowText">
+            <strong>입력 방식</strong>
+            <span>
+              {answerInputMode === "box"
+                ? "입력창에 한 번에 입력해요"
+                : "칸을 눌러 한 글자씩 입력해요"}
+            </span>
+          </div>
+          <div
+            className="settingsSegmented"
+            role="group"
+            aria-label="입력 방식"
+          >
+            <button
+              type="button"
+              className={[
+                "assistButton",
+                answerInputMode === "box" ? "assistToggleOn" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              aria-pressed={answerInputMode === "box"}
+              onClick={() => selectAnswerInputMode("box")}
+            >
+              입력창
+            </button>
+            <button
+              type="button"
+              className={[
+                "assistButton",
+                answerInputMode === "cell" ? "assistToggleOn" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              aria-pressed={answerInputMode === "cell"}
+              onClick={() => selectAnswerInputMode("cell")}
+            >
+              칸별
+            </button>
+          </div>
+        </div>
+
+        <div className="settingsRow">
+          <div className="settingsRowText">
+            <strong>사운드</strong>
+            <span>단어 완성·퍼즐 완료·오답 시 효과음</span>
+          </div>
+          <button
+            type="button"
+            className={[
+              "assistButton",
+              "assistToggle",
+              soundEnabled ? "assistToggleOn" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            aria-pressed={soundEnabled}
+            onClick={toggleSound}
+          >
+            {soundEnabled ? "켜짐" : "꺼짐"}
+          </button>
+        </div>
+
+        <div className="settingsRow">
+          <div className="settingsRowText">
+            <strong>햅틱</strong>
+            <span>단어 완성·퍼즐 완료 시 진동</span>
+          </div>
+          <button
+            type="button"
+            className={[
+              "assistButton",
+              "assistToggle",
+              hapticEnabled ? "assistToggleOn" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            aria-pressed={hapticEnabled}
+            onClick={toggleHaptic}
+          >
+            {hapticEnabled ? "켜짐" : "꺼짐"}
+          </button>
+        </div>
       </div>
     </div>
   );
