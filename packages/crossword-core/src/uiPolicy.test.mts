@@ -15,6 +15,7 @@ import {
   isWrongCellVisible,
   PUZZLE_PROGRESS_MILESTONES,
   resolveInitialActivePuzzleId,
+  resolveStarterCell,
   shouldQuickStartActivePuzzle,
   shouldServeOnboardingPuzzle,
   shouldShowFirstInputGuide,
@@ -23,7 +24,7 @@ import {
   shouldOfferStuckWordReveal,
   shouldCelebrateOnboardingWordCompletion,
 } from "./uiPolicy.ts";
-import type { PuzzleManifestItem } from "./types.ts";
+import type { Puzzle, PuzzleEntry, PuzzleManifestItem } from "./types.ts";
 
 function createSummary(
   puzzleId: string,
@@ -85,6 +86,110 @@ describe("shouldShowFirstInputGuide", () => {
       shouldShowFirstInputGuide({ ...baseInput, route: "home" }),
       false,
     );
+  });
+});
+
+describe("resolveStarterCell", () => {
+  function createEntry(overrides: Partial<PuzzleEntry>): PuzzleEntry {
+    return {
+      id: "entry",
+      answer: "가나",
+      clue: "단서",
+      direction: "across",
+      generatedBy: "placed",
+      row: 0,
+      col: 0,
+      ...overrides,
+    };
+  }
+
+  function createPuzzle(entries: PuzzleEntry[]): Puzzle {
+    return {
+      date: "2026-06-12",
+      difficulty: "easy",
+      entries,
+      grid: [],
+      gridSize: 0,
+      metrics: {
+        autoRunCount: 0,
+        bboxDensity: 0,
+        crossCells: 0,
+        crossRatio: 0,
+        filledCells: 0,
+        multiCrossEntries: 0,
+        placedWordCount: entries.length,
+        wordCount: entries.length,
+      },
+      puzzleId: "test",
+    };
+  }
+
+  // a1(가로, len2, 0:0), a2(가로, len2, 0:3), d1(세로, len3, 0:0)
+  const a1 = createEntry({ id: "a1", answer: "가나", direction: "across", row: 0, col: 0 });
+  const a2 = createEntry({ id: "a2", answer: "다라", direction: "across", row: 0, col: 3 });
+  const d1 = createEntry({ id: "d1", answer: "가마바", direction: "down", row: 0, col: 0 });
+
+  it("빈 그리드에서는 가장 짧은 단어의 시작 칸을 시작 칸으로 고른다", () => {
+    const starter = resolveStarterCell({
+      cellValues: {},
+      puzzle: createPuzzle([d1, a1, a2]),
+    });
+
+    assert.deepEqual(starter, {
+      cellKey: "0:0",
+      col: 0,
+      entryId: "a1",
+      row: 0,
+    });
+  });
+
+  it("길이가 같으면 읽기 순서(위→아래, 왼→오른쪽)가 앞선 단어를 고른다", () => {
+    // a1과 a2는 둘 다 길이 2. 같은 행이면 열이 작은 a1(col 0)이 우선한다.
+    const starter = resolveStarterCell({
+      cellValues: {},
+      puzzle: createPuzzle([a2, a1]),
+    });
+
+    assert.equal(starter?.entryId, "a1");
+    assert.equal(starter?.cellKey, "0:0");
+  });
+
+  it("단어의 시작 칸이 채워져 있으면 그 단어의 첫 '빈' 칸을 가리킨다", () => {
+    // a1의 시작 칸(0:0)이 이미 채워졌으므로 다음 빈 칸 0:1을 가리켜야 한다.
+    const starter = resolveStarterCell({
+      cellValues: { "0:0": "가" },
+      puzzle: createPuzzle([a1, a2]),
+    });
+
+    assert.equal(starter?.entryId, "a1");
+    assert.equal(starter?.cellKey, "0:1");
+  });
+
+  it("빈 칸이 하나도 없는 단어는 건너뛰고 빈 칸이 남은 단어를 고른다", () => {
+    // a1은 모두 채워짐 → 건너뛰고, 빈 칸이 남은 최단 단어 a2를 고른다.
+    const starter = resolveStarterCell({
+      cellValues: { "0:0": "가", "0:1": "나" },
+      puzzle: createPuzzle([a1, a2, d1]),
+    });
+
+    assert.equal(starter?.entryId, "a2");
+    assert.equal(starter?.cellKey, "0:3");
+  });
+
+  it("모든 칸이 채워졌으면 undefined를 돌려준다", () => {
+    const starter = resolveStarterCell({
+      cellValues: {
+        "0:0": "가",
+        "0:1": "나",
+        "0:3": "다",
+        "0:4": "라",
+        "1:0": "마",
+        "2:0": "바",
+      },
+      puzzle: createPuzzle([a1, a2, d1]),
+    });
+
+    assert.equal(starter, undefined);
   });
 });
 

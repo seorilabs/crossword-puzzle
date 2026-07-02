@@ -1,4 +1,5 @@
-import type { Direction, Puzzle, PuzzleManifestItem } from "./types";
+import { getCellKey, getEntryCells } from "./puzzle.ts";
+import type { Direction, Puzzle, PuzzleEntry, PuzzleManifestItem } from "./types";
 
 export const DAILY_ATTEMPT_LIMIT = 3;
 export const DEFAULT_HINT_CREDITS = 3;
@@ -615,6 +616,68 @@ export function shouldShowFirstInputGuide(input: {
     !input.hasSeenFirstInputGuide &&
     input.isBoardEmpty
   );
+}
+
+// 첫 입력 유도용 "시작 칸"을 정한다. 첫 입력 가이드가 실제로 비어 있는 첫 칸을
+// 하이라이트·포커스해 입력 위치를 시각적으로 드러내기 위해(#183), 아직 빈 칸이
+// 남은 단어 중 가장 짧은 단어(첫 성공을 쉽게)를 고르고, 길이가 같으면 읽기
+// 순서(위→아래, 그다음 왼→오른쪽)로 시작 칸이 앞선 단어를 고른다. 선택된 단어에서
+// 읽기 순서로 첫 번째 빈 칸의 좌표·키를 돌려준다. 채울 빈 칸이 하나도 없으면
+// undefined(모든 칸이 채워진 상태).
+export function resolveStarterCell(input: {
+  puzzle: Puzzle;
+  cellValues: Record<string, string>;
+}): { entryId: string; cellKey: string; row: number; col: number } | undefined {
+  const isEmptyCell = (cellKey: string) => {
+    const value = input.cellValues[cellKey];
+
+    return value == null || value === "";
+  };
+
+  let best:
+    | {
+        entry: PuzzleEntry;
+        cellKey: string;
+        row: number;
+        col: number;
+      }
+    | undefined;
+
+  for (const entry of input.puzzle.entries) {
+    const firstEmpty = getEntryCells(entry)
+      .map((cell) => ({ ...cell, cellKey: getCellKey(cell.row, cell.col) }))
+      .find((cell) => isEmptyCell(cell.cellKey));
+
+    if (firstEmpty == null) {
+      continue;
+    }
+
+    if (
+      best == null ||
+      entry.answer.length < best.entry.answer.length ||
+      (entry.answer.length === best.entry.answer.length &&
+        (entry.row < best.entry.row ||
+          (entry.row === best.entry.row && entry.col < best.entry.col)))
+    ) {
+      best = {
+        cellKey: firstEmpty.cellKey,
+        col: firstEmpty.col,
+        entry,
+        row: firstEmpty.row,
+      };
+    }
+  }
+
+  if (best == null) {
+    return undefined;
+  }
+
+  return {
+    cellKey: best.cellKey,
+    col: best.col,
+    entryId: best.entry.id,
+    row: best.row,
+  };
 }
 
 // 막힘(stuck) 힌트 CTA를 띄우기까지의 정체 지연(ms)을 정한다. 확정 오답 셀이
