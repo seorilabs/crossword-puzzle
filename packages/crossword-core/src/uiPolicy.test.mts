@@ -16,6 +16,7 @@ import {
   PUZZLE_PROGRESS_MILESTONES,
   resolveInitialActivePuzzleId,
   resolveStarterCell,
+  shouldAutoStartFirstRun,
   shouldQuickStartActivePuzzle,
   shouldServeOnboardingPuzzle,
   shouldShowFirstInputGuide,
@@ -475,6 +476,59 @@ describe("shouldQuickStartActivePuzzle", () => {
         todayPuzzleId: undefined,
       }),
       true,
+    );
+  });
+});
+
+describe("shouldAutoStartFirstRun (#205)", () => {
+  // 도전 이력이 전혀 없는 신규 + 게이트 ON + 온보딩 활성 배정의 기준 입력.
+  const freshFirstRun = {
+    enabled: true,
+    hasCompletedAnyDaily: false,
+    hasDailyProgress: false,
+    onboardingStarted: false,
+    activePuzzleIsOnboarding: true,
+  };
+
+  it("도전 이력이 전혀 없는 신규 첫 실행이면 자동 진입한다", () => {
+    assert.equal(shouldAutoStartFirstRun(freshFirstRun), true);
+  });
+
+  it("원격 설정 게이트가 꺼져 있으면 신규여도 자동 진입하지 않는다", () => {
+    assert.equal(
+      shouldAutoStartFirstRun({ ...freshFirstRun, enabled: false }),
+      false,
+    );
+  });
+
+  it("일일 퍼즐 완료 이력이 있는 기존 사용자는 홈으로 진입한다", () => {
+    assert.equal(
+      shouldAutoStartFirstRun({ ...freshFirstRun, hasCompletedAnyDaily: true }),
+      false,
+    );
+  });
+
+  it("일일 퍼즐 진행(시도) 이력이 있으면 자동 진입하지 않는다", () => {
+    assert.equal(
+      shouldAutoStartFirstRun({ ...freshFirstRun, hasDailyProgress: true }),
+      false,
+    );
+  });
+
+  it("온보딩 퍼즐 시도 이력이 있으면 자동 진입하지 않는다", () => {
+    assert.equal(
+      shouldAutoStartFirstRun({ ...freshFirstRun, onboardingStarted: true }),
+      false,
+    );
+  });
+
+  it("온보딩 퍼즐이 첫 활성 퍼즐로 배정되지 않았으면(세션 로드 실패 포함) 자동 진입하지 않는다", () => {
+    assert.equal(
+      shouldAutoStartFirstRun({
+        ...freshFirstRun,
+        activePuzzleIsOnboarding: false,
+      }),
+      false,
     );
   });
 });

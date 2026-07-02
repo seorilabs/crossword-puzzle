@@ -342,6 +342,33 @@ export function shouldQuickStartActivePuzzle({
   );
 }
 
+// 신규 사용자의 첫 실행에서 홈을 건너뛰고 온보딩(easy) 퍼즐 풀이 화면으로 자동
+// 진입할지 판정한다(#205). 신규 37%가 홈에서 퍼즐 미진입 이탈하는 문제 대응으로,
+// 도전 이력이 전혀 없고(일일 완료·진행 없음, 온보딩 시도 이력 없음) 온보딩 퍼즐이
+// 첫 활성 퍼즐로 배정된 경우에만 true다. 원격 설정 게이트(enabled=first_run_auto_
+// start_enabled)가 꺼져 있으면 항상 false로, 회귀 시 즉시 끌 수 있다.
+export function shouldAutoStartFirstRun({
+  enabled,
+  hasCompletedAnyDaily,
+  hasDailyProgress,
+  onboardingStarted,
+  activePuzzleIsOnboarding,
+}: {
+  enabled: boolean;
+  hasCompletedAnyDaily: boolean;
+  hasDailyProgress: boolean;
+  onboardingStarted: boolean;
+  activePuzzleIsOnboarding: boolean;
+}): boolean {
+  return (
+    enabled &&
+    !hasCompletedAnyDaily &&
+    !hasDailyProgress &&
+    !onboardingStarted &&
+    activePuzzleIsOnboarding
+  );
+}
+
 // 부분 완료(중간 성취) 구간. 완료가 all-or-nothing이라 "거의 다 풀었지만 못 끝낸"
 // 사용자가 보상 없이 이탈하는 문제를 줄이기 위해, 진행률이 마일스톤을 새로 넘을 때
 // 중간 보상 피드백과 진행 마일스톤 이벤트를 노출한다.
