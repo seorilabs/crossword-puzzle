@@ -176,6 +176,77 @@ describe("useStuckHintPrompt", () => {
     expect(result.current.isVisible).toBe(true);
   });
 
+  it("입력 없이 선택만 바뀌면(resetKeys 불변) 정체 타이머가 리셋되지 않아 idle에 노출된다", () => {
+    // #184: 막힌 사용자가 정답 입력 없이 이 칸 저 칸(단어 선택)만 바꾸는 상황.
+    // 선택 이동은 resetKeys(실제 입력)에 포함되지 않으므로, 재렌더가 여러 번 나도
+    // 정체 타이머는 최초 스케줄대로 진행해 idleMs에 발화해야 한다.
+    const onShow = vi.fn();
+    const stableInput = { cellValues: {} };
+    const props = {
+      active: true,
+      resetKeys: [stableInput] as readonly unknown[],
+      wrongCellCount: 0,
+      wrongCellThreshold: 2,
+      idleMs: 20000,
+      wrongIdleMs: 5000,
+      onShow,
+    };
+    const { result, rerender } = renderHook((p) => useStuckHintPrompt(p), {
+      initialProps: props,
+    });
+
+    // 선택 이동을 흉내낸 재렌더(입력 resetKeys는 동일 참조 유지).
+    act(() => {
+      vi.advanceTimersByTime(10000);
+    });
+    rerender({ ...props });
+    act(() => {
+      vi.advanceTimersByTime(9999);
+    });
+    rerender({ ...props });
+    expect(result.current.isVisible).toBe(false);
+    expect(onShow).not.toHaveBeenCalled();
+
+    // 최초 스케줄(20000) 완료 시 발화. 선택 변경 재렌더는 타이머를 늦추지 못한다.
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(result.current.isVisible).toBe(true);
+    expect(onShow).toHaveBeenCalledTimes(1);
+    expect(onShow).toHaveBeenCalledWith({ trigger: "idle", delayMs: 20000 });
+  });
+
+  it("실제 입력(resetKeys 변경)은 정체 타이머를 리셋한다", () => {
+    // 대비군: cellValues 참조가 바뀌면(실제 입력) 정체 타이머가 리셋되어야 한다.
+    const onShow = vi.fn();
+    const makeProps = (cellValues: object) => ({
+      active: true,
+      resetKeys: [cellValues] as readonly unknown[],
+      wrongCellCount: 0,
+      wrongCellThreshold: 2,
+      idleMs: 20000,
+      wrongIdleMs: 5000,
+      onShow,
+    });
+    const { result, rerender } = renderHook((p) => useStuckHintPrompt(p), {
+      initialProps: makeProps({ a: "1" }),
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(19000);
+    });
+    // 입력 발생: 새 cellValues 참조 → 타이머 리셋
+    rerender(makeProps({ a: "1", b: "2" }));
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(result.current.isVisible).toBe(false);
+    act(() => {
+      vi.advanceTimersByTime(19000);
+    });
+    expect(result.current.isVisible).toBe(true);
+  });
+
   it("노출 페이로드(onShow)는 발화 시점의 최신 클로저를 호출한다(latestRef)", () => {
     const first = vi.fn();
     const second = vi.fn();
