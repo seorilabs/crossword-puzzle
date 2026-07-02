@@ -2753,6 +2753,47 @@ button:disabled {
   cursor: pointer;
 }
 
+/* 완료 축하 다이얼로그의 이모지 결과 격자 미리보기(#202). buildShareGrid
+   문자열과 1:1 대응하는 축소 타일(12px)로, 다이얼로그가 길어지지 않게
+   최대 높이를 제한한다. 색은 테마 토큰만 사용해 다크 대비를 유지한다. */
+.shareGridPreview {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: center;
+  margin: 8px auto 0;
+  max-height: 170px;
+  overflow: hidden;
+}
+
+.shareGridPreviewRow {
+  display: flex;
+  gap: 2px;
+}
+
+.shareGridTile {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+.shareGridTileCorrect {
+  background: var(--cw-cell-correct-text);
+}
+
+.shareGridTileIncomplete {
+  background: var(--cw-cell-bg);
+  border: 1px solid var(--cw-border-strong);
+}
+
+.shareGridTileGap {
+  background: transparent;
+}
+
+.completionDialog .shareContainer {
+  width: 100%;
+}
+
 .clueOverlayHeader {
   display: flex;
   min-width: 0;
