@@ -6,6 +6,8 @@ import { strict as assert } from "node:assert";
 import {
   createLocalMissionRepository,
   getRecentCompletionDates,
+  loadDailyExtraAttemptGrantCount,
+  saveDailyExtraAttemptGrantCount,
 } from "./localMissionRepository.ts";
 import { getTodayDateKey } from "../../packages/crossword-core/src/puzzle.ts";
 
@@ -126,5 +128,50 @@ describe("createLocalMissionRepository: extraAttemptsGranted 영속(#204)", () =
     const loaded = await repository.loadMission("2026-07-02", "p1", 3);
     assert.equal(loaded.extraAttemptsGranted, undefined);
     assert.equal(loaded.maxAttempts, 3);
+  });
+});
+
+// 일일 충전 누계 저장(#204, High 리뷰 대응). 달력일 키 하나로 오늘 누계를
+// 보존하고, 날짜가 바뀌면 0으로 리셋됨을 고정한다. 이 누계가
+// canGrantExtraAttempt의 일일 상한 판정 입력이 된다.
+describe("load/saveDailyExtraAttemptGrantCount(#204)", () => {
+  const createStorage = () => {
+    const store = new Map<string, string>();
+    return {
+      getItem: (key: string) => store.get(key) ?? null,
+      setItem: (key: string, value: string) => store.set(key, value),
+    };
+  };
+
+  it("저장한 날짜의 누계를 그대로 복원한다(라운드트립)", () => {
+    const storage = createStorage();
+    saveDailyExtraAttemptGrantCount("2026-07-02", 2, storage);
+    assert.equal(loadDailyExtraAttemptGrantCount("2026-07-02", storage), 2);
+  });
+
+  it("저장된 날짜와 조회 날짜가 다르면 0으로 리셋한다(자정 롤오버)", () => {
+    const storage = createStorage();
+    saveDailyExtraAttemptGrantCount("2026-07-01", 1, storage);
+    assert.equal(loadDailyExtraAttemptGrantCount("2026-07-02", storage), 0);
+  });
+
+  it("기록이 없거나 값이 비정상이면 0으로 본다", () => {
+    const storage = createStorage();
+    assert.equal(loadDailyExtraAttemptGrantCount("2026-07-02", storage), 0);
+    storage.setItem(
+      "crossword-puzzle:extraAttemptGrants",
+      JSON.stringify({ date: "2026-07-02", count: -3 }),
+    );
+    assert.equal(loadDailyExtraAttemptGrantCount("2026-07-02", storage), 0);
+    storage.setItem("crossword-puzzle:extraAttemptGrants", "not-json");
+    assert.equal(loadDailyExtraAttemptGrantCount("2026-07-02", storage), 0);
+  });
+
+  it("음수/소수 저장은 0 이상 정수로 보정한다", () => {
+    const storage = createStorage();
+    saveDailyExtraAttemptGrantCount("2026-07-02", 1.9, storage);
+    assert.equal(loadDailyExtraAttemptGrantCount("2026-07-02", storage), 1);
+    saveDailyExtraAttemptGrantCount("2026-07-02", -1, storage);
+    assert.equal(loadDailyExtraAttemptGrantCount("2026-07-02", storage), 0);
   });
 });

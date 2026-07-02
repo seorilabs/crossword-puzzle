@@ -110,6 +110,8 @@ import {
   createLocalMissionRepository,
   getRecentCompletionDates,
   invalidateStreakCache,
+  loadDailyExtraAttemptGrantCount,
+  saveDailyExtraAttemptGrantCount,
 } from "./adapters/localMissionRepository";
 import {
   createLocalBonusPuzzleUnlockRepository,
@@ -2895,13 +2897,24 @@ function App() {
     await startRetryAttempt(mission);
   }
 
+  // 오늘(달력일) 리워드 광고로 충전한 도전 횟수 누계(#204). mission.date는 퍼즐
+  // 발행일이라 미션별 extraAttemptsGranted만으로는 같은 날 다른 퍼즐에서 다시
+  // 충전하는 우회가 가능하므로, 일일 상한은 이 달력일 누계로 강제한다.
+  const [extraAttemptsGrantedToday, setExtraAttemptsGrantedToday] = useState(
+    () => loadDailyExtraAttemptGrantCount(getTodayDateKey()),
+  );
+
   // 도전 기회 소진 시 리워드 광고 CTA 노출 조건(#204). 플래그 기본 OFF이므로
   // Remote Config로 켜기 전에는 UI·동작이 기존과 완전히 동일하다.
   const canRequestExtraAttempt =
     launchConfig.rewardedExtraAttemptEnabled &&
     mission.completedAt == null &&
     remainingAttempts === 0 &&
-    canGrantExtraAttempt(mission, launchConfig.rewardedExtraAttemptDailyCap);
+    canGrantExtraAttempt(
+      mission,
+      launchConfig.rewardedExtraAttemptDailyCap,
+      extraAttemptsGrantedToday,
+    );
 
   // '광고 보고 한 번 더 도전'(#204): rewarded 결과에서만 grantExtraAttempt로
   // 도전 1회를 충전(일일 상한 강제)하고 곧바로 재도전을 시작한다. 흐름과 실패
@@ -2917,6 +2930,7 @@ function App() {
       ...puzzleTelemetryParams,
       attempts_used: mission.attemptsUsed,
       extra_attempts_granted: mission.extraAttemptsGranted ?? 0,
+      extra_attempts_granted_today: extraAttemptsGrantedToday,
     });
 
     const result = await showRewardedExtraAttemptAd((event) => {
@@ -2935,7 +2949,17 @@ function App() {
       const grantedMission = grantExtraAttempt(
         mission,
         launchConfig.rewardedExtraAttemptDailyCap,
+        extraAttemptsGrantedToday,
       );
+      if (grantedMission === mission) {
+        // 광고 시청 중 상한 상태가 바뀐 경우(중복 탭 등) 충전하지 않는다.
+        showHintToast("오늘은 더 이상 도전 기회를 충전할 수 없어요.");
+        setRewardedAdStatus("idle");
+        return;
+      }
+      const nextGrantedToday = extraAttemptsGrantedToday + 1;
+      setExtraAttemptsGrantedToday(nextGrantedToday);
+      saveDailyExtraAttemptGrantCount(getTodayDateKey(), nextGrantedToday);
       setMission(grantedMission);
       void missionRepository.saveMission(grantedMission).catch(() => {
         telemetry.impression("mission_save_error", {

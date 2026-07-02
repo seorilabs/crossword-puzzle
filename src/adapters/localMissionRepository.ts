@@ -196,6 +196,45 @@ export function computeConsecutiveStreakDays(
   return result;
 }
 
+// 리워드 광고 도전 충전(#204)의 일일 상한 누계. mission.date는 퍼즐 발행일이라
+// "오늘 몇 번 충전했는지"는 미션 상태로 알 수 없으므로, 달력일 키 하나로
+// 별도 저장한다. 저장된 날짜가 오늘과 다르면 0으로 리셋(자정 롤오버).
+const DAILY_EXTRA_ATTEMPT_GRANTS_KEY = "crossword-puzzle:extraAttemptGrants";
+
+export function loadDailyExtraAttemptGrantCount(
+  dateKey: string,
+  storage: KeyValueStorage | null = getDefaultStorage(),
+): number {
+  if (storage == null) return 0;
+  try {
+    const raw = storage.getItem(DAILY_EXTRA_ATTEMPT_GRANTS_KEY);
+    if (raw == null) return 0;
+    const parsed = JSON.parse(raw) as { date?: string; count?: number };
+    if (parsed.date !== dateKey) return 0;
+    return typeof parsed.count === "number" && Number.isFinite(parsed.count)
+      ? Math.max(0, Math.floor(parsed.count))
+      : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function saveDailyExtraAttemptGrantCount(
+  dateKey: string,
+  count: number,
+  storage: KeyValueStorage | null = getDefaultStorage(),
+): void {
+  if (storage == null) return;
+  try {
+    storage.setItem(
+      DAILY_EXTRA_ATTEMPT_GRANTS_KEY,
+      JSON.stringify({ date: dateKey, count: Math.max(0, Math.floor(count)) }),
+    );
+  } catch {
+    // Local persistence is best effort.
+  }
+}
+
 export function createLocalMissionRepository({
   keyPrefix = "crossword-puzzle:mission",
   storage = getDefaultStorage(),

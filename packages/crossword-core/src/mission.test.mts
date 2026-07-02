@@ -255,3 +255,50 @@ describe("grantExtraAttempt / canGrantExtraAttempt", () => {
     assert.equal(achievements.bestTimeEligible, true);
   });
 });
+
+// [High 리뷰 대응] 일일 상한은 달력일 누계(grantedToday) 기준으로 강제한다.
+// mission.date는 퍼즐 발행일이라, 미션별 부여 횟수만 보면 같은 날 다른 퍼즐의
+// '첫 충전'이 상한 검사를 우회할 수 있었다. 누계 전달 시 차단됨을 고정한다.
+describe("grantExtraAttempt: 달력일 누계(grantedToday) 상한 강제", () => {
+  it("다른 퍼즐에서 이미 충전한 날이면 새 미션의 첫 충전도 차단된다", () => {
+    // 미션 B는 아직 충전 이력이 없지만(oB.extraAttemptsGranted 없음),
+    // 오늘 누계 1회(grantedToday=1)가 상한(1)에 도달했으므로 차단.
+    const missionB = {
+      ...createDailyMissionState("2026-07-01", "p-b", 3),
+      attemptsUsed: 3,
+    };
+    assert.equal(canGrantExtraAttempt(missionB, 1, 1), false);
+    assert.equal(grantExtraAttempt(missionB, 1, 1), missionB);
+  });
+
+  it("누계가 상한 미만이면 충전을 허용하고, 상한을 올리면 추가 충전이 열린다", () => {
+    const missionB = {
+      ...createDailyMissionState("2026-07-01", "p-b", 3),
+      attemptsUsed: 3,
+    };
+    assert.equal(canGrantExtraAttempt(missionB, 2, 1), true);
+    const granted = grantExtraAttempt(missionB, 2, 1);
+    assert.equal(granted.maxAttempts, 4);
+    assert.equal(granted.extraAttemptsGranted, 1);
+  });
+
+  it("누계가 미션 자체 부여 횟수보다 작아도 미션 부여 횟수가 상한이면 차단(방어적 max)", () => {
+    const mission = {
+      ...createDailyMissionState("2026-07-01", "p-a", 3),
+      attemptsUsed: 4,
+      maxAttempts: 4,
+      extraAttemptsGranted: 1,
+    };
+    // 잘못된 누계(0)가 들어와도 미션에 기록된 부여 횟수로 상한을 지킨다.
+    assert.equal(canGrantExtraAttempt(mission, 1, 0), false);
+    assert.equal(grantExtraAttempt(mission, 1, 0), mission);
+  });
+
+  it("grantedToday를 생략하면 기존처럼 미션 부여 횟수 기준으로 동작한다(하위호환)", () => {
+    const mission = {
+      ...createDailyMissionState("2026-07-01", "p-a", 3),
+      attemptsUsed: 3,
+    };
+    assert.equal(canGrantExtraAttempt(mission, 1), true);
+  });
+});
