@@ -111,13 +111,13 @@
     {
       "id": "a3",
       "answer": "본고장",
-      "clue": "태어나서 자란 지역. 또는 원래부터 살아온 지역",
-      "clueSource": "krdict-definition",
+      "clue": "어떤 것이 처음 생겨나 뿌리를 내린 원조의 땅",
+      "clueSource": "manual",
       "direction": "across",
       "row": 3,
       "col": 1,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a4",
@@ -133,24 +133,24 @@
     {
       "id": "a5",
       "answer": "무정부주의",
-      "clue": "개인을 지배하는 정치 권력이나 공공의 강제를 부정하고 개인의 자유를 최고의 가치로 내세우는 사상",
-      "clueSource": "krdict-definition",
+      "clue": "아나키즘, 국가 권력을 거부하고 완전한 자유를 꿈꾸는 사상",
+      "clueSource": "manual",
       "direction": "across",
       "row": 4,
       "col": 1,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a6",
       "answer": "포고",
-      "clue": "세상 사람들에게 널리 알림",
-      "clueSource": "krdict-definition",
+      "clue": "계엄령 따위를 온 세상에 공식적으로 널리 선언하여 알리는 일",
+      "clueSource": "manual",
       "direction": "across",
       "row": 5,
       "col": 6,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a7",
@@ -177,13 +177,13 @@
     {
       "id": "a9",
       "answer": "구석빼기",
-      "clue": "한쪽 구석에 있는 자리",
-      "clueSource": "krdict-definition",
+      "clue": "방 안에서도 가장 후미진 모퉁이 쪽 자리",
+      "clueSource": "manual",
       "direction": "across",
       "row": 7,
       "col": 1,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d10",
@@ -210,24 +210,24 @@
     {
       "id": "d12",
       "answer": "기소장",
-      "clue": "검사가 법원에 재판을 요청할 때 내는 문서",
-      "clueSource": "krdict-definition",
+      "clue": "죄를 물어 달라며 검찰이 재판부에 제출하는 서류",
+      "clueSource": "manual",
       "direction": "down",
       "row": 1,
       "col": 6,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d13",
       "answer": "본무",
-      "clue": "어떤 직책이나 직업과 관련하여 가장 중심이 되는 일",
-      "clueSource": "krdict-definition",
+      "clue": "여러 일 가운데 그 직책의 핵심을 이루는 으뜸 임무",
+      "clueSource": "manual",
       "direction": "down",
       "row": 3,
       "col": 1,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d14",
@@ -243,13 +243,13 @@
     {
       "id": "d15",
       "answer": "장부",
-      "clue": "다 자란 씩씩한 남자",
-      "clueSource": "krdict-definition",
+      "clue": "기개가 씩씩하고 헌걸찬 다 큰 사내",
+      "clueSource": "manual",
       "direction": "down",
       "row": 3,
       "col": 3,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d16",
@@ -276,13 +276,13 @@
     {
       "id": "d18",
       "answer": "주색잡기",
-      "clue": "생활을 방탕하게 만드는 술과 여자와 노름",
-      "clueSource": "krdict-definition",
+      "clue": "술과 여인과 도박에 빠져 방탕하게 노는 짓",
+      "clueSource": "manual",
       "direction": "down",
       "row": 4,
       "col": 4,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d19",
@@ -320,13 +320,13 @@
     {
       "id": "d22",
       "answer": "병석",
-      "clue": "병에 걸린 사람이 앓아누워 있는 자리",
-      "clueSource": "krdict-definition",
+      "clue": "몸져누운 사람이 일어나지 못하고 지내는 자리",
+      "clueSource": "manual",
       "direction": "down",
       "row": 6,
       "col": 2,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     }
   ],
   "metrics": {

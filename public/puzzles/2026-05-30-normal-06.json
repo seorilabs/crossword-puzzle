@@ -89,13 +89,13 @@
     {
       "id": "a1",
       "answer": "일망타진",
-      "clue": "한 번 그물을 쳐서 고기를 다 잡는다는 뜻으로, 어떤 무리를 한꺼번에 모조리 다 잡음",
-      "clueSource": "krdict-definition",
+      "clue": "그물 한 번 던져 범죄 조직을 몽땅 잡아들이는 것",
+      "clueSource": "manual",
       "direction": "across",
       "row": 0,
       "col": 2,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a2",
@@ -133,13 +133,13 @@
     {
       "id": "a5",
       "answer": "제구",
-      "clue": "야구에서, 투수가 원하는 대로 공을 던지는 일",
-      "clueSource": "krdict-definition",
+      "clue": "투수의 생명이라 불리는, 공을 원하는 곳에 꽂아 넣는 능력",
+      "clueSource": "manual",
       "direction": "across",
       "row": 3,
       "col": 0,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a6",
@@ -155,13 +155,13 @@
     {
       "id": "a7",
       "answer": "자모",
-      "clue": "한 개의 음절을 자음과 모음으로 갈라서 적을 수 있는 하나하나의 글자",
-      "clueSource": "krdict-definition",
+      "clue": "ㄱㄴㄷ과 ㅏㅑㅓ처럼 음절을 나누어 적는 낱낱의 글자",
+      "clueSource": "manual",
       "direction": "across",
       "row": 3,
       "col": 6,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a8",
@@ -188,13 +188,13 @@
     {
       "id": "a10",
       "answer": "전사",
-      "clue": "전쟁터에서 싸우다 죽음",
-      "clueSource": "krdict-definition",
+      "clue": "나라를 지키려 싸움터에 나갔다가 목숨을 잃는 일",
+      "clueSource": "manual",
       "direction": "across",
       "row": 5,
       "col": 4,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a11",
@@ -210,13 +210,13 @@
     {
       "id": "a12",
       "answer": "무인지경",
-      "clue": "사람이 살지 않는 외진 곳",
-      "clueSource": "krdict-definition",
+      "clue": "발길 닿는 이 하나 없는 허허벌판 같은 외딴 땅",
+      "clueSource": "manual",
       "direction": "across",
       "row": 7,
       "col": 3,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d13",
@@ -265,13 +265,13 @@
     {
       "id": "d17",
       "answer": "중도적",
-      "clue": "한쪽으로 치우치지 않는 중간의 입장이나 방법인 것",
-      "clueSource": "krdict-definition",
+      "clue": "좌도 우도 아닌 가운데 노선을 걷는 것",
+      "clueSource": "manual",
       "direction": "down",
       "row": 2,
       "col": 3,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d18",
@@ -287,24 +287,24 @@
     {
       "id": "d19",
       "answer": "제조비",
-      "clue": "물건을 만드는 데 드는 돈",
-      "clueSource": "krdict-definition",
+      "clue": "공장에서 제품 하나를 생산해 내기까지 들어가는 비용",
+      "clueSource": "manual",
       "direction": "down",
       "row": 3,
       "col": 0,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d20",
       "answer": "모범택시",
-      "clue": "일반 택시보다 시설이 좋고 더 나은 서비스를 제공하며 요금이 비싼 택시",
-      "clueSource": "krdict-definition",
+      "clue": "검은 차체에 요금은 비싸지만 서비스가 좋은 고급 영업용 차",
+      "clueSource": "manual",
       "direction": "down",
       "row": 3,
       "col": 7,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d21",
@@ -320,13 +320,13 @@
     {
       "id": "d22",
       "answer": "사경",
-      "clue": "거의 죽을 것 같은 상태나 상황",
-      "clueSource": "krdict-definition",
+      "clue": "목숨이 위태로워 저승 문턱을 헤매는 지경",
+      "clueSource": "manual",
       "direction": "down",
       "row": 6,
       "col": 6,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     }
   ],
   "metrics": {

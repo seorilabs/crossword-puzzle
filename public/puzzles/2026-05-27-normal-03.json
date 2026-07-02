@@ -89,24 +89,24 @@
     {
       "id": "a1",
       "answer": "창조주",
-      "clue": "기독교에서, 세상의 모든 것을 만든 하나님을 이르는 말",
-      "clueSource": "krdict-definition",
+      "clue": "천지 만물을 지은 절대자, 기독교에서 하나님을 가리키는 말",
+      "clueSource": "manual",
       "direction": "across",
       "row": 0,
       "col": 2,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a2",
       "answer": "신체제",
-      "clue": "개혁 등으로 이루어진 새로운 조직 체계와 질서",
-      "clueSource": "krdict-definition",
+      "clue": "낡은 틀을 갈아엎은 뒤 새로 세운 조직과 질서",
+      "clueSource": "manual",
       "direction": "across",
       "row": 1,
       "col": 0,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a3",
@@ -155,35 +155,35 @@
     {
       "id": "a7",
       "answer": "주름투성이",
-      "clue": "온통 주름이 진 상태",
-      "clueSource": "krdict-definition",
+      "clue": "오랜 세월에 살갗 가득 골이 패어 자글자글한 상태",
+      "clueSource": "manual",
       "direction": "across",
       "row": 4,
       "col": 1,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a8",
       "answer": "주발",
-      "clue": "위가 약간 벌어지고 뚜껑이 있는, 놋쇠로 만든 밥그릇",
-      "clueSource": "krdict-definition",
+      "clue": "놋쇠로 만들어 뚜껑을 덮게 되어 있는 전통 밥그릇",
+      "clueSource": "manual",
       "direction": "across",
       "row": 5,
       "col": 1,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a9",
       "answer": "이국정취",
-      "clue": "자기 나라와는 다른 분위기나 멋",
-      "clueSource": "krdict-definition",
+      "clue": "낯선 나라에 온 듯 물씬 풍기는 색다른 분위기와 멋",
+      "clueSource": "manual",
       "direction": "across",
       "row": 6,
       "col": 2,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a10",
@@ -232,13 +232,13 @@
     {
       "id": "d14",
       "answer": "사차원",
-      "clue": "공간의 삼차원에 시간의 차원이 더해져 차원이 네 개 있는 것",
-      "clueSource": "krdict-definition",
+      "clue": "가로세로높이에 시간까지 더한 세계, 엉뚱한 사람을 이르기도 하는 말",
+      "clueSource": "manual",
       "direction": "down",
       "row": 1,
       "col": 6,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d15",
@@ -265,24 +265,24 @@
     {
       "id": "d17",
       "answer": "절름발이",
-      "clue": "발 달린 물건의 한쪽 발이 멀쩡하지 못한 것",
-      "clueSource": "krdict-definition",
+      "clue": "다리 하나가 성치 않아 걸음이 기우뚱한 것을 이르는 말",
+      "clueSource": "manual",
       "direction": "down",
       "row": 3,
       "col": 2,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d18",
       "answer": "고성",
-      "clue": "오래전에 지어진 성",
-      "clueSource": "krdict-definition",
+      "clue": "세월에 낡아 이끼가 낀 옛날 성",
+      "clueSource": "manual",
       "direction": "down",
       "row": 3,
       "col": 4,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d19",

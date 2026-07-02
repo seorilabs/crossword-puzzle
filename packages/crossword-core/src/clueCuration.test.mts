@@ -35,10 +35,10 @@ describe("isSelfReferentialClue", () => {
 });
 
 describe("DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO", () => {
-  it("미검수 단서 상한이 0.5 이하로 단계적으로 조여졌다(#173)", () => {
+  it("미검수 단서 상한이 0.4 이하로 단계적으로 조여졌다(#173 → #201)", () => {
     assert.ok(
-      DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO <= 0.5,
-      `상한 ${DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO} — 0.5 이하여야 함`,
+      DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO <= 0.4,
+      `상한 ${DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO} — 0.4 이하여야 함`,
     );
     assert.ok(DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO > 0);
   });
@@ -116,10 +116,19 @@ describe("manual-clues.json 검수 단서 데이터", () => {
   ) as Record<string, string>;
   const clues = Object.entries(raw).filter(([answer]) => !answer.startsWith("_"));
 
-  it("검수 단서 항목 수가 커버리지 확대 기준(80개 이상)을 충족한다(#173)", () => {
+  it("검수 단서 항목 수가 커버리지 확대 기준(400개 이상)을 충족한다(#201)", () => {
     assert.ok(
-      clues.length >= 80,
-      `검수 단서 ${clues.length}개 — 80개 이상이어야 함`,
+      clues.length >= 400,
+      `검수 단서 ${clues.length}개 — 400개 이상이어야 함`,
+    );
+  });
+
+  it("모든 검수 단서가 54자 이하다(생성 파이프라인 --maxClueLength 기준)", () => {
+    const over = clues.filter(([, clue]) => [...clue].length > 54);
+    assert.deepEqual(
+      over.map(([answer]) => answer),
+      [],
+      "54자를 넘는 단서가 있으면 안 됨",
     );
   });
 

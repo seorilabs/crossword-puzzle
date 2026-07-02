@@ -144,13 +144,13 @@
     {
       "id": "a6",
       "answer": "동사자",
-      "clue": "추위에 얼어 죽은 사람",
-      "clueSource": "krdict-definition",
+      "clue": "혹한의 거리에서 몸이 얼어 목숨을 잃은 사람",
+      "clueSource": "manual",
       "direction": "across",
       "row": 4,
       "col": 4,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a7",
@@ -177,13 +177,13 @@
     {
       "id": "a9",
       "answer": "자태",
-      "clue": "여성의 아름다운 모습이나 태도",
-      "clueSource": "krdict-definition",
+      "clue": "고운 맵시를 뽐내는 여인의 모습을 이르는 말",
+      "clueSource": "manual",
       "direction": "across",
       "row": 6,
       "col": 2,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a10",
@@ -221,13 +221,13 @@
     {
       "id": "d13",
       "answer": "마사지",
-      "clue": "손으로 몸을 두드리거나 주물러서 근육의 긴장을 풀어주는 일",
-      "clueSource": "krdict-definition",
+      "clue": "뭉친 근육을 손으로 주물러 풀어 주는 안마",
+      "clueSource": "manual",
       "direction": "down",
       "row": 0,
       "col": 3,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d14",
@@ -243,35 +243,35 @@
     {
       "id": "d15",
       "answer": "무척추동물",
-      "clue": "척추가 없는 동물",
-      "clueSource": "krdict-definition",
+      "clue": "오징어나 곤충처럼 등뼈가 없는 동물을 통틀어 이르는 말",
+      "clueSource": "manual",
       "direction": "down",
       "row": 1,
       "col": 4,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d16",
       "answer": "출산율",
-      "clue": "아기를 낳는 비율",
-      "clueSource": "krdict-definition",
+      "clue": "한 해에 아기가 얼마나 태어나는지를 나타내는 비율",
+      "clueSource": "manual",
       "direction": "down",
       "row": 1,
       "col": 7,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d17",
       "answer": "전자오락실",
-      "clue": "동전을 넣으면 게임이나 놀이 등을 할 수 있도록 기계나 시설을 갖추어 놓은 곳",
-      "clueSource": "krdict-definition",
+      "clue": "동전을 넣고 갤러그나 철권을 즐기던 게임 가게",
+      "clueSource": "manual",
       "direction": "down",
       "row": 3,
       "col": 6,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d18",
@@ -298,13 +298,13 @@
     {
       "id": "d20",
       "answer": "오진",
-      "clue": "병을 잘못 진단하는 일. 또는 그런 진단",
-      "clueSource": "krdict-definition",
+      "clue": "의사가 환자의 병명을 엉뚱하게 짚는 일",
+      "clueSource": "manual",
       "direction": "down",
       "row": 6,
       "col": 5,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     }
   ],
   "metrics": {
