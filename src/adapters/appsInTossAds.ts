@@ -9,6 +9,7 @@ export const appsInTossAdGroupIds = {
   resultInterstitial: "ait.v2.live.a1439d344fa34821",
   rewardedBonusPuzzle: "ait.v2.live.434bcf7cff1d462e",
   rewardedHint: "ait.v2.live.434bcf7cff1d462e",
+  rewardedExtraAttempt: "ait.v2.live.434bcf7cff1d462e",
 } as const;
 
 export type FullScreenAdResult =
@@ -198,6 +199,17 @@ export function showRewardedHintAd(
 ) {
   return loadAndShowFullScreenAd({
     adGroupId: appsInTossAdGroupIds.rewardedHint,
+    dismissalDelayMs: 3000,
+    onTrace,
+  });
+}
+
+// 도전 기회 소진 시 '광고 보고 한 번 더 도전' 충전용 보상형 광고(#204).
+export function showRewardedExtraAttemptAd(
+  onTrace?: (event: FullScreenAdTraceEvent) => void,
+) {
+  return loadAndShowFullScreenAd({
+    adGroupId: appsInTossAdGroupIds.rewardedExtraAttempt,
     dismissalDelayMs: 3000,
     onTrace,
   });

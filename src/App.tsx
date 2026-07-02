@@ -51,6 +51,8 @@ import {
   getNextFocusEntryAfterCompletion,
   getRemainingAttempts,
   getTodayDateKey,
+  canGrantExtraAttempt,
+  grantExtraAttempt,
   getNextStreakMilestoneHint,
   getStreakBadgeLabel,
   getStreakMilestoneProgress,
@@ -135,6 +137,7 @@ import {
 import { emitFeedback } from "./adapters/feedback";
 import {
   showRewardedBonusPuzzleAd,
+  showRewardedExtraAttemptAd,
   showRewardedHintAd,
   type FullScreenAdResult,
 } from "./adapters/appsInTossAds";
@@ -383,6 +386,22 @@ function getRewardedHintFailureMessage(result: FullScreenAdFailureResult) {
         : "광고 표시가 시작되지 않아 힌트가 추가되지 않았어요. 잠시 후 다시 시도해 주세요.";
     case "failed":
       return "광고를 표시하지 못해 힌트가 추가되지 않았어요. 잠시 후 다시 시도해 주세요.";
+  }
+}
+
+// 소진 구제 충전 광고(#204) 실패 안내. 기존 힌트 광고 실패 문구와 같은 톤을 유지한다.
+function getRewardedExtraAttemptFailureMessage(result: FullScreenAdFailureResult) {
+  switch (result.status) {
+    case "unsupported":
+      return "현재 환경에서는 광고 도전 충전을 사용할 수 없어요.";
+    case "dismissed":
+      return "광고 시청이 완료되지 않아 도전 기회가 충전되지 않았어요.";
+    case "timeout":
+      return result.reason === "load_timeout"
+        ? "광고를 불러오는 데 시간이 오래 걸려 도전 기회가 충전되지 않았어요. 잠시 후 다시 시도해 주세요."
+        : "광고 표시가 시작되지 않아 도전 기회가 충전되지 않았어요. 잠시 후 다시 시도해 주세요.";
+    case "failed":
+      return "광고를 표시하지 못해 도전 기회가 충전되지 않았어요. 잠시 후 다시 시도해 주세요.";
   }
 }
 
@@ -2831,8 +2850,10 @@ function App() {
     });
   }
 
-  async function restartMissionAttempt() {
-    if (remainingAttempts === 0) {
+  // 재도전 시작 공통 로직. 결과 화면 '다시 도전'과 소진 구제 충전(#204) 직후
+  // 재도전이 같은 진행 초기화·attempt_start(retry) 계약을 공유한다.
+  async function startRetryAttempt(baseMission: DailyMissionState) {
+    if (getRemainingAttempts(baseMission) === 0) {
       return;
     }
 
@@ -2843,7 +2864,7 @@ function App() {
     try {
       await clearProgress(creditsToPreserve);
       setIsNewBestTime(false);
-      const nextMission = startMissionAttempt(mission);
+      const nextMission = startMissionAttempt(baseMission);
       setMission(nextMission);
       void missionRepository.saveMission(nextMission).catch(() => {
         telemetry.impression("mission_save_error", {
@@ -2868,6 +2889,71 @@ function App() {
         message: "재도전 중 오류가 발생했습니다. 다시 시도해 주세요.",
       }));
     }
+  }
+
+  async function restartMissionAttempt() {
+    await startRetryAttempt(mission);
+  }
+
+  // 도전 기회 소진 시 리워드 광고 CTA 노출 조건(#204). 플래그 기본 OFF이므로
+  // Remote Config로 켜기 전에는 UI·동작이 기존과 완전히 동일하다.
+  const canRequestExtraAttempt =
+    launchConfig.rewardedExtraAttemptEnabled &&
+    mission.completedAt == null &&
+    remainingAttempts === 0 &&
+    canGrantExtraAttempt(mission, launchConfig.rewardedExtraAttemptDailyCap);
+
+  // '광고 보고 한 번 더 도전'(#204): rewarded 결과에서만 grantExtraAttempt로
+  // 도전 1회를 충전(일일 상한 강제)하고 곧바로 재도전을 시작한다. 흐름과 실패
+  // 안내 톤은 requestRewardedHint와 동일하게 맞춘다.
+  async function requestRewardedExtraAttempt() {
+    if (!canRequestExtraAttempt || rewardedAdStatus === "loading") {
+      return;
+    }
+
+    setRewardedAdStatus("loading");
+    showHintToast("광고를 준비하는 중이에요.");
+    telemetry.click("rewarded_extra_attempt_ad_request", {
+      ...puzzleTelemetryParams,
+      attempts_used: mission.attemptsUsed,
+      extra_attempts_granted: mission.extraAttemptsGranted ?? 0,
+    });
+
+    const result = await showRewardedExtraAttemptAd((event) => {
+      telemetry.impression("rewarded_extra_attempt_ad_event", {
+        phase: event.phase,
+        puzzle_id: puzzle.puzzleId,
+        type: event.type,
+      });
+    });
+    telemetry.impression("rewarded_extra_attempt_ad_result", {
+      ...getFullScreenAdResultParams(result),
+      puzzle_id: puzzle.puzzleId,
+    });
+
+    if (result.status === "rewarded") {
+      const grantedMission = grantExtraAttempt(
+        mission,
+        launchConfig.rewardedExtraAttemptDailyCap,
+      );
+      setMission(grantedMission);
+      void missionRepository.saveMission(grantedMission).catch(() => {
+        telemetry.impression("mission_save_error", {
+          puzzle_id: puzzle.puzzleId,
+        });
+      });
+      telemetry.impression("rewarded_extra_attempt_ad_reward", {
+        ...puzzleTelemetryParams,
+        extra_attempts_granted: grantedMission.extraAttemptsGranted ?? 0,
+      });
+      showHintToast("도전 기회 1회가 충전됐어요.");
+      setRewardedAdStatus("idle");
+      await startRetryAttempt(grantedMission);
+      return;
+    }
+
+    showHintToast(getRewardedExtraAttemptFailureMessage(result));
+    setRewardedAdStatus("idle");
   }
 
   function selectAnswerInputMode(mode: AnswerInputMode) {
@@ -2956,22 +3042,26 @@ function App() {
         <TodayScreen
           {...commonScreenProps}
           {...dateSelectionProps}
+          canRequestExtraAttempt={canRequestExtraAttempt}
           completionCelebrationId={completionCelebrationId}
           consecutiveStreak={consecutiveStreak}
           dismissCompletionCelebration={() => setCompletionCelebrationId(null)}
           hasStarted={hasStarted}
           isCompleted={isCompleted}
           isFirstInputGuideVisible={isFirstInputGuideVisible}
+          isExtraAttemptAdLoading={rewardedAdStatus === "loading"}
           isNewBestTime={isNewBestTime}
           isPaused={isPaused}
           navigate={navigate}
           pause={pause}
+          requestRewardedExtraAttempt={() => void requestRewardedExtraAttempt()}
           togglePause={togglePause}
           startOrResumeMission={startOrResumeMission}
         />
       ) : route === "result" ? (
         <ResultScreen
           {...dateSelectionProps}
+          canRequestExtraAttempt={canRequestExtraAttempt}
           cellValues={cellValues}
           bonusPuzzlePanelState={bonusPuzzlePanelState}
           completedEntries={viewModel.completedEntries}
@@ -2981,6 +3071,7 @@ function App() {
           leaderboardVisible={
             launchConfig.leaderboardEnabled && leaderboardAdapter.supported
           }
+          isExtraAttemptAdLoading={rewardedAdStatus === "loading"}
           mission={mission}
           navigate={navigate}
           onOpenLeaderboard={() => {
@@ -2994,6 +3085,7 @@ function App() {
           puzzle={puzzle}
           remainingAttempts={remainingAttempts}
           requestBonusPuzzle={() => void requestBonusPuzzle()}
+          requestRewardedExtraAttempt={() => void requestRewardedExtraAttempt()}
           restartMissionAttempt={restartMissionAttempt}
           revealUsed={revealUsed}
         />
@@ -4474,6 +4566,7 @@ type TodayScreenProps = DateSelectionProps & {
     startCellKey?: string,
   ) => void;
   autocheckEnabled: boolean;
+  canRequestExtraAttempt: boolean;
   cellValues: Record<string, string>;
   checkedCellKeys: ReadonlySet<string>;
   clearAnswerCell: (entry: PuzzleEntry, cellKey?: string) => void;
@@ -4487,6 +4580,7 @@ type TodayScreenProps = DateSelectionProps & {
   hintBalance: HintBalance;
   hintCount: number;
   isCompleted: boolean;
+  isExtraAttemptAdLoading: boolean;
   isFirstInputGuideVisible: boolean;
   isNewBestTime: boolean;
   isPaused: boolean;
@@ -4498,6 +4592,7 @@ type TodayScreenProps = DateSelectionProps & {
   togglePause: () => void;
   puzzle: Puzzle;
   remainingAttempts: number;
+  requestRewardedExtraAttempt: () => void;
   revealLetter: () => void;
   revealUsed: boolean;
   soundEnabled: boolean;
@@ -4525,6 +4620,7 @@ function TodayScreen({
   applyAnswer,
   applyAnswerSegment,
   autocheckEnabled,
+  canRequestExtraAttempt,
   cellValues,
   checkedCellKeys,
   clearAnswerCell,
@@ -4540,6 +4636,7 @@ function TodayScreen({
   hintBalance,
   hintCount,
   isCompleted,
+  isExtraAttemptAdLoading,
   isFirstInputGuideVisible,
   isNewBestTime,
   isPaused,
@@ -4553,6 +4650,7 @@ function TodayScreen({
   puzzle,
   puzzleSummaries,
   remainingAttempts,
+  requestRewardedExtraAttempt,
   revealUsed,
   soundEnabled,
   tentativeCellKeys,
@@ -5579,8 +5677,22 @@ function TodayScreen({
           aria-label="도전 종료 안내"
         >
           <span>
-            오늘 도전 기회를 모두 사용했어요 · 내일 다시 도전해 보세요
+            {canRequestExtraAttempt
+              ? "오늘 도전 기회를 모두 사용했어요"
+              : "오늘 도전 기회를 모두 사용했어요 · 내일 다시 도전해 보세요"}
           </span>
+          {canRequestExtraAttempt ? (
+            <button
+              className="exhaustedBannerLink"
+              type="button"
+              onClick={requestRewardedExtraAttempt}
+              disabled={isExtraAttemptAdLoading}
+            >
+              {isExtraAttemptAdLoading
+                ? "광고 준비 중…"
+                : "광고 보고 한 번 더 도전"}
+            </button>
+          ) : null}
           <button
             className="exhaustedBannerLink"
             type="button"
@@ -6038,11 +6150,13 @@ function SettingsIcon() {
 }
 
 type ResultScreenProps = DateSelectionProps & {
+  canRequestExtraAttempt: boolean;
   cellValues: Record<string, string>;
   bonusPuzzlePanelState: BonusPuzzlePanelState;
   completedEntries: PuzzleEntry[];
   consecutiveStreak: number;
   hintCount: number;
+  isExtraAttemptAdLoading: boolean;
   isNewBestTime: boolean;
   leaderboardVisible: boolean;
   mission: DailyMissionState;
@@ -6052,11 +6166,13 @@ type ResultScreenProps = DateSelectionProps & {
   puzzle: Puzzle;
   remainingAttempts: number;
   requestBonusPuzzle: () => void;
+  requestRewardedExtraAttempt: () => void;
   restartMissionAttempt: () => void;
   revealUsed: boolean;
 };
 
 function ResultScreen({
+  canRequestExtraAttempt,
   cellValues,
   bonusPuzzlePanelState,
   completedEntries,
@@ -6065,6 +6181,7 @@ function ResultScreen({
   consecutiveStreak,
   dateCardStates,
   hintCount,
+  isExtraAttemptAdLoading,
   isNewBestTime,
   leaderboardVisible,
   loadState,
@@ -6076,6 +6193,7 @@ function ResultScreen({
   puzzleSummaries,
   remainingAttempts,
   requestBonusPuzzle,
+  requestRewardedExtraAttempt,
   restartMissionAttempt,
   revealUsed,
   selectedPuzzleId,
@@ -6232,6 +6350,18 @@ function ResultScreen({
                   )
                 : "내일 새로운 퍼즐이 기다려요."}
           </p>
+        )}
+        {!isComplete && remainingAttempts === 0 && canRequestExtraAttempt && (
+          <button
+            className="secondaryButton"
+            type="button"
+            onClick={requestRewardedExtraAttempt}
+            disabled={isExtraAttemptAdLoading}
+          >
+            {isExtraAttemptAdLoading
+              ? "광고 준비 중…"
+              : "광고 보고 한 번 더 도전"}
+          </button>
         )}
       </section>
 

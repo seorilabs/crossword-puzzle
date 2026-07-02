@@ -4,9 +4,14 @@ import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
 
 import {
+  canGrantExtraAttempt,
   computeElapsedMs,
   computeElapsedSeconds,
+  createDailyMissionState,
   getCompletionAchievements,
+  getRemainingAttempts,
+  grantExtraAttempt,
+  startMissionAttempt,
   togglePauseState,
 } from "./mission.ts";
 
@@ -166,5 +171,87 @@ describe("togglePauseState", () => {
     );
     assert.equal(resumed.pausedAt, null);
     assert.equal(resumed.pausedMs, 10_000);
+  });
+});
+
+// 리워드 광고 도전 충전(#204) 정책 테스트. 일일 추가 상한 강제와 성취 공정성
+// (추가 기회 완료 시 '첫 도전 성공' 제외)을 고정한다.
+describe("grantExtraAttempt / canGrantExtraAttempt", () => {
+  it("소진 상태에서 충전하면 maxAttempts +1, 부여 횟수 1이 기록된다", () => {
+    const mission = {
+      ...createDailyMissionState("2026-07-02", "p1", 3),
+      attemptsUsed: 3,
+    };
+    const granted = grantExtraAttempt(mission, 1);
+    assert.equal(granted.maxAttempts, 4);
+    assert.equal(granted.extraAttemptsGranted, 1);
+    assert.equal(getRemainingAttempts(granted), 1);
+  });
+
+  it("일일 추가 상한(기본 1회)에 도달하면 더 충전되지 않는다", () => {
+    const mission = {
+      ...createDailyMissionState("2026-07-02", "p1", 3),
+      attemptsUsed: 4,
+      maxAttempts: 4,
+      extraAttemptsGranted: 1,
+    };
+    assert.equal(canGrantExtraAttempt(mission), false);
+    const unchanged = grantExtraAttempt(mission);
+    assert.equal(unchanged, mission);
+    assert.equal(unchanged.maxAttempts, 4);
+  });
+
+  it("상한을 2로 올리면 두 번째 충전까지 허용된다", () => {
+    const first = grantExtraAttempt(
+      { ...createDailyMissionState("2026-07-02", "p1", 3), attemptsUsed: 3 },
+      2,
+    );
+    assert.equal(canGrantExtraAttempt(first, 2), true);
+    const second = grantExtraAttempt(first, 2);
+    assert.equal(second.maxAttempts, 5);
+    assert.equal(second.extraAttemptsGranted, 2);
+    assert.equal(canGrantExtraAttempt(second, 2), false);
+  });
+
+  it("이미 완료한 미션에는 충전하지 않는다", () => {
+    const mission = {
+      ...createDailyMissionState("2026-07-02", "p1", 3),
+      attemptsUsed: 3,
+      completedAt: "2026-07-02T01:00:00.000Z",
+    };
+    assert.equal(canGrantExtraAttempt(mission), false);
+    assert.equal(grantExtraAttempt(mission), mission);
+  });
+
+  it("충전 후 startMissionAttempt로 즉시 재도전할 수 있다", () => {
+    const exhausted = {
+      ...createDailyMissionState("2026-07-02", "p1", 3),
+      attemptsUsed: 3,
+    };
+    assert.equal(startMissionAttempt(exhausted), exhausted); // 소진 시 그대로
+    const granted = grantExtraAttempt(exhausted);
+    const restarted = startMissionAttempt(
+      granted,
+      new Date("2026-07-02T02:00:00.000Z"),
+    );
+    assert.equal(restarted.attemptsUsed, 4);
+    assert.equal(getRemainingAttempts(restarted), 0);
+  });
+
+  it("추가 기회로 완료하면 attemptsUsed>1이므로 '첫 도전 성공' 배지가 제외된다", () => {
+    const granted = grantExtraAttempt({
+      ...createDailyMissionState("2026-07-02", "p1", 3),
+      attemptsUsed: 3,
+    });
+    const restarted = startMissionAttempt(granted);
+    const achievements = getCompletionAchievements({
+      hintCount: 0,
+      attemptsUsed: restarted.attemptsUsed,
+      revealUsed: false,
+    });
+    assert.equal(achievements.firstTry, false);
+    // 노힌트·최고 기록 후보 판정은 도전 횟수와 무관하게 유지된다.
+    assert.equal(achievements.noHint, true);
+    assert.equal(achievements.bestTimeEligible, true);
   });
 });

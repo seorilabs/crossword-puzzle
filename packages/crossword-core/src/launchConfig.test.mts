@@ -124,3 +124,56 @@ describe("launchConfig: 막힘 힌트/피드백 튜닝값(#172)", () => {
     assert.equal(config.checkHighlightMs, 2500);
   });
 });
+
+describe("launchConfig: rewardedExtraAttempt 게이트(#204)", () => {
+  it("소진 구제 리워드 광고 CTA가 기본 비활성(false)이다", () => {
+    assert.equal(defaultLaunchConfig.rewardedExtraAttemptEnabled, false);
+    assert.equal(normalizeLaunchConfig({}).rewardedExtraAttemptEnabled, false);
+  });
+
+  it("일일 충전 상한 기본값은 1회다", () => {
+    assert.equal(defaultLaunchConfig.rewardedExtraAttemptDailyCap, 1);
+    assert.equal(normalizeLaunchConfig({}).rewardedExtraAttemptDailyCap, 1);
+  });
+
+  it("Remote Config 키·기본값 맵에 두 키가 영문 스네이크 키로 반영된다", () => {
+    assert.equal(
+      launchConfigKeys.rewardedExtraAttemptEnabled,
+      "rewarded_extra_attempt_enabled",
+    );
+    assert.equal(
+      launchConfigKeys.rewardedExtraAttemptDailyCap,
+      "rewarded_extra_attempt_daily_cap",
+    );
+    const defaults = getLaunchConfigDefaultsForRemoteConfig();
+    assert.equal(defaults[launchConfigKeys.rewardedExtraAttemptEnabled], false);
+    assert.equal(defaults[launchConfigKeys.rewardedExtraAttemptDailyCap], 1);
+  });
+
+  it("Remote Config에서 명시적으로 켜고 상한을 조정할 수 있다", () => {
+    const config = normalizeLaunchConfig({
+      rewardedExtraAttemptEnabled: true,
+      rewardedExtraAttemptDailyCap: 3,
+    });
+    assert.equal(config.rewardedExtraAttemptEnabled, true);
+    assert.equal(config.rewardedExtraAttemptDailyCap, 3);
+  });
+
+  it("상한은 1~5로 클램프된다(0/음수/과대값 방어)", () => {
+    assert.equal(
+      normalizeLaunchConfig({ rewardedExtraAttemptDailyCap: 0 })
+        .rewardedExtraAttemptDailyCap,
+      1,
+    );
+    assert.equal(
+      normalizeLaunchConfig({ rewardedExtraAttemptDailyCap: 99 })
+        .rewardedExtraAttemptDailyCap,
+      5,
+    );
+    assert.equal(
+      normalizeLaunchConfig({ rewardedExtraAttemptDailyCap: Number.NaN })
+        .rewardedExtraAttemptDailyCap,
+      1,
+    );
+  });
+});

@@ -41,18 +41,28 @@ function normalizeMission(
     return createDailyMissionState(date, puzzleId, maxAttempts);
   }
 
+  // 리워드 광고로 충전받은 추가 도전(#204)은 저장값을 보존하고, 유효
+  // maxAttempts(기본 한도 + 충전분)를 복원해 재실행 후에도 충전이 유지된다.
+  const extraAttemptsGranted =
+    typeof value.extraAttemptsGranted === "number" &&
+    Number.isFinite(value.extraAttemptsGranted)
+      ? Math.max(0, Math.floor(value.extraAttemptsGranted))
+      : 0;
+  const effectiveMaxAttempts = maxAttempts + extraAttemptsGranted;
+
   return {
     date,
     puzzleId,
     attemptsUsed:
       typeof value.attemptsUsed === "number"
-        ? Math.min(Math.max(0, value.attemptsUsed), maxAttempts)
+        ? Math.min(Math.max(0, value.attemptsUsed), effectiveMaxAttempts)
         : 0,
-    maxAttempts,
+    maxAttempts: effectiveMaxAttempts,
     completedAt:
       typeof value.completedAt === "string" ? value.completedAt : undefined,
     lastStartedAt:
       typeof value.lastStartedAt === "string" ? value.lastStartedAt : undefined,
+    ...(extraAttemptsGranted > 0 ? { extraAttemptsGranted } : {}),
   };
 }
 
