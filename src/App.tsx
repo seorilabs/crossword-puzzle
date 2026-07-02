@@ -58,6 +58,7 @@ import {
   computeTentativeUpdate,
   pickHintCellIndex,
   resolveInitialActivePuzzleId,
+  resolveStarterCell,
   shouldCelebrateOnboardingWordCompletion,
   shouldOfferStuckWordReveal,
   shouldQuickStartActivePuzzle,
@@ -684,18 +685,6 @@ function getInitialEntryStartCellKey(puzzle: Puzzle) {
     puzzle.entries[0];
 
   return getEntryStartCellKey(initialEntry);
-}
-
-// 첫 입력을 유도할 "시작 단어"는 가장 짧은(쉬운) 단어로 고른다. 동률이면 퍼즐
-// 순서상 앞선 단어를 유지해 "여기부터" 포인트를 안정적으로 한 곳에 모은다.
-function getStarterEntry(puzzle: Puzzle): PuzzleEntry | undefined {
-  return puzzle.entries.reduce<PuzzleEntry | undefined>((best, entry) => {
-    if (best == null) {
-      return entry;
-    }
-
-    return entry.answer.length < best.answer.length ? entry : best;
-  }, undefined);
 }
 
 function getCellAnswerLetter(puzzle: Puzzle, cellKey: string) {
@@ -4714,9 +4703,16 @@ function TodayScreen({
     }
     starterFocusPuzzleIdRef.current = puzzle.puzzleId;
 
-    const starterEntry = getStarterEntry(puzzle);
-    if (starterEntry != null) {
-      selectEntry(starterEntry);
+    // 시작 단어의 시작 칸이 아니라 "첫 빈 칸"을 선택·하이라이트해, 가이드가 가리키는
+    // 반짝이는 칸이 실제로 입력 가능한 위치가 되도록 한다(#183).
+    const starter = resolveStarterCell({ cellValues, puzzle });
+    if (starter != null) {
+      const starterEntry = puzzle.entries.find(
+        (entry) => entry.id === starter.entryId,
+      );
+      if (starterEntry != null) {
+        selectEntry(starterEntry, starter.cellKey);
+      }
     }
 
     requestAnimationFrame(() => {
@@ -4726,7 +4722,7 @@ function TodayScreen({
         boardInputRef.current?.focus({ preventScroll: true });
       }
     });
-  }, [answerInputMode, isFirstInputGuideVisible, puzzle, selectEntry]);
+  }, [answerInputMode, cellValues, isFirstInputGuideVisible, puzzle, selectEntry]);
 
   function focusPuzzleBoard() {
     requestAnimationFrame(() => {
