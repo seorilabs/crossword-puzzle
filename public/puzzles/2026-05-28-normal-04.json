@@ -89,13 +89,13 @@
     {
       "id": "a1",
       "answer": "위장",
-      "clue": "위와 창자",
-      "clueSource": "krdict-definition",
+      "clue": "속이 쓰릴 때 짚게 되는, 밥통과 창자를 아우르는 소화 기관",
+      "clueSource": "manual",
       "direction": "across",
       "row": 0,
       "col": 1,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a2",
@@ -166,57 +166,57 @@
     {
       "id": "a8",
       "answer": "반말지거리",
-      "clue": "반말로 함부로 지껄이는 일. 또는 그런 말투",
-      "clueSource": "krdict-definition",
+      "clue": "존대는 쏙 빼고 낮춤말을 함부로 던지는 버릇없는 말버릇",
+      "clueSource": "manual",
       "direction": "across",
       "row": 4,
       "col": 1,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a9",
       "answer": "주관적",
-      "clue": "자신의 생각이나 관점을 기준으로 하는 것",
-      "clueSource": "krdict-definition",
+      "clue": "객관과 반대로, 제 나름의 잣대와 느낌에 따라 보는 것",
+      "clueSource": "manual",
       "direction": "across",
       "row": 5,
       "col": 5,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a10",
       "answer": "초현실주의",
-      "clue": "현실과 이성의 제약을 벗어나 자유롭게 표현하며, 매우 주관적인 특성을 지닌 예술의 경향",
-      "clueSource": "krdict-definition",
+      "clue": "달리의 그림처럼 꿈과 무의식의 세계를 좇는 예술 사조",
+      "clueSource": "manual",
       "direction": "across",
       "row": 6,
       "col": 1,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a11",
       "answer": "자의식",
-      "clue": "자신이 처한 상황이나 자신의 행동, 성격 등에 대해 깨닫는 일",
-      "clueSource": "krdict-definition",
+      "clue": "제 모습과 처지를 스스로 돌아보아 알아차리는 마음의 작용",
+      "clueSource": "manual",
       "direction": "across",
       "row": 7,
       "col": 2,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d12",
       "answer": "위정",
-      "clue": "나라의 정치를 맡아 함",
-      "clueSource": "krdict-definition",
+      "clue": "다스리는 자리에 앉아 나라의 정사를 도맡아 행하는 일",
+      "clueSource": "manual",
       "direction": "down",
       "row": 0,
       "col": 1,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d13",
@@ -232,24 +232,24 @@
     {
       "id": "d14",
       "answer": "만돌린",
-      "clue": "달걀을 세로로 가른 듯한 불룩한 몸통에 여덟 개의 현이 있는 현악기",
-      "clueSource": "krdict-definition",
+      "clue": "달걀처럼 볼록한 몸통에 여덟 줄을 튕겨 소리 내는 악기",
+      "clueSource": "manual",
       "direction": "down",
       "row": 0,
       "col": 4,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d15",
       "answer": "적막강산",
-      "clue": "매우 조용하고 쓸쓸한 풍경",
-      "clueSource": "krdict-definition",
+      "clue": "인기척 하나 없이 고요하고 쓸쓸하기 그지없는 경치",
+      "clueSource": "manual",
       "direction": "down",
       "row": 0,
       "col": 6,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d16",
@@ -265,13 +265,13 @@
     {
       "id": "d17",
       "answer": "자반",
-      "clue": "조금 짭짤하게 졸이거나 무쳐서 만든 반찬",
-      "clueSource": "krdict-definition",
+      "clue": "고등어에 소금 간을 해 짭조름하게 만든 밑반찬 종류",
+      "clueSource": "manual",
       "direction": "down",
       "row": 3,
       "col": 1,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d18",
@@ -298,13 +298,13 @@
     {
       "id": "d20",
       "answer": "합리주의",
-      "clue": "논리나 이치에 알맞게 생각하고 판단하는 태도나 사고방식",
-      "clueSource": "krdict-definition",
+      "clue": "감정보다 이성과 논리를 앞세워 판단하려는 사고 태도",
+      "clueSource": "manual",
       "direction": "down",
       "row": 3,
       "col": 5,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d21",

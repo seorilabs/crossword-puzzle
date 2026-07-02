@@ -50,10 +50,10 @@
       "sourceId": "17287",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "작은 규모로 물건을 펼쳐 놓고 파는 집",
-      "clueSource": "krdict-definition",
+      "clue": "동네에서 이런저런 물건을 파는 자그마한 상점",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -65,10 +65,10 @@
       "sourceId": "62450",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "물건의 가치를 돈으로 나타낸 것",
-      "clueSource": "krdict-definition",
+      "clue": "물건을 사려면 치러야 하는 값",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -80,10 +80,10 @@
       "sourceId": "62492",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "집 안에서 쓰이는 침대, 옷장, 식탁 등과 같은 도구",
-      "clueSource": "krdict-definition",
+      "clue": "침대나 옷장처럼 실내에 놓고 쓰는 큼직한 살림살이",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -95,10 +95,10 @@
       "sourceId": "18259",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "물건을 넣어 손에 들거나 어깨에 멜 수 있게 만든 것",
-      "clueSource": "krdict-definition",
+      "clue": "책이나 소지품을 넣어 어깨에 메거나 손에 드는 물건",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -110,10 +110,10 @@
       "sourceId": "62256",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "노래하는 일을 직업으로 하는 사람",
-      "clueSource": "krdict-definition",
+      "clue": "무대에서 노래 부르는 것을 업으로 삼는 사람",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -125,10 +125,10 @@
       "sourceId": "62908",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "마음이나 느낌",
-      "clueSource": "krdict-definition",
+      "clue": "설레면 두근거리고 슬프면 미어진다는 몸의 앞부분",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -140,10 +140,10 @@
       "sourceId": "63794",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "많은 사람들이 즐겨 부르는 노래",
-      "clueSource": "krdict-definition",
+      "clue": "대중이 즐겨 듣고 따라 부르는 유행 노래",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -155,10 +155,10 @@
       "sourceId": "63801",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "종이나 천, 머리카락 등을 자르는 도구",
-      "clueSource": "krdict-definition",
+      "clue": "두 날을 엇갈리게 움직여 종이나 천을 자르는 도구",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -170,10 +170,10 @@
       "sourceId": "32204",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "네 계절 중의 하나로 여름과 겨울 사이의 계절",
-      "clueSource": "krdict-definition",
+      "clue": "단풍이 들고 곡식이 익어 가는 수확의 계절",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -185,10 +185,10 @@
       "sourceId": "29229",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "여럿을 하나씩 떼어 놓은 하나하나의 것",
-      "clueSource": "krdict-definition",
+      "clue": "여럿을 저마다 따로 떼어 본 하나하나",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -200,10 +200,10 @@
       "sourceId": "70703",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "식사와 식사 사이에 간단히 먹는 음식",
-      "clueSource": "krdict-definition",
+      "clue": "끼니와 끼니 사이 출출할 때 가볍게 먹는 주전부리",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -215,10 +215,10 @@
       "sourceId": "70704",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "음식의 간을 맞추는 데 쓰는, 짠맛이 나는 검은색 액체",
-      "clueSource": "krdict-definition",
+      "clue": "콩을 발효시켜 만든, 짠맛을 내는 검은빛 액체 양념",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -230,10 +230,10 @@
       "sourceId": "57275",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "등뼈에 붙어 좌우로 둥글게 심장과 폐를 둘러싸고 있는 여러 개의 뼈",
-      "clueSource": "krdict-definition",
+      "clue": "심장과 허파를 감싸며 몸통 좌우로 둥글게 뻗은 뼈",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -245,10 +245,10 @@
       "sourceId": "14752",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "마른 나뭇잎처럼 거무스름한 누런 색",
-      "clueSource": "krdict-definition",
+      "clue": "낙엽이나 커피에서 볼 수 있는 어두운 누런 빛깔",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -260,10 +260,10 @@
       "sourceId": "28635",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "보통 기침, 콧물, 두통, 오한의 증상이 있는, 전염성이 있는 병",
-      "clueSource": "krdict-definition",
+      "clue": "찬 바람 맞은 뒤 기침과 콧물을 몰고 오는 흔한 병",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -275,10 +275,10 @@
       "sourceId": "46944",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "고맙게 여김. 또는 그런 마음",
-      "clueSource": "krdict-definition",
+      "clue": "도움을 받았을 때 표하는 고마운 마음",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -290,10 +290,10 @@
       "sourceId": "85863",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "껍질은 연한 갈색이며 속은 연한 노란색인, 땅속에서 자라는 둥근 덩이 모양의 줄기",
-      "clueSource": "krdict-definition",
+      "clue": "쪄 먹거나 튀겨 먹는, 땅속에서 캐는 둥근 덩이줄기",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -305,10 +305,10 @@
       "sourceId": "20187",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "사람이나 차들이 다니는 길",
-      "clueSource": "krdict-definition",
+      "clue": "행인과 차량이 쉴 새 없이 오가는 번화한 길",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -320,10 +320,10 @@
       "sourceId": "66304",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "서양식 집에서, 가족이 모여서 생활하거나 손님을 맞는 중심 공간",
-      "clueSource": "krdict-definition",
+      "clue": "소파와 텔레비전을 두고 온 가족이 모이는 집 안 공간",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -335,10 +335,10 @@
       "sourceId": "59325",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "모범이나 교훈이 될 만한 것",
-      "clueSource": "krdict-definition",
+      "clue": "제 모습을 비추어 볼 수 있는 반질반질한 물건",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -350,10 +350,10 @@
       "sourceId": "88839",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "전부에서 조금 모자란 정도",
-      "clueSource": "krdict-definition",
+      "clue": "다 채운 것에 아주 조금 못 미치는 정도",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -365,10 +365,10 @@
       "sourceId": "20468",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "다른 사람의 부탁이나 제안, 선물 등을 받아들이지 않음",
-      "clueSource": "krdict-definition",
+      "clue": "내민 부탁이나 제안을 딱 잘라 물리치는 일",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -380,10 +380,10 @@
       "sourceId": "17232",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "아랫사람의 잘못을 꾸짖음",
-      "clueSource": "krdict-definition",
+      "clue": "일이 잘못될까 봐 마음을 졸이며 애태우는 것",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -395,10 +395,10 @@
       "sourceId": "36670",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "몸이나 정신이 이상이 없이 튼튼한 상태",
-      "clueSource": "krdict-definition",
+      "clue": "몸과 마음에 아무 탈 없이 튼튼한 상태",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -410,10 +410,10 @@
       "sourceId": "28029",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "사람이 살거나 일을 하거나 물건을 보관하기 위해 지은 벽과 지붕이 있는 구조물",
-      "clueSource": "krdict-definition",
+      "clue": "땅 위에 지붕과 벽을 갖추어 지어 올린 구조물",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -425,10 +425,10 @@
       "sourceId": "25578",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "어떤 곳을 방문하는 것",
-      "clueSource": "krdict-definition",
+      "clue": "두 발을 번갈아 내디디며 나아가는 동작",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -440,10 +440,10 @@
       "sourceId": "17236",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "어떤 일이나 대상을 조사하여 옳고 그름이나 좋고 나쁨을 알아냄",
-      "clueSource": "krdict-definition",
+      "clue": "문제가 없는지 꼼꼼히 살펴 확인하는 일",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -455,10 +455,10 @@
       "sourceId": "30057",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "빛이 없을 때의 밤하늘과 같이 매우 어둡고 짙은 색",
-      "clueSource": "krdict-definition",
+      "clue": "숯이나 깜깜한 밤하늘처럼 짙고 어두운 빛깔",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -470,10 +470,10 @@
       "sourceId": "64367",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "네 계절 중의 하나로 가을과 봄 사이의 추운 계절",
-      "clueSource": "krdict-definition",
+      "clue": "눈이 내리고 찬 바람이 매서운 한 해의 끝 계절",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -485,10 +485,10 @@
       "sourceId": "60093",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "어떤 일이나 과정이 끝난 후의 상태나 현상",
-      "clueSource": "krdict-definition",
+      "clue": "어떤 원인이나 노력 끝에 얻어진 것",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -500,10 +500,10 @@
       "sourceId": "15967",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "학교나 회의 등 공식적인 자리에 나오지 않음",
-      "clueSource": "krdict-definition",
+      "clue": "학교나 모임에 나와야 할 사람이 자리를 비우는 일",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -515,10 +515,10 @@
       "sourceId": "15973",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "어떻게 하기로 굳게 마음을 정함. 또는 그런 마음",
-      "clueSource": "krdict-definition",
+      "clue": "무언가를 꼭 해내겠다고 단단히 먹은 마음",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -530,10 +530,10 @@
       "sourceId": "83174",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "무엇을 어떻게 하기로 분명하게 정함. 또는 그렇게 정해진 내용",
-      "clueSource": "krdict-definition",
+      "clue": "여러 갈래 가운데 하나로 딱 잘라 정하는 일",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -545,10 +545,10 @@
       "sourceId": "31665",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "남자와 여자가 법적으로 부부가 됨",
-      "clueSource": "krdict-definition",
+      "clue": "두 사람이 식을 올리고 부부의 연을 맺는 일",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -560,10 +560,10 @@
       "sourceId": "60094",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "운동이나 기술 등의 능력을 서로 겨룸",
-      "clueSource": "krdict-definition",
+      "clue": "승부를 가리려고 실력을 맞붙여 겨루는 시합",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -575,10 +575,10 @@
       "sourceId": "25949",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "사회의 질서를 지키고 국민의 안전과 재산을 보호하는 일을 하는 공무원",
-      "clueSource": "krdict-definition",
+      "clue": "치안을 지키고 범인을 잡는 제복 입은 공무원",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -590,10 +590,10 @@
       "sourceId": "26024",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "자연이나 지역의 아름다운 모습",
-      "clueSource": "krdict-definition",
+      "clue": "산과 바다처럼 눈을 즐겁게 하는 빼어난 풍경",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -605,10 +605,10 @@
       "sourceId": "26087",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "자신이 실제로 해 보거나 겪어 봄. 또는 거기서 얻은 지식이나 기능",
-      "clueSource": "krdict-definition",
+      "clue": "몸소 부딪쳐 겪으며 얻는 지식이나 능력",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -620,10 +620,10 @@
       "sourceId": "23937",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "어떤 목적을 이루기 위해서 마땅히 거쳐야 할 순서",
-      "clueSource": "krdict-definition",
+      "clue": "층과 층 사이를 걸어서 오르내리도록 만든 층층대",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -635,10 +635,10 @@
       "sourceId": "15355",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "닭의 알",
-      "clueSource": "krdict-definition",
+      "clue": "프라이로도 부치고 삶아서도 먹는, 암탉이 낳은 것",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -650,10 +650,10 @@
       "sourceId": "26229",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "물건값이나 비용을 냄",
-      "clueSource": "krdict-definition",
+      "clue": "식당에서 먹은 값이나 물건값을 치르는 일",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -665,10 +665,10 @@
       "sourceId": "17692",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "끊이지 않고 이어 나감",
-      "clueSource": "krdict-definition",
+      "clue": "도중에 멈추지 않고 죽 이어 나가는 것",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -680,10 +680,10 @@
       "sourceId": "22537",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "어떤 현상이 가장 왕성하거나 어떤 일을 하기에 알맞은 때",
-      "clueSource": "krdict-definition",
+      "clue": "봄과 여름처럼 한 해를 넷으로 나눈 저마다의 철",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -695,10 +695,10 @@
       "sourceId": "23324",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "앞으로의 일을 자세히 생각하여 정함",
-      "clueSource": "krdict-definition",
+      "clue": "앞으로 할 일의 순서와 방법을 미리 짜 두는 것",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -710,10 +710,10 @@
       "sourceId": "62501",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "목을 포함한 머리 부분",
-      "clueSource": "krdict-definition",
+      "clue": "인사할 때 숙이고 동의할 때 끄덕이는 부위",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -725,10 +725,10 @@
       "sourceId": "31685",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "음식으로 먹는 동물의 살",
-      "clueSource": "krdict-definition",
+      "clue": "구이나 찌개의 재료가 되는 짐승의 살",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -740,10 +740,10 @@
       "sourceId": "20052",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "아버지의 누나나 여동생을 이르거나 부르는 말",
-      "clueSource": "krdict-definition",
+      "clue": "아버지와 남매 사이인 여자 어른을 부르는 말",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -755,10 +755,10 @@
       "sourceId": "19225",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "마음속에 걱정거리가 있어 괴로워하고 계속 신경 씀",
-      "clueSource": "krdict-definition",
+      "clue": "이러지도 저러지도 못해 혼자 속을 끓이는 일",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -770,10 +770,10 @@
       "sourceId": "18856",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "기계나 장치 등이 제대로 작동하지 않음",
-      "clueSource": "krdict-definition",
+      "clue": "기계가 말을 듣지 않아 멈춰 버린 상태",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -785,10 +785,10 @@
       "sourceId": "27364",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "태어나서 자란 곳",
-      "clueSource": "krdict-definition",
+      "clue": "명절이면 찾아가게 되는, 나고 자란 곳",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -800,10 +800,10 @@
       "sourceId": "36672",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "학문이나 기술을 배워서 지식을 얻음",
-      "clueSource": "krdict-definition",
+      "clue": "책상 앞에 앉아 지식과 학문을 익히는 일",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -815,10 +815,10 @@
       "sourceId": "31849",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "사람들이 놀고 쉴 수 있도록 풀밭, 나무, 꽃 등을 가꾸어 놓은 넓은 장소",
-      "clueSource": "krdict-definition",
+      "clue": "산책과 휴식을 위해 꽃과 나무를 심어 꾸민 쉼터",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -830,10 +830,10 @@
       "sourceId": "62411",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "원료나 재료를 가공하여 물건을 만들어 내는 곳",
-      "clueSource": "krdict-definition",
+      "clue": "기계를 돌려 제품을 대량으로 만들어 내는 시설",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -845,10 +845,10 @@
       "sourceId": "24126",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "힘이나 노력, 돈을 들이지 않고 거저 얻은 것",
-      "clueSource": "krdict-definition",
+      "clue": "돈 한 푼 들이지 않고 거저 얻는 것",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -860,10 +860,10 @@
       "sourceId": "15252",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "글씨를 쓰거나 그림을 그릴 수 있도록 줄이 쳐져 있거나 빈 종이로 매어 놓은 책",
-      "clueSource": "krdict-definition",
+      "clue": "필기할 수 있게 빈 종이를 여러 장 묶은 학용품",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -875,10 +875,10 @@
       "sourceId": "25620",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "비행기가 내리고 뜨기 위한 시설이 마련된 장소",
-      "clueSource": "krdict-definition",
+      "clue": "여객기가 뜨고 내리며 출국 수속을 밟는 곳",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -890,10 +890,10 @@
       "sourceId": "27244",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "지나간 때",
-      "clueSource": "krdict-definition",
+      "clue": "이미 흘러가 버린 지난 시간",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -905,10 +905,10 @@
       "sourceId": "18264",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "사과, 배, 포도, 밤 등과 같이 나뭇가지나 줄기에 열리는 먹을 수 있는 열매",
-      "clueSource": "krdict-definition",
+      "clue": "사과나 포도처럼 나무에 달콤하게 열리는 먹거리",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -920,10 +920,10 @@
       "sourceId": "18286",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "밀가루나 쌀가루 등에 우유, 설탕 등을 넣고 반죽하여 굽거나 튀긴 간식",
-      "clueSource": "krdict-definition",
+      "clue": "봉지에 담겨 팔리는 바삭하고 달콤한 주전부리",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -935,10 +935,10 @@
       "sourceId": "21898",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "무엇 때문에. 어떠한 이유로",
-      "clueSource": "krdict-definition",
+      "clue": "사람이나 사물이 서로 얽히어 맺어진 사이",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -950,10 +950,10 @@
       "sourceId": "22128",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "어떤 곳의 경치, 상황, 풍속 등을 찾아가서 구경함",
-      "clueSource": "krdict-definition",
+      "clue": "이름난 곳을 찾아다니며 두루 둘러보는 여행",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -965,10 +965,10 @@
       "sourceId": "60096",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "어떤 것을 향하여 끌리는 감정과 생각",
-      "clueSource": "krdict-definition",
+      "clue": "마음이 쏠려 자꾸 눈길이 가는 것",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -980,10 +980,10 @@
       "sourceId": "62390",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "사람들에게 널리 알림",
-      "clueSource": "krdict-definition",
+      "clue": "상품을 팔려고 방송이나 신문에 내보내는 선전",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -995,10 +995,10 @@
       "sourceId": "24037",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "유치원, 초등학교, 중학교, 고등학교 등에서 자격을 갖추고 학생을 가르치는 사람",
-      "clueSource": "krdict-definition",
+      "clue": "교단에 서서 학생들을 가르치는 선생님",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1010,10 +1010,10 @@
       "sourceId": "31684",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "학생을 가르침",
-      "clueSource": "krdict-definition",
+      "clue": "대학 강단에서 학문을 가르치고 연구하는 사람",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1025,10 +1025,10 @@
       "sourceId": "64472",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "어떤 것을 배우는 모임",
-      "clueSource": "krdict-definition",
+      "clue": "책상과 칠판이 놓여 수업이 이루어지는 방",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1040,10 +1040,10 @@
       "sourceId": "55289",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "개인의 능력을 키우기 위해 지식, 교양, 기술 등을 가르치는 일",
-      "clueSource": "krdict-definition",
+      "clue": "사람을 가르쳐 지식과 인격을 길러 주는 일",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1055,10 +1055,10 @@
       "sourceId": "64469",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "나라 사이에 관계를 맺어 오고 가고 함",
-      "clueSource": "krdict-definition",
+      "clue": "자동차나 기차 같은 탈것으로 사람과 짐이 오가는 일",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1070,10 +1070,10 @@
       "sourceId": "37628",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "서로 주고받음",
-      "clueSource": "krdict-definition",
+      "clue": "가진 것을 서로 맞바꾸는 일",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1085,10 +1085,10 @@
       "sourceId": "64484",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "흥미나 관심을 가지고 봄",
-      "clueSource": "krdict-definition",
+      "clue": "재미난 볼거리를 눈으로 즐기는 일",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1100,10 +1100,10 @@
       "sourceId": "26805",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "정장을 입었을 때 신는 가죽, 비닐 등으로 만든 신발",
-      "clueSource": "krdict-definition",
+      "clue": "정장 차림에 맞춰 신는 반들반들한 가죽 신",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1115,10 +1115,10 @@
       "sourceId": "64487",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "공기 속의 작은 물방울이나 얼음 알갱이가 한데 뭉쳐 하늘에 떠 있는 것",
-      "clueSource": "krdict-definition",
+      "clue": "하늘에 떠다니다가 비를 뿌리기도 하는 뭉게뭉게 덩어리",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1130,10 +1130,10 @@
       "sourceId": "20190",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "일 년 열두 달 가운데 아홉째 달",
-      "clueSource": "krdict-definition",
+      "clue": "여름이 물러가고 새 학기가 시작되는 아홉 번째 달",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1145,10 +1145,10 @@
       "sourceId": "60099",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "나라의 안",
-      "clueSource": "krdict-definition",
+      "clue": "해외가 아닌 자기 나라 땅 안쪽",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1160,10 +1160,10 @@
       "sourceId": "24524",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "한 나라의 구성원이 되는 자격",
-      "clueSource": "krdict-definition",
+      "clue": "여권에 적히는, 어느 나라 사람인지를 나타내는 자격",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1175,10 +1175,10 @@
       "sourceId": "58597",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "여러 나라에 관련되거나 여러 나라가 함께 하는 것",
-      "clueSource": "krdict-definition",
+      "clue": "올림픽처럼 여러 나라가 두루 얽혀 함께하는 성격",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1190,10 +1190,10 @@
       "sourceId": "62241",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "군대에 속하여 무기를 다루는 등의 훈련을 받고 일정한 임무를 맡아 하는 사람",
-      "clueSource": "krdict-definition",
+      "clue": "나라를 지키려고 제복을 입고 복무하는 사람",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1205,10 +1205,10 @@
       "sourceId": "35269",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "여러 사람이 지키도록 정해 놓은 법칙",
-      "clueSource": "krdict-definition",
+      "clue": "여럿이 다 함께 지키자고 미리 정해 둔 약속",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1220,10 +1220,10 @@
       "sourceId": "36674",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "앞에서 말한 날",
-      "clueSource": "krdict-definition",
+      "clue": "이야기 속에서 이미 언급된 특정한 하루",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1235,10 +1235,10 @@
       "sourceId": "29683",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "앞에서 이야기한 어떤 때",
-      "clueSource": "krdict-definition",
+      "clue": "앞서 말한 바로 그 시점",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1250,10 +1250,10 @@
       "sourceId": "31674",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "음식을 담는 도구",
-      "clueSource": "krdict-definition",
+      "clue": "국이나 반찬을 담아 상에 올리는 용기",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1265,10 +1265,10 @@
       "sourceId": "29687",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "선이나 색채로 사물의 모양이나 이미지 등을 평면 위에 나타낸 것",
-      "clueSource": "krdict-definition",
+      "clue": "화가가 붓과 물감으로 화폭에 담아낸 것",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1280,10 +1280,10 @@
       "sourceId": "31667",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "연극이나 음악, 무용 등을 공연하거나 영화를 상영하기 위한 시설을 갖춘 곳",
-      "clueSource": "krdict-definition",
+      "clue": "무대 공연이나 영화를 보러 찾아가는 곳",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1295,10 +1295,10 @@
       "sourceId": "62061",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "어떤 장소나 물건, 사람을 중심으로 하여 가까운 곳",
-      "clueSource": "krdict-definition",
+      "clue": "어떤 곳에서 멀지 않은 부근",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1310,10 +1310,10 @@
       "sourceId": "60239",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "써 놓은 글자의 모양",
-      "clueSource": "krdict-definition",
+      "clue": "손으로 쓴 글자의 생김새, 잘 쓰면 명필 소리를 듣는 것",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1325,10 +1325,10 @@
       "sourceId": "62490",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "말을 적는 기호",
-      "clueSource": "krdict-definition",
+      "clue": "한글 자모처럼 말소리를 눈에 보이게 기록하는 기호",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1355,10 +1355,10 @@
       "sourceId": "71729",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "어느 일정한 때부터 다른 일정한 때까지의 동안",
-      "clueSource": "krdict-definition",
+      "clue": "시작하는 때부터 끝나는 때까지의 동안",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1370,10 +1370,10 @@
       "sourceId": "40022",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "얼굴이나 피부에서 나오는 미끈미끈한 물질",
-      "clueSource": "krdict-definition",
+      "clue": "이마와 콧등에 번들번들 배어 나오는 미끈한 분비물",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1385,10 +1385,10 @@
       "sourceId": "20192",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "주변의 상황이나 분위기",
-      "clueSource": "krdict-definition",
+      "clue": "좋았다 나빴다 하는, 그때그때 달라지는 마음의 상태",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1400,10 +1400,10 @@
       "sourceId": "40080",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "기분이 매우 좋고 즐거운 마음",
-      "clueSource": "krdict-definition",
+      "clue": "슬픔과 반대로, 마음이 흐뭇하고 신나는 감정",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1415,10 +1415,10 @@
       "sourceId": "38812",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "이전의 모습, 사실, 지식, 경험 등을 잊지 않거나 다시 생각해 냄",
-      "clueSource": "krdict-definition",
+      "clue": "지난 일을 잊지 않고 머릿속에 담아 두는 것",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1430,10 +1430,10 @@
       "sourceId": "38103",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "대기의 온도",
-      "clueSource": "krdict-definition",
+      "clue": "일기 예보에서 영상 몇 도라고 알려 주는 공기의 따뜻하고 찬 정도",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1445,10 +1445,10 @@
       "sourceId": "61280",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "신문, 잡지, 방송 등에 실을 기사를 조사하여 쓰거나 편집하는 사람",
-      "clueSource": "krdict-definition",
+      "clue": "수첩과 카메라를 들고 취재하여 기사를 쓰는 사람",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1460,10 +1460,10 @@
       "sourceId": "60632",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "사람이나 물건을 싣고 연료의 힘으로 철도 위를 달리는, 길이가 긴 차",
-      "clueSource": "krdict-definition",
+      "clue": "칙칙폭폭 소리를 내며 레일 위를 달리는 긴 탈것",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1475,10 +1475,10 @@
       "sourceId": "38465",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "폐에서 목구멍을 통해 공기가 거친 소리를 내며 갑자기 터져 나오는 일",
-      "clueSource": "krdict-definition",
+      "clue": "감기에 걸리면 콜록콜록 터져 나오는 것",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1490,10 +1490,10 @@
       "sourceId": "38467",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "앞뒤가 편평하며 가운데가 홀쭉하고 긴 통에 여섯 개의 줄을 매어 손가락으로 퉁겨 연주하는 악기",
-      "clueSource": "krdict-definition",
+      "clue": "여섯 줄을 손끝으로 튕겨 연주하는, 허리가 잘록한 현악기",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1505,10 +1505,10 @@
       "sourceId": "73494",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "어떤 일을 하기에 알맞은 시기나 경우",
-      "clueSource": "krdict-definition",
+      "clue": "놓치면 아쉬운, 일을 벌이기 딱 좋은 때",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1520,10 +1520,10 @@
       "sourceId": "43863",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "마음을 놓지 않고 정신을 바짝 차림",
-      "clueSource": "krdict-definition",
+      "clue": "면접을 앞두고 손에 땀이 나며 마음이 팽팽해진 상태",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1535,10 +1535,10 @@
       "sourceId": "62471",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "책이나 글 등의 분량",
-      "clueSource": "krdict-definition",
+      "clue": "글이나 끈이 길고 짧은 정도",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1550,10 +1550,10 @@
       "sourceId": "58106",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "밥과 여러 가지 반찬을 김으로 말아 싸서 썰어 먹는 음식",
-      "clueSource": "krdict-definition",
+      "clue": "소풍날 도시락에 자주 싸 가는, 해조류로 돌돌 말아 썬 음식",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1565,10 +1565,10 @@
       "sourceId": "28818",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "배추나 무 등의 채소를 소금에 절인 후 양념에 버무려 발효시켜서 만든 음식",
-      "clueSource": "krdict-definition",
+      "clue": "한국 밥상에 빠지지 않는, 절인 배추를 고춧가루 양념에 버무려 삭힌 반찬",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1580,10 +1580,10 @@
       "sourceId": "38260",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "꽃을 꽂아 놓는 병",
-      "clueSource": "krdict-definition",
+      "clue": "꺾어 온 장미 다발을 물과 함께 꽂아 두는 용기",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1595,10 +1595,10 @@
       "sourceId": "38277",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "꽃이나 화초 등의 식물을 파는 가게",
-      "clueSource": "krdict-definition",
+      "clue": "장미 다발이나 화분을 사러 가는 가게",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1610,10 +1610,10 @@
       "sourceId": "29699",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "상상 속의 세상이나 세계",
-      "clueSource": "krdict-definition",
+      "clue": "앨리스가 토끼를 따라가 도착한 이상한 세계",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1625,10 +1625,10 @@
       "sourceId": "32750",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "집이나 가구 등을 만드는 데 사용하는 재목",
-      "clueSource": "krdict-definition",
+      "clue": "가구나 집을 지을 때 쓰는, 숲에서 베어 온 재료",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1640,10 +1640,10 @@
       "sourceId": "60486",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "사람이나 동물 또는 식물 등이 세상에 나서 살아온 햇수",
-      "clueSource": "krdict-definition",
+      "clue": "생일이 지날 때마다 하나씩 늘어나는 숫자",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1655,10 +1655,10 @@
       "sourceId": "62275",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "순서나 시간의 맨 끝",
-      "clueSource": "krdict-definition",
+      "clue": "먼저의 반대말로, 순서상 맨 뒤에 오는 때",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1670,10 +1670,10 @@
       "sourceId": "16315",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "네 날",
-      "clueSource": "krdict-definition",
+      "clue": "사흘보다 하루 더 긴 기간",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1685,10 +1685,10 @@
       "sourceId": "56098",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "물고기를 낚는 데 쓰는 끝이 뾰족한 작은 도구",
-      "clueSource": "krdict-definition",
+      "clue": "미끼를 꿰어 물고기를 낚아 올리는 뾰족한 바늘",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1700,10 +1700,10 @@
       "sourceId": "60630",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "그날그날의 기온이나 공기 중에 비, 구름, 바람, 안개 등이 나타나는 상태",
-      "clueSource": "krdict-definition",
+      "clue": "우산을 챙길지 정하게 해 주는, 그날 하늘의 상태",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1715,10 +1715,10 @@
       "sourceId": "58157",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "날의 수",
-      "clueSource": "krdict-definition",
+      "clue": "몇 월 며칠인지 달력에서 짚어 보는 것",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1730,10 +1730,10 @@
       "sourceId": "60628",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "남자와 여자",
-      "clueSource": "krdict-definition",
+      "clue": "노소와 짝지어 쓰이는, 두 성별을 아울러 이르는 말",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1745,10 +1745,10 @@
       "sourceId": "25261",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "서울특별시 중구와 용산구 사이에 있는 산",
-      "clueSource": "krdict-definition",
+      "clue": "케이블카를 타고 올라가는, 서울타워가 서 있는 산",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1760,10 +1760,10 @@
       "sourceId": "28806",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "아기를 낳지 못하는 성, 또는 그런 성을 가진 어른이 된 사람",
-      "clueSource": "krdict-definition",
+      "clue": "여성과 상대되는 성, 또는 그런 성을 지닌 어른",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1775,10 +1775,10 @@
       "sourceId": "60865",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "남성으로 태어난 사람",
-      "clueSource": "krdict-definition",
+      "clue": "아빠, 삼촌, 오빠가 속하는 성별의 사람",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1790,10 +1790,10 @@
       "sourceId": "63619",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "북한 지역에 상대하여, 남한 지역",
-      "clueSource": "krdict-definition",
+      "clue": "북쪽의 반대 방위로, 제주도가 있는 방향",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1805,10 +1805,10 @@
       "sourceId": "31919",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "부부 관계에서의 남자",
-      "clueSource": "krdict-definition",
+      "clue": "아내가 자신의 배우자를 가리켜 부르는 말",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1820,10 +1820,10 @@
       "sourceId": "41359",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "낮에 자는 잠",
-      "clueSource": "krdict-definition",
+      "clue": "점심을 먹고 나서 해가 떠 있을 때 잠깐 눈을 붙이는 일",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1835,10 +1835,10 @@
       "sourceId": "28417",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "주로 약물로 내장 기관의 질병을 치료하는 의학 분야. 또는 그 분야의 병원",
-      "clueSource": "krdict-definition",
+      "clue": "감기나 배탈이 났을 때 찾는, 수술 대신 약으로 고치는 진료 과목",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1850,10 +1850,10 @@
       "sourceId": "64517",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "올해의 바로 다음 해",
-      "clueSource": "krdict-definition",
+      "clue": "올해를 다 보내고 나서 새로 맞이하는 해",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1865,10 +1865,10 @@
       "sourceId": "72573",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "그릇이나 상자 등의 안에 든 것",
-      "clueSource": "krdict-definition",
+      "clue": "겉포장이 아니라 그 속에 담긴 알맹이",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1880,10 +1880,10 @@
       "sourceId": "30193",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "앞으로 올 날",
-      "clueSource": "krdict-definition",
+      "clue": "오늘 하룻밤 자고 나면 밝아 오는 날",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1895,10 +1895,10 @@
       "sourceId": "41163",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "음식을 끓이는 데 쓰는, 솥보다 작고 뚜껑과 손잡이가 있는 그릇",
-      "clueSource": "krdict-definition",
+      "clue": "라면 끓이기에 알맞은, 손잡이와 뚜껑이 달린 조리 기구",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1910,10 +1910,10 @@
       "sourceId": "58180",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "코로 맡을 수 있는 기운",
-      "clueSource": "krdict-definition",
+      "clue": "코끝으로 알아차리는 향기나 악취",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1925,10 +1925,10 @@
       "sourceId": "32777",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "국수를 냉국이나 김칫국 등에 말거나 고추장 양념에 비벼서 먹는 음식",
-      "clueSource": "krdict-definition",
+      "clue": "여름철 살얼음 낀 육수에 말아 먹는 시원한 국수",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1940,10 +1940,10 @@
       "sourceId": "90892",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "처음부터 세어 모두 네 개가 됨",
-      "clueSource": "krdict-definition",
+      "clue": "셋째 다음의 차례",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1955,10 +1955,10 @@
       "sourceId": "20195",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "같은 말을 계속 하면서 졸라 댐",
-      "clueSource": "krdict-definition",
+      "clue": "마이크를 잡고 곡조에 맞춰 부르는 것",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1970,10 +1970,10 @@
       "sourceId": "62400",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "어떤 목적을 이루기 위하여 힘을 들이고 애를 씀",
-      "clueSource": "krdict-definition",
+      "clue": "꿈을 이루려고 땀 흘려 애쓰는 것",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -1985,10 +1985,10 @@
       "sourceId": "63641",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "나이가 들어 늙은 사람",
-      "clueSource": "krdict-definition",
+      "clue": "지하철 경로석에 앉으시는, 연세가 지긋한 어르신",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2000,10 +2000,10 @@
       "sourceId": "32788",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "어떤 내용을 간단히 정리하여 적음. 또는 그런 자료",
-      "clueSource": "krdict-definition",
+      "clue": "수업 시간에 필기하는 공책, 또는 간단한 기록",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2015,10 +2015,10 @@
       "sourceId": "40697",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "풀이나 나뭇잎과 같은 색",
-      "clueSource": "krdict-definition",
+      "clue": "신호등에서 건너가도 좋다는 뜻을 나타내는 풀빛",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2030,10 +2030,10 @@
       "sourceId": "28579",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "차나무의 잎을 딴 후 햇볕에 말린 푸른색 잎. 또는 그 잎으로 만든 차",
-      "clueSource": "krdict-definition",
+      "clue": "다도에서 푸른 찻잎을 우려 마시는 음료",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2045,10 +2045,10 @@
       "sourceId": "62830",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "즐겁게 노는 일",
-      "clueSource": "krdict-definition",
+      "clue": "숨바꼭질이나 술래잡기처럼 재미로 하는 활동",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2060,10 +2060,10 @@
       "sourceId": "28323",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "다섯 사람씩 두 팀이 하며, 상대방의 바스켓에 공을 많이 넣으면 이기는 경기",
-      "clueSource": "krdict-definition",
+      "clue": "링에 공을 던져 넣어 점수를 내는 5대 5 구기 종목",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2075,10 +2075,10 @@
       "sourceId": "43805",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "장난으로 다른 사람을 놀리거나 웃기려고 하는 말",
-      "clueSource": "krdict-definition",
+      "clue": "웃자고 건네는, 진담이 아닌 우스갯소리",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2090,10 +2090,10 @@
       "sourceId": "45290",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "높은 정도",
-      "clueSource": "krdict-definition",
+      "clue": "산이나 건물이 바닥에서 꼭대기까지 솟은 정도",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2105,10 +2105,10 @@
       "sourceId": "32205",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "남자가 자기보다 나이 많은 여자를 다정하게 이르거나 부르는 말",
-      "clueSource": "krdict-definition",
+      "clue": "남동생이 손위 여자 형제를 부르는 말",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2120,10 +2120,10 @@
       "sourceId": "55290",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "사람이나 동물의 눈에서 흘러나오는 맑은 액체",
-      "clueSource": "krdict-definition",
+      "clue": "슬프거나 감동할 때 뺨을 타고 흐르는 것",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2135,10 +2135,10 @@
       "sourceId": "32795",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "처음으로 공개되는 새로운 소식",
-      "clueSource": "krdict-definition",
+      "clue": "앵커가 전하는, 방금 들어온 세상 소식",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2150,10 +2150,10 @@
       "sourceId": "61166",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "몸이나 마음에서 일어나는 기분이나 감정",
-      "clueSource": "krdict-definition",
+      "clue": "말로 딱 설명하기 어려운, 마음에 와닿는 기분",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2165,10 +2165,10 @@
       "sourceId": "61285",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "어떤 일을 할 수 있는 힘",
-      "clueSource": "krdict-definition",
+      "clue": "맡은 일을 거뜬히 해내는 힘과 재주",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2180,10 +2180,10 @@
       "sourceId": "28826",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "중간에 거치게 되는 단계나 과정",
-      "clueSource": "krdict-definition",
+      "clue": "걷고 뛸 때 몸을 받치는 부분, 또는 강을 건너게 하는 구조물",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2195,10 +2195,10 @@
       "sourceId": "64531",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "시간이 지난 뒤",
-      "clueSource": "krdict-definition",
+      "clue": "이번 것이 끝나고 바로 이어지는 차례",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2210,10 +2210,10 @@
       "sourceId": "28372",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "복잡하지 않고 간단한 것",
-      "clueSource": "krdict-definition",
+      "clue": "얽힌 데 없이 한눈에 들어오는 간결함",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2225,10 +2225,10 @@
       "sourceId": "57287",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "일정한 뜻과 기능을 가지며 홀로 쓰일 수 있는 가장 작은 말의 단위",
-      "clueSource": "krdict-definition",
+      "clue": "국어사전에 표제어로 오르는 낱말 하나하나",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2240,10 +2240,10 @@
       "sourceId": "28375",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "옷을 여미기 위해 사용하는 작고 동그란 물건",
-      "clueSource": "krdict-definition",
+      "clue": "셔츠 앞섶을 채울 때 구멍에 끼우는 둥근 것",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2255,10 +2255,10 @@
       "sourceId": "28378",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "손바닥 모양의 잎이 가을에 빨갛게 물드는 나무",
-      "clueSource": "krdict-definition",
+      "clue": "가을 설악산을 울긋불긋 물들이는, 캐나다 국기에도 잎이 그려진 나무",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2270,10 +2270,10 @@
       "sourceId": "60487",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "닭이 낳은 알",
-      "clueSource": "krdict-definition",
+      "clue": "삶거나 부쳐 먹는, 암탉이 낳는 것",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2285,10 +2285,10 @@
       "sourceId": "60489",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "한 해의 달, 날, 요일, 절기, 행사일 등을 날짜에 따라 적어 놓은 것",
-      "clueSource": "krdict-definition",
+      "clue": "벽에 걸어 두고 한 장씩 넘기며 날짜를 확인하는 물건",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2300,10 +2300,10 @@
       "sourceId": "63662",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "말린 담뱃잎을 가늘게 썰어 종이에 말고 불을 붙여서 그 연기를 마실 수 있도록 만든 것",
-      "clueSource": "krdict-definition",
+      "clue": "백해무익하다는 말을 듣는, 불을 붙여 연기를 들이마시는 기호품",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2315,10 +2315,10 @@
       "sourceId": "49452",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "질문이나 편지에 대한 답으로 보내는 편지",
-      "clueSource": "krdict-definition",
+      "clue": "받은 편지에 회신으로 써 보내는 글",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2330,10 +2330,10 @@
       "sourceId": "68892",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "영남 지방의 중앙부에 있는 광역시. 섬유 공업 등 각종 공업이 발달하였고 사과 산지로도 유명하다",
-      "clueSource": "krdict-definition",
+      "clue": "팔공산이 곁에 있는 영남의 중심 광역시, 여름 더위로 이름난 곳",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2345,10 +2345,10 @@
       "sourceId": "64540",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "어떤 문제나 현상을 해결하거나 설명하는 방안",
-      "clueSource": "krdict-definition",
+      "clue": "질문을 받으면 돌려주는 말",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2360,10 +2360,10 @@
       "sourceId": "61281",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "고등학교를 마치고 진학하는 고등 교육 기관",
-      "clueSource": "krdict-definition",
+      "clue": "수능을 치른 뒤 진학하는, 캠퍼스가 있는 배움터",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2375,10 +2375,10 @@
       "sourceId": "64562",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "마주 대하여 이야기를 주고받음. 또는 그 이야기",
-      "clueSource": "krdict-definition",
+      "clue": "얼굴을 맞대고 말을 주고받는 일",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2390,10 +2390,10 @@
       "sourceId": "61306",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "많은 사람이 모이는 모임이나 회의",
-      "clueSource": "krdict-definition",
+      "clue": "우승자를 가리려고 여럿이 모여 겨루는 큰 행사",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2405,10 +2405,10 @@
       "sourceId": "47410",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "어떤 사람이 베풀어준 은혜나 도움. 혹은 어떤 일이 발생한 것이 준 이익",
-      "clueSource": "krdict-definition",
+      "clue": "일이 잘 풀린 공을 누군가의 도움으로 돌릴 때 쓰는 말",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2420,10 +2420,10 @@
       "sourceId": "47886",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "사람이나 차가 잘 다닐 수 있도록 만들어 놓은 길",
-      "clueSource": "krdict-definition",
+      "clue": "자동차가 달리도록 아스팔트를 깔아 닦은 길",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2435,10 +2435,10 @@
       "sourceId": "70743",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "정치, 경제, 문화의 중심이 되고 사람이 많이 사는 지역",
-      "clueSource": "krdict-definition",
+      "clue": "시골과 달리 빌딩이 빽빽하고 인구가 몰려 사는 곳",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2450,10 +2450,10 @@
       "sourceId": "64542",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "다른 사람을 돕는 일",
-      "clueSource": "krdict-definition",
+      "clue": "어려운 처지의 사람에게 손을 보태 거드는 일",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2465,10 +2465,10 @@
       "sourceId": "64543",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "목적지에 다다름",
-      "clueSource": "krdict-definition",
+      "clue": "출발의 반대말로, 가려던 곳에 이르러 닿음",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2480,10 +2480,10 @@
       "sourceId": "48896",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "책을 읽음",
-      "clueSource": "krdict-definition",
+      "clue": "책장을 넘기며 글을 읽는 일, 가을과 어울린다는 취미",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2495,10 +2495,10 @@
       "sourceId": "62417",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "자기가 사는 집 근처",
-      "clueSource": "krdict-definition",
+      "clue": "우리 집 둘레에 이웃들이 모여 사는 구역",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2510,10 +2510,10 @@
       "sourceId": "70747",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "사람을 제외한 길짐승, 날짐승, 물짐승 등의 움직이는 생물",
-      "clueSource": "krdict-definition",
+      "clue": "식물과 달리 스스로 움직여 다니는 생물들",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2525,10 +2525,10 @@
       "sourceId": "70748",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "나이가 더 많은 사람이 나이가 어린 사람을 친숙하게 이르거나 부르는 말",
-      "clueSource": "krdict-definition",
+      "clue": "형이나 언니가 손아래 형제를 부르는 말",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2540,10 +2540,10 @@
       "sourceId": "64544",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "같은 때",
-      "clueSource": "krdict-definition",
+      "clue": "두 가지 일이 같은 순간에 함께 일어남",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2555,10 +2555,10 @@
       "sourceId": "70749",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "한때에서 다른 때까지의 시간의 길이",
-      "clueSource": "krdict-definition",
+      "clue": "한 시점에서 다른 시점까지 걸친 시간의 폭",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2570,10 +2570,10 @@
       "sourceId": "48655",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "구리 등으로 동그랗게 만든 돈",
-      "clueSource": "krdict-definition",
+      "clue": "지폐가 아닌, 딸랑거리는 둥근 쇠붙이 돈",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2585,10 +2585,10 @@
       "sourceId": "63642",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "네 방위 중의 하나로, 해가 뜨는 쪽",
-      "clueSource": "krdict-definition",
+      "clue": "서쪽의 반대로, 아침 해가 솟아오르는 방위",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2600,10 +2600,10 @@
       "sourceId": "62269",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "몸이 뚱뚱하고 다리와 꼬리가 짧고 눈이 작은, 고기를 먹기 위해 기르는 짐승",
-      "clueSource": "krdict-definition",
+      "clue": "꿀꿀 울음소리를 내는, 삼겹살을 얻는 가축",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2615,10 +2615,10 @@
       "sourceId": "48241",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "간장을 담근 뒤에 남은 메주를 발효시켜 만든 장",
-      "clueSource": "krdict-definition",
+      "clue": "메주를 띄워 만든, 찌개로 즐겨 끓이는 구수한 전통 장류",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2630,10 +2630,10 @@
       "sourceId": "45275",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "콩을 갈아서 만든 희고 부드러운 음식",
-      "clueSource": "krdict-definition",
+      "clue": "콩물을 굳혀 만든 말랑하고 하얀 식품",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2645,10 +2645,10 @@
       "sourceId": "48344",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "머리가 아픈 증세",
-      "clueSource": "krdict-definition",
+      "clue": "지끈지끈 머리가 울리며 아파 오는 증상",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2660,10 +2660,10 @@
       "sourceId": "90911",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "두 번째 자식",
-      "clueSource": "krdict-definition",
+      "clue": "맏이 다음으로 태어난 아이",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2675,10 +2675,10 @@
       "sourceId": "66947",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "향하고 있는 방향의 반대쪽",
-      "clueSource": "krdict-definition",
+      "clue": "앞의 반대가 되는 방향",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2690,10 +2690,10 @@
       "sourceId": "40293",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "운동이나 놀이 등의 목적으로 산에 올라감",
-      "clueSource": "krdict-definition",
+      "clue": "정상 정복을 꿈꾸며 산길을 오르는 취미 활동",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2705,10 +2705,10 @@
       "sourceId": "70787",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "줄기가 땅 위로 뻗으며, 겉에 씨가 박혀 있는 빨간 열매가 열리는 여러해살이풀. 또는 그 열매",
-      "clueSource": "krdict-definition",
+      "clue": "겉에 씨가 콕콕 박힌 새콤달콤한 봄철의 빨간 과일",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2720,10 +2720,10 @@
       "sourceId": "15172",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "가래떡을 얇게 썰어 맑은 국에 넣고 끓인 음식",
-      "clueSource": "krdict-definition",
+      "clue": "새해 아침 나이 한 살 더 먹으며 먹는 하얀 국물 음식",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2735,10 +2735,10 @@
       "sourceId": "62270",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "기름에 튀겨 말린 국수와 가루 스프가 들어 있어서 물에 끓이기만 하면 간편하게 먹을 수 있는 음식",
-      "clueSource": "krdict-definition",
+      "clue": "물 끓여 스프 넣고 삼 분이면 완성되는 꼬불꼬불한 국수",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2750,10 +2750,10 @@
       "sourceId": "15687",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "어떤 일이 벌어지는 곳",
-      "clueSource": "krdict-definition",
+      "clue": "시골집 대문 안쪽에 펼쳐진 평평한 빈 땅",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2765,10 +2765,10 @@
       "sourceId": "61099",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "여러 집이 모여 있는 곳",
-      "clueSource": "krdict-definition",
+      "clue": "이웃한 집들이 옹기종기 모여 이룬 동네",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2780,10 +2780,10 @@
       "sourceId": "20911",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "기분이나 느낌",
-      "clueSource": "krdict-definition",
+      "clue": "몸과 달리 속으로 느끼고 생각하는 기분이나 감정",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2795,10 +2795,10 @@
       "sourceId": "54342",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "역이나 공항 등에 나가서 자기를 찾아오는 사람을 맞이함",
-      "clueSource": "krdict-definition",
+      "clue": "배웅과 반대로, 찾아오는 손님을 나가서 맞이하는 일",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2810,10 +2810,10 @@
       "sourceId": "49916",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "각종 생활용품을 판매하는 대형 매장",
-      "clueSource": "krdict-definition",
+      "clue": "카트를 끌고 다니며 장을 보는 커다란 할인 매장",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2825,10 +2825,10 @@
       "sourceId": "15782",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "밀가루를 반죽하여 얇게 민 후 그 위에 다진 고기나 야채 등 여러 가지 음식을 넣고 빚은 음식",
-      "clueSource": "krdict-definition",
+      "clue": "얇은 피에 고기와 채소 소를 넣고 빚어 찌거나 굽는 음식",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2840,10 +2840,10 @@
       "sourceId": "28779",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "있을지도 모르는 뜻밖의 경우",
-      "clueSource": "krdict-definition",
+      "clue": "혹시 그런 일이 생길지 모른다고 가정하는 경우",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2855,10 +2855,10 @@
       "sourceId": "52954",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "그럴 일이 거의 없지만 혹시 어떤 일이 생길 경우",
-      "clueSource": "krdict-definition",
+      "clue": "일어날 가능성이 낮은 일을 혹시나 하고 가정하는 경우",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2870,10 +2870,10 @@
       "sourceId": "53033",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "사람의 인생이나 사회 또는 상상 속의 이야기를 재미있게 표현한 그림. 또는 그런 그림을 엮은 책",
-      "clueSource": "krdict-definition",
+      "clue": "말풍선 속 대사와 그림 칸으로 이야기를 풀어내는 작품",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2885,10 +2885,10 @@
       "sourceId": "27365",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "성경에 있는 하느님의 말",
-      "clueSource": "krdict-definition",
+      "clue": "웃어른이 하는 말을 높여 이르는 표현",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2900,10 +2900,10 @@
       "sourceId": "51746",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "한 해 한 해",
-      "clueSource": "krdict-definition",
+      "clue": "해가 바뀔 때마다 어김없이 돌아오는 해마다의 때",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2915,10 +2915,10 @@
       "sourceId": "91115",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "한 달 한 달",
-      "clueSource": "krdict-definition",
+      "clue": "한 달도 거르지 않고 이어지는 다달이의 때",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2930,10 +2930,10 @@
       "sourceId": "58103",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "하루하루의 모든 날",
-      "clueSource": "krdict-definition",
+      "clue": "하루도 빠짐없이 이어지는 날마다의 나날",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2945,10 +2945,10 @@
       "sourceId": "91132",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "각각의 주",
-      "clueSource": "krdict-definition",
+      "clue": "한 주도 거르지 않고 돌아오는 주마다의 때",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2960,10 +2960,10 @@
       "sourceId": "30216",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "주로 발효시킨 보리에 물과 쓴 맛과 탄산을 더하여 만든 거품이 나는 술",
-      "clueSource": "krdict-definition",
+      "clue": "치킨과 짝을 이루는, 보리로 빚어 거품이 이는 노란 술",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2975,10 +2975,10 @@
       "sourceId": "66234",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "한쪽 옆이나 가장자리",
-      "clueSource": "krdict-definition",
+      "clue": "생각을 담당하며 목 위에 자리한 신체 부위",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -2990,10 +2990,10 @@
       "sourceId": "54839",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "시간이나 순서에서 앞선 때",
-      "clueSource": "krdict-definition",
+      "clue": "나중의 반대로, 남보다 앞서는 차례나 때",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3005,10 +3005,10 @@
       "sourceId": "57299",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "식사의 요리 종류",
-      "clueSource": "krdict-definition",
+      "clue": "식당에서 고를 수 있는 음식의 목록이나 차림표",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3020,10 +3020,10 @@
       "sourceId": "55525",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "잊지 않거나 다른 사람에게 전하기 위해 어떤 내용을 간단하게 글로 적음. 또는 그렇게 적은 글",
-      "clueSource": "krdict-definition",
+      "clue": "잊어버리지 않으려고 짧게 남겨 두는 기록",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3035,10 +3035,10 @@
       "sourceId": "16107",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "인터넷이나 통신망으로 주고받는 편지",
-      "clueSource": "krdict-definition",
+      "clue": "우표 없이 인터넷으로 주고받는 전자 편지",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3050,10 +3050,10 @@
       "sourceId": "36676",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "몇 날",
-      "clueSource": "krdict-definition",
+      "clue": "얼마 동안인지 확실하지 않은 몇 날을 이르는 말",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3065,10 +3065,10 @@
       "sourceId": "55441",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "설이나 추석 등 해마다 일정하게 돌아와 전통적으로 즐기거나 기념하는 날",
-      "clueSource": "krdict-definition",
+      "clue": "설날과 추석처럼 온 가족이 모여 쇠는 전통 기념일",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3080,10 +3080,10 @@
       "sourceId": "55757",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "사람이나 가축의 피를 빨아 먹는, 날아다니는 작은 곤충",
-      "clueSource": "krdict-definition",
+      "clue": "여름밤 앵앵거리며 피를 빨고 가려움을 남기는 곤충",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3095,10 +3095,10 @@
       "sourceId": "64739",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "남거나 빠진 것이 없는 전체",
-      "clueSource": "krdict-definition",
+      "clue": "한 사람도 남김없이 다, 전부를 이르는 말",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3110,10 +3110,10 @@
       "sourceId": "16134",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "내일의 다음 날",
-      "clueSource": "krdict-definition",
+      "clue": "오늘로부터 이틀 뒤가 되는 날",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3125,10 +3125,10 @@
       "sourceId": "62383",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "사람이나 사물의 생김새",
-      "clueSource": "krdict-definition",
+      "clue": "사람이나 사물이 눈에 비치는 생김새나 자태",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3140,10 +3140,10 @@
       "sourceId": "62397",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "어떤 방식이나 방법",
-      "clueSource": "krdict-definition",
+      "clue": "동그라미나 세모, 네모 같은 사물의 형태",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3155,10 +3155,10 @@
       "sourceId": "61519",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "어떤 일을 하기 위하여 여러 사람이 모이는 일",
-      "clueSource": "krdict-definition",
+      "clue": "같은 목적을 가진 여럿이 한자리에 어울리는 자리",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3170,10 +3170,10 @@
       "sourceId": "69297",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "예의를 차리거나 추위나 더위 등을 막기 위해 머리에 쓰는 물건",
-      "clueSource": "krdict-definition",
+      "clue": "햇빛이나 추위를 막으려고 머리에 쓰는 물건",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3185,10 +3185,10 @@
       "sourceId": "28643",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "온몸을 물로 씻는 일",
-      "clueSource": "krdict-definition",
+      "clue": "때를 밀고 몸을 깨끗이 하러 탕에 들어가는 일",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3200,10 +3200,10 @@
       "sourceId": "69465",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "이루려고 하는 일이나 나아가고자 하는 방향",
-      "clueSource": "krdict-definition",
+      "clue": "일을 벌일 때 이루려고 겨냥하는 바",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3215,10 +3215,10 @@
       "sourceId": "54870",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "물건의 무거운 정도",
-      "clueSource": "krdict-definition",
+      "clue": "저울로 재는, 물체가 무겁고 가벼운 정도",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3230,10 +3230,10 @@
       "sourceId": "15324",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "요금이 없음",
-      "clueSource": "krdict-definition",
+      "clue": "돈을 한 푼도 내지 않아도 되는 공짜",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3245,10 +3245,10 @@
       "sourceId": "55313",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "허벅지와 종아리 사이에 앞쪽으로 둥글게 튀어나온 부분",
-      "clueSource": "krdict-definition",
+      "clue": "설 때 펴고 앉을 때 굽히는 다리 한가운데의 관절",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3260,10 +3260,10 @@
       "sourceId": "66246",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "답을 요구하는 물음",
-      "clueSource": "krdict-definition",
+      "clue": "시험지에 실려 답을 찾게 하는 물음",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3275,10 +3275,10 @@
       "sourceId": "66247",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "사고파는 물품",
-      "clueSource": "krdict-definition",
+      "clue": "손에 잡히는 형체가 있는 갖가지 사물",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3290,10 +3290,10 @@
       "sourceId": "89812",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "굳이 말할 필요가 없음",
-      "clueSource": "krdict-definition",
+      "clue": "말할 것도 없이 당연함을 나타내는 말",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3305,10 +3305,10 @@
       "sourceId": "61518",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "앞으로 올 때",
-      "clueSource": "krdict-definition",
+      "clue": "과거와 현재 다음에 다가올 시간",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3320,10 +3320,10 @@
       "sourceId": "56257",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "남에게 잘못을 하여 마음이 편하지 않고 부끄러움",
-      "clueSource": "krdict-definition",
+      "clue": "잘못을 저질러 상대에게 볼 낯이 없는 마음",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3335,10 +3335,10 @@
       "sourceId": "56330",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "밖이 되는 곳",
-      "clueSource": "krdict-definition",
+      "clue": "안이나 실내와 반대가 되는 밖의 공간",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3350,10 +3350,10 @@
       "sourceId": "26497",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "지구에서 육지 이외의 부분으로 짠물이 차 있는 곳",
-      "clueSource": "krdict-definition",
+      "clue": "파도가 치고 짠물이 가득한, 지구의 넓디넓은 물",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3365,10 +3365,10 @@
       "sourceId": "62696",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "물체의 밑부분",
-      "clueSource": "krdict-definition",
+      "clue": "물체나 방의 맨 아래를 이루는 평평한 부분",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3380,10 +3380,10 @@
       "sourceId": "85627",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "매우 빠름",
-      "clueSource": "krdict-definition",
+      "clue": "눈에 보이지 않으면서 나뭇잎을 흔드는 공기의 흐름",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3395,10 +3395,10 @@
       "sourceId": "66249",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "위는 통으로 되고 아래는 두 다리를 넣을 수 있게 갈라진, 몸의 아랫부분에 입는 옷",
-      "clueSource": "krdict-definition",
+      "clue": "치마와 달리 두 다리를 따로 꿰어 입는 하의",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3410,10 +3410,10 @@
       "sourceId": "57325",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "기쁨, 축하, 환영, 칭찬 등을 나타내거나 장단을 맞추려고 두 손뼉을 마주 침",
-      "clueSource": "krdict-definition",
+      "clue": "공연이 끝나면 손뼉을 마주쳐 보내는 갈채",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3425,10 +3425,10 @@
       "sourceId": "69484",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "어떤 행동이나 의견 등을 따르지 않고 거스름",
-      "clueSource": "krdict-definition",
+      "clue": "찬성의 맞은편에 서서 남의 뜻을 거스르는 일",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3440,10 +3440,10 @@
       "sourceId": "57661",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "손가락에 끼는 동그란 장신구",
-      "clueSource": "krdict-definition",
+      "clue": "약속의 표시로 손가락에 끼우는 둥근 고리",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3455,10 +3455,10 @@
       "sourceId": "57641",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "식사를 할 때 밥에 곁들여 먹는 음식",
-      "clueSource": "krdict-definition",
+      "clue": "김치나 나물처럼 밥맛을 돋우는 곁들이 음식",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3470,10 +3470,10 @@
       "sourceId": "92065",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "말하고 있는 시점과 같은 때",
-      "clueSource": "krdict-definition",
+      "clue": "바로 조금 전, 이제 막 지나간 때",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3485,10 +3485,10 @@
       "sourceId": "57783",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "열거나 닫을 수 있게 방의 입구에 달아 놓은 문",
-      "clueSource": "krdict-definition",
+      "clue": "노크를 하고 여는, 방 어귀에 달린 문",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3500,10 +3500,10 @@
       "sourceId": "65531",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "어떤 일을 해 나가기 위한 수단이나 방식",
-      "clueSource": "krdict-definition",
+      "clue": "문제를 풀거나 일을 처리하는 요령이나 길",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3515,10 +3515,10 @@
       "sourceId": "62403",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "텔레비전이나 라디오를 통하여 사람들이 보고 들을 수 있게 소리나 화면 등을 전파로 내보내는 것",
-      "clueSource": "krdict-definition",
+      "clue": "전파를 타고 안방까지 전해지는 텔레비전이나 라디오 프로그램",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3530,10 +3530,10 @@
       "sourceId": "20207",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "학교에서 한 학기가 끝나고 정해진 기간 동안 수업을 쉬는 것. 또는 그 기간",
-      "clueSource": "krdict-definition",
+      "clue": "학기가 끝난 뒤 학생들이 학교를 쉬는 긴 휴식 기간",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3545,10 +3545,10 @@
       "sourceId": "65533",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "어떤 지점이나 방위를 향하는 쪽",
-      "clueSource": "krdict-definition",
+      "clue": "동서남북처럼 나아가거나 향하는 쪽",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3560,10 +3560,10 @@
       "sourceId": "58797",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "우편물이나 물건, 음식 등을 가져다 줌",
-      "clueSource": "krdict-definition",
+      "clue": "주문한 음식이나 물건을 집 앞까지 가져다주는 일",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3575,10 +3575,10 @@
       "sourceId": "58204",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "영화나 연극, 드라마 등에 나오는 인물의 역할을 맡아서 연기하는 사람",
-      "clueSource": "krdict-definition",
+      "clue": "무대나 스크린에서 다른 인물이 되어 연기하는 사람",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3590,10 +3590,10 @@
       "sourceId": "58433",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "길고 둥근 잎이 포개져 자라는, 속은 누런 흰색이고 겉은 녹색이며 김칫거리로 많이 쓰이는 채소",
-      "clueSource": "krdict-definition",
+      "clue": "김장의 주재료가 되는, 잎이 겹겹이 포개진 채소",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3605,10 +3605,10 @@
       "sourceId": "58720",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "먹은 음식이 체하거나 설사를 하거나 배가 아프거나 하는 병",
-      "clueSource": "krdict-definition",
+      "clue": "상한 음식을 먹고 속이 뒤틀리거나 설사가 나는 병",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3620,10 +3620,10 @@
       "sourceId": "58306",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "윗사람을 대할 때 지켜야 하는 예의",
-      "clueSource": "krdict-definition",
+      "clue": "자기도 모르게 되풀이하는 몸에 밴 습관",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3635,10 +3635,10 @@
       "sourceId": "31457",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "차례를 나타내거나 서로 다른 것과 구별하기 위해 붙이는 숫자",
-      "clueSource": "krdict-definition",
+      "clue": "전화나 좌석에 매겨진, 순서나 구별을 나타내는 숫자",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3650,10 +3650,10 @@
       "sourceId": "62271",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "시설을 갖추고 의사와 간호사가 병든 사람을 치료해 주는 곳",
-      "clueSource": "krdict-definition",
+      "clue": "아픈 사람이 의사에게 진찰과 치료를 받으러 가는 곳",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3665,10 +3665,10 @@
       "sourceId": "62800",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "흔히 볼 수 있어 특별하지 않고 평범함. 또는 뛰어나지도 뒤떨어지지도 않은 중간 정도",
-      "clueSource": "krdict-definition",
+      "clue": "특별히 뛰어나지도 모자라지도 않은 예사로운 정도",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3680,10 +3680,10 @@
       "sourceId": "14544",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "배운 것을 다시 공부함",
-      "clueSource": "krdict-definition",
+      "clue": "예습과 반대로, 이미 배운 내용을 되짚어 익히는 공부",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3695,10 +3695,10 @@
       "sourceId": "59469",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "펜 끝의 작은 철 구슬이 펜의 움직임에 따라 돌면서 잉크를 내어 쓰도록 된 필기도구",
-      "clueSource": "krdict-definition",
+      "clue": "끝의 작은 구슬이 구르며 잉크가 나오는 흔한 필기구",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3710,10 +3710,10 @@
       "sourceId": "59756",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "편지나 서류 등을 넣기 위해 종이로 만든 주머니",
-      "clueSource": "krdict-definition",
+      "clue": "편지를 넣고 겉에 주소를 적어 부치는 종이 주머니",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3725,10 +3725,10 @@
       "sourceId": "32206",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "남편과 아내",
-      "clueSource": "krdict-definition",
+      "clue": "혼인 서약으로 맺어져 한집에 사는 한 쌍의 남녀",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3740,10 +3740,10 @@
       "sourceId": "65853",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "전체를 이루고 있는 작은 범위. 또는 전체를 여러 개로 나눈 것 가운데 하나",
-      "clueSource": "krdict-definition",
+      "clue": "전체에서 떼어 낸 어느 한 토막이나 갈래",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3755,10 +3755,10 @@
       "sourceId": "68895",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "경상남도 동남부에 있는 광역시. 서울에 다음가는 대도시이며 한국 최대의 무역항이 있다",
-      "clueSource": "krdict-definition",
+      "clue": "해운대와 자갈치 시장으로 유명한 남쪽 바닷가 대도시",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3770,10 +3770,10 @@
       "sourceId": "62273",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "집에서 음식을 만들고 설거지를 하는 등 식사와 관련된 일을 하는 장소",
-      "clueSource": "krdict-definition",
+      "clue": "요리와 설거지가 이루어지는 집 안의 공간",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3785,10 +3785,10 @@
       "sourceId": "59725",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "살림이 넉넉할 정도로 재산이 많은 사람",
-      "clueSource": "krdict-definition",
+      "clue": "가난뱅이와 반대로 재산을 넉넉히 가진 사람",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3800,10 +3800,10 @@
       "sourceId": "59737",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "기관, 조직 등에서 한 부를 책임지고 다스리는 직위. 또는 그 직위에 있는 사람",
-      "clueSource": "krdict-definition",
+      "clue": "회사에서 과장보다 높은, 한 부서를 이끄는 직위",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3815,10 +3815,10 @@
       "sourceId": "59843",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "필요한 양이나 기준에 모자라거나 넉넉하지 않음",
-      "clueSource": "krdict-definition",
+      "clue": "채워야 할 만큼에 미치지 못해 모자란 상태",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3830,10 +3830,10 @@
       "sourceId": "59301",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "어떤 일을 해 달라고 하거나 맡김",
-      "clueSource": "krdict-definition",
+      "clue": "도움이 필요할 때 남에게 간곡히 건네는 청",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3845,10 +3845,10 @@
       "sourceId": "59309",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "남한 지역에 상대하여, 북한 지역",
-      "clueSource": "krdict-definition",
+      "clue": "나침반 바늘이 가리키는, 남과 반대되는 방위",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3860,10 +3860,10 @@
       "sourceId": "60205",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "밀가루로 만든 음식",
-      "clueSource": "krdict-definition",
+      "clue": "떡볶이와 튀김처럼 밀가루로 만든 간단한 먹을거리",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3875,10 +3875,10 @@
       "sourceId": "60388",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "마음이 편하지 않고 조마조마함",
-      "clueSource": "krdict-definition",
+      "clue": "무슨 일이 생길까 걱정되어 안절부절못하는 마음",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3890,10 +3890,10 @@
       "sourceId": "24520",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "이용하기에 편리하지 않음",
-      "clueSource": "krdict-definition",
+      "clue": "편리함과 거리가 멀어 쓰거나 지내기에 거북함",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3905,10 +3905,10 @@
       "sourceId": "63521",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "둘 이상의 것을 함께 놓고 어떤 점이 같고 다른지 살펴봄",
-      "clueSource": "krdict-definition",
+      "clue": "둘을 나란히 놓고 낫고 못함이나 차이를 따져 보는 일",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3920,10 +3920,10 @@
       "sourceId": "60409",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "물을 묻혀서 거품을 내어 몸이나 옷에 묻은 때를 씻는 데 쓰는 물건",
-      "clueSource": "krdict-definition",
+      "clue": "거품을 내어 손과 몸의 더러움을 씻어 내는 세면 용품",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3935,10 +3935,10 @@
       "sourceId": "66309",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "숨기고 있어 남이 모르는 일",
-      "clueSource": "krdict-definition",
+      "clue": "남이 알면 안 되어 꼭꼭 감춰 두는 일",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -3950,10 +3950,10 @@
       "sourceId": "71069",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "주로 사무실이 많이 있는 서양식 고층 건물",
-      "clueSource": "krdict-definition",
+      "clue": "도시 한복판에 우뚝 솟은 사무실용 고층 건물",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -40595,10 +40595,10 @@
       "sourceId": "53981",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "손으로 몸을 두드리거나 주물러서 근육의 긴장을 풀어주는 일",
-      "clueSource": "krdict-definition",
+      "clue": "뭉친 근육을 손으로 주물러 풀어 주는 안마",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -46085,10 +46085,10 @@
       "sourceId": "24656",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "자신의 생각이나 관점을 기준으로 하는 것",
-      "clueSource": "krdict-definition",
+      "clue": "객관과 반대로, 제 나름의 잣대와 느낌에 따라 보는 것",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -70865,10 +70865,10 @@
       "sourceId": "73542",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "한 개의 음절을 자음과 모음으로 갈라서 적을 수 있는 하나하나의 글자",
-      "clueSource": "krdict-definition",
+      "clue": "ㄱㄴㄷ과 ㅏㅑㅓ처럼 음절을 나누어 적는 낱낱의 글자",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -71120,10 +71120,10 @@
       "sourceId": "73632",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "여성의 아름다운 모습이나 태도",
-      "clueSource": "krdict-definition",
+      "clue": "고운 맵시를 뽐내는 여인의 모습을 이르는 말",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -92600,10 +92600,10 @@
       "sourceId": "79715",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "아기를 낳는 비율",
-      "clueSource": "krdict-definition",
+      "clue": "한 해에 아기가 얼마나 태어나는지를 나타내는 비율",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -104300,10 +104300,10 @@
       "sourceId": "17945",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "오래전에 지어진 성",
-      "clueSource": "krdict-definition",
+      "clue": "세월에 낡아 이끼가 낀 옛날 성",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -122255,10 +122255,10 @@
       "sourceId": "41871",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "중요한 것. 또는 대단한 것",
-      "clueSource": "krdict-definition",
+      "clue": "별것 아니라는 핀잔에 자주 등장하는, 중요하고 대단한 것",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -122780,10 +122780,10 @@
       "sourceId": "68935",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "일 년 중 가장 추운 때로 이십사절기의 하나. 1월 20일경이다",
-      "clueSource": "krdict-definition",
+      "clue": "소한과 입춘 사이, 이십사절기의 맨 끝에 자리한 큰 추위",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -143015,10 +143015,10 @@
       "sourceId": "58832",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "병에 걸린 사람이 앓아누워 있는 자리",
-      "clueSource": "krdict-definition",
+      "clue": "몸져누운 사람이 일어나지 못하고 지내는 자리",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -144230,10 +144230,10 @@
       "sourceId": "59721",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "어떤 직책이나 직업과 관련하여 가장 중심이 되는 일",
-      "clueSource": "krdict-definition",
+      "clue": "여러 일 가운데 그 직책의 핵심을 이루는 으뜸 임무",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -148325,10 +148325,10 @@
       "sourceId": "61131",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "거의 죽을 것 같은 상태나 상황",
-      "clueSource": "krdict-definition",
+      "clue": "목숨이 위태로워 저승 문턱을 헤매는 지경",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -170450,10 +170450,10 @@
       "sourceId": "68225",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "병을 잘못 진단하는 일. 또는 그런 진단",
-      "clueSource": "krdict-definition",
+      "clue": "의사가 환자의 병명을 엉뚱하게 짚는 일",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -175400,10 +175400,10 @@
       "sourceId": "69652",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "위와 창자",
-      "clueSource": "krdict-definition",
+      "clue": "속이 쓰릴 때 짚게 되는, 밥통과 창자를 아우르는 소화 기관",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -175415,10 +175415,10 @@
       "sourceId": "69660",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "나라의 정치를 맡아 함",
-      "clueSource": "krdict-definition",
+      "clue": "다스리는 자리에 앉아 나라의 정사를 도맡아 행하는 일",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -182015,10 +182015,10 @@
       "sourceId": "73554",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "조금 짭짤하게 졸이거나 무쳐서 만든 반찬",
-      "clueSource": "krdict-definition",
+      "clue": "고등어에 소금 간을 해 짭조름하게 만든 밑반찬 종류",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -183575,10 +183575,10 @@
       "sourceId": "73074",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "여러 가지 자질구레한 데 쓰는 돈",
-      "clueSource": "krdict-definition",
+      "clue": "가계부에 딱히 항목을 붙이기 애매한 자질구레한 지출",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -184055,10 +184055,10 @@
       "sourceId": "73767",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "다 자란 씩씩한 남자",
-      "clueSource": "krdict-definition",
+      "clue": "기개가 씩씩하고 헌걸찬 다 큰 사내",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -186455,10 +186455,10 @@
       "sourceId": "74857",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "전쟁터에서 싸우다 죽음",
-      "clueSource": "krdict-definition",
+      "clue": "나라를 지키려 싸움터에 나갔다가 목숨을 잃는 일",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -189125,10 +189125,10 @@
       "sourceId": "75038",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "야구에서, 투수가 원하는 대로 공을 던지는 일",
-      "clueSource": "krdict-definition",
+      "clue": "투수의 생명이라 불리는, 공을 원하는 곳에 꽂아 넣는 능력",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -191960,10 +191960,10 @@
       "sourceId": "75188",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "위가 약간 벌어지고 뚜껑이 있는, 놋쇠로 만든 밥그릇",
-      "clueSource": "krdict-definition",
+      "clue": "놋쇠로 만들어 뚜껑을 덮게 되어 있는 전통 밥그릇",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -200555,10 +200555,10 @@
       "sourceId": "79141",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "마땅히 내주어야 할 것을 내주지 못하고 미룸",
-      "clueSource": "krdict-definition",
+      "clue": "임금이 밀렸다는 뉴스에 나오는, 줘야 할 돈을 미루는 일",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -206900,10 +206900,10 @@
       "sourceId": "80566",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "어떤 일이나 상황을 앞둔 태도나 자세",
-      "clueSource": "krdict-definition",
+      "clue": "무슨 일이 닥쳐도 바로 응할 수 있게 갖추어 둔 몸과 마음의 준비",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -211385,10 +211385,10 @@
       "sourceId": "83334",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "세상 사람들에게 널리 알림",
-      "clueSource": "krdict-definition",
+      "clue": "계엄령 따위를 온 세상에 공식적으로 널리 선언하여 알리는 일",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -237290,10 +237290,10 @@
       "sourceId": "36392",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "중심으로 가까워지거나 모이려고 하는 성질",
-      "clueSource": "krdict-definition",
+      "clue": "원심력과 반대로 한가운데를 향해 모여들려는 성질",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -241505,10 +241505,10 @@
       "sourceId": "23683",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "검사가 법원에 재판을 요청할 때 내는 문서",
-      "clueSource": "krdict-definition",
+      "clue": "죄를 물어 달라며 검찰이 재판부에 제출하는 서류",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -254240,10 +254240,10 @@
       "sourceId": "47204",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "추위에 얼어 죽은 사람",
-      "clueSource": "krdict-definition",
+      "clue": "혹한의 거리에서 몸이 얼어 목숨을 잃은 사람",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -257945,10 +257945,10 @@
       "sourceId": "50327",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "달걀을 세로로 가른 듯한 불룩한 몸통에 여덟 개의 현이 있는 현악기",
-      "clueSource": "krdict-definition",
+      "clue": "달걀처럼 볼록한 몸통에 여덟 줄을 튕겨 소리 내는 악기",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -273020,10 +273020,10 @@
       "sourceId": "59518",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "태어나서 자란 지역. 또는 원래부터 살아온 지역",
-      "clueSource": "krdict-definition",
+      "clue": "어떤 것이 처음 생겨나 뿌리를 내린 원조의 땅",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -275510,10 +275510,10 @@
       "sourceId": "60543",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "사건이 죄가 되지 않거나 범죄를 증명할 수 없어서, 검사가 법원에 재판을 요청하지 않는 일",
-      "clueSource": "krdict-definition",
+      "clue": "죄가 안 된다고 보아 검사가 재판에 넘기지 않기로 하는 처분",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -278000,10 +278000,10 @@
       "sourceId": "61301",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "공간의 삼차원에 시간의 차원이 더해져 차원이 네 개 있는 것",
-      "clueSource": "krdict-definition",
+      "clue": "가로세로높이에 시간까지 더한 세계, 엉뚱한 사람을 이르기도 하는 말",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -284435,10 +284435,10 @@
       "sourceId": "64345",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "소금 성분이 섞여 짭짤한 맛이나 냄새가 나며 약간 축축한 기운",
-      "clueSource": "krdict-definition",
+      "clue": "바닷바람에 실려 오는 찝찔하고 축축한 기운",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -291785,10 +291785,10 @@
       "sourceId": "89581",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "개혁 등으로 이루어진 새로운 조직 체계와 질서",
-      "clueSource": "krdict-definition",
+      "clue": "낡은 틀을 갈아엎은 뒤 새로 세운 조직과 질서",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -310205,10 +310205,10 @@
       "sourceId": "73148",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "자신이 처한 상황이나 자신의 행동, 성격 등에 대해 깨닫는 일",
-      "clueSource": "krdict-definition",
+      "clue": "제 모습과 처지를 스스로 돌아보아 알아차리는 마음의 작용",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -316055,10 +316055,10 @@
       "sourceId": "75458",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "회원으로 활동할 수 있는 정식 자격을 갖춘 회원",
-      "clueSource": "krdict-definition",
+      "clue": "준회원 딱지를 떼고 온전한 자격을 갖추게 된 구성원",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -316595,10 +316595,10 @@
       "sourceId": "83762",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "물건을 만드는 데 드는 돈",
-      "clueSource": "krdict-definition",
+      "clue": "공장에서 제품 하나를 생산해 내기까지 들어가는 비용",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -319835,10 +319835,10 @@
       "sourceId": "77300",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "한쪽으로 치우치지 않는 중간의 입장이나 방법인 것",
-      "clueSource": "krdict-definition",
+      "clue": "좌도 우도 아닌 가운데 노선을 걷는 것",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -323960,10 +323960,10 @@
       "sourceId": "83789",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "기독교에서, 세상의 모든 것을 만든 하나님을 이르는 말",
-      "clueSource": "krdict-definition",
+      "clue": "천지 만물을 지은 절대자, 기독교에서 하나님을 가리키는 말",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -331010,10 +331010,10 @@
       "sourceId": "81482",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "통째로 벗겨 낸 짐승의 가죽",
-      "clueSource": "krdict-definition",
+      "clue": "조각내지 않고 짐승에게서 한 장으로 벗겨 낸 가죽",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -339905,10 +339905,10 @@
       "sourceId": "86778",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "호박을 푹 삶아 으깬 것에 팥과 쌀가루를 넣어서 쑨 죽",
-      "clueSource": "krdict-definition",
+      "clue": "노란 열매를 무르게 삶아 팥과 쌀가루를 넣고 쑨 달큰한 음식",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -343655,10 +343655,10 @@
       "sourceId": "26453",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "앞과 뒤의 군더더기를 빼고 어떤 일의 중심만 간단히 말함",
-      "clueSource": "krdict-definition",
+      "clue": "머리와 꼬리는 잘라 내고 요점만 곧장 꺼내어 말하는 것",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -345830,10 +345830,10 @@
       "sourceId": "36354",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "한쪽 구석에 있는 자리",
-      "clueSource": "krdict-definition",
+      "clue": "방 안에서도 가장 후미진 모퉁이 쪽 자리",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -352130,10 +352130,10 @@
       "sourceId": "55801",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "일반 택시보다 시설이 좋고 더 나은 서비스를 제공하며 요금이 비싼 택시",
-      "clueSource": "krdict-definition",
+      "clue": "검은 차체에 요금은 비싸지만 서비스가 좋은 고급 영업용 차",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -352790,10 +352790,10 @@
       "sourceId": "55038",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "사람이 살지 않는 외진 곳",
-      "clueSource": "krdict-definition",
+      "clue": "발길 닿는 이 하나 없는 허허벌판 같은 외딴 땅",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -358715,10 +358715,10 @@
       "sourceId": "65029",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "실제 업무를 배워 익히는 과정에 있는 기자",
-      "clueSource": "krdict-definition",
+      "clue": "언론사에 갓 들어와 취재 일을 배우는 견습 언론인",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -362090,10 +362090,10 @@
       "sourceId": "70163",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "점잖지 못하고 몹시 까불며 경솔하게 하는 행동",
-      "clueSource": "krdict-definition",
+      "clue": "진득하지 못하고 촐싹거리며 수선스럽게 구는 짓",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -363485,10 +363485,10 @@
       "sourceId": "71602",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "자기 나라와는 다른 분위기나 멋",
-      "clueSource": "krdict-definition",
+      "clue": "낯선 나라에 온 듯 물씬 풍기는 색다른 분위기와 멋",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -364265,10 +364265,10 @@
       "sourceId": "72791",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "한 번 그물을 쳐서 고기를 다 잡는다는 뜻으로, 어떤 무리를 한꺼번에 모조리 다 잡음",
-      "clueSource": "krdict-definition",
+      "clue": "그물 한 번 던져 범죄 조직을 몽땅 잡아들이는 것",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -365480,10 +365480,10 @@
       "sourceId": "74592",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "매우 조용하고 쓸쓸한 풍경",
-      "clueSource": "krdict-definition",
+      "clue": "인기척 하나 없이 고요하고 쓸쓸하기 그지없는 경치",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -365810,10 +365810,10 @@
       "sourceId": "81771",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "발 달린 물건의 한쪽 발이 멀쩡하지 못한 것",
-      "clueSource": "krdict-definition",
+      "clue": "다리 하나가 성치 않아 걸음이 기우뚱한 것을 이르는 말",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -366650,10 +366650,10 @@
       "sourceId": "76954",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "생활을 방탕하게 만드는 술과 여자와 노름",
-      "clueSource": "krdict-definition",
+      "clue": "술과 여인과 도박에 빠져 방탕하게 노는 짓",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -368885,10 +368885,10 @@
       "sourceId": "80813",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "어진 임금이 잘 다스려 아무 걱정이나 탈이 없는 세상이나 시대",
-      "clueSource": "krdict-definition",
+      "clue": "요순시절처럼 백성이 근심 없이 살아가던 좋은 세월",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -370265,10 +370265,10 @@
       "sourceId": "85520",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "논리나 이치에 알맞게 생각하고 판단하는 태도나 사고방식",
-      "clueSource": "krdict-definition",
+      "clue": "감정보다 이성과 논리를 앞세워 판단하려는 사고 태도",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -372290,10 +372290,10 @@
       "sourceId": "50362",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "모든 병을 다 고치는 약",
-      "clueSource": "krdict-definition",
+      "clue": "어떤 탈이든 낫게 해 준다는, 못 고치는 병이 없는 약",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -372425,10 +372425,10 @@
       "sourceId": "55058",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "개인을 지배하는 정치 권력이나 공공의 강제를 부정하고 개인의 자유를 최고의 가치로 내세우는 사상",
-      "clueSource": "krdict-definition",
+      "clue": "아나키즘, 국가 권력을 거부하고 완전한 자유를 꿈꾸는 사상",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -372440,10 +372440,10 @@
       "sourceId": "55176",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "척추가 없는 동물",
-      "clueSource": "krdict-definition",
+      "clue": "오징어나 곤충처럼 등뼈가 없는 동물을 통틀어 이르는 말",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -372470,10 +372470,10 @@
       "sourceId": "56255",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "길이나 집을 잃은 아이를 보호하여 집이나 부모를 찾아 주는 시설",
-      "clueSource": "krdict-definition",
+      "clue": "놀이공원에서 부모와 떨어진 아이를 맡아 두었다가 찾아 주는 곳",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -372575,10 +372575,10 @@
       "sourceId": "57098",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "반말로 함부로 지껄이는 일. 또는 그런 말투",
-      "clueSource": "krdict-definition",
+      "clue": "존대는 쏙 빼고 낮춤말을 함부로 던지는 버릇없는 말버릇",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -373820,10 +373820,10 @@
       "sourceId": "74509",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "동전을 넣으면 게임이나 놀이 등을 할 수 있도록 기계나 시설을 갖추어 놓은 곳",
-      "clueSource": "krdict-definition",
+      "clue": "동전을 넣고 갤러그나 철권을 즐기던 게임 가게",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -373910,10 +373910,10 @@
       "sourceId": "75138",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "온통 주름이 진 상태",
-      "clueSource": "krdict-definition",
+      "clue": "오랜 세월에 살갗 가득 골이 패어 자글자글한 상태",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -374015,10 +374015,10 @@
       "sourceId": "79829",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "현실과 이성의 제약을 벗어나 자유롭게 표현하며, 매우 주관적인 특성을 지닌 예술의 경향",
-      "clueSource": "krdict-definition",
+      "clue": "달리의 그림처럼 꿈과 무의식의 세계를 좇는 예술 사조",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {

@@ -89,24 +89,24 @@
     {
       "id": "a1",
       "answer": "거두절미",
-      "clue": "앞과 뒤의 군더더기를 빼고 어떤 일의 중심만 간단히 말함",
-      "clueSource": "krdict-definition",
+      "clue": "머리와 꼬리는 잘라 내고 요점만 곧장 꺼내어 말하는 것",
+      "clueSource": "manual",
       "direction": "across",
       "row": 1,
       "col": 1,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a2",
       "answer": "태세",
-      "clue": "어떤 일이나 상황을 앞둔 태도나 자세",
-      "clueSource": "krdict-definition",
+      "clue": "무슨 일이 닥쳐도 바로 응할 수 있게 갖추어 둔 몸과 마음의 준비",
+      "clueSource": "manual",
       "direction": "across",
       "row": 1,
       "col": 6,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a3",
@@ -166,13 +166,13 @@
     {
       "id": "a8",
       "answer": "대한",
-      "clue": "일 년 중 가장 추운 때로 이십사절기의 하나. 1월 20일경이다",
-      "clueSource": "krdict-definition",
+      "clue": "소한과 입춘 사이, 이십사절기의 맨 끝에 자리한 큰 추위",
+      "clueSource": "manual",
       "direction": "across",
       "row": 4,
       "col": 6,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a9",
@@ -221,35 +221,35 @@
     {
       "id": "d13",
       "answer": "오두방정",
-      "clue": "점잖지 못하고 몹시 까불며 경솔하게 하는 행동",
-      "clueSource": "krdict-definition",
+      "clue": "진득하지 못하고 촐싹거리며 수선스럽게 구는 짓",
+      "clueSource": "manual",
       "direction": "down",
       "row": 0,
       "col": 2,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d14",
       "answer": "미아보호소",
-      "clue": "길이나 집을 잃은 아이를 보호하여 집이나 부모를 찾아 주는 시설",
-      "clueSource": "krdict-definition",
+      "clue": "놀이공원에서 부모와 떨어진 아이를 맡아 두었다가 찾아 주는 곳",
+      "clueSource": "manual",
       "direction": "down",
       "row": 1,
       "col": 4,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d15",
       "answer": "태평성대",
-      "clue": "어진 임금이 잘 다스려 아무 걱정이나 탈이 없는 세상이나 시대",
-      "clueSource": "krdict-definition",
+      "clue": "요순시절처럼 백성이 근심 없이 살아가던 좋은 세월",
+      "clueSource": "manual",
       "direction": "down",
       "row": 1,
       "col": 6,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d16",
@@ -265,13 +265,13 @@
     {
       "id": "d17",
       "answer": "정회원",
-      "clue": "회원으로 활동할 수 있는 정식 자격을 갖춘 회원",
-      "clueSource": "krdict-definition",
+      "clue": "준회원 딱지를 떼고 온전한 자격을 갖추게 된 구성원",
+      "clueSource": "manual",
       "direction": "down",
       "row": 3,
       "col": 1,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d18",
@@ -309,13 +309,13 @@
     {
       "id": "d21",
       "answer": "잡비",
-      "clue": "여러 가지 자질구레한 데 쓰는 돈",
-      "clueSource": "krdict-definition",
+      "clue": "가계부에 딱히 항목을 붙이기 애매한 자질구레한 지출",
+      "clueSource": "manual",
       "direction": "down",
       "row": 6,
       "col": 6,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     }
   ],
   "metrics": {

@@ -155,35 +155,35 @@
     {
       "id": "a7",
       "answer": "대수",
-      "clue": "중요한 것. 또는 대단한 것",
-      "clueSource": "krdict-definition",
+      "clue": "별것 아니라는 핀잔에 자주 등장하는, 중요하고 대단한 것",
+      "clueSource": "manual",
       "direction": "across",
       "row": 3,
       "col": 1,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a8",
       "answer": "통가죽",
-      "clue": "통째로 벗겨 낸 짐승의 가죽",
-      "clueSource": "krdict-definition",
+      "clue": "조각내지 않고 짐승에게서 한 장으로 벗겨 낸 가죽",
+      "clueSource": "manual",
       "direction": "across",
       "row": 3,
       "col": 4,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a9",
       "answer": "소금기",
-      "clue": "소금 성분이 섞여 짭짤한 맛이나 냄새가 나며 약간 축축한 기운",
-      "clueSource": "krdict-definition",
+      "clue": "바닷바람에 실려 오는 찝찔하고 축축한 기운",
+      "clueSource": "manual",
       "direction": "across",
       "row": 5,
       "col": 0,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "a10",
@@ -210,24 +210,24 @@
     {
       "id": "a12",
       "answer": "불기소",
-      "clue": "사건이 죄가 되지 않거나 범죄를 증명할 수 없어서, 검사가 법원에 재판을 요청하지 않는 일",
-      "clueSource": "krdict-definition",
+      "clue": "죄가 안 된다고 보아 검사가 재판에 넘기지 않기로 하는 처분",
+      "clueSource": "manual",
       "direction": "across",
       "row": 7,
       "col": 3,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d13",
       "answer": "구심성",
-      "clue": "중심으로 가까워지거나 모이려고 하는 성질",
-      "clueSource": "krdict-definition",
+      "clue": "원심력과 반대로 한가운데를 향해 모여들려는 성질",
+      "clueSource": "manual",
       "direction": "down",
       "row": 0,
       "col": 0,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d14",
@@ -254,24 +254,24 @@
     {
       "id": "d16",
       "answer": "만병통치약",
-      "clue": "모든 병을 다 고치는 약",
-      "clueSource": "krdict-definition",
+      "clue": "어떤 탈이든 낫게 해 준다는, 못 고치는 병이 없는 약",
+      "clueSource": "manual",
       "direction": "down",
       "row": 1,
       "col": 4,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d17",
       "answer": "호박죽",
-      "clue": "호박을 푹 삶아 으깬 것에 팥과 쌀가루를 넣어서 쑨 죽",
-      "clueSource": "krdict-definition",
+      "clue": "노란 열매를 무르게 삶아 팥과 쌀가루를 넣고 쑨 달큰한 음식",
+      "clueSource": "manual",
       "direction": "down",
       "row": 1,
       "col": 6,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d18",
@@ -287,13 +287,13 @@
     {
       "id": "d19",
       "answer": "수습기자",
-      "clue": "실제 업무를 배워 익히는 과정에 있는 기자",
-      "clueSource": "krdict-definition",
+      "clue": "언론사에 갓 들어와 취재 일을 배우는 견습 언론인",
+      "clueSource": "manual",
       "direction": "down",
       "row": 3,
       "col": 2,
       "generatedBy": "placed",
-      "needsManualClue": true
+      "needsManualClue": false
     },
     {
       "id": "d20",
@@ -320,13 +320,13 @@
     {
       "id": "d22",
       "answer": "체불",
-      "clue": "마땅히 내주어야 할 것을 내주지 못하고 미룸",
-      "clueSource": "krdict-definition",
+      "clue": "임금이 밀렸다는 뉴스에 나오는, 줘야 할 돈을 미루는 일",
+      "clueSource": "manual",
       "direction": "down",
       "row": 6,
       "col": 3,
       "generatedBy": "auto",
-      "needsManualClue": true
+      "needsManualClue": false
     }
   ],
   "metrics": {
