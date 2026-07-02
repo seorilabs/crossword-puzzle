@@ -59,7 +59,6 @@ import {
   pickHintCellIndex,
   resolveInitialActivePuzzleId,
   resolveStarterCell,
-  shouldAutoStartFirstRun,
   shouldCelebrateOnboardingWordCompletion,
   shouldOfferStuckWordReveal,
   shouldQuickStartActivePuzzle,
@@ -98,6 +97,10 @@ import { PuzzleBoard } from "./components/PuzzleBoard";
 import { SettingsSheet } from "./components/SettingsSheet";
 import { ShareGridPreview } from "./components/ShareGridPreview";
 import { useShareResult } from "./useShareResult";
+import {
+  useFirstRunAutoStart,
+  type FirstRunSnapshot,
+} from "./useFirstRunAutoStart";
 import { formatElapsedTime, formatLiveTimer, getElapsedSeconds } from "./timer";
 import {
   computeConsecutiveStreakDays,
@@ -737,14 +740,8 @@ function App() {
   // 값이 확정된 뒤에만 판정해, 원격에서 끈 상태로 자동 진입하는 레이스를 막는다.
   const [launchConfigResolved, setLaunchConfigResolved] = useState(false);
   // 퍼즐 팩 로드 시점에 계산한 신규(도전 이력 없음) 판정 입력. null이면 로드 전.
-  const [firstRunSnapshot, setFirstRunSnapshot] = useState<{
-    hasCompletedAnyDaily: boolean;
-    hasDailyProgress: boolean;
-    onboardingStarted: boolean;
-    activePuzzleIsOnboarding: boolean;
-  } | null>(null);
-  // 첫 실행 자동 진입은 앱 수명당 1회만 판정한다(라우트 이동 후 재발동 방지).
-  const firstRunAutoStartDoneRef = useRef(false);
+  const [firstRunSnapshot, setFirstRunSnapshot] =
+    useState<FirstRunSnapshot | null>(null);
   const [rewardedAdStatus, setRewardedAdStatus] =
     useState<RewardedAdStatus>("idle");
   const [bonusAdStatus, setBonusAdStatus] = useState<RewardedAdStatus>("idle");
@@ -2717,41 +2714,20 @@ function App() {
   }
 
   // 신규(도전 이력 없음) 첫 실행이면 홈을 건너뛰고 온보딩 퍼즐 풀이 화면으로 자동
-  // 진입한다(#205). 퍼즐 팩 로드와 원격 설정 fetch가 모두 끝난 뒤 딱 한 번만
-  // 판정하며, 딥링크 등으로 홈이 아닌 화면에 들어온 경우에는 개입하지 않는다.
+  // 진입한다(#205). 발동 조건·1회성 소비는 useFirstRunAutoStart 훅이 다루고,
   // 시작 로직은 홈 원탭 CTA와 같은 startOrResumeMission을 재사용하므로
   // attempt_start(attempt_kind=first)가 기존과 동일하게 발화된다.
-  useEffect(() => {
-    if (firstRunAutoStartDoneRef.current) {
-      return;
-    }
-    if (firstRunSnapshot == null || !launchConfigResolved) {
-      return;
-    }
-    if (loadState === "loading") {
-      return;
-    }
-
-    firstRunAutoStartDoneRef.current = true;
-
-    if (route !== "home") {
-      return;
-    }
-    if (
-      !shouldAutoStartFirstRun({
-        enabled: launchConfig.firstRunAutoStartEnabled,
-        ...firstRunSnapshot,
-      })
-    ) {
-      return;
-    }
-
-    telemetry.impression("first_run_auto_start", puzzleTelemetryParams);
-    startOrResumeMission();
-    // 자동 진입은 로드 완료 직후 1회성 판정이라 아래 값들의 이후 변화에 반응할
-    // 필요가 없다. doneRef가 중복 실행을 막는다.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [firstRunSnapshot, launchConfigResolved, loadState]);
+  useFirstRunAutoStart({
+    enabled: launchConfig.firstRunAutoStartEnabled,
+    launchConfigResolved,
+    isLoading: loadState === "loading",
+    isHomeRoute: route === "home",
+    snapshot: firstRunSnapshot,
+    onAutoStart: () => {
+      telemetry.impression("first_run_auto_start", puzzleTelemetryParams);
+      startOrResumeMission();
+    },
+  });
 
   // 홈 최상단 "오늘의 퍼즐 바로 시작" 원탭 CTA: 선택 단계를 건너뛰고 오늘의 무료
   // 퍼즐로 바로 진입시킨다. 다른 날짜를 보던 중이면 오늘의 퍼즐 세션을 불러와 시작한다.

@@ -135,7 +135,14 @@ export async function loadFirebaseLaunchConfig(): Promise<LaunchConfig> {
   try {
     const { fetchAndActivate, getBoolean, getNumber } =
       await import("firebase/remote-config");
-    await fetchAndActivate(remoteConfig);
+    try {
+      await fetchAndActivate(remoteConfig);
+    } catch {
+      // fetch 실패(네트워크 등)여도 이전 activation 캐시 또는 defaultConfig를
+      // 그대로 읽는다. 운영자가 원격에서 끈 게이트(예: first_run_auto_start_
+      // enabled=false)가 일시적 fetch 실패로 기본값(켜짐)으로 되살아나지 않게
+      // 하기 위한 분기다. 인스턴스 자체가 없는 경우만 위에서 default로 폴백한다.
+    }
 
     return normalizeLaunchConfig({
       defaultHintCredits: getNumber(

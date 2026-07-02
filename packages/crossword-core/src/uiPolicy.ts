@@ -354,10 +354,19 @@ export function shouldAutoStartFirstRun({
   onboardingStarted,
   activePuzzleIsOnboarding,
 }: {
+  // Remote Config `first_run_auto_start_enabled` 게이트 값.
   enabled: boolean;
+  // 일일 퍼즐 완료 이력(어느 날짜든 completedAt 존재).
   hasCompletedAnyDaily: boolean;
+  // 일일 퍼즐 진행 이력(시도·힌트·입력 중 하나라도 존재).
   hasDailyProgress: boolean;
+  // 온보딩 퍼즐 시도/진행 이력. 일일 쪽(hasDailyProgress)과 같은 의미로,
+  // 온보딩 미션 시도·힌트·입력이 하나라도 있으면 true로 채운다(완료 포함).
   onboardingStarted: boolean;
+  // 부팅 세션 라우팅(resolveInitialActivePuzzleId) 결과가 온보딩 퍼즐인지.
+  // 온보딩 세션 로드 실패 등으로 일반 퍼즐로 폴백한 경우 false가 되어 자동
+  // 진입하지 않는다 — 자동 진입 대상 화면(온보딩 easy)이 준비된 경우에만
+  // 개입하는 의도된 안전 가드다.
   activePuzzleIsOnboarding: boolean;
 }): boolean {
   return (
