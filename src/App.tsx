@@ -94,6 +94,7 @@ import { useStuckHintPrompt } from "./useStuckHintPrompt";
 import { PersonalStatsCard } from "./components/PersonalStatsCard";
 import { StreakHeatmap } from "./components/StreakHeatmap";
 import { PuzzleBoard } from "./components/PuzzleBoard";
+import { SettingsSheet } from "./components/SettingsSheet";
 import { formatElapsedTime, formatLiveTimer, getElapsedSeconds } from "./timer";
 import {
   computeConsecutiveStreakDays,
@@ -114,7 +115,10 @@ import {
   getBestTimeMs,
   saveBestTimeMs,
 } from "./adapters/localProgressRepository";
-import { loadAutocheckEnabled } from "./adapters/autocheckSettingRepository";
+import {
+  loadAutocheckEnabled,
+  saveAutocheckEnabled,
+} from "./adapters/autocheckSettingRepository";
 import {
   loadHapticEnabled,
   loadSoundEnabled,
@@ -2579,6 +2583,14 @@ function App() {
     });
   }
 
+  function toggleAutocheck() {
+    setAutocheckEnabled((prev) => {
+      const next = !prev;
+      saveAutocheckEnabled(next);
+      return next;
+    });
+  }
+
   async function clearProgress(preserveEarnedHintCredits?: number) {
     const raw = preserveEarnedHintCredits ?? 0;
     const creditsValue = Number.isFinite(raw) ? Math.max(0, raw) : 0;
@@ -2829,6 +2841,7 @@ function App() {
     revealUsed,
     soundEnabled,
     tentativeCellKeys,
+    toggleAutocheck,
     toggleHaptic,
     toggleSound,
     selectedAnswer: viewModel.selectedAnswer,
@@ -4423,6 +4436,7 @@ type TodayScreenProps = DateSelectionProps & {
   revealUsed: boolean;
   soundEnabled: boolean;
   tentativeCellKeys: ReadonlySet<string>;
+  toggleAutocheck: () => void;
   toggleHaptic: () => void;
   toggleSound: () => void;
   selectedAnswer: string;
@@ -4474,6 +4488,7 @@ function TodayScreen({
   revealUsed,
   soundEnabled,
   tentativeCellKeys,
+  toggleAutocheck,
   toggleHaptic,
   toggleSound,
   selectedCellKey,
@@ -5538,10 +5553,12 @@ function TodayScreen({
       {isSettingsOpen ? (
         <SettingsSheet
           answerInputMode={answerInputMode}
+          autocheckEnabled={autocheckEnabled}
           hapticEnabled={hapticEnabled}
           onClose={() => setIsSettingsOpen(false)}
           selectAnswerInputMode={selectAnswerInputMode}
           soundEnabled={soundEnabled}
+          toggleAutocheck={toggleAutocheck}
           toggleHaptic={toggleHaptic}
           toggleSound={toggleSound}
         />
@@ -6784,136 +6801,6 @@ function AllCluesOverlay({
               })}
           </section>
         ))}
-      </div>
-    </div>
-  );
-}
-
-type SettingsSheetProps = {
-  answerInputMode: AnswerInputMode;
-  hapticEnabled: boolean;
-  onClose: () => void;
-  selectAnswerInputMode: (mode: AnswerInputMode) => void;
-  soundEnabled: boolean;
-  toggleHaptic: () => void;
-  toggleSound: () => void;
-};
-
-function SettingsSheet({
-  answerInputMode,
-  hapticEnabled,
-  onClose,
-  selectAnswerInputMode,
-  soundEnabled,
-  toggleHaptic,
-  toggleSound,
-}: SettingsSheetProps) {
-  return (
-    <div
-      className="clueOverlay"
-      role="dialog"
-      aria-modal="true"
-      aria-label="설정"
-    >
-      <div className="clueOverlayHeader">
-        <div>
-          <Paragraph typography="t7" color="#6b7684">
-            설정
-          </Paragraph>
-          <Paragraph typography="t4" fontWeight="bold">
-            입력 방식 · 사운드 · 햅틱
-          </Paragraph>
-        </div>
-        <button className="ghostButton" type="button" onClick={onClose}>
-          닫기
-        </button>
-      </div>
-
-      <div className="settingsSheetBody">
-        <div className="settingsRow">
-          <div className="settingsRowText">
-            <strong>입력 방식</strong>
-            <span>
-              {answerInputMode === "box"
-                ? "입력창에 한 번에 입력해요"
-                : "칸을 눌러 한 글자씩 입력해요"}
-            </span>
-          </div>
-          <div
-            className="settingsSegmented"
-            role="group"
-            aria-label="입력 방식"
-          >
-            <button
-              type="button"
-              className={[
-                "assistButton",
-                answerInputMode === "box" ? "assistToggleOn" : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              aria-pressed={answerInputMode === "box"}
-              onClick={() => selectAnswerInputMode("box")}
-            >
-              입력창
-            </button>
-            <button
-              type="button"
-              className={[
-                "assistButton",
-                answerInputMode === "cell" ? "assistToggleOn" : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              aria-pressed={answerInputMode === "cell"}
-              onClick={() => selectAnswerInputMode("cell")}
-            >
-              칸별
-            </button>
-          </div>
-        </div>
-
-        <div className="settingsRow">
-          <div className="settingsRowText">
-            <strong>사운드</strong>
-            <span>단어 완성·퍼즐 완료·오답 시 효과음</span>
-          </div>
-          <button
-            type="button"
-            className={[
-              "assistButton",
-              "assistToggle",
-              soundEnabled ? "assistToggleOn" : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            aria-pressed={soundEnabled}
-            onClick={toggleSound}
-          >
-            {soundEnabled ? "켜짐" : "꺼짐"}
-          </button>
-        </div>
-
-        <div className="settingsRow">
-          <div className="settingsRowText">
-            <strong>햅틱</strong>
-            <span>단어 완성·퍼즐 완료 시 진동</span>
-          </div>
-          <button
-            type="button"
-            className={[
-              "assistButton",
-              "assistToggle",
-              hapticEnabled ? "assistToggleOn" : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            aria-pressed={hapticEnabled}
-            onClick={toggleHaptic}
-          >
-            {hapticEnabled ? "켜짐" : "꺼짐"}
-          </button>
-        </div>
       </div>
     </div>
   );
