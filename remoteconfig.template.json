@@ -101,6 +101,13 @@
       "description": "복귀 리마인드(D1 재방문) 푸시 동의 유도 노출 여부. 스마트발송 템플릿 등록 완료로 기본 활성. 필요 시 false로 끈다",
       "valueType": "BOOLEAN"
     },
+    "first_run_auto_start_enabled": {
+      "defaultValue": {
+        "value": "true"
+      },
+      "description": "신규(도전 이력 없음) 첫 실행에서 홈을 건너뛰고 온보딩 퍼즐 풀이 화면으로 자동 진입할지 여부(#205). 회귀 시 false로 끈다",
+      "valueType": "BOOLEAN"
+    },
     "stuck_hint_idle_ms": {
       "defaultValue": {
         "value": "20000"

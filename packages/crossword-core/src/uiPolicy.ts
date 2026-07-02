@@ -342,6 +342,42 @@ export function shouldQuickStartActivePuzzle({
   );
 }
 
+// 신규 사용자의 첫 실행에서 홈을 건너뛰고 온보딩(easy) 퍼즐 풀이 화면으로 자동
+// 진입할지 판정한다(#205). 신규 37%가 홈에서 퍼즐 미진입 이탈하는 문제 대응으로,
+// 도전 이력이 전혀 없고(일일 완료·진행 없음, 온보딩 시도 이력 없음) 온보딩 퍼즐이
+// 첫 활성 퍼즐로 배정된 경우에만 true다. 원격 설정 게이트(enabled=first_run_auto_
+// start_enabled)가 꺼져 있으면 항상 false로, 회귀 시 즉시 끌 수 있다.
+export function shouldAutoStartFirstRun({
+  enabled,
+  hasCompletedAnyDaily,
+  hasDailyProgress,
+  onboardingStarted,
+  activePuzzleIsOnboarding,
+}: {
+  // Remote Config `first_run_auto_start_enabled` 게이트 값.
+  enabled: boolean;
+  // 일일 퍼즐 완료 이력(어느 날짜든 completedAt 존재).
+  hasCompletedAnyDaily: boolean;
+  // 일일 퍼즐 진행 이력(시도·힌트·입력 중 하나라도 존재).
+  hasDailyProgress: boolean;
+  // 온보딩 퍼즐 시도/진행 이력. 일일 쪽(hasDailyProgress)과 같은 의미로,
+  // 온보딩 미션 시도·힌트·입력이 하나라도 있으면 true로 채운다(완료 포함).
+  onboardingStarted: boolean;
+  // 부팅 세션 라우팅(resolveInitialActivePuzzleId) 결과가 온보딩 퍼즐인지.
+  // 온보딩 세션 로드 실패 등으로 일반 퍼즐로 폴백한 경우 false가 되어 자동
+  // 진입하지 않는다 — 자동 진입 대상 화면(온보딩 easy)이 준비된 경우에만
+  // 개입하는 의도된 안전 가드다.
+  activePuzzleIsOnboarding: boolean;
+}): boolean {
+  return (
+    enabled &&
+    !hasCompletedAnyDaily &&
+    !hasDailyProgress &&
+    !onboardingStarted &&
+    activePuzzleIsOnboarding
+  );
+}
+
 // 부분 완료(중간 성취) 구간. 완료가 all-or-nothing이라 "거의 다 풀었지만 못 끝낸"
 // 사용자가 보상 없이 이탈하는 문제를 줄이기 위해, 진행률이 마일스톤을 새로 넘을 때
 // 중간 보상 피드백과 진행 마일스톤 이벤트를 노출한다.

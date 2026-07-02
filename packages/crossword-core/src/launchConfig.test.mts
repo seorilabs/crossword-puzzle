@@ -29,6 +29,31 @@ describe("launchConfig: returnReminderEnabled 기본값", () => {
   });
 });
 
+describe("launchConfig: firstRunAutoStartEnabled 기본값(#205)", () => {
+  it("신규 첫 실행 자동 진입이 기본 활성(true)이다", () => {
+    assert.equal(defaultLaunchConfig.firstRunAutoStartEnabled, true);
+  });
+
+  it("Remote Config 기본값 맵에도 활성으로 반영된다", () => {
+    const defaults = getLaunchConfigDefaultsForRemoteConfig();
+    assert.equal(defaults[launchConfigKeys.firstRunAutoStartEnabled], true);
+    assert.equal(
+      launchConfigKeys.firstRunAutoStartEnabled,
+      "first_run_auto_start_enabled",
+    );
+  });
+
+  it("Remote Config에서 명시적으로 false면 끌 수 있다(회귀 시 킬 스위치)", () => {
+    const config = normalizeLaunchConfig({ firstRunAutoStartEnabled: false });
+    assert.equal(config.firstRunAutoStartEnabled, false);
+  });
+
+  it("값이 없으면 기본값(활성)으로 폴백한다", () => {
+    const config = normalizeLaunchConfig({});
+    assert.equal(config.firstRunAutoStartEnabled, true);
+  });
+});
+
 describe("launchConfig: 막힘 힌트/피드백 튜닝값(#172)", () => {
   it("기본값이 기존 App.tsx 하드코딩 값과 일치한다", () => {
     assert.equal(defaultLaunchConfig.stuckHintIdleMs, 20000);
