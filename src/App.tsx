@@ -95,6 +95,8 @@ import { PersonalStatsCard } from "./components/PersonalStatsCard";
 import { StreakHeatmap } from "./components/StreakHeatmap";
 import { PuzzleBoard } from "./components/PuzzleBoard";
 import { SettingsSheet } from "./components/SettingsSheet";
+import { ShareGridPreview } from "./components/ShareGridPreview";
+import { useShareResult } from "./useShareResult";
 import { formatElapsedTime, formatLiveTimer, getElapsedSeconds } from "./timer";
 import {
   computeConsecutiveStreakDays,
@@ -4527,6 +4529,28 @@ function TodayScreen({
       ? formatPuzzleAliasLabel(selectedPuzzleSummary)
       : formatPuzzleHeaderLabel(puzzle.date, loadState);
   const showCompletionCelebration = completionCelebrationId === puzzle.puzzleId;
+  const celebrationElapsedLabel = formatElapsedTime(
+    mission.lastStartedAt,
+    mission.completedAt,
+  );
+  // 완료 축하 다이얼로그가 열릴 때만 공유 격자·문구를 계산한다(#202).
+  const celebrationShareGrid = showCompletionCelebration
+    ? buildShareGrid(puzzle, cellValues)
+    : "";
+  const celebrationShareText = showCompletionCelebration
+    ? buildShareText({
+        puzzleLabel: selectedPuzzleLabel,
+        elapsedLabel: celebrationElapsedLabel,
+        hintCount,
+        attemptsUsed: mission.attemptsUsed,
+        completedCount: completedEntries.length,
+        totalCount: puzzle.entries.length,
+        consecutiveStreak,
+        isComplete: true,
+        revealUsed,
+        shareGrid: celebrationShareGrid,
+      })
+    : "";
   const selectedEntryCells = useMemo(
     () => (selectedEntry == null ? [] : getEntryCells(selectedEntry)),
     [selectedEntry],
@@ -5569,13 +5593,12 @@ function TodayScreen({
           attemptsUsed={mission.attemptsUsed}
           completedCount={completedEntries.length}
           consecutiveStreak={consecutiveStreak}
-          elapsedLabel={formatElapsedTime(
-            mission.lastStartedAt,
-            mission.completedAt,
-          )}
+          elapsedLabel={celebrationElapsedLabel}
           hintCount={hintCount}
           isNewBestTime={isNewBestTime}
           revealUsed={revealUsed}
+          shareGrid={celebrationShareGrid}
+          shareText={celebrationShareText}
           totalCount={puzzle.entries.length}
           onClose={dismissCompletionCelebration}
           onGoHome={() => {
@@ -5600,6 +5623,8 @@ type CompletionCelebrationDialogProps = {
   hintCount: number;
   isNewBestTime: boolean;
   revealUsed: boolean;
+  shareGrid: string;
+  shareText: string;
   totalCount: number;
   onClose: () => void;
   onGoHome: () => void;
@@ -5614,11 +5639,14 @@ function CompletionCelebrationDialog({
   hintCount,
   isNewBestTime,
   revealUsed,
+  shareGrid,
+  shareText,
   totalCount,
   onClose,
   onGoHome,
   onSeeResult,
 }: CompletionCelebrationDialogProps) {
+  const { shareCopied, shareFailed, share } = useShareResult();
   const streakBadge = getStreakBadgeLabel(consecutiveStreak);
   const nextStreakHint = getNextStreakMilestoneHint(consecutiveStreak);
   const achievements = getCompletionAchievements({
@@ -5660,6 +5688,7 @@ function CompletionCelebrationDialog({
           {elapsedLabel != null && (
             <p className="celebrationStat">⏱ {elapsedLabel}</p>
           )}
+          <ShareGridPreview shareGrid={shareGrid} />
           {hasAchievements && (
             <div className="resultAchievements">
               {isNewBestTime && (
@@ -5680,6 +5709,29 @@ function CompletionCelebrationDialog({
           )}
           {nextStreakHint != null && (
             <p className="streakNudge">{nextStreakHint}</p>
+          )}
+        </div>
+        <div className="shareContainer">
+          <button
+            className="shareButton"
+            type="button"
+            onClick={() => share(shareText)}
+          >
+            결과 공유하기
+          </button>
+          {shareCopied && (
+            <p className="shareToast" role="status" aria-live="polite">
+              클립보드에 복사됐어요!
+            </p>
+          )}
+          {shareFailed && (
+            <p
+              className="shareToast shareToastError"
+              role="alert"
+              aria-live="assertive"
+            >
+              클립보드 복사에 실패했어요.
+            </p>
           )}
         </div>
         <div className="rewardDialogActions">
@@ -5975,82 +6027,23 @@ function ResultScreen({
     () => buildStartLabels(puzzle.entries),
     [puzzle.entries],
   );
-  const [shareCopied, setShareCopied] = useState(false);
-  const [shareFailed, setShareFailed] = useState(false);
-  const shareTimeoutRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (shareTimeoutRef.current != null) {
-        window.clearTimeout(shareTimeoutRef.current);
-      }
-    };
-  }, []);
+  const { shareCopied, shareFailed, share } = useShareResult();
 
   function handleShare() {
-    const text = buildShareText({
-      puzzleLabel: selectedPuzzleLabel,
-      elapsedLabel,
-      hintCount,
-      attemptsUsed: mission.attemptsUsed,
-      completedCount: completedEntries.length,
-      totalCount: puzzle.entries.length,
-      consecutiveStreak,
-      isComplete,
-      revealUsed,
-      shareGrid: buildShareGrid(puzzle, cellValues),
-    });
-
-    function copyToClipboard() {
-      if (typeof navigator.clipboard?.writeText !== "function") {
-        setShareCopied(false);
-        setShareFailed(true);
-        if (shareTimeoutRef.current != null) {
-          window.clearTimeout(shareTimeoutRef.current);
-          shareTimeoutRef.current = null;
-        }
-        return;
-      }
-      try {
-        void navigator.clipboard
-          .writeText(text)
-          .then(() => {
-            setShareCopied(true);
-            setShareFailed(false);
-            if (shareTimeoutRef.current != null) {
-              window.clearTimeout(shareTimeoutRef.current);
-            }
-            shareTimeoutRef.current = window.setTimeout(() => {
-              setShareCopied(false);
-              shareTimeoutRef.current = null;
-            }, 2000);
-          })
-          .catch(() => {
-            setShareCopied(false);
-            setShareFailed(true);
-            if (shareTimeoutRef.current != null) {
-              window.clearTimeout(shareTimeoutRef.current);
-              shareTimeoutRef.current = null;
-            }
-          });
-      } catch {
-        setShareCopied(false);
-        setShareFailed(true);
-        if (shareTimeoutRef.current != null) {
-          window.clearTimeout(shareTimeoutRef.current);
-          shareTimeoutRef.current = null;
-        }
-      }
-    }
-
-    if (navigator.share != null) {
-      void navigator.share({ text }).catch((err: unknown) => {
-        if (err instanceof Error && err.name === "AbortError") return;
-        copyToClipboard();
-      });
-    } else {
-      copyToClipboard();
-    }
+    share(
+      buildShareText({
+        puzzleLabel: selectedPuzzleLabel,
+        elapsedLabel,
+        hintCount,
+        attemptsUsed: mission.attemptsUsed,
+        completedCount: completedEntries.length,
+        totalCount: puzzle.entries.length,
+        consecutiveStreak,
+        isComplete,
+        revealUsed,
+        shareGrid: buildShareGrid(puzzle, cellValues),
+      }),
+    );
   }
 
   return (
