@@ -6,8 +6,29 @@ import {
   applyTentativeUpdate,
   computeTentativeUpdate,
   selectPromotableTentativeKeys,
+  shouldMarkTentative,
   shouldRenderTentative,
 } from "./tentative.ts";
+
+describe("shouldMarkTentative — 연필 모드 입력 정책(#200)", () => {
+  it("연필 ON + 사용자 직접 입력(manual)만 임시로 기록한다", () => {
+    assert.equal(shouldMarkTentative(true, "manual"), true);
+  });
+
+  it("연필 OFF면 manual 입력도 확정이다", () => {
+    assert.equal(shouldMarkTentative(false, "manual"), false);
+  });
+
+  it("힌트/정답 공개(reveal)는 연필 ON에서도 항상 확정이다", () => {
+    assert.equal(shouldMarkTentative(true, "reveal"), false);
+    assert.equal(shouldMarkTentative(false, "reveal"), false);
+  });
+
+  it("디버그 채움(debug)도 항상 확정이다", () => {
+    assert.equal(shouldMarkTentative(true, "debug"), false);
+    assert.equal(shouldMarkTentative(false, "debug"), false);
+  });
+});
 
 describe("shouldRenderTentative — 임시(회색) 렌더 가드", () => {
   const base = {

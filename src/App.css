@@ -2197,6 +2197,12 @@ button:disabled {
   display: block;
 }
 
+/* 토글형 아이콘 버튼(연필 모드 등)의 켜짐 상태. 브랜드 톤으로 구분한다. */
+.iconButtonOn {
+  background: var(--cw-brand-soft);
+  color: var(--cw-brand-strong);
+}
+
 .hintIconButton {
   position: relative;
   display: grid;
