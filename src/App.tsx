@@ -56,6 +56,7 @@ import {
   getStreakMilestoneProgress,
   applyTentativeUpdate,
   computeTentativeUpdate,
+  shouldMarkTentative,
   pickHintCellIndex,
   resolveInitialActivePuzzleId,
   resolveStarterCell,
@@ -790,6 +791,10 @@ function App() {
   // 임시(연필)로 입력된 셀 키 집합. cellValues와 별도로 관리해, 완료 판정은
   // 값(cellValues)만 보고 임시 여부는 표시에만 쓰이게 한다. SavedProgress에
   // 보존되어 재진입 후에도 임시 표시가 유지된다.
+  // 연필(임시 입력) 모드. ON이면 사용자가 직접 입력한 글자를 임시(회색)로 표시해
+  // 나중에 재검토할 수 있다. 세션 한정 상태로 시작한다(#200) — 재진입 시 모드는
+  // 꺼진 채 시작하지만, 임시 표시 자체는 SavedProgress.tentativeCells로 복원된다.
+  const [pencilMode, setPencilMode] = useState(false);
   const [tentativeCellKeys, setTentativeCellKeys] = useState<Set<string>>(
     () => new Set(),
   );
@@ -2083,7 +2088,7 @@ function App() {
 
     trackFirstAnswerInput(entry, nextLetters.length, source);
 
-    const markTentative = false;
+    const markTentative = shouldMarkTentative(pencilMode, source);
     const tentativeChanges: CellLetterChange[] = [];
 
     cells.forEach((cell, index) => {
@@ -2145,7 +2150,7 @@ function App() {
 
     trackFirstAnswerInput(entry, nextLetters.length, source);
 
-    const markTentative = false;
+    const markTentative = shouldMarkTentative(pencilMode, source);
     const tentativeChanges: CellLetterChange[] = [];
 
     nextLetters.forEach((letter, offset) => {
@@ -2623,6 +2628,10 @@ function App() {
     });
   }
 
+  function togglePencilMode() {
+    setPencilMode((prev) => !prev);
+  }
+
   async function clearProgress(preserveEarnedHintCredits?: number) {
     const raw = preserveEarnedHintCredits ?? 0;
     const creditsValue = Number.isFinite(raw) ? Math.max(0, raw) : 0;
@@ -2882,6 +2891,7 @@ function App() {
     hintCount,
     hapticEnabled,
     mission,
+    pencilMode,
     puzzle,
     remainingAttempts,
     requestRewardedHint,
@@ -2891,6 +2901,7 @@ function App() {
     tentativeCellKeys,
     toggleAutocheck,
     toggleHaptic,
+    togglePencilMode,
     toggleSound,
     selectedAnswer: viewModel.selectedAnswer,
     selectedCellKey,
@@ -4476,6 +4487,7 @@ type TodayScreenProps = DateSelectionProps & {
   hapticEnabled: boolean;
   mission: DailyMissionState;
   navigate: (route: AppRoute) => void;
+  pencilMode: boolean;
   pause: { pausedMs: number; pausedAt: string | null };
   togglePause: () => void;
   puzzle: Puzzle;
@@ -4486,6 +4498,7 @@ type TodayScreenProps = DateSelectionProps & {
   tentativeCellKeys: ReadonlySet<string>;
   toggleAutocheck: () => void;
   toggleHaptic: () => void;
+  togglePencilMode: () => void;
   toggleSound: () => void;
   selectedAnswer: string;
   selectedCellKey: string;
@@ -4528,6 +4541,7 @@ function TodayScreen({
   loadState,
   mission,
   navigate,
+  pencilMode,
   pause,
   togglePause,
   puzzle,
@@ -4538,6 +4552,7 @@ function TodayScreen({
   tentativeCellKeys,
   toggleAutocheck,
   toggleHaptic,
+  togglePencilMode,
   toggleSound,
   selectedCellKey,
   selectedPuzzleId,
@@ -5416,6 +5431,25 @@ function TodayScreen({
                 >
                   <EraserIcon />
                 </button>
+                <button
+                  className={[
+                    "iconButton",
+                    pencilMode ? "iconButtonOn" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  type="button"
+                  aria-label={pencilMode ? "연필 모드 끄기" : "연필 모드 켜기"}
+                  aria-pressed={pencilMode}
+                  title={
+                    pencilMode
+                      ? "연필 모드 켜짐 — 입력한 글자가 임시(회색)로 표시돼요"
+                      : "연필 모드 — 확신 없는 답을 임시로 적어 두세요"
+                  }
+                  onClick={togglePencilMode}
+                >
+                  <PencilIcon />
+                </button>
                 {mission.lastStartedAt != null &&
                 !isAttemptExhaustedUncompleted ? (
                   <button
@@ -5820,6 +5854,34 @@ function HomeIcon() {
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
+        strokeWidth="2"
+      />
+    </svg>
+  );
+}
+
+function PencilIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      focusable="false"
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+    >
+      <path
+        d="M4 20l1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L8 19l-4 1z"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+      <path
+        d="M14.5 6.5l3 3"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
         strokeWidth="2"
       />
     </svg>

@@ -28,6 +28,19 @@ export function shouldRenderTentative(
   );
 }
 
+// 답 입력 경로 출처. manual=사용자 직접 입력, reveal=힌트/정답 공개, debug=개발 채움.
+export type AnswerInputSource = "debug" | "manual" | "reveal";
+
+// 연필 모드 정책: 어떤 입력을 임시(연필)로 볼지. 연필 ON + 사용자 직접 입력
+// (manual)만 임시로 기록하고, 힌트/정답 공개(reveal)·디버그 채움은 연필 상태와
+// 무관하게 항상 확정 입력이다(#200). 3마켓이 같은 정책을 공유한다.
+export function shouldMarkTentative(
+  pencilMode: boolean,
+  source: AnswerInputSource,
+): boolean {
+  return pencilMode && source === "manual";
+}
+
 // 입력으로 값이 바뀐 셀 1건. hasValue=false면 값이 지워진 셀이다.
 export type CellLetterChange = { key: string; hasValue: boolean };
 
