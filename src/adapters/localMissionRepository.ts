@@ -41,18 +41,28 @@ function normalizeMission(
     return createDailyMissionState(date, puzzleId, maxAttempts);
   }
 
+  // 리워드 광고로 충전받은 추가 도전(#204)은 저장값을 보존하고, 유효
+  // maxAttempts(기본 한도 + 충전분)를 복원해 재실행 후에도 충전이 유지된다.
+  const extraAttemptsGranted =
+    typeof value.extraAttemptsGranted === "number" &&
+    Number.isFinite(value.extraAttemptsGranted)
+      ? Math.max(0, Math.floor(value.extraAttemptsGranted))
+      : 0;
+  const effectiveMaxAttempts = maxAttempts + extraAttemptsGranted;
+
   return {
     date,
     puzzleId,
     attemptsUsed:
       typeof value.attemptsUsed === "number"
-        ? Math.min(Math.max(0, value.attemptsUsed), maxAttempts)
+        ? Math.min(Math.max(0, value.attemptsUsed), effectiveMaxAttempts)
         : 0,
-    maxAttempts,
+    maxAttempts: effectiveMaxAttempts,
     completedAt:
       typeof value.completedAt === "string" ? value.completedAt : undefined,
     lastStartedAt:
       typeof value.lastStartedAt === "string" ? value.lastStartedAt : undefined,
+    ...(extraAttemptsGranted > 0 ? { extraAttemptsGranted } : {}),
   };
 }
 
@@ -184,6 +194,45 @@ export function computeConsecutiveStreakDays(
   const result = startDate === yesterday ? streak + 1 : streak;
   _streakCache = { date: today, value: result };
   return result;
+}
+
+// 리워드 광고 도전 충전(#204)의 일일 상한 누계. mission.date는 퍼즐 발행일이라
+// "오늘 몇 번 충전했는지"는 미션 상태로 알 수 없으므로, 달력일 키 하나로
+// 별도 저장한다. 저장된 날짜가 오늘과 다르면 0으로 리셋(자정 롤오버).
+const DAILY_EXTRA_ATTEMPT_GRANTS_KEY = "crossword-puzzle:extraAttemptGrants";
+
+export function loadDailyExtraAttemptGrantCount(
+  dateKey: string,
+  storage: KeyValueStorage | null = getDefaultStorage(),
+): number {
+  if (storage == null) return 0;
+  try {
+    const raw = storage.getItem(DAILY_EXTRA_ATTEMPT_GRANTS_KEY);
+    if (raw == null) return 0;
+    const parsed = JSON.parse(raw) as { date?: string; count?: number };
+    if (parsed.date !== dateKey) return 0;
+    return typeof parsed.count === "number" && Number.isFinite(parsed.count)
+      ? Math.max(0, Math.floor(parsed.count))
+      : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function saveDailyExtraAttemptGrantCount(
+  dateKey: string,
+  count: number,
+  storage: KeyValueStorage | null = getDefaultStorage(),
+): void {
+  if (storage == null) return;
+  try {
+    storage.setItem(
+      DAILY_EXTRA_ATTEMPT_GRANTS_KEY,
+      JSON.stringify({ date: dateKey, count: Math.max(0, Math.floor(count)) }),
+    );
+  } catch {
+    // Local persistence is best effort.
+  }
 }
 
 export function createLocalMissionRepository({

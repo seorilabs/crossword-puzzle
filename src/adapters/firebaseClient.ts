@@ -181,6 +181,14 @@ export async function loadFirebaseLaunchConfig(): Promise<LaunchConfig> {
         remoteConfig,
         launchConfigKeys.rewardedHintAdsEnabled,
       ),
+      rewardedExtraAttemptEnabled: getBoolean(
+        remoteConfig,
+        launchConfigKeys.rewardedExtraAttemptEnabled,
+      ),
+      rewardedExtraAttemptDailyCap: getNumber(
+        remoteConfig,
+        launchConfigKeys.rewardedExtraAttemptDailyCap,
+      ),
       resultInterstitialAdsEnabled: getBoolean(
         remoteConfig,
         launchConfigKeys.resultInterstitialAdsEnabled,
