@@ -49,6 +49,27 @@ describe("formatElapsedTime (결과 화면 라벨)", () => {
   });
 });
 
+// #203 회귀: 완료 축하 다이얼로그·홈 완료 카드도 결과 화면과 같은
+// pausedMs(세 번째 인자) 경로를 쓴다. 일시정지를 포함한 완료 시나리오에서
+// 벽시계 시간이 아닌 순수 풀이 시간이 표기됨을 고정한다.
+describe("formatElapsedTime (축하 다이얼로그·홈 카드 표기, #203)", () => {
+  it("5분 풀이 + 10분 일시정지 완료 → 15분이 아닌 5분으로 표기한다", () => {
+    // 벽시계 15분 경과, 일시정지 10분 → 순수 풀이 5분
+    const pausedCompletedAt = "2026-06-29T00:15:00.000Z";
+    expect(formatElapsedTime(startedAt, pausedCompletedAt, 10 * 60_000)).toBe(
+      "5분 00초",
+    );
+    // pausedMs 미전달(버그 당시 호출 형태)이면 벽시계 시간이 된다
+    expect(formatElapsedTime(startedAt, pausedCompletedAt)).toBe("15분 00초");
+  });
+
+  it("일시정지 없이 완료하면 pausedMs=0 전달과 미전달 표기가 동일하다(회귀 없음)", () => {
+    expect(formatElapsedTime(startedAt, completedAt, 0)).toBe(
+      formatElapsedTime(startedAt, completedAt),
+    );
+  });
+});
+
 describe("formatLiveTimer", () => {
   it("m:ss 포맷으로 표시한다", () => {
     expect(formatLiveTimer(0)).toBe("0:00");

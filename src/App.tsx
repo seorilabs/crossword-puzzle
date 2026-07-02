@@ -3027,6 +3027,7 @@ function App() {
           launchConfig={launchConfig}
           mission={mission}
           navigate={navigate}
+          pausedMs={pause.pausedMs}
           progressPercent={progressPercent}
           puzzle={puzzle}
           remainingAttempts={remainingAttempts}
@@ -3294,6 +3295,7 @@ type HomeScreenProps = DateSelectionProps & {
   launchConfig: LaunchConfig;
   mission: DailyMissionState;
   navigate: (route: AppRoute) => void;
+  pausedMs: number;
   progressPercent: number;
   puzzle: Puzzle;
   remainingAttempts: number;
@@ -3321,6 +3323,7 @@ function HomeScreen({
   loadState,
   mission,
   navigate,
+  pausedMs,
   progressPercent,
   puzzle,
   puzzleSummaries,
@@ -3514,9 +3517,12 @@ function HomeScreen({
                   풀이 시간
                 </Paragraph>
                 <Paragraph typography="t5" fontWeight="bold">
+                  {/* 일시정지 누적을 제외해 결과 화면과 같은 값을 보여준다(#203).
+                      pause는 세션 한정 상태라 앱 재시작 후에는 0으로 계산된다. */}
                   {formatElapsedTime(
                     mission.lastStartedAt,
                     mission.completedAt,
+                    pausedMs,
                   ) ?? "−"}
                 </Paragraph>
               </div>
@@ -4590,9 +4596,11 @@ function TodayScreen({
       ? formatPuzzleAliasLabel(selectedPuzzleSummary)
       : formatPuzzleHeaderLabel(puzzle.date, loadState);
   const showCompletionCelebration = completionCelebrationId === puzzle.puzzleId;
+  // 결과 화면·최고 기록 판정과 같은 기준으로 일시정지 누적을 제외한다(#203).
   const celebrationElapsedLabel = formatElapsedTime(
     mission.lastStartedAt,
     mission.completedAt,
+    pause.pausedMs,
   );
   // 완료 축하 다이얼로그가 열릴 때만 공유 격자·문구를 계산한다(#202).
   const celebrationShareGrid = showCompletionCelebration
