@@ -1561,16 +1561,19 @@ function App() {
     return count;
   }, [cellValues, puzzle]);
 
-  // 막혔을 때 힌트 자동 노출: 보드(today)에서 시작·미완료 상태일 때 입력/조작이
-  // 일정 시간 정체되면 비침습 힌트 CTA를 띄운다. 입력·단어 선택 등 활동이 있으면
-  // 타이머가 리셋되어 다시 정체될 때까지 노출되지 않는다. 오답이 쌓여 막힌 신호가
-  // 보이면(미완료자 다수가 힌트 없이 이탈) 더 짧은 지연으로 빠르게 띄운다.
+  // 막혔을 때 힌트 자동 노출: 보드(today)에서 시작·미완료 상태일 때 실제 입력이
+  // 일정 시간 정체되면 비침습 힌트 CTA를 띄운다. 오답이 쌓여 막힌 신호가 보이면
+  // (미완료자 다수가 힌트 없이 이탈) 더 짧은 지연으로 빠르게 띄운다.
+  // 정체 판정은 실제 입력(cellValues 변경)에만 반응한다. 단어 선택 이동(칸 탭)은
+  // 진척이 아니라 오히려 막힌 사용자가 이 칸 저 칸 헤매는 신호이므로 selectedEntryId를
+  // resetKeys에서 제외한다. 예전엔 선택 변경도 타이머를 리셋해, 막혔지만 입력 없이
+  // 탐색만 하는 사용자에게는 CTA가 끝내 뜨지 않았다(#184: stuck_hint_prompt 미발화 완화).
   // 타이머·재스케줄·발화 페이로드 최신화는 useStuckHintPrompt 훅에 캡슐화해 회귀
   // 테스트로 고정한다(임계·지연은 launchConfig 원격 조정, idle_seconds는 실제 지연).
   const { isVisible: isStuckHintPromptVisible, hide: hideStuckHintPrompt } =
     useStuckHintPrompt({
       active: route === "today" && hasStarted && !isCompleted,
-      resetKeys: [cellValues, selectedEntryId],
+      resetKeys: [cellValues],
       wrongCellCount,
       wrongCellThreshold: launchConfig.stuckHintWrongCellThreshold,
       idleMs: launchConfig.stuckHintIdleMs,
