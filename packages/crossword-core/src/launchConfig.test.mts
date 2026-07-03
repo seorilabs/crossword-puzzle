@@ -7,6 +7,7 @@ import {
   launchConfigKeys,
   normalizeLaunchConfig,
 } from "./launchConfig.ts";
+import { LEADERBOARD_SCORE_WEIGHTS } from "./leaderboard.ts";
 
 describe("launchConfig: returnReminderEnabled 기본값", () => {
   it("복귀 리마인드 동의 유도가 기본 활성(true)이다(#162)", () => {
@@ -175,5 +176,109 @@ describe("launchConfig: rewardedExtraAttempt 게이트(#204)", () => {
         .rewardedExtraAttemptDailyCap,
       1,
     );
+  });
+});
+
+describe("launchConfig: 리더보드 점수 가중치(#216)", () => {
+  it("기본값이 leaderboard.ts의 LEADERBOARD_SCORE_WEIGHTS와 일치한다(회귀 없음)", () => {
+    assert.equal(
+      defaultLaunchConfig.leaderboardScoreCompletedWord,
+      LEADERBOARD_SCORE_WEIGHTS.completedWord,
+    );
+    assert.equal(
+      defaultLaunchConfig.leaderboardScoreRemainingAttempt,
+      LEADERBOARD_SCORE_WEIGHTS.remainingAttempt,
+    );
+    assert.equal(
+      defaultLaunchConfig.leaderboardScoreHint,
+      LEADERBOARD_SCORE_WEIGHTS.hint,
+    );
+    assert.equal(
+      defaultLaunchConfig.leaderboardScoreTimeBonusBase,
+      LEADERBOARD_SCORE_WEIGHTS.timeBonusBase,
+    );
+    assert.equal(
+      defaultLaunchConfig.leaderboardScoreTimeDecayPerSecond,
+      LEADERBOARD_SCORE_WEIGHTS.timeDecayPerSecond,
+    );
+  });
+
+  it("Remote Config 기본값 맵에 5개 키가 상수값으로 등록된다", () => {
+    const defaults = getLaunchConfigDefaultsForRemoteConfig();
+    assert.equal(
+      defaults[launchConfigKeys.leaderboardScoreCompletedWord],
+      LEADERBOARD_SCORE_WEIGHTS.completedWord,
+    );
+    assert.equal(
+      defaults[launchConfigKeys.leaderboardScoreRemainingAttempt],
+      LEADERBOARD_SCORE_WEIGHTS.remainingAttempt,
+    );
+    assert.equal(
+      defaults[launchConfigKeys.leaderboardScoreHint],
+      LEADERBOARD_SCORE_WEIGHTS.hint,
+    );
+    assert.equal(
+      defaults[launchConfigKeys.leaderboardScoreTimeBonusBase],
+      LEADERBOARD_SCORE_WEIGHTS.timeBonusBase,
+    );
+    assert.equal(
+      defaults[launchConfigKeys.leaderboardScoreTimeDecayPerSecond],
+      LEADERBOARD_SCORE_WEIGHTS.timeDecayPerSecond,
+    );
+  });
+
+  it("미설정(빈 값)이면 기본 상수로 폴백한다", () => {
+    const config = normalizeLaunchConfig({});
+    assert.equal(
+      config.leaderboardScoreCompletedWord,
+      LEADERBOARD_SCORE_WEIGHTS.completedWord,
+    );
+    assert.equal(
+      config.leaderboardScoreTimeDecayPerSecond,
+      LEADERBOARD_SCORE_WEIGHTS.timeDecayPerSecond,
+    );
+  });
+
+  it("원격 값으로 가중치를 조정할 수 있다", () => {
+    const config = normalizeLaunchConfig({
+      leaderboardScoreCompletedWord: 1500,
+      leaderboardScoreRemainingAttempt: 300,
+      leaderboardScoreHint: 120,
+      leaderboardScoreTimeBonusBase: 800,
+      leaderboardScoreTimeDecayPerSecond: 2,
+    });
+    assert.equal(config.leaderboardScoreCompletedWord, 1500);
+    assert.equal(config.leaderboardScoreRemainingAttempt, 300);
+    assert.equal(config.leaderboardScoreHint, 120);
+    assert.equal(config.leaderboardScoreTimeBonusBase, 800);
+    assert.equal(config.leaderboardScoreTimeDecayPerSecond, 2);
+  });
+
+  it("음수/NaN은 기본값·범위로 방어한다(가짜 점수 방지)", () => {
+    const negative = normalizeLaunchConfig({
+      leaderboardScoreCompletedWord: -100,
+      leaderboardScoreTimeDecayPerSecond: -5,
+    });
+    // 하한 0으로 클램프.
+    assert.equal(negative.leaderboardScoreCompletedWord, 0);
+    assert.equal(negative.leaderboardScoreTimeDecayPerSecond, 0);
+
+    const nan = normalizeLaunchConfig({
+      leaderboardScoreHint: Number.NaN,
+    });
+    // 비유한 값은 기본값으로 폴백.
+    assert.equal(
+      nan.leaderboardScoreHint,
+      LEADERBOARD_SCORE_WEIGHTS.hint,
+    );
+  });
+
+  it("상한을 넘으면 클램프된다", () => {
+    const config = normalizeLaunchConfig({
+      leaderboardScoreCompletedWord: 9_999_999,
+      leaderboardScoreTimeDecayPerSecond: 9_999_999,
+    });
+    assert.equal(config.leaderboardScoreCompletedWord, 1_000_000);
+    assert.equal(config.leaderboardScoreTimeDecayPerSecond, 100_000);
   });
 });

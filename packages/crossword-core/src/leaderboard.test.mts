@@ -157,6 +157,63 @@ describe("computeLeaderboardScore", () => {
   });
 });
 
+describe("computeLeaderboardScore: 가중치 주입(#216)", () => {
+  const base = {
+    completedWordCount: 10,
+    remainingAttempts: 3,
+    hintCount: 2,
+    elapsedSeconds: 30,
+  };
+
+  it("가중치 미지정 시 기존 상수와 동일한 점수를 낸다(회귀 없음)", () => {
+    // 미지정 = 기본 상수 전체 주입과 동일해야 한다(하위호환).
+    assert.equal(
+      computeLeaderboardScore(base),
+      computeLeaderboardScore(base, LEADERBOARD_SCORE_WEIGHTS),
+    );
+    assert.equal(computeLeaderboardScore(base, {}), computeLeaderboardScore(base));
+  });
+
+  it("전체 가중치를 주입하면 그 값으로 계산한다", () => {
+    // 완료 10*1 + 남은 3*2 - 힌트 2*1 + 보너스 max(0, 10 - 30*0)=10 = 10+6-2+10 = 24
+    const score = computeLeaderboardScore(
+      { completedWordCount: 10, remainingAttempts: 3, hintCount: 2, elapsedSeconds: 30 },
+      {
+        completedWord: 1,
+        remainingAttempt: 2,
+        hint: 1,
+        timeBonusBase: 10,
+        timeDecayPerSecond: 0,
+      },
+    );
+    assert.equal(score, 24);
+  });
+
+  it("부분 주입 시 지정한 키만 바뀌고 나머지는 기본 상수를 쓴다", () => {
+    // completedWord 만 500으로 바꾸면 완료 항만 달라진다.
+    const expected =
+      10 * 500 +
+      3 * LEADERBOARD_SCORE_WEIGHTS.remainingAttempt -
+      2 * LEADERBOARD_SCORE_WEIGHTS.hint +
+      Math.max(
+        0,
+        LEADERBOARD_SCORE_WEIGHTS.timeBonusBase -
+          30 * LEADERBOARD_SCORE_WEIGHTS.timeDecayPerSecond,
+      );
+    assert.equal(
+      computeLeaderboardScore(base, { completedWord: 500 }),
+      expected,
+    );
+  });
+
+  it("시간 보너스 가중치 주입이 감쇠 계산에도 반영된다", () => {
+    // decay 를 2로 올리면 같은 30초에서 보너스가 더 빨리 감쇠한다.
+    const slower = computeLeaderboardScore(base, { timeDecayPerSecond: 1 });
+    const faster = computeLeaderboardScore(base, { timeDecayPerSecond: 5 });
+    assert.ok(faster < slower);
+  });
+});
+
 describe("shouldSubmitLeaderboardScore", () => {
   function createState(
     overrides: Partial<LeaderboardSubmissionState> = {},

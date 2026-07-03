@@ -1,3 +1,4 @@
+import { LEADERBOARD_SCORE_WEIGHTS } from "./leaderboard.ts";
 import {
   DEFAULT_HINT_CREDITS,
   DEFAULT_VISIBLE_PUZZLE_COUNT,
@@ -33,6 +34,14 @@ export type LaunchConfig = {
   stuckHintWrongCellThreshold: number;
   // "이 단어 확인"으로 강조한 셀을 원복 전까지 보여주는 시간(ms).
   checkHighlightMs: number;
+  // 리더보드 점수 산식 가중치(#216). 앱 재배포 없이 밸런스를 조정하도록 Remote
+  // Config로 뺀다. 기본값은 leaderboard.ts의 LEADERBOARD_SCORE_WEIGHTS와 동일해
+  // 점수 회귀가 없다.
+  leaderboardScoreCompletedWord: number;
+  leaderboardScoreRemainingAttempt: number;
+  leaderboardScoreHint: number;
+  leaderboardScoreTimeBonusBase: number;
+  leaderboardScoreTimeDecayPerSecond: number;
 };
 
 export const launchConfigKeys = {
@@ -55,6 +64,11 @@ export const launchConfigKeys = {
   stuckHintWrongIdleMs: "stuck_hint_wrong_idle_ms",
   stuckHintWrongCellThreshold: "stuck_hint_wrong_cell_threshold",
   checkHighlightMs: "check_highlight_ms",
+  leaderboardScoreCompletedWord: "leaderboard_score_completed_word",
+  leaderboardScoreRemainingAttempt: "leaderboard_score_remaining_attempt",
+  leaderboardScoreHint: "leaderboard_score_hint",
+  leaderboardScoreTimeBonusBase: "leaderboard_score_time_bonus_base",
+  leaderboardScoreTimeDecayPerSecond: "leaderboard_score_time_decay_per_second",
 } as const;
 
 export const defaultLaunchConfig: LaunchConfig = {
@@ -87,6 +101,13 @@ export const defaultLaunchConfig: LaunchConfig = {
   stuckHintWrongIdleMs: 5000,
   stuckHintWrongCellThreshold: 2,
   checkHighlightMs: 2500,
+  // 리더보드 가중치 기본값은 leaderboard.ts 상수를 그대로 따른다(#216).
+  leaderboardScoreCompletedWord: LEADERBOARD_SCORE_WEIGHTS.completedWord,
+  leaderboardScoreRemainingAttempt: LEADERBOARD_SCORE_WEIGHTS.remainingAttempt,
+  leaderboardScoreHint: LEADERBOARD_SCORE_WEIGHTS.hint,
+  leaderboardScoreTimeBonusBase: LEADERBOARD_SCORE_WEIGHTS.timeBonusBase,
+  leaderboardScoreTimeDecayPerSecond:
+    LEADERBOARD_SCORE_WEIGHTS.timeDecayPerSecond,
 };
 
 export function clampInteger(
@@ -199,6 +220,41 @@ export function normalizeLaunchConfig(
       500,
       10000,
     ),
+    // 리더보드 가중치(#216). 음수/NaN은 기본값·범위로 방어한다(가짜 점수 방지).
+    leaderboardScoreCompletedWord: clampInteger(
+      value.leaderboardScoreCompletedWord ??
+        defaultLaunchConfig.leaderboardScoreCompletedWord,
+      defaultLaunchConfig.leaderboardScoreCompletedWord,
+      0,
+      1000000,
+    ),
+    leaderboardScoreRemainingAttempt: clampInteger(
+      value.leaderboardScoreRemainingAttempt ??
+        defaultLaunchConfig.leaderboardScoreRemainingAttempt,
+      defaultLaunchConfig.leaderboardScoreRemainingAttempt,
+      0,
+      1000000,
+    ),
+    leaderboardScoreHint: clampInteger(
+      value.leaderboardScoreHint ?? defaultLaunchConfig.leaderboardScoreHint,
+      defaultLaunchConfig.leaderboardScoreHint,
+      0,
+      1000000,
+    ),
+    leaderboardScoreTimeBonusBase: clampInteger(
+      value.leaderboardScoreTimeBonusBase ??
+        defaultLaunchConfig.leaderboardScoreTimeBonusBase,
+      defaultLaunchConfig.leaderboardScoreTimeBonusBase,
+      0,
+      1000000,
+    ),
+    leaderboardScoreTimeDecayPerSecond: clampInteger(
+      value.leaderboardScoreTimeDecayPerSecond ??
+        defaultLaunchConfig.leaderboardScoreTimeDecayPerSecond,
+      defaultLaunchConfig.leaderboardScoreTimeDecayPerSecond,
+      0,
+      100000,
+    ),
   };
 }
 
@@ -239,5 +295,15 @@ export function getLaunchConfigDefaultsForRemoteConfig() {
     [launchConfigKeys.stuckHintWrongCellThreshold]:
       defaultLaunchConfig.stuckHintWrongCellThreshold,
     [launchConfigKeys.checkHighlightMs]: defaultLaunchConfig.checkHighlightMs,
+    [launchConfigKeys.leaderboardScoreCompletedWord]:
+      defaultLaunchConfig.leaderboardScoreCompletedWord,
+    [launchConfigKeys.leaderboardScoreRemainingAttempt]:
+      defaultLaunchConfig.leaderboardScoreRemainingAttempt,
+    [launchConfigKeys.leaderboardScoreHint]:
+      defaultLaunchConfig.leaderboardScoreHint,
+    [launchConfigKeys.leaderboardScoreTimeBonusBase]:
+      defaultLaunchConfig.leaderboardScoreTimeBonusBase,
+    [launchConfigKeys.leaderboardScoreTimeDecayPerSecond]:
+      defaultLaunchConfig.leaderboardScoreTimeDecayPerSecond,
   };
 }

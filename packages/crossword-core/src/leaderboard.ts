@@ -5,8 +5,22 @@ import type { Difficulty } from "./difficultyProfiles";
 // 둔다. core에는 React / React Native / AppsInToss / Firebase SDK import를 넣지 않는다.
 // 설계 근거: docs/leaderboard-strategy.md
 
-/** 점수 산식 가중치. docs/leaderboard-strategy.md 의 후보 산식과 일치한다. */
-export const LEADERBOARD_SCORE_WEIGHTS = {
+/** 점수 산식 가중치의 형태. Remote Config(launchConfig)로 부분 주입할 수 있다. */
+export type LeaderboardScoreWeights = {
+  // 완료한 단어 1개당 점수
+  completedWord: number;
+  // 끝까지 남긴 도전(오답 여유) 1개당 점수
+  remainingAttempt: number;
+  // 사용한 힌트 1개당 감점
+  hint: number;
+  // 빠른 완료 보너스의 최댓값(0초 완료 시 부여)
+  timeBonusBase: number;
+  // 풀이 1초당 보너스 감쇠량
+  timeDecayPerSecond: number;
+};
+
+/** 점수 산식 기본 가중치. docs/leaderboard-strategy.md 의 후보 산식과 일치한다. */
+export const LEADERBOARD_SCORE_WEIGHTS: LeaderboardScoreWeights = {
   // 완료한 단어 1개당 점수
   completedWord: 1000,
   // 끝까지 남긴 도전(오답 여유) 1개당 점수
@@ -18,7 +32,28 @@ export const LEADERBOARD_SCORE_WEIGHTS = {
   timeBonusBase: 600,
   // 풀이 1초당 보너스 감쇠량. timeBonusBase / timeDecayPerSecond 초가 지나면 0이 된다.
   timeDecayPerSecond: 1,
-} as const;
+};
+
+/**
+ * 부분 주입된 가중치를 기본값과 병합한다. 미지정(undefined) 키는 기본값을 써
+ * 점수 회귀가 없도록 한다(하위호환). Remote Config로 일부만 조정할 때 사용한다.
+ */
+function resolveWeights(
+  weights?: Partial<LeaderboardScoreWeights>,
+): LeaderboardScoreWeights {
+  return {
+    completedWord:
+      weights?.completedWord ?? LEADERBOARD_SCORE_WEIGHTS.completedWord,
+    remainingAttempt:
+      weights?.remainingAttempt ?? LEADERBOARD_SCORE_WEIGHTS.remainingAttempt,
+    hint: weights?.hint ?? LEADERBOARD_SCORE_WEIGHTS.hint,
+    timeBonusBase:
+      weights?.timeBonusBase ?? LEADERBOARD_SCORE_WEIGHTS.timeBonusBase,
+    timeDecayPerSecond:
+      weights?.timeDecayPerSecond ??
+      LEADERBOARD_SCORE_WEIGHTS.timeDecayPerSecond,
+  };
+}
 
 export type LeaderboardScoreInput = {
   // 정답으로 채운 단어 수
@@ -46,7 +81,10 @@ function toCount(value: number): number {
  * - 음수/NaN 등 유효하지 않은 값은 보너스 0으로 처리한다(가짜 만점 보너스 방지).
  * - 보너스 항 자체가 음수가 되지 않도록 0으로 클램프한다.
  */
-function computeTimeBonus(elapsedSeconds: number | undefined): number {
+function computeTimeBonus(
+  elapsedSeconds: number | undefined,
+  weights: LeaderboardScoreWeights,
+): number {
   if (elapsedSeconds === undefined) {
     return 0;
   }
@@ -56,8 +94,7 @@ function computeTimeBonus(elapsedSeconds: number | undefined): number {
 
   return Math.max(
     0,
-    LEADERBOARD_SCORE_WEIGHTS.timeBonusBase -
-      elapsedSeconds * LEADERBOARD_SCORE_WEIGHTS.timeDecayPerSecond,
+    weights.timeBonusBase - elapsedSeconds * weights.timeDecayPerSecond,
   );
 }
 
@@ -68,17 +105,24 @@ function computeTimeBonus(elapsedSeconds: number | undefined): number {
  *
  * 빠른 완료 보너스는 `max(0, 600 - 풀이초 * 1)`로, `elapsedSeconds` 미제공 시 0이다.
  * 음수가 되면 0으로 클램프한다. 입력은 음수/NaN을 0으로 정규화한다.
+ *
+ * 가중치는 `weights`로 부분 주입할 수 있고(Remote Config 튜닝), 미지정 시 기본
+ * 상수(`LEADERBOARD_SCORE_WEIGHTS`)로 동작해 기존 점수와 동일하다(하위호환).
  */
-export function computeLeaderboardScore(input: LeaderboardScoreInput): number {
+export function computeLeaderboardScore(
+  input: LeaderboardScoreInput,
+  weights?: Partial<LeaderboardScoreWeights>,
+): number {
+  const resolvedWeights = resolveWeights(weights);
   const completedWordCount = toCount(input.completedWordCount);
   const remainingAttempts = toCount(input.remainingAttempts);
   const hintCount = toCount(input.hintCount);
-  const timeBonus = computeTimeBonus(input.elapsedSeconds);
+  const timeBonus = computeTimeBonus(input.elapsedSeconds, resolvedWeights);
 
   const raw =
-    completedWordCount * LEADERBOARD_SCORE_WEIGHTS.completedWord +
-    remainingAttempts * LEADERBOARD_SCORE_WEIGHTS.remainingAttempt -
-    hintCount * LEADERBOARD_SCORE_WEIGHTS.hint +
+    completedWordCount * resolvedWeights.completedWord +
+    remainingAttempts * resolvedWeights.remainingAttempt -
+    hintCount * resolvedWeights.hint +
     timeBonus;
 
   return Math.max(0, raw);

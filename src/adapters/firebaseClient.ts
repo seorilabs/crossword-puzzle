@@ -221,6 +221,26 @@ export async function loadFirebaseLaunchConfig(): Promise<LaunchConfig> {
         remoteConfig,
         launchConfigKeys.checkHighlightMs,
       ),
+      leaderboardScoreCompletedWord: getNumber(
+        remoteConfig,
+        launchConfigKeys.leaderboardScoreCompletedWord,
+      ),
+      leaderboardScoreRemainingAttempt: getNumber(
+        remoteConfig,
+        launchConfigKeys.leaderboardScoreRemainingAttempt,
+      ),
+      leaderboardScoreHint: getNumber(
+        remoteConfig,
+        launchConfigKeys.leaderboardScoreHint,
+      ),
+      leaderboardScoreTimeBonusBase: getNumber(
+        remoteConfig,
+        launchConfigKeys.leaderboardScoreTimeBonusBase,
+      ),
+      leaderboardScoreTimeDecayPerSecond: getNumber(
+        remoteConfig,
+        launchConfigKeys.leaderboardScoreTimeDecayPerSecond,
+      ),
     });
   } catch {
     return defaultLaunchConfig;
