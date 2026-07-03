@@ -31,6 +31,7 @@ import {
   createDailyMissionState,
   DAILY_ATTEMPT_LIMIT,
   formatCompletionStatsLabel,
+  formatCommunityComparisonLabel,
   formatCompletionStatsMetrics,
   formatEstimatedSolveLabel,
   getBonusPuzzleCandidateSummary,
@@ -4726,6 +4727,17 @@ function TodayScreen({
     mission.completedAt,
     pause.pausedMs,
   );
+  // 커뮤니티 중앙값 대비 내 풀이 시간 비교 라벨(#218). 정답 보기(reveal)를 썼으면
+  // 기록이 무효라 오해를 막기 위해 숨긴다. 프라이버시 임계·통계 유무는 core가 판정.
+  const celebrationComparisonLabel = revealUsed
+    ? ""
+    : formatCommunityComparisonLabel(
+        getElapsedSeconds(mission.lastStartedAt, mission.completedAt, {
+          pausedMs: pause.pausedMs,
+        }),
+        completionStatsByPuzzleId[puzzle.puzzleId],
+        completionStatsMinDisplayCount,
+      );
   // 완료 축하 다이얼로그가 열릴 때만 공유 격자·문구를 계산한다(#202).
   const celebrationShareGrid = showCompletionCelebration
     ? buildShareGrid(puzzle, cellValues)
@@ -5819,6 +5831,7 @@ function TodayScreen({
       {showCompletionCelebration ? (
         <CompletionCelebrationDialog
           attemptsUsed={mission.attemptsUsed}
+          communityComparisonLabel={celebrationComparisonLabel}
           completedCount={completedEntries.length}
           consecutiveStreak={consecutiveStreak}
           elapsedLabel={celebrationElapsedLabel}
@@ -5845,6 +5858,7 @@ function TodayScreen({
 
 type CompletionCelebrationDialogProps = {
   attemptsUsed: number;
+  communityComparisonLabel: string;
   completedCount: number;
   consecutiveStreak: number;
   elapsedLabel: string | null;
@@ -5861,6 +5875,7 @@ type CompletionCelebrationDialogProps = {
 
 function CompletionCelebrationDialog({
   attemptsUsed,
+  communityComparisonLabel,
   completedCount,
   consecutiveStreak,
   elapsedLabel,
@@ -5915,6 +5930,9 @@ function CompletionCelebrationDialog({
           </p>
           {elapsedLabel != null && (
             <p className="celebrationStat">⏱ {elapsedLabel}</p>
+          )}
+          {communityComparisonLabel !== "" && (
+            <p className="celebrationComparison">{communityComparisonLabel}</p>
           )}
           <ShareGridPreview shareGrid={shareGrid} />
           {hasAchievements && (

@@ -4,6 +4,7 @@ import { strict as assert } from "node:assert";
 import {
   bucketCount,
   formatBucketedCount,
+  formatCommunityComparisonLabel,
   formatCompletionStatsLabel,
   formatCompletionStatsMetrics,
   formatEstimatedSolveLabel,
@@ -171,5 +172,99 @@ describe("formatEstimatedSolveLabel", () => {
       "",
     );
     assert.equal(formatEstimatedSolveLabel(undefined, 10), "");
+  });
+});
+
+describe("formatCommunityComparisonLabel (#218)", () => {
+  // 완료 100건 + 중앙값 120초 → 임계(10) 충족, 비교 가능.
+  function communityStats(
+    overrides: Partial<PuzzleCompletionStats> = {},
+  ): PuzzleCompletionStats {
+    return createStats({
+      completionCount: 100,
+      medianElapsedSeconds: 120,
+      ...overrides,
+    });
+  }
+
+  it("내가 더 빠르면 '빨라요'와 차이를 노출한다", () => {
+    // 90초 완료 vs 중앙값 120초 → 30초 빠름.
+    assert.equal(
+      formatCommunityComparisonLabel(90, communityStats(), 10),
+      "커뮤니티 중앙값 2분 · 내 기록이 30초 빨라요",
+    );
+  });
+
+  it("내가 더 느리면 '느려요'와 차이를 노출한다", () => {
+    // 200초 완료 vs 중앙값 120초 → 80초 느림(formatStatsDuration: <90s는 '초').
+    assert.equal(
+      formatCommunityComparisonLabel(200, communityStats(), 10),
+      "커뮤니티 중앙값 2분 · 내 기록이 80초 느려요",
+    );
+    // 130초 느린 경우는 분 단위(2분)로 표기된다.
+    assert.equal(
+      formatCommunityComparisonLabel(250, communityStats(), 10),
+      "커뮤니티 중앙값 2분 · 내 기록이 2분 느려요",
+    );
+  });
+
+  it("반올림 초가 같으면 '비슷해요'로 표기한다(0초 빨라요/느려요 방지)", () => {
+    assert.equal(
+      formatCommunityComparisonLabel(120, communityStats(), 10),
+      "커뮤니티 중앙값 2분 · 커뮤니티 평균과 비슷해요",
+    );
+    // 0.4초 차이도 반올림하면 0 → 비슷.
+    assert.equal(
+      formatCommunityComparisonLabel(120.4, communityStats(), 10),
+      "커뮤니티 중앙값 2분 · 커뮤니티 평균과 비슷해요",
+    );
+  });
+
+  it("완료 수가 임계 미만이면 프라이버시 게이트로 숨긴다", () => {
+    assert.equal(
+      formatCommunityComparisonLabel(
+        90,
+        communityStats({ completionCount: 9 }),
+        10,
+      ),
+      "",
+    );
+  });
+
+  it("통계 없음/중앙값 없음이면 숨긴다", () => {
+    assert.equal(formatCommunityComparisonLabel(90, undefined, 10), "");
+    assert.equal(
+      formatCommunityComparisonLabel(
+        90,
+        communityStats({ medianElapsedSeconds: undefined }),
+        10,
+      ),
+      "",
+    );
+  });
+
+  it("중앙값이 없으면 평균(averageElapsedSeconds)으로 폴백한다", () => {
+    assert.equal(
+      formatCommunityComparisonLabel(
+        90,
+        communityStats({
+          medianElapsedSeconds: undefined,
+          averageElapsedSeconds: 120,
+        }),
+        10,
+      ),
+      "커뮤니티 중앙값 2분 · 내 기록이 30초 빨라요",
+    );
+  });
+
+  it("내 기록이 유효하지 않으면(NaN/음수) 비교하지 않는다", () => {
+    assert.equal(
+      formatCommunityComparisonLabel(Number.NaN, communityStats(), 10),
+      "",
+    );
+    assert.equal(
+      formatCommunityComparisonLabel(-5, communityStats(), 10),
+      "",
+    );
   });
 });
