@@ -154,6 +154,41 @@
       },
       "description": "'이 단어 확인'으로 강조한 셀을 원복 전까지 보여주는 시간(ms). 허용 500~10000",
       "valueType": "NUMBER"
+    },
+    "leaderboard_score_completed_word": {
+      "defaultValue": {
+        "value": "1000"
+      },
+      "description": "리더보드 점수: 완료한 단어 1개당 점수(#216). 허용 0~1000000",
+      "valueType": "NUMBER"
+    },
+    "leaderboard_score_remaining_attempt": {
+      "defaultValue": {
+        "value": "200"
+      },
+      "description": "리더보드 점수: 끝까지 남긴 도전(오답 여유) 1개당 점수(#216). 허용 0~1000000",
+      "valueType": "NUMBER"
+    },
+    "leaderboard_score_hint": {
+      "defaultValue": {
+        "value": "80"
+      },
+      "description": "리더보드 점수: 사용한 힌트 1개당 감점(#216). 허용 0~1000000",
+      "valueType": "NUMBER"
+    },
+    "leaderboard_score_time_bonus_base": {
+      "defaultValue": {
+        "value": "600"
+      },
+      "description": "리더보드 점수: 빠른 완료 보너스의 최댓값(0초 완료 시 부여)(#216). 허용 0~1000000",
+      "valueType": "NUMBER"
+    },
+    "leaderboard_score_time_decay_per_second": {
+      "defaultValue": {
+        "value": "1"
+      },
+      "description": "리더보드 점수: 풀이 1초당 보너스 감쇠량(#216). 허용 0~100000",
+      "valueType": "NUMBER"
     }
   }
 }

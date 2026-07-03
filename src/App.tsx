@@ -1769,12 +1769,22 @@ function App() {
         nextMission.completedAt,
         { pausedMs: pause.pausedMs },
       );
-      const leaderboardScore = computeLeaderboardScore({
-        completedWordCount: viewModel.completedEntries.length,
-        remainingAttempts: getRemainingAttempts(nextMission),
-        hintCount,
-        elapsedSeconds: submissionElapsedSeconds,
-      });
+      const leaderboardScore = computeLeaderboardScore(
+        {
+          completedWordCount: viewModel.completedEntries.length,
+          remainingAttempts: getRemainingAttempts(nextMission),
+          hintCount,
+          elapsedSeconds: submissionElapsedSeconds,
+        },
+        // 점수 가중치는 Remote Config(launchConfig)로 밸런스 조정 가능(#216).
+        {
+          completedWord: launchConfig.leaderboardScoreCompletedWord,
+          remainingAttempt: launchConfig.leaderboardScoreRemainingAttempt,
+          hint: launchConfig.leaderboardScoreHint,
+          timeBonusBase: launchConfig.leaderboardScoreTimeBonusBase,
+          timeDecayPerSecond: launchConfig.leaderboardScoreTimeDecayPerSecond,
+        },
+      );
       telemetry.impression("leaderboard_score_submit", {
         puzzle_id: puzzle.puzzleId,
         difficulty: puzzle.difficulty,
