@@ -1761,7 +1761,8 @@ button:disabled {
   background: var(--cw-cell-bg);
   color: var(--cw-cell-text);
   font: inherit;
-  font-size: 20px;
+  /* 글자 크기 설정(#217): --cell-font-scale(기본 1)로 셀 글자를 확대한다. */
+  font-size: calc(20px * var(--cell-font-scale, 1));
   font-weight: 800;
   line-height: 1;
   cursor: pointer;
@@ -2924,7 +2925,8 @@ button:disabled {
 
 .clueText {
   min-width: 0;
-  font-size: 15px;
+  /* 글자 크기 설정(#217): --cell-font-scale(기본 1)로 단서 글자를 확대한다. */
+  font-size: calc(15px * var(--cell-font-scale, 1));
   font-weight: 700;
   line-height: 21px;
 }
