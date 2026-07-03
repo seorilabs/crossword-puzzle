@@ -13,7 +13,9 @@ function renderSheet(overrides: Partial<SettingsSheetProps> = {}) {
     hapticEnabled: true,
     onClose: () => {},
     selectAnswerInputMode: () => {},
+    selectTextScale: () => {},
     soundEnabled: true,
+    textScale: "normal",
     toggleAutocheck: () => {},
     toggleHaptic: () => {},
     toggleSound: () => {},
@@ -68,9 +70,11 @@ describe("SettingsSheet 오답 자동 표시 토글", () => {
     expect(toggleHaptic).not.toHaveBeenCalled();
   });
 
-  it("시트 제목에 오답 표시 항목이 포함된다", () => {
+  it("시트 제목에 글자 크기 항목이 포함된다", () => {
     renderSheet();
-    expect(screen.getByText("입력 방식 · 오답 표시 · 사운드 · 햅틱")).toBeTruthy();
+    expect(
+      screen.getByText("입력 방식 · 오답 표시 · 사운드 · 햅틱 · 글자 크기"),
+    ).toBeTruthy();
   });
 
   it("기존 사운드·햅틱 토글도 그대로 렌더된다(회귀 없음)", () => {
@@ -85,5 +89,59 @@ describe("SettingsSheet 오답 자동 표시 토글", () => {
     expect(soundToggle.getAttribute("aria-pressed")).toBe("false");
     soundToggle.click();
     expect(toggleSound).toHaveBeenCalledTimes(1);
+  });
+});
+
+function getTextScaleGroup() {
+  const group = screen.getByRole("group", { name: "글자 크기" });
+  expect(group).not.toBeNull();
+  const buttons = group.querySelectorAll("button");
+  // [보통, 크게]
+  return { normal: buttons[0], large: buttons[1] };
+}
+
+describe("SettingsSheet 글자 크기 세그먼트 컨트롤(#217)", () => {
+  it("role=group과 aria-pressed 접근성 속성으로 렌더된다", () => {
+    renderSheet({ textScale: "normal" });
+    const { normal, large } = getTextScaleGroup();
+    expect(normal.getAttribute("aria-pressed")).toBe("true");
+    expect(normal.className).toContain("assistToggleOn");
+    expect(large.getAttribute("aria-pressed")).toBe("false");
+    expect(large.className).not.toContain("assistToggleOn");
+    expect(normal.textContent).toBe("보통");
+    expect(large.textContent).toBe("크게");
+  });
+
+  it("large 선택 상태에서는 '크게'가 눌린 상태로 반영된다", () => {
+    renderSheet({ textScale: "large" });
+    const { normal, large } = getTextScaleGroup();
+    expect(large.getAttribute("aria-pressed")).toBe("true");
+    expect(large.className).toContain("assistToggleOn");
+    expect(normal.getAttribute("aria-pressed")).toBe("false");
+    expect(
+      screen.getByText("보드 글자·단서를 크게 보여줘요"),
+    ).toBeTruthy();
+  });
+
+  it("'크게'를 누르면 selectTextScale('large')가 호출된다(다른 설정 미호출)", () => {
+    const selectTextScale = vi.fn();
+    const toggleSound = vi.fn();
+    renderSheet({ textScale: "normal", selectTextScale, toggleSound });
+
+    getTextScaleGroup().large.click();
+
+    expect(selectTextScale).toHaveBeenCalledTimes(1);
+    expect(selectTextScale).toHaveBeenCalledWith("large");
+    expect(toggleSound).not.toHaveBeenCalled();
+  });
+
+  it("'보통'을 누르면 selectTextScale('normal')가 호출된다", () => {
+    const selectTextScale = vi.fn();
+    renderSheet({ textScale: "large", selectTextScale });
+
+    getTextScaleGroup().normal.click();
+
+    expect(selectTextScale).toHaveBeenCalledTimes(1);
+    expect(selectTextScale).toHaveBeenCalledWith("normal");
   });
 });

@@ -1,5 +1,7 @@
 import { Paragraph } from "@toss/tds-mobile";
 
+import type { TextScale } from "../../packages/crossword-core/src";
+
 // App.tsx 의 로컬 AnswerInputMode 와 동일한 리터럴(구조적 호환). App 이 타입을
 // export 하지 않으므로 순환 의존 없이 여기서 같은 형태로 선언한다.
 export type AnswerInputMode = "box" | "cell";
@@ -10,13 +12,15 @@ export type SettingsSheetProps = {
   hapticEnabled: boolean;
   onClose: () => void;
   selectAnswerInputMode: (mode: AnswerInputMode) => void;
+  selectTextScale: (scale: TextScale) => void;
   soundEnabled: boolean;
+  textScale: TextScale;
   toggleAutocheck: () => void;
   toggleHaptic: () => void;
   toggleSound: () => void;
 };
 
-// 풀이 화면 설정 시트. 입력 방식·오답 자동 표시·사운드·햅틱을 조정한다.
+// 풀이 화면 설정 시트. 입력 방식·오답 자동 표시·사운드·햅틱·글자 크기를 조정한다.
 // 상태와 영속은 전부 상위(App)에서 주입받고 렌더만 담당한다.
 export function SettingsSheet({
   answerInputMode,
@@ -24,7 +28,9 @@ export function SettingsSheet({
   hapticEnabled,
   onClose,
   selectAnswerInputMode,
+  selectTextScale,
   soundEnabled,
+  textScale,
   toggleAutocheck,
   toggleHaptic,
   toggleSound,
@@ -42,7 +48,7 @@ export function SettingsSheet({
             설정
           </Paragraph>
           <Paragraph typography="t4" fontWeight="bold">
-            입력 방식 · 오답 표시 · 사운드 · 햅틱
+            입력 방식 · 오답 표시 · 사운드 · 햅틱 · 글자 크기
           </Paragraph>
         </div>
         <button className="ghostButton" type="button" onClick={onClose}>
@@ -159,6 +165,49 @@ export function SettingsSheet({
           >
             {hapticEnabled ? "켜짐" : "꺼짐"}
           </button>
+        </div>
+
+        <div className="settingsRow">
+          <div className="settingsRowText">
+            <strong>글자 크기</strong>
+            <span>
+              {textScale === "large"
+                ? "보드 글자·단서를 크게 보여줘요"
+                : "보드 글자·단서를 기본 크기로 보여줘요"}
+            </span>
+          </div>
+          <div
+            className="settingsSegmented"
+            role="group"
+            aria-label="글자 크기"
+          >
+            <button
+              type="button"
+              className={[
+                "assistButton",
+                textScale === "normal" ? "assistToggleOn" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              aria-pressed={textScale === "normal"}
+              onClick={() => selectTextScale("normal")}
+            >
+              보통
+            </button>
+            <button
+              type="button"
+              className={[
+                "assistButton",
+                textScale === "large" ? "assistToggleOn" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              aria-pressed={textScale === "large"}
+              onClick={() => selectTextScale("large")}
+            >
+              크게
+            </button>
+          </div>
         </div>
       </div>
     </div>

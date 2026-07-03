@@ -26,6 +26,7 @@ import {
   computeElapsedMs,
   computeLeaderboardScore,
   computePersonalStats,
+  getTextScaleFontMultiplier,
   createPuzzleSummary,
   createDailyMissionState,
   DAILY_ATTEMPT_LIMIT,
@@ -92,6 +93,7 @@ import {
   type PersonalStatsRecord,
   type ReviewEntry,
   type SavedProgress,
+  type TextScale,
 } from "../packages/crossword-core/src";
 import { useStuckHintPrompt } from "./useStuckHintPrompt";
 import { MiniPuzzlePreview } from "./components/MiniPuzzlePreview";
@@ -134,8 +136,10 @@ import {
 import {
   loadHapticEnabled,
   loadSoundEnabled,
+  loadTextScale,
   saveHapticEnabled,
   saveSoundEnabled,
+  saveTextScale,
 } from "./adapters/feedbackSettingsRepository";
 import { emitFeedback } from "./adapters/feedback";
 import {
@@ -839,6 +843,9 @@ function App() {
   });
   const [answerInputMode, setAnswerInputMode] =
     useState<AnswerInputMode>(loadAnswerInputMode);
+  // 글자 크기(접근성). 사운드·햅틱처럼 기본값(보통)으로 시작하고 저장값은 마운트
+  // 후 useEffect에서 동기화한다(클라이언트 전용 저장소 접근 분리).
+  const [textScale, setTextScale] = useState<TextScale>("normal");
   // 첫 진입 1스텝 온보딩: 첫 입력 전 "첫 칸에 입력" 가이드를 최초 1회만 노출한다.
   const [hasSeenFirstInputGuide, setHasSeenFirstInputGuide] = useState(() => {
     try {
@@ -1208,10 +1215,11 @@ function App() {
     setAutocheckEnabled(loadAutocheckEnabled());
   }, []);
 
-  // 사운드·햅틱 저장값도 마운트 후 동기화한다(클라이언트 전용 저장소 접근 분리).
+  // 사운드·햅틱·글자 크기 저장값도 마운트 후 동기화한다(클라이언트 전용 저장소 접근 분리).
   useEffect(() => {
     setSoundEnabled(loadSoundEnabled());
     setHapticEnabled(loadHapticEnabled());
+    setTextScale(loadTextScale());
   }, []);
 
   useEffect(() => {
@@ -2660,6 +2668,11 @@ function App() {
     });
   }
 
+  function selectTextScale(scale: TextScale) {
+    setTextScale(scale);
+    saveTextScale(scale);
+  }
+
   function togglePencilMode() {
     setPencilMode((prev) => !prev);
   }
@@ -3018,8 +3031,10 @@ function App() {
     requestRewardedHint,
     revealLetter,
     revealUsed,
+    selectTextScale,
     soundEnabled,
     tentativeCellKeys,
+    textScale,
     toggleAutocheck,
     toggleHaptic,
     togglePencilMode,
@@ -3072,6 +3087,12 @@ function App() {
       ]
         .filter(Boolean)
         .join(" ")}
+      // 글자 크기 설정을 보드 셀/단서 글자에 CSS 변수로 반영한다(#217).
+      style={
+        {
+          "--cell-font-scale": getTextScaleFontMultiplier(textScale),
+        } as CSSProperties
+      }
     >
       {route === "today" ? (
         <TodayScreen
@@ -4596,8 +4617,10 @@ type TodayScreenProps = DateSelectionProps & {
   requestRewardedExtraAttempt: () => void;
   revealLetter: () => void;
   revealUsed: boolean;
+  selectTextScale: (scale: TextScale) => void;
   soundEnabled: boolean;
   tentativeCellKeys: ReadonlySet<string>;
+  textScale: TextScale;
   toggleAutocheck: () => void;
   toggleHaptic: () => void;
   togglePencilMode: () => void;
@@ -4653,8 +4676,10 @@ function TodayScreen({
   remainingAttempts,
   requestRewardedExtraAttempt,
   revealUsed,
+  selectTextScale,
   soundEnabled,
   tentativeCellKeys,
+  textScale,
   toggleAutocheck,
   toggleHaptic,
   togglePencilMode,
@@ -5782,7 +5807,9 @@ function TodayScreen({
           hapticEnabled={hapticEnabled}
           onClose={() => setIsSettingsOpen(false)}
           selectAnswerInputMode={selectAnswerInputMode}
+          selectTextScale={selectTextScale}
           soundEnabled={soundEnabled}
+          textScale={textScale}
           toggleAutocheck={toggleAutocheck}
           toggleHaptic={toggleHaptic}
           toggleSound={toggleSound}

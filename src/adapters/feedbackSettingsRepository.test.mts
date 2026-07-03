@@ -5,8 +5,10 @@ import { strict as assert } from "node:assert";
 import {
   loadHapticEnabled,
   loadSoundEnabled,
+  loadTextScale,
   saveHapticEnabled,
   saveSoundEnabled,
+  saveTextScale,
 } from "./feedbackSettingsRepository.ts";
 
 function createMemoryStorage() {
@@ -63,5 +65,26 @@ describe("feedbackSettingsRepository", () => {
       setItem: () => {},
     };
     assert.equal(loadSoundEnabled(failStorage), true);
+  });
+
+  it("글자 크기 기본값은 보통(normal)이다", () => {
+    assert.equal(loadTextScale(storage), "normal");
+  });
+
+  it("글자 크기 large 저장 후 복원되고 피드백 설정과 독립적이다", () => {
+    saveTextScale("large", storage);
+    assert.equal(loadTextScale(storage), "large");
+    assert.equal(loadSoundEnabled(storage), true, "사운드는 영향 없음");
+    assert.equal(loadHapticEnabled(storage), true, "햅틱은 영향 없음");
+  });
+
+  it("오염된 글자 크기 값은 정규화되어 보통으로 폴백한다", () => {
+    storage.setItem("crossword:text-scale", "huge");
+    assert.equal(loadTextScale(storage), "normal");
+  });
+
+  it("글자 크기: storage가 null이면 기본값(보통)을 반환하고 저장은 무시된다", () => {
+    assert.equal(loadTextScale(null), "normal");
+    saveTextScale("large", null); // throw 없이 무시
   });
 });
