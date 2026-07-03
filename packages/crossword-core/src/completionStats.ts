@@ -179,6 +179,60 @@ export function formatCompletionStatsMetrics(
 }
 
 /**
+ * 완료 결과에서 "커뮤니티 중앙값 대비 내 풀이 시간"을 비교하는 한 줄 라벨(#218).
+ * 입력은 내 순수 풀이 초(elapsedSeconds), 서버 완료 통계(stats), 프라이버시
+ * 임계(minDisplayCount)다.
+ *
+ * - 통계 없음 / 완료 수가 임계 미만 / 중앙값(없으면 평균) 없음 / 내 기록이 유효하지
+ *   않으면 "" 을 돌려줘 아무것도 노출하지 않는다(프라이버시·오해 방지).
+ * - 중앙값보다 빠르면 "빨라요", 느리면 "느려요", (반올림 초 기준) 같으면 "비슷해요".
+ *   차이는 formatStatsDuration 과 동일한 단위 규칙으로 표기한다.
+ */
+export function formatCommunityComparisonLabel(
+  elapsedSeconds: number,
+  stats: PuzzleCompletionStats | undefined,
+  minDisplayCount: number,
+): string {
+  if (stats == null || stats.completionCount < minDisplayCount) {
+    return "";
+  }
+
+  const medianSeconds =
+    stats.medianElapsedSeconds ?? stats.averageElapsedSeconds;
+  if (
+    medianSeconds == null ||
+    !Number.isFinite(medianSeconds) ||
+    medianSeconds <= 0
+  ) {
+    return "";
+  }
+
+  if (!Number.isFinite(elapsedSeconds) || elapsedSeconds < 0) {
+    return "";
+  }
+
+  const medianLabel = formatStatsDuration(medianSeconds);
+  if (medianLabel === "") {
+    return "";
+  }
+
+  // 부호 있는 반올림 차이(양수 = 내가 더 빠름). 표기 초와 방향 판정을 같은 값으로
+  // 맞춰 "0초 빨라요" 같은 모순을 없앤다.
+  const deltaSeconds = Math.round(medianSeconds - elapsedSeconds);
+  const deltaLabel = formatStatsDuration(Math.abs(deltaSeconds));
+
+  if (deltaSeconds === 0 || deltaLabel === "") {
+    return `커뮤니티 중앙값 ${medianLabel} · 커뮤니티 평균과 비슷해요`;
+  }
+
+  if (deltaSeconds > 0) {
+    return `커뮤니티 중앙값 ${medianLabel} · 내 기록이 ${deltaLabel} 빨라요`;
+  }
+
+  return `커뮤니티 중앙값 ${medianLabel} · 내 기록이 ${deltaLabel} 느려요`;
+}
+
+/**
  * Short "expected time to solve" preview for the home card value proposition.
  * Uses the median (falling back to average) solve time, gated by the same
  * privacy threshold as the other stat lines. Returns "" when no usable figure
