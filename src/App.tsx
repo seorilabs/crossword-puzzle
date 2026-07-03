@@ -94,6 +94,7 @@ import {
   type SavedProgress,
 } from "../packages/crossword-core/src";
 import { useStuckHintPrompt } from "./useStuckHintPrompt";
+import { MiniPuzzlePreview } from "./components/MiniPuzzlePreview";
 import { PersonalStatsCard } from "./components/PersonalStatsCard";
 import { StreakHeatmap } from "./components/StreakHeatmap";
 import { PuzzleBoard } from "./components/PuzzleBoard";
@@ -4058,40 +4059,6 @@ function BonusPuzzlePanel({ onAction, state }: BonusPuzzlePanelProps) {
         </button>
       ) : null}
     </section>
-  );
-}
-
-type MiniPuzzlePreviewProps = {
-  puzzle: Puzzle;
-  isLoading?: boolean;
-};
-
-function MiniPuzzlePreview({ puzzle, isLoading }: MiniPuzzlePreviewProps) {
-  if (isLoading) {
-    return (
-      <div className="miniBoard" aria-hidden="true">
-        {Array.from({ length: 49 }, (_, i) => (
-          <span key={i} className="miniCell miniCellSkeleton" />
-        ))}
-      </div>
-    );
-  }
-
-  const previewRows = puzzle.grid.slice(0, 7);
-
-  return (
-    <div className="miniBoard" aria-hidden="true">
-      {previewRows.flatMap((row, rowIndex) =>
-        row
-          .slice(0, 7)
-          .map((cell, colIndex) => (
-            <span
-              key={`${rowIndex}:${colIndex}`}
-              className={cell === "" ? "miniCell miniBlock" : "miniCell"}
-            />
-          )),
-      )}
-    </div>
   );
 }
 

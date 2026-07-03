@@ -584,7 +584,9 @@ button:disabled {
 
 .miniBoard {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  /* 실제 보드 폭(--mini-cols)을 따라 열 수를 잡아 8×8/9×9 도 잘리지 않게 한다.
+     변수가 없으면 발행 기본값인 normal 보드(8열)로 폴백한다. */
+  grid-template-columns: repeat(var(--mini-cols, 8), minmax(0, 1fr));
   gap: 3px;
   align-self: center;
 }
