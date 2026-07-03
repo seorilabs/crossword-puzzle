@@ -67,4 +67,23 @@ describe("MiniPuzzlePreview", () => {
     const board = container.querySelector(".miniBoard") as HTMLElement;
     expect(board.style.getPropertyValue("--mini-cols")).toBe("8");
   });
+
+  it("행 길이가 불규칙해도 스켈레톤 셀 수를 행×열(--mini-cols의 배수)로 유지한다", () => {
+    // 비직사각 그리드(둘째 행이 짧음): 열 수는 grid[0].length=3, 행 수는 3.
+    const jagged = [
+      ["A", "A", "A"],
+      ["A"],
+      ["A", "A", "A"],
+    ];
+    const { container } = render(
+      <MiniPuzzlePreview puzzle={makePuzzle(jagged)} isLoading />,
+    );
+
+    const board = container.querySelector(".miniBoard") as HTMLElement;
+    expect(board.style.getPropertyValue("--mini-cols")).toBe("3");
+    // 행×열 = 3×3 = 9 (셀 합 7이 아니라), 항상 열 수의 배수.
+    const cellCount = container.querySelectorAll(".miniCell").length;
+    expect(cellCount).toBe(9);
+    expect(cellCount % 3).toBe(0);
+  });
 });

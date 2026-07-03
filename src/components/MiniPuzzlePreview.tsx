@@ -18,8 +18,10 @@ export function MiniPuzzlePreview({ puzzle, isLoading }: MiniPuzzlePreviewProps)
   const boardStyle = { "--mini-cols": String(columns) } as CSSProperties;
 
   if (isLoading) {
-    // 스켈레톤도 실제 보드 셀 수만큼 렌더해 고정 7×7(49칸)과 어긋나지 않게 한다.
-    const cellCount = grid.reduce((sum, row) => sum + row.length, 0);
+    // 스켈레톤도 실제 보드 크기만큼 렌더해 고정 7×7(49칸)과 어긋나지 않게 한다.
+    // 셀 수는 행 수 × 열 수로 잡아, 행 길이가 불규칙한(비직사각) 보드에서도 항상
+    // --mini-cols 의 배수가 되게 해 스켈레톤 마지막 행이 어긋나지 않도록 한다.
+    const cellCount = grid.length * columns;
     return (
       <div className="miniBoard" style={boardStyle} aria-hidden="true">
         {Array.from({ length: cellCount }, (_, index) => (
