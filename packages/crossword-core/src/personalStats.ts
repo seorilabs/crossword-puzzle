@@ -40,16 +40,20 @@ function isValidBestTimeMs(ms: number): boolean {
 }
 
 /**
- * best-time(ms)을 `mm:ss` 문자열로 포맷한다. 유효하지 않은 값(0/음수/NaN)은
- * `"00:00"` 으로 안전 처리한다. 호출부는 값이 있을 때만(예: fastestBestTimeMs
- * 가 null 이 아닐 때) 렌더하므로 빈 상태에서 `00:00` 이 노출되지는 않는다.
+ * best-time(ms)을 시:분:초 문자열로 포맷한다. 1시간 미만은 두 자리 `mm:ss`,
+ * 1시간 이상은 분 자리 폭 붕괴(예: `75:30`)를 막기 위해 `h:mm:ss` 로 표기한다.
+ * 유효하지 않은 값(0/음수/NaN/Infinity)은 `"00:00"` 으로 안전 처리한다. 호출부는
+ * 값이 있을 때만(예: fastestBestTimeMs 가 null 이 아닐 때) 렌더하므로 빈 상태에서
+ * `00:00` 이 노출되지는 않는다.
  */
 export function formatBestTime(ms: number): string {
   const safeMs = isValidBestTimeMs(ms) ? ms : 0;
   const totalSeconds = Math.floor(safeMs / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  const mmss = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  return hours > 0 ? `${hours}:${mmss}` : mmss;
 }
 
 /**

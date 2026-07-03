@@ -131,6 +131,15 @@ describe("formatBestTime", () => {
     assert.equal(formatBestTime(59_999), "00:59");
   });
 
+  it("rolls over to h:mm:ss for one hour or longer (no minute-width overflow)", () => {
+    // 정확히 1시간 → 1:00:00 (mm:ss 로 두면 60:00 이 되어 폭이 붕괴).
+    assert.equal(formatBestTime(3_600_000), "1:00:00");
+    // 1시간 15분 30초 → 1:15:30 (mm:ss 로 두면 75:30).
+    assert.equal(formatBestTime(4_530_000), "1:15:30");
+    // 59분 59초는 여전히 mm:ss.
+    assert.equal(formatBestTime(3_599_000), "59:59");
+  });
+
   it("returns 00:00 for invalid inputs (0 / negative / NaN)", () => {
     assert.equal(formatBestTime(-1), "00:00");
     assert.equal(formatBestTime(Number.NaN), "00:00");
