@@ -6595,9 +6595,12 @@ function HistoryScreen({
         revealUsed: record.revealUsed ?? state?.revealUsed === true,
       };
     });
-    // 최고기록 수는 archive 집합과 무관하게 기기에 보유한 전체 best-time 키로 센다.
-    const bestTimeCount = getAllBestTimePuzzleIds().length;
-    return computePersonalStats(records, bestTimeCount);
+    // 최고기록은 archive 집합과 무관하게 기기에 보유한 전체 best-time 키에서
+    // 실제 값(ms)을 읽어 넘긴다. core가 유효 값만으로 개수·최소·평균을 집계한다.
+    const bestTimeValuesMs = getAllBestTimePuzzleIds()
+      .map((puzzleId) => getBestTimeMs(puzzleId))
+      .filter((ms): ms is number => ms != null);
+    return computePersonalStats(records, bestTimeValuesMs);
   }, [archiveRecords, dateCardStates]);
 
   // 최근 12주 완료 여부 캘린더 히트맵. 완료일 집합은 스트릭 숫자와 동일한 스캔
