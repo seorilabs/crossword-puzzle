@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
 
-import { computePersonalStats } from "./personalStats.ts";
+import { computePersonalStats, formatBestTime } from "./personalStats.ts";
 import type { PersonalStatsRecord } from "./personalStats.ts";
 
 function record(
@@ -23,10 +23,12 @@ describe("computePersonalStats", () => {
       completionRate: 0,
       noHintCompletedCount: 0,
       bestTimeCount: 0,
+      fastestBestTimeMs: null,
+      averageBestTimeMs: null,
     });
   });
 
-  it("aggregates total / completed / completion rate / no-hint counts and passes through best-time count", () => {
+  it("aggregates total / completed / completion rate / no-hint counts and best-time min/mean/count", () => {
     const records = [
       // 완료 + 노힌트(힌트0·정답보기X)
       record({ completed: true }),
@@ -38,21 +40,36 @@ describe("computePersonalStats", () => {
       record({ completed: false }),
     ];
 
-    // bestTimeCount는 archive 집합과 무관한 전체 보유 수로 호출자가 직접 넘긴다.
-    assert.deepEqual(computePersonalStats(records, 5), {
+    // best-time 값(ms)은 archive 집합과 무관한 전체 보유분을 호출자가 직접 넘긴다.
+    assert.deepEqual(computePersonalStats(records, [90_000, 60_000, 120_000]), {
       totalPuzzles: 4,
       completedCount: 3,
       completionRate: 3 / 4,
       noHintCompletedCount: 2,
-      bestTimeCount: 5,
+      bestTimeCount: 3,
+      fastestBestTimeMs: 60_000,
+      averageBestTimeMs: 90_000,
     });
   });
 
-  it("normalizes best-time count and defaults to 0 when omitted", () => {
-    assert.equal(computePersonalStats([]).bestTimeCount, 0);
-    assert.equal(computePersonalStats([], 3.9).bestTimeCount, 3);
-    assert.equal(computePersonalStats([], -2).bestTimeCount, 0);
-    assert.equal(computePersonalStats([], Number.NaN).bestTimeCount, 0);
+  it("counts only valid best-time values and defaults to empty when omitted", () => {
+    // 값을 생략하면 보유 0건 → 개수 0, 최소/평균 null.
+    const empty = computePersonalStats([]);
+    assert.equal(empty.bestTimeCount, 0);
+    assert.equal(empty.fastestBestTimeMs, null);
+    assert.equal(empty.averageBestTimeMs, null);
+
+    // 오염 값(0/음수/NaN)은 개수·최소·평균에서 모두 제외한다.
+    const dirty = computePersonalStats([], [0, -5, Number.NaN, 30_000, 50_000]);
+    assert.equal(dirty.bestTimeCount, 2);
+    assert.equal(dirty.fastestBestTimeMs, 30_000);
+    assert.equal(dirty.averageBestTimeMs, 40_000);
+  });
+
+  it("rounds the average best-time to the nearest millisecond", () => {
+    // (10_000 + 10_001 + 10_001) / 3 = 10000.67 → 반올림 10_001
+    const stats = computePersonalStats([], [10_000, 10_001, 10_001]);
+    assert.equal(stats.averageBestTimeMs, 10_001);
   });
 
   it("excludes a reveal-used completion from the no-hint count (matches getCompletionAchievements)", () => {
@@ -82,10 +99,12 @@ describe("computePersonalStats", () => {
     assert.equal(stats.noHintCompletedCount, 0);
   });
 
-  it("reports best-time count independently of completion", () => {
-    // 최고기록 수는 완료 여부와 무관한 전체 보유 수(호출자 입력)다.
-    const stats = computePersonalStats([record({ completed: false })], 1);
+  it("reports best-time metrics independently of completion", () => {
+    // 최고기록은 완료 여부와 무관한 전체 보유분(호출자 입력)이다.
+    const stats = computePersonalStats([record({ completed: false })], [45_000]);
     assert.equal(stats.bestTimeCount, 1);
+    assert.equal(stats.fastestBestTimeMs, 45_000);
+    assert.equal(stats.averageBestTimeMs, 45_000);
     assert.equal(stats.completedCount, 0);
   });
 
@@ -99,5 +118,22 @@ describe("computePersonalStats", () => {
     const noneDone = computePersonalStats([record(), record()]);
     assert.equal(noneDone.completionRate, 0);
     assert.ok(!Number.isNaN(computePersonalStats([]).completionRate));
+  });
+});
+
+describe("formatBestTime", () => {
+  it("formats milliseconds as zero-padded mm:ss", () => {
+    assert.equal(formatBestTime(0), "00:00");
+    assert.equal(formatBestTime(5_000), "00:05");
+    assert.equal(formatBestTime(65_000), "01:05");
+    assert.equal(formatBestTime(600_000), "10:00");
+    // 초 단위 미만은 버린다(내림).
+    assert.equal(formatBestTime(59_999), "00:59");
+  });
+
+  it("returns 00:00 for invalid inputs (0 / negative / NaN)", () => {
+    assert.equal(formatBestTime(-1), "00:00");
+    assert.equal(formatBestTime(Number.NaN), "00:00");
+    assert.equal(formatBestTime(Number.POSITIVE_INFINITY), "00:00");
   });
 });

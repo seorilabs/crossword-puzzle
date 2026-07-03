@@ -25,15 +25,31 @@ export type PersonalStats = {
   completionRate: number;
   // 힌트 없이 완료한 퍼즐 수
   noHintCompletedCount: number;
-  // 보유한 최고 기록 수
+  // 보유한 최고 기록 수(유효한 best-time 값의 개수)
   bestTimeCount: number;
+  // 보유 최고 기록 중 가장 빠른 기록(ms). 보유 0건이면 null.
+  fastestBestTimeMs: number | null;
+  // 보유 최고 기록의 평균(ms, 반올림). 보유 0건이면 null.
+  averageBestTimeMs: number | null;
 };
 
-function toNonNegativeInt(value: number): number {
-  if (!Number.isFinite(value) || value <= 0) {
-    return 0;
-  }
-  return Math.floor(value);
+// ms 값이 유효한 풀이 시간(유한·양수)인지 판정. best-time 저장소가 넘길 수 있는
+// 0/음수/NaN 을 집계·표시 전에 걸러 낸다.
+function isValidBestTimeMs(ms: number): boolean {
+  return Number.isFinite(ms) && ms > 0;
+}
+
+/**
+ * best-time(ms)을 `mm:ss` 문자열로 포맷한다. 유효하지 않은 값(0/음수/NaN)은
+ * `"00:00"` 으로 안전 처리한다. 호출부는 값이 있을 때만(예: fastestBestTimeMs
+ * 가 null 이 아닐 때) 렌더하므로 빈 상태에서 `00:00` 이 노출되지는 않는다.
+ */
+export function formatBestTime(ms: number): string {
+  const safeMs = isValidBestTimeMs(ms) ? ms : 0;
+  const totalSeconds = Math.floor(safeMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
 /**
@@ -43,12 +59,14 @@ function toNonNegativeInt(value: number): number {
  * - 노힌트 완료 수는 완료한 기록 중 `getCompletionAchievements`가 노힌트로 판정한
  *   것만 센다. 결과 화면 배지와 동일한 단일 규칙을 공유해, 같은 퍼즐에서
  *   '히스토리 노힌트 수'와 '결과 노힌트 배지'가 어긋나지 않도록 한다.
- * - `bestTimeCount`는 기기에 보유한 전체 최고 기록 수를 호출자가 직접 넘긴다.
- *   archive 기록 집합과 무관하게 실제 보유 수를 반영하도록 분리한 입력이다.
+ * - best-time 값은 기기에 보유한 전체 최고 기록(ms) 배열을 호출자가 직접 넘긴다.
+ *   archive 기록 집합과 무관하게 실제 보유분을 반영하도록 분리한 입력이며,
+ *   유효한(유한·양수) 값만으로 개수·최소·평균을 집계한다. 보유 0건이면
+ *   fastest/average 는 null(빈 상태에서 NaN·00:00 노출 방지)이다.
  */
 export function computePersonalStats(
   records: readonly PersonalStatsRecord[],
-  bestTimeCount = 0,
+  bestTimeValuesMs: readonly number[] = [],
 ): PersonalStats {
   const totalPuzzles = records.length;
 
@@ -74,11 +92,26 @@ export function computePersonalStats(
   const completionRate =
     totalPuzzles > 0 ? completedCount / totalPuzzles : 0;
 
+  // 유효한 best-time 값만으로 개수·최소·평균을 집계한다. 오염 값(0/음수/NaN)은
+  // 개수에도 포함하지 않아 '최고 기록 수'와 실제 표시 시간이 어긋나지 않는다.
+  const validBestTimes = bestTimeValuesMs.filter(isValidBestTimeMs);
+  const bestTimeCount = validBestTimes.length;
+  const fastestBestTimeMs =
+    bestTimeCount > 0 ? Math.min(...validBestTimes) : null;
+  const averageBestTimeMs =
+    bestTimeCount > 0
+      ? Math.round(
+          validBestTimes.reduce((sum, ms) => sum + ms, 0) / bestTimeCount,
+        )
+      : null;
+
   return {
     totalPuzzles,
     completedCount,
     completionRate,
     noHintCompletedCount,
-    bestTimeCount: toNonNegativeInt(bestTimeCount),
+    bestTimeCount,
+    fastestBestTimeMs,
+    averageBestTimeMs,
   };
 }
