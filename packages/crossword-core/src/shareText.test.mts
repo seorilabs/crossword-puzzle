@@ -63,4 +63,23 @@ describe("buildShareText: 앱 진입 링크(#227)", () => {
     });
     assert.ok(text.endsWith("앱에서 풀어보기 👉 https://example.app/x"));
   });
+
+  it("공유 격자가 빈 문자열이어도 링크 미주입 시 격자 줄·링크 줄 없이 동일하게 동작한다", () => {
+    // 격자가 없으면(shareGrid="") 제목 아래 격자 줄을 넣지 않는다. 이 경로에서도
+    // 링크 미주입이면 링크 줄이 붙지 않아 회귀가 없음을 고정한다.
+    const noGrid = { ...baseInput, shareGrid: "" };
+    const noLink = buildShareText(noGrid);
+    assert.ok(!noLink.includes("🟩"));
+    assert.ok(!noLink.includes("앱에서 풀어보기"));
+    // 첫 줄은 제목, 둘째 줄은 격자 없이 곧바로 빈 줄 구분이어야 한다.
+    const lines = noLink.split("\n");
+    assert.equal(lines[0], "가로세로 낱말 퍼즐 7월 4일");
+    assert.equal(lines[1], "");
+    // 링크 주입 시에는 격자가 없어도 말미에 링크 줄이 정상적으로 붙는다.
+    const url = "https://example.app/crossword";
+    assert.equal(
+      buildShareText({ ...noGrid, shareLandingUrl: url }),
+      `${noLink}\n\n앱에서 풀어보기 👉 ${url}`,
+    );
+  });
 });
