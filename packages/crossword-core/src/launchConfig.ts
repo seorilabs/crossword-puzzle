@@ -1,5 +1,6 @@
 import { LEADERBOARD_SCORE_WEIGHTS } from "./leaderboard.ts";
 import {
+  DAILY_ATTEMPT_LIMIT,
   DEFAULT_HINT_CREDITS,
   DEFAULT_VISIBLE_PUZZLE_COUNT,
   PUZZLE_GENERATION_INTERVAL_HOURS,
@@ -12,6 +13,9 @@ export type LaunchConfig = {
   visiblePuzzleCount: number;
   puzzleGenerationIntervalHours: number;
   puzzleKeepCount: number;
+  // 하루 도전 횟수 상한(#225). 다른 밸런스 레버처럼 재배포 없이 원격 조정하려고
+  // Remote Config로 뺀다. 기본값은 uiPolicy.DAILY_ATTEMPT_LIMIT와 동일해 회귀가 없다.
+  dailyAttemptLimit: number;
   completionStatsEnabled: boolean;
   completionStatsMinDisplayCount: number;
   rewardedBonusPuzzleAdsEnabled: boolean;
@@ -50,6 +54,7 @@ export const launchConfigKeys = {
   visiblePuzzleCount: "visible_puzzle_count",
   puzzleGenerationIntervalHours: "puzzle_generation_interval_hours",
   puzzleKeepCount: "puzzle_keep_count",
+  dailyAttemptLimit: "daily_attempt_limit",
   completionStatsEnabled: "completion_stats_enabled",
   completionStatsMinDisplayCount: "completion_stats_min_display_count",
   rewardedBonusPuzzleAdsEnabled: "rewarded_bonus_puzzle_ads_enabled",
@@ -77,6 +82,9 @@ export const defaultLaunchConfig: LaunchConfig = {
   visiblePuzzleCount: DEFAULT_VISIBLE_PUZZLE_COUNT,
   puzzleGenerationIntervalHours: PUZZLE_GENERATION_INTERVAL_HOURS,
   puzzleKeepCount: PUZZLE_KEEP_COUNT,
+  // 하루 도전 횟수 상한 기본값(#225). uiPolicy 상수와 동일하게 둬 원격 미주입 시
+  // 기존과 같은 3회로 동작한다.
+  dailyAttemptLimit: DAILY_ATTEMPT_LIMIT,
   completionStatsEnabled: true,
   completionStatsMinDisplayCount: 10,
   rewardedBonusPuzzleAdsEnabled: true,
@@ -157,6 +165,14 @@ export function normalizeLaunchConfig(
       defaultLaunchConfig.puzzleKeepCount,
       1,
       365,
+    ),
+    // 도전 횟수 상한(#225). 0/음수는 최소 1로, NaN은 기본값(3)으로 방어해 원격 오설정이
+    // 그대로 반영되지 않게 한다(최소 1회는 보장).
+    dailyAttemptLimit: clampInteger(
+      value.dailyAttemptLimit ?? defaultLaunchConfig.dailyAttemptLimit,
+      defaultLaunchConfig.dailyAttemptLimit,
+      1,
+      20,
     ),
     completionStatsEnabled:
       value.completionStatsEnabled ??
@@ -269,6 +285,8 @@ export function getLaunchConfigDefaultsForRemoteConfig() {
     [launchConfigKeys.puzzleGenerationIntervalHours]:
       defaultLaunchConfig.puzzleGenerationIntervalHours,
     [launchConfigKeys.puzzleKeepCount]: defaultLaunchConfig.puzzleKeepCount,
+    [launchConfigKeys.dailyAttemptLimit]:
+      defaultLaunchConfig.dailyAttemptLimit,
     [launchConfigKeys.completionStatsEnabled]:
       defaultLaunchConfig.completionStatsEnabled,
     [launchConfigKeys.completionStatsMinDisplayCount]:

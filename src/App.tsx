@@ -199,6 +199,9 @@ type PuzzleViewModel = {
 
 type DateCardState = {
   attemptsUsed: number;
+  // 이 카드 미션의 유효 도전 상한(기본 상한 + 충전분). 미션 로드 시 launchConfig의
+  // dailyAttemptLimit로 결정되므로, "도전 종료" 판정을 상수 대신 이 값으로 한다(#225).
+  maxAttempts: number;
   completedAt?: string;
   hasProgress: boolean;
   hintCount: number;
@@ -571,6 +574,7 @@ function createDateCardState(
 ): DateCardState {
   return {
     attemptsUsed: mission.attemptsUsed,
+    maxAttempts: mission.maxAttempts,
     completedAt: mission.completedAt,
     hasProgress:
       mission.attemptsUsed > 0 ||
@@ -591,6 +595,10 @@ function hasSavedProgress(mission: DailyMissionState, progress: SavedProgress) {
 }
 
 function createInitialMission() {
+  // launchConfig가 아직 resolve되기 전(첫 렌더)의 폴백 미션. 여기서는 원격값을 아직
+  // 알 수 없으므로 3마켓 공유 기본 상수(DAILY_ATTEMPT_LIMIT = launchConfig 기본값)를
+  // 쓴다. 원격값이 확정되면 loadPuzzleSession이 launchConfig.dailyAttemptLimit로 다시
+  // 로드하므로 회귀가 없다(#225).
   return createDailyMissionState(
     fallbackPuzzle.date,
     fallbackPuzzle.puzzleId,
@@ -961,7 +969,7 @@ function App() {
       missionRepository.loadMission(
         nextPuzzle.date,
         nextPuzzle.puzzleId,
-        DAILY_ATTEMPT_LIMIT,
+        launchConfig.dailyAttemptLimit,
       ),
     ]);
 
@@ -970,7 +978,7 @@ function App() {
       savedMission,
       savedProgress,
     } satisfies PuzzleSession;
-  }, []);
+  }, [launchConfig.dailyAttemptLimit]);
 
   const applyPuzzleSession = useCallback(
     (
@@ -1015,7 +1023,7 @@ function App() {
             missionRepository.loadMission(
               summary.date,
               summary.puzzleId,
-              DAILY_ATTEMPT_LIMIT,
+              launchConfig.dailyAttemptLimit,
             ),
           ]);
 
@@ -1028,7 +1036,7 @@ function App() {
 
       return Object.fromEntries(states);
     },
-    [],
+    [launchConfig.dailyAttemptLimit],
   );
 
   const refreshPuzzleArchive = useCallback(async () => {
@@ -3834,7 +3842,7 @@ function TodayPuzzleNavigator({
             state?.completedAt != null
               ? "완료"
               : state?.attemptsUsed != null &&
-                  state.attemptsUsed >= DAILY_ATTEMPT_LIMIT
+                  state.attemptsUsed >= state.maxAttempts
                 ? "도전 종료"
                 : state?.hasProgress
                   ? "진행 중"
@@ -4225,7 +4233,7 @@ function getDateCardStatus(state?: DateCardState) {
 
   if (
     state?.attemptsUsed != null &&
-    state.attemptsUsed >= DAILY_ATTEMPT_LIMIT
+    state.attemptsUsed >= state.maxAttempts
   ) {
     return "도전 종료";
   }
@@ -6651,7 +6659,7 @@ function HistoryScreen({
     const isExhausted =
       !isCompleted &&
       state?.attemptsUsed != null &&
-      state.attemptsUsed >= DAILY_ATTEMPT_LIMIT;
+      state.attemptsUsed >= state.maxAttempts;
 
     void selectPuzzle(record.puzzleId);
     navigate(isCompleted || isExhausted ? "result" : "today");
@@ -6692,7 +6700,7 @@ function HistoryScreen({
             const isRecordExhausted =
               !isRecordCompleted &&
               state?.attemptsUsed != null &&
-              state.attemptsUsed >= DAILY_ATTEMPT_LIMIT;
+              state.attemptsUsed >= state.maxAttempts;
 
             return (
               <button

@@ -42,6 +42,13 @@
       "description": "사용자 안내용 원격 퍼즐팩 보관 개수",
       "valueType": "NUMBER"
     },
+    "daily_attempt_limit": {
+      "defaultValue": {
+        "value": "3"
+      },
+      "description": "하루 도전 횟수 상한(#225). 최소 1로 클램프한다",
+      "valueType": "NUMBER"
+    },
     "completion_stats_enabled": {
       "defaultValue": {
         "value": "true"

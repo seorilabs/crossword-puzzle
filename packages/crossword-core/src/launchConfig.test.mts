@@ -8,6 +8,7 @@ import {
   normalizeLaunchConfig,
 } from "./launchConfig.ts";
 import { LEADERBOARD_SCORE_WEIGHTS } from "./leaderboard.ts";
+import { DAILY_ATTEMPT_LIMIT } from "./uiPolicy.ts";
 
 describe("launchConfig: returnReminderEnabled 기본값", () => {
   it("복귀 리마인드 동의 유도가 기본 활성(true)이다(#162)", () => {
@@ -175,6 +176,56 @@ describe("launchConfig: rewardedExtraAttempt 게이트(#204)", () => {
       normalizeLaunchConfig({ rewardedExtraAttemptDailyCap: Number.NaN })
         .rewardedExtraAttemptDailyCap,
       1,
+    );
+  });
+});
+
+describe("launchConfig: dailyAttemptLimit 원격화(#225)", () => {
+  it("기본값이 uiPolicy.DAILY_ATTEMPT_LIMIT(=3)와 일치한다(회귀 없음)", () => {
+    assert.equal(defaultLaunchConfig.dailyAttemptLimit, DAILY_ATTEMPT_LIMIT);
+    assert.equal(defaultLaunchConfig.dailyAttemptLimit, 3);
+  });
+
+  it("미설정(빈 값)이면 기본값 3으로 폴백한다", () => {
+    assert.equal(normalizeLaunchConfig({}).dailyAttemptLimit, 3);
+  });
+
+  it("Remote Config 키·기본값 맵에 영문 스네이크 키로 반영된다", () => {
+    assert.equal(launchConfigKeys.dailyAttemptLimit, "daily_attempt_limit");
+    const defaults = getLaunchConfigDefaultsForRemoteConfig();
+    assert.equal(defaults[launchConfigKeys.dailyAttemptLimit], 3);
+  });
+
+  it("원격 값으로 도전 횟수 상한을 2/4로 조정할 수 있다", () => {
+    assert.equal(
+      normalizeLaunchConfig({ dailyAttemptLimit: 2 }).dailyAttemptLimit,
+      2,
+    );
+    assert.equal(
+      normalizeLaunchConfig({ dailyAttemptLimit: 4 }).dailyAttemptLimit,
+      4,
+    );
+  });
+
+  it("0/음수는 최소 1로, NaN은 기본값(3)으로 방어한다", () => {
+    assert.equal(
+      normalizeLaunchConfig({ dailyAttemptLimit: 0 }).dailyAttemptLimit,
+      1,
+    );
+    assert.equal(
+      normalizeLaunchConfig({ dailyAttemptLimit: -5 }).dailyAttemptLimit,
+      1,
+    );
+    assert.equal(
+      normalizeLaunchConfig({ dailyAttemptLimit: Number.NaN }).dailyAttemptLimit,
+      3,
+    );
+  });
+
+  it("과대값은 상한(20)으로 클램프된다", () => {
+    assert.equal(
+      normalizeLaunchConfig({ dailyAttemptLimit: 999 }).dailyAttemptLimit,
+      20,
     );
   });
 });
