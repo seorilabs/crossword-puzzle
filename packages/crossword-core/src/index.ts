@@ -12,6 +12,7 @@ export * from "./recommendation";
 export * from "./repositories";
 export * from "./returnReminder";
 export * from "./shareGrid";
+export * from "./shareText";
 export * from "./streakCalendar";
 export * from "./tentative";
 export * from "./textScale";
