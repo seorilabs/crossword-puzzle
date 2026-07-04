@@ -165,6 +165,10 @@ export async function loadFirebaseLaunchConfig(): Promise<LaunchConfig> {
         remoteConfig,
         launchConfigKeys.puzzleKeepCount,
       ),
+      dailyAttemptLimit: getNumber(
+        remoteConfig,
+        launchConfigKeys.dailyAttemptLimit,
+      ),
       completionStatsEnabled: getBoolean(
         remoteConfig,
         launchConfigKeys.completionStatsEnabled,
