@@ -20,6 +20,7 @@ import {
   buildCellEntries,
   buildReviewEntries,
   buildShareGrid,
+  buildShareText,
   buildStartLabels,
   buildStreakCalendarWeeks,
   computeLongestStreakDays,
@@ -291,6 +292,9 @@ type FullScreenAdFailureResult = Exclude<
 
 const puzzlePackBaseUrl = import.meta.env.VITE_PUZZLE_PACK_BASE_URL?.trim();
 const puzzleManifestUrl = import.meta.env.VITE_PUZZLE_MANIFEST_URL?.trim();
+// 결과 공유 텍스트 말미에 붙일 앱 진입 링크(#227). 마켓별 진입 URL 차이를 빌드 주입값
+// 으로 흡수한다. 미설정(빈 값)이면 링크 줄을 생략해 기존 공유 텍스트와 동일하게 둔다.
+const shareLandingUrl = import.meta.env.VITE_SHARE_LANDING_URL?.trim();
 const configuredPuzzleStatsUrl = import.meta.env.VITE_PUZZLE_STATS_URL?.trim();
 const puzzleStatsUrl =
   configuredPuzzleStatsUrl != null && configuredPuzzleStatsUrl !== ""
@@ -4288,69 +4292,6 @@ function LiveTimer({
   );
 }
 
-function buildShareText({
-  puzzleLabel,
-  elapsedLabel,
-  hintCount,
-  attemptsUsed,
-  completedCount,
-  totalCount,
-  consecutiveStreak,
-  isComplete,
-  revealUsed,
-  shareGrid,
-}: {
-  puzzleLabel: string;
-  elapsedLabel: string | null;
-  hintCount: number;
-  attemptsUsed: number;
-  completedCount: number;
-  totalCount: number;
-  consecutiveStreak: number;
-  isComplete: boolean;
-  revealUsed: boolean;
-  shareGrid: string;
-}): string {
-  const lines: string[] = [`가로세로 낱말 퍼즐 ${puzzleLabel}`];
-  // 제목 바로 아래에 완성 상태를 표현하는 이모지 격자를 덧붙인다(정답 글자 노출 없음).
-  if (shareGrid.length > 0) lines.push(shareGrid);
-  lines.push("");
-
-  const stats: string[] = [];
-  if (elapsedLabel != null) stats.push(`⏱ ${elapsedLabel}`);
-  stats.push(`도전 ${attemptsUsed}회`);
-  if (hintCount > 0) stats.push(`힌트 ${hintCount}회`);
-  lines.push(stats.join(" · "));
-
-  const achievements = getCompletionAchievements({
-    hintCount,
-    attemptsUsed,
-    revealUsed,
-  });
-  const badges: string[] = [];
-  if (isComplete && achievements.noHint) badges.push("🎯 노힌트 클리어");
-  if (isComplete && achievements.firstTry) badges.push("💎 첫 도전 성공");
-  if (badges.length > 0) lines.push(badges.join(" · "));
-
-  if (consecutiveStreak >= 100) {
-    lines.push(`🏆 ${consecutiveStreak}일 연속 달성!`);
-  } else if (consecutiveStreak >= 30) {
-    lines.push(`🏆 ${consecutiveStreak}일째 — 한 달 연속 도전 중!`);
-  } else if (consecutiveStreak >= 7) {
-    lines.push(`🔥 ${consecutiveStreak}일째 — 일주일 연속 도전 중!`);
-  } else if (consecutiveStreak > 0) {
-    lines.push(`🔥 ${consecutiveStreak}일째 도전 중`);
-  }
-
-  lines.push(
-    isComplete
-      ? `낱말 ${completedCount}/${totalCount}개 완성 🎉`
-      : `낱말 ${completedCount}/${totalCount}개 도전`,
-  );
-
-  return lines.join("\n");
-}
-
 function DateCarousel({
   completionStatsByPuzzleId,
   completionStatsMinDisplayCount,
@@ -4763,6 +4704,7 @@ function TodayScreen({
         isComplete: true,
         revealUsed,
         shareGrid: celebrationShareGrid,
+        shareLandingUrl,
       })
     : "";
   const selectedEntryCells = useMemo(
@@ -6331,6 +6273,7 @@ function ResultScreen({
         isComplete,
         revealUsed,
         shareGrid: buildShareGrid(puzzle, cellValues),
+        shareLandingUrl,
       }),
     );
   }
