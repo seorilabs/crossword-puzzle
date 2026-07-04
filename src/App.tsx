@@ -22,6 +22,7 @@ import {
   buildShareGrid,
   buildStartLabels,
   buildStreakCalendarWeeks,
+  computeLongestStreakDays,
   completeMission,
   computeElapsedMs,
   computeLeaderboardScore,
@@ -6634,6 +6635,15 @@ function HistoryScreen({
     12,
   );
 
+  // 통산 최장 스트릭. 현재 스트릭과 같은 완료일 집합(최대 366일 룩백)에서 가장 긴
+  // 연속 구간을 구한다. 현재 스트릭은 "어제까지 완료 시 오늘을 낙관적으로 가산"하는
+  // 규칙이 있어 완료일 집합만으로 계산한 최장값보다 클 수 있으므로, 현재 스트릭과의
+  // 최댓값을 취해 "최장 ≥ 현재" 불변식을 항상 만족시킨다.
+  const longestStreak = Math.max(
+    computeLongestStreakDays(getRecentCompletionDates(366)),
+    consecutiveStreak,
+  );
+
   function openArchiveRecord(record: PuzzleArchiveRecord) {
     const state = dateCardStates[record.puzzleId];
     const isCompleted =
@@ -6658,6 +6668,7 @@ function HistoryScreen({
       <PersonalStatsCard
         stats={personalStats}
         consecutiveStreak={consecutiveStreak}
+        longestStreak={longestStreak}
       />
 
       <StreakHeatmap weeks={streakWeeks} />

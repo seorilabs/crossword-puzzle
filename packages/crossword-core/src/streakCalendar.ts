@@ -60,3 +60,30 @@ export function buildStreakCalendarWeeks(
   }
   return result;
 }
+
+// 완료일 집합(YYYY-MM-DD)에서 최장 연속 완료일 수(통산 최고 스트릭)를 반환한다.
+// 하루 놓쳐 현재 스트릭이 끊겨도 통산 최고 기록은 보존해 재도전 동기를 유지하려는
+// 지표다. 현재 스트릭(computeConsecutiveStreakDays)과 동일한 완료일 집합을 근거로
+// 삼되, 여기서는 오늘 기준이 아닌 전체 기간에서 가장 긴 연속 구간을 찾는다. 중복
+// 날짜는 한 번만 세고, 빈 집합은 0을 반환한다. React/Firebase import 없는 순수
+// 계산이라 3마켓이 공유하고 단위 테스트로 고정한다.
+export function computeLongestStreakDays(
+  completedDates: Iterable<string>,
+): number {
+  const sorted = [...new Set(completedDates)].sort();
+  if (sorted.length === 0) return 0;
+
+  let longest = 1;
+  let run = 1;
+  for (let i = 1; i < sorted.length; i += 1) {
+    const prevMs = toUtcMs(sorted[i - 1]);
+    const currMs = toUtcMs(sorted[i]);
+    if (currMs - prevMs === DAY_MS) {
+      run += 1;
+    } else {
+      run = 1;
+    }
+    if (run > longest) longest = run;
+  }
+  return longest;
+}

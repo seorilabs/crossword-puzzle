@@ -2,7 +2,10 @@
 import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
 
-import { buildStreakCalendarWeeks } from "./streakCalendar.ts";
+import {
+  buildStreakCalendarWeeks,
+  computeLongestStreakDays,
+} from "./streakCalendar.ts";
 
 describe("buildStreakCalendarWeeks", () => {
   // 2026-07-01은 수요일(UTC dow=3).
@@ -49,5 +52,71 @@ describe("buildStreakCalendarWeeks", () => {
     const todayCells = weeks.flat().filter((cell) => cell.isToday);
     assert.equal(todayCells.length, 1);
     assert.equal(todayCells[0].date, today);
+  });
+});
+
+describe("computeLongestStreakDays", () => {
+  it("빈 완료일 집합은 0을 반환한다", () => {
+    assert.equal(computeLongestStreakDays([]), 0);
+  });
+
+  it("단일 완료일은 1을 반환한다", () => {
+    assert.equal(computeLongestStreakDays(["2026-06-30"]), 1);
+  });
+
+  it("연속 구간이 하나면 그 길이를 반환한다", () => {
+    assert.equal(
+      computeLongestStreakDays([
+        "2026-06-28",
+        "2026-06-29",
+        "2026-06-30",
+      ]),
+      3,
+    );
+  });
+
+  it("끊긴 다중 구간에서 가장 긴 구간의 길이를 반환한다", () => {
+    // [6-01] (1) / [6-10,6-11,6-12,6-13] (4) / [6-20,6-21] (2) → 최댓값 4
+    const dates = [
+      "2026-06-01",
+      "2026-06-10",
+      "2026-06-11",
+      "2026-06-12",
+      "2026-06-13",
+      "2026-06-20",
+      "2026-06-21",
+    ];
+    assert.equal(computeLongestStreakDays(dates), 4);
+  });
+
+  it("입력 순서가 뒤섞여도 정렬 후 최장 구간을 찾는다", () => {
+    const dates = [
+      "2026-06-13",
+      "2026-06-11",
+      "2026-06-20",
+      "2026-06-12",
+      "2026-06-10",
+      "2026-06-21",
+      "2026-06-01",
+    ];
+    assert.equal(computeLongestStreakDays(dates), 4);
+  });
+
+  it("중복 날짜는 한 번만 세어 연속 판정을 왜곡하지 않는다", () => {
+    const dates = [
+      "2026-06-10",
+      "2026-06-10",
+      "2026-06-11",
+      "2026-06-11",
+      "2026-06-12",
+    ];
+    assert.equal(computeLongestStreakDays(dates), 3);
+  });
+
+  it("월 경계를 넘는 연속(6-30→7-01)도 하나의 구간으로 잇는다", () => {
+    assert.equal(
+      computeLongestStreakDays(["2026-06-30", "2026-07-01"]),
+      2,
+    );
   });
 });
