@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
 
 import {
+  buildStreakCalendarMonthLabels,
   buildStreakCalendarWeeks,
   computeLongestStreakDays,
 } from "./streakCalendar.ts";
@@ -52,6 +53,33 @@ describe("buildStreakCalendarWeeks", () => {
     const todayCells = weeks.flat().filter((cell) => cell.isToday);
     assert.equal(todayCells.length, 1);
     assert.equal(todayCells[0].date, today);
+  });
+});
+
+describe("buildStreakCalendarMonthLabels", () => {
+  it("weeks와 같은 길이의 라벨 배열을 반환한다", () => {
+    const weeks = buildStreakCalendarWeeks([], "2026-07-01", 4);
+    const labels = buildStreakCalendarMonthLabels(weeks);
+    assert.equal(labels.length, 4);
+  });
+
+  it("월이 바뀌는 열에만 '월' 라벨을 채우고 나머지는 빈 문자열이다", () => {
+    // 2026-07-01(수) 기준 8주: 각 주 시작(일)이 05-10,05-17,05-24,05-31,06-07,
+    // 06-14,06-21,06-28 → 5월 4주 뒤 6월 4주. 첫 열과 6월 시작 열에만 라벨.
+    const weeks = buildStreakCalendarWeeks([], "2026-07-01", 8);
+    const labels = buildStreakCalendarMonthLabels(weeks);
+    assert.deepEqual(labels, ["5월", "", "", "", "6월", "", "", ""]);
+  });
+
+  it("모든 열이 같은 달이면 첫 열에만 라벨이 붙는다", () => {
+    // 06-07,06-14,06-21,06-28 모두 6월.
+    const weeks = buildStreakCalendarWeeks([], "2026-07-01", 4);
+    const labels = buildStreakCalendarMonthLabels(weeks);
+    assert.deepEqual(labels, ["6월", "", "", ""]);
+  });
+
+  it("빈 weeks는 빈 배열을 반환한다", () => {
+    assert.deepEqual(buildStreakCalendarMonthLabels([]), []);
   });
 });
 

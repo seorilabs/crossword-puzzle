@@ -61,6 +61,27 @@ export function buildStreakCalendarWeeks(
   return result;
 }
 
+// 히트맵 각 주 열 위에 표시할 월 라벨을 계산한다(GitHub 컨트리뷰션식 상단 월 축).
+// 반환 배열은 weeks와 길이·순서가 같고, 각 원소는 그 열 위에 표시할 라벨("7월") 또는
+// 빈 문자열이다. 라벨은 각 주의 시작 요일(일요일 = week[0])이 속한 월을 기준으로,
+// 첫 열이거나 직전 열과 월이 달라지는 열에만 채운다(월이 바뀌는 열에만 표시). 순수
+// 계산이라 3마켓이 공유하고 단위 테스트로 고정한다.
+export function buildStreakCalendarMonthLabels(
+  weeks: StreakCalendarWeek[],
+): string[] {
+  let previousMonth: number | null = null;
+  return weeks.map((week) => {
+    const firstDate = week[0]?.date;
+    if (firstDate == null) {
+      return "";
+    }
+    const month = Number(firstDate.slice(5, 7));
+    const label = previousMonth === month ? "" : `${month}월`;
+    previousMonth = month;
+    return label;
+  });
+}
+
 // 완료일 집합(YYYY-MM-DD)에서 최장 연속 완료일 수(통산 최고 스트릭)를 반환한다.
 // 하루 놓쳐 현재 스트릭이 끊겨도 통산 최고 기록은 보존해 재도전 동기를 유지하려는
 // 지표다. 현재 스트릭(computeConsecutiveStreakDays)과 동일한 완료일 집합을 근거로

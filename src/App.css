@@ -1273,22 +1273,76 @@ button:disabled {
   color: var(--cw-text);
 }
 
+.streakHeatmap {
+  --cw-heatmap-cell: 14px;
+  --cw-heatmap-gap: 4px;
+  --cw-heatmap-daycol: 18px;
+}
+
+/* 좁은 화면에서 축 라벨 포함 격자가 넘치면 이 컨테이너 안에서만 가로 스크롤되고
+   페이지 본문은 가로 스크롤되지 않는다(#226). */
+.streakHeatmapScroll {
+  overflow-x: auto;
+}
+
+.streakHeatmapMonths {
+  display: flex;
+  gap: var(--cw-heatmap-gap);
+  margin-bottom: 4px;
+}
+
+/* 좌측 요일 축 폭만큼 월 라벨 행을 밀어 격자 열과 정렬한다. */
+.streakHeatmapDaysSpacer {
+  flex: 0 0 var(--cw-heatmap-daycol);
+}
+
+.streakHeatmapMonthRow {
+  display: flex;
+  gap: var(--cw-heatmap-gap);
+}
+
+.streakHeatmapMonth {
+  width: var(--cw-heatmap-cell);
+  font-size: 10px;
+  line-height: 12px;
+  font-weight: 700;
+  color: var(--cw-text-4);
+  white-space: nowrap;
+}
+
+.streakHeatmapBody {
+  display: flex;
+  gap: var(--cw-heatmap-gap);
+}
+
+.streakHeatmapDays {
+  display: flex;
+  flex: 0 0 var(--cw-heatmap-daycol);
+  flex-direction: column;
+  gap: var(--cw-heatmap-gap);
+}
+
+.streakHeatmapDay {
+  height: var(--cw-heatmap-cell);
+  font-size: 10px;
+  line-height: var(--cw-heatmap-cell);
+  color: var(--cw-text-4);
+}
+
 .streakHeatmapGrid {
   display: flex;
-  gap: 4px;
-  justify-content: space-between;
+  gap: var(--cw-heatmap-gap);
 }
 
 .streakHeatmapWeek {
   display: flex;
-  min-width: 0;
-  flex: 1;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--cw-heatmap-gap);
 }
 
 .streakHeatmapCell {
-  aspect-ratio: 1;
+  width: var(--cw-heatmap-cell);
+  height: var(--cw-heatmap-cell);
   border-radius: 3px;
   background: var(--cw-track);
 }
@@ -1304,6 +1358,30 @@ button:disabled {
 
 .streakHeatmapCellFuture {
   background: transparent;
+}
+
+.streakHeatmapLegend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--cw-text-3);
+}
+
+.streakHeatmapLegendSwatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  background: var(--cw-track);
+}
+
+.streakHeatmapLegendSwatchDone {
+  background: var(--cw-brand);
+}
+
+.streakHeatmapLegendLabel {
+  margin-right: 4px;
 }
 
 .personalStat {

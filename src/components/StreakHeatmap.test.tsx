@@ -52,4 +52,51 @@ describe("StreakHeatmap", () => {
     );
     expect(futureCells).toHaveLength(3);
   });
+
+  it("좌측 요일 축에 일/수/금 라벨을 렌더하고 축은 aria-hidden이다", () => {
+    const weeks = buildStreakCalendarWeeks([], today, 4);
+    const { container } = render(<StreakHeatmap weeks={weeks} />);
+
+    const days = container.querySelector(".streakHeatmapDays");
+    expect(days?.getAttribute("aria-hidden")).toBe("true");
+    // 7행 중 격행(일/수/금)만 텍스트가 있다.
+    const dayCells = container.querySelectorAll(".streakHeatmapDay");
+    expect(dayCells).toHaveLength(7);
+    const dayText = Array.from(dayCells).map((el) => el.textContent);
+    expect(dayText).toEqual(["일", "", "", "수", "", "금", ""]);
+  });
+
+  it("상단 월 축은 월이 바뀌는 열에만 라벨을 렌더하고 aria-hidden이다", () => {
+    // 8주 렌더: 5월 4주 뒤 6월 4주 → '5월'과 '6월' 라벨만 노출.
+    const weeks = buildStreakCalendarWeeks([], today, 8);
+    const { container } = render(<StreakHeatmap weeks={weeks} />);
+
+    const months = container.querySelector(".streakHeatmapMonths");
+    expect(months?.getAttribute("aria-hidden")).toBe("true");
+    const monthCells = container.querySelectorAll(".streakHeatmapMonth");
+    expect(monthCells).toHaveLength(8);
+    const monthText = Array.from(monthCells)
+      .map((el) => el.textContent)
+      .filter((text) => text !== "");
+    expect(monthText).toEqual(["5월", "6월"]);
+  });
+
+  it("하단에 미완료·완료 범례를 aria-hidden으로 렌더한다", () => {
+    const weeks = buildStreakCalendarWeeks([], today, 4);
+    const { container } = render(<StreakHeatmap weeks={weeks} />);
+
+    const legend = container.querySelector(".streakHeatmapLegend");
+    expect(legend?.getAttribute("aria-hidden")).toBe("true");
+    const legendLabels = Array.from(
+      container.querySelectorAll(".streakHeatmapLegendLabel"),
+    ).map((el) => el.textContent);
+    expect(legendLabels).toEqual(["미완료", "완료"]);
+    // 색 스와치 2개(미완료·완료)와 완료 스와치 변형이 있다.
+    expect(
+      container.querySelectorAll(".streakHeatmapLegendSwatch"),
+    ).toHaveLength(2);
+    expect(
+      container.querySelectorAll(".streakHeatmapLegendSwatchDone"),
+    ).toHaveLength(1);
+  });
 });
