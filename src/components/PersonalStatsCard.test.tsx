@@ -20,20 +20,30 @@ function stats(overrides: Partial<PersonalStats> = {}): PersonalStats {
 }
 
 describe("PersonalStatsCard", () => {
-  it("완료 0건이면 빈 상태 안내만 보이고 5지표 dl은 렌더하지 않는다", () => {
+  it("완료 0건이면 빈 상태 안내만 보이고 지표 dl은 렌더하지 않는다", () => {
     const { container } = render(
-      <PersonalStatsCard stats={stats()} consecutiveStreak={0} />,
+      <PersonalStatsCard
+        stats={stats()}
+        consecutiveStreak={0}
+        longestStreak={0}
+      />,
     );
 
     expect(screen.getByLabelText("내 기록 요약")).toBeTruthy();
     expect(container.querySelector(".personalStatsEmpty")).toBeTruthy();
     expect(container.querySelector(".personalStatsGrid")).toBeNull();
     expect(container.querySelectorAll(".personalStat")).toHaveLength(0);
+    // 빈 상태에서는 최장 스트릭 지표도 노출하지 않는다.
+    expect(container.textContent).not.toContain("최장 스트릭");
   });
 
   it("빈 상태에서 스트릭이 있으면 격려 문구를 함께 보여준다", () => {
     const { container } = render(
-      <PersonalStatsCard stats={stats()} consecutiveStreak={3} />,
+      <PersonalStatsCard
+        stats={stats()}
+        consecutiveStreak={3}
+        longestStreak={5}
+      />,
     );
 
     const empty = container.querySelector(".personalStatsEmpty");
@@ -42,14 +52,18 @@ describe("PersonalStatsCard", () => {
 
   it("스트릭이 0이면 빈 상태에 격려 문구를 붙이지 않는다", () => {
     const { container } = render(
-      <PersonalStatsCard stats={stats()} consecutiveStreak={0} />,
+      <PersonalStatsCard
+        stats={stats()}
+        consecutiveStreak={0}
+        longestStreak={0}
+      />,
     );
 
     const empty = container.querySelector(".personalStatsEmpty");
     expect(empty?.textContent).not.toContain("도전 중");
   });
 
-  it("보유 최고 기록이 있으면 6개 지표를 값과 함께 렌더한다(최고·평균은 실제 시간)", () => {
+  it("보유 최고 기록이 있으면 7개 지표를 값과 함께 렌더한다(최고·평균은 실제 시간)", () => {
     const { container } = render(
       <PersonalStatsCard
         stats={stats({
@@ -62,18 +76,22 @@ describe("PersonalStatsCard", () => {
           averageBestTimeMs: 90_000, // 01:30
         })}
         consecutiveStreak={5}
+        longestStreak={12}
       />,
     );
 
     expect(container.querySelector(".personalStatsEmpty")).toBeNull();
     const items = container.querySelectorAll(".personalStat");
-    expect(items).toHaveLength(6);
+    expect(items).toHaveLength(7);
 
     // 완료율은 Math.round(completionRate*100) = 75%
     const text = container.querySelector(".personalStatsGrid")?.textContent ?? "";
     expect(text).toContain("6판"); // 총 완료
     expect(text).toContain("75%"); // 완료율
+    expect(text).toContain("현재 스트릭");
     expect(text).toContain("5일"); // 현재 스트릭
+    expect(text).toContain("최장 스트릭");
+    expect(text).toContain("12일"); // 최장 스트릭
     expect(text).toContain("2판"); // 노힌트 완료
     expect(text).toContain("최고 기록");
     expect(text).toContain("01:05"); // 최고 기록(실제 시간)
@@ -83,7 +101,7 @@ describe("PersonalStatsCard", () => {
     expect(text).not.toContain("4개");
   });
 
-  it("완료는 있으나 보유 최고 기록이 없으면 시간 항목을 숨기고 4개 지표만 렌더한다", () => {
+  it("완료는 있으나 보유 최고 기록이 없으면 시간 항목을 숨기고 5개 지표만 렌더한다", () => {
     const { container } = render(
       <PersonalStatsCard
         stats={stats({
@@ -96,12 +114,16 @@ describe("PersonalStatsCard", () => {
           averageBestTimeMs: null,
         })}
         consecutiveStreak={0}
+        longestStreak={4}
       />,
     );
 
     const items = container.querySelectorAll(".personalStat");
-    expect(items).toHaveLength(4);
+    expect(items).toHaveLength(5);
     const text = container.querySelector(".personalStatsGrid")?.textContent ?? "";
+    // 현재 스트릭이 0이어도 최장 스트릭은 통산 기록으로 노출된다.
+    expect(text).toContain("최장 스트릭");
+    expect(text).toContain("4일");
     expect(text).not.toContain("최고 기록");
     expect(text).not.toContain("평균 기록");
     // NaN·00:00 이 노출되지 않는다.
@@ -120,6 +142,7 @@ describe("PersonalStatsCard", () => {
           bestTimeCount: 0,
         })}
         consecutiveStreak={0}
+        longestStreak={1}
       />,
     );
 

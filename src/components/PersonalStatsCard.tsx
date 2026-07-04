@@ -4,16 +4,19 @@ import type { PersonalStats } from "../../packages/crossword-core/src";
 type PersonalStatsCardProps = {
   stats: PersonalStats;
   consecutiveStreak: number;
+  longestStreak: number;
 };
 
 // "내 기록" 누적 통계 요약 카드. 완료 1건 이상이면 지표(총 완료/완료율/현재
-// 스트릭/노힌트 완료)와, 보유한 최고 기록이 있으면 실제 풀이 시간(최고·평균)을
-// dt·dd로 보여준다. 0건이면 빈 상태 안내를 보여준다(스트릭이 있으면 격려 문구를
-// 덧붙임). 집계는 상위에서 끝낸 순수 값만 받아 렌더만 담당하므로 헤드리스 컴포넌트
-// 테스트로 분기를 고정할 수 있다.
+// 스트릭/최장 스트릭/노힌트 완료)와, 보유한 최고 기록이 있으면 실제 풀이 시간
+// (최고·평균)을 dt·dd로 보여준다. 0건이면 빈 상태 안내를 보여준다(스트릭이 있으면
+// 격려 문구를 덧붙임). 집계는 상위에서 끝낸 순수 값만 받아 렌더만 담당하므로 헤드리스
+// 컴포넌트 테스트로 분기를 고정할 수 있다. 최장 스트릭은 하루 놓쳐 현재 스트릭이
+// 끊겨도 통산 최고 기록이 보존됨을 보여줘 재도전 동기를 유지한다(NYT/Wordle 표준).
 export function PersonalStatsCard({
   stats,
   consecutiveStreak,
+  longestStreak,
 }: PersonalStatsCardProps) {
   const completionPercent = Math.round(stats.completionRate * 100);
   // 보유 최고 기록이 있을 때만 실제 시간을 노출한다. null 이면(빈 상태) 해당
@@ -36,6 +39,10 @@ export function PersonalStatsCard({
           <div className="personalStat">
             <dt>현재 스트릭</dt>
             <dd>{consecutiveStreak}일</dd>
+          </div>
+          <div className="personalStat">
+            <dt>최장 스트릭</dt>
+            <dd>{longestStreak}일</dd>
           </div>
           <div className="personalStat">
             <dt>노힌트 완료</dt>
