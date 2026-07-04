@@ -81,6 +81,26 @@ describe("StreakHeatmap", () => {
     expect(monthText).toEqual(["5월", "6월"]);
   });
 
+  it("격자가 스크롤 컨테이너(.streakHeatmapScroll) 안에 중첩돼 가로 스크롤이 컨테이너로 한정된다", () => {
+    // 실제 computed overflow(본문 가로 스크롤 방지)는 layout이 없는 jsdom에서
+    // 검증할 수 없어 시각 리뷰에 위임한다. 여기서는 그 전제가 되는 DOM 구조 —
+    // 축·격자가 페이지 본문이 아니라 overflow-x 스크롤 래퍼 안에 들어 있는지 —
+    // 를 회귀 가드로 고정한다(래퍼 제거·격자 이탈 시 실패).
+    const weeks = buildStreakCalendarWeeks([], today, 12);
+    const { container } = render(<StreakHeatmap weeks={weeks} />);
+
+    const scroll = container.querySelector(".streakHeatmapScroll");
+    expect(scroll).not.toBeNull();
+    // 월 축·요일 축·격자가 모두 스크롤 래퍼 내부에 있어 함께 스크롤된다.
+    expect(scroll?.querySelector(".streakHeatmapGrid")).not.toBeNull();
+    expect(scroll?.querySelector(".streakHeatmapMonths")).not.toBeNull();
+    // 격자는 섹션의 직접 자식이 아니라 스크롤 래퍼를 거쳐야 한다(본문 오버플로 방지).
+    const section = container.querySelector(".streakHeatmap");
+    expect(section?.querySelector(":scope > .streakHeatmapGrid")).toBeNull();
+    // 범례는 스크롤 래퍼 밖(항상 보이는 하단)에 둔다.
+    expect(scroll?.querySelector(".streakHeatmapLegend")).toBeNull();
+  });
+
   it("하단에 미완료·완료 범례를 aria-hidden으로 렌더한다", () => {
     const weeks = buildStreakCalendarWeeks([], today, 4);
     const { container } = render(<StreakHeatmap weeks={weeks} />);
