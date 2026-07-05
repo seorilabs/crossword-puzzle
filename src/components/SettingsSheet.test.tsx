@@ -16,9 +16,11 @@ function renderSheet(overrides: Partial<SettingsSheetProps> = {}) {
     selectTextScale: () => {},
     soundEnabled: true,
     textScale: "normal",
+    timerVisible: true,
     toggleAutocheck: () => {},
     toggleHaptic: () => {},
     toggleSound: () => {},
+    toggleTimerVisible: () => {},
     ...overrides,
   };
 
@@ -73,7 +75,7 @@ describe("SettingsSheet 오답 자동 표시 토글", () => {
   it("시트 제목에 글자 크기 항목이 포함된다", () => {
     renderSheet();
     expect(
-      screen.getByText("입력 방식 · 오답 표시 · 사운드 · 햅틱 · 글자 크기"),
+      screen.getByText("입력 방식 · 오답 표시 · 사운드 · 햅틱 · 타이머 · 글자 크기"),
     ).toBeTruthy();
   });
 
@@ -89,6 +91,52 @@ describe("SettingsSheet 오답 자동 표시 토글", () => {
     expect(soundToggle.getAttribute("aria-pressed")).toBe("false");
     soundToggle.click();
     expect(toggleSound).toHaveBeenCalledTimes(1);
+  });
+});
+
+function getTimerVisibleToggle() {
+  const label = screen.getByText("타이머 표시");
+  const row = label.closest(".settingsRow");
+  expect(row).not.toBeNull();
+  const toggle = row!.querySelector("button.assistToggle");
+  expect(toggle).not.toBeNull();
+  return toggle as HTMLButtonElement;
+}
+
+describe("SettingsSheet 타이머 표시 토글(#233)", () => {
+  it("켜짐 상태에서 aria-pressed=true 와 '켜짐' 라벨로 렌더된다", () => {
+    renderSheet({ timerVisible: true });
+    const toggle = getTimerVisibleToggle();
+    expect(toggle.getAttribute("aria-pressed")).toBe("true");
+    expect(toggle.textContent).toBe("켜짐");
+    expect(toggle.className).toContain("assistToggleOn");
+    expect(
+      screen.getByText("풀이 화면에 경과 시간을 표시해요"),
+    ).toBeTruthy();
+  });
+
+  it("꺼짐 상태에서 aria-pressed=false 와 계측 유지 안내 문구를 보여준다", () => {
+    renderSheet({ timerVisible: false });
+    const toggle = getTimerVisibleToggle();
+    expect(toggle.getAttribute("aria-pressed")).toBe("false");
+    expect(toggle.textContent).toBe("꺼짐");
+    expect(toggle.className).not.toContain("assistToggleOn");
+    expect(
+      screen.getByText("타이머를 숨겨요. 기록·리더보드는 그대로 계측돼요"),
+    ).toBeTruthy();
+  });
+
+  it("토글을 누르면 toggleTimerVisible 가 호출된다(다른 토글은 미호출)", () => {
+    const toggleTimerVisible = vi.fn();
+    const toggleAutocheck = vi.fn();
+    const toggleSound = vi.fn();
+    renderSheet({ toggleTimerVisible, toggleAutocheck, toggleSound });
+
+    getTimerVisibleToggle().click();
+
+    expect(toggleTimerVisible).toHaveBeenCalledTimes(1);
+    expect(toggleAutocheck).not.toHaveBeenCalled();
+    expect(toggleSound).not.toHaveBeenCalled();
   });
 });
 
