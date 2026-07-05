@@ -825,6 +825,10 @@ function App() {
     pausedAt: string | null;
   }>({ pausedMs: 0, pausedAt: null });
   const isPaused = pause.pausedAt != null;
+  // 백그라운드 전환(visibilitychange hidden)으로 자동 일시정지했는지 여부. 사용자가
+  // 직접 누른 수동 일시정지와 구분해, 자동으로 멈춘 경우에만 복귀 시 자동 재개한다.
+  // 수동 정지 중 백그라운드→복귀 시 이중 정지/조기 재개를 막는 가드로 쓴다(#232).
+  const autoPausedRef = useRef(false);
   // "정답 보기"로 단어를 공개했는지. 노힌트/첫 도전 배지·최고 기록 판정에서
   // 제외하기 위한 플래그로, 진행상태(SavedProgress)에 보존한다.
   const [revealUsed, setRevealUsed] = useState(false);
@@ -1369,6 +1373,58 @@ function App() {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [emitPuzzleAbandon]);
+
+  // 백그라운드 전환 시 타이머 자동 일시정지/재개(#232). 앱을 벗어나거나 화면이
+  // 잠긴 동안의 시간이 풀이 시간·최고 기록·리더보드에 누적되지 않도록, today
+  // 보드에서 진행 중(시작·미완료·도전 미소진)인 미션의 타이머를 hidden에서 멈추고
+  // visible 복귀 시 재개한다. 상태 전이는 공유 코어(togglePauseState)에 위임하고,
+  // 정지 구간은 pausedMs에 누적되어 경과 계산에서 제외된다. 사용자가 이미 수동
+  // 일시정지 중이면 autoPausedRef 가드로 이중 정지/조기 재개를 피한다.
+  useEffect(() => {
+    const canAutoPause = () => {
+      const snapshot = abandonSnapshotRef.current;
+      return (
+        snapshot.route === "today" &&
+        snapshot.hasStarted &&
+        !snapshot.isCompleted &&
+        snapshot.remainingAttempts > 0 &&
+        snapshot.elapsedStartedAt != null
+      );
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        if (!canAutoPause()) {
+          return;
+        }
+        setPause((prev) => {
+          // 이미 정지 상태(수동/자동)면 건드리지 않는다.
+          if (prev.pausedAt != null) {
+            return prev;
+          }
+          autoPausedRef.current = true;
+          return togglePauseState(prev, new Date());
+        });
+      } else if (document.visibilityState === "visible") {
+        // 자동으로 멈춘 경우에만 재개한다(수동 정지는 그대로 둔다).
+        if (!autoPausedRef.current) {
+          return;
+        }
+        setPause((prev) => {
+          if (prev.pausedAt == null) {
+            autoPausedRef.current = false;
+            return prev;
+          }
+          autoPausedRef.current = false;
+          return togglePauseState(prev, new Date());
+        });
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
 
   const todayKey = getTodayDateKey();
   const completedPuzzleIds = useMemo(
@@ -1961,6 +2017,7 @@ function App() {
   // 새 시도 시작 또는 퍼즐 전환 시 일시정지 상태를 초기화한다.
   useEffect(() => {
     setPause({ pausedMs: 0, pausedAt: null });
+    autoPausedRef.current = false;
   }, [mission.lastStartedAt, mission.puzzleId]);
 
   // 일시정지↔재개 토글. 진행 중(시작·미완료)일 때만 조작을 허용한다. 상태 전이
