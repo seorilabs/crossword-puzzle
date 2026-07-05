@@ -12,7 +12,14 @@ import {
   selectWordsForProfile,
   summarizeWordDifficulties,
 } from "../../packages/crossword-core/src/difficultyProfiles.ts";
-import { wordHasTheme } from "../../packages/crossword-core/src/themeTags.ts";
+import {
+  buildThemeMeta,
+  filterWordsByTheme,
+} from "../../packages/crossword-core/src/themeTags.ts";
+import {
+  DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO,
+  needsManualClueRatio,
+} from "../../packages/crossword-core/src/clueCuration.ts";
 
 const DEFAULT_BATCH_OPTIONS = {
   append: false,
@@ -422,8 +429,7 @@ function serializeBoard(
     quality,
     slotId: slotInfo.slotId,
     // 주제 퍼즐일 때만 themeTag/themeLabel 을 기록한다(일반 퍼즐은 생략, #236).
-    ...(theme.themeTag != null ? { themeTag: theme.themeTag } : {}),
-    ...(theme.themeLabel != null ? { themeLabel: theme.themeLabel } : {}),
+    ...buildThemeMeta(theme.themeTag, theme.themeLabel),
     generatedAt: new Date().toISOString(),
   };
 }
@@ -707,9 +713,7 @@ async function run() {
   const difficultyFilteredWords =
     options.theme == null
       ? wordSelection.words
-      : wordSelection.words.filter((word) =>
-          wordHasTheme(word.themeTags, options.theme),
-        );
+      : filterWordsByTheme(wordSelection.words, options.theme);
   const wordBankDifficultyCounts = summarizeWordDifficulties(
     difficultyFilteredWords,
   );
@@ -883,9 +887,20 @@ async function run() {
       quality: puzzle.quality,
       metrics: puzzle.metrics,
       slotId: slotInfo.slotId,
-      ...(puzzle.themeTag != null ? { themeTag: puzzle.themeTag } : {}),
-      ...(puzzle.themeLabel != null ? { themeLabel: puzzle.themeLabel } : {}),
+      ...buildThemeMeta(puzzle.themeTag, puzzle.themeLabel),
     });
+
+    // 발행 품질 게이트(needsManualClue 비율)는 validate:puzzles 가 최종 강제하지만,
+    // 신규 생성 팩(특히 아직 수동 클루가 없는 주제 풀)이 이를 넘겼는지 생성 단계에서
+    // 미리 드러내 "게이트가 조용히 미적용"되지 않도록 경고한다(#236).
+    const manualClueRatio = needsManualClueRatio(puzzle.entries);
+    if (manualClueRatio > DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO) {
+      console.warn(
+        `[${slotInfo.slotId}] needsManualClue ratio ${(manualClueRatio * 100).toFixed(1)}% ` +
+          `> ${(DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO * 100).toFixed(0)}% publish gate. ` +
+          `Add manual clues (cluesByAnswer) before publishing; validate:puzzles will block otherwise.`,
+      );
+    }
     generationReport.push({
       alias: puzzle.alias,
       date: slotInfo.date,

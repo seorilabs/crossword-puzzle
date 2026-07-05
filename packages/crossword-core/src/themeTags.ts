@@ -50,3 +50,32 @@ export function wordHasTheme(
 ): boolean {
   return Array.isArray(themeTags) && themeTags.includes(themeId);
 }
+
+/**
+ * 후보 단어 목록을 특정 주제(themeId)를 가진 단어로만 제약한다. 생성기의 --theme
+ * 경로가 쓰는 순수 필터로, 단위 테스트로 회귀를 고정한다.
+ */
+export function filterWordsByTheme<T extends { themeTags?: readonly string[] }>(
+  words: readonly T[],
+  themeId: string,
+): T[] {
+  return words.filter((word) => wordHasTheme(word.themeTags, themeId));
+}
+
+/**
+ * 주제 메타(themeTag/themeLabel)를 매니페스트·퍼즐 항목에 스프레드할 객체로 만든다.
+ * theme 가 없으면 빈 객체를 반환해 일반 퍼즐 항목에 필드가 추가되지 않는다(#236).
+ */
+export function buildThemeMeta(
+  themeTag: string | undefined,
+  themeLabel: string | undefined,
+): { themeTag?: string; themeLabel?: string } {
+  const meta: { themeTag?: string; themeLabel?: string } = {};
+  if (themeTag != null) {
+    meta.themeTag = themeTag;
+  }
+  if (themeLabel != null) {
+    meta.themeLabel = themeLabel;
+  }
+  return meta;
+}

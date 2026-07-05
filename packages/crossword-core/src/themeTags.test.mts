@@ -1,7 +1,12 @@
 import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
 
-import { assignThemeTags, wordHasTheme } from "./themeTags.ts";
+import {
+  assignThemeTags,
+  buildThemeMeta,
+  filterWordsByTheme,
+  wordHasTheme,
+} from "./themeTags.ts";
 import type { ThemeCategory } from "./themeTags.ts";
 
 const CATEGORIES: ThemeCategory[] = [
@@ -62,6 +67,57 @@ describe("assignThemeTags", () => {
 
   it("definition/clue 가 없으면 빈 배열", () => {
     assert.deepEqual(assignThemeTags({ answer: "말" }, CATEGORIES), []);
+  });
+
+  it("동일 입력에 대해 반복 호출해도 결과가 같다(idempotent/결정적)", () => {
+    // build-theme-tags 재실행 시 themeTags 가 변하지 않음을 뒷받침하는 회귀.
+    const word = { answer: "당근", definition: "샐러드에 넣는 주황색 채소" };
+    const first = assignThemeTags(word, CATEGORIES);
+    const second = assignThemeTags(word, CATEGORIES);
+    assert.deepEqual(first, second);
+    assert.deepEqual(first, ["food"]);
+  });
+});
+
+describe("filterWordsByTheme (생성기 주제 제약)", () => {
+  const words = [
+    { answer: "김치", themeTags: ["food"] },
+    { answer: "호랑이", themeTags: ["animal"] },
+    { answer: "당근", themeTags: ["food", "nature"] },
+    { answer: "가게", themeTags: [] },
+    { answer: "구버전" },
+  ];
+
+  it("해당 themeTag 를 가진 단어만 남긴다", () => {
+    assert.deepEqual(
+      filterWordsByTheme(words, "food").map((w) => w.answer),
+      ["김치", "당근"],
+    );
+  });
+
+  it("themeTags 가 없거나 매칭이 없으면 제외한다", () => {
+    assert.deepEqual(
+      filterWordsByTheme(words, "animal").map((w) => w.answer),
+      ["호랑이"],
+    );
+    assert.deepEqual(filterWordsByTheme(words, "unknown"), []);
+  });
+});
+
+describe("buildThemeMeta (매니페스트/퍼즐 주제 필드)", () => {
+  it("themeTag/themeLabel 이 있으면 스프레드용 객체로 담는다", () => {
+    assert.deepEqual(buildThemeMeta("food", "음식 특집"), {
+      themeTag: "food",
+      themeLabel: "음식 특집",
+    });
+  });
+
+  it("theme 가 없으면 빈 객체(일반 퍼즐 항목에 필드 미추가)", () => {
+    assert.deepEqual(buildThemeMeta(undefined, undefined), {});
+  });
+
+  it("한쪽만 있으면 그 필드만 담는다", () => {
+    assert.deepEqual(buildThemeMeta("food", undefined), { themeTag: "food" });
   });
 });
 
