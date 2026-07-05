@@ -1,7 +1,11 @@
 import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
 
-import { computePersonalStats, formatBestTime } from "./personalStats.ts";
+import {
+  computePersonalStats,
+  computeSolveTimeDistribution,
+  formatBestTime,
+} from "./personalStats.ts";
 import type { PersonalStatsRecord } from "./personalStats.ts";
 
 function record(
@@ -144,5 +148,81 @@ describe("formatBestTime", () => {
     assert.equal(formatBestTime(-1), "00:00");
     assert.equal(formatBestTime(Number.NaN), "00:00");
     assert.equal(formatBestTime(Number.POSITIVE_INFINITY), "00:00");
+  });
+});
+
+describe("computeSolveTimeDistribution", () => {
+  it("완료/보유 0건이면 모든 구간이 0이고 total·maxCount 가 0이다(빈 상태)", () => {
+    const dist = computeSolveTimeDistribution([]);
+    assert.equal(dist.total, 0);
+    assert.equal(dist.maxCount, 0);
+    assert.equal(dist.buckets.length, 5);
+    assert.deepEqual(
+      dist.buckets.map((b) => b.count),
+      [0, 0, 0, 0, 0],
+    );
+    // 구간 라벨/순서 고정.
+    assert.deepEqual(
+      dist.buckets.map((b) => b.label),
+      ["1분 미만", "1–2분", "2–3분", "3–5분", "5분+"],
+    );
+  });
+
+  it("기록 1건이면 해당 구간만 1, total·maxCount 가 1이다", () => {
+    // 45초 → "1분 미만"
+    const dist = computeSolveTimeDistribution([45_000]);
+    assert.equal(dist.total, 1);
+    assert.equal(dist.maxCount, 1);
+    assert.deepEqual(
+      dist.buckets.map((b) => b.count),
+      [1, 0, 0, 0, 0],
+    );
+  });
+
+  it("경계값은 '미만' 규칙으로 다음 구간에 들어간다", () => {
+    // 정확히 60초는 "1분 미만"이 아니라 "1–2분"에 속한다.
+    const boundary = computeSolveTimeDistribution([60_000]);
+    assert.deepEqual(
+      boundary.buckets.map((b) => b.count),
+      [0, 1, 0, 0, 0],
+    );
+    // 59.999초는 "1분 미만".
+    const justUnder = computeSolveTimeDistribution([59_999]);
+    assert.deepEqual(
+      justUnder.buckets.map((b) => b.count),
+      [1, 0, 0, 0, 0],
+    );
+  });
+
+  it("여러 건을 각 구간으로 분류하고 maxCount 를 최빈 구간으로 잡는다", () => {
+    const dist = computeSolveTimeDistribution([
+      30_000, // 1분 미만
+      90_000, // 1–2분
+      100_000, // 1–2분
+      200_000, // 3–5분
+      600_000, // 5분+
+    ]);
+    assert.equal(dist.total, 5);
+    assert.deepEqual(
+      dist.buckets.map((b) => b.count),
+      [1, 2, 0, 1, 1],
+    );
+    assert.equal(dist.maxCount, 2);
+  });
+
+  it("오염 값(0/음수/NaN/Infinity)은 제외해 total 이 유효 기록 수와 일치한다", () => {
+    const dist = computeSolveTimeDistribution([
+      45_000,
+      0,
+      -1,
+      Number.NaN,
+      Number.POSITIVE_INFINITY,
+      130_000,
+    ]);
+    assert.equal(dist.total, 2);
+    assert.deepEqual(
+      dist.buckets.map((b) => b.count),
+      [1, 0, 1, 0, 0],
+    );
   });
 });

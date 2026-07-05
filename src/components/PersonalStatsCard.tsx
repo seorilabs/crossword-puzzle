@@ -1,10 +1,14 @@
 import { formatBestTime } from "../../packages/crossword-core/src";
-import type { PersonalStats } from "../../packages/crossword-core/src";
+import type {
+  PersonalStats,
+  SolveTimeDistribution,
+} from "../../packages/crossword-core/src";
 
 type PersonalStatsCardProps = {
   stats: PersonalStats;
   consecutiveStreak: number;
   longestStreak: number;
+  solveTimeDistribution: SolveTimeDistribution;
 };
 
 // "내 기록" 누적 통계 요약 카드. 완료 1건 이상이면 지표(총 완료/완료율/현재
@@ -17,11 +21,18 @@ export function PersonalStatsCard({
   stats,
   consecutiveStreak,
   longestStreak,
+  solveTimeDistribution,
 }: PersonalStatsCardProps) {
   const completionPercent = Math.round(stats.completionRate * 100);
   // 보유 최고 기록이 있을 때만 실제 시간을 노출한다. null 이면(빈 상태) 해당
   // 항목을 렌더하지 않아 00:00·NaN 이 노출되지 않는다.
   const hasBestTime = stats.fastestBestTimeMs != null;
+  // 분포 차트는 유효 기록이 1건 이상일 때만 렌더한다(0건이면 빈 차트/NaN 방지).
+  const hasDistribution = solveTimeDistribution.total > 0;
+  const distributionSummary = solveTimeDistribution.buckets
+    .filter((bucket) => bucket.count > 0)
+    .map((bucket) => `${bucket.label} ${bucket.count}판`)
+    .join(", ");
 
   return (
     <section className="personalStatsCard" aria-label="내 기록 요약">
@@ -66,6 +77,54 @@ export function PersonalStatsCard({
           첫 퍼즐을 완료하면 누적 기록이 여기에 쌓여요.
           {consecutiveStreak > 0 ? ` 🔥 ${consecutiveStreak}일째 도전 중!` : ""}
         </p>
+      )}
+      {hasDistribution && (
+        <figure
+          className="solveTimeDistribution"
+          aria-label={`풀이 시간 분포 (총 ${solveTimeDistribution.total}판): ${distributionSummary}`}
+        >
+          <figcaption className="solveTimeDistributionTitle">
+            풀이 시간 분포
+          </figcaption>
+          <div className="solveTimeDistributionBars" aria-hidden="true">
+            {solveTimeDistribution.buckets.map((bucket) => {
+              // 최빈 구간을 100%로 두고 나머지를 상대 폭으로 그린다. maxCount 는
+              // total>0 이면 항상 1 이상이라 0 나눗셈이 없다.
+              const widthPercent =
+                bucket.count > 0
+                  ? Math.max(
+                      6,
+                      Math.round(
+                        (bucket.count / solveTimeDistribution.maxCount) * 100,
+                      ),
+                    )
+                  : 0;
+              return (
+                <div key={bucket.label} className="solveTimeDistributionRow">
+                  <span className="solveTimeDistributionLabel">
+                    {bucket.label}
+                  </span>
+                  <span className="solveTimeDistributionTrack">
+                    <span
+                      className={[
+                        "solveTimeDistributionFill",
+                        bucket.count === 0
+                          ? "solveTimeDistributionFillEmpty"
+                          : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      style={{ width: `${widthPercent}%` }}
+                    />
+                  </span>
+                  <span className="solveTimeDistributionCount">
+                    {bucket.count}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </figure>
       )}
     </section>
   );
