@@ -5318,7 +5318,8 @@ function TodayScreen({
                     type="button"
                     aria-label={`${index + 1}번째 글자 ${
                       displayValue === "" ? "비어 있음" : displayValue
-                    }`}
+                    }${isWrong ? " 오답" : ""}`}
+                    aria-invalid={isWrong ? true : undefined}
                     aria-pressed={isActive}
                     onClick={() => {
                       selectEntry(selectedEntry, key);
@@ -5326,6 +5327,10 @@ function TodayScreen({
                     }}
                   >
                     {displayValue}
+                    {/* 색상 외 형태(×) 신호로도 오답을 구분한다(WCAG 1.4.1). */}
+                    {isWrong ? (
+                      <span className="answerSlotWrongMark" aria-hidden="true" />
+                    ) : null}
                   </button>
                 );
               })}

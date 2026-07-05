@@ -233,6 +233,11 @@ export function PuzzleBoard({
               {isCorrect && !isComplete ? (
                 <span className="cellLockMark" aria-hidden="true" />
               ) : null}
+              {/* 오답을 색상뿐 아니라 형태(×) 신호로도 알린다(WCAG 1.4.1).
+                  그레이스케일·색각이상에서도 정답 마커(점/자물쇠)와 구분된다. */}
+              {showWrong ? (
+                <span className="cellWrongMark" aria-hidden="true" />
+              ) : null}
             </button>
           );
         }),

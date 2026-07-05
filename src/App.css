@@ -2021,6 +2021,35 @@ button:disabled {
   box-shadow: inset 0 0 0 1px var(--cw-cell-wrong-ring);
 }
 
+/* 오답 형태 신호 — 색상에 더해 우하단 ×표식으로 오답을 구분한다(WCAG 1.4.1).
+   정답 마커(cellLockMark: 자물쇠 사각형, cellComplete::after: 원형 점)와 형태가
+   달라 그레이스케일·색각이상에서도 정오답이 구별된다. currentColor를 써서
+   라이트/다크 오답색을 그대로 따르고, 정적 표식이라 애니메이션이 없다
+   (prefers-reduced-motion 무관). */
+.cellWrongMark {
+  position: absolute;
+  right: 3px;
+  bottom: 2px;
+  width: 9px;
+  height: 9px;
+  opacity: 0.72;
+  background:
+    linear-gradient(
+      45deg,
+      transparent 43%,
+      currentColor 43%,
+      currentColor 57%,
+      transparent 57%
+    ),
+    linear-gradient(
+      -45deg,
+      transparent 43%,
+      currentColor 43%,
+      currentColor 57%,
+      transparent 57%
+    );
+}
+
 /* 연필(임시) 입력 글자 — 확신 없는 추측을 회색·기울임으로 구분한다.
    정오/완료 판정에는 영향이 없고 표시만 다르다. 잠긴 정답/완료 셀에는 임시
    클래스가 붙지 않으므로(shouldRenderTentative) 회색이 정답색을 덮지 않는다.
@@ -2514,6 +2543,7 @@ button:disabled {
 }
 
 .answerSlot {
+  position: relative;
   display: grid;
   width: 44px;
   height: 44px;
@@ -2565,6 +2595,32 @@ button:disabled {
 .answerSlotActive.answerSlotWrong {
   border-color: #e5484d;
   box-shadow: 0 0 0 3px rgba(229, 72, 77, 0.14);
+}
+
+/* 답 입력 슬롯의 오답 형태 신호 — 보드 셀과 동일하게 색상 외 ×표식을 병행한다.
+   우상단 모서리에 두어 가운데 글자와 겹치지 않는다(WCAG 1.4.1). */
+.answerSlotWrongMark {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 10px;
+  height: 10px;
+  opacity: 0.8;
+  background:
+    linear-gradient(
+      45deg,
+      transparent 43%,
+      currentColor 43%,
+      currentColor 57%,
+      transparent 57%
+    ),
+    linear-gradient(
+      -45deg,
+      transparent 43%,
+      currentColor 43%,
+      currentColor 57%,
+      transparent 57%
+    );
 }
 
 .answerSlotNativeInput {
