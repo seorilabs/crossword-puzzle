@@ -91,7 +91,7 @@ npm run wordbank:krdict -- --limit=5000 --maxLength=6 --out=tmp/wordbank.json
 | 필드              | 설명                                                        |
 | ----------------- | ----------------------------------------------------------- |
 | `difficulty`      | `easy`, `normal`, `hard` 중 하나                            |
-| `themeTags`       | 주제 태그 배열                                              |
+| `themeTags`       | 주제 태그 배열(예: `["food"]`). 필터의 `themeCategories` 규칙으로 부여 |
 | `allowForPuzzle`  | 퍼즐 생성 후보로 사용할 수 있는지                           |
 | `blockedReason`   | 제외 사유. 허용 단어는 `null`                               |
 | `definition`      | 한국어기초사전 뜻풀이 원문                                  |
@@ -101,6 +101,26 @@ npm run wordbank:krdict -- --limit=5000 --maxLength=6 --out=tmp/wordbank.json
 
 수동 차단이나 태깅은 `data/lexicon/puzzle-word-filter.json`에서 관리합니다.
 출시용 힌트는 `cluesByAnswer`에 직접 작성합니다.
+
+주제(테마) 태그는 같은 필터의 `themeCategories`(카테고리별 키워드 규칙)로 부여합니다.
+규칙 매칭은 공유 코어 `assignThemeTags`가 담당하며, 네트워크 없이 커밋된 단어장에
+규칙을 재적용하려면 다음을 실행합니다(전체 `wordbank:krdict` 재빌드도 같은 규칙을
+적용합니다).
+
+```bash
+npm run wordbank:themes          # themeTags 재적용(idempotent)
+npm run wordbank:themes -- --dry # 커버리지만 출력, 파일 미기록
+```
+
+주제 퍼즐 팩은 생성기에 `--theme=<id>`(선택 `--themeLabel=<라벨>`)를 넘겨 해당 태그
+단어로만 후보를 제약해 만들며, 매니페스트·퍼즐 항목에 `themeTag`/`themeLabel`이
+기록됩니다. 주제 풀은 일반 풀보다 작아 `--difficulty=easy` 등 작은 보드에서 안정적으로
+생성됩니다.
+
+```bash
+node server/batch/generate-puzzle-pack.mjs --theme=food --themeLabel="음식 특집" \
+  --difficulty=easy --days=1 --outDir=tmp/theme/puzzles
+```
 
 주의: 현재 단어장은 한국어기초사전 뜻풀이를 힌트로 사용합니다. 출시 전에는 `CC-BY-SA-2.0-KR` 출처 표시와 동일조건변경허락 의무를 검토하거나, 힌트를 자체 문장으로 재작성해야 합니다.
 

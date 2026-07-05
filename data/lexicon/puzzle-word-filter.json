@@ -1,12 +1,71 @@
 {
   "metadata": {
     "description": "Manual curation rules for crossword puzzle words.",
-    "updated": "2026-05-25"
+    "updated": "2026-07-05"
   },
   "blockedAnswers": [],
   "blockedSourceIds": [],
   "blockedClueIncludes": [],
   "cluesByAnswer": {},
   "difficultyByAnswer": {},
-  "themeTagsByAnswer": {}
+  "themeTagsByAnswer": {},
+  "themeCategories": [
+    {
+      "id": "food",
+      "label": "음식",
+      "keywords": [
+        "음식",
+        "요리",
+        "반찬",
+        "채소",
+        "과일",
+        "찌개",
+        "김치",
+        "과자",
+        "음료",
+        "간식",
+        "곡식",
+        "조미료"
+      ]
+    },
+    {
+      "id": "animal",
+      "label": "동물",
+      "keywords": [
+        "동물",
+        "포유류",
+        "곤충",
+        "물고기",
+        "짐승",
+        "파충류",
+        "조류"
+      ]
+    },
+    {
+      "id": "nature",
+      "label": "자연",
+      "keywords": [
+        "식물",
+        "날씨",
+        "계절",
+        "기후",
+        "바닷물",
+        "강물",
+        "산봉우리",
+        "광물"
+      ]
+    },
+    {
+      "id": "body",
+      "label": "신체",
+      "keywords": [
+        "신체",
+        "인체",
+        "피부",
+        "근육",
+        "관절",
+        "내장"
+      ]
+    }
+  ]
 }
