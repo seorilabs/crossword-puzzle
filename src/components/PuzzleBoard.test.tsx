@@ -77,6 +77,57 @@ describe("PuzzleBoard 임시(연필) 셀 렌더", () => {
   });
 });
 
+describe("PuzzleBoard 오답 비색상 표식·접근성 상태", () => {
+  it("autocheck ON 오답 셀은 색상 외 형태 표식(cellWrongMark)을 렌더한다", () => {
+    const [cell] = renderBoard({
+      autocheckEnabled: true,
+      cellValues: { "0:0": "X" }, // 정답 "가"와 불일치
+    });
+    expect(cell.classList.contains("cellWrong")).toBe(true);
+    expect(cell.querySelector(".cellWrongMark")).not.toBeNull();
+  });
+
+  it("오답 셀의 접근성 이름에 '오답'이 포함된다", () => {
+    const [cell] = renderBoard({
+      autocheckEnabled: true,
+      cellValues: { "0:0": "X" },
+    });
+    expect(cell.getAttribute("aria-label")).toContain("오답");
+  });
+
+  it("정답 셀에는 오답 표식이 없고 접근성 이름에 '오답'도 없다", () => {
+    const cells = renderBoard({
+      autocheckEnabled: true,
+      cellValues: { "0:1": "나" }, // 정답 일치
+    });
+    const correctCell = cells[1];
+    expect(correctCell.querySelector(".cellWrongMark")).toBeNull();
+    expect(correctCell.getAttribute("aria-label")).not.toContain("오답");
+  });
+
+  it("autocheck OFF에서는 오답이어도 표식·상태를 노출하지 않는다", () => {
+    // showWrong가 false이므로 형태 표식·오답 라벨 모두 숨긴다.
+    const [cell] = renderBoard({
+      autocheckEnabled: false,
+      cellValues: { "0:0": "X" },
+    });
+    expect(cell.classList.contains("cellWrong")).toBe(false);
+    expect(cell.querySelector(".cellWrongMark")).toBeNull();
+    expect(cell.getAttribute("aria-label")).not.toContain("오답");
+  });
+
+  it("autocheck OFF라도 '이 단어 확인'으로 강조된 오답 셀은 표식·상태를 노출한다", () => {
+    const [cell] = renderBoard({
+      autocheckEnabled: false,
+      cellValues: { "0:0": "X" },
+      checkedCellKeys: new Set(["0:0"]),
+    });
+    expect(cell.classList.contains("cellWrong")).toBe(true);
+    expect(cell.querySelector(".cellWrongMark")).not.toBeNull();
+    expect(cell.getAttribute("aria-label")).toContain("오답");
+  });
+});
+
 describe("PuzzleBoard 활성(커서) 셀 강조", () => {
   it("activeCellKey 셀에만 cellActive가 붙는다", () => {
     const [first, second] = renderBoard({
