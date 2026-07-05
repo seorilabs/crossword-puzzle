@@ -4,6 +4,8 @@
 // computeElapsedMs(별도 단위 테스트)와 같은 입력을 쓰므로 함께 보장된다.
 import { describe, expect, it } from "vitest";
 
+import { togglePauseState } from "../packages/crossword-core/src";
+
 import { formatElapsedTime, formatLiveTimer, getElapsedSeconds } from "./timer";
 
 const startedAt = "2026-06-29T00:00:00.000Z";
@@ -67,6 +69,68 @@ describe("formatElapsedTime (축하 다이얼로그·홈 카드 표기, #203)", 
     expect(formatElapsedTime(startedAt, completedAt, 0)).toBe(
       formatElapsedTime(startedAt, completedAt),
     );
+  });
+});
+
+// #232 회귀: 백그라운드 전환 시 타이머 자동 일시정지. App.tsx의
+// visibilitychange 핸들러는 hidden에서 togglePauseState로 정지하고 visible
+// 복귀 시 다시 togglePauseState로 재개한다(정지 구간은 pausedMs에 누적).
+// 여기서는 그 상태 전이 시퀀스를 그대로 모사해, hidden→visible 사이 시간이
+// pausedMs로 반영되어 완료·최고 기록·리더보드 경과(getElapsedSeconds)에서
+// 제외됨을 고정한다.
+describe("백그라운드 자동 일시정지 시나리오 (#232)", () => {
+  it("hidden→visible 사이 시간이 pausedMs로 누적되어 경과에서 제외된다", () => {
+    // 00:00 시작 → 00:00:30 백그라운드(hidden, 자동 정지)
+    let pause = togglePauseState(
+      { pausedMs: 0, pausedAt: null },
+      new Date("2026-06-29T00:00:30.000Z"),
+    );
+    expect(pause.pausedAt).toBe("2026-06-29T00:00:30.000Z");
+
+    // 00:01:30 복귀(visible, 자동 재개) → 60s가 pausedMs로 누적
+    pause = togglePauseState(pause, new Date("2026-06-29T00:01:30.000Z"));
+    expect(pause.pausedAt).toBeNull();
+    expect(pause.pausedMs).toBe(60_000);
+
+    // 00:02:00 완료: 벽시계 120s - 백그라운드 60s = 순수 60s
+    expect(
+      getElapsedSeconds(startedAt, completedAt, { pausedMs: pause.pausedMs }),
+    ).toBe(60);
+  });
+
+  it("여러 번 백그라운드로 오가도 모든 이탈 시간이 합산 제외된다", () => {
+    let pause: { pausedMs: number; pausedAt: string | null } = {
+      pausedMs: 0,
+      pausedAt: null,
+    };
+    // 20s 이탈
+    pause = togglePauseState(pause, new Date("2026-06-29T00:00:10.000Z"));
+    pause = togglePauseState(pause, new Date("2026-06-29T00:00:30.000Z"));
+    // 10s 이탈
+    pause = togglePauseState(pause, new Date("2026-06-29T00:01:00.000Z"));
+    pause = togglePauseState(pause, new Date("2026-06-29T00:01:10.000Z"));
+
+    expect(pause.pausedMs).toBe(30_000);
+    // 120s - 30s = 90s
+    expect(
+      getElapsedSeconds(startedAt, completedAt, { pausedMs: pause.pausedMs }),
+    ).toBe(90);
+  });
+
+  it("정지 중(pausedAt 존재)에도 경과는 진행 중 정지 구간을 제외한다", () => {
+    // 자동 정지 상태에서 아직 재개 전이라면, pausedAt이 남아 경과 계산이
+    // 정지 시작 이후 시간을 더하지 않는다(백그라운드 중 기록 부풀림 방지).
+    const pause = togglePauseState(
+      { pausedMs: 0, pausedAt: null },
+      new Date("2026-06-29T00:00:30.000Z"),
+    );
+    // endedAt 없이 now=00:02:00에서 조회해도, 30s 이후는 정지로 제외 → 30s
+    expect(
+      getElapsedSeconds(startedAt, undefined, {
+        pausedMs: pause.pausedMs,
+        pausedAt: pause.pausedAt,
+      }),
+    ).toBe(30);
   });
 });
 
