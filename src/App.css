@@ -1414,6 +1414,77 @@ button:disabled {
   color: var(--cw-text-3);
 }
 
+/* 풀이 시간 분포 차트(#235). 외부 차트 라이브러리 없이 div 막대로 그려 번들
+   부담을 피한다. 라이트/다크 토큰을 재사용해 대비를 유지한다. */
+.solveTimeDistribution {
+  margin: 14px 0 0;
+  padding: 12px 0 0;
+  border-top: 1px solid var(--cw-border);
+}
+
+.solveTimeDistributionTitle {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 18px;
+  color: var(--cw-text-2);
+}
+
+.solveTimeDistributionBars {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.solveTimeDistributionRow {
+  display: grid;
+  grid-template-columns: 52px 1fr 20px;
+  align-items: center;
+  gap: 8px;
+}
+
+.solveTimeDistributionLabel {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+  color: var(--cw-text-3);
+  text-align: right;
+}
+
+.solveTimeDistributionTrack {
+  display: block;
+  height: 14px;
+  border-radius: 7px;
+  background: var(--cw-surface);
+}
+
+.solveTimeDistributionFill {
+  display: block;
+  height: 100%;
+  min-width: 0;
+  border-radius: 7px;
+  background: var(--cw-cell-selected-ring);
+  transition: width 0.3s ease;
+}
+
+.solveTimeDistributionFillEmpty {
+  background: transparent;
+}
+
+.solveTimeDistributionCount {
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 16px;
+  color: var(--cw-text-2);
+  text-align: left;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .solveTimeDistributionFill {
+    transition: none;
+  }
+}
+
 .historyList {
   display: flex;
   flex-direction: column;

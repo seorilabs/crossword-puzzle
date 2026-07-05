@@ -2,7 +2,11 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { PersonalStatsCard } from "./PersonalStatsCard";
-import type { PersonalStats } from "../../packages/crossword-core/src";
+import {
+  computeSolveTimeDistribution,
+  type PersonalStats,
+  type SolveTimeDistribution,
+} from "../../packages/crossword-core/src";
 
 afterEach(cleanup);
 
@@ -19,11 +23,17 @@ function stats(overrides: Partial<PersonalStats> = {}): PersonalStats {
   };
 }
 
+// 실제 코어 헬퍼로 분포를 만들어 카드에 넘긴다(빈 배열이면 total 0 → 차트 미노출).
+function dist(valuesMs: number[] = []): SolveTimeDistribution {
+  return computeSolveTimeDistribution(valuesMs);
+}
+
 describe("PersonalStatsCard", () => {
   it("완료 0건이면 빈 상태 안내만 보이고 지표 dl은 렌더하지 않는다", () => {
     const { container } = render(
       <PersonalStatsCard
         stats={stats()}
+        solveTimeDistribution={dist()}
         consecutiveStreak={0}
         longestStreak={0}
       />,
@@ -41,6 +51,7 @@ describe("PersonalStatsCard", () => {
     const { container } = render(
       <PersonalStatsCard
         stats={stats()}
+        solveTimeDistribution={dist()}
         consecutiveStreak={3}
         longestStreak={5}
       />,
@@ -54,6 +65,7 @@ describe("PersonalStatsCard", () => {
     const { container } = render(
       <PersonalStatsCard
         stats={stats()}
+        solveTimeDistribution={dist()}
         consecutiveStreak={0}
         longestStreak={0}
       />,
@@ -75,6 +87,7 @@ describe("PersonalStatsCard", () => {
           fastestBestTimeMs: 65_000, // 01:05
           averageBestTimeMs: 90_000, // 01:30
         })}
+        solveTimeDistribution={dist()}
         consecutiveStreak={5}
         longestStreak={12}
       />,
@@ -113,6 +126,7 @@ describe("PersonalStatsCard", () => {
           fastestBestTimeMs: null,
           averageBestTimeMs: null,
         })}
+        solveTimeDistribution={dist()}
         consecutiveStreak={0}
         longestStreak={4}
       />,
@@ -141,6 +155,7 @@ describe("PersonalStatsCard", () => {
           noHintCompletedCount: 0,
           bestTimeCount: 0,
         })}
+        solveTimeDistribution={dist()}
         consecutiveStreak={0}
         longestStreak={1}
       />,
@@ -149,5 +164,70 @@ describe("PersonalStatsCard", () => {
     const grid = container.querySelector(".personalStatsGrid");
     // 1/3 → 33%
     expect(within(grid as HTMLElement).getByText("33%")).toBeTruthy();
+  });
+});
+
+describe("PersonalStatsCard 풀이 시간 분포 차트(#235)", () => {
+  it("보유 기록이 0건이면 분포 차트를 렌더하지 않는다(빈 상태 유지)", () => {
+    const { container } = render(
+      <PersonalStatsCard
+        stats={stats({ completedCount: 0 })}
+        solveTimeDistribution={dist([])}
+        consecutiveStreak={0}
+        longestStreak={0}
+      />,
+    );
+    expect(container.querySelector(".solveTimeDistribution")).toBeNull();
+  });
+
+  it("보유 기록이 있으면 5개 구간 막대와 접근성 요약을 렌더한다", () => {
+    const { container } = render(
+      <PersonalStatsCard
+        stats={stats({
+          totalPuzzles: 5,
+          completedCount: 5,
+          completionRate: 1,
+          bestTimeCount: 4,
+          fastestBestTimeMs: 30_000,
+          averageBestTimeMs: 90_000,
+        })}
+        // 30초·90초·100초·600초 → [1분미만 1, 1–2분 2, 3–5분 0, 5분+ 1]
+        solveTimeDistribution={dist([30_000, 90_000, 100_000, 600_000])}
+        consecutiveStreak={0}
+        longestStreak={1}
+      />,
+    );
+
+    const figure = container.querySelector(".solveTimeDistribution");
+    expect(figure).not.toBeNull();
+    // 고정 5구간 막대 행.
+    expect(
+      container.querySelectorAll(".solveTimeDistributionRow"),
+    ).toHaveLength(5);
+    // 접근성 요약(aria-label)에 총 판수와 비어 있지 않은 구간이 담긴다.
+    const label = figure!.getAttribute("aria-label") ?? "";
+    expect(label).toContain("총 4판");
+    expect(label).toContain("1분 미만 1판");
+    expect(label).toContain("1–2분 2판");
+    expect(label).toContain("5분+ 1판");
+    // 비어 있는 구간(2–3분)은 요약에서 제외된다.
+    expect(label).not.toContain("2–3분");
+  });
+
+  it("완료는 있으나 유효 기록이 없으면 차트를 숨긴다", () => {
+    const { container } = render(
+      <PersonalStatsCard
+        stats={stats({
+          totalPuzzles: 2,
+          completedCount: 2,
+          completionRate: 1,
+          bestTimeCount: 0,
+        })}
+        solveTimeDistribution={dist([])}
+        consecutiveStreak={0}
+        longestStreak={0}
+      />,
+    );
+    expect(container.querySelector(".solveTimeDistribution")).toBeNull();
   });
 });

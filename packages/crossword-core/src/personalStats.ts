@@ -39,6 +39,69 @@ function isValidBestTimeMs(ms: number): boolean {
   return Number.isFinite(ms) && ms > 0;
 }
 
+/** 풀이 시간 분포의 한 구간(막대 1개). */
+export type SolveTimeBucket = {
+  // 구간 라벨(예: "1분 미만")
+  label: string;
+  // 이 구간에 속한 최고 기록 수
+  count: number;
+};
+
+/** 보유 최고 기록의 풀이 시간 분포. HistoryScreen 분포 차트가 표시한다. */
+export type SolveTimeDistribution = {
+  // 구간별 빈도(항상 고정 길이·고정 순서)
+  buckets: SolveTimeBucket[];
+  // 유효 기록 총수(= 모든 구간 count 합). 0이면 표시할 데이터가 없다.
+  total: number;
+  // 막대 스케일 기준이 되는 최대 빈도. 0이면 빈 분포.
+  maxCount: number;
+};
+
+// 분포 구간 정의(초 단위 상한, 미만 기준). 마지막 구간은 상한 Infinity 라 항상
+// 매칭된다. 경계값(예: 정확히 60초)은 "미만" 규칙에 따라 다음 구간에 들어간다.
+const SOLVE_TIME_BUCKET_DEFS: readonly { label: string; maxSeconds: number }[] =
+  [
+    { label: "1분 미만", maxSeconds: 60 },
+    { label: "1–2분", maxSeconds: 120 },
+    { label: "2–3분", maxSeconds: 180 },
+    { label: "3–5분", maxSeconds: 300 },
+    { label: "5분+", maxSeconds: Number.POSITIVE_INFINITY },
+  ];
+
+/**
+ * 보유 최고 기록(ms) 배열을 고정 구간으로 버킷팅해 풀이 시간 분포를 만든다.
+ * computePersonalStats 와 동일한 유효성 규칙(유한·양수)으로 오염 값을 걸러 내므로
+ * total 은 bestTimeCount 와 일치한다. 입력이 비면(완료/보유 0건) 모든 count 가 0,
+ * total·maxCount 가 0 이라 호출부가 차트 대신 빈 상태를 유지할 수 있다.
+ */
+export function computeSolveTimeDistribution(
+  bestTimeValuesMs: readonly number[] = [],
+): SolveTimeDistribution {
+  const counts = SOLVE_TIME_BUCKET_DEFS.map(() => 0);
+  let total = 0;
+
+  for (const ms of bestTimeValuesMs) {
+    if (!isValidBestTimeMs(ms)) {
+      continue;
+    }
+    const seconds = ms / 1000;
+    const index = SOLVE_TIME_BUCKET_DEFS.findIndex(
+      (bucket) => seconds < bucket.maxSeconds,
+    );
+    // 마지막 구간이 Infinity 라 findIndex 는 항상 유효 인덱스를 반환한다.
+    counts[index] += 1;
+    total += 1;
+  }
+
+  const maxCount = counts.reduce((max, count) => Math.max(max, count), 0);
+  const buckets = SOLVE_TIME_BUCKET_DEFS.map((bucket, index) => ({
+    label: bucket.label,
+    count: counts[index],
+  }));
+
+  return { buckets, total, maxCount };
+}
+
 /**
  * best-time(ms)을 시:분:초 문자열로 포맷한다. 1시간 미만은 두 자리 `mm:ss`,
  * 1시간 이상은 분 자리 폭 붕괴(예: `75:30`)를 막기 위해 `h:mm:ss` 로 표기한다.

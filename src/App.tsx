@@ -28,6 +28,7 @@ import {
   computeElapsedMs,
   computeLeaderboardScore,
   computePersonalStats,
+  computeSolveTimeDistribution,
   getTextScaleFontMultiplier,
   createPuzzleSummary,
   createDailyMissionState,
@@ -6629,7 +6630,11 @@ function HistoryScreen({
     const bestTimeValuesMs = getAllBestTimePuzzleIds()
       .map((puzzleId) => getBestTimeMs(puzzleId))
       .filter((ms): ms is number => ms != null);
-    return computePersonalStats(records, bestTimeValuesMs);
+    return {
+      stats: computePersonalStats(records, bestTimeValuesMs),
+      // 같은 best-time 값으로 풀이 시간 분포도 집계해 요약 카드에 전달한다(#235).
+      solveTimeDistribution: computeSolveTimeDistribution(bestTimeValuesMs),
+    };
   }, [archiveRecords, dateCardStates]);
 
   // 최근 12주 완료 여부 캘린더 히트맵. 완료일 집합은 스트릭 숫자와 동일한 스캔
@@ -6672,7 +6677,8 @@ function HistoryScreen({
       />
 
       <PersonalStatsCard
-        stats={personalStats}
+        stats={personalStats.stats}
+        solveTimeDistribution={personalStats.solveTimeDistribution}
         consecutiveStreak={consecutiveStreak}
         longestStreak={longestStreak}
       />
