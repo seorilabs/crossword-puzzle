@@ -137,6 +137,10 @@ import {
   saveAutocheckEnabled,
 } from "./adapters/autocheckSettingRepository";
 import {
+  loadTimerVisible,
+  saveTimerVisible,
+} from "./adapters/timerVisibilitySettingRepository";
+import {
   loadHapticEnabled,
   loadSoundEnabled,
   loadTextScale,
@@ -846,6 +850,10 @@ function App() {
   // 저장값은 마운트 후 useEffect에서 동기화한다(클라이언트 전용 저장소 접근을
   // 초기 렌더에서 분리).
   const [autocheckEnabled, setAutocheckEnabled] = useState(true);
+  // 라이브 타이머 표시/숨김 설정(#233). 기본값은 표시(true)이며 저장값은 마운트 후
+  // useEffect에서 동기화한다. 표시 여부만 제어하고 경과 측정·최고 기록·리더보드
+  // 계측에는 영향을 주지 않는다.
+  const [timerVisible, setTimerVisible] = useState(true);
   // 사운드·햅틱 피드백 on/off. autocheck와 같이 기본값(true)으로 시작하고 저장값은
   // 마운트 후 useEffect에서 동기화한다.
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -1231,6 +1239,7 @@ function App() {
   // autocheck 저장값은 마운트 후에만 반영한다(첫 렌더 기본값 true와 분리).
   useEffect(() => {
     setAutocheckEnabled(loadAutocheckEnabled());
+    setTimerVisible(loadTimerVisible());
   }, []);
 
   // 사운드·햅틱·글자 크기 저장값도 마운트 후 동기화한다(클라이언트 전용 저장소 접근 분리).
@@ -2739,6 +2748,14 @@ function App() {
     });
   }
 
+  function toggleTimerVisible() {
+    setTimerVisible((prev) => {
+      const next = !prev;
+      saveTimerVisible(next);
+      return next;
+    });
+  }
+
   function selectTextScale(scale: TextScale) {
     setTextScale(scale);
     saveTextScale(scale);
@@ -3106,10 +3123,12 @@ function App() {
     soundEnabled,
     tentativeCellKeys,
     textScale,
+    timerVisible,
     toggleAutocheck,
     toggleHaptic,
     togglePencilMode,
     toggleSound,
+    toggleTimerVisible,
     selectedAnswer: viewModel.selectedAnswer,
     selectedCellKey,
     selectedDirection,
@@ -4629,10 +4648,12 @@ type TodayScreenProps = DateSelectionProps & {
   soundEnabled: boolean;
   tentativeCellKeys: ReadonlySet<string>;
   textScale: TextScale;
+  timerVisible: boolean;
   toggleAutocheck: () => void;
   toggleHaptic: () => void;
   togglePencilMode: () => void;
   toggleSound: () => void;
+  toggleTimerVisible: () => void;
   selectedAnswer: string;
   selectedCellKey: string;
   selectedDirection: Direction;
@@ -4688,10 +4709,12 @@ function TodayScreen({
   soundEnabled,
   tentativeCellKeys,
   textScale,
+  timerVisible,
   toggleAutocheck,
   toggleHaptic,
   togglePencilMode,
   toggleSound,
+  toggleTimerVisible,
   selectedCellKey,
   selectedPuzzleId,
   selectedEntry,
@@ -5511,7 +5534,7 @@ function TodayScreen({
             `다 푼 퍼즐 · ${selectedPuzzleLabel}`
           ) : isAttemptExhaustedUncompleted ? (
             `도전 종료 · ${selectedPuzzleLabel}`
-          ) : mission.lastStartedAt != null ? (
+          ) : mission.lastStartedAt != null && timerVisible ? (
             <>
               {selectedPuzzleLabel} ·{" "}
               <LiveTimer
@@ -5830,9 +5853,11 @@ function TodayScreen({
           selectTextScale={selectTextScale}
           soundEnabled={soundEnabled}
           textScale={textScale}
+          timerVisible={timerVisible}
           toggleAutocheck={toggleAutocheck}
           toggleHaptic={toggleHaptic}
           toggleSound={toggleSound}
+          toggleTimerVisible={toggleTimerVisible}
         />
       ) : null}
 

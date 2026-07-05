@@ -15,9 +15,11 @@ export type SettingsSheetProps = {
   selectTextScale: (scale: TextScale) => void;
   soundEnabled: boolean;
   textScale: TextScale;
+  timerVisible: boolean;
   toggleAutocheck: () => void;
   toggleHaptic: () => void;
   toggleSound: () => void;
+  toggleTimerVisible: () => void;
 };
 
 // 풀이 화면 설정 시트. 입력 방식·오답 자동 표시·사운드·햅틱·글자 크기를 조정한다.
@@ -31,9 +33,11 @@ export function SettingsSheet({
   selectTextScale,
   soundEnabled,
   textScale,
+  timerVisible,
   toggleAutocheck,
   toggleHaptic,
   toggleSound,
+  toggleTimerVisible,
 }: SettingsSheetProps) {
   return (
     <div
@@ -48,7 +52,7 @@ export function SettingsSheet({
             설정
           </Paragraph>
           <Paragraph typography="t4" fontWeight="bold">
-            입력 방식 · 오답 표시 · 사운드 · 햅틱 · 글자 크기
+            입력 방식 · 오답 표시 · 사운드 · 햅틱 · 타이머 · 글자 크기
           </Paragraph>
         </div>
         <button className="ghostButton" type="button" onClick={onClose}>
@@ -164,6 +168,31 @@ export function SettingsSheet({
             onClick={toggleHaptic}
           >
             {hapticEnabled ? "켜짐" : "꺼짐"}
+          </button>
+        </div>
+
+        <div className="settingsRow">
+          <div className="settingsRowText">
+            <strong>타이머 표시</strong>
+            <span>
+              {timerVisible
+                ? "풀이 화면에 경과 시간을 표시해요"
+                : "타이머를 숨겨요. 기록·리더보드는 그대로 계측돼요"}
+            </span>
+          </div>
+          <button
+            type="button"
+            className={[
+              "assistButton",
+              "assistToggle",
+              timerVisible ? "assistToggleOn" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            aria-pressed={timerVisible}
+            onClick={toggleTimerVisible}
+          >
+            {timerVisible ? "켜짐" : "꺼짐"}
           </button>
         </div>
 
