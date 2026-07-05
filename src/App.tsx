@@ -103,6 +103,7 @@ import { MiniPuzzlePreview } from "./components/MiniPuzzlePreview";
 import { PersonalStatsCard } from "./components/PersonalStatsCard";
 import { StreakHeatmap } from "./components/StreakHeatmap";
 import { PuzzleBoard } from "./components/PuzzleBoard";
+import { HowToPlayDialog } from "./components/HowToPlayDialog";
 import { SettingsSheet } from "./components/SettingsSheet";
 import { ShareGridPreview } from "./components/ShareGridPreview";
 import { useShareResult } from "./useShareResult";
@@ -3400,39 +3401,6 @@ function RewardedHintConfirmDialog({
             autoFocus
           >
             {isLoading ? "준비 중" : "광고 보기"}
-          </button>
-        </div>
-      </section>
-    </div>
-  );
-}
-
-function HowToPlayDialog({ onClose }: { onClose: () => void }) {
-  return (
-    <div className="rewardDialogScrim">
-      <section
-        className="rewardDialog howToPlayDialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="howToPlayTitle"
-      >
-        <div className="rewardDialogText">
-          <h2 id="howToPlayTitle">크로스워드 어떻게 풀까요?</h2>
-          <ol className="howToPlayList">
-            <li>격자의 칸을 탭하면 해당 단어가 선택돼요</li>
-            <li>같은 칸을 다시 탭하면 가로↔세로 방향이 바뀌어요</li>
-            <li>아래 단서 목록에서 원하는 단어를 바로 선택할 수도 있어요</li>
-            <li>힌트 버튼으로 모르는 칸을 채울 수 있어요 (횟수 제한 있음)</li>
-          </ol>
-        </div>
-        <div className="rewardDialogActions howToPlayActions">
-          <button
-            className="primaryButton"
-            type="button"
-            onClick={onClose}
-            autoFocus
-          >
-            알겠어요, 시작할게요!
           </button>
         </div>
       </section>
