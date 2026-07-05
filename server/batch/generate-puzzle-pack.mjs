@@ -12,6 +12,14 @@ import {
   selectWordsForProfile,
   summarizeWordDifficulties,
 } from "../../packages/crossword-core/src/difficultyProfiles.ts";
+import {
+  buildThemeMeta,
+  filterWordsByTheme,
+} from "../../packages/crossword-core/src/themeTags.ts";
+import {
+  DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO,
+  needsManualClueRatio,
+} from "../../packages/crossword-core/src/clueCuration.ts";
 
 const DEFAULT_BATCH_OPTIONS = {
   append: false,
@@ -45,6 +53,11 @@ const DEFAULT_BATCH_OPTIONS = {
   publishedAt: undefined,
   timeZone: "Asia/Seoul",
   wordBankPath: "data/lexicon/krdict-puzzle-wordbank.json",
+  // 주제(테마) 퍼즐 옵션(#236). theme 가 지정되면 해당 themeTag 를 가진 단어로만
+  // 후보 풀을 제약하고, 매니페스트·퍼즐에 themeTag/themeLabel 을 기록한다.
+  theme: undefined,
+  themeLabel: undefined,
+  themeFilterPath: "data/lexicon/puzzle-word-filter.json",
 };
 
 function parseArgs(argv) {
@@ -146,9 +159,33 @@ function parseArgs(argv) {
     if (key === "wordbank" && rawValue) {
       options.wordBankPath = rawValue;
     }
+    if (key === "theme" && rawValue) {
+      options.theme = rawValue;
+    }
+    if (key === "themeLabel" && rawValue) {
+      options.themeLabel = rawValue;
+    }
+    if (key === "themeFilter" && rawValue) {
+      options.themeFilterPath = rawValue;
+    }
   }
 
   return options;
+}
+
+// 주제 라벨 해석: --themeLabel 우선, 없으면 필터의 themeCategories 에서 id 로 조회,
+// 그래도 없으면 id 를 라벨로 쓴다(#236).
+async function resolveThemeLabel(options) {
+  if (options.theme == null) {
+    return undefined;
+  }
+  if (options.themeLabel != null) {
+    return options.themeLabel;
+  }
+  const filter = await readJsonOptional(path.resolve(options.themeFilterPath));
+  const categories = filter?.themeCategories ?? [];
+  const match = categories.find((category) => category.id === options.theme);
+  return match?.label ?? options.theme;
 }
 
 function addHours(date, hours) {
@@ -343,6 +380,7 @@ function serializeBoard(
   wordBankMetadata,
   quality,
   difficulty,
+  theme = {},
 ) {
   const wordMap = makeWordMap(wordBank);
   const runAnalysis = analyzeRuns(board, wordMap);
@@ -390,6 +428,8 @@ function serializeBoard(
     publishedAt: slotInfo.publishedAt,
     quality,
     slotId: slotInfo.slotId,
+    // 주제 퍼즐일 때만 themeTag/themeLabel 을 기록한다(일반 퍼즐은 생략, #236).
+    ...buildThemeMeta(theme.themeTag, theme.themeLabel),
     generatedAt: new Date().toISOString(),
   };
 }
@@ -668,14 +708,27 @@ async function run() {
   const wordBank = await loadConfiguredWordBank(options.wordBankPath);
   const profile = resolveDifficultyProfile(options.difficulty);
   const wordSelection = selectWordsForProfile(wordBank.words, profile);
-  const difficultyFilteredWords = wordSelection.words;
+  // 주제 퍼즐이면 난이도 필터 결과를 해당 themeTag 단어로 다시 제약한다(#236).
+  const themeLabel = await resolveThemeLabel(options);
+  const difficultyFilteredWords =
+    options.theme == null
+      ? wordSelection.words
+      : filterWordsByTheme(wordSelection.words, options.theme);
   const wordBankDifficultyCounts = summarizeWordDifficulties(
     difficultyFilteredWords,
   );
 
   if (difficultyFilteredWords.length === 0) {
     throw new Error(
-      `No words match difficulty profile ${profile.difficulty} (allowed=${profile.wordDifficulties.join(",")})`,
+      options.theme == null
+        ? `No words match difficulty profile ${profile.difficulty} (allowed=${profile.wordDifficulties.join(",")})`
+        : `No words match theme "${options.theme}" within difficulty profile ${profile.difficulty}. Run "npm run wordbank:themes" and check themeCategories.`,
+    );
+  }
+
+  if (options.theme != null) {
+    console.log(
+      `Theme constraint theme=${options.theme} label=${themeLabel} words=${difficultyFilteredWords.length}`,
     );
   }
 
@@ -814,6 +867,7 @@ async function run() {
       wordBank.metadata,
       selectedQuality,
       options.difficulty,
+      { themeTag: options.theme, themeLabel },
     );
     const filename = `${puzzle.puzzleId}.json`;
     const filePath = path.join(outDir, filename);
@@ -833,7 +887,20 @@ async function run() {
       quality: puzzle.quality,
       metrics: puzzle.metrics,
       slotId: slotInfo.slotId,
+      ...buildThemeMeta(puzzle.themeTag, puzzle.themeLabel),
     });
+
+    // 발행 품질 게이트(needsManualClue 비율)는 validate:puzzles 가 최종 강제하지만,
+    // 신규 생성 팩(특히 아직 수동 클루가 없는 주제 풀)이 이를 넘겼는지 생성 단계에서
+    // 미리 드러내 "게이트가 조용히 미적용"되지 않도록 경고한다(#236).
+    const manualClueRatio = needsManualClueRatio(puzzle.entries);
+    if (manualClueRatio > DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO) {
+      console.warn(
+        `[${slotInfo.slotId}] needsManualClue ratio ${(manualClueRatio * 100).toFixed(1)}% ` +
+          `> ${(DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO * 100).toFixed(0)}% publish gate. ` +
+          `Add manual clues (cluesByAnswer) before publishing; validate:puzzles will block otherwise.`,
+      );
+    }
     generationReport.push({
       alias: puzzle.alias,
       date: slotInfo.date,

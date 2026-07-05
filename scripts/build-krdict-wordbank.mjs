@@ -4,6 +4,8 @@ import path from "node:path";
 
 import { XMLParser } from "fast-xml-parser";
 
+import { assignThemeTags } from "../packages/crossword-core/src/themeTags.ts";
+
 const SOURCE_BASE =
   "https://raw.githubusercontent.com/spellcheck-ko/korean-dict-nikl-krdict/master";
 const SOURCE_FILES = [
@@ -205,7 +207,12 @@ function applyCuration(candidate, filter) {
       filter.difficultyByAnswer?.[candidate.answer] ??
       inferDifficulty(candidate.level, candidate.length),
     needsManualClue: manualClue == null,
-    themeTags: filter.themeTagsByAnswer?.[candidate.answer] ?? [],
+    // 주제 태그: 명시적 override(themeTagsByAnswer)가 있으면 우선, 없으면 필터의
+    // themeCategories 키워드 규칙을 적용한다(#236). 규칙 매칭은 공유 코어에 위임해
+    // 후처리 스크립트(build-theme-tags)와 동일한 결과를 보장한다.
+    themeTags:
+      filter.themeTagsByAnswer?.[candidate.answer] ??
+      assignThemeTags(candidate, filter.themeCategories ?? []),
   };
 }
 

@@ -65,6 +65,9 @@ export type Puzzle = {
   publishedAt?: string;
   quality?: PuzzleQuality;
   slotId?: string;
+  // 주제(테마) 퍼즐일 때만 채워지는 주제 식별값·라벨(#236). 일반 퍼즐은 생략.
+  themeTag?: string;
+  themeLabel?: string;
 };
 
 export type PuzzleSlot = {
@@ -108,6 +111,9 @@ export type PuzzleManifestItem = {
   puzzleId: string;
   quality?: PuzzleQuality;
   slotId?: string;
+  // 주제(테마) 퍼즐 식별값·라벨(#236). 일반 퍼즐 항목은 생략.
+  themeTag?: string;
+  themeLabel?: string;
 };
 
 export type PuzzleManifest = {

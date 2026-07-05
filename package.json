@@ -40,7 +40,8 @@
     "prototype:crossword": "node scripts/crossword-generator-prototype.mjs",
     "validate:puzzles": "node scripts/validate-puzzle-pack.mjs",
     "clues:apply": "node scripts/apply-manual-clues.mjs",
-    "wordbank:krdict": "node scripts/build-krdict-wordbank.mjs"
+    "wordbank:krdict": "node scripts/build-krdict-wordbank.mjs",
+    "wordbank:themes": "node scripts/build-theme-tags.mjs"
   },
   "dependencies": {
     "@apps-in-toss/web-framework": "^2.6.0",
