@@ -23,6 +23,17 @@ export function getElapsedSeconds(
   });
 }
 
+// 헤더 라이브 타이머 노출 여부(#233). 미션이 시작됐고(lastStartedAt 존재) 사용자가
+// 설정에서 타이머 표시를 켠 경우에만 라이브 타이머를 렌더한다. 표시 여부만 판단하며
+// 경과 측정·최고 기록·리더보드 계측에는 영향을 주지 않는다. 헤더 eyebrow 분기를
+// 순수 함수로 분리해 헤드리스 단위 테스트로 회귀를 고정한다.
+export function shouldShowLiveTimer(
+  lastStartedAt: string | null | undefined,
+  timerVisible: boolean,
+): boolean {
+  return lastStartedAt != null && timerVisible;
+}
+
 // 라이브 타이머 표시(m:ss).
 export function formatLiveTimer(totalSeconds: number): string {
   const total = Math.floor(totalSeconds);

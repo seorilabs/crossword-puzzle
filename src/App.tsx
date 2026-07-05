@@ -110,7 +110,12 @@ import {
   useFirstRunAutoStart,
   type FirstRunSnapshot,
 } from "./useFirstRunAutoStart";
-import { formatElapsedTime, formatLiveTimer, getElapsedSeconds } from "./timer";
+import {
+  formatElapsedTime,
+  formatLiveTimer,
+  getElapsedSeconds,
+  shouldShowLiveTimer,
+} from "./timer";
 import {
   computeConsecutiveStreakDays,
   createLocalMissionRepository,
@@ -5534,7 +5539,7 @@ function TodayScreen({
             `다 푼 퍼즐 · ${selectedPuzzleLabel}`
           ) : isAttemptExhaustedUncompleted ? (
             `도전 종료 · ${selectedPuzzleLabel}`
-          ) : mission.lastStartedAt != null && timerVisible ? (
+          ) : shouldShowLiveTimer(mission.lastStartedAt, timerVisible) ? (
             <>
               {selectedPuzzleLabel} ·{" "}
               <LiveTimer

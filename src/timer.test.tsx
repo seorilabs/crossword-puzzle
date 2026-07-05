@@ -6,7 +6,12 @@ import { describe, expect, it } from "vitest";
 
 import { togglePauseState } from "../packages/crossword-core/src";
 
-import { formatElapsedTime, formatLiveTimer, getElapsedSeconds } from "./timer";
+import {
+  formatElapsedTime,
+  formatLiveTimer,
+  getElapsedSeconds,
+  shouldShowLiveTimer,
+} from "./timer";
 
 const startedAt = "2026-06-29T00:00:00.000Z";
 const completedAt = "2026-06-29T00:02:00.000Z"; // +120s
@@ -131,6 +136,24 @@ describe("백그라운드 자동 일시정지 시나리오 (#232)", () => {
         pausedAt: pause.pausedAt,
       }),
     ).toBe(30);
+  });
+});
+
+// #233 회귀: 헤더 라이브 타이머 노출 분기(shouldShowLiveTimer). App.tsx 헤더
+// eyebrow가 이 순수 함수로 노출 여부를 결정하므로, 분기 조건이 뒤집히거나 순서가
+// 바뀌면 이 테스트가 잡는다.
+describe("shouldShowLiveTimer (헤더 타이머 노출 분기, #233)", () => {
+  it("타이머 표시 꺼짐이면 시작됐어도 노출하지 않는다", () => {
+    expect(shouldShowLiveTimer(startedAt, false)).toBe(false);
+  });
+
+  it("타이머 표시 켜짐이고 미션이 시작됐으면 노출한다", () => {
+    expect(shouldShowLiveTimer(startedAt, true)).toBe(true);
+  });
+
+  it("미션 미시작(lastStartedAt null/undefined)이면 표시 켜짐이어도 노출하지 않는다", () => {
+    expect(shouldShowLiveTimer(null, true)).toBe(false);
+    expect(shouldShowLiveTimer(undefined, true)).toBe(false);
   });
 });
 
