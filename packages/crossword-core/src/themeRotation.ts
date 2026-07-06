@@ -3,11 +3,35 @@
 // 해당 슬롯에 배정할 주제 태그를 결정하고 생성기에 `--theme` 로 주입한다.
 // core 에는 fs/네트워크 import 를 넣지 않는다(순수 함수만, 단위 테스트로 경계 고정).
 
+// 주제 카테고리 화이트리스트. 워드뱅크 필터 데이터
+// (data/lexicon/puzzle-word-filter.json 의 `themeCategories[].id`)가 단일 출처이며,
+// core 는 fs 를 쓰지 못하므로(순수 모듈) 그 id 목록을 여기서 상수로 미러링한다.
+// 데이터와 이 목록이 어긋나면(카테고리 추가/이름 변경 등) themeRotation.test 가
+// JSON 과 대조해 실패하도록 가드한다(#257). 로테이션 표와 함수 반환 타입은 이
+// 목록으로 좁혀 컴파일 타임에도 오타/미등록 태그를 막는다.
+export const THEME_CATEGORY_IDS = [
+  "food",
+  "animal",
+  "nature",
+  "body",
+] as const;
+
+export type ThemeCategoryId = (typeof THEME_CATEGORY_IDS)[number];
+
+// 주어진 태그가 알려진 주제 카테고리 id 인지 판별하는 순수 가드.
+export function isKnownThemeCategory(
+  tag: string | null | undefined,
+): tag is ThemeCategoryId {
+  return (
+    tag != null && (THEME_CATEGORY_IDS as readonly string[]).includes(tag)
+  );
+}
+
 // 요일(0=일 ~ 6=토, Date.getUTCDay 관례)별 주제 태그. null 이면 그 요일에는
-// 로테이션 주제를 배정하지 않는다. 기본 4개 카테고리(food/animal/nature/body,
-// data/lexicon/puzzle-word-filter.json 의 themeCategories)를 주간에 고르게 배분해
-// 매일 최소 1개의 주제 슬롯이 발행되도록 한다.
-export const WEEKDAY_THEME_ROTATION: readonly (string | null)[] = [
+// 로테이션 주제를 배정하지 않는다. 4개 카테고리(food/animal/nature/body)를 주간에
+// 고르게 배분해 매일 최소 1개의 주제 슬롯이 발행되도록 한다. 타입을
+// ThemeCategoryId 로 좁혀 화이트리스트 밖 태그는 컴파일이 거부한다.
+export const WEEKDAY_THEME_ROTATION: readonly (ThemeCategoryId | null)[] = [
   "nature", // 일요일 · 자연
   "food", // 월요일 · 음식
   "animal", // 화요일 · 동물
@@ -32,10 +56,11 @@ export type ScheduledThemeParams = {
 /**
  * 슬롯의 요일·시각으로 배정할 주제 태그를 반환한다. 배정이 없으면 null.
  * 정오 슬롯이 아니면 항상 null 이고, 정오 슬롯이면 요일 로테이션 표를 따른다.
+ * 반환 태그는 항상 THEME_CATEGORY_IDS 화이트리스트 안의 값이다.
  */
 export function resolveScheduledTheme(
   params: ScheduledThemeParams,
-): string | null {
+): ThemeCategoryId | null {
   if (params.slotHour !== THEMED_SLOT_HOUR) {
     return null;
   }

@@ -1,8 +1,12 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
 
 import {
+  isKnownThemeCategory,
   resolveScheduledTheme,
+  THEME_CATEGORY_IDS,
   THEMED_SLOT_HOUR,
   WEEKDAY_THEME_ROTATION,
 } from "./themeRotation.ts";
@@ -57,5 +61,42 @@ describe("resolveScheduledTheme (#249)", () => {
     for (const tag of WEEKDAY_THEME_ROTATION) {
       assert.ok(allowed.has(tag), `예상치 못한 주제 태그: ${tag}`);
     }
+  });
+});
+
+describe("주제 카테고리 단일 출처 계약(#257)", () => {
+  it("THEME_CATEGORY_IDS 가 puzzle-word-filter.json 의 themeCategories 와 일치한다", () => {
+    // 워드뱅크 필터 데이터가 단일 출처이며, core 는 fs 를 못 쓰므로 상수로 미러링한다.
+    // 이 테스트가 데이터↔core 드리프트(카테고리 추가/이름 변경)를 잡는 가드다.
+    const filter = JSON.parse(
+      readFileSync(
+        join(process.cwd(), "data/lexicon/puzzle-word-filter.json"),
+        "utf8",
+      ),
+    ) as { themeCategories: { id: string }[] };
+    const dataIds = new Set(filter.themeCategories.map((category) => category.id));
+    const coreIds = new Set<string>(THEME_CATEGORY_IDS);
+    assert.deepEqual(
+      [...coreIds].sort(),
+      [...dataIds].sort(),
+      "THEME_CATEGORY_IDS 와 themeCategories[].id 집합이 어긋납니다",
+    );
+  });
+
+  it("로테이션 표의 모든 태그가 화이트리스트(isKnownThemeCategory)를 통과한다", () => {
+    for (const tag of WEEKDAY_THEME_ROTATION) {
+      if (tag === null) continue;
+      assert.ok(
+        isKnownThemeCategory(tag),
+        `로테이션 태그 ${tag} 가 화이트리스트 밖입니다`,
+      );
+    }
+  });
+
+  it("isKnownThemeCategory 는 미등록 태그·null·undefined 를 거부한다", () => {
+    assert.equal(isKnownThemeCategory("food"), true);
+    assert.equal(isKnownThemeCategory("space"), false);
+    assert.equal(isKnownThemeCategory(null), false);
+    assert.equal(isKnownThemeCategory(undefined), false);
   });
 });
