@@ -13,28 +13,44 @@ type SafeAreaInsetsValue = {
   right: number;
 };
 
+// 브리지 판정 기준은 get이 함수인지 하나뿐이다(있으면 최소한 현재값은 반영할 수 있다).
+// subscribe는 SDK 버전에 따라 없을 수 있어 optional로 둔다 — 없으면 일회성 반영만 하고
+// 구독은 건너뛴다. 따라서 subscribe는 호출부(initSafeAreaInsets)에서 존재를 재확인한 뒤 쓴다.
 type SafeAreaInsetsBridge = {
   get: () => SafeAreaInsetsValue;
-  subscribe: (handler: {
+  subscribe?: (handler: {
     onEvent: (insets: SafeAreaInsetsValue) => void;
   }) => (() => void) | void;
 };
+
+// 임의의 후보 값이 사용 가능한 SafeArea 브리지인지 런타임으로 확정한다. Partial 캐스트는
+// 컴파일 도우미일 뿐 런타임 보장이 아니므로, 여기서 get이 실제 함수인지 확인해 판정한다.
+// get이 없으면 브리지로 보지 않고 null을 돌려준다. subscribe 누락은 브리지 여부와 무관하다
+// (없어도 초기값 반영은 가능하므로 브리지로 인정하되, 구독은 호출부에서 건너뛴다).
+// 반환은 후보 객체 그대로라 SDK의 get이 기대하는 this 바인딩이 유지된다.
+export function resolveSafeAreaBridge(
+  candidate: unknown,
+): SafeAreaInsetsBridge | null {
+  if (candidate == null || typeof candidate !== "object") {
+    return null;
+  }
+  const { get } = candidate as { get?: unknown };
+  if (typeof get !== "function") {
+    return null;
+  }
+  return candidate as SafeAreaInsetsBridge;
+}
 
 // 네임스페이스 import로 접근해, 일부 SDK 버전에서 SafeAreaInsets가 export되지 않아도
 // import 단계에서 throw하지 않는다(leaderboardAdapter와 동일한 방어 패턴).
 function getSafeAreaBridge(): SafeAreaInsetsBridge | null {
   try {
-    const framework = appsInTossFramework as Partial<
-      typeof appsInTossFramework
-    > & { SafeAreaInsets?: Partial<SafeAreaInsetsBridge> };
-    const bridge = framework.SafeAreaInsets;
-    if (bridge != null && typeof bridge.get === "function") {
-      return bridge as SafeAreaInsetsBridge;
-    }
+    const framework = appsInTossFramework as { SafeAreaInsets?: unknown };
+    return resolveSafeAreaBridge(framework.SafeAreaInsets);
   } catch {
     // 브리지 접근 자체가 실패하면 미지원으로 본다.
+    return null;
   }
-  return null;
 }
 
 function toPx(value: unknown): string {
