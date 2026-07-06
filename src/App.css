@@ -77,7 +77,11 @@ button:disabled {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 24px 20px 18px;
+  /* AIT 네비게이션 바(상단·우측 더보기/닫기 X)와 겹치지 않도록 SafeAreaInsets를
+     기존 여백에 더한다. 비-AIT/웹에서는 변수 미설정으로 0px 폴백 → 기존과 동일. */
+  padding: calc(24px + var(--ait-safe-area-top, 0px))
+    calc(20px + var(--ait-safe-area-right, 0px)) 18px
+    calc(20px + var(--ait-safe-area-left, 0px));
 }
 
 .appHeader > div:not(.headerActions) {
