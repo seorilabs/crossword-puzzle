@@ -10,7 +10,6 @@ interface ImportMetaEnv {
   readonly VITE_FIREBASE_STORAGE_BUCKET?: string;
   readonly VITE_PUZZLE_MANIFEST_URL?: string;
   readonly VITE_PUZZLE_PACK_BASE_URL?: string;
-  readonly VITE_PUZZLE_STATS_URL?: string;
   readonly VITE_SHARE_LANDING_URL?: string;
 }
 

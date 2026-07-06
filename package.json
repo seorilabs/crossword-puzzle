@@ -33,8 +33,6 @@
     "release:next-tag": "node scripts/next-release-tag.mjs",
     "release:resolve-version": "node scripts/resolve-release-version.mjs",
     "batch:puzzles": "node server/batch/generate-puzzle-pack.mjs",
-    "stats:completion": "node server/batch/aggregate-completion-stats.mjs",
-    "job:completion-stats": "node server/batch/aggregate-completion-stats.mjs",
     "job:puzzle-pack": "node server/batch/run-puzzle-pack-job.mjs",
     "publish:puzzles": "node server/batch/publish-puzzle-pack.mjs",
     "prototype:crossword": "node scripts/crossword-generator-prototype.mjs",

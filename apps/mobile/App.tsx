@@ -34,8 +34,6 @@ import {
   createPuzzleSummary,
   DAILY_ATTEMPT_LIMIT,
   defaultLaunchConfig,
-  formatCompletionStatsLabel,
-  formatCompletionStatsMetrics,
   getBonusPuzzleCandidateSummary,
   getBounds,
   getCellKey,
@@ -62,7 +60,6 @@ import {
   type Direction,
   type Puzzle,
   type PuzzleEntry,
-  type PuzzleCompletionStats,
   type PuzzleManifest,
   type PuzzleManifestItem,
   type SavedProgress,
@@ -81,7 +78,6 @@ import {
   saveBonusPuzzleUnlock,
   type BonusPuzzleUnlock,
 } from './bonusPuzzleUnlockRepository';
-import { createPuzzleCompletionStatsRepository } from './puzzleCompletionStatsRepository';
 import { loadFirebaseLaunchConfig } from './firebaseClient';
 import {
   initializeMobileAds,
@@ -141,7 +137,6 @@ type PuzzlePack = {
   summaries: PuzzleManifestItem[];
 };
 
-type CompletionStatsByPuzzleId = Record<string, PuzzleCompletionStats>;
 
 type PuzzleViewModel = {
   bounds: ReturnType<typeof getBounds>;
@@ -171,10 +166,6 @@ type AdDiagnosticState = {
 };
 
 const REMOTE_PUZZLE_PACK_BASE_URL = 'https://crossword-puzzle-79ae0.web.app';
-const REMOTE_PUZZLE_STATS_URL = `${REMOTE_PUZZLE_PACK_BASE_URL.replace(
-  /\/+$/,
-  '',
-)}/puzzle-stats/completions.json`;
 const HOME_HEADER_TITLE = '가로세로 낱말 퍼즐';
 const PROGRESS_KEY_PREFIX = 'crossword-puzzle:progress';
 const MISSION_KEY_PREFIX = 'crossword-puzzle:mission';
@@ -253,9 +244,6 @@ const bundledPuzzlePack: PuzzlePack = {
   source: 'bundled',
   summaries: bundledPuzzleSummaries,
 };
-const puzzleCompletionStatsRepository = createPuzzleCompletionStatsRepository({
-  statsUrl: REMOTE_PUZZLE_STATS_URL,
-});
 const initialPuzzle =
   bundledPuzzlesById.get(getInitialPuzzleId(bundledPuzzleSummaries)) ??
   fallbackPuzzle;
@@ -601,10 +589,6 @@ export function formatPuzzleHistoryTitle(
     : aliasLabel;
 }
 
-// formatCompletionStatsLabel / formatCompletionStatsMetrics는
-// packages/crossword-core 에서 import해 web과 동일 구현(버킷 표기 + 지표 라인)을
-// 공유한다. 아래 re-export는 기존 테스트 import 경로(../App)를 유지하기 위함.
-export { formatCompletionStatsLabel, formatCompletionStatsMetrics };
 
 function createDateCardState(
   mission: DailyMissionState,
@@ -1052,8 +1036,6 @@ function AppContent() {
   );
   const [launchConfig, setLaunchConfig] =
     useState<LaunchConfig>(defaultLaunchConfig);
-  const [completionStatsByPuzzleId, setCompletionStatsByPuzzleId] =
-    useState<CompletionStatsByPuzzleId>({});
   const [completionCelebrationPuzzleId, setCompletionCelebrationPuzzleId] =
     useState<string | null>(null);
   const [rewardedAdPlacement, setRewardedAdPlacement] =
@@ -1347,32 +1329,6 @@ function AppContent() {
       unlockedBonusSummaries,
     ],
   );
-  useEffect(() => {
-    if (!launchConfig.completionStatsEnabled) {
-      setCompletionStatsByPuzzleId({});
-      return;
-    }
-
-    let isCancelled = false;
-    const puzzleIds = visiblePuzzleSummaries.map(summary => summary.puzzleId);
-
-    puzzleCompletionStatsRepository
-      .loadStats(puzzleIds)
-      .then(nextStats => {
-        if (!isCancelled) {
-          setCompletionStatsByPuzzleId(nextStats);
-        }
-      })
-      .catch(() => {
-        if (!isCancelled) {
-          setCompletionStatsByPuzzleId({});
-        }
-      });
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [launchConfig.completionStatsEnabled, visiblePuzzleSummaries]);
 
   const bonusPuzzlePanelState: BonusPuzzlePanelState = {
     candidateSummary: bonusCandidateSummary,
@@ -2460,25 +2416,14 @@ function AppContent() {
             puzzlePack.source === 'remote'
               ? formatPuzzleCardSequenceLabel(summary)
               : '';
-          const completionStatsLabel = formatCompletionStatsLabel(
-            completionStatsByPuzzleId[summary.puzzleId],
-            launchConfig.completionStatsMinDisplayCount,
-            'compact',
-          );
           const wordCountLabel = `${summary.metrics?.wordCount ?? '-'}단어`;
           const difficultyLabel = formatDifficultyLabel(summary.difficulty);
-          const fallbackMetaLabel =
+          const metaLabel =
             sequenceLabel === ''
               ? [difficultyLabel, wordCountLabel, `${state?.attemptsUsed ?? 0}/${DAILY_ATTEMPT_LIMIT}회`]
                   .filter(Boolean)
                   .join(' · ')
               : [difficultyLabel, sequenceLabel, wordCountLabel].filter(Boolean).join(' · ');
-          const metaLabel =
-            completionStatsLabel === ''
-              ? fallbackMetaLabel
-              : sequenceLabel === ''
-                ? [difficultyLabel, completionStatsLabel].filter(Boolean).join(' · ')
-                : [difficultyLabel, sequenceLabel, completionStatsLabel].filter(Boolean).join(' · ');
           const titleLabel = formatPuzzleCardTitle(summary, puzzlePack.source);
 
           return (
@@ -2575,14 +2520,6 @@ function AppContent() {
   }
 
   function renderHome() {
-    const completionStatsLabel = formatCompletionStatsLabel(
-      completionStatsByPuzzleId[puzzle.puzzleId],
-      launchConfig.completionStatsMinDisplayCount,
-    );
-    const completionStatsMetricsLabel = formatCompletionStatsMetrics(
-      completionStatsByPuzzleId[puzzle.puzzleId],
-      launchConfig.completionStatsMinDisplayCount,
-    );
     const selectedPuzzleLabel = formatPuzzleHomeSubtitle(
       selectedPuzzleSummary,
       puzzlePack.source,
@@ -2615,13 +2552,7 @@ function AppContent() {
             보드 ·{' '}
             {directionLabels[viewModel.selectedEntry?.direction ?? 'across']}{' '}
             힌트부터 시작
-            {completionStatsLabel === '' ? '' : ` · ${completionStatsLabel}`}
           </Text>
-          {completionStatsMetricsLabel === '' ? null : (
-            <Text style={styles.completionStatsMetrics}>
-              {completionStatsMetricsLabel}
-            </Text>
-          )}
           <View style={styles.statusGrid}>
             <Metric
               label="시도"
@@ -4468,13 +4399,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     lineHeight: 21,
-  },
-  completionStatsMetrics: {
-    color: '#8b95a1',
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 18,
-    marginTop: 4,
   },
   title: {
     color: '#0f172a',

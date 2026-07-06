@@ -281,13 +281,6 @@ button:disabled {
   background: #ffe9f1;
 }
 
-.dateCard .dateEstimate {
-  color: var(--cw-text-3);
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 15px;
-}
-
 @keyframes skeletonShimmer {
   0% {
     background-position: -100px 0;
@@ -3088,14 +3081,6 @@ button:disabled {
   line-height: 25px;
 }
 
-/* 커뮤니티 중앙값 대비 내 기록 비교 라인(#218). 내 시간(celebrationStat)보다
-   보조 정보이므로 한 단계 작고 옅게 둔다. */
-.celebrationComparison {
-  color: var(--cw-text-2);
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 19px;
-}
 
 .completionDialogReview {
   border: 0;

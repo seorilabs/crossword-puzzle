@@ -33,10 +33,6 @@ import {
   createPuzzleSummary,
   createDailyMissionState,
   DAILY_ATTEMPT_LIMIT,
-  formatCompletionStatsLabel,
-  formatCommunityComparisonLabel,
-  formatCompletionStatsMetrics,
-  formatEstimatedSolveLabel,
   getBonusPuzzleCandidateSummary,
   getBounds,
   getCellKey,
@@ -89,7 +85,6 @@ import {
   type DailyMissionState,
   type Direction,
   type Puzzle,
-  type PuzzleCompletionStats,
   type PuzzleEntry,
   type PuzzleManifestItem,
   type PuzzleQualityCheck,
@@ -173,7 +168,6 @@ import {
   defaultLaunchConfig,
   type LaunchConfig,
 } from "./adapters/launchConfig";
-import { createPuzzleCompletionStatsRepository } from "./adapters/puzzleCompletionStatsRepository";
 import {
   createFallbackPuzzleRepository,
   createOnboardingPuzzleRepository,
@@ -221,8 +215,6 @@ type DateCardState = {
   revealUsed: boolean;
 };
 
-type CompletionStatsByPuzzleId = Record<string, PuzzleCompletionStats>;
-
 const DIRECT_INPUT_COMMIT_DELAY_MS = 140;
 const COMPOSITION_COMMIT_DELAY_MS = 0;
 
@@ -255,8 +247,6 @@ function persistAnswerInputMode(mode: AnswerInputMode): void {
 const EMPTY_CELL_KEY_SET: ReadonlySet<string> = new Set();
 
 type DateSelectionProps = {
-  completionStatsByPuzzleId: CompletionStatsByPuzzleId;
-  completionStatsMinDisplayCount: number;
   dateCardStates: Record<string, DateCardState>;
   loadState: LoadState;
   puzzleSummaries: PuzzleManifestItem[];
@@ -306,13 +296,6 @@ const puzzleManifestUrl = import.meta.env.VITE_PUZZLE_MANIFEST_URL?.trim();
 // 결과 공유 텍스트 말미에 붙일 앱 진입 링크(#227). 마켓별 진입 URL 차이를 빌드 주입값
 // 으로 흡수한다. 미설정(빈 값)이면 링크 줄을 생략해 기존 공유 텍스트와 동일하게 둔다.
 const shareLandingUrl = import.meta.env.VITE_SHARE_LANDING_URL?.trim();
-const configuredPuzzleStatsUrl = import.meta.env.VITE_PUZZLE_STATS_URL?.trim();
-const puzzleStatsUrl =
-  configuredPuzzleStatsUrl != null && configuredPuzzleStatsUrl !== ""
-    ? configuredPuzzleStatsUrl
-    : puzzlePackBaseUrl != null && puzzlePackBaseUrl !== ""
-      ? `${puzzlePackBaseUrl.replace(/\/+$/, "")}/puzzle-stats/completions.json`
-      : undefined;
 const hasRemotePuzzlePack =
   (puzzlePackBaseUrl != null && puzzlePackBaseUrl !== "") ||
   (puzzleManifestUrl != null && puzzleManifestUrl !== "");
@@ -336,9 +319,6 @@ const progressRepository = createLocalProgressRepository();
 const missionRepository = createLocalMissionRepository();
 const puzzleArchiveRepository = createLocalPuzzleArchiveRepository();
 const bonusPuzzleUnlockRepository = createLocalBonusPuzzleUnlockRepository();
-const puzzleCompletionStatsRepository = createPuzzleCompletionStatsRepository({
-  statsUrl: puzzleStatsUrl,
-});
 
 const directionLabels: Record<Direction, string> = {
   across: "가로",
@@ -819,8 +799,6 @@ function App() {
   const [bonusPuzzleUnlocks, setBonusPuzzleUnlocks] = useState<
     BonusPuzzleUnlock[]
   >([]);
-  const [completionStatsByPuzzleId, setCompletionStatsByPuzzleId] =
-    useState<CompletionStatsByPuzzleId>({});
   const [completionCelebrationId, setCompletionCelebrationId] = useState<
     string | null
   >(null);
@@ -1627,33 +1605,6 @@ function App() {
       unlockedBonusSummaries,
     ],
   );
-  useEffect(() => {
-    if (!launchConfig.completionStatsEnabled) {
-      setCompletionStatsByPuzzleId({});
-      return;
-    }
-
-    let isCancelled = false;
-    const puzzleIds = visiblePuzzleSummaries.map((summary) => summary.puzzleId);
-
-    puzzleCompletionStatsRepository
-      .loadStats(puzzleIds)
-      .then((nextStats) => {
-        if (!isCancelled) {
-          setCompletionStatsByPuzzleId(nextStats);
-        }
-      })
-      .catch(() => {
-        if (!isCancelled) {
-          setCompletionStatsByPuzzleId({});
-        }
-      });
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [launchConfig.completionStatsEnabled, visiblePuzzleSummaries]);
-
   const totalHintCredits = Math.max(
     0,
     launchConfig.defaultHintCredits + earnedHintCredits,
@@ -3148,8 +3099,6 @@ function App() {
     viewModel,
   };
   const dateSelectionProps = {
-    completionStatsByPuzzleId,
-    completionStatsMinDisplayCount: launchConfig.completionStatsMinDisplayCount,
     dateCardStates,
     loadState,
     puzzleSummaries: visiblePuzzleSummaries,
@@ -3524,8 +3473,6 @@ function HomeScreen({
   bonusPuzzlePanelState,
   completedEntries,
   consecutiveStreak,
-  completionStatsByPuzzleId,
-  completionStatsMinDisplayCount,
   dateCardStates,
   hasStarted,
   hintBalance,
@@ -3574,14 +3521,6 @@ function HomeScreen({
         : hasStarted
           ? `${completedEntries.length}/${puzzle.entries.length} 단어 · ${progressPercent}% 진행 중`
           : "도전 준비 완료";
-  const completionStatsLabel = formatCompletionStatsLabel(
-    completionStatsByPuzzleId[puzzle.puzzleId],
-    completionStatsMinDisplayCount,
-  );
-  const completionStatsMetricsLabel = formatCompletionStatsMetrics(
-    completionStatsByPuzzleId[puzzle.puzzleId],
-    completionStatsMinDisplayCount,
-  );
   const selectedPuzzleSummary =
     findPuzzleSummaryById(puzzleSummaries, selectedPuzzleId) ??
     createPuzzleSummary(puzzle);
@@ -3655,8 +3594,6 @@ function HomeScreen({
       </button>
 
       <DateCarousel
-        completionStatsByPuzzleId={completionStatsByPuzzleId}
-        completionStatsMinDisplayCount={completionStatsMinDisplayCount}
         dateCardStates={dateCardStates}
         loadState={loadState}
         puzzleSummaries={puzzleSummaries}
@@ -3694,15 +3631,7 @@ function HomeScreen({
           </Paragraph>
           <Paragraph typography="t6" color="#4e5968">
             {missionDescription}
-            {isLoadingPuzzlePack || completionStatsLabel === ""
-              ? ""
-              : ` · ${completionStatsLabel}`}
           </Paragraph>
-          {!isLoadingPuzzlePack && completionStatsMetricsLabel !== "" && (
-            <Paragraph typography="t7" color="#8b95a1">
-              {completionStatsMetricsLabel}
-            </Paragraph>
-          )}
           {!isLoadingPuzzlePack && streakMilestoneHint != null && (
             <p className="streakNudge">{streakMilestoneHint}</p>
           )}
@@ -4343,8 +4272,6 @@ function LiveTimer({
 }
 
 function DateCarousel({
-  completionStatsByPuzzleId,
-  completionStatsMinDisplayCount,
   dateCardStates,
   loadState,
   puzzleSummaries,
@@ -4420,15 +4347,6 @@ function DateCarousel({
             : formatPuzzleCardSequenceLabel(summary);
           const statusLabel = getDateCardStatus(state);
           const wordCountLabel = `${summary.metrics?.wordCount ?? "-"}개`;
-          const completionStatsLabel = formatCompletionStatsLabel(
-            completionStatsByPuzzleId[summary.puzzleId],
-            completionStatsMinDisplayCount,
-            "compact",
-          );
-          const estimatedSolveLabel = formatEstimatedSolveLabel(
-            completionStatsByPuzzleId[summary.puzzleId],
-            completionStatsMinDisplayCount,
-          );
           const isEasy = !isFallbackPack && summary.difficulty === "easy";
           const eyebrowLabel = isFallbackPack
             ? "기기저장"
@@ -4441,10 +4359,9 @@ function DateCarousel({
             ? formatFallbackCardTitle(index, puzzleSummaries.length)
             : sequenceLabel;
           const difficultyLabel = formatDifficultyLabel(summary.difficulty);
-          const metaLabel =
-            !isFallbackPack && completionStatsLabel !== ""
-              ? completionStatsLabel
-              : [statusLabel, wordCountLabel].filter(Boolean).join(" · ");
+          const metaLabel = [statusLabel, wordCountLabel]
+            .filter(Boolean)
+            .join(" · ");
           const ariaLabel = isFallbackPack
             ? [eyebrowLabel, titleLabel, difficultyLabel, statusLabel]
                 .filter(Boolean)
@@ -4455,9 +4372,6 @@ function DateCarousel({
                   ? `오늘 ${formatGameHeaderDate(summary.date)}`
                   : formatGameHeaderDate(summary.date),
                 difficultyLabel,
-                estimatedSolveLabel !== ""
-                  ? `예상 소요 ${estimatedSolveLabel}`
-                  : "",
                 statusLabel,
               ]
                 .filter(Boolean)
@@ -4483,25 +4397,20 @@ function DateCarousel({
             >
               <span>{eyebrowLabel}</span>
               <strong>{titleLabel}</strong>
-              {difficultyLabel !== "" || estimatedSolveLabel !== "" ? (
+              {difficultyLabel !== "" ? (
                 <span className="dateCardValue">
-                  {difficultyLabel !== "" ? (
-                    <span
-                      className={[
-                        "dateDifficulty",
-                        summary.difficulty
-                          ? `difficulty-${summary.difficulty}`
-                          : "",
-                      ]
-                        .filter(Boolean)
-                        .join(" ")}
-                    >
-                      {difficultyLabel}
-                    </span>
-                  ) : null}
-                  {estimatedSolveLabel !== "" ? (
-                    <span className="dateEstimate">{estimatedSolveLabel}</span>
-                  ) : null}
+                  <span
+                    className={[
+                      "dateDifficulty",
+                      summary.difficulty
+                        ? `difficulty-${summary.difficulty}`
+                        : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                  >
+                    {difficultyLabel}
+                  </span>
                 </span>
               ) : null}
               <em>{metaLabel}</em>
@@ -4654,8 +4563,6 @@ function TodayScreen({
   clearEntryAnswer,
   completedEntries,
   completionCelebrationId,
-  completionStatsByPuzzleId,
-  completionStatsMinDisplayCount,
   consecutiveStreak,
   dateCardStates,
   dismissCompletionCelebration,
@@ -4731,17 +4638,6 @@ function TodayScreen({
     mission.completedAt,
     pause.pausedMs,
   );
-  // 커뮤니티 중앙값 대비 내 풀이 시간 비교 라벨(#218). 정답 보기(reveal)를 썼으면
-  // 기록이 무효라 오해를 막기 위해 숨긴다. 프라이버시 임계·통계 유무는 core가 판정.
-  const celebrationComparisonLabel = revealUsed
-    ? ""
-    : formatCommunityComparisonLabel(
-        getElapsedSeconds(mission.lastStartedAt, mission.completedAt, {
-          pausedMs: pause.pausedMs,
-        }),
-        completionStatsByPuzzleId[puzzle.puzzleId],
-        completionStatsMinDisplayCount,
-      );
   // 완료 축하 다이얼로그가 열릴 때만 공유 격자·문구를 계산한다(#202).
   const celebrationShareGrid = showCompletionCelebration
     ? buildShareGrid(puzzle, cellValues)
@@ -5211,8 +5107,6 @@ function TodayScreen({
           onBack={() => navigate("home")}
         />
         <DateCarousel
-          completionStatsByPuzzleId={completionStatsByPuzzleId}
-          completionStatsMinDisplayCount={completionStatsMinDisplayCount}
           dateCardStates={dateCardStates}
           loadState={loadState}
           puzzleSummaries={puzzleSummaries}
@@ -5843,7 +5737,6 @@ function TodayScreen({
       {showCompletionCelebration ? (
         <CompletionCelebrationDialog
           attemptsUsed={mission.attemptsUsed}
-          communityComparisonLabel={celebrationComparisonLabel}
           completedCount={completedEntries.length}
           consecutiveStreak={consecutiveStreak}
           elapsedLabel={celebrationElapsedLabel}
@@ -5870,7 +5763,6 @@ function TodayScreen({
 
 type CompletionCelebrationDialogProps = {
   attemptsUsed: number;
-  communityComparisonLabel: string;
   completedCount: number;
   consecutiveStreak: number;
   elapsedLabel: string | null;
@@ -5887,7 +5779,6 @@ type CompletionCelebrationDialogProps = {
 
 function CompletionCelebrationDialog({
   attemptsUsed,
-  communityComparisonLabel,
   completedCount,
   consecutiveStreak,
   elapsedLabel,
@@ -5942,9 +5833,6 @@ function CompletionCelebrationDialog({
           </p>
           {elapsedLabel != null && (
             <p className="celebrationStat">⏱ {elapsedLabel}</p>
-          )}
-          {communityComparisonLabel !== "" && (
-            <p className="celebrationComparison">{communityComparisonLabel}</p>
           )}
           <ShareGridPreview shareGrid={shareGrid} />
           {hasAchievements && (
@@ -6234,8 +6122,6 @@ function ResultScreen({
   cellValues,
   bonusPuzzlePanelState,
   completedEntries,
-  completionStatsByPuzzleId,
-  completionStatsMinDisplayCount,
   consecutiveStreak,
   dateCardStates,
   hintCount,
@@ -6348,8 +6234,6 @@ function ResultScreen({
       />
 
       <DateCarousel
-        completionStatsByPuzzleId={completionStatsByPuzzleId}
-        completionStatsMinDisplayCount={completionStatsMinDisplayCount}
         dateCardStates={dateCardStates}
         loadState={loadState}
         puzzleSummaries={puzzleSummaries}
@@ -6591,8 +6475,6 @@ type HistoryScreenProps = DateSelectionProps & {
 function HistoryScreen({
   archiveRecords,
   completedEntries,
-  completionStatsByPuzzleId,
-  completionStatsMinDisplayCount,
   consecutiveStreak,
   dateCardStates,
   hintCount,
@@ -6691,8 +6573,6 @@ function HistoryScreen({
       <StreakHeatmap weeks={streakWeeks} />
 
       <DateCarousel
-        completionStatsByPuzzleId={completionStatsByPuzzleId}
-        completionStatsMinDisplayCount={completionStatsMinDisplayCount}
         dateCardStates={dateCardStates}
         loadState={loadState}
         puzzleSummaries={puzzleSummaries}

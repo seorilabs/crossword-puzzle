@@ -16,8 +16,6 @@ export type LaunchConfig = {
   // 하루 도전 횟수 상한(#225). 다른 밸런스 레버처럼 재배포 없이 원격 조정하려고
   // Remote Config로 뺀다. 기본값은 uiPolicy.DAILY_ATTEMPT_LIMIT와 동일해 회귀가 없다.
   dailyAttemptLimit: number;
-  completionStatsEnabled: boolean;
-  completionStatsMinDisplayCount: number;
   rewardedBonusPuzzleAdsEnabled: boolean;
   rewardedHintAdsEnabled: boolean;
   // 도전 기회 소진 시 리워드 광고로 1회 충전하는 CTA 노출 여부(#204).
@@ -55,8 +53,6 @@ export const launchConfigKeys = {
   puzzleGenerationIntervalHours: "puzzle_generation_interval_hours",
   puzzleKeepCount: "puzzle_keep_count",
   dailyAttemptLimit: "daily_attempt_limit",
-  completionStatsEnabled: "completion_stats_enabled",
-  completionStatsMinDisplayCount: "completion_stats_min_display_count",
   rewardedBonusPuzzleAdsEnabled: "rewarded_bonus_puzzle_ads_enabled",
   rewardedHintAdsEnabled: "rewarded_hint_ads_enabled",
   rewardedExtraAttemptEnabled: "rewarded_extra_attempt_enabled",
@@ -85,8 +81,6 @@ export const defaultLaunchConfig: LaunchConfig = {
   // 하루 도전 횟수 상한 기본값(#225). uiPolicy 상수와 동일하게 둬 원격 미주입 시
   // 기존과 같은 3회로 동작한다.
   dailyAttemptLimit: DAILY_ATTEMPT_LIMIT,
-  completionStatsEnabled: true,
-  completionStatsMinDisplayCount: 10,
   rewardedBonusPuzzleAdsEnabled: true,
   rewardedHintAdsEnabled: true,
   // 소진 구제 리워드 광고(#204). remaining_attempts=0 이탈 데이터 확인 전이라
@@ -173,16 +167,6 @@ export function normalizeLaunchConfig(
       defaultLaunchConfig.dailyAttemptLimit,
       1,
       20,
-    ),
-    completionStatsEnabled:
-      value.completionStatsEnabled ??
-      defaultLaunchConfig.completionStatsEnabled,
-    completionStatsMinDisplayCount: clampInteger(
-      value.completionStatsMinDisplayCount ??
-        defaultLaunchConfig.completionStatsMinDisplayCount,
-      defaultLaunchConfig.completionStatsMinDisplayCount,
-      1,
-      100,
     ),
     rewardedBonusPuzzleAdsEnabled:
       value.rewardedBonusPuzzleAdsEnabled ??
@@ -287,10 +271,6 @@ export function getLaunchConfigDefaultsForRemoteConfig() {
     [launchConfigKeys.puzzleKeepCount]: defaultLaunchConfig.puzzleKeepCount,
     [launchConfigKeys.dailyAttemptLimit]:
       defaultLaunchConfig.dailyAttemptLimit,
-    [launchConfigKeys.completionStatsEnabled]:
-      defaultLaunchConfig.completionStatsEnabled,
-    [launchConfigKeys.completionStatsMinDisplayCount]:
-      defaultLaunchConfig.completionStatsMinDisplayCount,
     [launchConfigKeys.rewardedBonusPuzzleAdsEnabled]:
       defaultLaunchConfig.rewardedBonusPuzzleAdsEnabled,
     [launchConfigKeys.rewardedHintAdsEnabled]:

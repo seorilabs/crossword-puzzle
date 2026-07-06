@@ -9,7 +9,6 @@ import ReactTestRenderer from 'react-test-renderer';
 import App, {
   BOARD_TEXT_INPUT_REFOCUS_DELAY_MS,
   computeMobileStreakDays,
-  formatCompletionStatsLabel,
   formatPuzzleCardSequenceLabel,
   formatPuzzleCardTitle,
   formatPuzzleHistoryTitle,
@@ -122,42 +121,6 @@ test('renders correctly', async () => {
     renderer?.unmount();
   });
 }, 15000);
-
-test('formats completion stats for mobile home cards and selected mission', () => {
-  expect(
-    formatCompletionStatsLabel(
-      {
-        completionCount: 54,
-        completionRate: 0.421875,
-        participantCount: 128,
-        puzzleId: 'stats-puzzle',
-      },
-      10,
-      'compact',
-    ),
-  ).toBe('42% 완료');
-  expect(
-    formatCompletionStatsLabel(
-      {
-        completionCount: 54,
-        completionRate: 0.421875,
-        participantCount: 128,
-        puzzleId: 'stats-puzzle',
-      },
-      10,
-    ),
-  ).toBe('100+명 참여 · 50+명 완료(42%)');
-  expect(
-    formatCompletionStatsLabel(
-      {
-        completionCount: 0,
-        participantCount: 3,
-        puzzleId: 'low-participant-puzzle',
-      },
-      10,
-    ),
-  ).toBe('10명 미만 참여');
-});
 
 test('maps Android hardware back targets through the app scene graph', () => {
   expect(shouldUseSystemBack('home')).toBe(true);
