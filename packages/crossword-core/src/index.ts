@@ -15,6 +15,7 @@ export * from "./shareText";
 export * from "./streakCalendar";
 export * from "./tentative";
 export * from "./textScale";
+export * from "./themeRotation";
 export * from "./themeTags";
 export * from "./types";
 export * from "./uiPolicy";
