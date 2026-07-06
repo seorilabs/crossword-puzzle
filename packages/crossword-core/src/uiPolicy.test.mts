@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
 
 import {
+  createPuzzleSummary,
   getDailyFreePuzzleSummary,
   getNextStreakMilestoneHint,
   getOpenPuzzleSummariesForDate,
@@ -763,6 +764,40 @@ describe("getPuzzlePackAlias", () => {
 
   it("falls back to date-based alias", () => {
     assert.equal(getPuzzlePackAlias({ date: "2026-06-12" }), "260612");
+  });
+});
+
+describe("createPuzzleSummary", () => {
+  function createPuzzle(overrides: Partial<Puzzle> = {}): Puzzle {
+    return {
+      puzzleId: "2026-06-12-normal-01",
+      date: "2026-06-12",
+      difficulty: "normal",
+      gridSize: 8,
+      grid: [],
+      entries: [],
+      metrics: { wordCount: 12 } as Puzzle["metrics"],
+      ...overrides,
+    };
+  }
+
+  it("carries difficulty into the summary", () => {
+    const summary = createPuzzleSummary(createPuzzle({ difficulty: "hard" }));
+    assert.equal(summary.difficulty, "hard");
+  });
+
+  it("passes themeTag and themeLabel through for themed puzzles (#248)", () => {
+    const summary = createPuzzleSummary(
+      createPuzzle({ themeTag: "food", themeLabel: "음식" }),
+    );
+    assert.equal(summary.themeTag, "food");
+    assert.equal(summary.themeLabel, "음식");
+  });
+
+  it("leaves theme fields undefined for non-themed puzzles (#248)", () => {
+    const summary = createPuzzleSummary(createPuzzle());
+    assert.equal(summary.themeTag, undefined);
+    assert.equal(summary.themeLabel, undefined);
   });
 });
 

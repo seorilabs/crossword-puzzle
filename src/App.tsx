@@ -102,6 +102,11 @@ import { PuzzleBoard } from "./components/PuzzleBoard";
 import { HowToPlayDialog } from "./components/HowToPlayDialog";
 import { SettingsSheet } from "./components/SettingsSheet";
 import { ShareGridPreview } from "./components/ShareGridPreview";
+import { PuzzleMetaChips } from "./components/PuzzleMetaChips";
+import {
+  formatDifficultyLabel,
+  formatThemeHeadline,
+} from "./puzzleLabels";
 import { useShareResult } from "./useShareResult";
 import {
   useFirstRunAutoStart,
@@ -358,13 +363,6 @@ function getPuzzleTelemetryParams(puzzle: Puzzle) {
     slot_id: puzzle.slotId,
     word_count: puzzle.entries.length,
   };
-}
-
-function formatDifficultyLabel(difficulty?: Puzzle["difficulty"]) {
-  if (difficulty === "easy") return "쉬움";
-  if (difficulty === "normal") return "보통";
-  if (difficulty === "hard") return "어려움";
-  return "";
 }
 
 function getFullScreenAdResultParams(result: FullScreenAdResult) {
@@ -3637,6 +3635,13 @@ function HomeScreen({
           <Paragraph typography="t6" color="#4e5968">
             {missionDescription}
           </Paragraph>
+          {!isLoadingPuzzlePack && (
+            <PuzzleMetaChips
+              difficulty={puzzle.difficulty}
+              themeLabel={puzzle.themeLabel}
+              themeTag={puzzle.themeTag}
+            />
+          )}
           {!isLoadingPuzzlePack && streakMilestoneHint != null && (
             <p className="streakNudge">{streakMilestoneHint}</p>
           )}
@@ -5750,6 +5755,7 @@ function TodayScreen({
           revealUsed={revealUsed}
           shareGrid={celebrationShareGrid}
           shareText={celebrationShareText}
+          themeLabel={puzzle.themeLabel}
           totalCount={puzzle.entries.length}
           onClose={dismissCompletionCelebration}
           onGoHome={() => {
@@ -5776,6 +5782,7 @@ type CompletionCelebrationDialogProps = {
   revealUsed: boolean;
   shareGrid: string;
   shareText: string;
+  themeLabel?: string;
   totalCount: number;
   onClose: () => void;
   onGoHome: () => void;
@@ -5792,12 +5799,14 @@ function CompletionCelebrationDialog({
   revealUsed,
   shareGrid,
   shareText,
+  themeLabel,
   totalCount,
   onClose,
   onGoHome,
   onSeeResult,
 }: CompletionCelebrationDialogProps) {
   const { shareCopied, shareFailed, share } = useShareResult();
+  const themeHeadline = formatThemeHeadline(themeLabel);
   const streakBadge = getStreakBadgeLabel(consecutiveStreak);
   const nextStreakHint = getNextStreakMilestoneHint(consecutiveStreak);
   const achievements = getCompletionAchievements({
@@ -5836,6 +5845,9 @@ function CompletionCelebrationDialog({
             낱말 {completedCount}/{totalCount}개를 모두 맞췄어요
             {hintCount > 0 ? ` · 힌트 ${hintCount}회 사용` : ""}.
           </p>
+          {themeHeadline != null && (
+            <p className="completionThemeLine">{themeHeadline}</p>
+          )}
           {elapsedLabel != null && (
             <p className="celebrationStat">⏱ {elapsedLabel}</p>
           )}
