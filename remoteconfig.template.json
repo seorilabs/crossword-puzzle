@@ -141,6 +141,27 @@
       "description": "이 개수 이상의 셀이 오답으로 남으면 '막힘'으로 보고 빠른 힌트 노출을 적용한다. 허용 1~20",
       "valueType": "NUMBER"
     },
+    "stuck_hint_max_prompts_per_attempt": {
+      "defaultValue": {
+        "value": "3"
+      },
+      "description": "한 attempt 에서 막힘 힌트 CTA를 노출할 최대 횟수. 초과하면 그 attempt 에서 미노출. 허용 1~20",
+      "valueType": "NUMBER"
+    },
+    "stuck_hint_max_dismissals": {
+      "defaultValue": {
+        "value": "2"
+      },
+      "description": "한 attempt 에서 CTA 닫기(dismiss)를 존중하는 상한. 도달하면 그 attempt 에서 미노출. 허용 1~20",
+      "valueType": "NUMBER"
+    },
+    "stuck_hint_dismiss_backoff_factor": {
+      "defaultValue": {
+        "value": "2"
+      },
+      "description": "닫을 때마다 다음 노출 지연에 곱하는 배수(지수 백오프). 1이면 백오프 없음. 허용 1~10",
+      "valueType": "NUMBER"
+    },
     "check_highlight_ms": {
       "defaultValue": {
         "value": "2500"

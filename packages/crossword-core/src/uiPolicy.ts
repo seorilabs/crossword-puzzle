@@ -732,6 +732,41 @@ export function getStuckHintDelayMs(input: {
     : input.idleMs;
 }
 
+// 막힘 힌트 CTA를 이번 attempt 에서 더 노출해도 되는지 결정한다(#254). 노출 상한
+// (maxPromptsPerAttempt) 또는 닫기 상한(maxDismissals)에 도달하면 false. 상한이
+// 0 이하면 그 축은 무제한으로 본다. 닫아도 계속 재노출되던 폭주(1인 최대 187회)를
+// dismiss 를 존중하는 노출 정책으로 막는다.
+export function shouldScheduleStuckHintPrompt(input: {
+  promptSeq: number;
+  dismissCount: number;
+  maxPromptsPerAttempt: number;
+  maxDismissals: number;
+}): boolean {
+  if (
+    input.maxPromptsPerAttempt > 0 &&
+    input.promptSeq >= input.maxPromptsPerAttempt
+  ) {
+    return false;
+  }
+  if (input.maxDismissals > 0 && input.dismissCount >= input.maxDismissals) {
+    return false;
+  }
+  return true;
+}
+
+// 닫기 횟수에 따라 다음 노출 지연을 지수 백오프로 늘린다(#254).
+// delay = baseDelayMs * backoffFactor^dismissCount. backoffFactor 1 이하나
+// dismissCount 0 이면 baseDelayMs 그대로다.
+export function getStuckHintBackoffDelayMs(input: {
+  baseDelayMs: number;
+  dismissCount: number;
+  backoffFactor: number;
+}): number {
+  const factor = Math.max(1, input.backoffFactor);
+  const dismissals = Math.max(0, Math.trunc(input.dismissCount));
+  return Math.round(input.baseDelayMs * Math.pow(factor, dismissals));
+}
+
 // 물리 키보드 세로 화살표(↑/↓)로 보드에서 세로 이동·방향 토글을 수행할지 결정한다(#175).
 // 현재 방향이 세로(down)면 세로 화살표는 단어 내 인접 셀로 이동한다(↑=이전 칸, ↓=다음 칸).
 // 현재 방향이 가로(across)면 세로 축과 직교하므로, 활성 셀을 지나는 세로 단어가 있으면

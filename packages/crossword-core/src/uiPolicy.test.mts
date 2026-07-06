@@ -22,6 +22,8 @@ import {
   shouldServeOnboardingPuzzle,
   shouldShowFirstInputGuide,
   getStuckHintDelayMs,
+  getStuckHintBackoffDelayMs,
+  shouldScheduleStuckHintPrompt,
   resolveVerticalArrowAction,
   shouldOfferStuckWordReveal,
   shouldCelebrateOnboardingWordCompletion,
@@ -228,6 +230,90 @@ describe("getStuckHintDelayMs", () => {
     assert.equal(
       getStuckHintDelayMs({ ...params, wrongCellThreshold: 3, wrongCellCount: 2 }),
       20000,
+    );
+  });
+});
+
+describe("shouldScheduleStuckHintPrompt (#254)", () => {
+  const caps = { maxPromptsPerAttempt: 3, maxDismissals: 2 };
+
+  it("노출/닫기 상한 미만이면 스케줄한다", () => {
+    assert.equal(
+      shouldScheduleStuckHintPrompt({ promptSeq: 0, dismissCount: 0, ...caps }),
+      true,
+    );
+    assert.equal(
+      shouldScheduleStuckHintPrompt({ promptSeq: 2, dismissCount: 1, ...caps }),
+      true,
+    );
+  });
+
+  it("노출 상한(promptSeq>=max)에 도달하면 스케줄하지 않는다", () => {
+    assert.equal(
+      shouldScheduleStuckHintPrompt({ promptSeq: 3, dismissCount: 0, ...caps }),
+      false,
+    );
+  });
+
+  it("닫기 상한(dismissCount>=max)에 도달하면 스케줄하지 않는다", () => {
+    assert.equal(
+      shouldScheduleStuckHintPrompt({ promptSeq: 0, dismissCount: 2, ...caps }),
+      false,
+    );
+  });
+
+  it("상한이 0 이하면 그 축은 무제한으로 본다", () => {
+    assert.equal(
+      shouldScheduleStuckHintPrompt({
+        promptSeq: 100,
+        dismissCount: 100,
+        maxPromptsPerAttempt: 0,
+        maxDismissals: 0,
+      }),
+      true,
+    );
+  });
+});
+
+describe("getStuckHintBackoffDelayMs (#254)", () => {
+  it("닫은 적 없으면 기본 지연 그대로다", () => {
+    assert.equal(
+      getStuckHintBackoffDelayMs({
+        baseDelayMs: 5000,
+        dismissCount: 0,
+        backoffFactor: 2,
+      }),
+      5000,
+    );
+  });
+
+  it("닫을 때마다 지연이 배수로 증가한다(지수 백오프)", () => {
+    assert.equal(
+      getStuckHintBackoffDelayMs({
+        baseDelayMs: 5000,
+        dismissCount: 1,
+        backoffFactor: 2,
+      }),
+      10000,
+    );
+    assert.equal(
+      getStuckHintBackoffDelayMs({
+        baseDelayMs: 5000,
+        dismissCount: 2,
+        backoffFactor: 2,
+      }),
+      20000,
+    );
+  });
+
+  it("배수 1 이하면 백오프가 없다", () => {
+    assert.equal(
+      getStuckHintBackoffDelayMs({
+        baseDelayMs: 5000,
+        dismissCount: 3,
+        backoffFactor: 1,
+      }),
+      5000,
     );
   });
 });

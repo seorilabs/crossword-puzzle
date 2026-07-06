@@ -1681,29 +1681,40 @@ function App() {
   // 탐색만 하는 사용자에게는 CTA가 끝내 뜨지 않았다(#184: stuck_hint_prompt 미발화 완화).
   // 타이머·재스케줄·발화 페이로드 최신화는 useStuckHintPrompt 훅에 캡슐화해 회귀
   // 테스트로 고정한다(임계·지연은 launchConfig 원격 조정, idle_seconds는 실제 지연).
-  const { isVisible: isStuckHintPromptVisible, hide: hideStuckHintPrompt } =
-    useStuckHintPrompt({
-      active: route === "today" && hasStarted && !isCompleted,
-      resetKeys: [cellValues],
-      wrongCellCount,
-      wrongCellThreshold: launchConfig.stuckHintWrongCellThreshold,
-      idleMs: launchConfig.stuckHintIdleMs,
-      wrongIdleMs: launchConfig.stuckHintWrongIdleMs,
-      onShow: ({ trigger, delayMs }) => {
-        telemetry.impression("stuck_hint_prompt", {
-          ...puzzleTelemetryParams,
-          attempt_number: mission.attemptsUsed,
-          hint_count: hintCount,
-          idle_seconds: delayMs / 1000,
-          progress_percent: progressPercent,
-          remaining_hint_credits: remainingHintCredits,
-          total_words: puzzle.entries.length,
-          trigger,
-          words_filled: viewModel.completedEntries.length,
-          wrong_cell_count: wrongCellCount,
-        });
-      },
-    });
+  const {
+    isVisible: isStuckHintPromptVisible,
+    hide: hideStuckHintPrompt,
+    dismiss: dismissStuckHintPromptCta,
+  } = useStuckHintPrompt({
+    active: route === "today" && hasStarted && !isCompleted,
+    resetKeys: [cellValues],
+    wrongCellCount,
+    wrongCellThreshold: launchConfig.stuckHintWrongCellThreshold,
+    idleMs: launchConfig.stuckHintIdleMs,
+    wrongIdleMs: launchConfig.stuckHintWrongIdleMs,
+    // dismiss 폭주 방어(#254): attempt 리셋 기준·노출/닫기 상한·백오프는 launchConfig
+    // 원격 조정값을 따른다.
+    attemptKey: mission.attemptsUsed,
+    maxPromptsPerAttempt: launchConfig.stuckHintMaxPromptsPerAttempt,
+    maxDismissals: launchConfig.stuckHintMaxDismissals,
+    dismissBackoffFactor: launchConfig.stuckHintDismissBackoffFactor,
+    onShow: ({ trigger, delayMs, promptSeq, dismissCount }) => {
+      telemetry.impression("stuck_hint_prompt", {
+        ...puzzleTelemetryParams,
+        attempt_number: mission.attemptsUsed,
+        hint_count: hintCount,
+        idle_seconds: delayMs / 1000,
+        progress_percent: progressPercent,
+        remaining_hint_credits: remainingHintCredits,
+        total_words: puzzle.entries.length,
+        trigger,
+        prompt_seq: promptSeq,
+        dismiss_count: dismissCount,
+        words_filled: viewModel.completedEntries.length,
+        wrong_cell_count: wrongCellCount,
+      });
+    },
+  });
 
   // 첫 입력 가이드 노출 이벤트(최초 1회).
   useEffect(() => {
@@ -2467,7 +2478,8 @@ function App() {
   }
 
   function dismissStuckHintPrompt() {
-    hideStuckHintPrompt();
+    // 닫기 카운터를 올려 백오프·상한을 재평가한다(#254). 단순 숨김(hide)과 구분한다.
+    dismissStuckHintPromptCta();
     telemetry.click("stuck_hint_prompt_dismiss", {
       ...puzzleTelemetryParams,
       attempt_number: mission.attemptsUsed,
