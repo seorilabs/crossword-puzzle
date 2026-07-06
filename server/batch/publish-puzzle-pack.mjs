@@ -69,10 +69,6 @@ function getPuzzleHostingHeaders(options) {
       glob: "/puzzles/**",
       headers,
     },
-    {
-      glob: "/puzzle-stats/**",
-      headers,
-    },
   ];
 }
 

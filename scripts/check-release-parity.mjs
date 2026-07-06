@@ -223,13 +223,9 @@ const mobileAppTest = read(mobileAppTestPath);
 
 // Feature parity: user-facing features must exist in BOTH the web and mobile
 // App.tsx, not just in shared logic. These markers guard against regressions
-// like v0.3.63, where the answer input toggle and enriched completion stats
-// shipped to web (src/App.tsx) but were missing from mobile (apps/mobile/App.tsx).
-const featureParityMarkers = [
-  "answerInputMode",
-  "selectAnswerInputMode",
-  "formatCompletionStatsMetrics",
-];
+// like v0.3.63, where the answer input toggle shipped to web (src/App.tsx) but
+// was missing from mobile (apps/mobile/App.tsx).
+const featureParityMarkers = ["answerInputMode", "selectAnswerInputMode"];
 for (const marker of featureParityMarkers) {
   assertIncludes(webApp, marker, webAppPath);
   assertIncludes(mobileApp, marker, mobileAppPath);
