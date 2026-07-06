@@ -207,6 +207,8 @@ export function createPuzzleSummary(puzzle: Puzzle): PuzzleManifestItem {
     puzzleId: puzzle.puzzleId,
     quality: puzzle.quality,
     slotId: puzzle.slotId,
+    themeTag: puzzle.themeTag,
+    themeLabel: puzzle.themeLabel,
   };
 }
 

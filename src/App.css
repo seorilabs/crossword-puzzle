@@ -579,6 +579,37 @@ button:disabled {
   line-height: 20px;
 }
 
+/* 주제(테마)·난이도 칩 행(#248). 값이 있을 때만 렌더되며, 없으면 컨테이너가
+   렌더되지 않아 일반 퍼즐에서 세로 여백 변화가 없다. */
+.puzzleMetaChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+/* 2-클래스 선택자로 지정해 .missionLead span 요소 규칙보다 우선하게 한다. */
+.puzzleMetaChips .puzzleChip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.puzzleMetaChips .puzzleChipTheme {
+  background: var(--cw-brand-soft);
+  color: var(--cw-brand-strong);
+}
+
+.puzzleMetaChips .puzzleChipDifficulty {
+  background: var(--cw-surface-muted);
+  color: var(--cw-text-2);
+}
+
 .miniBoard {
   display: grid;
   /* 실제 보드 폭(--mini-cols)을 따라 열 수를 잡아 8×8/9×9 도 잘리지 않게 한다.
@@ -3083,6 +3114,16 @@ button:disabled {
   font-size: 17px;
   font-weight: 800;
   line-height: 25px;
+}
+
+/* 완료 축하 시트의 "오늘의 주제: {라벨}" 줄(#248). 주제가 있을 때만 렌더.
+   .rewardDialog p 요소 규칙을 이기도록 부모 클래스로 스코프한다. */
+.rewardDialog .completionThemeLine {
+  margin: 0;
+  color: var(--cw-brand-strong);
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 20px;
 }
 
 
