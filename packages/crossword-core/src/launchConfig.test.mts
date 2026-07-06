@@ -333,3 +333,58 @@ describe("launchConfig: 리더보드 점수 가중치(#216)", () => {
     assert.equal(config.leaderboardScoreTimeDecayPerSecond, 100_000);
   });
 });
+
+describe("launchConfig: 막힘 힌트 노출 상한·백오프(#254)", () => {
+  it("기본값: attempt 당 3회 노출, 닫기 2회, 백오프 ×2", () => {
+    assert.equal(defaultLaunchConfig.stuckHintMaxPromptsPerAttempt, 3);
+    assert.equal(defaultLaunchConfig.stuckHintMaxDismissals, 2);
+    assert.equal(defaultLaunchConfig.stuckHintDismissBackoffFactor, 2);
+  });
+
+  it("Remote Config 기본값 맵과 키 이름이 반영된다", () => {
+    const defaults = getLaunchConfigDefaultsForRemoteConfig();
+    assert.equal(
+      defaults[launchConfigKeys.stuckHintMaxPromptsPerAttempt],
+      3,
+    );
+    assert.equal(defaults[launchConfigKeys.stuckHintMaxDismissals], 2);
+    assert.equal(defaults[launchConfigKeys.stuckHintDismissBackoffFactor], 2);
+    assert.equal(
+      launchConfigKeys.stuckHintMaxPromptsPerAttempt,
+      "stuck_hint_max_prompts_per_attempt",
+    );
+    assert.equal(
+      launchConfigKeys.stuckHintMaxDismissals,
+      "stuck_hint_max_dismissals",
+    );
+    assert.equal(
+      launchConfigKeys.stuckHintDismissBackoffFactor,
+      "stuck_hint_dismiss_backoff_factor",
+    );
+  });
+
+  it("원격 값으로 조정되고 범위를 벗어나면 클램프된다", () => {
+    const config = normalizeLaunchConfig({
+      stuckHintMaxPromptsPerAttempt: 5,
+      stuckHintMaxDismissals: 1,
+      stuckHintDismissBackoffFactor: 3,
+    });
+    assert.equal(config.stuckHintMaxPromptsPerAttempt, 5);
+    assert.equal(config.stuckHintMaxDismissals, 1);
+    assert.equal(config.stuckHintDismissBackoffFactor, 3);
+
+    const clamped = normalizeLaunchConfig({
+      stuckHintMaxPromptsPerAttempt: 999,
+      stuckHintDismissBackoffFactor: 999,
+    });
+    assert.equal(clamped.stuckHintMaxPromptsPerAttempt, 20);
+    assert.equal(clamped.stuckHintDismissBackoffFactor, 10);
+  });
+
+  it("값이 없으면 기본값으로 폴백한다", () => {
+    const config = normalizeLaunchConfig({});
+    assert.equal(config.stuckHintMaxPromptsPerAttempt, 3);
+    assert.equal(config.stuckHintMaxDismissals, 2);
+    assert.equal(config.stuckHintDismissBackoffFactor, 2);
+  });
+});

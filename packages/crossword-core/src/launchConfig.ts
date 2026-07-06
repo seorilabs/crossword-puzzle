@@ -34,6 +34,14 @@ export type LaunchConfig = {
   stuckHintWrongIdleMs: number;
   // 이 개수 이상의 셀이 오답으로 남아 있으면 "막힘"으로 보고 빠른 노출을 적용한다.
   stuckHintWrongCellThreshold: number;
+  // 한 attempt 에서 막힘 힌트 CTA를 노출할 최대 횟수(#254). 초과하면 그 attempt 에서
+  // 더 띄우지 않아, 닫아도 계속 재노출되던 폭주를 막는다.
+  stuckHintMaxPromptsPerAttempt: number;
+  // 한 attempt 에서 CTA 닫기(dismiss)를 존중하는 상한(#254). 도달하면 그 attempt 에서
+  // 더 노출하지 않는다.
+  stuckHintMaxDismissals: number;
+  // 닫을 때마다 다음 노출 지연에 곱하는 배수(지수 백오프, #254). 1이면 백오프 없음.
+  stuckHintDismissBackoffFactor: number;
   // "이 단어 확인"으로 강조한 셀을 원복 전까지 보여주는 시간(ms).
   checkHighlightMs: number;
   // 리더보드 점수 산식 가중치(#216). 앱 재배포 없이 밸런스를 조정하도록 Remote
@@ -64,6 +72,9 @@ export const launchConfigKeys = {
   stuckHintIdleMs: "stuck_hint_idle_ms",
   stuckHintWrongIdleMs: "stuck_hint_wrong_idle_ms",
   stuckHintWrongCellThreshold: "stuck_hint_wrong_cell_threshold",
+  stuckHintMaxPromptsPerAttempt: "stuck_hint_max_prompts_per_attempt",
+  stuckHintMaxDismissals: "stuck_hint_max_dismissals",
+  stuckHintDismissBackoffFactor: "stuck_hint_dismiss_backoff_factor",
   checkHighlightMs: "check_highlight_ms",
   leaderboardScoreCompletedWord: "leaderboard_score_completed_word",
   leaderboardScoreRemainingAttempt: "leaderboard_score_remaining_attempt",
@@ -102,6 +113,11 @@ export const defaultLaunchConfig: LaunchConfig = {
   stuckHintIdleMs: 20000,
   stuckHintWrongIdleMs: 5000,
   stuckHintWrongCellThreshold: 2,
+  // dismiss 폭주 방어 기본값(#254): attempt 당 최대 3회 노출, 닫기 2회면 종료,
+  // 닫을 때마다 다음 지연 ×2 백오프.
+  stuckHintMaxPromptsPerAttempt: 3,
+  stuckHintMaxDismissals: 2,
+  stuckHintDismissBackoffFactor: 2,
   checkHighlightMs: 2500,
   // 리더보드 가중치 기본값은 leaderboard.ts 상수를 그대로 따른다(#216).
   leaderboardScoreCompletedWord: LEADERBOARD_SCORE_WEIGHTS.completedWord,
@@ -214,6 +230,27 @@ export function normalizeLaunchConfig(
       1,
       20,
     ),
+    stuckHintMaxPromptsPerAttempt: clampInteger(
+      value.stuckHintMaxPromptsPerAttempt ??
+        defaultLaunchConfig.stuckHintMaxPromptsPerAttempt,
+      defaultLaunchConfig.stuckHintMaxPromptsPerAttempt,
+      1,
+      20,
+    ),
+    stuckHintMaxDismissals: clampInteger(
+      value.stuckHintMaxDismissals ??
+        defaultLaunchConfig.stuckHintMaxDismissals,
+      defaultLaunchConfig.stuckHintMaxDismissals,
+      1,
+      20,
+    ),
+    stuckHintDismissBackoffFactor: clampInteger(
+      value.stuckHintDismissBackoffFactor ??
+        defaultLaunchConfig.stuckHintDismissBackoffFactor,
+      defaultLaunchConfig.stuckHintDismissBackoffFactor,
+      1,
+      10,
+    ),
     checkHighlightMs: clampInteger(
       value.checkHighlightMs ?? defaultLaunchConfig.checkHighlightMs,
       defaultLaunchConfig.checkHighlightMs,
@@ -292,6 +329,12 @@ export function getLaunchConfigDefaultsForRemoteConfig() {
       defaultLaunchConfig.stuckHintWrongIdleMs,
     [launchConfigKeys.stuckHintWrongCellThreshold]:
       defaultLaunchConfig.stuckHintWrongCellThreshold,
+    [launchConfigKeys.stuckHintMaxPromptsPerAttempt]:
+      defaultLaunchConfig.stuckHintMaxPromptsPerAttempt,
+    [launchConfigKeys.stuckHintMaxDismissals]:
+      defaultLaunchConfig.stuckHintMaxDismissals,
+    [launchConfigKeys.stuckHintDismissBackoffFactor]:
+      defaultLaunchConfig.stuckHintDismissBackoffFactor,
     [launchConfigKeys.checkHighlightMs]: defaultLaunchConfig.checkHighlightMs,
     [launchConfigKeys.leaderboardScoreCompletedWord]:
       defaultLaunchConfig.leaderboardScoreCompletedWord,

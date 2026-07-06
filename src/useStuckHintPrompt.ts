@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { getStuckHintDelayMs } from "../packages/crossword-core/src";
+import {
+  getStuckHintBackoffDelayMs,
+  getStuckHintDelayMs,
+  shouldScheduleStuckHintPrompt,
+} from "../packages/crossword-core/src";
 
 // 막힘(stuck) 힌트 CTA 노출 타이머를 캡슐화한 훅.
 //
@@ -23,15 +27,31 @@ export interface UseStuckHintPromptInput {
   wrongCellThreshold: number;
   idleMs: number;
   wrongIdleMs: number;
+  // attempt 식별자(#254). 값이 바뀌면(새 도전) 노출/닫기 카운터를 리셋한다.
+  attemptKey?: unknown;
+  // attempt 당 노출 상한(#254). 0 이하면 무제한(미지정 시 무제한).
+  maxPromptsPerAttempt?: number;
+  // attempt 당 닫기 상한(#254). 0 이하면 무제한.
+  maxDismissals?: number;
+  // 닫을 때마다 다음 노출 지연에 곱하는 배수(#254). 미지정/1 이면 백오프 없음.
+  dismissBackoffFactor?: number;
   // CTA가 실제로 노출되는 순간 1회 호출(호출부에서 텔레메트리 emit). 발화 시점의
-  // 최신 클로저가 호출되도록 latestRef로 보관한다.
-  onShow: (info: { trigger: "idle" | "wrong_answer"; delayMs: number }) => void;
+  // 최신 클로저가 호출되도록 latestRef로 보관한다. promptSeq(이번 attempt N번째
+  // 노출)·dismissCount(그 전까지 닫은 횟수)를 함께 전달한다(#254).
+  onShow: (info: {
+    trigger: "idle" | "wrong_answer";
+    delayMs: number;
+    promptSeq: number;
+    dismissCount: number;
+  }) => void;
 }
 
 export interface UseStuckHintPromptResult {
   isVisible: boolean;
-  // 사용자 동작(수락/공개/닫기)으로 CTA를 즉시 숨긴다.
+  // 수락/공개 등 닫기가 아닌 동작으로 CTA를 즉시 숨긴다(닫기 카운터 미증가).
   hide: () => void;
+  // 사용자가 CTA를 닫는다(#254). 숨기고 닫기 카운터를 올려 백오프·상한을 재평가한다.
+  dismiss: () => void;
 }
 
 export function useStuckHintPrompt(
@@ -44,10 +64,21 @@ export function useStuckHintPrompt(
     wrongCellThreshold,
     idleMs,
     wrongIdleMs,
+    attemptKey,
+    maxPromptsPerAttempt = 0,
+    maxDismissals = 0,
+    dismissBackoffFactor = 1,
     onShow,
   } = input;
 
   const [isVisible, setIsVisible] = useState(false);
+
+  // 이번 attempt 노출/닫기 카운터(#254). 렌더를 유발하지 않도록 ref로 둔다.
+  const promptSeqRef = useRef(0);
+  const dismissCountRef = useRef(0);
+  const prevAttemptKeyRef = useRef(attemptKey);
+  // 닫기 시 재스케줄(백오프·상한 재평가)을 트리거하기 위한 tick.
+  const [dismissTick, setDismissTick] = useState(0);
 
   // latestRef: 매 커밋 이후 최신 onShow를 반영한다(렌더 중 mutate 금지 → 동시성 안전).
   const onShowRef = useRef(onShow);
@@ -56,33 +87,84 @@ export function useStuckHintPrompt(
   });
 
   useEffect(() => {
+    // 새 attempt 로 바뀌면 노출/닫기 카운터를 리셋한다(#254).
+    if (prevAttemptKeyRef.current !== attemptKey) {
+      prevAttemptKeyRef.current = attemptKey;
+      promptSeqRef.current = 0;
+      dismissCountRef.current = 0;
+    }
+
     if (!active) {
+      setIsVisible(false);
+      return;
+    }
+
+    // 노출/닫기 상한에 도달했으면 이 attempt 에서는 더 스케줄하지 않는다(#254).
+    if (
+      !shouldScheduleStuckHintPrompt({
+        promptSeq: promptSeqRef.current,
+        dismissCount: dismissCountRef.current,
+        maxPromptsPerAttempt,
+        maxDismissals,
+      })
+    ) {
       setIsVisible(false);
       return;
     }
 
     const trigger: "idle" | "wrong_answer" =
       wrongCellCount >= wrongCellThreshold ? "wrong_answer" : "idle";
-    const delayMs = getStuckHintDelayMs({
+    const baseDelayMs = getStuckHintDelayMs({
       wrongCellCount,
       wrongCellThreshold,
       idleMs,
       wrongIdleMs,
     });
+    // 닫은 횟수만큼 다음 노출 지연을 백오프로 늘린다(#254).
+    const delayMs = getStuckHintBackoffDelayMs({
+      baseDelayMs,
+      dismissCount: dismissCountRef.current,
+      backoffFactor: dismissBackoffFactor,
+    });
 
     setIsVisible(false);
     const timerId = window.setTimeout(() => {
+      promptSeqRef.current += 1;
       setIsVisible(true);
-      onShowRef.current({ trigger, delayMs });
+      onShowRef.current({
+        trigger,
+        delayMs,
+        promptSeq: promptSeqRef.current,
+        dismissCount: dismissCountRef.current,
+      });
     }, delayMs);
 
     return () => window.clearTimeout(timerId);
     // resetKeys는 스프레드로 개별 의존성이 된다(활동 시 재스케줄). onShow는 위 latestRef
-    // 경유이므로 의도적으로 제외한다.
+    // 경유이므로 의도적으로 제외한다. dismissTick은 닫기 후 재스케줄 트리거.
+  }, [
+    active,
+    wrongCellCount,
+    wrongCellThreshold,
+    idleMs,
+    wrongIdleMs,
+    attemptKey,
+    maxPromptsPerAttempt,
+    maxDismissals,
+    dismissBackoffFactor,
+    dismissTick,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, wrongCellCount, wrongCellThreshold, idleMs, wrongIdleMs, ...resetKeys]);
+    ...resetKeys,
+  ]);
 
   const hide = useCallback(() => setIsVisible(false), []);
 
-  return { isVisible, hide };
+  const dismiss = useCallback(() => {
+    setIsVisible(false);
+    dismissCountRef.current += 1;
+    // 재스케줄(백오프·상한 재평가)을 유발한다.
+    setDismissTick((tick) => tick + 1);
+  }, []);
+
+  return { isVisible, hide, dismiss };
 }

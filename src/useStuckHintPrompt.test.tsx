@@ -65,7 +65,12 @@ describe("useStuckHintPrompt", () => {
     });
     expect(result.current.isVisible).toBe(true);
     expect(onShow).toHaveBeenCalledTimes(1);
-    expect(onShow).toHaveBeenCalledWith({ trigger: "idle", delayMs: 20000 });
+    expect(onShow).toHaveBeenCalledWith({
+      trigger: "idle",
+      delayMs: 20000,
+      promptSeq: 1,
+      dismissCount: 0,
+    });
   });
 
   it("오답이 임계 이상이면 더 짧은 지연(wrongIdleMs) 후 wrong_answer 트리거로 노출한다", () => {
@@ -87,6 +92,8 @@ describe("useStuckHintPrompt", () => {
     expect(onShow).toHaveBeenCalledWith({
       trigger: "wrong_answer",
       delayMs: 5000,
+      promptSeq: 1,
+      dismissCount: 0,
     });
   });
 
@@ -134,7 +141,12 @@ describe("useStuckHintPrompt", () => {
     });
     expect(result.current.isVisible).toBe(true);
     expect(onShow).toHaveBeenCalledTimes(1);
-    expect(onShow).toHaveBeenCalledWith({ trigger: "idle", delayMs: 8000 });
+    expect(onShow).toHaveBeenCalledWith({
+      trigger: "idle",
+      delayMs: 8000,
+      promptSeq: 1,
+      dismissCount: 0,
+    });
   });
 
   it("활동(resetKeys) 변경 시 정체 타이머를 리셋한다", () => {
@@ -213,7 +225,12 @@ describe("useStuckHintPrompt", () => {
     });
     expect(result.current.isVisible).toBe(true);
     expect(onShow).toHaveBeenCalledTimes(1);
-    expect(onShow).toHaveBeenCalledWith({ trigger: "idle", delayMs: 20000 });
+    expect(onShow).toHaveBeenCalledWith({
+      trigger: "idle",
+      delayMs: 20000,
+      promptSeq: 1,
+      dismissCount: 0,
+    });
   });
 
   it("실제 입력(resetKeys 변경)은 정체 타이머를 리셋한다", () => {
@@ -305,5 +322,115 @@ describe("useStuckHintPrompt", () => {
       result.current.hide();
     });
     expect(result.current.isVisible).toBe(false);
+  });
+
+  // #254: dismiss 폭주 방어(노출 상한·닫기 상한·백오프·attempt 리셋).
+  const capProps = (
+    overrides: Partial<Parameters<typeof useStuckHintPrompt>[0]> = {},
+  ) => ({
+    active: true,
+    resetKeys: ["k"] as readonly unknown[],
+    wrongCellCount: 0,
+    wrongCellThreshold: 2,
+    idleMs: 20000,
+    wrongIdleMs: 5000,
+    attemptKey: 1,
+    maxPromptsPerAttempt: 0,
+    maxDismissals: 0,
+    dismissBackoffFactor: 1,
+    onShow: vi.fn(),
+    ...overrides,
+  });
+
+  it("attempt 당 노출 상한을 넘으면 더 노출하지 않는다(#254)", () => {
+    const onShow = vi.fn();
+    const makeProps = (key: string) =>
+      capProps({ resetKeys: [key], maxPromptsPerAttempt: 2, onShow });
+    const { result, rerender } = renderHook((p) => useStuckHintPrompt(p), {
+      initialProps: makeProps("a"),
+    });
+
+    act(() => vi.advanceTimersByTime(20000));
+    expect(result.current.isVisible).toBe(true); // 1회차
+    // 활동 → 재스케줄 → 2회차
+    rerender(makeProps("b"));
+    act(() => vi.advanceTimersByTime(20000));
+    expect(result.current.isVisible).toBe(true);
+    expect(onShow).toHaveBeenCalledTimes(2);
+    expect(onShow.mock.calls[1][0]).toMatchObject({ promptSeq: 2 });
+    // 활동 → 상한(2) 도달로 미노출
+    rerender(makeProps("c"));
+    act(() => vi.advanceTimersByTime(60000));
+    expect(result.current.isVisible).toBe(false);
+    expect(onShow).toHaveBeenCalledTimes(2);
+  });
+
+  it("닫으면 다음 노출 지연이 백오프로 증가한다(#254)", () => {
+    const onShow = vi.fn();
+    const { result } = renderHook(() =>
+      useStuckHintPrompt(capProps({ dismissBackoffFactor: 2, onShow })),
+    );
+
+    act(() => vi.advanceTimersByTime(20000));
+    expect(result.current.isVisible).toBe(true);
+    expect(onShow.mock.calls[0][0]).toMatchObject({
+      delayMs: 20000,
+      promptSeq: 1,
+      dismissCount: 0,
+    });
+
+    // 닫기 → dismissCount=1 → 다음 지연 20000×2=40000
+    act(() => result.current.dismiss());
+    expect(result.current.isVisible).toBe(false);
+    act(() => vi.advanceTimersByTime(39999));
+    expect(result.current.isVisible).toBe(false);
+    act(() => vi.advanceTimersByTime(1));
+    expect(result.current.isVisible).toBe(true);
+    expect(onShow.mock.calls[1][0]).toMatchObject({
+      delayMs: 40000,
+      promptSeq: 2,
+      dismissCount: 1,
+    });
+  });
+
+  it("닫기 상한에 도달하면 그 attempt 에서 더 노출하지 않는다(#254)", () => {
+    const onShow = vi.fn();
+    const { result } = renderHook(() =>
+      useStuckHintPrompt(capProps({ maxDismissals: 2, onShow })),
+    );
+
+    act(() => vi.advanceTimersByTime(20000));
+    expect(result.current.isVisible).toBe(true);
+    act(() => result.current.dismiss()); // 1회 닫기
+    act(() => vi.advanceTimersByTime(20000));
+    expect(result.current.isVisible).toBe(true); // 재노출
+    act(() => result.current.dismiss()); // 2회 닫기 → 상한 도달
+    act(() => vi.advanceTimersByTime(60000));
+    expect(result.current.isVisible).toBe(false);
+    expect(onShow).toHaveBeenCalledTimes(2);
+  });
+
+  it("attemptKey 가 바뀌면 노출/닫기 카운터가 리셋된다(#254)", () => {
+    const onShow = vi.fn();
+    const makeProps = (attemptKey: number, key: string) =>
+      capProps({ attemptKey, resetKeys: [key], maxPromptsPerAttempt: 1, onShow });
+    const { result, rerender } = renderHook((p) => useStuckHintPrompt(p), {
+      initialProps: makeProps(1, "a"),
+    });
+
+    act(() => vi.advanceTimersByTime(20000));
+    expect(result.current.isVisible).toBe(true); // attempt 1 노출
+    // 같은 attempt 에서 활동해도 상한(1) 도달로 재노출 없음
+    rerender(makeProps(1, "b"));
+    act(() => vi.advanceTimersByTime(60000));
+    expect(result.current.isVisible).toBe(false);
+    expect(onShow).toHaveBeenCalledTimes(1);
+
+    // 새 attempt → 카운터 리셋 → 다시 노출
+    rerender(makeProps(2, "c"));
+    act(() => vi.advanceTimersByTime(20000));
+    expect(result.current.isVisible).toBe(true);
+    expect(onShow).toHaveBeenCalledTimes(2);
+    expect(onShow.mock.calls[1][0]).toMatchObject({ promptSeq: 1 });
   });
 });
