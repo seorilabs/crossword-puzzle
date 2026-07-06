@@ -6,9 +6,13 @@ import {
   getLaunchConfigDefaultsForRemoteConfig,
   launchConfigKeys,
   normalizeLaunchConfig,
+  resolveDefaultHintCredits,
 } from "./launchConfig.ts";
 import { LEADERBOARD_SCORE_WEIGHTS } from "./leaderboard.ts";
-import { DAILY_ATTEMPT_LIMIT } from "./uiPolicy.ts";
+import {
+  DAILY_ATTEMPT_LIMIT,
+  DEFAULT_HINT_CREDITS_BY_DIFFICULTY,
+} from "./uiPolicy.ts";
 
 describe("launchConfig: returnReminderEnabled 기본값", () => {
   it("복귀 리마인드 동의 유도가 기본 활성(true)이다(#162)", () => {
@@ -386,5 +390,82 @@ describe("launchConfig: 막힘 힌트 노출 상한·백오프(#254)", () => {
     assert.equal(config.stuckHintMaxPromptsPerAttempt, 3);
     assert.equal(config.stuckHintMaxDismissals, 2);
     assert.equal(config.stuckHintDismissBackoffFactor, 2);
+  });
+});
+
+describe("launchConfig: 난이도별 기본 힌트 크레딧(#251)", () => {
+  it("기본값이 uiPolicy 난이도별 코드 기본값과 일치한다(회귀 없음)", () => {
+    assert.equal(defaultLaunchConfig.defaultHintCredits, 3);
+    assert.equal(
+      defaultLaunchConfig.defaultHintCreditsEasy,
+      DEFAULT_HINT_CREDITS_BY_DIFFICULTY.easy,
+    );
+    assert.equal(
+      defaultLaunchConfig.defaultHintCreditsHard,
+      DEFAULT_HINT_CREDITS_BY_DIFFICULTY.hard,
+    );
+  });
+
+  it("resolveDefaultHintCredits 는 난이도에 맞는 값을 돌려준다", () => {
+    const config = normalizeLaunchConfig({});
+    assert.equal(resolveDefaultHintCredits(config, "easy"), 2);
+    assert.equal(resolveDefaultHintCredits(config, "normal"), 3);
+    assert.equal(resolveDefaultHintCredits(config, "hard"), 5);
+  });
+
+  it("난이도가 없거나 비정상이면 base(defaultHintCredits)로 폴백한다", () => {
+    const config = normalizeLaunchConfig({});
+    assert.equal(resolveDefaultHintCredits(config, undefined), 3);
+    assert.equal(resolveDefaultHintCredits(config, null), 3);
+    assert.equal(resolveDefaultHintCredits(config, "legendary"), 3);
+  });
+
+  it("원격 값으로 난이도별 기본 크레딧을 조정할 수 있다", () => {
+    const config = normalizeLaunchConfig({
+      defaultHintCreditsEasy: 1,
+      defaultHintCreditsHard: 8,
+    });
+    assert.equal(resolveDefaultHintCredits(config, "easy"), 1);
+    assert.equal(resolveDefaultHintCredits(config, "hard"), 8);
+    // base(normal)는 영향 없이 유지된다.
+    assert.equal(resolveDefaultHintCredits(config, "normal"), 3);
+  });
+
+  it("미설정(빈 값)이면 난이도별 기본값으로 폴백한다", () => {
+    const config = normalizeLaunchConfig({});
+    assert.equal(config.defaultHintCreditsEasy, 2);
+    assert.equal(config.defaultHintCreditsHard, 5);
+  });
+
+  it("0~20 범위를 벗어나면 클램프한다", () => {
+    assert.equal(
+      normalizeLaunchConfig({ defaultHintCreditsEasy: -3 })
+        .defaultHintCreditsEasy,
+      0,
+    );
+    assert.equal(
+      normalizeLaunchConfig({ defaultHintCreditsHard: 999 })
+        .defaultHintCreditsHard,
+      20,
+    );
+    assert.equal(
+      normalizeLaunchConfig({ defaultHintCreditsEasy: Number.NaN })
+        .defaultHintCreditsEasy,
+      2,
+    );
+  });
+
+  it("Remote Config 키·기본값 맵에 영문 스네이크 키로 반영된다", () => {
+    assert.equal(
+      launchConfigKeys.defaultHintCreditsEasy,
+      "default_hint_credits_easy",
+    );
+    assert.equal(
+      launchConfigKeys.defaultHintCreditsHard,
+      "default_hint_credits_hard",
+    );
+    const defaults = getLaunchConfigDefaultsForRemoteConfig();
+    assert.equal(defaults[launchConfigKeys.defaultHintCreditsEasy], 2);
+    assert.equal(defaults[launchConfigKeys.defaultHintCreditsHard], 5);
   });
 });
