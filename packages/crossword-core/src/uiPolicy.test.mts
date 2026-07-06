@@ -3,6 +3,9 @@ import { strict as assert } from "node:assert";
 
 import {
   createPuzzleSummary,
+  DEFAULT_HINT_CREDITS,
+  DEFAULT_HINT_CREDITS_BY_DIFFICULTY,
+  getDefaultHintCreditsForDifficulty,
   getDailyFreePuzzleSummary,
   getNextStreakMilestoneHint,
   getOpenPuzzleSummariesForDate,
@@ -1063,5 +1066,38 @@ describe("isWrongCellVisible", () => {
       }),
       true,
     );
+  });
+});
+
+describe("uiPolicy: 난이도별 기본 힌트 크레딧(#251)", () => {
+  it("난이도 매핑은 easy<normal<hard 로 단조 증가한다", () => {
+    assert.equal(DEFAULT_HINT_CREDITS_BY_DIFFICULTY.easy, 2);
+    assert.equal(DEFAULT_HINT_CREDITS_BY_DIFFICULTY.normal, DEFAULT_HINT_CREDITS);
+    assert.equal(DEFAULT_HINT_CREDITS_BY_DIFFICULTY.hard, 5);
+    assert.ok(
+      DEFAULT_HINT_CREDITS_BY_DIFFICULTY.easy <
+        DEFAULT_HINT_CREDITS_BY_DIFFICULTY.normal &&
+        DEFAULT_HINT_CREDITS_BY_DIFFICULTY.normal <
+          DEFAULT_HINT_CREDITS_BY_DIFFICULTY.hard,
+    );
+  });
+
+  it("normal 은 기존 DEFAULT_HINT_CREDITS(=3)와 동일해 회귀가 없다", () => {
+    assert.equal(getDefaultHintCreditsForDifficulty("normal"), 3);
+    assert.equal(
+      getDefaultHintCreditsForDifficulty("normal"),
+      DEFAULT_HINT_CREDITS,
+    );
+  });
+
+  it("easy 는 2, hard 는 5를 돌려준다", () => {
+    assert.equal(getDefaultHintCreditsForDifficulty("easy"), 2);
+    assert.equal(getDefaultHintCreditsForDifficulty("hard"), 5);
+  });
+
+  it("난이도가 없거나 비정상이면 normal(=3)로 폴백한다", () => {
+    assert.equal(getDefaultHintCreditsForDifficulty(undefined), 3);
+    assert.equal(getDefaultHintCreditsForDifficulty(null), 3);
+    assert.equal(getDefaultHintCreditsForDifficulty("legendary"), 3);
   });
 });

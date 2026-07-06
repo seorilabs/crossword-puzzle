@@ -47,6 +47,7 @@ import {
   getNextRecommendedPuzzleSummary,
   getOpenPuzzleSummariesForDate,
   getProgressMilestoneRewardMessage,
+  resolveDefaultHintCredits,
   getPuzzleDailySequenceNumber,
   getPuzzlePackAlias,
   getNextFocusEntryAfterCompletion,
@@ -1608,14 +1609,20 @@ function App() {
       unlockedBonusSummaries,
     ],
   );
+  // 현재 퍼즐 난이도에 맞는 기본 힌트 크레딧(#251). easy 는 과다·hard 는 부족한
+  // 평면 3크레딧 대신 난이도별 기본값을 쓴다(원격 오버라이드 가능).
+  const difficultyDefaultHintCredits = resolveDefaultHintCredits(
+    launchConfig,
+    puzzle.difficulty,
+  );
   const totalHintCredits = Math.max(
     0,
-    launchConfig.defaultHintCredits + earnedHintCredits,
+    difficultyDefaultHintCredits + earnedHintCredits,
   );
   const remainingHintCredits = Math.max(0, totalHintCredits - hintCount);
   const hintBalance: HintBalance = {
     adsEnabled: launchConfig.rewardedHintAdsEnabled,
-    defaultCredits: launchConfig.defaultHintCredits,
+    defaultCredits: difficultyDefaultHintCredits,
     earnedCredits: earnedHintCredits,
     isAdBusy: rewardedAdStatus === "loading",
     notice: hintNotice,

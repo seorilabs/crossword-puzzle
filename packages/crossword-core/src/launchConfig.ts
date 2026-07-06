@@ -2,13 +2,21 @@ import { LEADERBOARD_SCORE_WEIGHTS } from "./leaderboard.ts";
 import {
   DAILY_ATTEMPT_LIMIT,
   DEFAULT_HINT_CREDITS,
+  DEFAULT_HINT_CREDITS_BY_DIFFICULTY,
   DEFAULT_VISIBLE_PUZZLE_COUNT,
   PUZZLE_GENERATION_INTERVAL_HOURS,
   PUZZLE_KEEP_COUNT,
 } from "./uiPolicy.ts";
 
 export type LaunchConfig = {
+  // normal(및 난이도 미상) 퍼즐의 기본 힌트 크레딧. easy/hard 는 아래 전용 키로
+  // 오버라이드한다(#251).
   defaultHintCredits: number;
+  // 난이도별 기본 힌트 크레딧 오버라이드(#251). 평면 3크레딧이 easy 는 과다·hard 는
+  // 부족한 문제를 재배포 없이 원격 조정하려고 뺀다. 기본값은 uiPolicy 의 난이도별
+  // 코드 기본값과 동일해 회귀가 없다.
+  defaultHintCreditsEasy: number;
+  defaultHintCreditsHard: number;
   rewardedHintCredits: number;
   visiblePuzzleCount: number;
   puzzleGenerationIntervalHours: number;
@@ -56,6 +64,8 @@ export type LaunchConfig = {
 
 export const launchConfigKeys = {
   defaultHintCredits: "default_hint_credits",
+  defaultHintCreditsEasy: "default_hint_credits_easy",
+  defaultHintCreditsHard: "default_hint_credits_hard",
   rewardedHintCredits: "rewarded_hint_credits",
   visiblePuzzleCount: "visible_puzzle_count",
   puzzleGenerationIntervalHours: "puzzle_generation_interval_hours",
@@ -85,6 +95,9 @@ export const launchConfigKeys = {
 
 export const defaultLaunchConfig: LaunchConfig = {
   defaultHintCredits: DEFAULT_HINT_CREDITS,
+  // 난이도별 기본 힌트 크레딧 기본값은 uiPolicy 코드 기본값(easy:2/hard:5)과 동일(#251).
+  defaultHintCreditsEasy: DEFAULT_HINT_CREDITS_BY_DIFFICULTY.easy,
+  defaultHintCreditsHard: DEFAULT_HINT_CREDITS_BY_DIFFICULTY.hard,
   rewardedHintCredits: 2,
   visiblePuzzleCount: DEFAULT_VISIBLE_PUZZLE_COUNT,
   puzzleGenerationIntervalHours: PUZZLE_GENERATION_INTERVAL_HOURS,
@@ -141,6 +154,24 @@ export function clampInteger(
   return Math.min(max, Math.max(min, Math.round(value)));
 }
 
+// 퍼즐 난이도에 맞는 기본 힌트 크레딧을 launchConfig 에서 뽑는다(#251). easy/hard 는
+// 전용 오버라이드 키를, normal 과 난이도 미상은 base(defaultHintCredits)를 쓴다.
+// App 의 총 힌트 계산(defaultHintCredits + earnedHintCredits)이 이 값을 쓰도록 한다.
+export function resolveDefaultHintCredits(
+  config: LaunchConfig,
+  difficulty: string | undefined | null,
+): number {
+  if (difficulty === "easy") {
+    return config.defaultHintCreditsEasy;
+  }
+
+  if (difficulty === "hard") {
+    return config.defaultHintCreditsHard;
+  }
+
+  return config.defaultHintCredits;
+}
+
 export function normalizeLaunchConfig(
   value: Partial<LaunchConfig>,
 ): LaunchConfig {
@@ -148,6 +179,21 @@ export function normalizeLaunchConfig(
     defaultHintCredits: clampInteger(
       value.defaultHintCredits ?? defaultLaunchConfig.defaultHintCredits,
       defaultLaunchConfig.defaultHintCredits,
+      0,
+      20,
+    ),
+    // 난이도별 오버라이드도 base 와 같은 범위(0~20)로 방어한다(#251).
+    defaultHintCreditsEasy: clampInteger(
+      value.defaultHintCreditsEasy ??
+        defaultLaunchConfig.defaultHintCreditsEasy,
+      defaultLaunchConfig.defaultHintCreditsEasy,
+      0,
+      20,
+    ),
+    defaultHintCreditsHard: clampInteger(
+      value.defaultHintCreditsHard ??
+        defaultLaunchConfig.defaultHintCreditsHard,
+      defaultLaunchConfig.defaultHintCreditsHard,
       0,
       20,
     ),
@@ -299,6 +345,10 @@ export function getLaunchConfigDefaultsForRemoteConfig() {
   return {
     [launchConfigKeys.defaultHintCredits]:
       defaultLaunchConfig.defaultHintCredits,
+    [launchConfigKeys.defaultHintCreditsEasy]:
+      defaultLaunchConfig.defaultHintCreditsEasy,
+    [launchConfigKeys.defaultHintCreditsHard]:
+      defaultLaunchConfig.defaultHintCreditsHard,
     [launchConfigKeys.rewardedHintCredits]:
       defaultLaunchConfig.rewardedHintCredits,
     [launchConfigKeys.visiblePuzzleCount]:

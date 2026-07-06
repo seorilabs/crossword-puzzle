@@ -11,7 +11,21 @@
       "defaultValue": {
         "value": "3"
       },
-      "description": "퍼즐별 기본 무료 힌트 개수",
+      "description": "퍼즐별 기본 무료 힌트 개수(normal·난이도 미상)",
+      "valueType": "NUMBER"
+    },
+    "default_hint_credits_easy": {
+      "defaultValue": {
+        "value": "2"
+      },
+      "description": "easy 퍼즐 기본 무료 힌트 개수(#251). 단어가 적어 3보다 낮춘다",
+      "valueType": "NUMBER"
+    },
+    "default_hint_credits_hard": {
+      "defaultValue": {
+        "value": "5"
+      },
+      "description": "hard 퍼즐 기본 무료 힌트 개수(#251). 단어가 많아 3보다 높인다",
       "valueType": "NUMBER"
     },
     "rewarded_hint_credits": {

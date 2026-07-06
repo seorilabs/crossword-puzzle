@@ -1,8 +1,30 @@
+import { type Difficulty, isDifficulty } from "./difficultyProfiles.ts";
 import { getCellKey, getEntryCells } from "./puzzle.ts";
 import type { Direction, Puzzle, PuzzleEntry, PuzzleManifestItem } from "./types";
 
 export const DAILY_ATTEMPT_LIMIT = 3;
 export const DEFAULT_HINT_CREDITS = 3;
+
+// 난이도별 기본 힌트 크레딧(#251). easy 는 단어가 적어(8~9개) 3크레딧이면 과다,
+// hard 는 많아(13~14개) 부족하므로 완료 난도에 비례해 기본 크레딧을 스케일한다.
+// normal 은 기존 DEFAULT_HINT_CREDITS 와 동일하게 둬 회귀가 없다. 이 표는 원격
+// 오버라이드(launchConfig)가 없을 때 쓰는 코드 기본값이다.
+export const DEFAULT_HINT_CREDITS_BY_DIFFICULTY: Record<Difficulty, number> = {
+  easy: 2,
+  normal: DEFAULT_HINT_CREDITS,
+  hard: 5,
+};
+
+// 난이도에 맞는 기본 힌트 크레딧을 돌려준다. 난이도가 없거나 비정상이면
+// normal(=DEFAULT_HINT_CREDITS)로 폴백한다.
+export function getDefaultHintCreditsForDifficulty(
+  difficulty: string | undefined | null,
+): number {
+  return isDifficulty(difficulty)
+    ? DEFAULT_HINT_CREDITS_BY_DIFFICULTY[difficulty]
+    : DEFAULT_HINT_CREDITS;
+}
+
 export const DEFAULT_VISIBLE_PUZZLE_COUNT = 7;
 export const PUZZLE_GENERATION_INTERVAL_HOURS = 2;
 export const PUZZLE_KEEP_COUNT = 84;

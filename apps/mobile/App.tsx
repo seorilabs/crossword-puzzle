@@ -51,6 +51,7 @@ import {
   getRemainingAttempts,
   getStreakBadgeLabel,
   getTodayDateKey,
+  resolveDefaultHintCredits,
   sortPuzzleSummariesByRecency,
   startMissionAttempt,
   uniquePuzzleSummaries,
@@ -1195,7 +1196,10 @@ function AppContent() {
     puzzle.entries.length,
   );
   const remainingAttempts = getRemainingAttempts(mission);
-  const totalHintCredits = launchConfig.defaultHintCredits + earnedHintCredits;
+  // 현재 퍼즐 난이도에 맞는 기본 힌트 크레딧(#251, 웹과 동일 정책).
+  const totalHintCredits =
+    resolveDefaultHintCredits(launchConfig, puzzle.difficulty) +
+    earnedHintCredits;
   const remainingHintCredits = Math.max(0, totalHintCredits - hintCount);
   const hasProgress =
     Object.keys(cellValues).length > 0 ||
