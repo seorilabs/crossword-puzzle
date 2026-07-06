@@ -1745,8 +1745,8 @@ function App() {
       trigger: "mission_complete",
     });
 
-    void requestReturnReminderAgreement().then((outcome) => {
-      const resolved = applyReturnReminderOutcome(prompted, outcome);
+    void requestReturnReminderAgreement().then(({ outcome, errorReason }) => {
+      const resolved = applyReturnReminderOutcome(prompted, outcome, errorReason);
       saveReturnReminderState(resolved);
       telemetry.impression(
         RETURN_REMINDER_RESULT_EVENT,

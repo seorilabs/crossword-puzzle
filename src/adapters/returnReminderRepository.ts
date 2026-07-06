@@ -19,6 +19,7 @@ const KNOWN_OUTCOMES: ReadonlySet<ReturnReminderOutcome> = new Set([
   "rejected",
   "unsupported",
   "error",
+  "timeout",
 ]);
 
 function getDefaultStorage(): KeyValueStorage | null {

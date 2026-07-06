@@ -14,12 +14,15 @@ export type NotificationAgreementResultType =
   | "agreementRejected";
 
 // 코어가 다루는 동의 결과. unsupported는 알림 SDK 미지원(로컬 브라우저/QR
-// 샌드박스), error는 일시적 호출 오류.
+// 샌드박스), error는 SDK onError(일시적 호출 오류), timeout은 콜백이 끝내
+// 돌아오지 않아 안전망 타이머가 종료시킨 경우(브리지 미연결 추정)다. error와
+// timeout을 나눠, 실패 원인(SDK 오류 vs 무응답)을 데이터로 구분한다(#253).
 export type ReturnReminderOutcome =
   | "agreed"
   | "rejected"
   | "unsupported"
-  | "error";
+  | "error"
+  | "timeout";
 
 export type ReturnReminderState = {
   // 동의 유도(알림 동의 화면 노출)를 시도한 횟수.
@@ -28,6 +31,8 @@ export type ReturnReminderState = {
   lastPromptDate?: string;
   // 직전 동의 결과.
   outcome?: ReturnReminderOutcome;
+  // outcome이 error일 때 SDK가 준 에러 요약(≤100자). 다른 결과에서는 비운다(#253).
+  errorReason?: string;
 };
 
 export const RETURN_REMINDER_PROMPT_EVENT = "return_reminder_prompt";
@@ -37,13 +42,47 @@ export const initialReturnReminderState: ReturnReminderState = {
   promptCount: 0,
 };
 
-// 다시 물어볼 필요가 없는(종결된) 동의 상태. error는 일시 오류로 보고 종결로
-// 치지 않는다(횟수 가드로만 재유도를 막는다).
+// 다시 물어볼 필요가 없는(종결된) 동의 상태. error·timeout은 일시 실패로 보고
+// 종결로 치지 않는다(횟수 가드로만 재유도를 막는다).
 const RESOLVED_OUTCOMES: ReadonlySet<ReturnReminderOutcome> = new Set([
   "agreed",
   "rejected",
   "unsupported",
 ]);
+
+// error_reason 요약 최대 길이(이벤트 파라미터 안전 상한).
+const ERROR_REASON_MAX_LENGTH = 100;
+
+// SDK onError가 전달하는 임의 에러 값을 error_reason 파라미터용 문자열(≤100자)로
+// 요약한다. 코드/메시지를 우선 뽑고, 개행·연속 공백을 접어 한 줄로 만든다. 순수
+// 함수라 core에 두고 단위 테스트로 고정한다(#253).
+export function summarizeAgreementError(
+  error: unknown,
+  maxLength: number = ERROR_REASON_MAX_LENGTH,
+): string {
+  let raw: string;
+  if (error == null) {
+    raw = "unknown";
+  } else if (typeof error === "string") {
+    raw = error;
+  } else if (error instanceof Error) {
+    raw = error.message || error.name || "Error";
+  } else if (typeof error === "object") {
+    const record = error as { code?: unknown; message?: unknown };
+    const parts = [record.code, record.message]
+      .filter((part) => part != null && part !== "")
+      .map((part) => String(part));
+    raw = parts.length > 0 ? parts.join(": ") : String(error);
+  } else {
+    raw = String(error);
+  }
+
+  const text = raw.replace(/\s+/g, " ").trim();
+  if (text.length === 0) {
+    return "unknown";
+  }
+  return text.length > maxLength ? text.slice(0, maxLength) : text;
+}
 
 export function isReturnReminderResolved(state: ReturnReminderState): boolean {
   return state.outcome != null && RESOLVED_OUTCOMES.has(state.outcome);
@@ -99,17 +138,36 @@ export function markReturnReminderPrompted(
 export function applyReturnReminderOutcome(
   state: ReturnReminderState,
   outcome: ReturnReminderOutcome,
+  errorReason?: string,
 ): ReturnReminderState {
-  return { ...state, outcome };
+  const next: ReturnReminderState = { ...state, outcome };
+  // errorReason은 error 결과에서만 의미가 있다. 다른 결과로 넘어가면 이전 오류
+  // 요약이 남지 않도록 항상 비운다.
+  if (outcome === "error" && errorReason != null && errorReason !== "") {
+    next.errorReason = errorReason;
+  } else {
+    delete next.errorReason;
+  }
+  return next;
 }
 
-// return_reminder_result 이벤트 파라미터(영문 키 유지).
+// return_reminder_result 이벤트 파라미터(영문 키 유지). error 결과에 요약이 있으면
+// error_reason을 덧붙여 실패 원인을 데이터로 남긴다(#253).
 export function buildReturnReminderResultParams(state: ReturnReminderState): {
   outcome: ReturnReminderOutcome;
   prompt_count: number;
+  error_reason?: string;
 } {
-  return {
+  const params: {
+    outcome: ReturnReminderOutcome;
+    prompt_count: number;
+    error_reason?: string;
+  } = {
     outcome: state.outcome ?? "error",
     prompt_count: state.promptCount,
   };
+  if (state.errorReason != null && state.errorReason !== "") {
+    params.error_reason = state.errorReason;
+  }
+  return params;
 }
