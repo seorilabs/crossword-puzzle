@@ -1,7 +1,21 @@
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
+
+// cwd 에 의존하지 않도록 이 테스트 파일 위치(packages/crossword-core/src)에서
+// 리포 루트를 상대 해소한다. 어떤 디렉터리에서 test:core 를 실행해도 데이터 파일을
+// 안정적으로 찾는다.
+const PUZZLE_WORD_FILTER_PATH = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "..",
+  "..",
+  "data",
+  "lexicon",
+  "puzzle-word-filter.json",
+);
 
 import {
   isKnownThemeCategory,
@@ -69,10 +83,7 @@ describe("주제 카테고리 단일 출처 계약(#257)", () => {
     // 워드뱅크 필터 데이터가 단일 출처이며, core 는 fs 를 못 쓰므로 상수로 미러링한다.
     // 이 테스트가 데이터↔core 드리프트(카테고리 추가/이름 변경)를 잡는 가드다.
     const filter = JSON.parse(
-      readFileSync(
-        join(process.cwd(), "data/lexicon/puzzle-word-filter.json"),
-        "utf8",
-      ),
+      readFileSync(PUZZLE_WORD_FILTER_PATH, "utf8"),
     ) as { themeCategories: { id: string }[] };
     const dataIds = new Set(filter.themeCategories.map((category) => category.id));
     const coreIds = new Set<string>(THEME_CATEGORY_IDS);
