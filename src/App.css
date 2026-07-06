@@ -27,7 +27,10 @@
   --cw-cell-bg: #ffffff;
   --cw-cell-text: #191f28;
   --cw-cell-block: #4e5968;
-  --cw-cell-number: #8b95a1;
+  /* 셀 단서 번호. WCAG AA(소형 텍스트 4.5:1) 이상 대비를 위해 기존 #8b95a1(흰 셀
+     대비 3.04:1)에서 어둡게 상향한다(#252). #525c6b는 흰 셀 6.77:1, 셀 상태색
+     (교차/선택/활성 등)에서도 AA 이상을 유지한다. */
+  --cw-cell-number: #525c6b;
   --cw-board-frame: #d6dee6;
   --cw-cell-selected-bg: #dff6f0;
   --cw-cell-selected-ring: #00a88f;
@@ -2097,7 +2100,10 @@ button:disabled {
   top: 3px;
   left: 4px;
   color: var(--cw-cell-number);
-  font-size: 9px;
+  /* 글자 크기 설정(#217)에 비례하되 하한 10px 을 보장한다(#252). 기존 고정 9px 은
+     글자 크게(1.25배) 사용자에게도 커지지 않아 사실상 읽히지 않았다. normal(1배)은
+     하한 10px, large(1.25배)는 11.25px 로 셀 글자(--cell-font-scale)와 함께 커진다. */
+  font-size: max(10px, calc(9px * var(--cell-font-scale, 1)));
   font-weight: 700;
   line-height: 1;
 }
@@ -3465,7 +3471,9 @@ button:disabled {
     --cw-cell-bg: #242931;
     --cw-cell-text: #e9ebee;
     --cw-cell-block: #0d0f13;
-    --cw-cell-number: #79828d;
+    /* 다크 셀 번호. 기존 #79828d(어두운 셀 대비 3.75:1)에서 밝게 상향해 AA 이상
+       확보(#252). #a4aeba는 어두운 셀(#242931) 6.5:1, 교차 셀 6.72:1. */
+    --cw-cell-number: #a4aeba;
     --cw-board-frame: #3a4150;
     --cw-cell-selected-bg: #1c3f3a;
     --cw-cell-selected-ring: #19c2a6;
