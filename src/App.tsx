@@ -158,6 +158,7 @@ import {
   type FullScreenAdResult,
 } from "./adapters/appsInTossAds";
 import { loadFirebaseLaunchConfig } from "./adapters/firebaseClient";
+import { initSafeAreaInsets } from "./adapters/safeArea";
 import { leaderboardAdapter } from "./adapters/leaderboardAdapter";
 import {
   loadReturnReminderState,
@@ -906,6 +907,10 @@ function App() {
     window.addEventListener("popstate", syncRoute);
     return () => window.removeEventListener("popstate", syncRoute);
   }, []);
+
+  // AIT 네비게이션 바와 커스텀 헤더(.appHeader)가 겹치지 않도록 SafeAreaInsets를
+  // CSS 변수로 노출한다. 비-AIT 환경에서는 no-op이다.
+  useEffect(() => initSafeAreaInsets(), []);
 
   useEffect(() => {
     // The celebration only belongs to the active 풀이 화면; clear it whenever we
