@@ -4195,9 +4195,9 @@
       "allowForPuzzle": true,
       "blockedReason": null,
       "clue": "어떤 때부터 다른 때까지의 동안",
-      "clueSource": "krdict-definition",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -4209,10 +4209,10 @@
       "sourceId": "61274",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "회사를 대표하고 회사의 일을 책임지는 사람",
-      "clueSource": "krdict-definition",
+      "clue": "회사를 대표하고 경영을 책임지는 사람",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -4952,10 +4952,10 @@
       "sourceId": "26854",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "경치를 즐기거나 놀이를 하기 위하여 야외에 나갔다 오는 일",
-      "clueSource": "krdict-definition",
+      "clue": "경치를 즐기러 야외에 다녀오는 일",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -5057,10 +5057,10 @@
       "sourceId": "15619",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "어떤 일을 하느라 힘을 들이고 애를 씀. 또는 그런 어려움",
-      "clueSource": "krdict-definition",
+      "clue": "어떤 일에 힘과 애를 들이는 것",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -5655,10 +5655,10 @@
       "sourceId": "64947",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "잘 알지 못하거나 조심하지 않아서 저지르는 잘못",
-      "clueSource": "krdict-definition",
+      "clue": "조심하지 않아 저지르는 잘못",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -5985,10 +5985,10 @@
       "sourceId": "91379",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "약을 조제하고 파는 일 등을 직업으로 하는 사람",
-      "clueSource": "krdict-definition",
+      "clue": "약을 조제하고 파는 일을 하는 사람",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -6619,10 +6619,10 @@
       "sourceId": "20246",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "아침부터 낮 열두 시까지의 동안",
-      "clueSource": "krdict-definition",
+      "clue": "아침부터 낮 열두 시까지의 시간",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -6634,10 +6634,10 @@
       "sourceId": "67457",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "정오부터 해가 질 때까지의 동안",
-      "clueSource": "krdict-definition",
+      "clue": "정오부터 해 질 때까지의 시간",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -7193,10 +7193,10 @@
       "sourceId": "71133",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "바로 앞에서 이야기한 날",
-      "clueSource": "krdict-definition",
+      "clue": "바로 앞에서 말한 그 날",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -7388,10 +7388,10 @@
       "sourceId": "70752",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "지금보다 앞",
-      "clueSource": "krdict-definition",
+      "clue": "지금보다 앞선 때",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -7463,10 +7463,10 @@
       "sourceId": "70758",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "어떤 대상에 쏠리는 많은 사람들의 높은 관심이나 좋아하는 마음",
-      "clueSource": "krdict-definition",
+      "clue": "많은 사람이 관심을 갖고 좋아하는 정도",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -7478,10 +7478,10 @@
       "sourceId": "66311",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "만나거나 헤어질 때에 예의를 나타냄. 또는 그런 말이나 행동",
-      "clueSource": "krdict-definition",
+      "clue": "만나거나 헤어질 때 예의로 하는 말이나 행동",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -7878,10 +7878,10 @@
       "sourceId": "31498",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "줄기에 가시가 있고 오월이나 유월에 향기롭게 피는 빨간색, 하얀색, 노란색 등의 꽃",
-      "clueSource": "krdict-definition",
+      "clue": "가시 돋친 줄기에 향기롭게 피는 붉은 꽃",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -7893,10 +7893,10 @@
       "sourceId": "30185",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "어떤 일이 일어나는 곳. 또는 어떤 일을 하는 곳",
-      "clueSource": "krdict-definition",
+      "clue": "어떤 일이 일어나거나 벌어지는 곳",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -9868,10 +9868,10 @@
       "sourceId": "72425",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "학생을 모집하여 지식, 기술, 예체능 등을 가르치는 사립 교육 기관",
-      "clueSource": "krdict-definition",
+      "clue": "지식이나 기술을 가르치는 사립 교육 기관",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -10262,10 +10262,10 @@
       "sourceId": "31668",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "사업을 통해 이익을 얻기 위해 여러 사람이 모여 만든 법인 단체",
-      "clueSource": "krdict-definition",
+      "clue": "이익을 얻으려 여러 사람이 모여 만든 사업 단체",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -10322,10 +10322,10 @@
       "sourceId": "73247",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "같은 학교를 자기보다 늦게 입학한 사람",
-      "clueSource": "krdict-definition",
+      "clue": "같은 학교에 자기보다 늦게 들어온 사람",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -10442,10 +10442,10 @@
       "sourceId": "17216",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "감기를 치료하는 데 쓰이는 약",
-      "clueSource": "krdict-definition",
+      "clue": "기침과 콧물을 낫게 하려고 먹는 약",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -10564,10 +10564,10 @@
       "sourceId": "18359",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "고춧가루를 주재료로 해서 만든 붉은 색의 한국 고유의 양념",
-      "clueSource": "krdict-definition",
+      "clue": "고춧가루로 만든 붉고 매운 한국 양념",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -10926,10 +10926,10 @@
       "sourceId": "90896",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "정해지지 않은 미래의 어느 날",
-      "clueSource": "krdict-definition",
+      "clue": "바로 뒤에 오는 날",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -11018,10 +11018,10 @@
       "sourceId": "66290",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "대학교를 졸업한 사람이 전문적인 교육을 받고 연구를 하는 기관",
-      "clueSource": "krdict-definition",
+      "clue": "학사 졸업 뒤 전문 연구를 하는 교육 기관",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -11307,10 +11307,10 @@
       "sourceId": "56181",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "물에서 사는, 아가미와 지느러미와 비늘이 있는 척추동물",
-      "clueSource": "krdict-definition",
+      "clue": "물속에 살며 아가미와 지느러미가 있는 척추동물",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": [
         "animal"
       ]
@@ -11324,10 +11324,10 @@
       "sourceId": "56220",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "미술품을 전시하여 사람들이 볼 수 있게 만든 시설",
-      "clueSource": "krdict-definition",
+      "clue": "그림과 조각 같은 작품을 전시하는 시설",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -11630,10 +11630,10 @@
       "sourceId": "60941",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "영상과 소리를 기록한 테이프",
-      "clueSource": "krdict-definition",
+      "clue": "영상과 소리를 함께 기록한 매체",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -11660,10 +11660,10 @@
       "sourceId": "15679",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "사람이나 물건을 싣고 하늘을 날아다니는 탈것",
-      "clueSource": "krdict-definition",
+      "clue": "하늘을 날아 사람과 짐을 나르는 탈것",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -11722,10 +11722,10 @@
       "sourceId": "61202",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "직장에서 주로 서류 등을 처리하며 자신이 맡은 일을 하는 방",
-      "clueSource": "krdict-definition",
+      "clue": "직장에서 서류를 처리하며 일하는 방",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -11737,10 +11737,10 @@
       "sourceId": "61222",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "설탕물에 탄산을 섞어서 만든 음료수",
-      "clueSource": "krdict-definition",
+      "clue": "탄산을 넣어 만든 투명한 청량음료",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": [
         "food"
       ]
@@ -12001,10 +12001,10 @@
       "sourceId": "26858",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "헤엄을 치면서 놀거나 수영 경기를 할 수 있도록 시설을 갖춘 곳",
-      "clueSource": "krdict-definition",
+      "clue": "헤엄치며 놀 수 있게 물을 채운 시설",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -12514,10 +12514,10 @@
       "sourceId": "14113",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "많은 사람이 함께 영화를 볼 수 있도록 시설을 갖추어 놓고 영화를 상영하는 곳",
-      "clueSource": "krdict-definition",
+      "clue": "여러 사람이 함께 큰 화면으로 영상을 보는 상영 시설",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -12803,10 +12803,10 @@
       "sourceId": "71117",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "작곡가, 연주가, 성악가 등과 같이 음악을 전문적으로 하는 사람",
-      "clueSource": "krdict-definition",
+      "clue": "작곡이나 연주를 전문으로 하는 사람",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -13034,10 +13034,10 @@
       "sourceId": "31739",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "사람이 타고 내릴 수 있게 버스나 기차 등이 멈추는 장소",
-      "clueSource": "krdict-definition",
+      "clue": "버스나 기차가 멈춰 사람이 타고 내리는 곳",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -13787,10 +13787,10 @@
       "sourceId": "88134",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "회사에 속하여 일하는 사람",
-      "clueSource": "krdict-definition",
+      "clue": "직장에 소속되어 일하는 사람",
+      "clueSource": "manual",
       "difficulty": "easy",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -14572,10 +14572,10 @@
       "sourceId": "15145",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "한 가족을 대표하고 책임지는 사람. 주로 집안의 남자 어른",
-      "clueSource": "krdict-definition",
+      "clue": "한 가족을 대표하고 책임지는 어른",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -22916,10 +22916,10 @@
       "sourceId": "14520",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "잘못되는 일이 없도록 보증하거나 보호함",
-      "clueSource": "krdict-definition",
+      "clue": "잘못되는 일이 없도록 보증하고 지켜 줌",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -25073,10 +25073,10 @@
       "sourceId": "63256",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "장에서 음식물을 소화하는 데에 이상이 생겨 물기가 많은 똥을 눔. 또는 그런 똥",
-      "clueSource": "krdict-definition",
+      "clue": "물기 많은 똥을 누는 배탈 증상",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": [
         "food",
         "nature"
@@ -29442,10 +29442,10 @@
       "sourceId": "69157",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "점퍼나 코트처럼 추위를 막기 위해 겉에 입는 옷",
-      "clueSource": "krdict-definition",
+      "clue": "추위를 막으려 겉에 걸쳐 입는 옷",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -31964,10 +31964,10 @@
       "sourceId": "71206",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "남자가 아내를 맞는 일",
-      "clueSource": "krdict-definition",
+      "clue": "남자가 아내를 맞아 결혼하는 일",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -32369,10 +32369,10 @@
       "sourceId": "25029",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "필요에 따라 적절하게 맞추어 쓰거나 실시함",
-      "clueSource": "krdict-definition",
+      "clue": "필요에 맞추어 실제로 쓰거나 실시함",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -34297,10 +34297,10 @@
       "sourceId": "28938",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "화산 활동이나 땅속의 큰 변화 때문에 땅이 흔들리는 현상",
-      "clueSource": "krdict-definition",
+      "clue": "땅속의 큰 변화로 땅이 흔들리는 현상",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -48403,10 +48403,10 @@
       "sourceId": "47546",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "버스나 지하철과 같이 여러 사람이 이용하는 교통. 또는 교통수단",
-      "clueSource": "krdict-definition",
+      "clue": "버스나 지하철처럼 여럿이 함께 이용하는 교통수단",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -48568,10 +48568,10 @@
       "sourceId": "15777",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "주권이 국민에게 있고 국민을 위한 정치를 지향하는 사상",
-      "clueSource": "krdict-definition",
+      "clue": "주권이 국민에게 있음을 지향하는 정치 사상",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -49217,10 +49217,10 @@
       "sourceId": "24788",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "산, 강, 바다, 동물, 식물, 비 등과 같이 인간 생활을 둘러싸고 있는 자연의 조건이나 상태",
-      "clueSource": "krdict-definition",
+      "clue": "인간을 둘러싼 산·강·바다 같은 자연 조건",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": [
         "animal",
         "nature"
@@ -51817,10 +51817,10 @@
       "sourceId": "25919",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "사람, 동물, 차량 등이 정해진 거리를 달려 빠르기를 겨루는 일",
-      "clueSource": "krdict-definition",
+      "clue": "정해진 거리를 달려 빠르기를 겨루는 일",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": [
         "animal"
       ]
@@ -73942,10 +73942,10 @@
       "sourceId": "76976",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "문장의 주요 성분의 하나로, 주로 문장의 앞에 나와서 동작이나 상태의 주체가 되는 말",
-      "clueSource": "krdict-definition",
+      "clue": "동작이나 상태의 주체가 되는 문장 성분",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -74617,10 +74617,10 @@
       "sourceId": "77443",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "숫자나 문자의 오른쪽 위에 써서 거듭제곱을 한 횟수를 나타내는 문자나 숫자",
-      "clueSource": "krdict-definition",
+      "clue": "수의 오른쪽 위에 써서 거듭제곱 횟수를 나타내는 숫자",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -94784,10 +94784,10 @@
       "sourceId": "15024",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "한 집안에서 가장 나이가 많고 권위가 있는 남자가 가족에 대한 지배권을 행사하는 것",
-      "clueSource": "krdict-definition",
+      "clue": "집안 남자 어른이 가족을 지배하는 방식의",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -97087,10 +97087,10 @@
       "sourceId": "76823",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "푸짐하게 잘 차린 귀하고 맛있는 음식",
-      "clueSource": "krdict-definition",
+      "clue": "푸짐하고 맛있게 잘 차린 음식",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": [
         "food"
       ]
@@ -103476,10 +103476,10 @@
       "sourceId": "32363",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "세울 수 있는 뚜껑 안쪽에 거울이 달리고 그 아래에 서랍이 있는 작은 가구",
-      "clueSource": "krdict-definition",
+      "clue": "거울이 달리고 서랍이 있는 작은 화장 가구",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -109374,10 +109374,10 @@
       "sourceId": "37607",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "학교를 상징하는 무늬를 새긴 띠, 리본, 배지 등의 표지",
-      "clueSource": "krdict-definition",
+      "clue": "학교를 상징해 새긴 배지나 표지",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -114370,10 +114370,10 @@
       "sourceId": "23669",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "다른 동물이나 식물에 붙어서 영양분을 빼앗아 먹으며 살아감",
-      "clueSource": "krdict-definition",
+      "clue": "다른 생물에 붙어 양분을 빼앗으며 삶",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": [
         "animal",
         "nature"
@@ -114688,10 +114688,10 @@
       "sourceId": "38063",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "옷의 길이",
-      "clueSource": "krdict-definition",
+      "clue": "옷의 위아래 길이",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -123169,10 +123169,10 @@
       "sourceId": "41896",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "큰 물고기",
-      "clueSource": "krdict-definition",
+      "clue": "낚시로 잡은 큰 물고기",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": [
         "animal"
       ]
@@ -147053,9 +147053,9 @@
       "allowForPuzzle": true,
       "blockedReason": null,
       "clue": "북쪽에서 불어오는 바람",
-      "clueSource": "krdict-definition",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -148213,10 +148213,10 @@
       "sourceId": "60957",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "병이 잘 낫지 않음. 또는 병을 고치지 못함",
-      "clueSource": "krdict-definition",
+      "clue": "병이 잘 낫지 않아 고치지 못함",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -149807,10 +149807,10 @@
       "sourceId": "61268",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "죽음과 삶",
-      "clueSource": "krdict-definition",
+      "clue": "죽음과 삶을 아울러 이르는 말",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -150187,9 +150187,9 @@
       "allowForPuzzle": true,
       "blockedReason": null,
       "clue": "짐승의 네 발",
-      "clueSource": "krdict-definition",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": [
         "animal"
       ]
@@ -167789,10 +167789,10 @@
       "sourceId": "26920",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "물고기를 넣어 기르는 유리로 된 통",
-      "clueSource": "krdict-definition",
+      "clue": "물고기를 기르는 유리통",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": [
         "animal"
       ]
@@ -178850,9 +178850,9 @@
       "allowForPuzzle": true,
       "blockedReason": null,
       "clue": "어둡고 차가운 기운",
-      "clueSource": "krdict-definition",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -184986,9 +184986,9 @@
       "allowForPuzzle": true,
       "blockedReason": null,
       "clue": "오랫동안 깊이 생각함",
-      "clueSource": "krdict-definition",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -185726,10 +185726,10 @@
       "sourceId": "81753",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "주로 비나 눈이 올 때 신는, 목이 길게 올라오는 신발",
-      "clueSource": "krdict-definition",
+      "clue": "비나 눈이 올 때 신는 목이 긴 신발",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -186778,10 +186778,10 @@
       "sourceId": "74542",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "전쟁 중인 상대 나라나 적으로 대하는 나라",
-      "clueSource": "krdict-definition",
+      "clue": "전쟁 중이거나 적으로 대하는 나라",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -187018,10 +187018,10 @@
       "sourceId": "84455",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "물건이나 짐을 배 또는 차량 등의 운송 수단에 실음",
-      "clueSource": "krdict-definition",
+      "clue": "짐이나 물건을 배나 차에 실음",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -198767,10 +198767,10 @@
       "sourceId": "77934",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "음식이나 그릇 등을 넣어 두는 장",
-      "clueSource": "krdict-definition",
+      "clue": "그릇이나 음식을 넣어 두는 장",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": [
         "food"
       ]
@@ -209148,10 +209148,10 @@
       "sourceId": "85960",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "어떤 곳을 지나다니지 못하게 함",
-      "clueSource": "krdict-definition",
+      "clue": "일정 시간에 거리를 지나다니지 못하게 막음",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -214040,10 +214040,10 @@
       "sourceId": "84382",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "페달을 밟아서 바람을 넣어 소리를 내는 건반 악기",
-      "clueSource": "krdict-definition",
+      "clue": "페달을 밟아 바람을 넣어 소리 내는 건반 악기",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -224836,10 +224836,10 @@
       "sourceId": "14854",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "여자가 꾸미기 위해 손가락에 끼는 두 개의 반지",
-      "clueSource": "krdict-definition",
+      "clue": "여자가 손가락에 끼는 두 짝의 반지",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -239447,10 +239447,10 @@
       "sourceId": "37717",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "한 나라의 국민 모두가 공통적으로 가지고 있는 가치관이나 특성",
-      "clueSource": "krdict-definition",
+      "clue": "한 나라 국민이 공통으로 지닌 특성",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -243129,10 +243129,10 @@
       "sourceId": "38304",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "다른 동물에 붙어서 양분을 빨아 먹고 사는 벌레",
-      "clueSource": "krdict-definition",
+      "clue": "다른 동물에 붙어 양분을 빨아먹는 벌레",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": [
         "animal"
       ]
@@ -245630,10 +245630,10 @@
       "sourceId": "16323",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "가늘고 긴 대에 낚싯줄을 매어 물고기를 잡을 때 쓰는 도구",
-      "clueSource": "krdict-definition",
+      "clue": "낚싯줄을 매어 물고기를 잡는 긴 도구",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": [
         "animal"
       ]
@@ -282497,10 +282497,10 @@
       "sourceId": "62550",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "가공하지 않은 상태인, 벗긴 그대로의 가죽",
-      "clueSource": "krdict-definition",
+      "clue": "가공하지 않고 벗긴 그대로의 가죽",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -282617,10 +282617,10 @@
       "sourceId": "62565",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "결혼을 했다가 남편이 죽어서 혼자 사는 여자",
-      "clueSource": "krdict-definition",
+      "clue": "남편이 죽어 혼자 사는 여자",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -283141,10 +283141,10 @@
       "sourceId": "63240",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "손톱 등으로 할퀴어지거나 긁혀서 생긴 작은 상처",
-      "clueSource": "krdict-definition",
+      "clue": "긁히거나 할퀴어 생긴 작은 상처",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -284812,10 +284812,10 @@
       "sourceId": "62558",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "주로 기독교에서, 기독교의 교리를 설명하는 사람",
-      "clueSource": "krdict-definition",
+      "clue": "기독교의 교리를 풀어 설명하는 사람",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -288202,10 +288202,10 @@
       "sourceId": "63918",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "늘이고 줄일 수 있는 통과 건반을 눌러 소리를 내는 악기",
-      "clueSource": "krdict-definition",
+      "clue": "통을 늘였다 줄이며 건반을 눌러 켜는 악기",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -289581,10 +289581,10 @@
       "sourceId": "65442",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "운동 경기에서 상대편의 공격을 막아 내는 힘",
-      "clueSource": "krdict-definition",
+      "clue": "상대편의 공격을 막아 내는 힘",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -302973,10 +302973,10 @@
       "sourceId": "68119",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "외교에 관한 것",
-      "clueSource": "krdict-definition",
+      "clue": "나라 사이의 교섭에 관한 것",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -306951,10 +306951,10 @@
       "sourceId": "70225",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "경찰서에 있는, 체포된 사람들을 임시로 가두어 두는 곳",
-      "clueSource": "krdict-definition",
+      "clue": "경찰서에서 붙잡힌 사람을 임시로 가두는 곳",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -309194,10 +309194,10 @@
       "sourceId": "24872",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "회사나 기관 등의 이사들 중에서 최고로 높은 사람",
-      "clueSource": "krdict-definition",
+      "clue": "기관 이사들 중 가장 높은 자리의 사람",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -311751,10 +311751,10 @@
       "sourceId": "73929",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "사업을 하는 데에 쓸 돈을 가지고 있거나 모을 수 있는 능력",
-      "clueSource": "krdict-definition",
+      "clue": "사업에 쓸 돈을 대거나 모을 수 있는 능력",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -320934,10 +320934,10 @@
       "sourceId": "75214",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "주사기를 통해 사람이나 동물의 몸에 넣는, 액체로 된 약물",
-      "clueSource": "krdict-definition",
+      "clue": "주사기로 몸에 넣는 액체 약물",
+      "clueSource": "manual",
       "difficulty": "normal",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": [
         "animal"
       ]
@@ -346865,10 +346865,10 @@
       "sourceId": "22571",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "주로 옛 이야기로부터 전해지는, 한자로 된 말",
-      "clueSource": "krdict-definition",
+      "clue": "옛이야기에서 유래한 한자로 된 말",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -351671,10 +351671,10 @@
       "sourceId": "47058",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "쇠를 불로 뜨겁게 하여 연장이나 기구를 만드는 일을 하는 사람",
-      "clueSource": "krdict-definition",
+      "clue": "쇠를 달구어 연장이나 기구를 만드는 사람",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -356191,9 +356191,9 @@
       "allowForPuzzle": true,
       "blockedReason": null,
       "clue": "바다에서 물고기를 낚는 일",
-      "clueSource": "krdict-definition",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": [
         "animal"
       ]
@@ -358034,10 +358034,10 @@
       "sourceId": "59423",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "북쪽에서 불어오는 바람과 차가운 눈",
-      "clueSource": "krdict-definition",
+      "clue": "북쪽에서 부는 바람과 차가운 눈",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -359056,10 +359056,10 @@
       "sourceId": "61412",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "문학이나 예술에서 현실이나 사물을 있는 그대로 묘사하고 표현하려는 태도",
-      "clueSource": "krdict-definition",
+      "clue": "현실을 있는 그대로 그리려는 예술 태도",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -361109,9 +361109,9 @@
       "allowForPuzzle": true,
       "blockedReason": null,
       "clue": "여러 대표 가운데 가장 높은 사람",
-      "clueSource": "krdict-definition",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -364246,10 +364246,10 @@
       "sourceId": "20738",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "달팽이, 문어, 조개 등 뼈가 없어 몸이 부드러운 동물",
-      "clueSource": "krdict-definition",
+      "clue": "뼈가 없어 몸이 부드러운 달팽이·문어 무리",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": [
         "animal"
       ]
@@ -365848,10 +365848,10 @@
       "sourceId": "71525",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "악보의 왼쪽 끝에 적어 넣어 음의 높낮이를 정하는 기호",
-      "clueSource": "krdict-definition",
+      "clue": "악보 왼쪽 끝에서 음의 높낮이를 정하는 기호",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -371600,10 +371600,10 @@
       "sourceId": "81633",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "투표를 하는 데에 쓰는 일정한 양식의 종이",
-      "clueSource": "krdict-definition",
+      "clue": "표를 찍는 데 쓰는 일정한 양식의 종이",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -375044,10 +375044,10 @@
       "sourceId": "56429",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "바다에서 사는 물고기",
-      "clueSource": "krdict-definition",
+      "clue": "바다에서 사는 물고기 무리",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": [
         "animal"
       ]
@@ -375241,10 +375241,10 @@
       "sourceId": "60343",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "사람의 힘으로는 막을 수 없는 것",
-      "clueSource": "krdict-definition",
+      "clue": "사람의 힘으로는 막을 수 없는",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {
@@ -376979,10 +376979,10 @@
       "sourceId": "87600",
       "allowForPuzzle": true,
       "blockedReason": null,
-      "clue": "불이 났을 때 자동으로 경보를 울리는 장치",
-      "clueSource": "krdict-definition",
+      "clue": "불이 나면 자동으로 경보를 울리는 장치",
+      "clueSource": "manual",
       "difficulty": "hard",
-      "needsManualClue": true,
+      "needsManualClue": false,
       "themeTags": []
     },
     {

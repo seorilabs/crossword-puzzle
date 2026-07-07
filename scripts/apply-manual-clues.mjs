@@ -2,8 +2,10 @@ import { readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import {
+  DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO,
   applyManualClues,
   isSelfReferentialClue,
+  summarizeManualClueCoverage,
 } from "../packages/crossword-core/src/clueCuration.ts";
 
 // 검수 단서(manual-clues.json)를 워드뱅크와 발행 퍼즐 엔트리에 적용한다.
@@ -19,13 +21,14 @@ const DEFAULT_OPTIONS = {
 const SKIP_PUZZLE_FILES = new Set(["manifest.json", "generation-report.json"]);
 
 function parseArgs(argv) {
-  const options = { ...DEFAULT_OPTIONS };
+  const options = { ...DEFAULT_OPTIONS, report: false };
 
   for (const arg of argv) {
     const [key, value] = arg.replace(/^--/, "").split("=");
     if (key === "clues" && value) options.cluesPath = value;
     if (key === "wordbank" && value) options.wordBankPath = value;
     if (key === "puzzlesDir" && value) options.puzzlesDir = value;
+    if (key === "report") options.report = true;
   }
 
   return options;
@@ -120,8 +123,73 @@ async function applyToPuzzles(puzzlesDir, clues) {
   return touchedAnswers;
 }
 
+// --report: 파일을 변경하지 않고, 발행 퍼즐 디렉터리의 퍼즐을 난이도·주제별로
+// 묶어 미검수(needsManualClue) 비율을 집계·출력한다(#250). "로테이션 대상 팩이
+// 발행 게이트를 통과하는지"를 한눈에 드러내는 커버리지 리포트로, 게이트를 넘는
+// 그룹이 하나라도 있으면 종료 코드 1로 실패시켜 CI 가드로도 쓸 수 있다.
+async function report(puzzlesDir) {
+  const files = (await readdir(puzzlesDir)).filter(
+    (file) => file.endsWith(".json") && !SKIP_PUZZLE_FILES.has(file),
+  );
+
+  const puzzles = [];
+  for (const file of files) {
+    const puzzle = await readJson(path.join(puzzlesDir, file));
+    if (!Array.isArray(puzzle.entries)) {
+      continue;
+    }
+    puzzles.push({
+      difficulty: puzzle.difficulty ?? null,
+      themeTag: puzzle.themeTag ?? null,
+      entries: puzzle.entries,
+    });
+  }
+
+  const summary = summarizeManualClueCoverage(puzzles);
+  const gatePercent = (DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO * 100).toFixed(0);
+
+  console.log(
+    `Coverage report over ${puzzles.length} puzzle(s) in ${puzzlesDir} (gate: needsManualClue <= ${gatePercent}%)`,
+  );
+  if (summary.groups.length === 0) {
+    console.log("  (no puzzles with entries found)");
+    return;
+  }
+
+  for (const group of summary.groups) {
+    const percent = (group.ratio * 100).toFixed(1);
+    const status = group.exceedsGate ? "FAIL" : "ok";
+    console.log(
+      `  [${status}] ${group.kind}=${group.key} puzzles=${group.puzzleCount} ` +
+        `entries=${group.total} needsManualClue=${group.needsManualClue} (${percent}%)`,
+    );
+  }
+
+  if (summary.anyExceeded) {
+    const failing = summary.groups
+      .filter((group) => group.exceedsGate)
+      .map((group) => `${group.kind}=${group.key}`)
+      .join(", ");
+    console.error(
+      `Coverage gate exceeded (${gatePercent}%) for: ${failing}. ` +
+        `Add manual clues (data/lexicon/manual-clues.json) for these tiers/themes.`,
+    );
+    process.exitCode = 1;
+  } else {
+    console.log(
+      `All tier/theme groups within ${gatePercent}% publish gate.`,
+    );
+  }
+}
+
 async function run() {
   const options = parseArgs(process.argv.slice(2));
+
+  if (options.report) {
+    await report(path.resolve(options.puzzlesDir));
+    return;
+  }
+
   const raw = await readJson(path.resolve(options.cluesPath));
   const clues = loadClueMap(raw);
   assertNoSelfReference(clues);

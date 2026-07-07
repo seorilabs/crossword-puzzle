@@ -42,6 +42,121 @@ export function needsManualClueRatio(
   return countNeedsManualClue(entries) / entries.length;
 }
 
+// 발행 커버리지 리포트용 타입. 생성된 퍼즐(난이도/주제)별로 미검수 비율을
+// 집계해 "로테이션 대상 팩이 발행 게이트를 통과하는지"를 한눈에 드러낸다(#250).
+export type ManualClueCoverageEntry = { needsManualClue?: boolean };
+
+export type ManualClueCoveragePuzzle = {
+  difficulty?: string | null;
+  themeTag?: string | null;
+  entries: readonly ManualClueCoverageEntry[];
+};
+
+export type ManualClueCoverageGroup = {
+  // 그룹 종류: 난이도 티어 또는 주제 태그
+  kind: "difficulty" | "theme";
+  // 그룹 키(예: "easy"/"hard" 또는 "food"/"animal")
+  key: string;
+  // 이 그룹에 속한 퍼즐 수
+  puzzleCount: number;
+  // 집계 대상 엔트리 총수
+  total: number;
+  // 미검수(needsManualClue:true) 엔트리 수
+  needsManualClue: number;
+  // 미검수 비율(total 이 0이면 0)
+  ratio: number;
+  // 발행 게이트(maxRatio)를 초과했는지
+  exceedsGate: boolean;
+};
+
+export type ManualClueCoverageSummary = {
+  groups: ManualClueCoverageGroup[];
+  // 하나라도 게이트를 초과한 그룹이 있는지(리포트가 실패로 종료할지 판단)
+  anyExceeded: boolean;
+};
+
+const DIFFICULTY_GROUP_ORDER: Record<string, number> = {
+  easy: 0,
+  normal: 1,
+  hard: 2,
+};
+
+// 생성된 퍼즐 목록을 난이도 티어·주제 태그별로 묶어 미검수 비율을 집계한다.
+// 각 퍼즐은 자신의 difficulty 그룹과(있으면) themeTag 그룹 양쪽에 합산된다.
+// 순수 함수(파일/네트워크 없음)라 core 테스트로 경계를 고정하고, 리포트
+// 스크립트(scripts/apply-manual-clues.mjs --report)가 이를 그대로 쓴다.
+export function summarizeManualClueCoverage(
+  puzzles: readonly ManualClueCoveragePuzzle[],
+  maxRatio: number = DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO,
+): ManualClueCoverageSummary {
+  type Accumulator = {
+    kind: "difficulty" | "theme";
+    key: string;
+    puzzleCount: number;
+    total: number;
+    needsManualClue: number;
+  };
+  const buckets = new Map<string, Accumulator>();
+
+  const add = (
+    kind: "difficulty" | "theme",
+    key: string,
+    entries: readonly ManualClueCoverageEntry[],
+  ) => {
+    const bucketKey = `${kind}:${key}`;
+    let bucket = buckets.get(bucketKey);
+    if (bucket == null) {
+      bucket = { kind, key, puzzleCount: 0, total: 0, needsManualClue: 0 };
+      buckets.set(bucketKey, bucket);
+    }
+    bucket.puzzleCount += 1;
+    bucket.total += entries.length;
+    bucket.needsManualClue += countNeedsManualClue(entries);
+  };
+
+  for (const puzzle of puzzles) {
+    const entries = puzzle.entries ?? [];
+    if (puzzle.difficulty != null && puzzle.difficulty !== "") {
+      add("difficulty", puzzle.difficulty, entries);
+    }
+    if (puzzle.themeTag != null && puzzle.themeTag !== "") {
+      add("theme", puzzle.themeTag, entries);
+    }
+  }
+
+  const groups: ManualClueCoverageGroup[] = [...buckets.values()]
+    .map((bucket) => {
+      const ratio = bucket.total === 0 ? 0 : bucket.needsManualClue / bucket.total;
+      return {
+        kind: bucket.kind,
+        key: bucket.key,
+        puzzleCount: bucket.puzzleCount,
+        total: bucket.total,
+        needsManualClue: bucket.needsManualClue,
+        ratio,
+        exceedsGate: ratio > maxRatio,
+      };
+    })
+    .sort((left, right) => {
+      if (left.kind !== right.kind) {
+        return left.kind === "difficulty" ? -1 : 1;
+      }
+      if (left.kind === "difficulty") {
+        const leftOrder = DIFFICULTY_GROUP_ORDER[left.key] ?? 99;
+        const rightOrder = DIFFICULTY_GROUP_ORDER[right.key] ?? 99;
+        if (leftOrder !== rightOrder) {
+          return leftOrder - rightOrder;
+        }
+      }
+      return left.key.localeCompare(right.key);
+    });
+
+  return {
+    groups,
+    anyExceeded: groups.some((group) => group.exceedsGate),
+  };
+}
+
 export type ManualClueMap = Record<string, string>;
 
 export type CurationTarget = {

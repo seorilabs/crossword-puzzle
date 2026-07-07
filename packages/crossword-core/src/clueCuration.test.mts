@@ -12,6 +12,7 @@ import {
   countNeedsManualClue,
   isSelfReferentialClue,
   needsManualClueRatio,
+  summarizeManualClueCoverage,
 } from "./clueCuration.ts";
 
 describe("isSelfReferentialClue", () => {
@@ -107,6 +108,90 @@ describe("applyManualClues", () => {
   });
 });
 
+describe("summarizeManualClueCoverage", () => {
+  it("난이도·주제별로 미검수 비율을 집계하고 게이트 초과를 표시한다", () => {
+    const summary = summarizeManualClueCoverage(
+      [
+        {
+          difficulty: "easy",
+          entries: [
+            { needsManualClue: false },
+            { needsManualClue: false },
+            { needsManualClue: true },
+          ],
+        },
+        {
+          difficulty: "hard",
+          entries: [{ needsManualClue: true }, { needsManualClue: true }],
+        },
+        {
+          difficulty: "normal",
+          themeTag: "food",
+          entries: [{ needsManualClue: false }, { needsManualClue: true }],
+        },
+      ],
+      0.4,
+    );
+
+    const easy = summary.groups.find((g) => g.key === "easy");
+    assert.equal(easy?.kind, "difficulty");
+    assert.equal(easy?.total, 3);
+    assert.equal(easy?.needsManualClue, 1);
+    assert.ok(Math.abs((easy?.ratio ?? 0) - 1 / 3) < 1e-9);
+    assert.equal(easy?.exceedsGate, false);
+
+    const hard = summary.groups.find((g) => g.key === "hard");
+    assert.equal(hard?.ratio, 1);
+    assert.equal(hard?.exceedsGate, true);
+
+    const food = summary.groups.find((g) => g.kind === "theme" && g.key === "food");
+    assert.equal(food?.total, 2);
+    assert.equal(food?.ratio, 0.5);
+    assert.equal(food?.exceedsGate, true);
+
+    assert.equal(summary.anyExceeded, true);
+  });
+
+  it("한 퍼즐이 난이도·주제 그룹 양쪽에 합산된다", () => {
+    const summary = summarizeManualClueCoverage([
+      {
+        difficulty: "normal",
+        themeTag: "animal",
+        entries: [{ needsManualClue: true }],
+      },
+    ]);
+    assert.equal(summary.groups.length, 2);
+    assert.deepEqual(
+      summary.groups.map((g) => `${g.kind}:${g.key}`),
+      ["difficulty:normal", "theme:animal"],
+    );
+  });
+
+  it("난이도 그룹은 easy<normal<hard, 주제는 난이도 뒤에 온다(결정적 정렬)", () => {
+    const summary = summarizeManualClueCoverage([
+      { difficulty: "hard", themeTag: "food", entries: [{}] },
+      { difficulty: "easy", entries: [{}] },
+      { difficulty: "normal", themeTag: "animal", entries: [{}] },
+    ]);
+    assert.deepEqual(
+      summary.groups.map((g) => `${g.kind}:${g.key}`),
+      [
+        "difficulty:easy",
+        "difficulty:normal",
+        "difficulty:hard",
+        "theme:animal",
+        "theme:food",
+      ],
+    );
+  });
+
+  it("빈 목록은 그룹 없음·초과 없음", () => {
+    const summary = summarizeManualClueCoverage([]);
+    assert.deepEqual(summary.groups, []);
+    assert.equal(summary.anyExceeded, false);
+  });
+});
+
 // 발행에 쓰이는 검수 단서 데이터(data/lexicon/manual-clues.json) 자체가
 // 자기참조 금지 규칙과 커버리지 기준을 지키는지 고정한다(#152). node:test는
 // 저장소 루트에서 실행되므로 cwd 기준 경로로 읽는다.
@@ -116,10 +201,10 @@ describe("manual-clues.json 검수 단서 데이터", () => {
   ) as Record<string, string>;
   const clues = Object.entries(raw).filter(([answer]) => !answer.startsWith("_"));
 
-  it("검수 단서 항목 수가 커버리지 확대 기준(400개 이상)을 충족한다(#201)", () => {
+  it("검수 단서 항목 수가 커버리지 확대 기준(500개 이상)을 충족한다(#201 → #250)", () => {
     assert.ok(
-      clues.length >= 400,
-      `검수 단서 ${clues.length}개 — 400개 이상이어야 함`,
+      clues.length >= 500,
+      `검수 단서 ${clues.length}개 — 500개 이상이어야 함`,
     );
   });
 
