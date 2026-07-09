@@ -18,15 +18,15 @@ import App, {
   getBoardCellFocusScrollY,
   getBoardNativeInputPosition,
   getClearAnswerTargetIndex,
-  getPendingAnswerCellValues,
   loadPuzzleSession,
   scheduleBoardNativeInputFocus,
   shouldUseSystemBack,
 } from '../App';
-import type {
-  Puzzle,
-  PuzzleEntry,
-  PuzzleManifestItem,
+import {
+  getPendingAnswerCellValues,
+  type Puzzle,
+  type PuzzleEntry,
+  type PuzzleManifestItem,
 } from '../../../packages/crossword-core/src';
 import {
   ARCHIVE_INDEX_KEY,

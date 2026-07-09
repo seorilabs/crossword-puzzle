@@ -34,16 +34,28 @@ import {
   createPuzzleSummary,
   DAILY_ATTEMPT_LIMIT,
   defaultLaunchConfig,
+  getAnswerCommitLetters,
+  getAnswerInputLetters,
   getBonusPuzzleCandidateSummary,
   getBounds,
+  getCellAnswerLetter,
   getCellKey,
   getCompletedEntries,
   getDailyFreePuzzleSummaries,
   getDailyFreePuzzleSummary,
   getEntryAnswerValue,
+  getEntryCellIndex,
+  getEntryCellKeyAt,
   getEntryCells,
+  getEntryStartCellKey,
   getInitialEntryId,
+  getInitialEntryStartCellKey,
+  getNextAnswerSlotCellKey,
   getNextFocusEntryAfterCompletion,
+  getPendingAnswerCellValues,
+  getProgressPercent,
+  isCellLocked,
+  isHangulJamoInput,
   getNextStreakMilestoneHint,
   getOpenPuzzleSummariesForDate,
   getPuzzleDailySequenceNumber,
@@ -394,41 +406,6 @@ function formatBonusPuzzleMeta(summary?: PuzzleManifestItem) {
       : `${summary.metrics.wordCount}개 단어`;
 
   return `${puzzleLabel} · ${wordCountLabel}`;
-}
-
-function getInitialEntryStartCellKey(puzzle: Puzzle) {
-  const selectedEntry =
-    puzzle.entries.find(entry => entry.id === getInitialEntryId(puzzle)) ??
-    puzzle.entries[0];
-  return selectedEntry == null
-    ? ''
-    : getCellKey(selectedEntry.row, selectedEntry.col);
-}
-
-function getProgressPercent(completedCount: number, totalCount: number) {
-  if (totalCount === 0) {
-    return 0;
-  }
-
-  return Math.round((completedCount / totalCount) * 100);
-}
-
-function getCellAnswerLetter(puzzle: Puzzle, cellKey: string) {
-  const [row, col] = cellKey.split(':').map(Number);
-
-  return puzzle.grid[row]?.[col] ?? '';
-}
-
-// A committed letter that matches the grid answer is locked: it is correct for
-// both crossing words, so erase actions (backspace / clear) skip over it.
-function isCellLocked(
-  puzzle: Puzzle,
-  cellValues: Record<string, string>,
-  cellKey: string,
-) {
-  const value = cellValues[cellKey];
-
-  return value != null && value === getCellAnswerLetter(puzzle, cellKey);
 }
 
 // Chooses which cell `clearAnswerCell` should erase: the caret cell if it holds
@@ -822,38 +799,6 @@ async function loadDateCardStates(summaries: PuzzleManifestItem[]) {
   return Object.fromEntries(entries);
 }
 
-function getAnswerInputLetters(value: string, maxLength: number) {
-  return [...value.replace(/\s/g, '')].slice(0, maxLength);
-}
-
-export function getPendingAnswerCellValues(
-  entry: PuzzleEntry,
-  inputValue: string,
-  selectedCellKey: string,
-) {
-  const cells = getEntryCells(entry);
-  const selectedIndex = getEntryCellIndex(entry, selectedCellKey);
-  const pendingLetters = getAnswerInputLetters(
-    inputValue,
-    cells.length - selectedIndex,
-  );
-
-  return Object.fromEntries(
-    pendingLetters
-      .map((letter, offset) => {
-        const cell = cells[selectedIndex + offset];
-
-        return cell == null
-          ? null
-          : ([getCellKey(cell.row, cell.col), letter] as const);
-      })
-      .filter(
-        (cellEntry): cellEntry is readonly [string, string] =>
-          cellEntry != null,
-      ),
-  );
-}
-
 function parseCellKey(cellKey: string) {
   const [rowText, colText] = cellKey.split(':');
   const row = Number(rowText);
@@ -886,34 +831,12 @@ export function getBoardCellFocusScrollY(cellTop: number, cellSize: number) {
   );
 }
 
-function isHangulJamoLetter(letter: string) {
-  return /^[ㄱ-ㅎㅏ-ㅣ]$/.test(letter);
-}
-
-function getAnswerCommitLetters(value: string, maxLength: number) {
-  return getAnswerInputLetters(value, maxLength).filter(
-    letter => !isHangulJamoLetter(letter),
-  );
-}
-
-function isHangulJamoInput(value: string) {
-  const letters = getAnswerInputLetters(value, value.length);
-
-  return (
-    letters.length > 0 && letters.every(letter => isHangulJamoLetter(letter))
-  );
-}
-
 function hasHangulSyllableInput(value: string) {
   return /[가-힣]/.test(value);
 }
 
 function getAnswerCommitDelayMs(value: string) {
   return hasHangulSyllableInput(value) ? 800 : 100;
-}
-
-function getEntryStartCellKey(entry?: PuzzleEntry) {
-  return entry == null ? '' : getCellKey(entry.row, entry.col);
 }
 
 function formatMobileAdEvent(event: MobileAdEvent) {
@@ -942,55 +865,6 @@ function getMobileAdFailureCode(events: MobileAdEvent[]) {
   }
 
   return events.at(-1)?.type;
-}
-
-function getEntryCellIndex(entry: PuzzleEntry, cellKey: string) {
-  const cells = getEntryCells(entry);
-  const index = cells.findIndex(
-    cell => getCellKey(cell.row, cell.col) === cellKey,
-  );
-
-  return index === -1 ? 0 : index;
-}
-
-function getEntryCellKeyAt(entry: PuzzleEntry, index: number) {
-  const cells = getEntryCells(entry);
-  const safeIndex = Math.max(0, Math.min(cells.length - 1, index));
-  const cell = cells[safeIndex];
-
-  return cell == null
-    ? getEntryStartCellKey(entry)
-    : getCellKey(cell.row, cell.col);
-}
-
-function getNextAnswerSlotCellKey(
-  entry: PuzzleEntry,
-  cellValues: Record<string, string>,
-  startIndex: number,
-  inputLength: number,
-) {
-  const cells = getEntryCells(entry);
-  const afterInputIndex = Math.min(startIndex + inputLength, cells.length - 1);
-  const nextEmptyIndex = cells.findIndex((cell, index) => {
-    if (index < afterInputIndex) {
-      return false;
-    }
-
-    return cellValues[getCellKey(cell.row, cell.col)] == null;
-  });
-
-  if (nextEmptyIndex !== -1) {
-    return getEntryCellKeyAt(entry, nextEmptyIndex);
-  }
-
-  const firstEmptyIndex = cells.findIndex(
-    cell => cellValues[getCellKey(cell.row, cell.col)] == null,
-  );
-
-  return getEntryCellKeyAt(
-    entry,
-    firstEmptyIndex === -1 ? afterInputIndex : firstEmptyIndex,
-  );
 }
 
 function getEntryCellKeys(entry: PuzzleEntry) {

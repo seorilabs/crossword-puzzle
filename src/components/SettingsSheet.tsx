@@ -2,9 +2,9 @@ import { Paragraph } from "@toss/tds-mobile";
 
 import type { TextScale } from "../../packages/crossword-core/src";
 
-// App.tsx 의 로컬 AnswerInputMode 와 동일한 리터럴(구조적 호환). App 이 타입을
-// export 하지 않으므로 순환 의존 없이 여기서 같은 형태로 선언한다.
-export type AnswerInputMode = "box" | "cell";
+// 입력 방식 타입은 어댑터(answerInputModeRepository)를 단일 출처로 재노출한다.
+export type { AnswerInputMode } from "../adapters/answerInputModeRepository";
+import type { AnswerInputMode } from "../adapters/answerInputModeRepository";
 
 export type SettingsSheetProps = {
   answerInputMode: AnswerInputMode;
