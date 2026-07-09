@@ -2995,8 +2995,18 @@ function AppContent() {
             autoCapitalize="none"
             autoCorrect={false}
             editable={!isReviewMode}
-            maxLength={selectedEntryCells.length}
+            // maxLength를 글자 수와 같게 두면, 마지막 칸을 조합할 때 자음 하나가
+            // 들어가는 순간 한도에 도달해 iOS가 뒤이은 모음 입력을 막아 마지막
+            // 글자가 완성되지 않는다. 조합 여유분(+1)을 두고, 실제 반영은
+            // applyBoxAnswer가 글자 수만큼 잘라 처리한다.
+            maxLength={selectedEntryCells.length + 1}
             onChangeText={text => applyBoxAnswer(selectedEntry, text)}
+            // iOS는 마지막 글자를 IME 조합 중인 상태에서 필드가 blur되면(다음
+            // 문항 이동/제출) 최종 onChangeText를 발화하지 않아 마지막 글자가
+            // 유실된다. 편집 종료·blur 시점에 실제 텍스트를 다시 반영(flush)한다.
+            onEndEditing={event =>
+              applyBoxAnswer(selectedEntry, event.nativeEvent.text)
+            }
             onSubmitEditing={() => goToAdjacentClue(1)}
             placeholder={`${selectedEntryCells.length}글자 입력`}
             placeholderTextColor="#b0b8c1"
