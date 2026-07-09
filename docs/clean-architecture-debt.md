@@ -18,10 +18,21 @@
 프레젠테이션 계층이 표현 + 상호작용 오케스트레이션 + 순수 로직을 한 파일에
 떠안고, 그 순수 로직이 web/mobile에 복붙돼 있다.
 
-**인수 조건 (AC-1)** — ✅ 달성
-- [x] 두 App.tsx 간 동일 이름 함수 중복 정의 40 → **27** (≤ 32 목표 초과 달성; 순수 함수 12개 core 승격)
-- [x] `src/App.tsx` LOC 7,206 → **7,050**
-- [x] `apps/mobile/App.tsx` LOC 4,881 → **4,755**
+**인수 조건 (AC-1)** — ✅ 달성 (2라운드)
+- [x] 두 App.tsx 간 동일 이름 함수 중복 정의 40 → **21** (순수 함수 18개 core 승격)
+- [x] `src/App.tsx` LOC 7,206 → **7,008**
+- [x] `apps/mobile/App.tsx` LOC 4,881 → **4,713**
+
+2라운드에서 라벨/조회 순수 함수 6개(`findPuzzleSummaryById`, `getCompletedPuzzleIds`,
+`formatPuzzleAliasLabel`, `formatPuzzleCardSequenceLabel`, `formatDateCardDay`,
+`formatDateCardWeekday`)를 `packages/crossword-core/src/puzzleLabels.ts`로 승격.
+`formatDateCardWeekday`는 `variant` 기본값 `"short"`로 web/RN 동작을 모두 보존.
+`getCompletedPuzzleIds`는 `DateCardState` 전체 형태(web/RN 상이) 대신 `completedAt`만
+구조적으로 받아 두 shell에 공용.
+
+남은 중복(21개)은 대부분 React/RN 컴포넌트·훅(`App`, `usePuzzleViewModel`,
+`BonusPuzzlePanel` 등)이거나 shell별로 동작이 분기된 함수라, 단순 추출이 아니라
+동작 재조정(reconcile)이 필요하다 → 별도 과제로 남긴다.
 
 ## 부채 2 — 경계 누수 (스토리지 직접 접근)
 

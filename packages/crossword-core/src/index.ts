@@ -9,6 +9,7 @@ export * from "./mission";
 export * from "./personalStats";
 export * from "./platformContracts";
 export * from "./puzzle";
+export * from "./puzzleLabels";
 export * from "./recommendation";
 export * from "./repositories";
 export * from "./returnReminder";
