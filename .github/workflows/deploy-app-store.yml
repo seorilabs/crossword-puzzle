@@ -341,10 +341,8 @@ jobs:
             -showBuildSettings \
             MARKETING_VERSION="$APPLE_MARKETING_VERSION" \
             CURRENT_PROJECT_VERSION="$APPLE_BUILD_NUMBER" \
-            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
-            CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY="Apple Distribution" \
-            PROVISIONING_PROFILE_SPECIFIER="$RESOLVED_IOS_PROFILE_NAME" \
+            APPLE_TEAM_ID="$APPLE_TEAM_ID" \
+            IOS_PROVISIONING_PROFILE_NAME="$RESOLVED_IOS_PROFILE_NAME" \
             OTHER_CODE_SIGN_FLAGS="--keychain $KEYCHAIN_PATH" \
             | awk '
               /Build settings for action build and target CrosswordPuzzleMobile:/ { in_app_target = 1; print; next }
@@ -373,10 +371,8 @@ jobs:
             -archivePath "$archive_path" \
             MARKETING_VERSION="$APPLE_MARKETING_VERSION" \
             CURRENT_PROJECT_VERSION="$APPLE_BUILD_NUMBER" \
-            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
-            CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY="Apple Distribution" \
-            PROVISIONING_PROFILE_SPECIFIER="$RESOLVED_IOS_PROFILE_NAME" \
+            APPLE_TEAM_ID="$APPLE_TEAM_ID" \
+            IOS_PROVISIONING_PROFILE_NAME="$RESOLVED_IOS_PROFILE_NAME" \
             OTHER_CODE_SIGN_FLAGS="--keychain $KEYCHAIN_PATH"
 
           app_info_plist="$archive_path/Products/Applications/CrosswordPuzzleMobile.app/Info.plist"
