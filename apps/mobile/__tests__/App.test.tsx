@@ -9,11 +9,9 @@ import ReactTestRenderer from 'react-test-renderer';
 import App, {
   BOARD_TEXT_INPUT_REFOCUS_DELAY_MS,
   computeMobileStreakDays,
-  formatPuzzleCardSequenceLabel,
   formatPuzzleCardTitle,
   formatPuzzleHistoryTitle,
   formatPuzzleHomeSubtitle,
-  formatPuzzleAliasLabel,
   getBackTargetRoute,
   getBoardCellFocusScrollY,
   getBoardNativeInputPosition,
@@ -23,6 +21,8 @@ import App, {
   shouldUseSystemBack,
 } from '../App';
 import {
+  formatPuzzleAliasLabel,
+  formatPuzzleCardSequenceLabel,
   getPendingAnswerCellValues,
   type Puzzle,
   type PuzzleEntry,

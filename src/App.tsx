@@ -43,6 +43,12 @@ import {
   getCompletionAchievements,
   getDailyFreePuzzleSummaries,
   getDailyFreePuzzleSummary,
+  findPuzzleSummaryById,
+  formatDateCardDay,
+  formatDateCardWeekday,
+  formatPuzzleAliasLabel,
+  formatPuzzleCardSequenceLabel,
+  getCompletedPuzzleIds,
   getEntryAnswerValue,
   getEntryCellIndex,
   getEntryCellKeyAt,
@@ -60,7 +66,6 @@ import {
   getOpenPuzzleSummariesForDate,
   getProgressMilestoneRewardMessage,
   resolveDefaultHintCredits,
-  getPuzzleDailySequenceNumber,
   getPuzzlePackAlias,
   getNextFocusEntryAfterCompletion,
   getRemainingAttempts,
@@ -506,14 +511,6 @@ function getInitialPuzzleId(
   );
 }
 
-function getCompletedPuzzleIds(dateCardStates: Record<string, DateCardState>) {
-  return new Set(
-    Object.entries(dateCardStates)
-      .filter(([, state]) => state.completedAt != null)
-      .map(([puzzleId]) => puzzleId),
-  );
-}
-
 // 완료 직후 "다음 퍼즐"로 이어줄 추천 퍼즐. 추천 규칙(난이도 상승 → 동일 티어 →
 // 그 외 미완료 → 끊김 방지 폴백)은 코어 정책(getNextRecommendedPuzzleSummary)에
 // 두어 3마켓이 공유한다. 여기서는 완료 집합만 만들어 위임한다.
@@ -529,15 +526,6 @@ function getNextRecommendedSummary(
   );
 }
 
-function findPuzzleSummaryById(
-  puzzleSummaries: PuzzleManifestItem[],
-  puzzleId?: string,
-) {
-  return puzzleId == null
-    ? undefined
-    : puzzleSummaries.find((summary) => summary.puzzleId === puzzleId);
-}
-
 function getPuzzleSummaryFromArchive(
   records: PuzzleArchiveRecord[],
   puzzleId?: string,
@@ -548,10 +536,6 @@ function getPuzzleSummaryFromArchive(
       : records.find((item) => item.puzzleId === puzzleId);
 
   return record == null ? undefined : createPuzzleSummary(record.puzzle);
-}
-
-function formatPuzzleAliasLabel(summary: PuzzleManifestItem) {
-  return `#${getPuzzlePackAlias(summary)}`;
 }
 
 function createDateCardState(
@@ -3959,24 +3943,6 @@ function BonusPuzzlePanel({ onAction, state }: BonusPuzzlePanelProps) {
   );
 }
 
-function formatDateCardDay(date: string) {
-  const [, month, day] = date.split("-");
-  if (month == null || day == null) {
-    return date;
-  }
-
-  return `${Number(month)}.${Number(day)}`;
-}
-
-function formatDateCardWeekday(date: string) {
-  const value = new Date(`${date}T00:00:00`);
-  if (Number.isNaN(value.getTime())) {
-    return "";
-  }
-
-  return new Intl.DateTimeFormat("ko-KR", { weekday: "short" }).format(value);
-}
-
 function formatGameHeaderDate(date: string) {
   const dayLabel = formatDateCardDay(date);
   const value = new Date(`${date}T00:00:00`);
@@ -4061,14 +4027,6 @@ function formatPuzzleCardSlot(summary: PuzzleManifestItem) {
     .find((part) => part.type === "hour")?.value;
 
   return hour == null ? "" : `${Number(hour) % 24}시`;
-}
-
-function formatPuzzleCardSequenceLabel(summary: PuzzleManifestItem) {
-  const sequenceNumber = getPuzzleDailySequenceNumber(summary);
-
-  return sequenceNumber == null
-    ? "퍼즐 --번"
-    : `퍼즐 ${String(sequenceNumber).padStart(2, "0")}번`;
 }
 
 function formatPuzzleHistoryLabel(

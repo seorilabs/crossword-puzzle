@@ -43,6 +43,12 @@ import {
   getCompletedEntries,
   getDailyFreePuzzleSummaries,
   getDailyFreePuzzleSummary,
+  findPuzzleSummaryById,
+  formatDateCardDay,
+  formatDateCardWeekday,
+  formatPuzzleAliasLabel,
+  formatPuzzleCardSequenceLabel,
+  getCompletedPuzzleIds,
   getEntryAnswerValue,
   getEntryCellIndex,
   getEntryCellKeyAt,
@@ -58,7 +64,6 @@ import {
   isHangulJamoInput,
   getNextStreakMilestoneHint,
   getOpenPuzzleSummariesForDate,
-  getPuzzleDailySequenceNumber,
   getPuzzlePackAlias,
   getRemainingAttempts,
   getStreakBadgeLabel,
@@ -302,23 +307,6 @@ function getInitialPuzzleId(puzzles: PuzzleManifestItem[]) {
   );
 }
 
-function getCompletedPuzzleIds(dateCardStates: Record<string, DateCardState>) {
-  return new Set(
-    Object.entries(dateCardStates)
-      .filter(([, state]) => state.completedAt != null)
-      .map(([puzzleId]) => puzzleId),
-  );
-}
-
-function findPuzzleSummaryById(
-  puzzleSummaries: PuzzleManifestItem[],
-  puzzleId?: string,
-) {
-  return puzzleId == null
-    ? undefined
-    : puzzleSummaries.find(summary => summary.puzzleId === puzzleId);
-}
-
 function formatDifficultyLabel(difficulty?: Puzzle['difficulty']) {
   if (difficulty === 'easy') return '쉬움';
   if (difficulty === 'normal') return '보통';
@@ -342,28 +330,6 @@ function getPuzzleTelemetryParams(
     slot_id: summary?.slotId ?? puzzle.slotId,
     word_count: summary?.metrics?.wordCount ?? puzzle.metrics.wordCount,
   };
-}
-
-export function formatPuzzleAliasLabel(summary: PuzzleManifestItem) {
-  return `#${getPuzzlePackAlias(summary)}`;
-}
-
-function formatDateCardDay(date: string) {
-  const [, month, day] = date.split('-');
-  if (month == null || day == null) {
-    return date;
-  }
-
-  return `${Number(month)}.${Number(day)}`;
-}
-
-function formatDateCardWeekday(date: string, variant: 'long' | 'short') {
-  const value = new Date(`${date}T00:00:00`);
-  if (Number.isNaN(value.getTime())) {
-    return '';
-  }
-
-  return new Intl.DateTimeFormat('ko-KR', { weekday: variant }).format(value);
 }
 
 export function formatPuzzleHomeSubtitle(
@@ -546,14 +512,6 @@ export function computeMobileStreakDays(
     current = getPrevDate(current);
   }
   return streak;
-}
-
-export function formatPuzzleCardSequenceLabel(summary: PuzzleManifestItem) {
-  const sequenceNumber = getPuzzleDailySequenceNumber(summary);
-
-  return sequenceNumber == null
-    ? '퍼즐 --번'
-    : `퍼즐 ${String(sequenceNumber).padStart(2, '0')}번`;
 }
 
 export function formatPuzzleHistoryTitle(
