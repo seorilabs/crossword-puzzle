@@ -52,6 +52,12 @@
       `isHangulJamoInput`를 `packages/crossword-core/src/answerInput.ts`에 단일 정의 + 단위 테스트
 - [x] 두 App.tsx의 위 4개 로컬 정의 = 0 (core import로 대체)
 
+## 회귀 방지 가드
+
+- `packages/crossword-core/src/purity.test.mts`: core가 React/RN/AppsInToss/
+  Firebase/AdMob 및 상위 계층(src, apps/mobile)을 import하면 실패한다.
+  AGENTS.md의 "core 순수성" 규칙을 문서에서 자동 강제로 승격했다.
+
 ## 공통 게이트
 
 모든 변경 후 다음이 green이어야 한다:
