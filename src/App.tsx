@@ -33,16 +33,28 @@ import {
   createPuzzleSummary,
   createDailyMissionState,
   DAILY_ATTEMPT_LIMIT,
+  getAnswerCommitLetters,
+  getAnswerInputLetters,
   getBonusPuzzleCandidateSummary,
   getBounds,
+  getCellAnswerLetter,
   getCellKey,
   getCompletedEntries,
   getCompletionAchievements,
   getDailyFreePuzzleSummaries,
   getDailyFreePuzzleSummary,
   getEntryAnswerValue,
+  getEntryCellIndex,
+  getEntryCellKeyAt,
   getEntryCells,
+  getEntryStartCellKey,
   getInitialEntryId,
+  getInitialEntryStartCellKey,
+  getNextAnswerSlotCellKey,
+  getPendingAnswerCellValues,
+  getProgressPercent,
+  isCellLocked,
+  isHangulJamoInput,
   getNewlyReachedProgressMilestones,
   getNextRecommendedPuzzleSummary,
   getOpenPuzzleSummariesForDate,
@@ -145,6 +157,17 @@ import {
   saveAutocheckEnabled,
 } from "./adapters/autocheckSettingRepository";
 import {
+  loadAnswerInputMode,
+  saveAnswerInputMode,
+  type AnswerInputMode,
+} from "./adapters/answerInputModeRepository";
+import {
+  loadFirstInputGuideSeen,
+  loadHowToPlaySeen,
+  markFirstInputGuideSeen as persistFirstInputGuideSeen,
+  markHowToPlaySeen as persistHowToPlaySeen,
+} from "./adapters/onboardingSeenRepository";
+import {
   loadTimerVisible,
   saveTimerVisible,
 } from "./adapters/timerVisibilitySettingRepository";
@@ -224,31 +247,6 @@ type DateCardState = {
 
 const DIRECT_INPUT_COMMIT_DELAY_MS = 140;
 const COMPOSITION_COMMIT_DELAY_MS = 0;
-
-// Two answer input strategies coexist because per-cell IME handling behaves
-// differently across the AIT / Play Store / App Store WebView engines.
-// "box": one plain text field per word (stable, IME-safe, default).
-// "cell": the hidden native input overlaid on the cells (faster, but fragile).
-type AnswerInputMode = "box" | "cell";
-const ANSWER_INPUT_MODE_STORAGE_KEY = "crossword:answer-input-mode";
-
-function loadAnswerInputMode(): AnswerInputMode {
-  try {
-    return localStorage.getItem(ANSWER_INPUT_MODE_STORAGE_KEY) === "cell"
-      ? "cell"
-      : "box";
-  } catch {
-    return "box";
-  }
-}
-
-function persistAnswerInputMode(mode: AnswerInputMode): void {
-  try {
-    localStorage.setItem(ANSWER_INPUT_MODE_STORAGE_KEY, mode);
-  } catch {
-    // Storage blocked; the preference applies for this session only.
-  }
-}
 
 // PuzzleBoard의 checkedCellKeys 기본값. 매 렌더 새 Set 생성을 피한다.
 const EMPTY_CELL_KEY_SET: ReadonlySet<string> = new Set();
@@ -485,13 +483,6 @@ function formatQualityValue(check: PuzzleQualityCheck) {
   return `${check.actual} / ${check.expected}`;
 }
 
-function getProgressPercent(completedCount: number, totalCount: number) {
-  if (totalCount === 0) {
-    return 0;
-  }
-
-  return Math.round((completedCount / totalCount) * 100);
-}
 
 function isRemotePuzzlePackSummary(summary: PuzzleManifestItem) {
   return (
@@ -618,135 +609,6 @@ function formatEntryReference(
   return `${prefix}${directionLabels[entry.direction]} · ${entry.answer.length}글자`;
 }
 
-function getEntryStartCellKey(entry?: PuzzleEntry) {
-  return entry == null ? "" : getCellKey(entry.row, entry.col);
-}
-
-function getAnswerInputLetters(value: string, maxLength: number) {
-  return [...value.replace(/\s/g, "")].slice(0, maxLength);
-}
-
-function getPendingAnswerCellValues(
-  entry: PuzzleEntry,
-  inputValue: string,
-  selectedCellKey: string,
-) {
-  const cells = getEntryCells(entry);
-  const selectedIndex = getEntryCellIndex(entry, selectedCellKey);
-  const pendingLetters = getAnswerInputLetters(
-    inputValue,
-    cells.length - selectedIndex,
-  );
-
-  return Object.fromEntries(
-    pendingLetters
-      .map((letter, offset) => {
-        const cell = cells[selectedIndex + offset];
-
-        return cell == null
-          ? null
-          : ([getCellKey(cell.row, cell.col), letter] as const);
-      })
-      .filter((cellEntry): cellEntry is readonly [string, string] => {
-        return cellEntry != null;
-      }),
-  );
-}
-
-function isHangulJamoLetter(letter: string) {
-  return /^[ㄱ-ㅎㅏ-ㅣ]$/.test(letter);
-}
-
-function getAnswerCommitLetters(value: string, maxLength: number) {
-  return getAnswerInputLetters(value, maxLength).filter(
-    (letter) => !isHangulJamoLetter(letter),
-  );
-}
-
-function isHangulJamoInput(value: string) {
-  const letters = getAnswerInputLetters(value, value.length);
-
-  return (
-    letters.length > 0 && letters.every((letter) => isHangulJamoLetter(letter))
-  );
-}
-
-function getEntryCellIndex(entry: PuzzleEntry, cellKey: string) {
-  const cells = getEntryCells(entry);
-  const index = cells.findIndex(
-    (cell) => getCellKey(cell.row, cell.col) === cellKey,
-  );
-
-  return index === -1 ? 0 : index;
-}
-
-function getEntryCellKeyAt(entry: PuzzleEntry, index: number) {
-  const cells = getEntryCells(entry);
-  const safeIndex = Math.max(0, Math.min(cells.length - 1, index));
-  const cell = cells[safeIndex];
-
-  return cell == null
-    ? getEntryStartCellKey(entry)
-    : getCellKey(cell.row, cell.col);
-}
-
-function getNextAnswerSlotCellKey(
-  entry: PuzzleEntry,
-  cellValues: Record<string, string>,
-  startIndex: number,
-  inputLength: number,
-) {
-  const cells = getEntryCells(entry);
-  const afterInputIndex = Math.min(startIndex + inputLength, cells.length - 1);
-  const nextEmptyIndex = cells.findIndex((cell, index) => {
-    if (index < afterInputIndex) {
-      return false;
-    }
-
-    return cellValues[getCellKey(cell.row, cell.col)] == null;
-  });
-
-  if (nextEmptyIndex !== -1) {
-    return getEntryCellKeyAt(entry, nextEmptyIndex);
-  }
-
-  const firstEmptyIndex = cells.findIndex(
-    (cell) => cellValues[getCellKey(cell.row, cell.col)] == null,
-  );
-
-  return getEntryCellKeyAt(
-    entry,
-    firstEmptyIndex === -1 ? afterInputIndex : firstEmptyIndex,
-  );
-}
-
-function getInitialEntryStartCellKey(puzzle: Puzzle) {
-  const initialEntryId = getInitialEntryId(puzzle);
-  const initialEntry =
-    puzzle.entries.find((entry) => entry.id === initialEntryId) ??
-    puzzle.entries[0];
-
-  return getEntryStartCellKey(initialEntry);
-}
-
-function getCellAnswerLetter(puzzle: Puzzle, cellKey: string) {
-  const [row, col] = cellKey.split(":").map(Number);
-
-  return puzzle.grid[row]?.[col] ?? "";
-}
-
-// A committed letter that matches the grid answer is locked: it is correct for
-// both crossing words, so erase actions (backspace / clear) skip over it.
-function isCellLocked(
-  puzzle: Puzzle,
-  cellValues: Record<string, string>,
-  cellKey: string,
-) {
-  const value = cellValues[cellKey];
-
-  return value != null && value === getCellAnswerLetter(puzzle, cellKey);
-}
-
 function App() {
   const [route, setRoute] = useState<AppRoute>(() =>
     getRouteFromPathname(window.location.pathname),
@@ -845,26 +707,16 @@ function App() {
   const [hapticEnabled, setHapticEnabled] = useState(true);
   // "이 단어 확인"으로 잠시 강조 중인 셀. 일정 시간 후 비워 원상 복구한다.
   const [now, setNow] = useState(() => new Date());
-  const [hasSeenHowToPlay, setHasSeenHowToPlay] = useState(() => {
-    try {
-      return localStorage.getItem("crossword:how-to-play-seen") === "1";
-    } catch {
-      return false;
-    }
-  });
+  const [hasSeenHowToPlay, setHasSeenHowToPlay] = useState(loadHowToPlaySeen);
   const [answerInputMode, setAnswerInputMode] =
     useState<AnswerInputMode>(loadAnswerInputMode);
   // 글자 크기(접근성). 사운드·햅틱처럼 기본값(보통)으로 시작하고 저장값은 마운트
   // 후 useEffect에서 동기화한다(클라이언트 전용 저장소 접근 분리).
   const [textScale, setTextScale] = useState<TextScale>("normal");
   // 첫 진입 1스텝 온보딩: 첫 입력 전 "첫 칸에 입력" 가이드를 최초 1회만 노출한다.
-  const [hasSeenFirstInputGuide, setHasSeenFirstInputGuide] = useState(() => {
-    try {
-      return localStorage.getItem("crossword:first-input-guide-seen") === "1";
-    } catch {
-      return false;
-    }
-  });
+  const [hasSeenFirstInputGuide, setHasSeenFirstInputGuide] = useState(
+    loadFirstInputGuideSeen,
+  );
   const firstAnswerInputKeysRef = useRef<Set<string>>(new Set());
   const firstInputGuideShownRef = useRef(false);
   // 진행 마일스톤(부분 완료) 추적: 동일 퍼즐·시도 안에서 새로 넘어선 마일스톤만
@@ -2051,11 +1903,7 @@ function App() {
   }
 
   function markFirstInputGuideSeen() {
-    try {
-      localStorage.setItem("crossword:first-input-guide-seen", "1");
-    } catch {
-      // Storage blocked; 가이드는 이번 세션 동안만 숨겨진다.
-    }
+    persistFirstInputGuideSeen();
     setHasSeenFirstInputGuide(true);
   }
 
@@ -2503,11 +2351,7 @@ function App() {
   }
 
   function dismissHowToPlay() {
-    try {
-      localStorage.setItem("crossword:how-to-play-seen", "1");
-    } catch {
-      // Storage blocked; modal dismissed for this session only and will reappear next visit.
-    }
+    persistHowToPlaySeen();
     setHasSeenHowToPlay(true);
   }
 
@@ -3074,7 +2918,7 @@ function App() {
 
   function selectAnswerInputMode(mode: AnswerInputMode) {
     setAnswerInputMode(mode);
-    persistAnswerInputMode(mode);
+    saveAnswerInputMode(mode);
   }
 
   const commonScreenProps = {
