@@ -4643,6 +4643,11 @@ function TodayScreen({
   const boxInputRef = useRef<HTMLInputElement>(null);
   const starterFocusPuzzleIdRef = useRef<string>("");
   const commitTimerRef = useRef<number | null>(null);
+  // 지연 커밋에 걸린 값을 보관해, 셀/문항 전환이 타이머를 취소하기 전에 먼저
+  // 커밋(flush)할 수 있게 한다. cell 모드에서 마지막 글자가 유실되던 원인.
+  const pendingCommitRef = useRef<{ value: string; startCellKey: string } | null>(
+    null,
+  );
   const isComposingRef = useRef(false);
   const [inputValue, setInputValue] = useState("");
   const [isComposing, setIsComposing] = useState(false);
@@ -4827,12 +4832,21 @@ function TodayScreen({
   }, []);
 
   useEffect(() => {
+    // 셀/문항이 바뀌기 전, 대기 중인 마지막 글자 커밋을 취소하지 말고 반영한다.
+    const pending = pendingCommitRef.current;
+    if (pending != null) {
+      pendingCommitRef.current = null;
+      commitInputValue(pending.value, pending.startCellKey);
+    }
     clearCommitTimer();
     compositionEndValueRef.current = null;
     compositionStartCellKeyRef.current = null;
     isComposingRef.current = false;
     resetBoardInputValue();
     setIsComposing(false);
+    // commitInputValue를 deps에 넣으면 매 렌더 재실행되어 셀 전환 시에만 flush
+    // 하려는 의도가 깨진다. ref 기반 pending 값만 사용하므로 제외한다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     activeCellKey,
     answerInputResetKey,
@@ -5000,6 +5014,7 @@ function TodayScreen({
     }
 
     clearCommitTimer();
+    pendingCommitRef.current = null;
     const remainingCellCount =
       selectedEntryCells.length -
       getEntryCellIndex(selectedEntry, startCellKey);
@@ -5074,6 +5089,8 @@ function TodayScreen({
       return;
     }
 
+    flushPendingCommit();
+
     const draftLetters = getDraftLetters(value, activeCellKey);
 
     if (hasCommittableDraft(value, activeCellKey)) {
@@ -5096,6 +5113,7 @@ function TodayScreen({
     }
 
     clearCommitTimer();
+    pendingCommitRef.current = null;
 
     if (isHangulJamoInput(value)) {
       return;
@@ -5105,9 +5123,27 @@ function TodayScreen({
       return;
     }
 
+    // 지연 0(조합 종료 경로)이면 비동기 타이머의 취소 창을 없애기 위해 즉시
+    // 커밋한다. 마지막 글자 조합 직후 셀 전환이 타이머를 지워버리는 race 제거.
+    if (delayMs <= 0) {
+      commitInputValue(value, startCellKey);
+      return;
+    }
+
+    pendingCommitRef.current = { value, startCellKey };
     commitTimerRef.current = window.setTimeout(() => {
       commitInputValue(value, startCellKey);
     }, delayMs);
+  }
+
+  // 대기 중인 지연 커밋이 있으면 취소 대신 먼저 반영한다.
+  function flushPendingCommit() {
+    const pending = pendingCommitRef.current;
+    if (pending == null) {
+      return;
+    }
+    pendingCommitRef.current = null;
+    commitInputValue(pending.value, pending.startCellKey);
   }
 
   function selectRelativeCell(delta: number) {
@@ -5412,6 +5448,16 @@ function TodayScreen({
             aria-label={`${selectedEntryCells.length}글자 답 입력`}
             placeholder={`${selectedEntryCells.length}글자 입력`}
             onChange={(event) =>
+              applyBoxValue(selectedEntry, event.currentTarget.value)
+            }
+            // iOS WKWebView는 마지막 글자를 IME 조합 중인 상태에서 필드가
+            // blur되면(다음 문항 이동/제출) 최종 change 이벤트를 발화하지 않아
+            // 마지막 글자가 유실된다. 조합 종료·blur 시점에 필드의 실제 값을
+            // 다시 반영(flush)해 마지막 글자 누락을 막는다.
+            onCompositionEnd={(event) =>
+              applyBoxValue(selectedEntry, event.currentTarget.value)
+            }
+            onBlur={(event) =>
               applyBoxValue(selectedEntry, event.currentTarget.value)
             }
             onKeyDown={(event) => {
