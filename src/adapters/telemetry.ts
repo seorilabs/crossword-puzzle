@@ -1,45 +1,33 @@
-import { Analytics as AppsInTossAnalytics } from "@apps-in-toss/web-framework";
 import {
   compactTelemetryParams,
-  type CompactTelemetryParams,
   type TelemetryParams,
 } from "../../packages/crossword-core/src";
-import { logFirebaseAnalyticsEvent } from "./firebaseClient";
+import { dispatchAnalytics } from "./analyticsSinks";
 
-function logAppsInToss(
-  method: "screen" | "impression" | "click",
-  logName: string,
-  params: CompactTelemetryParams,
-) {
-  try {
-    void AppsInTossAnalytics[method]({
-      log_name: logName,
-      ...params,
-    });
-  } catch {
-    // AppsInToss analytics is unavailable in local browsers and QR sandbox.
-  }
-}
-
+// 범용 UI 텔레메트리 파사드. 이벤트 이름/파라미터는 그대로 두고 전송만 sink 레지스트리로
+// 위임한다(analyticsSinks). 팬아웃 대상(AIT/Firebase/자체 서버)은 sink 쪽에서 결정한다.
 export const telemetry = {
   screen(name: string, params?: TelemetryParams) {
-    const compacted = compactTelemetryParams(params);
-    logAppsInToss("screen", name, compacted);
-    void logFirebaseAnalyticsEvent("screen_view", {
-      firebase_screen: name,
-      ...compacted,
+    dispatchAnalytics({
+      kind: "screen",
+      name,
+      params: compactTelemetryParams(params),
     });
   },
 
   impression(name: string, params?: TelemetryParams) {
-    const compacted = compactTelemetryParams(params);
-    logAppsInToss("impression", name, compacted);
-    void logFirebaseAnalyticsEvent(name, compacted);
+    dispatchAnalytics({
+      kind: "impression",
+      name,
+      params: compactTelemetryParams(params),
+    });
   },
 
   click(name: string, params?: TelemetryParams) {
-    const compacted = compactTelemetryParams(params);
-    logAppsInToss("click", name, compacted);
-    void logFirebaseAnalyticsEvent(name, compacted);
+    dispatchAnalytics({
+      kind: "click",
+      name,
+      params: compactTelemetryParams(params),
+    });
   },
 };

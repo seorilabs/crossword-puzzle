@@ -102,6 +102,7 @@ import {
   type CellLetterChange,
   type DailyMissionState,
   type Direction,
+  type GamePuzzleContext,
   type Puzzle,
   type PuzzleEntry,
   type PuzzleManifestItem,
@@ -209,6 +210,7 @@ import {
   createStaticPuzzleRepository,
 } from "./adapters/staticPuzzleRepository";
 import { telemetry } from "./adapters/telemetry";
+import { gameAnalytics } from "./adapters/gameAnalytics";
 import { fallbackPuzzle } from "./data/fallbackPuzzle";
 import { onboardingPuzzle } from "./data/onboardingPuzzle";
 
@@ -366,6 +368,20 @@ function getPuzzleTelemetryParams(puzzle: Puzzle) {
     puzzle_id: puzzle.puzzleId,
     slot_id: puzzle.slotId,
     word_count: puzzle.entries.length,
+  };
+}
+
+// 게임 세부 지표(gameAnalytics)용 퍼즐 컨텍스트. 모든 game_* 이벤트에 콘텐츠 차원
+// (난이도/테마/팩)으로 실린다. 계약은 core gameAnalytics.ts의 GamePuzzleContext.
+function getGamePuzzleContext(puzzle: Puzzle): GamePuzzleContext {
+  return {
+    puzzleId: puzzle.puzzleId,
+    difficulty: puzzle.difficulty,
+    gridSize: puzzle.gridSize,
+    wordCount: puzzle.entries.length,
+    packId: puzzle.packId,
+    slotId: puzzle.slotId,
+    themeTag: puzzle.themeTag,
   };
 }
 
@@ -730,6 +746,7 @@ function App() {
     remainingAttempts: 0,
     route: "home" as AppRoute,
     telemetryParams: {} as ReturnType<typeof getPuzzleTelemetryParams>,
+    gameContext: {} as GamePuzzleContext,
     totalWords: 0,
     wordsFilled: 0,
   });
@@ -1145,6 +1162,7 @@ function App() {
     remainingAttempts,
     route,
     telemetryParams: puzzleTelemetryParams,
+    gameContext: getGamePuzzleContext(puzzle),
     totalWords: puzzle.entries.length,
     wordsFilled: viewModel.completedEntries.length,
   };
@@ -1174,6 +1192,14 @@ function App() {
       remaining_attempts: snapshot.remainingAttempts,
       total_words: snapshot.totalWords,
       words_filled: snapshot.wordsFilled,
+    });
+    // 게임 세부 지표: 완료 퍼널 이탈(마켓 차원 포함).
+    gameAnalytics.track("game_puzzle_abandon", snapshot.gameContext, {
+      elapsedSec: getElapsedSeconds(snapshot.elapsedStartedAt) ?? 0,
+      completedWordCount: snapshot.wordsFilled,
+      totalWordCount: snapshot.totalWords,
+      progressPercent: snapshot.progressPercent,
+      hadFirstInput: snapshot.hadFirstInput,
     });
   }, []);
 
@@ -1649,6 +1675,17 @@ function App() {
       reveal_used: revealUsed,
       remaining_attempts: getRemainingAttempts(nextMission),
     });
+    // 게임 세부 지표: 완료 퍼널 종점 + 풀이 성과(마켓 차원 포함).
+    gameAnalytics.track("game_puzzle_complete", getGamePuzzleContext(puzzle), {
+      solveTimeSec:
+        getElapsedSeconds(nextMission.lastStartedAt, nextMission.completedAt, {
+          pausedMs: pause.pausedMs,
+        }) ?? 0,
+      hintCount,
+      revealUsed,
+      attemptNumber: nextMission.attemptsUsed,
+      completedWordCount: viewModel.completedEntries.length,
+    });
 
     // 리더보드가 켜져 있고 현재 플랫폼이 지원할 때만, 정답 보기 없이 완료한 퍼즐의
     // 점수를 제출한다. 완료 effect는 시도당 1회 실행되지만, ref로 puzzleId 단위
@@ -1793,6 +1830,13 @@ function App() {
         hint_count: hintCount,
         remaining_attempts: remainingAttempts,
       });
+      // 게임 세부 지표: 진행 마일스톤 도달(완료 퍼널 중간 단계).
+      gameAnalytics.track("game_progress", getGamePuzzleContext(puzzle), {
+        completedWordCount: viewModel.completedEntries.length,
+        totalWordCount: puzzle.entries.length,
+        progressPercent,
+        attemptNumber: mission.attemptsUsed,
+      });
     }
 
     // 중간 성취 보상 피드백(힌트 토스트 UI 재사용).
@@ -1910,6 +1954,11 @@ function App() {
           entry_id: entry.id,
           hint_count: hintCount,
           remaining_attempts: remainingAttempts,
+        });
+        // 게임 세부 지표: 첫 입력(참여 시작). 시작→첫입력 소요로 초반 이탈을 본다.
+        gameAnalytics.track("game_first_input", getGamePuzzleContext(puzzle), {
+          timeToFirstInputSec: getElapsedSeconds(mission.lastStartedAt) ?? 0,
+          attemptNumber: mission.attemptsUsed,
         });
       }
 
@@ -2220,6 +2269,11 @@ function App() {
       hint_used: hintCount + 1,
       puzzle_id: puzzle.puzzleId,
     });
+    // 게임 세부 지표: 힌트 사용(콘텐츠 난이도 체감 신호).
+    gameAnalytics.track("game_hint_use", getGamePuzzleContext(puzzle), {
+      hintType: "hint",
+      hintRemainingAfter: remainingHintCredits - 1,
+    });
     return true;
   }
 
@@ -2248,6 +2302,11 @@ function App() {
       puzzle_id: puzzle.puzzleId,
       rewarded_hint_credits: launchConfig.rewardedHintCredits,
     });
+    // 게임 세부 지표: 리워드 광고 보조 요청(힌트).
+    gameAnalytics.track("game_assist_ad", getGamePuzzleContext(puzzle), {
+      assistType: "rewarded_hint",
+      result: "request",
+    });
 
     const result = await showRewardedHintAd((event) => {
       telemetry.impression("rewarded_hint_ad_event", {
@@ -2269,6 +2328,11 @@ function App() {
       telemetry.impression("rewarded_hint_ad_reward", {
         puzzle_id: puzzle.puzzleId,
         rewarded_hint_credits: launchConfig.rewardedHintCredits,
+      });
+      // 게임 세부 지표: 리워드 광고 보조 보상 지급(힌트).
+      gameAnalytics.track("game_assist_ad", getGamePuzzleContext(puzzle), {
+        assistType: "rewarded_hint",
+        result: "reward",
       });
     } else {
       const message = getRewardedHintFailureMessage(result);
@@ -2393,6 +2457,12 @@ function App() {
         remaining_attempts: getRemainingAttempts(nextMission),
         started_at: nextMission.lastStartedAt,
       });
+      // 게임 세부 지표: 시도 시작(완료 퍼널 시작점, 마켓 차원 포함).
+      gameAnalytics.track(
+        "game_puzzle_start",
+        getGamePuzzleContext(session.nextPuzzle),
+        { attemptKind: "first", attemptNumber: nextMission.attemptsUsed },
+      );
     }
 
     await savePuzzleSnapshot(session.nextPuzzle, {
@@ -2530,6 +2600,10 @@ function App() {
       entry_id: selectedEntry.id,
       progress_percent: progressPercent,
     });
+    // 게임 세부 지표: 단어 정답 보기(강한 보조 사용).
+    gameAnalytics.track("game_hint_use", getGamePuzzleContext(puzzle), {
+      hintType: "reveal_word",
+    });
   }
 
   function toggleSound() {
@@ -2628,6 +2702,11 @@ function App() {
       hint_count: progressSnapshot.hintCount,
       remaining_attempts: getRemainingAttempts(nextMission),
       started_at: nextMission.lastStartedAt,
+    });
+    // 게임 세부 지표: 시도 시작(첫 도전/재도전 구분, 마켓 차원 포함).
+    gameAnalytics.track("game_puzzle_start", getGamePuzzleContext(puzzle), {
+      attemptKind,
+      attemptNumber: nextMission.attemptsUsed,
     });
   }
 
@@ -2757,6 +2836,12 @@ function App() {
         remaining_attempts: getRemainingAttempts(nextMission),
         started_at: nextMission.lastStartedAt,
       });
+      // 게임 세부 지표: 시도 시작(완료 퍼널 시작점, 마켓 차원 포함).
+      gameAnalytics.track(
+        "game_puzzle_start",
+        getGamePuzzleContext(session.nextPuzzle),
+        { attemptKind: "first", attemptNumber: nextMission.attemptsUsed },
+      );
     }
 
     await savePuzzleSnapshot(session.nextPuzzle, {
@@ -2852,6 +2937,11 @@ function App() {
       extra_attempts_granted: mission.extraAttemptsGranted ?? 0,
       extra_attempts_granted_today: extraAttemptsGrantedToday,
     });
+    // 게임 세부 지표: 리워드 광고 보조 요청(추가 시도).
+    gameAnalytics.track("game_assist_ad", getGamePuzzleContext(puzzle), {
+      assistType: "extra_attempt",
+      result: "request",
+    });
 
     const result = await showRewardedExtraAttemptAd((event) => {
       telemetry.impression("rewarded_extra_attempt_ad_event", {
@@ -2889,6 +2979,11 @@ function App() {
       telemetry.impression("rewarded_extra_attempt_ad_reward", {
         ...puzzleTelemetryParams,
         extra_attempts_granted: grantedMission.extraAttemptsGranted ?? 0,
+      });
+      // 게임 세부 지표: 리워드 광고 보조 보상 지급(추가 시도).
+      gameAnalytics.track("game_assist_ad", getGamePuzzleContext(puzzle), {
+        assistType: "extra_attempt",
+        result: "reward",
       });
       showHintToast("도전 기회 1회가 충전됐어요.");
       setRewardedAdStatus("idle");

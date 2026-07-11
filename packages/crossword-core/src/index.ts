@@ -3,6 +3,7 @@ export * from "./boardNavigation";
 export * from "./clueCuration";
 export * from "./difficultyProfiles";
 export * from "./feedbackPolicy";
+export * from "./gameAnalytics";
 export * from "./launchConfig";
 export * from "./leaderboard";
 export * from "./mission";
