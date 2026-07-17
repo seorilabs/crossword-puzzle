@@ -142,9 +142,9 @@ describe("host runtime selection", () => {
     assert.equal(BUNDLED_GAME_RUNTIME_ENABLED, false);
   });
 
-  test("실제 adapter가 준비된 web host에서만 runtime gate를 평가한다", () => {
+  test("durable adapter가 준비된 web/AIT host에서 runtime gate를 평가한다", () => {
     assert.equal(isGameRuntimeHostSupported("web"), true);
-    assert.equal(isGameRuntimeHostSupported("apps-in-toss"), false);
+    assert.equal(isGameRuntimeHostSupported("apps-in-toss"), true);
     assert.equal(isGameRuntimeHostSupported("native-webview"), false);
   });
 

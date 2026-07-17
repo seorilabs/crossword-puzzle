@@ -234,7 +234,7 @@ describe("game_bridge_v1 runtime contract", () => {
     );
   });
 
-  test("storage·analytics·ad·haptic·lifecycle·focus payload schema를 모두 검증한다", () => {
+  test("storage·analytics·ad·haptic·notification·lifecycle·config·locale·navigation payload schema를 모두 검증한다", () => {
     const requests: readonly GameBridgeRequestMessage[] = [
       {
         bridgeVersion: GAME_BRIDGE_VERSION,
@@ -249,6 +249,19 @@ describe("game_bridge_v1 runtime contract", () => {
         messageId: "storage-set",
         sessionId: "schema-session",
       }),
+      {
+        bridgeVersion: GAME_BRIDGE_VERSION,
+        kind: "request",
+        messageId: "storage-remove",
+        sessionId: "schema-session",
+        timestamp: 1,
+        method: "storage.remove",
+        payload: {
+          key: "save/journal",
+          schemaVersion: "save-v2",
+          transactionId: "storage-remove-1",
+        },
+      },
       {
         bridgeVersion: GAME_BRIDGE_VERSION,
         kind: "request",
@@ -289,6 +302,15 @@ describe("game_bridge_v1 runtime contract", () => {
         method: "haptic.play",
         payload: { semanticType: "success" },
       },
+      {
+        bridgeVersion: GAME_BRIDGE_VERSION,
+        kind: "request",
+        messageId: "notification-request",
+        sessionId: "schema-session",
+        timestamp: 1,
+        method: "notification.request",
+        payload: { reason: "daily-return-reminder" },
+      },
       ...(["app.pause", "app.resume", "app.focus", "app.blur"] as const).map(
         (method, index): GameBridgeRequestMessage => ({
           bridgeVersion: GAME_BRIDGE_VERSION,
@@ -300,6 +322,48 @@ describe("game_bridge_v1 runtime contract", () => {
           payload: { timestamp: index + 1 },
         }),
       ),
+      {
+        bridgeVersion: GAME_BRIDGE_VERSION,
+        kind: "request",
+        messageId: "config-snapshot",
+        sessionId: "schema-session",
+        timestamp: 1,
+        method: "config.snapshot",
+        payload: {
+          version: "remote-config-v1",
+          values: {
+            game_runtime_enabled: false,
+            default_hint_credits: 3,
+          },
+        },
+      },
+      {
+        bridgeVersion: GAME_BRIDGE_VERSION,
+        kind: "request",
+        messageId: "locale-preferred",
+        sessionId: "schema-session",
+        timestamp: 1,
+        method: "locale.preferred",
+        payload: { locales: ["ko-KR", "en-US"] },
+      },
+      {
+        bridgeVersion: GAME_BRIDGE_VERSION,
+        kind: "request",
+        messageId: "deep-link-map",
+        sessionId: "schema-session",
+        timestamp: 1,
+        method: "deep_link",
+        payload: { route: "map" },
+      },
+      {
+        bridgeVersion: GAME_BRIDGE_VERSION,
+        kind: "request",
+        messageId: "deep-link-puzzle",
+        sessionId: "schema-session",
+        timestamp: 1,
+        method: "deep_link",
+        payload: { route: "puzzle", puzzleId: "onboarding-001" },
+      },
     ];
 
     for (const request of requests) {
@@ -307,8 +371,12 @@ describe("game_bridge_v1 runtime contract", () => {
       assert.equal(decoded.ok, true, request.method);
     }
 
+    const analyticsRequest = requests.find(
+      (request) => request.method === "analytics.log",
+    );
+    assert.ok(analyticsRequest);
     const invalidAnalytics = {
-      ...requests[2],
+      ...analyticsRequest,
       payload: {
         event: "game_puzzle_start",
         params: { nested: { answer: "민감값" } },
@@ -319,6 +387,37 @@ describe("game_bridge_v1 runtime contract", () => {
       ok: false,
       reason: "invalid-payload",
     });
+
+    const localeRequest = requests.find(
+      (request) => request.method === "locale.preferred",
+    );
+    assert.ok(localeRequest);
+    assert.deepEqual(
+      decodeGameBridgeMessage({
+        ...localeRequest,
+        payload: { locales: ["ko-KR", "ko-kr"] },
+      }),
+      { ok: false, reason: "invalid-payload" },
+    );
+
+    const deepLinkRequest = requests.find(
+      (request) => request.method === "deep_link",
+    );
+    assert.ok(deepLinkRequest);
+    assert.deepEqual(
+      decodeGameBridgeMessage({
+        ...deepLinkRequest,
+        payload: { route: "https://attacker.example" },
+      }),
+      { ok: false, reason: "invalid-payload" },
+    );
+    assert.deepEqual(
+      decodeGameBridgeMessage({
+        ...deepLinkRequest,
+        payload: { route: "puzzle" },
+      }),
+      { ok: false, reason: "invalid-payload" },
+    );
   });
 
   test("requestId로 result를 연결하고 중복 response는 한 번만 settle한다", async () => {
@@ -549,15 +648,23 @@ describe("game_bridge_v1 runtime contract", () => {
     assert.equal(consoleCalls, 0);
   });
 
-  test("host lifecycle/focus command도 같은 request-response 계약을 사용한다", async () => {
+  test("host lifecycle/config/locale/deep-link command도 같은 request-response 계약을 사용한다", async () => {
     const sent: GameBridgeMessage[] = [];
     const host = new GameBridgeCoordinator({
       role: "host",
-      capabilities: ["lifecycle", "focus"],
+      capabilities: ["lifecycle", "focus", "config", "locale", "navigation"],
       transport: { send: (message) => void sent.push(message) },
     });
     const opening = await host.startSession("session-host");
-    await host.receive(handshakeAck(opening, "game", ["lifecycle", "focus"]));
+    await host.receive(
+      handshakeAck(opening, "game", [
+        "lifecycle",
+        "focus",
+        "config",
+        "locale",
+        "navigation",
+      ]),
+    );
 
     const pausePromise = host.request("app.pause", { timestamp: 100 });
     const pauseRequest = sent[sent.length - 1];
@@ -581,5 +688,29 @@ describe("game_bridge_v1 runtime contract", () => {
     };
     await host.receive(pauseResponse);
     assert.equal((await pausePromise).status, "result");
+
+    const localePromise = host.request("locale.preferred", {
+      locales: ["ko-KR"],
+    });
+    const localeRequest = sent[sent.length - 1];
+    assert.equal(localeRequest?.kind, "request");
+    if (
+      localeRequest?.kind !== "request" ||
+      localeRequest.method !== "locale.preferred"
+    ) {
+      assert.fail("locale request was not sent");
+    }
+    await host.receive({
+      bridgeVersion: GAME_BRIDGE_VERSION,
+      kind: "response",
+      messageId: "locale-response",
+      sessionId: "session-host",
+      timestamp: 102,
+      requestId: localeRequest.messageId,
+      method: "locale.preferred",
+      status: "result",
+      result: { uiLocale: "ko-KR" },
+    });
+    assert.equal((await localePromise).status, "result");
   });
 });

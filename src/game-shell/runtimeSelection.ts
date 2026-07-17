@@ -18,7 +18,7 @@ export type GameRuntimeHostKind = "web" | "apps-in-toss" | "native-webview";
 export function isGameRuntimeHostSupported(
   hostKind: GameRuntimeHostKind,
 ): boolean {
-  return hostKind === "web";
+  return hostKind === "web" || hostKind === "apps-in-toss";
 }
 
 export type RuntimeConfigSource = "fetched" | "cache" | "bundled";

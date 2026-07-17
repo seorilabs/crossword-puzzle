@@ -5,6 +5,7 @@ import {
   readCachedFirebaseRuntimeGateSnapshot,
   type FirebaseRuntimeGateSnapshot,
 } from "../adapters/firebaseClient.ts";
+import { createGameRuntimeHostStorage } from "../adapters/gameRuntimeHost.ts";
 import {
   GAME_BOOT_PENDING_KEY,
   bootSelectedRuntime,
@@ -71,8 +72,10 @@ function validateRuntimeGateSnapshot(candidate: unknown) {
   return { gameRuntimeEnabled: candidate.gameRuntimeEnabled };
 }
 
-function readPendingMarker(): unknown | null {
-  const raw = window.localStorage.getItem(PENDING_MARKER_KEY);
+async function readPendingMarker(
+  storage: Readonly<{ getItem(key: string): Promise<string | null> }>,
+): Promise<unknown | null> {
+  const raw = await storage.getItem(PENDING_MARKER_KEY);
   if (raw == null) return null;
   try {
     return JSON.parse(raw) as unknown;
@@ -121,10 +124,11 @@ export function RuntimeHost({ legacy }: RuntimeHostProps) {
         setState({ status: "legacy", reason: "host-adapter-unavailable" });
         return;
       }
+      const runtimeStorage = createGameRuntimeHostStorage(hostKind);
 
       const selection = await resolveRuntimeSelection({
         scheduler,
-        readPendingBootMarker: async () => readPendingMarker(),
+        readPendingBootMarker: () => readPendingMarker(runtimeStorage),
         fetchRuntimeConfig: async () => {
           if (shouldUseDevelopmentOverride()) {
             return {
@@ -157,14 +161,16 @@ export function RuntimeHost({ legacy }: RuntimeHostProps) {
         nowEpochMs: Date.now,
         async writePendingBootMarker(marker) {
           const serialized = JSON.stringify(marker);
-          window.localStorage.setItem(PENDING_MARKER_KEY, serialized);
-          if (window.localStorage.getItem(PENDING_MARKER_KEY) !== serialized) {
+          await runtimeStorage.setItem(PENDING_MARKER_KEY, serialized);
+          if (
+            (await runtimeStorage.getItem(PENDING_MARKER_KEY)) !== serialized
+          ) {
             throw new Error("pending marker durable ack failed");
           }
         },
         async clearPendingBootMarker() {
-          window.localStorage.removeItem(PENDING_MARKER_KEY);
-          if (window.localStorage.getItem(PENDING_MARKER_KEY) != null) {
+          await runtimeStorage.removeItem(PENDING_MARKER_KEY);
+          if ((await runtimeStorage.getItem(PENDING_MARKER_KEY)) != null) {
             throw new Error("pending marker clear ack failed");
           }
         },
@@ -172,6 +178,7 @@ export function RuntimeHost({ legacy }: RuntimeHostProps) {
           const module = await import("./GameExperience.tsx");
           return module.mountGameExperience(container, {
             hostKind,
+            storage: runtimeStorage,
           });
         },
       });

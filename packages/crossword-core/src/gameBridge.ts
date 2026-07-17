@@ -16,20 +16,44 @@ export type GameBridgeCapability =
   | "analytics"
   | "ad"
   | "haptic"
+  | "notification"
   | "lifecycle"
-  | "focus";
+  | "focus"
+  | "config"
+  | "locale"
+  | "navigation";
+
+export type GameBridgeDeepLinkRoute =
+  | "map"
+  | "today"
+  | "collection"
+  | "archive"
+  | "settings"
+  | "puzzle";
+
+export type GameBridgeNotificationOutcome =
+  | "newAgreement"
+  | "alreadyAgreed"
+  | "agreementRejected"
+  | "unsupported"
+  | "cancelled";
 
 export type GameBridgeMethod =
   | "storage.get"
   | "storage.set"
+  | "storage.remove"
   | "analytics.log"
   | "ad.load"
   | "ad.show"
   | "haptic.play"
+  | "notification.request"
   | "app.pause"
   | "app.resume"
   | "app.focus"
-  | "app.blur";
+  | "app.blur"
+  | "config.snapshot"
+  | "locale.preferred"
+  | "deep_link";
 
 export type GameBridgeJsonValue =
   | null
@@ -50,6 +74,11 @@ export type GameBridgeMethodPayloads = {
     key: string;
     schemaVersion: string;
     value: GameBridgeJsonValue;
+    transactionId: string;
+  };
+  "storage.remove": {
+    key: string;
+    schemaVersion: string;
     transactionId: string;
   };
   "analytics.log": {
@@ -75,10 +104,24 @@ export type GameBridgeMethodPayloads = {
       | "medium"
       | "heavy";
   };
+  "notification.request": {
+    reason: string;
+  };
   "app.pause": { timestamp: number };
   "app.resume": { timestamp: number };
   "app.focus": { timestamp: number };
   "app.blur": { timestamp: number };
+  "config.snapshot": {
+    version: string;
+    values: Readonly<Record<string, GameBridgeJsonValue>>;
+  };
+  "locale.preferred": {
+    locales: readonly string[];
+  };
+  deep_link: {
+    route: GameBridgeDeepLinkRoute;
+    puzzleId?: string;
+  };
 };
 
 export type GameBridgeAdState =
@@ -99,14 +142,19 @@ export type GameBridgeMethodResults = {
         value: GameBridgeJsonValue;
       };
   "storage.set": { stored: true; transactionId: string };
+  "storage.remove": { removed: true; transactionId: string };
   "analytics.log": { ack: true };
   "ad.load": { transactionId: string; state: GameBridgeAdState };
   "ad.show": { transactionId: string; state: GameBridgeAdState };
   "haptic.play": { ack: true };
+  "notification.request": { outcome: GameBridgeNotificationOutcome };
   "app.pause": { ack: true };
   "app.resume": { ack: true };
   "app.focus": { ack: true };
   "app.blur": { ack: true };
+  "config.snapshot": { ack: true };
+  "locale.preferred": { uiLocale: string };
+  deep_link: { navigated: boolean; route: GameBridgeDeepLinkRoute };
 };
 
 export type GameBridgeErrorCode =
@@ -292,21 +340,30 @@ const CAPABILITIES = [
   "analytics",
   "ad",
   "haptic",
+  "notification",
   "lifecycle",
   "focus",
+  "config",
+  "locale",
+  "navigation",
 ] as const satisfies readonly GameBridgeCapability[];
 
 const METHODS = [
   "storage.get",
   "storage.set",
+  "storage.remove",
   "analytics.log",
   "ad.load",
   "ad.show",
   "haptic.play",
+  "notification.request",
   "app.pause",
   "app.resume",
   "app.focus",
   "app.blur",
+  "config.snapshot",
+  "locale.preferred",
+  "deep_link",
 ] as const satisfies readonly GameBridgeMethod[];
 
 const CAPABILITY_SET = new Set<string>(CAPABILITIES);
@@ -316,6 +373,7 @@ const DEFAULT_TIMEOUT_MS = 5_000;
 const DEFAULT_MAX_REPLAY_ENTRIES = 256;
 const IDENTIFIER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:/-]*$/;
 const EVENT_PATTERN = /^[a-z][a-z0-9_]*$/;
+const BCP_47_PATTERN = /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/;
 const HAPTIC_TYPES = new Set([
   "selection",
   "success",
@@ -337,29 +395,51 @@ const AD_SHOW_STATES = new Set<GameBridgeAdState>([
   "dismissed",
   "unavailable",
 ]);
+const NOTIFICATION_OUTCOMES = new Set<GameBridgeNotificationOutcome>([
+  "newAgreement",
+  "alreadyAgreed",
+  "agreementRejected",
+  "unsupported",
+  "cancelled",
+]);
+const DEEP_LINK_ROUTES = new Set<GameBridgeDeepLinkRoute>([
+  "map",
+  "today",
+  "collection",
+  "archive",
+  "settings",
+  "puzzle",
+]);
 
 const METHOD_CAPABILITY: Readonly<
   Record<GameBridgeMethod, GameBridgeCapability>
 > = {
   "storage.get": "storage",
   "storage.set": "storage",
+  "storage.remove": "storage",
   "analytics.log": "analytics",
   "ad.load": "ad",
   "ad.show": "ad",
   "haptic.play": "haptic",
+  "notification.request": "notification",
   "app.pause": "lifecycle",
   "app.resume": "lifecycle",
   "app.focus": "focus",
   "app.blur": "focus",
+  "config.snapshot": "config",
+  "locale.preferred": "locale",
+  deep_link: "navigation",
 };
 
 const GAME_TO_HOST_METHODS = new Set<GameBridgeMethod>([
   "storage.get",
   "storage.set",
+  "storage.remove",
   "analytics.log",
   "ad.load",
   "ad.show",
   "haptic.play",
+  "notification.request",
 ]);
 
 const HOST_TO_GAME_METHODS = new Set<GameBridgeMethod>([
@@ -367,6 +447,9 @@ const HOST_TO_GAME_METHODS = new Set<GameBridgeMethod>([
   "app.resume",
   "app.focus",
   "app.blur",
+  "config.snapshot",
+  "locale.preferred",
+  "deep_link",
 ]);
 
 const RETRYABLE_ERRORS = new Set<GameBridgeErrorCode>([
@@ -489,6 +572,40 @@ function isAnalyticsParams(
   );
 }
 
+function isConfigValues(
+  value: unknown,
+): value is Readonly<Record<string, GameBridgeJsonValue>> {
+  return (
+    isRecord(value) &&
+    Object.keys(value).length <= 128 &&
+    Object.entries(value).every(
+      ([key, item]) => key.length > 0 && key.length <= 128 && isJsonValue(item),
+    )
+  );
+}
+
+function isLocaleList(value: unknown): value is readonly string[] {
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.length <= 16 &&
+    value.every(
+      (locale) =>
+        typeof locale === "string" &&
+        locale.length <= 35 &&
+        BCP_47_PATTERN.test(locale),
+    ) &&
+    new Set(value.map((locale) => locale.toLowerCase())).size === value.length
+  );
+}
+
+function isDeepLinkRoute(value: unknown): value is GameBridgeDeepLinkRoute {
+  return (
+    typeof value === "string" &&
+    DEEP_LINK_ROUTES.has(value as GameBridgeDeepLinkRoute)
+  );
+}
+
 function validatePayload<M extends GameBridgeMethod>(
   method: M,
   payload: unknown,
@@ -517,6 +634,13 @@ function validatePayload<M extends GameBridgeMethod>(
         isJsonValue(payload.value) &&
         isIdentifier(payload.transactionId)
       );
+    case "storage.remove":
+      return (
+        hasExactKeys(payload, ["key", "schemaVersion", "transactionId"]) &&
+        isBoundedString(payload.key, 256) &&
+        isBoundedString(payload.schemaVersion, 64, IDENTIFIER_PATTERN) &&
+        isIdentifier(payload.transactionId)
+      );
     case "analytics.log":
       return (
         hasExactKeys(payload, ["event", "params", "eventId"]) &&
@@ -537,12 +661,35 @@ function validatePayload<M extends GameBridgeMethod>(
         typeof payload.semanticType === "string" &&
         HAPTIC_TYPES.has(payload.semanticType)
       );
+    case "notification.request":
+      return (
+        hasExactKeys(payload, ["reason"]) &&
+        isBoundedString(payload.reason, 128, IDENTIFIER_PATTERN)
+      );
     case "app.pause":
     case "app.resume":
     case "app.focus":
     case "app.blur":
       return (
         hasExactKeys(payload, ["timestamp"]) && isTimestamp(payload.timestamp)
+      );
+    case "config.snapshot":
+      return (
+        hasExactKeys(payload, ["version", "values"]) &&
+        isBoundedString(payload.version, 64, IDENTIFIER_PATTERN) &&
+        isConfigValues(payload.values)
+      );
+    case "locale.preferred":
+      return (
+        hasExactKeys(payload, ["locales"]) && isLocaleList(payload.locales)
+      );
+    case "deep_link":
+      return (
+        hasExactKeys(payload, ["route"], ["puzzleId"]) &&
+        isDeepLinkRoute(payload.route) &&
+        (payload.route === "puzzle"
+          ? isIdentifier(payload.puzzleId)
+          : payload.puzzleId === undefined)
       );
   }
   return false;
@@ -573,13 +720,28 @@ function validateResult<M extends GameBridgeMethod>(
         result.stored === true &&
         isIdentifier(result.transactionId)
       );
+    case "storage.remove":
+      return (
+        hasExactKeys(result, ["removed", "transactionId"]) &&
+        result.removed === true &&
+        isIdentifier(result.transactionId)
+      );
     case "analytics.log":
     case "haptic.play":
     case "app.pause":
     case "app.resume":
     case "app.focus":
     case "app.blur":
+    case "config.snapshot":
       return hasExactKeys(result, ["ack"]) && result.ack === true;
+    case "notification.request":
+      return (
+        hasExactKeys(result, ["outcome"]) &&
+        typeof result.outcome === "string" &&
+        NOTIFICATION_OUTCOMES.has(
+          result.outcome as GameBridgeNotificationOutcome,
+        )
+      );
     case "ad.load":
       return (
         hasExactKeys(result, ["transactionId", "state"]) &&
@@ -593,6 +755,19 @@ function validateResult<M extends GameBridgeMethod>(
         isIdentifier(result.transactionId) &&
         typeof result.state === "string" &&
         AD_SHOW_STATES.has(result.state as GameBridgeAdState)
+      );
+    case "locale.preferred":
+      return (
+        hasExactKeys(result, ["uiLocale"]) &&
+        typeof result.uiLocale === "string" &&
+        result.uiLocale.length <= 35 &&
+        BCP_47_PATTERN.test(result.uiLocale)
+      );
+    case "deep_link":
+      return (
+        hasExactKeys(result, ["navigated", "route"]) &&
+        typeof result.navigated === "boolean" &&
+        isDeepLinkRoute(result.route)
       );
   }
   return false;
@@ -846,8 +1021,11 @@ function idempotencyKey(
   method: GameBridgeMethod,
   payload: GameBridgeMethodPayloads[GameBridgeMethod],
 ): string | null {
-  if (method === "storage.set") {
-    return `${method}:${(payload as GameBridgeMethodPayloads["storage.set"]).transactionId}`;
+  if (method === "storage.set" || method === "storage.remove") {
+    const storageMutation = payload as
+      | GameBridgeMethodPayloads["storage.set"]
+      | GameBridgeMethodPayloads["storage.remove"];
+    return `${method}:${storageMutation.transactionId}`;
   }
   if (method === "analytics.log") {
     return `${method}:${(payload as GameBridgeMethodPayloads["analytics.log"]).eventId}`;

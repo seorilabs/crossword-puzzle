@@ -47,6 +47,7 @@ export type GameExperienceHostKind = GameRuntimeHostKind;
 
 export type MountGameExperienceOptions = Readonly<{
   hostKind: GameExperienceHostKind;
+  storage: KeyValueStoragePort;
 }>;
 
 type HostCallbacks = Readonly<{
@@ -89,44 +90,6 @@ function createDeferred<T>(): Deferred<T> {
       if (settled) return;
       settled = true;
       rejectPromise(reason);
-    },
-  };
-}
-
-function createBrowserStoragePort(): KeyValueStoragePort {
-  const memoryFallback = new Map<string, string>();
-
-  const storage = (() => {
-    try {
-      return window.localStorage;
-    } catch {
-      return null;
-    }
-  })();
-
-  return {
-    async getItem(key) {
-      try {
-        return storage?.getItem(key) ?? memoryFallback.get(key) ?? null;
-      } catch {
-        return memoryFallback.get(key) ?? null;
-      }
-    },
-    async setItem(key, value) {
-      memoryFallback.set(key, value);
-      try {
-        storage?.setItem(key, value);
-      } catch {
-        // Session memory remains usable when Web Storage is unavailable.
-      }
-    },
-    async removeItem(key) {
-      memoryFallback.delete(key);
-      try {
-        storage?.removeItem(key);
-      } catch {
-        // Session memory remains the fallback source of truth.
-      }
     },
   };
 }
@@ -235,9 +198,10 @@ async function persistGameTransition(
   await repository.persistSnapshot(next);
 }
 
-async function createGameModel(): Promise<GameModel> {
+async function createGameModel(
+  storage: KeyValueStoragePort,
+): Promise<GameModel> {
   const content = loadBundledOnboardingGameContent();
-  const storage = createBrowserStoragePort();
   const repository = createGameSaveRepository({
     storage,
     checksumPort: { digest: digestSavePayload },
@@ -327,7 +291,12 @@ function getDraftForEntry(
 function GameExperience({
   callbacks,
   hostKind,
-}: Readonly<{ callbacks: HostCallbacks; hostKind: GameExperienceHostKind }>) {
+  storage,
+}: Readonly<{
+  callbacks: HostCallbacks;
+  hostKind: GameExperienceHostKind;
+  storage: KeyValueStoragePort;
+}>) {
   const content = useMemo(loadBundledOnboardingGameContent, []);
   const [model, setModel] = useState<GameModel | null>(null);
   const [snapshot, setSnapshot] = useState<GameSnapshot | null>(null);
@@ -348,7 +317,7 @@ function GameExperience({
     if (hostKind !== "native-webview") {
       callbacks.onBridgeReady();
     }
-    void createGameModel().then(
+    void createGameModel(storage).then(
       (nextModel) => {
         if (cancelled) return;
         previousSnapshotRef.current = nextModel.snapshot;
@@ -366,7 +335,7 @@ function GameExperience({
     return () => {
       cancelled = true;
     };
-  }, [callbacks, hostKind]);
+  }, [callbacks, hostKind, storage]);
 
   useEffect(() => {
     if (model == null) return;
@@ -810,7 +779,11 @@ export function mountGameExperience(
 
   root.render(
     <GameExperienceErrorBoundary onError={rejectBoot}>
-      <GameExperience callbacks={callbacks} hostKind={options.hostKind} />
+      <GameExperience
+        callbacks={callbacks}
+        hostKind={options.hostKind}
+        storage={options.storage}
+      />
     </GameExperienceErrorBoundary>,
   );
 
