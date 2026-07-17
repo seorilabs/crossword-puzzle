@@ -10,6 +10,8 @@
     "test:adapters": "node --experimental-strip-types --test src/adapters/*.test.mts",
     "test:core": "node --experimental-strip-types --test packages/crossword-core/src/*.test.mts",
     "test:components": "vitest run",
+    "test:game": "node --experimental-strip-types --test src/game-shell/*.test.mts packages/crossword-game/src/*.test.mts",
+    "check:game": "npm run test:game && tsc -p packages/crossword-game/tsconfig.json && tsc -p src/game-shell/tsconfig.json",
     "lint": "eslint .",
     "format": "prettier --write .",
     "mobile:install": "npm ci --prefix apps/mobile",
@@ -49,6 +51,7 @@
     "@toss/tds-mobile": "^2.3.0",
     "@toss/tds-mobile-ait": "^2.3.0",
     "firebase": "^12.14.0",
+    "phaser": "4.2.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

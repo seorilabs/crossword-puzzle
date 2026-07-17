@@ -32,6 +32,7 @@ jobs:
         npm run validate:puzzles
         npm run test:adapters
         npm run test:core
+        npm run check:game
         npm run build
         npm run check:release-parity
         npm run check:mobile

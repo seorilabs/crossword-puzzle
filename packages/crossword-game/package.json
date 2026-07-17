@@ -1,0 +1,13 @@
+{
+  "name": "@seorilabs/crossword-game",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --experimental-strip-types --test src/projection.test.mts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "peerDependencies": {
+    "phaser": "4.2.1"
+  }
+}

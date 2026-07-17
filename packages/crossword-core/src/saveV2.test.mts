@@ -77,7 +77,10 @@ describe("Save v2 migration and checksum", () => {
       },
     };
 
-    assert.equal(getCanonicalSavePayload(save), getCanonicalSavePayload(reordered));
+    assert.equal(
+      getCanonicalSavePayload(save),
+      getCanonicalSavePayload(reordered),
+    );
   });
 
   test("seal한 저장은 변조 전만 checksum 검증을 통과한다", async () => {
@@ -170,5 +173,39 @@ describe("compact emergency cell journal", () => {
     assert.equal(localeMismatch.status, "rejected");
     assert.equal(contentMismatch.status, "rejected");
     assert.equal(baseMismatch.status, "rejected");
+  });
+
+  test("같은 sequence·셀 값이어도 다른 content checksum journal은 replay로 승인하지 않는다", async () => {
+    const sealed = await sealSaveV2(
+      migrateLegacyProgressToSaveV2(createMigrationInput()),
+      checksumPort,
+    );
+    const journal = createCellCommitJournal({
+      contentLocale: "ko-KR",
+      puzzleId: "puzzle-1",
+      contentChecksum: "content-fixture-checksum",
+      cellKey: "0:1",
+      cellValue: "나",
+      commandSequence: 1,
+      baseSaveChecksum: sealed.checksum,
+      createdAt: "2026-07-17T00:00:01.000Z",
+    });
+    const applied = await applyCellCommitJournal(sealed, journal, checksumPort);
+    assert.equal(applied.status, "applied");
+
+    const foreignContentReplay = await applyCellCommitJournal(
+      applied.save,
+      createCellCommitJournal({
+        ...journal,
+        contentChecksum: "different-content-checksum",
+      }),
+      checksumPort,
+    );
+
+    assert.deepEqual(foreignContentReplay, {
+      status: "rejected",
+      reason: "content-checksum-mismatch",
+      save: applied.save,
+    });
   });
 });

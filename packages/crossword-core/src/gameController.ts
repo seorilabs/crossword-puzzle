@@ -84,6 +84,7 @@ export type GameDomainEvent =
   | { type: "game.suspended"; commandSequence: number }
   | { type: "game.resumed"; commandSequence: number }
   | { type: "game.recovered"; commandSequence: number }
+  | { type: "game.recovery.fallback"; commandSequence: number }
   | {
       type: "game.command.rejected";
       command: GameCommand["type"];
@@ -102,9 +103,7 @@ export type GameControllerSubscriber = (
 ) => void;
 
 type MutableGameSnapshot = {
-  -readonly [Key in keyof GameSnapshot]: GameSnapshot[Key] extends readonly (
-    infer Item
-  )[]
+  -readonly [Key in keyof GameSnapshot]: GameSnapshot[Key] extends readonly (infer Item)[]
     ? Item[]
     : GameSnapshot[Key] extends Readonly<Record<string, string>>
       ? Record<string, string>
@@ -274,9 +273,7 @@ function reduceGameCommand(
     if (snapshot.phase !== "composing") {
       return rejectCommand(snapshot, command, "invalid-transition");
     }
-    const next = freezeSnapshot(
-      commandSnapshot(snapshot, { phase: "active" }),
-    );
+    const next = freezeSnapshot(commandSnapshot(snapshot, { phase: "active" }));
     events.push({
       type: "game.composition.cancelled",
       commandSequence: next.commandSequence,
@@ -516,7 +513,21 @@ function reduceGameCommand(
     if (snapshot.phase !== "recovery") {
       return rejectCommand(snapshot, command, "invalid-transition");
     }
-    return rejectCommand(snapshot, command, "invalid-transition");
+    const next = freezeSnapshot(
+      commandSnapshot(snapshot, {
+        phase: "active",
+        suspendedFrom: null,
+        selectedEntryId: content.entries[0]?.id ?? null,
+        cellValues: {},
+        completedEntryIds: [],
+        lastResolvedEntryIds: [],
+      }),
+    );
+    events.push({
+      type: "game.recovery.fallback",
+      commandSequence: next.commandSequence,
+    });
+    return { snapshot: next, events: Object.freeze(events) };
   }
 
   return rejectCommand(snapshot, command, "invalid-transition");
@@ -542,6 +553,68 @@ export function createInitialGameSnapshot(
   });
 }
 
+function normalizeInitialGameSnapshot(
+  content: GameContentV1,
+  profile: LanguageProfile,
+  snapshot: GameSnapshot,
+): GameSnapshot {
+  if (
+    snapshot.puzzleId !== content.puzzleId ||
+    snapshot.contentLocale !== content.contentLocale ||
+    snapshot.contentChecksum !== content.contentChecksum ||
+    snapshot.languageProfileId !== content.languageProfile.id ||
+    snapshot.languageProfileVersion !== content.languageProfile.version
+  ) {
+    throw new Error("GameController initial snapshot does not match content");
+  }
+
+  if (
+    !Number.isInteger(snapshot.commandSequence) ||
+    snapshot.commandSequence < 0
+  ) {
+    throw new Error("GameController initial snapshot has invalid sequence");
+  }
+
+  const entryIds = new Set(content.entries.map((entry) => entry.id));
+  if (
+    snapshot.selectedEntryId != null &&
+    !entryIds.has(snapshot.selectedEntryId)
+  ) {
+    throw new Error("GameController initial snapshot selects unknown entry");
+  }
+
+  const contentCellKeys = new Set(
+    content.entries.flatMap((entry) =>
+      getEntryCells(entry).map((cell) => getCellKey(cell.row, cell.col)),
+    ),
+  );
+  const cellValues: Record<string, string> = {};
+  for (const [cellKey, rawValue] of Object.entries(snapshot.cellValues)) {
+    const value = profile.normalizeCommittedCell(rawValue);
+    if (!contentCellKeys.has(cellKey) || !profile.validateCell(value)) {
+      throw new Error("GameController initial snapshot has invalid cell value");
+    }
+    cellValues[cellKey] = value;
+  }
+
+  const completedEntryIds = getCompletedEntryIds(
+    content.entries,
+    cellValues,
+    profile,
+  );
+  const completed = new Set(completedEntryIds);
+
+  return freezeSnapshot({
+    ...snapshot,
+    cellValues,
+    completedEntryIds,
+    lastResolvedEntryIds: snapshot.lastResolvedEntryIds.filter((entryId) =>
+      completed.has(entryId),
+    ),
+    lastError: snapshot.lastError ?? null,
+  });
+}
+
 export class GameController {
   readonly #content: GameContentV1;
   readonly #profile: LanguageProfile;
@@ -563,7 +636,14 @@ export class GameController {
 
     this.#content = input.content;
     this.#profile = input.profile;
-    this.#snapshot = input.initialSnapshot ?? createInitialGameSnapshot(input.content);
+    this.#snapshot =
+      input.initialSnapshot == null
+        ? createInitialGameSnapshot(input.content)
+        : normalizeInitialGameSnapshot(
+            input.content,
+            input.profile,
+            input.initialSnapshot,
+          );
   }
 
   getSnapshot(): GameSnapshot {

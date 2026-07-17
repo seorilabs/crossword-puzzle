@@ -5,6 +5,7 @@ import { createRoot } from "react-dom/client";
 
 import config from "../granite.config.ts";
 import App from "./App.tsx";
+import { RuntimeHost } from "./game-shell/RuntimeHost.tsx";
 import "./index.css";
 
 const localUserAgent = {
@@ -19,19 +20,23 @@ const isTossApp =
   typeof window !== "undefined" &&
   window.navigator.userAgent.includes("TossApp/");
 
-createRoot(document.getElementById("root")!).render(
+const legacyApp = (
   <StrictMode>
-    {isTossApp ? (
-      <TDSMobileAITProvider brandPrimaryColor={config.brand.primaryColor}>
-        <App />
-      </TDSMobileAITProvider>
-    ) : (
-      <TDSMobileProvider
-        token={{ color: { primary: config.brand.primaryColor } }}
-        userAgent={localUserAgent}
-      >
-        <App />
-      </TDSMobileProvider>
-    )}
-  </StrictMode>,
+    <App />
+  </StrictMode>
+);
+
+createRoot(document.getElementById("root")!).render(
+  isTossApp ? (
+    <TDSMobileAITProvider brandPrimaryColor={config.brand.primaryColor}>
+      <RuntimeHost legacy={legacyApp} />
+    </TDSMobileAITProvider>
+  ) : (
+    <TDSMobileProvider
+      token={{ color: { primary: config.brand.primaryColor } }}
+      userAgent={localUserAgent}
+    >
+      <RuntimeHost legacy={legacyApp} />
+    </TDSMobileProvider>
+  ),
 );

@@ -16,6 +16,13 @@ type FirebaseRuntime = {
 
 type AnalyticsParams = Record<string, string | number | boolean>;
 
+export type FirebaseRuntimeGateSnapshot = {
+  schemaVersion: 1;
+  gameRuntimeEnabled: boolean;
+  fetchTimeMillis: number;
+  valueSource: "remote";
+};
+
 const firebaseAppName = "crossword-puzzle";
 const remoteConfigFetchIntervalMs = 6 * 60 * 60 * 1000;
 
@@ -122,6 +129,58 @@ async function getFirebaseRuntime() {
   })();
 
   return firebaseRuntimePromise;
+}
+
+async function readRemoteRuntimeGateSnapshot(
+  remoteConfig: RemoteConfig,
+): Promise<FirebaseRuntimeGateSnapshot | null> {
+  const { getValue } = await import("firebase/remote-config");
+  const value = getValue(remoteConfig, launchConfigKeys.gameRuntimeEnabled);
+  if (
+    value.getSource() !== "remote" ||
+    !Number.isFinite(remoteConfig.fetchTimeMillis) ||
+    remoteConfig.fetchTimeMillis < 0
+  ) {
+    return null;
+  }
+
+  return {
+    schemaVersion: 1,
+    gameRuntimeEnabled: value.asBoolean(),
+    fetchTimeMillis: remoteConfig.fetchTimeMillis,
+    valueSource: "remote",
+  };
+}
+
+/**
+ * RuntimeHost 전용 fresh/SDK-cache-aware fetch. 실패를 삼키지 않아 host가
+ * 검증된 activated cache 또는 bundled false로 직접 내려갈 수 있게 한다.
+ */
+export async function fetchFirebaseRuntimeGateSnapshot(): Promise<FirebaseRuntimeGateSnapshot> {
+  const runtime = await getFirebaseRuntime();
+  if (runtime?.remoteConfig == null) {
+    throw new Error("Firebase Remote Config is unavailable");
+  }
+
+  const { fetchAndActivate } = await import("firebase/remote-config");
+  await fetchAndActivate(runtime.remoteConfig);
+  const snapshot = await readRemoteRuntimeGateSnapshot(runtime.remoteConfig);
+  if (snapshot == null) {
+    throw new Error("Remote runtime gate has no activated remote value");
+  }
+  return snapshot;
+}
+
+/** Reads only Firebase SDK's initialized, previously activated remote cache. */
+export async function readCachedFirebaseRuntimeGateSnapshot(): Promise<FirebaseRuntimeGateSnapshot | null> {
+  const runtime = await getFirebaseRuntime();
+  if (runtime?.remoteConfig == null) {
+    return null;
+  }
+
+  const { ensureInitialized } = await import("firebase/remote-config");
+  await ensureInitialized(runtime.remoteConfig);
+  return readRemoteRuntimeGateSnapshot(runtime.remoteConfig);
 }
 
 export async function loadFirebaseLaunchConfig(): Promise<LaunchConfig> {

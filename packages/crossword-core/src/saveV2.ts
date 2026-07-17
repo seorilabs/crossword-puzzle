@@ -4,7 +4,10 @@ export const SAVE_V2_VERSION = 2 as const;
 export const CELL_COMMIT_JOURNAL_VERSION = 1 as const;
 
 export type JsonPrimitive = boolean | number | string | null;
-export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
+export type JsonValue =
+  | JsonPrimitive
+  | JsonValue[]
+  | { [key: string]: JsonValue };
 
 export type SaveV2Profile = {
   settings: Record<string, JsonPrimitive>;
@@ -13,6 +16,14 @@ export type SaveV2Profile = {
   inputMode: string;
   accessibility: Record<string, JsonPrimitive>;
 };
+
+export type SaveV2PuzzlePhase =
+  | "intro"
+  | "active"
+  | "word-resolved"
+  | "board-resolved"
+  | "result"
+  | "map";
 
 export type SaveV2PuzzleSnapshot = {
   contentLocale: string;
@@ -25,6 +36,7 @@ export type SaveV2PuzzleSnapshot = {
   revealUsed: boolean;
   tentativeCells: string[];
   commandSequence: number;
+  phase?: SaveV2PuzzlePhase;
   updatedAt: string;
   completedAt?: string;
 };
@@ -236,7 +248,11 @@ export function projectLegacyProgress(
 }
 
 function canonicalize(value: unknown): string {
-  if (value === null || typeof value === "boolean" || typeof value === "string") {
+  if (
+    value === null ||
+    typeof value === "boolean" ||
+    typeof value === "string"
+  ) {
     return JSON.stringify(value);
   }
 
@@ -256,10 +272,7 @@ function canonicalize(value: unknown): string {
       .filter(([, child]) => child !== undefined)
       .sort(([left], [right]) => left.localeCompare(right));
     return `{${entries
-      .map(
-        ([key, child]) =>
-          `${JSON.stringify(key)}:${canonicalize(child)}`,
-      )
+      .map(([key, child]) => `${JSON.stringify(key)}:${canonicalize(child)}`)
       .join(",")}}`;
   }
 
@@ -323,14 +336,6 @@ export async function applyCellCommitJournal(
     return { status: "rejected", reason: "puzzle-not-found", save };
   }
 
-  const existingValue = snapshot.cellValues[journal.cellKey] ?? null;
-  if (
-    snapshot.commandSequence === journal.commandSequence &&
-    existingValue === journal.cellValue
-  ) {
-    return { status: "already-applied", save };
-  }
-
   if (snapshot.contentLocale !== journal.contentLocale) {
     return {
       status: "rejected",
@@ -345,6 +350,17 @@ export async function applyCellCommitJournal(
       reason: "content-checksum-mismatch",
       save,
     };
+  }
+
+  // A replay is idempotent only inside the same locale/content namespace.
+  // Check those identities before accepting a coincidentally equal cell value
+  // and sequence from another content revision.
+  const existingValue = snapshot.cellValues[journal.cellKey] ?? null;
+  if (
+    snapshot.commandSequence === journal.commandSequence &&
+    existingValue === journal.cellValue
+  ) {
+    return { status: "already-applied", save };
   }
 
   if (save.checksum !== journal.baseSaveChecksum) {
@@ -409,10 +425,14 @@ export function validateSaveV2Namespaces(save: SaveV2Envelope): string[] {
   for (const [contentLocale, state] of Object.entries(save.content)) {
     for (const [puzzleId, snapshot] of Object.entries(state.puzzles)) {
       if (snapshot.contentLocale !== contentLocale) {
-        violations.push(`content.${contentLocale}.puzzles.${puzzleId}.contentLocale`);
+        violations.push(
+          `content.${contentLocale}.puzzles.${puzzleId}.contentLocale`,
+        );
       }
       if (snapshot.puzzleId !== puzzleId) {
-        violations.push(`content.${contentLocale}.puzzles.${puzzleId}.puzzleId`);
+        violations.push(
+          `content.${contentLocale}.puzzles.${puzzleId}.puzzleId`,
+        );
       }
     }
 

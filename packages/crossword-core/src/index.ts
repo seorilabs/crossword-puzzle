@@ -5,6 +5,7 @@ export * from "./difficultyProfiles";
 export * from "./feedbackPolicy";
 export * from "./gameAnalytics";
 export * from "./gameContent";
+export * from "./gameBridge";
 export * from "./gameController";
 export * from "./launchConfig";
 export * from "./leaderboard";

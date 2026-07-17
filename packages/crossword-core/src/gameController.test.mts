@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
-import { GameController } from "./gameController.ts";
+import { createInitialGameSnapshot, GameController } from "./gameController.ts";
 import type { GameContentV1 } from "./gameContent.ts";
 import { koKrLanguageProfile } from "./languageProfile.ts";
 
@@ -135,7 +135,11 @@ describe("GameController single-writer state machine", () => {
       profile: koKrLanguageProfile,
     });
     controller.dispatch({ type: "intro.complete" });
-    controller.dispatch({ type: "input.commit", entryId: "a1", cells: ["가", "나"] });
+    controller.dispatch({
+      type: "input.commit",
+      entryId: "a1",
+      cells: ["가", "나"],
+    });
     controller.dispatch({ type: "resolution.complete" });
 
     const rejected = controller.dispatch({
@@ -184,5 +188,71 @@ describe("GameController single-writer state machine", () => {
     assert.deepEqual(calls, ["active:game.intro.completed"]);
     assert.equal(Object.isFrozen(controller.getSnapshot()), true);
     assert.equal(Object.isFrozen(controller.getSnapshot().cellValues), true);
+  });
+
+  test("recovery 실패는 검증된 번들 콘텐츠의 빈 active 상태로 복귀한다", () => {
+    const content = createContent();
+    const recoverySnapshot = {
+      ...createInitialGameSnapshot(content),
+      phase: "recovery" as const,
+      cellValues: { "0:0": "가" },
+    };
+    const controller = new GameController({
+      content,
+      profile: koKrLanguageProfile,
+      initialSnapshot: recoverySnapshot,
+    });
+
+    const result = controller.dispatch({ type: "recovery.fail" });
+
+    assert.equal(result.snapshot.phase, "active");
+    assert.deepEqual(result.snapshot.cellValues, {});
+    assert.deepEqual(result.events, [
+      {
+        type: "game.recovery.fallback",
+        commandSequence: 1,
+      },
+    ]);
+  });
+
+  test("initial snapshot의 콘텐츠 정체성과 셀 범위를 검증하고 외부 객체를 복제한다", () => {
+    const content = createContent();
+    const initial = {
+      ...createInitialGameSnapshot(content),
+      phase: "active" as const,
+      cellValues: { "0:0": "가" },
+    };
+    const controller = new GameController({
+      content,
+      profile: koKrLanguageProfile,
+      initialSnapshot: initial,
+    });
+    initial.cellValues["0:0"] = "마";
+
+    assert.equal(controller.getSnapshot().cellValues["0:0"], "가");
+    assert.throws(
+      () =>
+        new GameController({
+          content,
+          profile: koKrLanguageProfile,
+          initialSnapshot: {
+            ...createInitialGameSnapshot(content),
+            contentChecksum: "foreign-content",
+          },
+        }),
+      /does not match content/,
+    );
+    assert.throws(
+      () =>
+        new GameController({
+          content,
+          profile: koKrLanguageProfile,
+          initialSnapshot: {
+            ...createInitialGameSnapshot(content),
+            cellValues: { "99:99": "가" },
+          },
+        }),
+      /invalid cell value/,
+    );
   });
 });
