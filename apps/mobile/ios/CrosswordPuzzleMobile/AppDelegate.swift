@@ -4,6 +4,94 @@ import React
 import React_RCTAppDelegate
 import ReactAppDependencyProvider
 
+private struct NativeGameAssetManifest: Decodable {
+  let schemaVersion: Int
+  let aggregateChecksum: String
+}
+
+private enum NativeGameBundleLaunchProperties {
+  private static let directoryName = "CrosswordGame"
+  private static let checksumPattern = #"^sha256:[a-f0-9]{64}$"#
+
+  static func make(from bundle: Bundle) -> [String: String]? {
+    guard let resourceURL = bundle.resourceURL?.standardizedFileURL else {
+      return nil
+    }
+
+    let directoryURL = resourceURL
+      .appendingPathComponent(directoryName, isDirectory: true)
+      .standardizedFileURL
+    guard
+      isDirectoryWithoutSymlinks(directoryURL),
+      isContained(directoryURL, in: resourceURL)
+    else {
+      return nil
+    }
+
+    guard
+      let indexURL = regularFileURL(
+        directoryURL.appendingPathComponent("index.html", isDirectory: false),
+        inside: directoryURL
+      ),
+      let assetManifestURL = regularFileURL(
+        directoryURL.appendingPathComponent("asset-manifest.json", isDirectory: false),
+        inside: directoryURL
+      ),
+      let manifestData = try? Data(contentsOf: assetManifestURL, options: [.mappedIfSafe]),
+      let manifest = try? JSONDecoder().decode(
+        NativeGameAssetManifest.self,
+        from: manifestData
+      ),
+      manifest.schemaVersion == 1,
+      manifest.aggregateChecksum.range(
+        of: checksumPattern,
+        options: .regularExpression
+      ) != nil
+    else {
+      return nil
+    }
+
+    return [
+      "indexUrl": indexURL.absoluteString,
+      "readAccessUrl": directoryURL.absoluteString,
+      "assetManifestUrl": assetManifestURL.absoluteString,
+      "assetManifestChecksum": manifest.aggregateChecksum,
+      "bridgeSessionId": UUID().uuidString,
+    ]
+  }
+
+  private static func isDirectoryWithoutSymlinks(_ url: URL) -> Bool {
+    guard
+      let values = try? url.resourceValues(
+        forKeys: [.isDirectoryKey, .isSymbolicLinkKey]
+      )
+    else {
+      return false
+    }
+    return values.isDirectory == true && values.isSymbolicLink != true
+  }
+
+  private static func regularFileURL(_ url: URL, inside directoryURL: URL) -> URL? {
+    guard
+      isContained(url, in: directoryURL),
+      let values = try? url.resourceValues(
+        forKeys: [.isRegularFileKey, .isSymbolicLinkKey]
+      ),
+      values.isRegularFile == true,
+      values.isSymbolicLink != true
+    else {
+      return nil
+    }
+    return url
+  }
+
+  private static func isContained(_ candidateURL: URL, in directoryURL: URL) -> Bool {
+    let directoryPath = directoryURL.resolvingSymlinksInPath().standardizedFileURL.path
+    let candidatePath = candidateURL.resolvingSymlinksInPath().standardizedFileURL.path
+    return candidatePath.hasPrefix(directoryPath + "/")
+  }
+}
+
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
   var window: UIWindow?
@@ -26,9 +114,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     window = UIWindow(frame: UIScreen.main.bounds)
 
+    var initialProperties: [String: Any] = [:]
+    if let nativeGameBundle = NativeGameBundleLaunchProperties.make(from: .main) {
+      initialProperties["nativeGameBundle"] = nativeGameBundle
+    }
+
     factory.startReactNative(
       withModuleName: "CrosswordPuzzleMobile",
       in: window,
+      initialProperties: initialProperties,
       launchOptions: launchOptions
     )
 

@@ -26,6 +26,9 @@ echo "▸ JS 의존성 설치 (npm ci — root + apps/mobile)"
 npm --prefix "${REPO}" ci
 npm --prefix "${MOBILE}" ci
 
+echo "▸ iOS 내장 게임 번들 생성·검증"
+npm --prefix "${REPO}" run build:game:mobile
+
 echo "▸ Firebase iOS 설정 확인 (GoogleService-Info.plist)"
 GS_PLIST="${IOS}/CrosswordPuzzleMobile/GoogleService-Info.plist"
 cd "${REPO}"

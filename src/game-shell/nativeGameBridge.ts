@@ -22,7 +22,6 @@ export type NativeBridgeMessageTarget = Readonly<{
 export type NativeGameBridgeOptions = Readonly<{
   sendSerialized(message: string): void | Promise<void>;
   messageTargets: readonly NativeBridgeMessageTarget[];
-  createSessionId?: () => string;
   dispatchHostEvent?: (name: string, detail?: unknown) => void;
 }>;
 
@@ -69,13 +68,6 @@ function createDeferred(): {
       rejectPromise(error);
     },
   };
-}
-
-function defaultSessionId(): string {
-  return (
-    globalThis.crypto?.randomUUID?.() ??
-    `native-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
-  );
 }
 
 function parseSerializedMessage(value: unknown): unknown | null {
@@ -181,14 +173,11 @@ export function createNativeGameBridgeClient(
     target.addEventListener("message", onMessage);
   }
 
-  const sessionId = (options.createSessionId ?? defaultSessionId)();
-  void coordinator.startSession(sessionId).then(() => {
-    if (coordinator.getSnapshot().state === "rejected") {
-      ready.reject(new NativeGameBridgeError("transport-error"));
-    }
-  });
-
   const nextTransactionId = (kind: string): string => {
+    const sessionId = coordinator.getSnapshot().sessionId;
+    if (sessionId == null) {
+      throw new NativeGameBridgeError("handshake-required");
+    }
     transactionSequence += 1;
     return `${sessionId}:${kind}:${transactionSequence}`;
   };

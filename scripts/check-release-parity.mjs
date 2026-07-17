@@ -10,6 +10,11 @@ const sharedIndexPath = "packages/crossword-core/src/index.ts";
 const webAppPath = "src/App.tsx";
 const mobileAppPath = "apps/mobile/App.tsx";
 const mobileAppTestPath = "apps/mobile/__tests__/App.test.tsx";
+const mobileRootPath = "apps/mobile/MobileRoot.tsx";
+const mobileRuntimeHostPath = "apps/mobile/MobileRuntimeHost.tsx";
+const mobileGameBridgeHostPath = "apps/mobile/gameBridgeHost.ts";
+const mobileIndexPath = "apps/mobile/index.js";
+const mobileEslintIgnorePath = "apps/mobile/.eslintignore";
 const launchConfigPath = "src/adapters/launchConfig.ts";
 const webTelemetryPath = "src/adapters/telemetry.ts";
 const mobileFirebaseClientPath = "apps/mobile/firebaseClient.ts";
@@ -20,8 +25,22 @@ const androidBuildGradlePath = "apps/mobile/android/build.gradle";
 const androidAppBuildGradlePath = "apps/mobile/android/app/build.gradle";
 const androidManifestPath =
   "apps/mobile/android/app/src/main/AndroidManifest.xml";
+const androidMainActivityPath =
+  "apps/mobile/android/app/src/main/java/com/seorilabs/crosswordpuzzle/MainActivity.kt";
+const androidMainApplicationPath =
+  "apps/mobile/android/app/src/main/java/com/seorilabs/crosswordpuzzle/MainApplication.kt";
+const androidGameUrlsPath =
+  "apps/mobile/android/app/src/main/java/com/seorilabs/crosswordpuzzle/CrosswordGameUrls.kt";
+const androidGameWebViewManagerPath =
+  "apps/mobile/android/app/src/main/java/com/seorilabs/crosswordpuzzle/CrosswordGameWebViewManager.kt";
+const androidGameManifestValidatorPath =
+  "apps/mobile/android/app/src/main/java/com/seorilabs/crosswordpuzzle/NativeGameBundleManifestValidator.kt";
 const appDelegatePath =
   "apps/mobile/ios/CrosswordPuzzleMobile/AppDelegate.swift";
+const iosProjectPath =
+  "apps/mobile/ios/CrosswordPuzzleMobile.xcodeproj/project.pbxproj";
+const iosGamePackageScriptPath =
+  "apps/mobile/ios/scripts/package-crossword-game.sh";
 const mobilePodfilePath = "apps/mobile/ios/Podfile";
 const mobilePackagePath = "apps/mobile/package.json";
 const gitignorePath = ".gitignore";
@@ -244,6 +263,11 @@ const sharedIndex = read(sharedIndexPath);
 const webApp = read(webAppPath);
 const mobileApp = read(mobileAppPath);
 const mobileAppTest = read(mobileAppTestPath);
+const mobileRoot = read(mobileRootPath);
+const mobileRuntimeHost = read(mobileRuntimeHostPath);
+const mobileGameBridgeHost = read(mobileGameBridgeHostPath);
+const mobileIndex = read(mobileIndexPath);
+const mobileEslintIgnore = read(mobileEslintIgnorePath);
 
 // Feature parity: user-facing features must exist in BOTH the web and mobile
 // App.tsx, not just in shared logic. These markers guard against regressions
@@ -263,7 +287,14 @@ const mobileAppJson = read(mobileAppJsonPath);
 const androidBuildGradle = read(androidBuildGradlePath);
 const androidAppBuildGradle = read(androidAppBuildGradlePath);
 const androidManifest = read(androidManifestPath);
+const androidMainActivity = read(androidMainActivityPath);
+const androidMainApplication = read(androidMainApplicationPath);
+const androidGameUrls = read(androidGameUrlsPath);
+const androidGameWebViewManager = read(androidGameWebViewManagerPath);
+const androidGameManifestValidator = read(androidGameManifestValidatorPath);
 const appDelegate = read(appDelegatePath);
+const iosProject = read(iosProjectPath);
+const iosGamePackageScript = read(iosGamePackageScriptPath);
 const mobilePodfile = read(mobilePodfilePath);
 const mobilePackage = read(mobilePackagePath);
 const gitignore = read(gitignorePath);
@@ -369,6 +400,43 @@ assertIncludes(
   mobilePackagePath,
 );
 assertIncludes(
+  mobilePackage,
+  '"react-native-webview": "14.0.1"',
+  mobilePackagePath,
+);
+assertIncludes(
+  mobileIndex,
+  "import MobileRoot from './MobileRoot';",
+  mobileIndexPath,
+);
+assertIncludes(mobileRoot, "<MobileRuntimeHost", mobileRootPath);
+assertIncludes(
+  mobileRuntimeHost,
+  "isGameRuntimeHostSupported('native-webview')",
+  mobileRuntimeHostPath,
+);
+assertIncludes(
+  mobileRuntimeHost,
+  "validateNativeGameBundle(nativeGameBundle)",
+  mobileRuntimeHostPath,
+);
+assertIncludes(
+  mobileRuntimeHost,
+  "startSession(bundle.bridgeSessionId)",
+  mobileRuntimeHostPath,
+);
+assertIncludes(
+  mobileGameBridgeHost,
+  "storage-readback-failed",
+  mobileGameBridgeHostPath,
+);
+assertIncludes(
+  mobileEslintIgnore,
+  "android/app/build/",
+  mobileEslintIgnorePath,
+);
+assertIncludes(mobileEslintIgnore, "ios/build/", mobileEslintIgnorePath);
+assertIncludes(
   mobileAppJson,
   '"react-native-google-mobile-ads"',
   mobileAppJsonPath,
@@ -462,6 +530,46 @@ assertIncludes(
   androidAppBuildGradlePath,
 );
 assertIncludes(
+  androidAppBuildGradle,
+  'commandLine "npm", "run", "build:game:mobile"',
+  androidAppBuildGradlePath,
+);
+assertIncludes(
+  androidAppBuildGradle,
+  'implementation("androidx.webkit:webkit:1.16.0")',
+  androidAppBuildGradlePath,
+);
+assertIncludes(
+  androidMainActivity,
+  "NativeGameBundleManifestValidator.validate(assets)",
+  androidMainActivityPath,
+);
+assertIncludes(
+  androidMainActivity,
+  'putString("bridgeSessionId", UUID.randomUUID().toString())',
+  androidMainActivityPath,
+);
+assertIncludes(
+  androidMainApplication,
+  "add(CrosswordGameWebViewPackage())",
+  androidMainApplicationPath,
+);
+assertIncludes(
+  androidGameUrls,
+  'const val ASSET_ORIGIN = "https://appassets.androidplatform.net"',
+  androidGameUrlsPath,
+);
+assertIncludes(
+  androidGameWebViewManager,
+  'super.setMixedContentMode(view, "never")',
+  androidGameWebViewManagerPath,
+);
+assertIncludes(
+  androidGameManifestValidator,
+  'require("sha256:${aggregateDigest.digest().toHex()}" == aggregateChecksum)',
+  androidGameManifestValidatorPath,
+);
+assertIncludes(
   androidManifest,
   'android:name="com.google.android.gms.permission.AD_ID"',
   androidManifestPath,
@@ -502,6 +610,22 @@ assertIncludes(
 );
 assertIncludes(appDelegate, "import Firebase", appDelegatePath);
 assertIncludes(appDelegate, "FirebaseApp.configure()", appDelegatePath);
+assertIncludes(appDelegate, '"nativeGameBundle"', appDelegatePath);
+assertIncludes(
+  appDelegate,
+  '"bridgeSessionId": UUID().uuidString',
+  appDelegatePath,
+);
+assertIncludes(
+  iosProject,
+  "[Game] Package CrosswordGame Resources",
+  iosProjectPath,
+);
+assertIncludes(
+  iosGamePackageScript,
+  'build-native-game-bundle.mjs" check',
+  iosGamePackageScriptPath,
+);
 assertIncludes(
   mobilePodfile,
   "$RNFirebaseAsStaticFramework = true",
@@ -574,6 +698,16 @@ assertIncludes(
   xcodeCloudPostClone,
   "node scripts/restore-mobile-firebase-config.mjs --ios --require",
   xcodeCloudPostClonePath,
+);
+assertIncludes(
+  xcodeCloudPostClone,
+  'npm --prefix "${REPO}" run build:game:mobile',
+  xcodeCloudPostClonePath,
+);
+assertIncludes(
+  appStoreLocalBuild,
+  "npm run build:game:mobile",
+  appStoreLocalBuildPath,
 );
 assertNotIncludes(
   xcodeCloudPostClone,

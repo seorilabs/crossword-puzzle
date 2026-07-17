@@ -119,7 +119,6 @@ function createLoopbackFixture() {
   });
 
   const client = createNativeGameBridgeClient({
-    createSessionId: () => "native-loopback-session",
     messageTargets: [windowTarget, documentTarget],
     async sendSerialized(serialized) {
       const message = JSON.parse(serialized) as GameBridgeMessage;
@@ -130,11 +129,13 @@ function createLoopbackFixture() {
       hostEvents.push({ name, detail });
     },
   });
+  const handshakeStarted = host.startSession("native-loopback-session");
 
   return {
     client,
     documentTarget,
     gameOutbound,
+    handshakeStarted,
     handlerCalls,
     host,
     hostEvents,
@@ -148,6 +149,7 @@ function createLoopbackFixture() {
 describe("native game bridge loopback contract", () => {
   test("handshake 후 문자열 저장소와 runtime.ready를 왕복한다", async () => {
     const fixture = createLoopbackFixture();
+    await fixture.handshakeStarted;
     await fixture.client.waitUntilReady();
 
     assert.deepEqual(fixture.host.getSnapshot(), {
@@ -213,6 +215,7 @@ describe("native game bridge loopback contract", () => {
 
   test("window/document 중복 전달과 replay를 한 번만 처리하고 비정상 wire 및 dispose 이후 입력을 무시한다", async () => {
     const fixture = createLoopbackFixture();
+    await fixture.handshakeStarted;
     await fixture.client.waitUntilReady();
 
     const pauseResponse = await fixture.host.request("app.pause", {

@@ -1,0 +1,245 @@
+import {
+  GameBridgeCoordinator,
+  type GameBridgeMessage,
+  type GameBridgeMethodPayloads,
+} from '../../../packages/crossword-core/src';
+import {
+  createMobileGameBridgeHost,
+  isAllowedMobileGameNavigation,
+  type MobileGameRuntimeReadyExpectation,
+} from '../gameBridgeHost';
+
+const indexUrl =
+  'https://appassets.androidplatform.net/assets/crossword-game/index.html';
+
+const runtimeReadyExpectation: MobileGameRuntimeReadyExpectation = {
+  renderer: 'webgl',
+  scene: 'puzzle',
+  visible: true,
+  contentChecksum: 'bundled:onboarding-easy-01:ko-KR:v1',
+  contentLocale: 'ko-KR',
+  puzzleId: 'onboarding-easy-01',
+  assetManifestChecksum:
+    'sha256:3fdc5808ada6c91ae0d355a1c8ea5d45aca3582d51f3013c52949ef0768663a8',
+};
+
+function createFixture(
+  expectedRuntimeReady: MobileGameRuntimeReadyExpectation = runtimeReadyExpectation,
+) {
+  const storage = new Map<string, string>();
+  const analytics: Array<{
+    event: string;
+    params: Readonly<Record<string, string | number | boolean>>;
+  }> = [];
+  const haptics: string[] = [];
+  const lifecycle: string[] = [];
+  let runtimeReadyCount = 0;
+  let game!: GameBridgeCoordinator;
+
+  const host = createMobileGameBridgeHost({
+    allowedMessageUrl: indexUrl,
+    runtimeReadyExpectation: expectedRuntimeReady,
+    storage: {
+      getItem: async key => storage.get(key) ?? null,
+      setItem: async (key, value) => {
+        storage.set(key, value);
+      },
+      removeItem: async key => {
+        storage.delete(key);
+      },
+    },
+    async sendSerialized(serialized) {
+      await game.receive(JSON.parse(serialized) as GameBridgeMessage);
+    },
+    logAnalytics: async (event, params) => {
+      analytics.push({ event, params });
+    },
+    playHaptic: async semanticType => {
+      haptics.push(semanticType);
+    },
+    requestNotification: async () => 'unsupported',
+    onRuntimeReady: () => {
+      runtimeReadyCount += 1;
+    },
+  });
+
+  game = new GameBridgeCoordinator({
+    role: 'game',
+    capabilities: [
+      'storage',
+      'analytics',
+      'ad',
+      'haptic',
+      'notification',
+      'runtime',
+      'lifecycle',
+      'focus',
+      'config',
+      'locale',
+      'navigation',
+    ],
+    transport: {
+      async send(message) {
+        await host.receiveSerialized(JSON.stringify(message), indexUrl);
+      },
+    },
+    handlers: {
+      'app.pause': () => {
+        lifecycle.push('pause');
+        return { ack: true };
+      },
+      'app.resume': () => {
+        lifecycle.push('resume');
+        return { ack: true };
+      },
+      'app.focus': () => {
+        lifecycle.push('focus');
+        return { ack: true };
+      },
+      'app.blur': () => {
+        lifecycle.push('blur');
+        return { ack: true };
+      },
+      'config.snapshot': () => ({ ack: true }),
+      'locale.preferred': () => ({ uiLocale: 'ko-KR' }),
+      deep_link: payload => ({ navigated: true, route: payload.route }),
+    },
+  });
+
+  return {
+    analytics,
+    game,
+    haptics,
+    host,
+    lifecycle,
+    runtimeReadyCount: () => runtimeReadyCount,
+    storage,
+  };
+}
+
+describe('mobile game bridge host', () => {
+  test('exact local index navigation only', () => {
+    expect(isAllowedMobileGameNavigation(indexUrl, indexUrl)).toBe(true);
+    expect(isAllowedMobileGameNavigation(`${indexUrl}#escape`, indexUrl)).toBe(
+      false,
+    );
+    expect(isAllowedMobileGameNavigation(`${indexUrl}?next=1`, indexUrl)).toBe(
+      false,
+    );
+    expect(
+      isAllowedMobileGameNavigation(
+        'https://appassets.androidplatform.net/assets/crossword-game/other.html',
+        indexUrl,
+      ),
+    ).toBe(false);
+    expect(
+      isAllowedMobileGameNavigation('https://example.com/index.html', indexUrl),
+    ).toBe(false);
+    expect(isAllowedMobileGameNavigation('not-a-url', indexUrl)).toBe(false);
+  });
+
+  test('handshake 후 durable storage, host command, SDK port와 runtime proof를 왕복한다', async () => {
+    const fixture = createFixture();
+    await fixture.host.startSession('mobile-host-session');
+    await fixture.host.waitUntilHandshakeReady();
+
+    const setResponse = await fixture.game.request('storage.set', {
+      key: 'save/current',
+      schemaVersion: 'raw-string/v1',
+      value: '{"progress":1}',
+      transactionId: 'storage-set-1',
+    });
+    expect(setResponse).toMatchObject({
+      status: 'result',
+      result: { stored: true, transactionId: 'storage-set-1' },
+    });
+    expect(fixture.storage.get('save/current')).toBe('{"progress":1}');
+
+    const getResponse = await fixture.game.request('storage.get', {
+      key: 'save/current',
+      schemaVersion: 'raw-string/v1',
+    });
+    expect(getResponse).toMatchObject({
+      status: 'result',
+      result: {
+        found: true,
+        schemaVersion: 'raw-string/v1',
+        value: '{"progress":1}',
+      },
+    });
+
+    await fixture.game.request('analytics.log', {
+      event: 'game_started',
+      params: { puzzle_id: 'onboarding-easy-01' },
+      eventId: 'analytics-1',
+    });
+    await fixture.game.request('haptic.play', { semanticType: 'success' });
+    expect(fixture.analytics).toEqual([
+      {
+        event: 'game_started',
+        params: { puzzle_id: 'onboarding-easy-01' },
+      },
+    ]);
+    expect(fixture.haptics).toEqual(['success']);
+
+    await fixture.host.pause(1);
+    await fixture.host.resume(2);
+    await fixture.host.focus(3);
+    await fixture.host.blur(4);
+    expect(fixture.lifecycle).toEqual(['pause', 'resume', 'focus', 'blur']);
+    expect(await fixture.host.requestPreferredLocale(['ko-KR'])).toBe('ko-KR');
+    expect(await fixture.host.navigate('map')).toBe(true);
+
+    const readyResponse = await fixture.game.request(
+      'runtime.ready',
+      runtimeReadyExpectation,
+    );
+    expect(readyResponse.status).toBe('result');
+    await fixture.host.waitUntilRuntimeReady();
+    expect(fixture.runtimeReadyCount()).toBe(1);
+
+    const duplicateReadyResponse = await fixture.game.request(
+      'runtime.ready',
+      runtimeReadyExpectation,
+    );
+    expect(duplicateReadyResponse.status).toBe('result');
+    expect(fixture.runtimeReadyCount()).toBe(1);
+
+    await fixture.game.request('storage.remove', {
+      key: 'save/current',
+      schemaVersion: 'raw-string/v1',
+      transactionId: 'storage-remove-1',
+    });
+    expect(fixture.storage.has('save/current')).toBe(false);
+  });
+
+  test('origin, malformed wire, runtime checksum mismatch를 fail-closed 처리한다', async () => {
+    const fixture = createFixture();
+    await expect(
+      fixture.host.receiveSerialized('{}', 'https://example.com/index.html'),
+    ).rejects.toThrow('unexpected-message-origin');
+    await expect(
+      fixture.host.receiveSerialized('{not-json', indexUrl),
+    ).rejects.toThrow('invalid-wire-message');
+    await expect(
+      fixture.host.receiveSerialized('x'.repeat(64 * 1024 + 1), indexUrl),
+    ).rejects.toThrow('invalid-wire-message');
+
+    await fixture.host.startSession('runtime-mismatch-session');
+    await fixture.host.waitUntilHandshakeReady();
+    const wrongPayload: GameBridgeMethodPayloads['runtime.ready'] = {
+      ...runtimeReadyExpectation,
+      assetManifestChecksum:
+        'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    };
+    const response = await fixture.game.request('runtime.ready', wrongPayload);
+    expect(response).toMatchObject({
+      status: 'error',
+      error: { code: 'handler-failed' },
+    });
+    await expect(fixture.host.waitUntilRuntimeReady()).rejects.toThrow(
+      'runtime-proof-mismatch',
+    );
+    expect(fixture.runtimeReadyCount()).toBe(0);
+  });
+});
