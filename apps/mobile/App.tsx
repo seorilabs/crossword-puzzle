@@ -597,6 +597,10 @@ function normalizeProgress(
         : 0,
     hintCount:
       typeof value.hintCount === 'number' ? Math.max(0, value.hintCount) : 0,
+    revealUsed: value.revealUsed === true,
+    tentativeCells: Array.isArray(value.tentativeCells)
+      ? value.tentativeCells.filter(key => typeof key === 'string')
+      : [],
   };
 }
 
@@ -872,6 +876,10 @@ function AppContent() {
   const [cellValues, setCellValues] = useState<Record<string, string>>({});
   const [earnedHintCredits, setEarnedHintCredits] = useState(0);
   const [hintCount, setHintCount] = useState(0);
+  // 신규 Save v2 전환 전에도 Web legacy가 이미 기록한 필드를 보존한다. Mobile에
+  // 아직 대응 UI가 없더라도 load→save 왕복에서 값을 유실시키지 않는다.
+  const [revealUsed, setRevealUsed] = useState(false);
+  const [tentativeCells, setTentativeCells] = useState<string[]>([]);
   const [mission, setMission] = useState(() =>
     createDailyMissionState(
       initialPuzzle.date,
@@ -1358,8 +1366,18 @@ function AppContent() {
       cellValues,
       earnedHintCredits,
       hintCount,
+      revealUsed,
+      tentativeCells: tentativeCells.filter(key => cellValues[key] != null),
     });
-  }, [cellValues, earnedHintCredits, hintCount, isLoading, puzzle.puzzleId]);
+  }, [
+    cellValues,
+    earnedHintCredits,
+    hintCount,
+    isLoading,
+    puzzle.puzzleId,
+    revealUsed,
+    tentativeCells,
+  ]);
 
   useEffect(() => {
     if (isLoading) {
@@ -1510,7 +1528,7 @@ function AppContent() {
         nextMission.completedAt,
       ),
       hintCount,
-      revealUsed: false,
+      revealUsed,
       attemptNumber: mission.attemptsUsed,
       completedWordCount: viewModel.completedEntries.length,
     });
@@ -1525,6 +1543,7 @@ function AppContent() {
     mission,
     puzzle,
     remainingAttempts,
+    revealUsed,
     route,
     savePuzzleSnapshot,
     selectedPuzzleSummary,
@@ -1845,6 +1864,8 @@ function AppContent() {
     setCellValues(session.savedProgress.cellValues);
     setEarnedHintCredits(session.savedProgress.earnedHintCredits);
     setHintCount(session.savedProgress.hintCount);
+    setRevealUsed(session.savedProgress.revealUsed === true);
+    setTentativeCells(session.savedProgress.tentativeCells ?? []);
     setMission(session.savedMission);
     hasLoggedFirstAnswerInputRef.current = false;
     setSelectedDirection('across');
@@ -2137,6 +2158,8 @@ function AppContent() {
     setCellValues({});
     setEarnedHintCredits(0);
     setHintCount(0);
+    setRevealUsed(false);
+    setTentativeCells([]);
     setSelectedDirection('across');
     setSelectedEntryId(getInitialEntryId(puzzle));
     setSelectedCellKey(getInitialEntryStartCellKey(puzzle));

@@ -9,6 +9,7 @@ import type {
   PuzzleSlotValidation,
   ReviewEntry,
 } from "./types";
+import { koKrLanguageProfile } from "./languageProfile.ts";
 
 export function getCellKey(row: number, col: number) {
   return `${row}:${col}`;
@@ -19,10 +20,20 @@ export function getTodayDateKey(timeZone = "Asia/Seoul", date = new Date()) {
 }
 
 export function getEntryCells(entry: PuzzleEntry): CellCoordinate[] {
-  return [...entry.answer].map((_, index) => ({
+  return getEntryAnswerCells(entry).map((_, index) => ({
     row: entry.direction === "across" ? entry.row : entry.row + index,
     col: entry.direction === "across" ? entry.col + index : entry.col,
   }));
+}
+
+export function getEntryAnswerCells(entry: PuzzleEntry): string[] {
+  return entry.answerCells == null
+    ? koKrLanguageProfile.segmentAnswer(entry.answer)
+    : [...entry.answerCells];
+}
+
+export function getEntryAnswerLength(entry: PuzzleEntry): number {
+  return getEntryAnswerCells(entry).length;
 }
 
 function getDirectionDelta(direction: Direction) {
@@ -200,7 +211,7 @@ export function pickHintCellIndex(
   cellEntries: Map<string, PuzzleEntry[]>,
 ): number {
   const cells = getEntryCells(entry);
-  const answerLetters = [...entry.answer];
+  const answerLetters = getEntryAnswerCells(entry);
 
   let firstUnmetIndex = -1;
   for (let index = 0; index < cells.length; index += 1) {
@@ -244,7 +255,7 @@ export function getCompletedEntries(
 ) {
   return entries.filter((entry) =>
     getEntryCells(entry).every((cell, index) => {
-      const answerLetter = [...entry.answer][index];
+      const answerLetter = getEntryAnswerCells(entry)[index];
       return cellValues[getCellKey(cell.row, cell.col)] === answerLetter;
     }),
   );
@@ -274,7 +285,7 @@ export function getWordCheckResult(
   entry: PuzzleEntry,
   cellValues: Record<string, string>,
 ): WordCheckResult {
-  const answerLetters = [...entry.answer];
+  const answerLetters = getEntryAnswerCells(entry);
   const cellKeys: string[] = [];
   let filledCount = 0;
   let wrongCount = 0;

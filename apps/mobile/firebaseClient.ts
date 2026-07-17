@@ -35,6 +35,12 @@ export async function loadFirebaseLaunchConfig(): Promise<LaunchConfig> {
         defaultHintCredits: remoteConfigClient
           .getValue(launchConfigKeys.defaultHintCredits)
           .asNumber(),
+        defaultHintCreditsEasy: remoteConfigClient
+          .getValue(launchConfigKeys.defaultHintCreditsEasy)
+          .asNumber(),
+        defaultHintCreditsHard: remoteConfigClient
+          .getValue(launchConfigKeys.defaultHintCreditsHard)
+          .asNumber(),
         rewardedHintCredits: remoteConfigClient
           .getValue(launchConfigKeys.rewardedHintCredits)
           .asNumber(),
@@ -47,12 +53,21 @@ export async function loadFirebaseLaunchConfig(): Promise<LaunchConfig> {
         puzzleKeepCount: remoteConfigClient
           .getValue(launchConfigKeys.puzzleKeepCount)
           .asNumber(),
+        dailyAttemptLimit: remoteConfigClient
+          .getValue(launchConfigKeys.dailyAttemptLimit)
+          .asNumber(),
         rewardedBonusPuzzleAdsEnabled: remoteConfigClient
           .getValue(launchConfigKeys.rewardedBonusPuzzleAdsEnabled)
           .asBoolean(),
         rewardedHintAdsEnabled: remoteConfigClient
           .getValue(launchConfigKeys.rewardedHintAdsEnabled)
           .asBoolean(),
+        rewardedExtraAttemptEnabled: remoteConfigClient
+          .getValue(launchConfigKeys.rewardedExtraAttemptEnabled)
+          .asBoolean(),
+        rewardedExtraAttemptDailyCap: remoteConfigClient
+          .getValue(launchConfigKeys.rewardedExtraAttemptDailyCap)
+          .asNumber(),
         resultInterstitialAdsEnabled: remoteConfigClient
           .getValue(launchConfigKeys.resultInterstitialAdsEnabled)
           .asBoolean(),
@@ -62,6 +77,48 @@ export async function loadFirebaseLaunchConfig(): Promise<LaunchConfig> {
         returnReminderEnabled: remoteConfigClient
           .getValue(launchConfigKeys.returnReminderEnabled)
           .asBoolean(),
+        firstRunAutoStartEnabled: remoteConfigClient
+          .getValue(launchConfigKeys.firstRunAutoStartEnabled)
+          .asBoolean(),
+        gameRuntimeEnabled: remoteConfigClient
+          .getValue(launchConfigKeys.gameRuntimeEnabled)
+          .asBoolean(),
+        stuckHintIdleMs: remoteConfigClient
+          .getValue(launchConfigKeys.stuckHintIdleMs)
+          .asNumber(),
+        stuckHintWrongIdleMs: remoteConfigClient
+          .getValue(launchConfigKeys.stuckHintWrongIdleMs)
+          .asNumber(),
+        stuckHintWrongCellThreshold: remoteConfigClient
+          .getValue(launchConfigKeys.stuckHintWrongCellThreshold)
+          .asNumber(),
+        stuckHintMaxPromptsPerAttempt: remoteConfigClient
+          .getValue(launchConfigKeys.stuckHintMaxPromptsPerAttempt)
+          .asNumber(),
+        stuckHintMaxDismissals: remoteConfigClient
+          .getValue(launchConfigKeys.stuckHintMaxDismissals)
+          .asNumber(),
+        stuckHintDismissBackoffFactor: remoteConfigClient
+          .getValue(launchConfigKeys.stuckHintDismissBackoffFactor)
+          .asNumber(),
+        checkHighlightMs: remoteConfigClient
+          .getValue(launchConfigKeys.checkHighlightMs)
+          .asNumber(),
+        leaderboardScoreCompletedWord: remoteConfigClient
+          .getValue(launchConfigKeys.leaderboardScoreCompletedWord)
+          .asNumber(),
+        leaderboardScoreRemainingAttempt: remoteConfigClient
+          .getValue(launchConfigKeys.leaderboardScoreRemainingAttempt)
+          .asNumber(),
+        leaderboardScoreHint: remoteConfigClient
+          .getValue(launchConfigKeys.leaderboardScoreHint)
+          .asNumber(),
+        leaderboardScoreTimeBonusBase: remoteConfigClient
+          .getValue(launchConfigKeys.leaderboardScoreTimeBonusBase)
+          .asNumber(),
+        leaderboardScoreTimeDecayPerSecond: remoteConfigClient
+          .getValue(launchConfigKeys.leaderboardScoreTimeDecayPerSecond)
+          .asNumber(),
       });
     } catch {
       return defaultLaunchConfig;

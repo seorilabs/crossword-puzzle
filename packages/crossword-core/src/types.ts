@@ -15,6 +15,9 @@ export type Bounds = {
 export type PuzzleEntry = {
   id: string;
   answer: string;
+  // 신규 game-content/1에서는 gameplay 권위값이다. 기존 unversioned puzzle은
+  // answer만 가지므로 ko-KR/v1 profile로 projection해 하위 호환한다.
+  answerCells?: string[];
   clue: string;
   clueSource?: string;
   direction: Direction;

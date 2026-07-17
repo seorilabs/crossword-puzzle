@@ -134,6 +134,13 @@
       "description": "신규(도전 이력 없음) 첫 실행에서 홈을 건너뛰고 온보딩 퍼즐 풀이 화면으로 자동 진입할지 여부(#205). 회귀 시 false로 끈다",
       "valueType": "BOOLEAN"
     },
+    "game_runtime_enabled": {
+      "defaultValue": {
+        "value": "false"
+      },
+      "description": "신규 Phaser runtime host 진입 gate. boot marker·watchdog·legacy fallback 검증 전에는 false 유지",
+      "valueType": "BOOLEAN"
+    },
     "stuck_hint_idle_ms": {
       "defaultValue": {
         "value": "20000"

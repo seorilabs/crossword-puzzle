@@ -36,6 +36,9 @@ export type LaunchConfig = {
   returnReminderEnabled: boolean;
   // 신규 첫 실행에서 홈을 건너뛰고 온보딩 퍼즐 풀이 화면으로 자동 진입할지(#205).
   firstRunAutoStartEnabled: boolean;
+  // 신규 Phaser runtime 진입 gate. host가 engine chunk import 전에 읽으며 bundled
+  // 기본값은 false다. engine 내부에서 이 값을 읽어 자체 부팅하면 안 된다.
+  gameRuntimeEnabled: boolean;
   // 막힘 힌트 자동 노출: 입력 정체가 이 시간(ms)을 넘으면 비침습 힌트 CTA를 띄운다.
   stuckHintIdleMs: number;
   // 오답이 쌓여 막힘 신호가 보이면 위 시간 대신 더 짧은 이 지연(ms)으로 띄운다.
@@ -79,6 +82,7 @@ export const launchConfigKeys = {
   leaderboardEnabled: "leaderboard_enabled",
   returnReminderEnabled: "return_reminder_enabled",
   firstRunAutoStartEnabled: "first_run_auto_start_enabled",
+  gameRuntimeEnabled: "game_runtime_enabled",
   stuckHintIdleMs: "stuck_hint_idle_ms",
   stuckHintWrongIdleMs: "stuck_hint_wrong_idle_ms",
   stuckHintWrongCellThreshold: "stuck_hint_wrong_cell_threshold",
@@ -122,6 +126,7 @@ export const defaultLaunchConfig: LaunchConfig = {
   // (62%)·attempt_start 도달률(57%) 개선용. 회귀 시 Remote Config
   // `first_run_auto_start_enabled`로 즉시 끈다.
   firstRunAutoStartEnabled: true,
+  gameRuntimeEnabled: false,
   // 막힘 힌트/피드백 튜닝값(원격 조정 가능). 기존 App.tsx 하드코딩 값을 그대로 옮겼다.
   stuckHintIdleMs: 20000,
   stuckHintWrongIdleMs: 5000,
@@ -257,6 +262,8 @@ export function normalizeLaunchConfig(
     firstRunAutoStartEnabled:
       value.firstRunAutoStartEnabled ??
       defaultLaunchConfig.firstRunAutoStartEnabled,
+    gameRuntimeEnabled:
+      value.gameRuntimeEnabled ?? defaultLaunchConfig.gameRuntimeEnabled,
     stuckHintIdleMs: clampInteger(
       value.stuckHintIdleMs ?? defaultLaunchConfig.stuckHintIdleMs,
       defaultLaunchConfig.stuckHintIdleMs,
@@ -374,6 +381,8 @@ export function getLaunchConfigDefaultsForRemoteConfig() {
       defaultLaunchConfig.returnReminderEnabled,
     [launchConfigKeys.firstRunAutoStartEnabled]:
       defaultLaunchConfig.firstRunAutoStartEnabled,
+    [launchConfigKeys.gameRuntimeEnabled]:
+      defaultLaunchConfig.gameRuntimeEnabled,
     [launchConfigKeys.stuckHintIdleMs]: defaultLaunchConfig.stuckHintIdleMs,
     [launchConfigKeys.stuckHintWrongIdleMs]:
       defaultLaunchConfig.stuckHintWrongIdleMs,

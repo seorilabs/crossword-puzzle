@@ -60,6 +60,27 @@ describe("launchConfig: firstRunAutoStartEnabled 기본값(#205)", () => {
   });
 });
 
+describe("launchConfig: gameRuntimeEnabled 안전 기본값", () => {
+  it("bundled 기본값과 Remote Config template 기본값이 false다", () => {
+    assert.equal(defaultLaunchConfig.gameRuntimeEnabled, false);
+    assert.equal(
+      getLaunchConfigDefaultsForRemoteConfig()[
+        launchConfigKeys.gameRuntimeEnabled
+      ],
+      false,
+    );
+    assert.equal(launchConfigKeys.gameRuntimeEnabled, "game_runtime_enabled");
+  });
+
+  it("host 검증용 snapshot에서만 명시적으로 켤 수 있다", () => {
+    assert.equal(normalizeLaunchConfig({}).gameRuntimeEnabled, false);
+    assert.equal(
+      normalizeLaunchConfig({ gameRuntimeEnabled: true }).gameRuntimeEnabled,
+      true,
+    );
+  });
+});
+
 describe("launchConfig: 막힘 힌트/피드백 튜닝값(#172)", () => {
   it("기본값이 기존 App.tsx 하드코딩 값과 일치한다", () => {
     assert.equal(defaultLaunchConfig.stuckHintIdleMs, 20000);

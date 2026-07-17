@@ -149,6 +149,14 @@ export async function loadFirebaseLaunchConfig(): Promise<LaunchConfig> {
         remoteConfig,
         launchConfigKeys.defaultHintCredits,
       ),
+      defaultHintCreditsEasy: getNumber(
+        remoteConfig,
+        launchConfigKeys.defaultHintCreditsEasy,
+      ),
+      defaultHintCreditsHard: getNumber(
+        remoteConfig,
+        launchConfigKeys.defaultHintCreditsHard,
+      ),
       rewardedHintCredits: getNumber(
         remoteConfig,
         launchConfigKeys.rewardedHintCredits,
@@ -201,6 +209,10 @@ export async function loadFirebaseLaunchConfig(): Promise<LaunchConfig> {
         remoteConfig,
         launchConfigKeys.firstRunAutoStartEnabled,
       ),
+      gameRuntimeEnabled: getBoolean(
+        remoteConfig,
+        launchConfigKeys.gameRuntimeEnabled,
+      ),
       stuckHintIdleMs: getNumber(
         remoteConfig,
         launchConfigKeys.stuckHintIdleMs,
@@ -212,6 +224,18 @@ export async function loadFirebaseLaunchConfig(): Promise<LaunchConfig> {
       stuckHintWrongCellThreshold: getNumber(
         remoteConfig,
         launchConfigKeys.stuckHintWrongCellThreshold,
+      ),
+      stuckHintMaxPromptsPerAttempt: getNumber(
+        remoteConfig,
+        launchConfigKeys.stuckHintMaxPromptsPerAttempt,
+      ),
+      stuckHintMaxDismissals: getNumber(
+        remoteConfig,
+        launchConfigKeys.stuckHintMaxDismissals,
+      ),
+      stuckHintDismissBackoffFactor: getNumber(
+        remoteConfig,
+        launchConfigKeys.stuckHintDismissBackoffFactor,
       ),
       checkHighlightMs: getNumber(
         remoteConfig,
