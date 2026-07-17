@@ -40,6 +40,7 @@ import {
   type KeyValueStoragePort,
 } from "./gameSaveRepository.ts";
 import { createRestoredGameSnapshot } from "./gameRestore.ts";
+import { NATIVE_GAME_EVENT } from "./nativeGameEvents.ts";
 import { loadBundledOnboardingGameContent } from "./onboardingGameContent.ts";
 import "./GameExperience.css";
 
@@ -48,6 +49,7 @@ export type GameExperienceHostKind = GameRuntimeHostKind;
 export type MountGameExperienceOptions = Readonly<{
   hostKind: GameExperienceHostKind;
   storage: KeyValueStoragePort;
+  bridgeReady?: Promise<void>;
 }>;
 
 type HostCallbacks = Readonly<{
@@ -289,11 +291,13 @@ function getDraftForEntry(
 }
 
 function GameExperience({
+  bridgeReady,
   callbacks,
   hostKind,
   storage,
 }: Readonly<{
   callbacks: HostCallbacks;
+  bridgeReady?: Promise<void>;
   hostKind: GameExperienceHostKind;
   storage: KeyValueStoragePort;
 }>) {
@@ -312,12 +316,17 @@ function GameExperience({
 
   useEffect(() => {
     let cancelled = false;
-    // Browser and AppsInToss execute in the host itself. Native WebView must
-    // complete game_bridge_v1 before it can acknowledge bridge readiness.
-    if (hostKind !== "native-webview") {
+    const initialize = async () => {
+      if (hostKind === "native-webview") {
+        if (bridgeReady == null) {
+          throw new Error("native bridge readiness proof unavailable");
+        }
+        await bridgeReady;
+      }
       callbacks.onBridgeReady();
-    }
-    void createGameModel(storage).then(
+      return createGameModel(storage);
+    };
+    void initialize().then(
       (nextModel) => {
         if (cancelled) return;
         previousSnapshotRef.current = nextModel.snapshot;
@@ -335,7 +344,7 @@ function GameExperience({
     return () => {
       cancelled = true;
     };
-  }, [callbacks, hostKind, storage]);
+  }, [bridgeReady, callbacks, hostKind, storage]);
 
   useEffect(() => {
     if (model == null) return;
@@ -423,25 +432,35 @@ function GameExperience({
 
   useEffect(() => {
     if (model == null) return;
-    const onVisibilityChange = () => {
+    const suspend = () => {
       const current = model.controller.getSnapshot();
-      if (document.visibilityState === "hidden") {
-        if (
-          current.phase !== "suspended" &&
-          current.phase !== "loading" &&
-          current.phase !== "recovery"
-        ) {
-          model.controller.dispatch({ type: "app.suspend" });
-        }
-        runtimeRef.current?.suspend();
-      } else if (current.phase === "suspended") {
-        model.controller.dispatch({ type: "app.resume" });
-        runtimeRef.current?.resume();
+      if (
+        current.phase !== "suspended" &&
+        current.phase !== "loading" &&
+        current.phase !== "recovery"
+      ) {
+        model.controller.dispatch({ type: "app.suspend" });
       }
+      runtimeRef.current?.suspend();
+    };
+    const resume = () => {
+      if (model.controller.getSnapshot().phase === "suspended") {
+        model.controller.dispatch({ type: "app.resume" });
+      }
+      runtimeRef.current?.resume();
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") suspend();
+      else resume();
     };
     document.addEventListener("visibilitychange", onVisibilityChange);
-    return () =>
+    window.addEventListener(NATIVE_GAME_EVENT.pause, suspend);
+    window.addEventListener(NATIVE_GAME_EVENT.resume, resume);
+    return () => {
       document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener(NATIVE_GAME_EVENT.pause, suspend);
+      window.removeEventListener(NATIVE_GAME_EVENT.resume, resume);
+    };
   }, [model]);
 
   const selectedEntry =
@@ -780,6 +799,7 @@ export function mountGameExperience(
   root.render(
     <GameExperienceErrorBoundary onError={rejectBoot}>
       <GameExperience
+        bridgeReady={options.bridgeReady}
         callbacks={callbacks}
         hostKind={options.hostKind}
         storage={options.storage}

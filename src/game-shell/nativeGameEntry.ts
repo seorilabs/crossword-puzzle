@@ -1,0 +1,85 @@
+import {
+  BUNDLED_ONBOARDING_CONTENT_CHECKSUM,
+  loadBundledOnboardingGameContent,
+} from "./onboardingGameContent.ts";
+import { mountGameExperience } from "./GameExperience.tsx";
+import { createDefaultNativeGameBridgeClient } from "./nativeGameBridge.ts";
+import "../index.css";
+
+type AssetManifest = Readonly<{
+  schemaVersion: 1;
+  aggregateChecksum: string;
+}>;
+
+function isAssetManifest(value: unknown): value is AssetManifest {
+  if (typeof value !== "object" || value == null) return false;
+  const candidate = value as Partial<AssetManifest>;
+  return (
+    candidate.schemaVersion === 1 &&
+    typeof candidate.aggregateChecksum === "string" &&
+    /^sha256:[a-f0-9]{64}$/.test(candidate.aggregateChecksum)
+  );
+}
+
+async function loadAssetManifest(): Promise<AssetManifest> {
+  const response = await fetch("./asset-manifest.json", {
+    cache: "no-store",
+    credentials: "omit",
+  });
+  if (!response.ok) throw new Error("native asset manifest unavailable");
+  const candidate = (await response.json()) as unknown;
+  if (!isAssetManifest(candidate)) {
+    throw new Error("native asset manifest invalid");
+  }
+  return candidate;
+}
+
+async function main(): Promise<void> {
+  const container = document.getElementById("root");
+  if (container == null) throw new Error("native game root unavailable");
+
+  const bridge = createDefaultNativeGameBridgeClient();
+  const bridgeReady = bridge.waitUntilReady();
+  const runtime = mountGameExperience(container, {
+    hostKind: "native-webview",
+    storage: bridge.storage,
+    bridgeReady,
+  });
+
+  const [manifest] = await Promise.all([
+    loadAssetManifest(),
+    bridgeReady,
+    runtime.waitForWebGlContext(),
+    runtime.waitForFirstInteractiveAck(),
+  ]);
+  if (!(await runtime.probeVisibleSurface())) {
+    throw new Error("native game visible surface unavailable");
+  }
+
+  const content = loadBundledOnboardingGameContent();
+  if (content.contentChecksum !== BUNDLED_ONBOARDING_CONTENT_CHECKSUM) {
+    throw new Error("native game content checksum mismatch");
+  }
+  await bridge.reportRuntimeReady({
+    renderer: "webgl",
+    scene: "puzzle",
+    visible: true,
+    contentChecksum: content.contentChecksum,
+    contentLocale: content.contentLocale,
+    puzzleId: content.puzzleId,
+    assetManifestChecksum: manifest.aggregateChecksum,
+  });
+
+  window.addEventListener(
+    "pagehide",
+    () => {
+      bridge.dispose();
+      void runtime.dispose();
+    },
+    { once: true },
+  );
+}
+
+void main().catch(() => {
+  document.documentElement.dataset.gameBoot = "failed";
+});

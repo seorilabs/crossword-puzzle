@@ -234,7 +234,7 @@ describe("game_bridge_v1 runtime contract", () => {
     );
   });
 
-  test("storage·analytics·ad·haptic·notification·lifecycle·config·locale·navigation payload schema를 모두 검증한다", () => {
+  test("storage·analytics·ad·haptic·notification·runtime·lifecycle·config·locale·navigation payload schema를 모두 검증한다", () => {
     const requests: readonly GameBridgeRequestMessage[] = [
       {
         bridgeVersion: GAME_BRIDGE_VERSION,
@@ -310,6 +310,23 @@ describe("game_bridge_v1 runtime contract", () => {
         timestamp: 1,
         method: "notification.request",
         payload: { reason: "daily-return-reminder" },
+      },
+      {
+        bridgeVersion: GAME_BRIDGE_VERSION,
+        kind: "request",
+        messageId: "runtime-ready",
+        sessionId: "schema-session",
+        timestamp: 1,
+        method: "runtime.ready",
+        payload: {
+          renderer: "webgl",
+          scene: "puzzle",
+          visible: true,
+          contentChecksum: "bundled:onboarding-easy-01:ko-KR:v1",
+          contentLocale: "ko-KR",
+          puzzleId: "onboarding-easy-01",
+          assetManifestChecksum: "sha256:0123456789abcdef",
+        },
       },
       ...(["app.pause", "app.resume", "app.focus", "app.blur"] as const).map(
         (method, index): GameBridgeRequestMessage => ({
@@ -415,6 +432,18 @@ describe("game_bridge_v1 runtime contract", () => {
       decodeGameBridgeMessage({
         ...deepLinkRequest,
         payload: { route: "puzzle" },
+      }),
+      { ok: false, reason: "invalid-payload" },
+    );
+
+    const runtimeReadyRequest = requests.find(
+      (request) => request.method === "runtime.ready",
+    );
+    assert.ok(runtimeReadyRequest);
+    assert.deepEqual(
+      decodeGameBridgeMessage({
+        ...runtimeReadyRequest,
+        payload: { ...runtimeReadyRequest.payload, visible: false },
       }),
       { ok: false, reason: "invalid-payload" },
     );

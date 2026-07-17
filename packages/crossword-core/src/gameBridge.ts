@@ -21,7 +21,8 @@ export type GameBridgeCapability =
   | "focus"
   | "config"
   | "locale"
-  | "navigation";
+  | "navigation"
+  | "runtime";
 
 export type GameBridgeDeepLinkRoute =
   | "map"
@@ -47,6 +48,7 @@ export type GameBridgeMethod =
   | "ad.show"
   | "haptic.play"
   | "notification.request"
+  | "runtime.ready"
   | "app.pause"
   | "app.resume"
   | "app.focus"
@@ -107,6 +109,15 @@ export type GameBridgeMethodPayloads = {
   "notification.request": {
     reason: string;
   };
+  "runtime.ready": {
+    renderer: "webgl";
+    scene: "puzzle";
+    visible: true;
+    contentChecksum: string;
+    contentLocale: string;
+    puzzleId: string;
+    assetManifestChecksum: string;
+  };
   "app.pause": { timestamp: number };
   "app.resume": { timestamp: number };
   "app.focus": { timestamp: number };
@@ -148,6 +159,7 @@ export type GameBridgeMethodResults = {
   "ad.show": { transactionId: string; state: GameBridgeAdState };
   "haptic.play": { ack: true };
   "notification.request": { outcome: GameBridgeNotificationOutcome };
+  "runtime.ready": { ack: true };
   "app.pause": { ack: true };
   "app.resume": { ack: true };
   "app.focus": { ack: true };
@@ -346,6 +358,7 @@ const CAPABILITIES = [
   "config",
   "locale",
   "navigation",
+  "runtime",
 ] as const satisfies readonly GameBridgeCapability[];
 
 const METHODS = [
@@ -357,6 +370,7 @@ const METHODS = [
   "ad.show",
   "haptic.play",
   "notification.request",
+  "runtime.ready",
   "app.pause",
   "app.resume",
   "app.focus",
@@ -422,6 +436,7 @@ const METHOD_CAPABILITY: Readonly<
   "ad.show": "ad",
   "haptic.play": "haptic",
   "notification.request": "notification",
+  "runtime.ready": "runtime",
   "app.pause": "lifecycle",
   "app.resume": "lifecycle",
   "app.focus": "focus",
@@ -440,6 +455,7 @@ const GAME_TO_HOST_METHODS = new Set<GameBridgeMethod>([
   "ad.show",
   "haptic.play",
   "notification.request",
+  "runtime.ready",
 ]);
 
 const HOST_TO_GAME_METHODS = new Set<GameBridgeMethod>([
@@ -666,6 +682,25 @@ function validatePayload<M extends GameBridgeMethod>(
         hasExactKeys(payload, ["reason"]) &&
         isBoundedString(payload.reason, 128, IDENTIFIER_PATTERN)
       );
+    case "runtime.ready":
+      return (
+        hasExactKeys(payload, [
+          "renderer",
+          "scene",
+          "visible",
+          "contentChecksum",
+          "contentLocale",
+          "puzzleId",
+          "assetManifestChecksum",
+        ]) &&
+        payload.renderer === "webgl" &&
+        payload.scene === "puzzle" &&
+        payload.visible === true &&
+        isBoundedString(payload.contentChecksum, 256, IDENTIFIER_PATTERN) &&
+        isBoundedString(payload.contentLocale, 35, BCP_47_PATTERN) &&
+        isIdentifier(payload.puzzleId) &&
+        isBoundedString(payload.assetManifestChecksum, 128, IDENTIFIER_PATTERN)
+      );
     case "app.pause":
     case "app.resume":
     case "app.focus":
@@ -733,6 +768,7 @@ function validateResult<M extends GameBridgeMethod>(
     case "app.focus":
     case "app.blur":
     case "config.snapshot":
+    case "runtime.ready":
       return hasExactKeys(result, ["ack"]) && result.ack === true;
     case "notification.request":
       return (
