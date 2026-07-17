@@ -188,6 +188,100 @@ describe("game Save v2 repository validation", () => {
   });
 });
 
+describe("game progression ledger repository", () => {
+  test("첫 완료 보상을 sealed Save v2에 한 번만 기록하고 최장 교차 연쇄를 보존한다", async () => {
+    const storage = new MemoryStorage();
+    const repo = repository(storage, "2026-07-17T03:00:00.000Z");
+    await repo.persistSnapshot(
+      gameSnapshot({
+        commandSequence: 1,
+        lastResolvedEntryIds: ["entry-1", "entry-2"],
+      }),
+      { longestIntersectionChain: 2 },
+    );
+
+    const completedSnapshot = gameSnapshot({
+      phase: "board-resolved",
+      commandSequence: 2,
+      completedEntryIds: ["entry-1", "entry-2", "entry-3", "entry-4"],
+      lastResolvedEntryIds: ["entry-4"],
+    });
+    const first = await repo.recordPuzzleCompletion({
+      snapshot: completedSnapshot,
+      entryCount: 4,
+      mapNodeId: "chapter-1/node-1",
+      cardIds: ["card-1"],
+    });
+    assert.equal(first.status, "granted");
+    assert.equal(first.memoryInkAwarded, 22);
+    assert.equal(first.progression.memoryInkBalance, 22);
+    assert.deepEqual(first.progression.mapNodeIds, ["chapter-1/node-1"]);
+    assert.deepEqual(first.progression.cardIds, ["card-1"]);
+
+    const restored = await repo.loadPuzzleSnapshot(identity);
+    assert.equal(restored.status, "restored");
+    assert.equal(restored.snapshot?.longestIntersectionChain, 2);
+    assert.equal(restored.snapshot?.completedAt, "2026-07-17T03:00:00.000Z");
+
+    const replay = await repo.recordPuzzleCompletion({
+      snapshot: completedSnapshot,
+      entryCount: 4,
+      mapNodeId: "chapter-1/node-1",
+      cardIds: ["card-1"],
+    });
+    assert.equal(replay.status, "already-granted");
+    assert.equal(replay.memoryInkAwarded, 0);
+    assert.equal(replay.progression.memoryInkBalance, 22);
+    assert.deepEqual(replay.progression.completedPuzzleIds, ["puzzle-1"]);
+  });
+
+  test("꾸미기 구매를 같은 sealed 원장에 저장하고 locale별 projection으로 읽는다", async () => {
+    const storage = new MemoryStorage();
+    const repo = repository(storage, "2026-07-17T04:00:00.000Z");
+    const completedSnapshot = gameSnapshot({
+      phase: "result",
+      commandSequence: 1,
+      completedEntryIds: ["entry-1"],
+      lastResolvedEntryIds: ["entry-1"],
+    });
+    await repo.recordPuzzleCompletion({
+      snapshot: completedSnapshot,
+      entryCount: 1,
+      mapNodeId: "chapter-1/node-1",
+      rewardConfig: { base: 178, perEntry: 2, chainCap: 0 },
+    });
+
+    const purchased = await repo.purchaseCosmetic({
+      contentLocale: "ko-KR",
+      cosmeticId: "ink-teal",
+      tier: "small",
+    });
+    assert.equal(purchased.status, "purchased");
+    assert.equal(purchased.price, 180);
+    assert.equal(purchased.progression.memoryInkBalance, 0);
+    assert.deepEqual(purchased.progression.ownedCosmeticIds, ["ink-teal"]);
+    assert.deepEqual(await repo.readProgression("future-X"), {
+      contentLocale: "future-X",
+      completedPuzzleIds: [],
+      mapFragmentCount: 0,
+      mapNodeIds: [],
+      cardIds: [],
+      memoryInkBalance: 0,
+      ownedCosmeticIds: [],
+    });
+
+    const restarted = repository(storage, "2026-07-17T05:00:00.000Z");
+    assert.deepEqual(
+      (await restarted.readProgression("ko-KR")).ownedCosmeticIds,
+      ["ink-teal"],
+    );
+    assert.equal(
+      (await restarted.loadPuzzleSnapshot(identity)).status,
+      "restored",
+    );
+  });
+});
+
 describe("GameSnapshot projection and compact journal", () => {
   test("GameSnapshot만 snapshot schema로 투영하고 정답·단서 원문 필드는 저장하지 않는다", async () => {
     const storage = new MemoryStorage();
@@ -212,6 +306,7 @@ describe("GameSnapshot projection and compact journal", () => {
       cellValues: { "0:0": "가" },
       earnedHintCredits: 2,
       hintCount: 1,
+      longestIntersectionChain: 0,
       revealUsed: true,
       tentativeCells: ["0:0"],
       commandSequence: 7,

@@ -10,6 +10,8 @@
 
 .gameExperience {
   width: 100%;
+  height: 100vh;
+  height: 100dvh;
   min-height: 100vh;
   min-height: 100dvh;
   display: grid;
@@ -37,7 +39,7 @@
   z-index: 5;
 }
 
-.gameTopBar div:first-child {
+.gameTopBar > div:first-child {
   display: grid;
   gap: 1px;
 }
@@ -63,6 +65,32 @@
   border: 1px solid rgba(20, 125, 124, 0.22);
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.7);
+}
+
+.gameTopStatus {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.gameInkBalance {
+  min-height: 44px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(216, 144, 53, 0.3);
+  border-radius: 16px;
+  background: #fff0d8;
+}
+
+.gameInkBalance span {
+  color: #7f521b;
+}
+
+.gameInkBalance strong {
+  color: #7f521b;
+  font-size: 17px;
 }
 
 .gameProgress strong {
@@ -126,6 +154,18 @@
 .gamePrimaryButton {
   background: var(--game-teal);
   color: white;
+}
+
+.gamePrimaryButton:disabled,
+.gameSecondaryButton:disabled {
+  cursor: progress;
+  opacity: 0.62;
+}
+
+.gameExperience button:focus-visible,
+.gameExperience input:focus-visible {
+  outline: 3px solid var(--game-ink);
+  outline-offset: 3px;
 }
 .gameSecondaryButton {
   background: var(--game-teal-soft);
@@ -274,8 +314,61 @@
   gap: 12px;
   align-items: center;
 }
+.gameResultPanel,
+.gameMapPanel {
+  max-height: min(48vh, 480px);
+  max-height: min(48dvh, 480px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
 .gameResultPanel .gamePrimaryButton {
   grid-column: 1 / -1;
+}
+
+.gameSaveAlert {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid #b54a3d;
+  border-radius: 12px;
+  background: #fff1ed;
+  color: #7a2f27;
+  font-weight: 750;
+}
+
+.gameRewardList {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gameRewardList li {
+  min-height: 72px;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 1px;
+  border: 1px solid rgba(23, 36, 58, 0.1);
+  border-radius: 14px;
+  background: var(--game-paper);
+}
+
+.gameRewardList li > span {
+  color: var(--game-gold);
+  font-size: 18px;
+}
+
+.gameRewardList strong {
+  font-size: 11px;
+}
+
+.gameRewardList b {
+  color: var(--game-teal);
+  font-size: 17px;
 }
 .gameRewardIcon {
   width: 52px;
@@ -314,6 +407,54 @@
 .gameMapPath i {
   height: 4px;
   background: #d8dedb;
+}
+
+.gameMapInventory {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.gameMapInventory div {
+  min-height: 58px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  border-radius: 14px;
+  background: var(--game-teal-soft);
+}
+
+.gameMapInventory dt {
+  color: var(--game-muted);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.gameMapInventory dd {
+  margin: 2px 0 0;
+  color: var(--game-teal);
+  font-size: 19px;
+  font-weight: 900;
+}
+
+.gameKnowledgeCard {
+  padding: 14px 16px;
+  border: 1px solid rgba(216, 144, 53, 0.3);
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.72), transparent), #fff0d8;
+}
+
+.gameKnowledgeCard h3 {
+  margin: 3px 0 4px;
+  font-size: 17px;
+}
+
+.gameKnowledgeCard p {
+  margin: 0;
+  color: #7f521b;
+  font-weight: 750;
 }
 
 .gameLiveRegion {
@@ -355,13 +496,18 @@
 
 @media (max-height: 640px) {
   .gameExperience {
-    grid-template-rows: auto minmax(220px, 1fr) auto;
+    grid-template-rows: auto minmax(180px, 1fr) minmax(0, auto);
   }
   .gameCanvasStage {
-    min-height: 220px;
+    min-height: 180px;
   }
   .gamePanel {
     padding: 12px;
+  }
+  .gameResultPanel,
+  .gameMapPanel {
+    max-height: calc(100vh - 270px);
+    max-height: calc(100dvh - 270px);
   }
   .gamePanel h2 {
     font-size: 16px;
@@ -369,7 +515,23 @@
   }
   .gameCandidateGrid button,
   .gameClueRail button {
-    min-height: 46px;
+    min-height: 48px;
+  }
+}
+
+@media (forced-colors: active) {
+  .gameProgress,
+  .gameInkBalance,
+  .gameRewardList li,
+  .gameMapInventory div,
+  .gameKnowledgeCard {
+    border: 1px solid CanvasText;
+  }
+
+  .gameMapPath span.isComplete,
+  .gamePrimaryButton,
+  .gameWordForm button {
+    forced-color-adjust: none;
   }
 }
 

@@ -31,6 +31,7 @@ export type NativeRuntimeReadyPayload =
 export type NativeGameBridgeClient = Readonly<{
   storage: KeyValueStoragePort;
   waitUntilReady(): Promise<void>;
+  waitForConfigSnapshot(): Promise<NativeHostConfigSnapshot>;
   reportRuntimeReady(payload: NativeRuntimeReadyPayload): Promise<void>;
   dispose(): void;
 }>;
@@ -42,25 +43,25 @@ class NativeGameBridgeError extends Error {
   }
 }
 
-function createDeferred(): {
-  promise: Promise<void>;
-  resolve(): void;
+function createDeferred<T>(): {
+  promise: Promise<T>;
+  resolve(value: T): void;
   reject(error: Error): void;
 } {
   let settled = false;
-  let resolvePromise!: () => void;
+  let resolvePromise!: (value: T) => void;
   let rejectPromise!: (error: Error) => void;
-  const promise = new Promise<void>((resolve, reject) => {
+  const promise = new Promise<T>((resolve, reject) => {
     resolvePromise = resolve;
     rejectPromise = reject;
   });
   void promise.catch(() => undefined);
   return {
     promise,
-    resolve() {
+    resolve(value) {
       if (settled) return;
       settled = true;
-      resolvePromise();
+      resolvePromise(value);
     },
     reject(error) {
       if (settled) return;
@@ -101,7 +102,8 @@ function defaultDispatchHostEvent(name: string, detail?: unknown): void {
 export function createNativeGameBridgeClient(
   options: NativeGameBridgeOptions,
 ): NativeGameBridgeClient {
-  const ready = createDeferred();
+  const ready = createDeferred<void>();
+  const configSnapshot = createDeferred<NativeHostConfigSnapshot>();
   const dispatchHostEvent =
     options.dispatchHostEvent ?? defaultDispatchHostEvent;
   let transactionSequence = 0;
@@ -145,6 +147,7 @@ export function createNativeGameBridgeClient(
         return { ack: true };
       },
       "config.snapshot": (payload) => {
+        configSnapshot.resolve(payload);
         dispatchHostEvent(NATIVE_GAME_EVENT.config, payload);
         return { ack: true };
       },
@@ -162,7 +165,7 @@ export function createNativeGameBridgeClient(
     void coordinator.receive(parsed).then(() => {
       const snapshot = coordinator.getSnapshot();
       if (snapshot.state === "ready") {
-        ready.resolve();
+        ready.resolve(undefined);
       } else if (snapshot.state === "rejected") {
         ready.reject(new NativeGameBridgeError("handshake-rejected"));
       }
@@ -222,12 +225,16 @@ export function createNativeGameBridgeClient(
   return {
     storage,
     waitUntilReady: () => ready.promise,
+    waitForConfigSnapshot: () => configSnapshot.promise,
     async reportRuntimeReady(payload) {
       unwrapResult(await coordinator.request("runtime.ready", payload));
     },
     dispose() {
       if (disposed) return;
       disposed = true;
+      const disposalError = new NativeGameBridgeError("disposed");
+      ready.reject(disposalError);
+      configSnapshot.reject(disposalError);
       for (const target of options.messageTargets) {
         target.removeEventListener("message", onMessage);
       }

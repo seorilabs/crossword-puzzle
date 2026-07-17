@@ -16,6 +16,10 @@ import {
   GameController,
   type GameSnapshot,
 } from "../../packages/crossword-core/src/gameController.ts";
+import {
+  defaultLaunchConfig,
+  type LaunchConfig,
+} from "../../packages/crossword-core/src/launchConfig.ts";
 import { koKrLanguageProfile } from "../../packages/crossword-core/src/languageProfile.ts";
 import {
   getCellKey,
@@ -37,7 +41,9 @@ import {
   DEFAULT_GAME_SAVE_V2_KEY,
   GameSaveRepositoryError,
   type GameSaveRepository,
+  type GameProgressionSnapshot,
   type KeyValueStoragePort,
+  type RecordGameCompletionResult,
 } from "./gameSaveRepository.ts";
 import { createRestoredGameSnapshot } from "./gameRestore.ts";
 import { NATIVE_GAME_EVENT } from "./nativeGameEvents.ts";
@@ -50,6 +56,7 @@ export type MountGameExperienceOptions = Readonly<{
   hostKind: GameExperienceHostKind;
   storage: KeyValueStoragePort;
   bridgeReady?: Promise<void>;
+  launchConfig?: LaunchConfig;
 }>;
 
 type HostCallbacks = Readonly<{
@@ -59,11 +66,26 @@ type HostCallbacks = Readonly<{
 }>;
 
 type GameModel = Readonly<{
+  completionReward: RecordGameCompletionResult | null;
   controller: GameController;
+  progression: GameProgressionSnapshot;
   repository: GameSaveRepository;
   restoreNotice: string | null;
   snapshot: GameSnapshot;
 }>;
+
+const ONBOARDING_MAP_NODE_ID =
+  "chapter-01-forgotten-path:node:onboarding-easy-01";
+const ONBOARDING_KNOWLEDGE_CARD_ID =
+  "chapter-01-forgotten-path:card:onboarding-easy-01";
+
+function rewardConfigFromLaunchConfig(config: LaunchConfig) {
+  return {
+    base: config.memoryInkBase,
+    perEntry: config.memoryInkPerEntry,
+    chainCap: config.memoryInkChainCap,
+  };
+}
 
 type Deferred<T> = Readonly<{
   promise: Promise<T>;
@@ -177,7 +199,24 @@ async function persistGameTransition(
   repository: GameSaveRepository,
   previous: GameSnapshot,
   next: GameSnapshot,
-): Promise<void> {
+  boardResolved: boolean,
+  entryCount: number,
+  launchConfig: LaunchConfig,
+): Promise<RecordGameCompletionResult | null> {
+  const progress = {
+    longestIntersectionChain: next.lastResolvedEntryIds.length,
+  };
+  if (boardResolved) {
+    return repository.recordPuzzleCompletion({
+      snapshot: next,
+      entryCount,
+      mapNodeId: ONBOARDING_MAP_NODE_ID,
+      cardIds: [ONBOARDING_KNOWLEDGE_CARD_ID],
+      progress,
+      rewardConfig: rewardConfigFromLaunchConfig(launchConfig),
+    });
+  }
+
   const changed = changedCellKeys(previous, next);
   if (
     changed.length === 1 &&
@@ -189,19 +228,22 @@ async function persistGameTransition(
         snapshot: next,
         cellKey,
         cellValue: next.cellValues[cellKey] ?? null,
+        progress,
       });
-      return;
+      return null;
     } catch (error) {
       if (!(error instanceof GameSaveRepositoryError)) throw error;
       // Paste/migration or a non-cell save may legitimately bypass the compact
       // journal; the full sealed snapshot remains the recovery fallback.
     }
   }
-  await repository.persistSnapshot(next);
+  await repository.persistSnapshot(next, progress);
+  return null;
 }
 
 async function createGameModel(
   storage: KeyValueStoragePort,
+  launchConfig: LaunchConfig,
 ): Promise<GameModel> {
   const content = loadBundledOnboardingGameContent();
   const repository = createGameSaveRepository({
@@ -274,8 +316,31 @@ async function createGameModel(
   }
 
   const snapshot = controller.getSnapshot();
-  await repository.persistSnapshot(snapshot);
-  return { controller, repository, restoreNotice, snapshot };
+  await repository.persistSnapshot(snapshot, {
+    longestIntersectionChain: snapshot.lastResolvedEntryIds.length,
+  });
+  const completionReward =
+    (snapshot.phase === "result" || snapshot.phase === "map") &&
+    snapshot.completedEntryIds.length === content.entries.length
+      ? await repository.recordPuzzleCompletion({
+          snapshot,
+          entryCount: content.entries.length,
+          mapNodeId: ONBOARDING_MAP_NODE_ID,
+          cardIds: [ONBOARDING_KNOWLEDGE_CARD_ID],
+          rewardConfig: rewardConfigFromLaunchConfig(launchConfig),
+        })
+      : null;
+  const progression =
+    completionReward?.progression ??
+    (await repository.readProgression(content.contentLocale));
+  return {
+    completionReward,
+    controller,
+    progression,
+    repository,
+    restoreNotice,
+    snapshot,
+  };
 }
 
 function getDraftForEntry(
@@ -294,19 +359,26 @@ function GameExperience({
   bridgeReady,
   callbacks,
   hostKind,
+  initialLaunchConfig,
   storage,
 }: Readonly<{
   callbacks: HostCallbacks;
   bridgeReady?: Promise<void>;
   hostKind: GameExperienceHostKind;
+  initialLaunchConfig: LaunchConfig;
   storage: KeyValueStoragePort;
 }>) {
   const content = useMemo(loadBundledOnboardingGameContent, []);
   const [model, setModel] = useState<GameModel | null>(null);
   const [snapshot, setSnapshot] = useState<GameSnapshot | null>(null);
+  const [progression, setProgression] =
+    useState<GameProgressionSnapshot | null>(null);
+  const [completionReward, setCompletionReward] =
+    useState<RecordGameCompletionResult | null>(null);
   const [draft, setDraft] = useState("");
   const [liveMessage, setLiveMessage] = useState("게임을 준비하고 있어요.");
   const [saveWarning, setSaveWarning] = useState<string | null>(null);
+  const [saveRetrying, setSaveRetrying] = useState(false);
   const [fatalError, setFatalError] = useState(false);
   const canvasParentRef = useRef<HTMLDivElement>(null);
   const runtimeRef = useRef<CrosswordGameRuntime | null>(null);
@@ -324,7 +396,7 @@ function GameExperience({
         await bridgeReady;
       }
       callbacks.onBridgeReady();
-      return createGameModel(storage);
+      return createGameModel(storage, initialLaunchConfig);
     };
     void initialize().then(
       (nextModel) => {
@@ -332,6 +404,8 @@ function GameExperience({
         previousSnapshotRef.current = nextModel.snapshot;
         setModel(nextModel);
         setSnapshot(nextModel.snapshot);
+        setProgression(nextModel.progression);
+        setCompletionReward(nextModel.completionReward);
       },
       (error: unknown) => {
         if (cancelled) return;
@@ -344,7 +418,7 @@ function GameExperience({
     return () => {
       cancelled = true;
     };
-  }, [bridgeReady, callbacks, hostKind, storage]);
+  }, [bridgeReady, callbacks, hostKind, initialLaunchConfig, storage]);
 
   useEffect(() => {
     if (model == null) return;
@@ -367,25 +441,43 @@ function GameExperience({
         setLiveMessage("모든 말길이 이어져 기억의 정원이 깨어났어요.");
       }
 
+      const boardResolved = events.some(
+        (event) => event.type === "game.board.resolved",
+      );
+      if (boardResolved) setSaveWarning(null);
       void persistGameTransition(
         model.repository,
         previous,
         nextSnapshot,
-      ).catch(() => {
-        setSaveWarning(
-          "진행 저장을 잠시 완료하지 못했어요. 다음 입력 때 다시 시도해요.",
-        );
-      });
+        boardResolved,
+        content.entries.length,
+        initialLaunchConfig,
+      ).then(
+        (reward) => {
+          if (reward != null) {
+            setCompletionReward(reward);
+            setProgression(reward.progression);
+          }
+          setSaveWarning(null);
+        },
+        () => {
+          setSaveWarning(
+            boardResolved
+              ? "완료 보상을 저장하지 못했어요. 아래 버튼으로 다시 시도해 주세요."
+              : "진행을 저장하지 못했어요. 다음 입력 때 다시 시도합니다.",
+          );
+        },
+      );
     });
-  }, [model]);
+  }, [content.entries.length, initialLaunchConfig, model]);
 
   useEffect(() => {
     if (model == null || canvasParentRef.current == null) {
       return;
     }
-    const reducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
+    const reducedMotion =
+      initialLaunchConfig.worldRestoreMotionLevel === "reduced" ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const runtime = createCrosswordGameRuntime({
       parent: canvasParentRef.current,
       content,
@@ -420,7 +512,7 @@ function GameExperience({
       runtimeRef.current = null;
       runtime.destroy();
     };
-  }, [callbacks, content, model]);
+  }, [callbacks, content, initialLaunchConfig.worldRestoreMotionLevel, model]);
 
   useEffect(() => {
     if (snapshot == null) return;
@@ -511,6 +603,49 @@ function GameExperience({
     event?.preventDefault();
     dispatchDraft(draft);
   };
+  const retryCompletionSave = useCallback(async () => {
+    if (
+      model == null ||
+      snapshot == null ||
+      saveRetrying ||
+      snapshot.completedEntryIds.length !== content.entries.length
+    ) {
+      return;
+    }
+
+    setSaveRetrying(true);
+    setSaveWarning(null);
+    try {
+      const reward = await model.repository.recordPuzzleCompletion({
+        snapshot,
+        entryCount: content.entries.length,
+        mapNodeId: ONBOARDING_MAP_NODE_ID,
+        cardIds: [ONBOARDING_KNOWLEDGE_CARD_ID],
+        progress: {
+          longestIntersectionChain: snapshot.lastResolvedEntryIds.length,
+        },
+        rewardConfig: rewardConfigFromLaunchConfig(initialLaunchConfig),
+      });
+      setCompletionReward(reward);
+      setProgression(reward.progression);
+      setLiveMessage("완료 보상을 안전하게 보관했어요.");
+    } catch {
+      setSaveWarning("완료 보상을 아직 저장하지 못했어요. 다시 시도해 주세요.");
+    } finally {
+      setSaveRetrying(false);
+    }
+  }, [
+    content.entries.length,
+    initialLaunchConfig,
+    model,
+    saveRetrying,
+    snapshot,
+  ]);
+  const memoryInkBalance = progression?.memoryInkBalance ?? 0;
+  const mapFragmentCount = progression?.mapFragmentCount ?? 0;
+  const knowledgeCardCount = progression?.cardIds.length ?? 0;
+  const hasOnboardingKnowledgeCard =
+    progression?.cardIds.includes(ONBOARDING_KNOWLEDGE_CARD_ID) ?? false;
 
   if (fatalError) {
     return (
@@ -527,9 +662,18 @@ function GameExperience({
           <span>기억의 정원 · 첫 번째 말길</span>
           <h1>말길</h1>
         </div>
-        <div className="gameProgress" aria-label="완성한 단어 수">
-          <strong>{snapshot?.completedEntryIds.length ?? 0}</strong>
-          <span>/ {content.entries.length}</span>
+        <div className="gameTopStatus">
+          <div
+            className="gameInkBalance"
+            aria-label={`기억잉크 ${memoryInkBalance}`}
+          >
+            <span aria-hidden="true">잉크</span>
+            <strong>{memoryInkBalance}</strong>
+          </div>
+          <div className="gameProgress" aria-label="완성한 단어 수">
+            <strong>{snapshot?.completedEntryIds.length ?? 0}</strong>
+            <span>/ {content.entries.length}</span>
+          </div>
         </div>
       </header>
 
@@ -572,16 +716,59 @@ function GameExperience({
           <div>
             <span className="gameEyebrow">장소 복원 완료</span>
             <h2 id="game-result-title">기억의 정원이 깨어났어요</h2>
-            <p>첫 지도 조각과 지식 카드 1장을 얻었습니다.</p>
+            <p>
+              {completionReward == null
+                ? saveWarning == null
+                  ? "완료 보상을 확인하고 있어요."
+                  : "완료 보상을 아직 보관하지 못했어요."
+                : completionReward.status === "granted"
+                  ? `지도 조각 1개와 기억잉크 ${completionReward.memoryInkAwarded}개를 보관했어요.`
+                  : "이미 받은 첫 완료 보상을 그대로 보관하고 있어요."}
+            </p>
           </div>
+          {saveWarning == null ? null : (
+            <p className="gameSaveAlert" role="alert">
+              {saveWarning}
+            </p>
+          )}
+          <ul className="gameRewardList" aria-label="완료 보상">
+            <li>
+              <span aria-hidden="true">◇</span>
+              <strong>지도 조각</strong>
+              <b>{mapFragmentCount}</b>
+            </li>
+            <li>
+              <span aria-hidden="true">●</span>
+              <strong>기억잉크</strong>
+              <b>{memoryInkBalance}</b>
+            </li>
+            <li>
+              <span aria-hidden="true">▤</span>
+              <strong>지식 카드</strong>
+              <b>{knowledgeCardCount}</b>
+            </li>
+          </ul>
           <button
             className="gamePrimaryButton"
             type="button"
-            onClick={() =>
-              model.controller.dispatch({ type: "result.continue" })
+            disabled={
+              completionReward == null && (saveWarning == null || saveRetrying)
             }
+            onClick={() => {
+              if (completionReward == null) {
+                void retryCompletionSave();
+                return;
+              }
+              model.controller.dispatch({ type: "result.continue" });
+            }}
           >
-            지도에서 계속하기
+            {completionReward != null
+              ? "지도에서 계속하기"
+              : saveRetrying
+                ? "보상 저장 중…"
+                : saveWarning == null
+                  ? "보상 확인 중…"
+                  : "보상 저장 다시 시도"}
           </button>
         </section>
       ) : snapshot.phase === "map" ? (
@@ -599,10 +786,39 @@ function GameExperience({
           <div>
             <span className="gameEyebrow">챕터 1 · 1/3</span>
             <h2 id="game-map-title">잊힌 오솔길</h2>
-            <p>토끼, 토요일, 기차를 포함한 첫 지식 카드가 보관됐어요.</p>
+            <p>완료한 말길이 종이 세계의 첫 오솔길로 남았어요.</p>
           </div>
+          <dl className="gameMapInventory" aria-label="탐험 보관함">
+            <div>
+              <dt>지도 조각</dt>
+              <dd>{mapFragmentCount}</dd>
+            </div>
+            <div>
+              <dt>기억잉크</dt>
+              <dd>{memoryInkBalance}</dd>
+            </div>
+            <div>
+              <dt>지식 카드</dt>
+              <dd>{knowledgeCardCount}</dd>
+            </div>
+          </dl>
+          {hasOnboardingKnowledgeCard ? (
+            <article
+              className="gameKnowledgeCard"
+              aria-labelledby="game-knowledge-card-title"
+            >
+              <span className="gameEyebrow">새 지식 카드</span>
+              <h3 id="game-knowledge-card-title">첫 말길의 기억</h3>
+              <p>
+                {content.entries
+                  .slice(0, 3)
+                  .map((entry) => entry.answerCells.join(""))
+                  .join(" · ")}
+              </p>
+            </article>
+          ) : null}
           <button className="gameSecondaryButton" type="button" disabled>
-            다음 보드 준비 중
+            검수된 다음 보드 준비 중
           </button>
         </section>
       ) : (
@@ -802,6 +1018,7 @@ export function mountGameExperience(
         bridgeReady={options.bridgeReady}
         callbacks={callbacks}
         hostKind={options.hostKind}
+        initialLaunchConfig={options.launchConfig ?? defaultLaunchConfig}
         storage={options.storage}
       />
     </GameExperienceErrorBoundary>,

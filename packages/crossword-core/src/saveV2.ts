@@ -33,6 +33,9 @@ export type SaveV2PuzzleSnapshot = {
   cellValues: Record<string, string>;
   earnedHintCredits: number;
   hintCount: number;
+  // 퍼즐 진행 중 한 입력으로 함께 완성된 단어 수의 최댓값. 기존 Save v2와의
+  // 호환을 위해 optional이며, 신규 writer는 항상 0 이상의 정수로 기록한다.
+  longestIntersectionChain?: number;
   revealUsed: boolean;
   tentativeCells: string[];
   commandSequence: number;
@@ -432,6 +435,15 @@ export function validateSaveV2Namespaces(save: SaveV2Envelope): string[] {
       if (snapshot.puzzleId !== puzzleId) {
         violations.push(
           `content.${contentLocale}.puzzles.${puzzleId}.puzzleId`,
+        );
+      }
+      if (
+        snapshot.longestIntersectionChain !== undefined &&
+        (!Number.isInteger(snapshot.longestIntersectionChain) ||
+          snapshot.longestIntersectionChain < 0)
+      ) {
+        violations.push(
+          `content.${contentLocale}.puzzles.${puzzleId}.longestIntersectionChain`,
         );
       }
     }

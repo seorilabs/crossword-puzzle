@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import {
   fetchFirebaseRuntimeGateSnapshot,
+  readActivatedFirebaseLaunchConfig,
   readCachedFirebaseRuntimeGateSnapshot,
   type FirebaseRuntimeGateSnapshot,
 } from "../adapters/firebaseClient.ts";
@@ -150,6 +151,7 @@ export function RuntimeHost({ legacy }: RuntimeHostProps) {
         setState({ status: "legacy", reason: selection.reason });
         return;
       }
+      const launchConfig = await readActivatedFirebaseLaunchConfig();
 
       setState({ status: "booting" });
       const container = await waitForGameContainer(gameContainerRef);
@@ -178,6 +180,7 @@ export function RuntimeHost({ legacy }: RuntimeHostProps) {
           const module = await import("./GameExperience.tsx");
           return module.mountGameExperience(container, {
             hostKind,
+            launchConfig,
             storage: runtimeStorage,
           });
         },

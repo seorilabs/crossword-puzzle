@@ -83,6 +83,27 @@ export async function loadFirebaseLaunchConfig(): Promise<LaunchConfig> {
         gameRuntimeEnabled: remoteConfigClient
           .getValue(launchConfigKeys.gameRuntimeEnabled)
           .asBoolean(),
+        memoryInkBase: remoteConfigClient
+          .getValue(launchConfigKeys.memoryInkBase)
+          .asNumber(),
+        memoryInkPerEntry: remoteConfigClient
+          .getValue(launchConfigKeys.memoryInkPerEntry)
+          .asNumber(),
+        memoryInkChainCap: remoteConfigClient
+          .getValue(launchConfigKeys.memoryInkChainCap)
+          .asNumber(),
+        ftueInputVariant: remoteConfigClient
+          .getValue(launchConfigKeys.ftueInputVariant)
+          .asString() as LaunchConfig['ftueInputVariant'],
+        worldRestoreMotionLevel: remoteConfigClient
+          .getValue(launchConfigKeys.worldRestoreMotionLevel)
+          .asString() as LaunchConfig['worldRestoreMotionLevel'],
+        adFailureFallbackEnabled: remoteConfigClient
+          .getValue(launchConfigKeys.adFailureFallbackEnabled)
+          .asBoolean(),
+        adFailureFallbackDailyCap: remoteConfigClient
+          .getValue(launchConfigKeys.adFailureFallbackDailyCap)
+          .asNumber(),
         stuckHintIdleMs: remoteConfigClient
           .getValue(launchConfigKeys.stuckHintIdleMs)
           .asNumber(),

@@ -89,7 +89,7 @@ function createLoopbackFixture() {
 
   const host = new GameBridgeCoordinator({
     role: "host",
-    capabilities: ["storage", "runtime", "lifecycle"],
+    capabilities: ["storage", "runtime", "lifecycle", "config"],
     transport: { send: deliverHostMessage },
     handlers: {
       "storage.get": ({ key, schemaVersion }) => {
@@ -156,11 +156,23 @@ describe("native game bridge loopback contract", () => {
       state: "ready",
       role: "host",
       sessionId: "native-loopback-session",
-      negotiatedCapabilities: ["storage", "runtime", "lifecycle"],
+      negotiatedCapabilities: ["storage", "runtime", "lifecycle", "config"],
     });
     assert.equal(fixture.windowTarget.listenerCount, 1);
     assert.equal(fixture.documentTarget.listenerCount, 1);
     assert.equal(await fixture.client.storage.getItem("save/current"), null);
+
+    const configPayload: GameBridgeMethodPayloads["config.snapshot"] = {
+      version: "launch-config/v1",
+      values: { memoryInkBase: 14, gameRuntimeEnabled: true },
+    };
+    const configReady = fixture.client.waitForConfigSnapshot();
+    const configResponse = await fixture.host.request(
+      "config.snapshot",
+      configPayload,
+    );
+    assert.equal(configResponse.status, "result");
+    assert.deepEqual(await configReady, configPayload);
 
     await fixture.client.storage.setItem("save/current", '{"progress":1}');
     assert.equal(

@@ -1,5 +1,13 @@
 import type { GameSnapshot } from "../../packages/crossword-core/src/gameController.ts";
 import {
+  applyFirstCompletionRewards,
+  getOwnedCosmeticIds,
+  projectMemoryInkBalance,
+  purchaseCosmetic as purchaseCosmeticInSave,
+  type CosmeticTier,
+  type MemoryInkRewardConfig,
+} from "../../packages/crossword-core/src/gameEconomy.ts";
+import {
   applyCellCommitJournal,
   createCellCommitJournal,
   createEmptySaveV2,
@@ -78,9 +86,51 @@ export type GameSaveLoadResult =
 export type GameSaveProgressMetadata = Readonly<{
   earnedHintCredits?: number;
   hintCount?: number;
+  longestIntersectionChain?: number;
   revealUsed?: boolean;
   tentativeCells?: readonly string[];
   completedAt?: string;
+}>;
+
+export type GameProgressionSnapshot = Readonly<{
+  contentLocale: string;
+  completedPuzzleIds: readonly string[];
+  mapFragmentCount: number;
+  mapNodeIds: readonly string[];
+  cardIds: readonly string[];
+  memoryInkBalance: number;
+  ownedCosmeticIds: readonly string[];
+}>;
+
+export type RecordGameCompletionInput = Readonly<{
+  snapshot: GameSnapshot;
+  entryCount: number;
+  mapNodeId: string;
+  cardIds?: readonly string[];
+  profileScope?: string;
+  rewardConfig?: MemoryInkRewardConfig;
+  progress?: GameSaveProgressMetadata;
+}>;
+
+export type RecordGameCompletionResult = Readonly<{
+  status: "granted" | "already-granted";
+  memoryInkAwarded: number;
+  mapFragmentAwarded: boolean;
+  cardIdsAwarded: readonly string[];
+  progression: GameProgressionSnapshot;
+}>;
+
+export type PurchaseGameCosmeticInput = Readonly<{
+  contentLocale: string;
+  cosmeticId: string;
+  tier: CosmeticTier;
+  profileScope?: string;
+}>;
+
+export type PurchaseGameCosmeticResult = Readonly<{
+  status: "purchased" | "already-owned" | "insufficient-balance";
+  price: number;
+  progression: GameProgressionSnapshot;
 }>;
 
 export type CommitGameCellInput = Readonly<{
@@ -111,7 +161,8 @@ export type GameSaveRepositoryErrorCode =
   | "journal-base-missing"
   | "journal-identity-mismatch"
   | "journal-sequence-mismatch"
-  | "journal-delta-mismatch";
+  | "journal-delta-mismatch"
+  | "invalid-projection";
 
 export class GameSaveRepositoryError extends Error {
   readonly code: GameSaveRepositoryErrorCode;
@@ -123,6 +174,12 @@ export class GameSaveRepositoryError extends Error {
   }
 }
 
+function assertValidSaveProjection(save: SaveV2Envelope): void {
+  if (validateSaveV2Namespaces(save).length > 0) {
+    throw new GameSaveRepositoryError("invalid-projection");
+  }
+}
+
 export interface GameSaveRepository {
   loadPuzzleSnapshot(input: LoadGameSnapshotInput): Promise<GameSaveLoadResult>;
   persistSnapshot(
@@ -130,6 +187,13 @@ export interface GameSaveRepository {
     progress?: GameSaveProgressMetadata,
   ): Promise<SaveV2PuzzleSnapshot>;
   commitCell(input: CommitGameCellInput): Promise<SaveV2PuzzleSnapshot>;
+  readProgression(contentLocale: string): Promise<GameProgressionSnapshot>;
+  recordPuzzleCompletion(
+    input: RecordGameCompletionInput,
+  ): Promise<RecordGameCompletionResult>;
+  purchaseCosmetic(
+    input: PurchaseGameCosmeticInput,
+  ): Promise<PurchaseGameCosmeticResult>;
 }
 
 type ReadSaveResult =
@@ -202,6 +266,7 @@ function isPuzzleSnapshot(value: unknown): value is SaveV2PuzzleSnapshot {
       "cellValues",
       "earnedHintCredits",
       "hintCount",
+      "longestIntersectionChain",
       "revealUsed",
       "tentativeCells",
       "commandSequence",
@@ -220,6 +285,8 @@ function isPuzzleSnapshot(value: unknown): value is SaveV2PuzzleSnapshot {
     isStringRecord(value.cellValues) &&
     isNonNegativeInteger(value.earnedHintCredits) &&
     isNonNegativeInteger(value.hintCount) &&
+    (value.longestIntersectionChain === undefined ||
+      isNonNegativeInteger(value.longestIntersectionChain)) &&
     typeof value.revealUsed === "boolean" &&
     isStringArray(value.tentativeCells) &&
     isNonNegativeInteger(value.commandSequence) &&
@@ -488,6 +555,13 @@ function projectGameSnapshot(
       previous?.earnedHintCredits ?? 0,
     ),
     hintCount: normalizeCount(progress?.hintCount, previous?.hintCount ?? 0),
+    longestIntersectionChain: Math.max(
+      normalizeCount(
+        progress?.longestIntersectionChain,
+        previous?.longestIntersectionChain ?? 0,
+      ),
+      previous?.longestIntersectionChain ?? 0,
+    ),
     revealUsed: progress?.revealUsed ?? previous?.revealUsed ?? false,
     tentativeCells: [
       ...new Set(
@@ -543,6 +617,31 @@ function changedCellKeys(
   return [...keys]
     .filter((key) => (previous[key] ?? null) !== (next[key] ?? null))
     .sort();
+}
+
+function projectProgression(
+  save: SaveV2Envelope | null,
+  contentLocale: string,
+): GameProgressionSnapshot {
+  const contentState = save?.content[contentLocale];
+  return {
+    contentLocale,
+    completedPuzzleIds: [...(contentState?.completedPuzzleIds ?? [])],
+    mapFragmentCount:
+      save?.economyRecords.filter(
+        (record) =>
+          record.kind === "grant" &&
+          record.contentLocale === contentLocale &&
+          record.payload.rewardType === "map_fragment" &&
+          record.payload.amount === 1,
+      ).length ?? 0,
+    mapNodeIds: [...(contentState?.mapNodeIds ?? [])],
+    cardIds: [...(contentState?.cardIds ?? [])],
+    memoryInkBalance:
+      save == null ? 0 : projectMemoryInkBalance(save, contentLocale),
+    ownedCosmeticIds:
+      save == null ? [] : getOwnedCosmeticIds(save, contentLocale),
+  };
 }
 
 export function createGameSaveRepository(
@@ -810,5 +909,107 @@ export function createGameSaveRepository(
       return clonePuzzleSnapshot(projected);
     });
 
-  return { loadPuzzleSnapshot, persistSnapshot, commitCell };
+  const readProgression = (
+    contentLocale: string,
+  ): Promise<GameProgressionSnapshot> =>
+    serialized(async () => {
+      const save = await requireValidSave();
+      return projectProgression(save, contentLocale);
+    });
+
+  const recordPuzzleCompletion = (
+    input: RecordGameCompletionInput,
+  ): Promise<RecordGameCompletionResult> =>
+    serialized(async () => {
+      const timestamp = now();
+      const existing = await requireValidSave();
+      const base =
+        existing ?? createFreshSave(input.snapshot.contentLocale, timestamp);
+      const previous =
+        base.content[input.snapshot.contentLocale]?.puzzles[
+          input.snapshot.puzzleId
+        ];
+      const projected = projectGameSnapshot(
+        input.snapshot,
+        previous,
+        {
+          ...input.progress,
+          completedAt: input.progress?.completedAt ?? timestamp,
+          longestIntersectionChain: Math.max(
+            input.progress?.longestIntersectionChain ?? 0,
+            input.snapshot.lastResolvedEntryIds.length,
+          ),
+        },
+        timestamp,
+      );
+      const completion = applyFirstCompletionRewards(
+        replacePuzzleSnapshot(base, projected),
+        {
+          profileScope: input.profileScope ?? "local-profile-v1",
+          contentLocale: projected.contentLocale,
+          puzzleId: projected.puzzleId,
+          contentChecksum: projected.contentChecksum,
+          completedAt: projected.completedAt ?? timestamp,
+          entryCount: input.entryCount,
+          longestIntersectionChain: projected.longestIntersectionChain ?? 0,
+          hintCount: projected.hintCount,
+          revealUsed: projected.revealUsed,
+          mapNodeId: input.mapNodeId,
+          cardIds: input.cardIds,
+        },
+        input.rewardConfig,
+      );
+      assertValidSaveProjection(completion.save);
+      const sealed = await sealSaveV2(completion.save, options.checksumPort);
+      await options.storage.setItem(saveKey, JSON.stringify(sealed));
+
+      return {
+        status: completion.status,
+        memoryInkAwarded: completion.memoryInkAwarded,
+        mapFragmentAwarded: completion.mapFragmentAwarded,
+        cardIdsAwarded: [...completion.cardIdsAwarded],
+        progression: projectProgression(sealed, projected.contentLocale),
+      };
+    });
+
+  const purchaseCosmetic = (
+    input: PurchaseGameCosmeticInput,
+  ): Promise<PurchaseGameCosmeticResult> =>
+    serialized(async () => {
+      const timestamp = now();
+      const existing = await requireValidSave();
+      const base = existing ?? createFreshSave(input.contentLocale, timestamp);
+      const purchase = purchaseCosmeticInSave(base, {
+        profileScope: input.profileScope ?? "local-profile-v1",
+        contentLocale: input.contentLocale,
+        cosmeticId: input.cosmeticId,
+        tier: input.tier,
+        occurredAt: timestamp,
+      });
+      if (purchase.status === "purchased") {
+        assertValidSaveProjection(purchase.save);
+        const sealed = await sealSaveV2(purchase.save, options.checksumPort);
+        await options.storage.setItem(saveKey, JSON.stringify(sealed));
+        return {
+          status: purchase.status,
+          price: purchase.price,
+          progression: projectProgression(sealed, input.contentLocale),
+        };
+      }
+
+      return {
+        status: purchase.status,
+        price: purchase.price,
+        progression: projectProgression(purchase.save, input.contentLocale),
+      };
+    });
+
+  return {
+    loadPuzzleSnapshot,
+    persistSnapshot,
+    commitCell,
+    readProgression,
+    recordPuzzleCompletion,
+    purchaseCosmetic,
+  };
 }

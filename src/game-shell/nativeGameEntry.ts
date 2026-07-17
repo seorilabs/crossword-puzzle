@@ -2,6 +2,10 @@ import {
   BUNDLED_ONBOARDING_CONTENT_CHECKSUM,
   loadBundledOnboardingGameContent,
 } from "./onboardingGameContent.ts";
+import {
+  normalizeLaunchConfig,
+  type LaunchConfig,
+} from "../../packages/crossword-core/src/launchConfig.ts";
 import { mountGameExperience } from "./GameExperience.tsx";
 import { createDefaultNativeGameBridgeClient } from "./nativeGameBridge.ts";
 import "../index.css";
@@ -40,15 +44,24 @@ async function main(): Promise<void> {
 
   const bridge = createDefaultNativeGameBridgeClient();
   const bridgeReady = bridge.waitUntilReady();
+  const [manifest, configSnapshot] = await Promise.all([
+    loadAssetManifest(),
+    bridgeReady.then(() => bridge.waitForConfigSnapshot()),
+  ]);
+  if (configSnapshot.version !== "launch-config/v1") {
+    throw new Error("native game launch config version mismatch");
+  }
+  const launchConfig = normalizeLaunchConfig(
+    configSnapshot.values as Partial<LaunchConfig>,
+  );
   const runtime = mountGameExperience(container, {
     hostKind: "native-webview",
     storage: bridge.storage,
     bridgeReady,
+    launchConfig,
   });
 
-  const [manifest] = await Promise.all([
-    loadAssetManifest(),
-    bridgeReady,
+  await Promise.all([
     runtime.waitForWebGlContext(),
     runtime.waitForFirstInteractiveAck(),
   ]);
