@@ -457,6 +457,13 @@
   font-weight: 750;
 }
 
+.gameKnowledgeCard footer {
+  margin-top: 8px;
+  color: var(--game-muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
 .gameFeatureGateGrid {
   display: grid;
   gap: 8px;
@@ -508,14 +515,6 @@
 
 .gameFeatureGateGrid article.isUnlocked > span {
   background: rgba(255, 255, 255, 0.7);
-}
-
-.gameCollectionNotice {
-  margin: 0 !important;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: var(--game-paper);
-  font-size: 12px !important;
 }
 
 .gameContentGate {

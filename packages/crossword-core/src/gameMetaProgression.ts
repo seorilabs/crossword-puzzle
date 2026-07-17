@@ -104,6 +104,13 @@ export type KnowledgeCardCatalogItem = Readonly<{
   answer: string;
   shortExplanation: string;
   source: string;
+  sourceEntryId: string;
+  sourceUrl: string;
+  licenseId: string;
+  domainTags: readonly string[];
+  reviewerId: string;
+  reviewedAt: string;
+  cardChecksum: string;
 }>;
 
 export type KnowledgeCardCollectionProjection = Readonly<{
@@ -139,6 +146,75 @@ function requireNonEmpty(value: string, field: string): string {
     throw new TypeError(`${field} must not be empty`);
   }
   return normalized;
+}
+
+function requireIsoTimestamp(value: string, field: string): string {
+  const normalized = requireNonEmpty(value, field);
+  if (
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?(?:Z|[+-]\d{2}:\d{2})$/.test(
+      normalized,
+    ) ||
+    !Number.isFinite(Date.parse(normalized))
+  ) {
+    throw new TypeError(`${field} must be an ISO-8601 timestamp`);
+  }
+  return normalized;
+}
+
+function requireLocalDate(value: string, field: string): string {
+  const normalized = requireNonEmpty(value, field);
+  const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (match == null) {
+    throw new TypeError(`${field} must be a YYYY-MM-DD local date`);
+  }
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    throw new TypeError(`${field} must be a real calendar date`);
+  }
+  return normalized;
+}
+
+export function validateKnowledgeCardCatalogItem(
+  item: KnowledgeCardCatalogItem,
+): KnowledgeCardCatalogItem {
+  const sourceUrl = requireNonEmpty(item.sourceUrl, "catalog.sourceUrl");
+  let parsedSourceUrl: URL;
+  try {
+    parsedSourceUrl = new URL(sourceUrl);
+  } catch {
+    throw new TypeError("catalog.sourceUrl must be an absolute URL");
+  }
+  if (parsedSourceUrl.protocol !== "https:") {
+    throw new TypeError("catalog.sourceUrl must use https");
+  }
+  const domainTags = uniqueNonEmpty(item.domainTags, "catalog.domainTags");
+  if (domainTags.length === 0) {
+    throw new TypeError("catalog.domainTags must contain at least one tag");
+  }
+  return {
+    cardId: requireNonEmpty(item.cardId, "catalog.cardId"),
+    contentLocale: requireNonEmpty(item.contentLocale, "catalog.contentLocale"),
+    answer: requireNonEmpty(item.answer, "catalog.answer"),
+    shortExplanation: requireNonEmpty(
+      item.shortExplanation,
+      "catalog.shortExplanation",
+    ),
+    source: requireNonEmpty(item.source, "catalog.source"),
+    sourceEntryId: requireNonEmpty(item.sourceEntryId, "catalog.sourceEntryId"),
+    sourceUrl,
+    licenseId: requireNonEmpty(item.licenseId, "catalog.licenseId"),
+    domainTags,
+    reviewerId: requireNonEmpty(item.reviewerId, "catalog.reviewerId"),
+    reviewedAt: requireIsoTimestamp(item.reviewedAt, "catalog.reviewedAt"),
+    cardChecksum: requireNonEmpty(item.cardChecksum, "catalog.cardChecksum"),
+  };
 }
 
 function uniqueNonEmpty(values: readonly string[], field: string): string[] {
@@ -212,6 +288,21 @@ function validateMissionDefinition(
         "five-of-seven mission requires 7 unique local dates",
       );
     }
+    dates.forEach((date, index) =>
+      requireLocalDate(date, `eligibleLocalDates[${index}]`),
+    );
+    const consecutive = dates.every(
+      (date, index) =>
+        index === 0 ||
+        Date.parse(`${date}T00:00:00.000Z`) -
+          Date.parse(`${dates[index - 1]}T00:00:00.000Z`) ===
+          24 * 60 * 60 * 1000,
+    );
+    if (!consecutive) {
+      throw new TypeError(
+        "five-of-seven mission requires 7 consecutive local dates",
+      );
+    }
   } else {
     if (
       uniqueNonEmpty(definition.eligiblePuzzleIds, "eligiblePuzzleIds")
@@ -247,6 +338,44 @@ function assertMatchingMissionState(
     state.kind !== definition.kind
   ) {
     throw new Error("Mission state does not match its definition");
+  }
+
+  const completedKeys = uniqueNonEmpty(
+    state.completedKeys,
+    "state.completedKeys",
+  );
+  const processedEventIds = uniqueNonEmpty(
+    state.processedEventIds,
+    "state.processedEventIds",
+  );
+  if (
+    completedKeys.length !== state.completedKeys.length ||
+    processedEventIds.length !== state.processedEventIds.length ||
+    completedKeys.length !== processedEventIds.length
+  ) {
+    throw new Error("Mission state completion evidence is inconsistent");
+  }
+
+  const eligibleKeys = new Set(
+    definition.kind === "five-of-seven"
+      ? definition.eligibleLocalDates
+      : definition.eligiblePuzzleIds,
+  );
+  if (completedKeys.some((key) => !eligibleKeys.has(key))) {
+    throw new Error("Mission state contains out-of-scope completion evidence");
+  }
+
+  const required = requiredMissionCompletions(definition);
+  if (completedKeys.length > required) {
+    throw new Error("Mission state exceeds its settlement threshold");
+  }
+  const shouldBeSettled = completedKeys.length === required;
+  const hasSettlement = state.settledAt != null;
+  if (shouldBeSettled !== hasSettlement) {
+    throw new Error("Mission state settlement evidence is inconsistent");
+  }
+  if (state.settledAt != null) {
+    requireIsoTimestamp(state.settledAt, "state.settledAt");
   }
 }
 
@@ -305,7 +434,7 @@ export function recordGameMissionCompletion(
   validateMissionDefinition(definition);
   assertMatchingMissionState(definition, state);
   const eventId = requireNonEmpty(event.eventId, "eventId");
-  requireNonEmpty(event.occurredAt, "occurredAt");
+  requireIsoTimestamp(event.occurredAt, "occurredAt");
 
   if (state.processedEventIds.includes(eventId)) {
     return { status: "duplicate", state };
@@ -356,12 +485,10 @@ export function projectKnowledgeCardCollection(
     GAME_META_UNLOCK_POLICY.knowledgeCollectionCompletedBoards;
   const ownedCardIds = uniqueNonEmpty(contentState.cardIds, "cardIds");
   const localeCatalog = new Map<string, KnowledgeCardCatalogItem>();
-  for (const item of catalog) {
+  for (const rawItem of catalog) {
+    const item = validateKnowledgeCardCatalogItem(rawItem);
     if (item.contentLocale !== contentLocale) continue;
-    const cardId = requireNonEmpty(item.cardId, "catalog.cardId");
-    requireNonEmpty(item.answer, "catalog.answer");
-    requireNonEmpty(item.shortExplanation, "catalog.shortExplanation");
-    requireNonEmpty(item.source, "catalog.source");
+    const cardId = item.cardId;
     if (localeCatalog.has(cardId)) {
       throw new Error(
         `Duplicate knowledge card in ${contentLocale} catalog: ${cardId}`,

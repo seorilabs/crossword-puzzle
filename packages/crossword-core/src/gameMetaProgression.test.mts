@@ -265,6 +265,70 @@ describe("weekly mission progression", () => {
         }),
       /requires 7 unique local dates/,
     );
+    assert.throws(
+      () =>
+        createGameMissionProgress({
+          ...flexibleDefinition,
+          eligibleLocalDates: [...LOCAL_DATES.slice(0, 6), "2026-07-28"],
+        }),
+      /requires 7 consecutive local dates/,
+    );
+  });
+
+  test("완료 key와 처리 event 증거가 어긋난 외부 mission state는 보상을 만들지 못한다", () => {
+    const forgedState = {
+      ...createGameMissionProgress(flexibleDefinition),
+      completedKeys: LOCAL_DATES.slice(0, 4),
+      processedEventIds: [],
+    };
+    assert.throws(
+      () =>
+        recordGameMissionCompletion(flexibleDefinition, forgedState, {
+          kind: "daily-board-completed",
+          eventId: "forged-settlement-event",
+          contentLocale: "ko-KR",
+          localDate: LOCAL_DATES[4],
+          puzzleId: "p4",
+          occurredAt: "2026-07-24T12:00:00.000Z",
+        }),
+      /completion evidence is inconsistent/,
+    );
+
+    const prematurelySettled = {
+      ...createGameMissionProgress(flexibleDefinition),
+      completedKeys: [LOCAL_DATES[0]],
+      processedEventIds: ["daily-0"],
+      settledAt: "2026-07-20T12:00:00.000Z",
+    };
+    assert.throws(
+      () =>
+        recordGameMissionCompletion(flexibleDefinition, prematurelySettled, {
+          kind: "daily-board-completed",
+          eventId: "daily-1",
+          contentLocale: "ko-KR",
+          localDate: LOCAL_DATES[1],
+          puzzleId: "p1",
+          occurredAt: "2026-07-21T12:00:00.000Z",
+        }),
+      /settlement evidence is inconsistent/,
+    );
+
+    assert.throws(
+      () =>
+        recordGameMissionCompletion(
+          flexibleDefinition,
+          createGameMissionProgress(flexibleDefinition),
+          {
+            kind: "daily-board-completed",
+            eventId: "invalid-time-event",
+            contentLocale: "ko-KR",
+            localDate: LOCAL_DATES[0],
+            puzzleId: "p0",
+            occurredAt: "bad-date",
+          },
+        ),
+      /occurredAt must be an ISO-8601 timestamp/,
+    );
   });
 
   test("주간 어려움 1회 완료는 60과 명시된 전용 엽서만 한 번 정산한다", () => {
@@ -314,6 +378,13 @@ describe("knowledge card collection", () => {
       answer: "한글",
       shortExplanation: "한국어를 적는 문자 체계",
       source: "국립국어원",
+      sourceEntryId: "fixture-ko",
+      sourceUrl: "https://example.com/ko",
+      licenseId: "fixture-license",
+      domainTags: ["language"],
+      reviewerId: "fixture-reviewer",
+      reviewedAt: "2026-07-17T00:00:00.000Z",
+      cardChecksum: "fixture-card-ko",
     },
     {
       cardId: "shared-card",
@@ -321,6 +392,13 @@ describe("knowledge card collection", () => {
       answer: "future answer",
       shortExplanation: "future explanation",
       source: "future source",
+      sourceEntryId: "fixture-future",
+      sourceUrl: "https://example.com/future",
+      licenseId: "fixture-license",
+      domainTags: ["future"],
+      reviewerId: "fixture-reviewer",
+      reviewedAt: "2026-07-17T00:00:00.000Z",
+      cardChecksum: "fixture-card-future",
     },
   ];
 

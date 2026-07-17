@@ -21,7 +21,6 @@ import {
   type LaunchConfig,
 } from "../../packages/crossword-core/src/launchConfig.ts";
 import { KO_KR_LAUNCH_CONTENT_CONTRACT } from "../../packages/crossword-core/src/launchContentCatalog.ts";
-import { GAME_META_UNLOCK_POLICY } from "../../packages/crossword-core/src/gameMetaProgression.ts";
 import { koKrLanguageProfile } from "../../packages/crossword-core/src/languageProfile.ts";
 import {
   getCellKey,
@@ -49,7 +48,11 @@ import {
 } from "./gameSaveRepository.ts";
 import { createRestoredGameSnapshot } from "./gameRestore.ts";
 import { NATIVE_GAME_EVENT } from "./nativeGameEvents.ts";
-import { loadBundledOnboardingGameContent } from "./onboardingGameContent.ts";
+import {
+  BUNDLED_ONBOARDING_KNOWLEDGE_CARD_ID,
+  loadBundledOnboardingGameContent,
+  loadBundledOnboardingKnowledgeCard,
+} from "./onboardingGameContent.ts";
 import "./GameExperience.css";
 
 export type GameExperienceHostKind = GameRuntimeHostKind;
@@ -78,8 +81,6 @@ type GameModel = Readonly<{
 
 const ONBOARDING_MAP_NODE_ID =
   "chapter-01-forgotten-path:node:onboarding-easy-01";
-const ONBOARDING_KNOWLEDGE_CARD_ID =
-  "chapter-01-forgotten-path:card:onboarding-easy-01";
 
 function rewardConfigFromLaunchConfig(config: LaunchConfig) {
   return {
@@ -213,7 +214,7 @@ async function persistGameTransition(
       snapshot: next,
       entryCount,
       mapNodeId: ONBOARDING_MAP_NODE_ID,
-      cardIds: [ONBOARDING_KNOWLEDGE_CARD_ID],
+      cardIds: [BUNDLED_ONBOARDING_KNOWLEDGE_CARD_ID],
       progress,
       rewardConfig: rewardConfigFromLaunchConfig(launchConfig),
     });
@@ -328,7 +329,7 @@ async function createGameModel(
           snapshot,
           entryCount: content.entries.length,
           mapNodeId: ONBOARDING_MAP_NODE_ID,
-          cardIds: [ONBOARDING_KNOWLEDGE_CARD_ID],
+          cardIds: [BUNDLED_ONBOARDING_KNOWLEDGE_CARD_ID],
           rewardConfig: rewardConfigFromLaunchConfig(launchConfig),
         })
       : null;
@@ -371,6 +372,10 @@ function GameExperience({
   storage: KeyValueStoragePort;
 }>) {
   const content = useMemo(loadBundledOnboardingGameContent, []);
+  const onboardingKnowledgeCard = useMemo(
+    loadBundledOnboardingKnowledgeCard,
+    [],
+  );
   const [model, setModel] = useState<GameModel | null>(null);
   const [snapshot, setSnapshot] = useState<GameSnapshot | null>(null);
   const [progression, setProgression] =
@@ -444,6 +449,8 @@ function GameExperience({
       } else if (
         events.some((event) => event.type === "game.board.replay.started")
       ) {
+        setCompletionReward(null);
+        setSaveWarning(null);
         setLiveMessage("첫 말길을 비우고 다시 시작했어요.");
       }
 
@@ -626,7 +633,7 @@ function GameExperience({
         snapshot,
         entryCount: content.entries.length,
         mapNodeId: ONBOARDING_MAP_NODE_ID,
-        cardIds: [ONBOARDING_KNOWLEDGE_CARD_ID],
+        cardIds: [BUNDLED_ONBOARDING_KNOWLEDGE_CARD_ID],
         progress: {
           longestIntersectionChain: snapshot.lastResolvedEntryIds.length,
         },
@@ -650,30 +657,15 @@ function GameExperience({
   const memoryInkBalance = progression?.memoryInkBalance ?? 0;
   const mapFragmentCount = progression?.mapFragmentCount ?? 0;
   const knowledgeCardCount = progression?.cardIds.length ?? 0;
-  const completedBoardCount = progression?.metaUnlocks.completedBoardCount ?? 0;
   const collectionUnlocked =
     progression?.metaUnlocks.knowledgeCollection ?? false;
   const pathColorsUnlocked =
     progression?.metaUnlocks.pathColorCosmetics ?? false;
   const weeklyChallengeUnlocked =
     progression?.metaUnlocks.weeklyChallenge ?? false;
-  const collectionBoardsRemaining = Math.max(
-    0,
-    GAME_META_UNLOCK_POLICY.knowledgeCollectionCompletedBoards -
-      completedBoardCount,
-  );
-  const pathColorBoardsRemaining = Math.max(
-    0,
-    GAME_META_UNLOCK_POLICY.pathColorCosmeticsCompletedBoards -
-      completedBoardCount,
-  );
-  const weeklyBoardsRemaining = Math.max(
-    0,
-    GAME_META_UNLOCK_POLICY.weeklyChallengeCompletedBoards -
-      completedBoardCount,
-  );
   const hasOnboardingKnowledgeCard =
-    progression?.cardIds.includes(ONBOARDING_KNOWLEDGE_CARD_ID) ?? false;
+    progression?.cardIds.includes(BUNDLED_ONBOARDING_KNOWLEDGE_CARD_ID) ??
+    false;
 
   if (fatalError) {
     return (
@@ -833,60 +825,57 @@ function GameExperience({
               <dd>{knowledgeCardCount}</dd>
             </div>
           </dl>
-          <div className="gameFeatureGateGrid" aria-label="메타 기능 해금 현황">
-            <article className={collectionUnlocked ? "isUnlocked" : ""}>
-              <span aria-hidden="true">▤</span>
-              <div>
-                <strong>지식 카드 컬렉션</strong>
-                <small>
-                  {collectionUnlocked
-                    ? "해금됨"
-                    : `${collectionBoardsRemaining}개 보드 더 완료`}
-                </small>
-              </div>
-            </article>
-            <article className={pathColorsUnlocked ? "isUnlocked" : ""}>
-              <span aria-hidden="true">●</span>
-              <div>
-                <strong>말길 색 꾸미기</strong>
-                <small>
-                  {pathColorsUnlocked
-                    ? "해금됨"
-                    : `${pathColorBoardsRemaining}개 보드 더 완료`}
-                </small>
-              </div>
-            </article>
-            <article className={weeklyChallengeUnlocked ? "isUnlocked" : ""}>
-              <span aria-hidden="true">✦</span>
-              <div>
-                <strong>주간 도전</strong>
-                <small>
-                  {weeklyChallengeUnlocked
-                    ? "해금됨"
-                    : `${weeklyBoardsRemaining}개 보드 더 완료`}
-                </small>
-              </div>
-            </article>
-          </div>
-          {collectionUnlocked && hasOnboardingKnowledgeCard ? (
+          {collectionUnlocked ||
+          pathColorsUnlocked ||
+          weeklyChallengeUnlocked ? (
+            <div
+              className="gameFeatureGateGrid"
+              aria-label="새로 열린 메타 기능"
+            >
+              {collectionUnlocked ? (
+                <article className="isUnlocked">
+                  <span aria-hidden="true">▤</span>
+                  <div>
+                    <strong>지식 카드 컬렉션</strong>
+                    <small>해금됨</small>
+                  </div>
+                </article>
+              ) : null}
+              {pathColorsUnlocked ? (
+                <article className="isUnlocked">
+                  <span aria-hidden="true">●</span>
+                  <div>
+                    <strong>말길 색 꾸미기</strong>
+                    <small>해금됨</small>
+                  </div>
+                </article>
+              ) : null}
+              {weeklyChallengeUnlocked ? (
+                <article className="isUnlocked">
+                  <span aria-hidden="true">✦</span>
+                  <div>
+                    <strong>주간 도전</strong>
+                    <small>해금됨</small>
+                  </div>
+                </article>
+              ) : null}
+            </div>
+          ) : null}
+          {hasOnboardingKnowledgeCard ? (
             <article
               className="gameKnowledgeCard"
               aria-labelledby="game-knowledge-card-title"
             >
               <span className="gameEyebrow">새 지식 카드</span>
-              <h3 id="game-knowledge-card-title">첫 말길의 기억</h3>
-              <p>
-                {content.entries
-                  .slice(0, 3)
-                  .map((entry) => entry.answerCells.join(""))
-                  .join(" · ")}
-              </p>
+              <h3 id="game-knowledge-card-title">
+                {onboardingKnowledgeCard.answer}
+              </h3>
+              <p>{onboardingKnowledgeCard.shortExplanation}</p>
+              <footer>
+                {`출처 · ${onboardingKnowledgeCard.source} · 표제어 ${onboardingKnowledgeCard.sourceEntryId} · ${onboardingKnowledgeCard.licenseId}`}
+              </footer>
             </article>
-          ) : (
-            <p className="gameCollectionNotice">
-              받은 지식 카드는 컬렉션 해금 전까지 안전하게 보관됩니다.
-            </p>
-          )}
+          ) : null}
           <div className="gameContentGate" role="status">
             <strong>다음 말길은 출시 콘텐츠 검수 후 열립니다</strong>
             <span>검증되지 않은 임시 보드는 플레이 경로에 넣지 않습니다.</span>

@@ -3,7 +3,11 @@ import { test } from "node:test";
 
 import { BUNDLED_ONBOARDING_CONTENT_IDENTITY } from "../../packages/crossword-core/src/launchContentCatalog.ts";
 import { getEntryAnswerCells } from "../../packages/crossword-core/src/puzzle.ts";
-import { loadBundledOnboardingGameContent } from "./onboardingGameContent.ts";
+import {
+  BUNDLED_ONBOARDING_KNOWLEDGE_CARD_ID,
+  loadBundledOnboardingGameContent,
+  loadBundledOnboardingKnowledgeCard,
+} from "./onboardingGameContent.ts";
 
 test("번들 온보딩 콘텐츠는 ko-KR answerCells·수동 단서 계약을 통과한다", () => {
   const content = loadBundledOnboardingGameContent();
@@ -29,4 +33,11 @@ test("번들 온보딩 콘텐츠는 ko-KR answerCells·수동 단서 계약을 �
         getEntryAnswerCells(entry).length > 0,
     ),
   );
+
+  const card = loadBundledOnboardingKnowledgeCard();
+  assert.equal(card.cardId, BUNDLED_ONBOARDING_KNOWLEDGE_CARD_ID);
+  assert.ok(content.entries.some((entry) => entry.answer === card.answer));
+  assert.equal(card.sourceEntryId, "89388");
+  assert.equal(card.licenseId, "CC-BY-SA-2.0-KR");
+  assert.match(card.sourceUrl, /^https:\/\//);
 });
