@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 
 const sharedPolicyPath = "packages/crossword-core/src/uiPolicy.ts";
@@ -24,11 +25,16 @@ const appDelegatePath =
 const mobilePodfilePath = "apps/mobile/ios/Podfile";
 const mobilePackagePath = "apps/mobile/package.json";
 const gitignorePath = ".gitignore";
+const nativeFirebaseConfigPaths = [
+  "apps/mobile/android/app/google-services.json",
+  "apps/mobile/ios/CrosswordPuzzleMobile/GoogleService-Info.plist",
+];
 const staticChecksWorkflowPath = ".github/workflows/static-checks.yml";
 const deployAllWorkflowPath = ".github/workflows/deploy-all.yml";
 const deployGooglePlayWorkflowPath = ".github/workflows/deploy-google-play.yml";
 const deployAppStoreWorkflowPath = ".github/workflows/deploy-app-store.yml";
 const appStoreLocalBuildPath = "scripts/app-store-local-build.sh";
+const xcodeCloudPostClonePath = "apps/mobile/ios/ci_scripts/ci_post_clone.sh";
 const agentsPath = "AGENTS.md";
 const marketParityDocPath = "docs/market-parity.md";
 const playStoreConfigPath = "play-store/google-play.config.json";
@@ -109,6 +115,24 @@ function read(path) {
 
 function fail(message) {
   failures.push(message);
+}
+
+function assertGitUntracked(paths) {
+  let trackedOutput;
+
+  try {
+    trackedOutput = execFileSync("git", ["ls-files", "--", ...paths], {
+      encoding: "utf8",
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    fail(`unable to inspect Git tracking state (${message})`);
+    return;
+  }
+
+  for (const path of trackedOutput.split("\n").filter(Boolean)) {
+    fail(`${path}: native Firebase config must not be tracked by Git`);
+  }
 }
 
 function assertIncludes(content, needle, label) {
@@ -248,6 +272,7 @@ const deployAllWorkflow = read(deployAllWorkflowPath);
 const deployGooglePlayWorkflow = read(deployGooglePlayWorkflowPath);
 const deployAppStoreWorkflow = read(deployAppStoreWorkflowPath);
 const appStoreLocalBuild = read(appStoreLocalBuildPath);
+const xcodeCloudPostClone = read(xcodeCloudPostClonePath);
 const agents = read(agentsPath);
 const marketParityDoc = read(marketParityDocPath);
 const playStoreConfig = read(playStoreConfigPath);
@@ -513,6 +538,7 @@ assertIncludes(
   "apps/mobile/ios/CrosswordPuzzleMobile/GoogleService-Info.plist",
   gitignorePath,
 );
+assertGitUntracked(nativeFirebaseConfigPaths);
 assertIncludes(
   staticChecksWorkflow,
   "npm run check:release-parity",
@@ -543,6 +569,16 @@ assertIncludes(
   deployAppStoreWorkflow,
   "FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64",
   deployAppStoreWorkflowPath,
+);
+assertIncludes(
+  xcodeCloudPostClone,
+  "node scripts/restore-mobile-firebase-config.mjs --ios --require",
+  xcodeCloudPostClonePath,
+);
+assertNotIncludes(
+  xcodeCloudPostClone,
+  "저장소 커밋본 사용",
+  xcodeCloudPostClonePath,
 );
 assertIncludes(agents, "3마켓 패리티", agentsPath);
 assertIncludes(agents, "packages/crossword-core", agentsPath);
