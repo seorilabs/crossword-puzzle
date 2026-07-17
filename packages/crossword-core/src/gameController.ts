@@ -52,6 +52,7 @@ export type GameCommand =
   | { type: "resolution.complete" }
   | { type: "board.presentation.complete" }
   | { type: "result.continue" }
+  | { type: "map.replay" }
   | { type: "app.suspend" }
   | { type: "app.resume" }
   | {
@@ -81,6 +82,7 @@ export type GameDomainEvent =
   | { type: "game.board.resolved"; commandSequence: number }
   | { type: "game.result.opened"; commandSequence: number }
   | { type: "game.map.opened"; commandSequence: number }
+  | { type: "game.board.replay.started"; commandSequence: number }
   | { type: "game.suspended"; commandSequence: number }
   | { type: "game.resumed"; commandSequence: number }
   | { type: "game.recovered"; commandSequence: number }
@@ -430,6 +432,27 @@ function reduceGameCommand(
     const next = freezeSnapshot(commandSnapshot(snapshot, { phase: "map" }));
     events.push({
       type: "game.map.opened",
+      commandSequence: next.commandSequence,
+    });
+    return { snapshot: next, events: Object.freeze(events) };
+  }
+
+  if (command.type === "map.replay") {
+    if (snapshot.phase !== "map") {
+      return rejectCommand(snapshot, command, "invalid-transition");
+    }
+    const next = freezeSnapshot(
+      commandSnapshot(snapshot, {
+        phase: "active",
+        suspendedFrom: null,
+        selectedEntryId: content.entries[0]?.id ?? null,
+        cellValues: {},
+        completedEntryIds: [],
+        lastResolvedEntryIds: [],
+      }),
+    );
+    events.push({
+      type: "game.board.replay.started",
       commandSequence: next.commandSequence,
     });
     return { snapshot: next, events: Object.freeze(events) };

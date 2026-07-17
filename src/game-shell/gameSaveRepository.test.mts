@@ -215,6 +215,12 @@ describe("game progression ledger repository", () => {
     assert.equal(first.status, "granted");
     assert.equal(first.memoryInkAwarded, 22);
     assert.equal(first.progression.memoryInkBalance, 22);
+    assert.deepEqual(first.progression.metaUnlocks, {
+      completedBoardCount: 1,
+      knowledgeCollection: false,
+      pathColorCosmetics: false,
+      weeklyChallenge: false,
+    });
     assert.deepEqual(first.progression.mapNodeIds, ["chapter-1/node-1"]);
     assert.deepEqual(first.progression.cardIds, ["card-1"]);
 
@@ -268,6 +274,12 @@ describe("game progression ledger repository", () => {
       cardIds: [],
       memoryInkBalance: 0,
       ownedCosmeticIds: [],
+      metaUnlocks: {
+        completedBoardCount: 0,
+        knowledgeCollection: false,
+        pathColorCosmetics: false,
+        weeklyChallenge: false,
+      },
     });
 
     const restarted = repository(storage, "2026-07-17T05:00:00.000Z");

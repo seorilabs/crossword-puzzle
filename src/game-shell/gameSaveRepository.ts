@@ -8,6 +8,10 @@ import {
   type MemoryInkRewardConfig,
 } from "../../packages/crossword-core/src/gameEconomy.ts";
 import {
+  projectGameMetaUnlocksFromCompletedPuzzleIds,
+  type GameMetaUnlocks,
+} from "../../packages/crossword-core/src/gameMetaProgression.ts";
+import {
   applyCellCommitJournal,
   createCellCommitJournal,
   createEmptySaveV2,
@@ -100,6 +104,7 @@ export type GameProgressionSnapshot = Readonly<{
   cardIds: readonly string[];
   memoryInkBalance: number;
   ownedCosmeticIds: readonly string[];
+  metaUnlocks: GameMetaUnlocks;
 }>;
 
 export type RecordGameCompletionInput = Readonly<{
@@ -624,9 +629,10 @@ function projectProgression(
   contentLocale: string,
 ): GameProgressionSnapshot {
   const contentState = save?.content[contentLocale];
+  const completedPuzzleIds = [...(contentState?.completedPuzzleIds ?? [])];
   return {
     contentLocale,
-    completedPuzzleIds: [...(contentState?.completedPuzzleIds ?? [])],
+    completedPuzzleIds,
     mapFragmentCount:
       save?.economyRecords.filter(
         (record) =>
@@ -641,6 +647,8 @@ function projectProgression(
       save == null ? 0 : projectMemoryInkBalance(save, contentLocale),
     ownedCosmeticIds:
       save == null ? [] : getOwnedCosmeticIds(save, contentLocale),
+    metaUnlocks:
+      projectGameMetaUnlocksFromCompletedPuzzleIds(completedPuzzleIds),
   };
 }
 

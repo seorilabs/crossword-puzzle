@@ -109,6 +109,40 @@ describe("GameController single-writer state machine", () => {
       controller.dispatch({ type: "result.continue" }).snapshot.phase,
       "map",
     );
+
+    const replay = controller.dispatch({ type: "map.replay" });
+    assert.equal(replay.snapshot.phase, "active");
+    assert.deepEqual(replay.snapshot.cellValues, {});
+    assert.deepEqual(replay.snapshot.completedEntryIds, []);
+    assert.equal(replay.snapshot.selectedEntryId, "a1");
+    assert.deepEqual(replay.events, [
+      {
+        type: "game.board.replay.started",
+        commandSequence: replay.snapshot.commandSequence,
+      },
+    ]);
+  });
+
+  test("지도 밖에서는 replay 명령을 거부해 진행을 지우지 않는다", () => {
+    const controller = new GameController({
+      content: createContent(),
+      profile: koKrLanguageProfile,
+    });
+    controller.dispatch({ type: "intro.complete" });
+    controller.dispatch({
+      type: "input.commit",
+      entryId: "a1",
+      cells: ["가", "나"],
+    });
+
+    const before = controller.getSnapshot();
+    const rejected = controller.dispatch({ type: "map.replay" });
+    assert.equal(rejected.snapshot.lastError, "invalid-transition");
+    assert.deepEqual(rejected.snapshot.cellValues, before.cellValues);
+    assert.deepEqual(
+      rejected.snapshot.completedEntryIds,
+      before.completedEntryIds,
+    );
   });
 
   test("IME 조합 중 미완성 자모는 commit하지 않고 오류 상태만 남긴다", () => {

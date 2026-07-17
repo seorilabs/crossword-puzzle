@@ -2,20 +2,21 @@ import {
   validateGameContentV1,
   type GameContentV1,
 } from "../../packages/crossword-core/src/gameContent.ts";
+import { BUNDLED_ONBOARDING_CONTENT_IDENTITY } from "../../packages/crossword-core/src/launchContentCatalog.ts";
 import { koKrLanguageProfile } from "../../packages/crossword-core/src/languageProfile.ts";
 import { onboardingPuzzle } from "../data/onboardingPuzzle.ts";
 
 export const BUNDLED_ONBOARDING_CONTENT_CHECKSUM =
-  "bundled:onboarding-easy-01:ko-KR:v1";
+  BUNDLED_ONBOARDING_CONTENT_IDENTITY.contentChecksum;
 
 const bundledOnboardingCandidate = {
   schemaVersion: "game-content/1",
   contentLocale: "ko-KR",
   releaseTimeZone: "Asia/Seoul",
   languageProfile: { id: "ko-KR", version: 1 },
-  puzzleId: onboardingPuzzle.puzzleId,
-  packId: "bundled-game-onboarding-v1",
-  slotId: onboardingPuzzle.date,
+  puzzleId: BUNDLED_ONBOARDING_CONTENT_IDENTITY.puzzleId,
+  packId: BUNDLED_ONBOARDING_CONTENT_IDENTITY.packId,
+  slotId: BUNDLED_ONBOARDING_CONTENT_IDENTITY.slotId,
   grid: onboardingPuzzle.grid,
   entries: onboardingPuzzle.entries.map((entry) => ({
     ...entry,
@@ -24,8 +25,8 @@ const bundledOnboardingCandidate = {
     needsManualClue: false as const,
   })),
   difficulty: onboardingPuzzle.difficulty,
-  themeId: "memory-garden",
-  chapterId: "chapter-01-forgotten-path",
+  themeId: BUNDLED_ONBOARDING_CONTENT_IDENTITY.themeId,
+  chapterId: BUNDLED_ONBOARDING_CONTENT_IDENTITY.chapterId,
   worldTriggerSet: onboardingPuzzle.entries.map((entry, index) => ({
     triggerId: `restore-path-${entry.id}`,
     entryId: entry.id,
@@ -34,7 +35,7 @@ const bundledOnboardingCandidate = {
   generatorCommit: "bundled-hand-authored",
   generatorConfigHash: "onboarding-easy-01-v1",
   contentChecksum: BUNDLED_ONBOARDING_CONTENT_CHECKSUM,
-  licenseManifestId: "repo-owned-bundled-content-v1",
+  licenseManifestId: BUNDLED_ONBOARDING_CONTENT_IDENTITY.licenseManifestId,
   review: {
     reviewerId: "migration/legacy-bundled",
     reviewedAt: "2026-07-17T00:00:00.000Z",
@@ -49,6 +50,13 @@ const bundledOnboardingCandidate = {
  * than in the content payload itself.
  */
 export function loadBundledOnboardingGameContent(): GameContentV1 {
+  if (
+    onboardingPuzzle.puzzleId !==
+      BUNDLED_ONBOARDING_CONTENT_IDENTITY.puzzleId ||
+    onboardingPuzzle.date !== BUNDLED_ONBOARDING_CONTENT_IDENTITY.slotId
+  ) {
+    throw new Error("Bundled onboarding source identity drifted");
+  }
   const result = validateGameContentV1(bundledOnboardingCandidate, {
     requestedContentLocale: "ko-KR",
     verifyChecksum: (content) =>

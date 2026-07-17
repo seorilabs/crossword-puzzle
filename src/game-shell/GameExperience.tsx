@@ -20,6 +20,8 @@ import {
   defaultLaunchConfig,
   type LaunchConfig,
 } from "../../packages/crossword-core/src/launchConfig.ts";
+import { KO_KR_LAUNCH_CONTENT_CONTRACT } from "../../packages/crossword-core/src/launchContentCatalog.ts";
+import { GAME_META_UNLOCK_POLICY } from "../../packages/crossword-core/src/gameMetaProgression.ts";
 import { koKrLanguageProfile } from "../../packages/crossword-core/src/languageProfile.ts";
 import {
   getCellKey,
@@ -439,6 +441,10 @@ function GameExperience({
         );
       } else if (events.some((event) => event.type === "game.board.resolved")) {
         setLiveMessage("모든 말길이 이어져 기억의 정원이 깨어났어요.");
+      } else if (
+        events.some((event) => event.type === "game.board.replay.started")
+      ) {
+        setLiveMessage("첫 말길을 비우고 다시 시작했어요.");
       }
 
       const boardResolved = events.some(
@@ -644,6 +650,28 @@ function GameExperience({
   const memoryInkBalance = progression?.memoryInkBalance ?? 0;
   const mapFragmentCount = progression?.mapFragmentCount ?? 0;
   const knowledgeCardCount = progression?.cardIds.length ?? 0;
+  const completedBoardCount = progression?.metaUnlocks.completedBoardCount ?? 0;
+  const collectionUnlocked =
+    progression?.metaUnlocks.knowledgeCollection ?? false;
+  const pathColorsUnlocked =
+    progression?.metaUnlocks.pathColorCosmetics ?? false;
+  const weeklyChallengeUnlocked =
+    progression?.metaUnlocks.weeklyChallenge ?? false;
+  const collectionBoardsRemaining = Math.max(
+    0,
+    GAME_META_UNLOCK_POLICY.knowledgeCollectionCompletedBoards -
+      completedBoardCount,
+  );
+  const pathColorBoardsRemaining = Math.max(
+    0,
+    GAME_META_UNLOCK_POLICY.pathColorCosmeticsCompletedBoards -
+      completedBoardCount,
+  );
+  const weeklyBoardsRemaining = Math.max(
+    0,
+    GAME_META_UNLOCK_POLICY.weeklyChallengeCompletedBoards -
+      completedBoardCount,
+  );
   const hasOnboardingKnowledgeCard =
     progression?.cardIds.includes(ONBOARDING_KNOWLEDGE_CARD_ID) ?? false;
 
@@ -784,9 +812,12 @@ function GameExperience({
             <span>3</span>
           </div>
           <div>
-            <span className="gameEyebrow">챕터 1 · 1/3</span>
-            <h2 id="game-map-title">잊힌 오솔길</h2>
-            <p>완료한 말길이 종이 세계의 첫 오솔길로 남았어요.</p>
+            <span className="gameEyebrow">
+              입문 여정 · 1/
+              {KO_KR_LAUNCH_CONTENT_CONTRACT.routeCounts["first-run"]}
+            </span>
+            <h2 id="game-map-title">첫 말길을 복원했어요</h2>
+            <p>완료한 말길이 기억의 정원으로 이어지는 첫 지도 조각이 됐어요.</p>
           </div>
           <dl className="gameMapInventory" aria-label="탐험 보관함">
             <div>
@@ -802,7 +833,42 @@ function GameExperience({
               <dd>{knowledgeCardCount}</dd>
             </div>
           </dl>
-          {hasOnboardingKnowledgeCard ? (
+          <div className="gameFeatureGateGrid" aria-label="메타 기능 해금 현황">
+            <article className={collectionUnlocked ? "isUnlocked" : ""}>
+              <span aria-hidden="true">▤</span>
+              <div>
+                <strong>지식 카드 컬렉션</strong>
+                <small>
+                  {collectionUnlocked
+                    ? "해금됨"
+                    : `${collectionBoardsRemaining}개 보드 더 완료`}
+                </small>
+              </div>
+            </article>
+            <article className={pathColorsUnlocked ? "isUnlocked" : ""}>
+              <span aria-hidden="true">●</span>
+              <div>
+                <strong>말길 색 꾸미기</strong>
+                <small>
+                  {pathColorsUnlocked
+                    ? "해금됨"
+                    : `${pathColorBoardsRemaining}개 보드 더 완료`}
+                </small>
+              </div>
+            </article>
+            <article className={weeklyChallengeUnlocked ? "isUnlocked" : ""}>
+              <span aria-hidden="true">✦</span>
+              <div>
+                <strong>주간 도전</strong>
+                <small>
+                  {weeklyChallengeUnlocked
+                    ? "해금됨"
+                    : `${weeklyBoardsRemaining}개 보드 더 완료`}
+                </small>
+              </div>
+            </article>
+          </div>
+          {collectionUnlocked && hasOnboardingKnowledgeCard ? (
             <article
               className="gameKnowledgeCard"
               aria-labelledby="game-knowledge-card-title"
@@ -816,9 +882,21 @@ function GameExperience({
                   .join(" · ")}
               </p>
             </article>
-          ) : null}
-          <button className="gameSecondaryButton" type="button" disabled>
-            검수된 다음 보드 준비 중
+          ) : (
+            <p className="gameCollectionNotice">
+              받은 지식 카드는 컬렉션 해금 전까지 안전하게 보관됩니다.
+            </p>
+          )}
+          <div className="gameContentGate" role="status">
+            <strong>다음 말길은 출시 콘텐츠 검수 후 열립니다</strong>
+            <span>검증되지 않은 임시 보드는 플레이 경로에 넣지 않습니다.</span>
+          </div>
+          <button
+            className="gameSecondaryButton"
+            type="button"
+            onClick={() => model.controller.dispatch({ type: "map.replay" })}
+          >
+            첫 보드 다시 풀기
           </button>
         </section>
       ) : (

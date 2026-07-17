@@ -457,6 +457,86 @@
   font-weight: 750;
 }
 
+.gameFeatureGateGrid {
+  display: grid;
+  gap: 8px;
+}
+
+.gameFeatureGateGrid article {
+  min-height: 56px;
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 9px;
+  align-items: center;
+  padding: 8px 12px;
+  border: 1px solid rgba(23, 36, 58, 0.1);
+  border-radius: 14px;
+  background: #f4f2eb;
+  color: var(--game-muted);
+}
+
+.gameFeatureGateGrid article > span {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: #e5e4de;
+  font-weight: 900;
+}
+
+.gameFeatureGateGrid article > div {
+  display: grid;
+  gap: 2px;
+}
+
+.gameFeatureGateGrid strong {
+  color: var(--game-ink);
+  font-size: 13px;
+}
+
+.gameFeatureGateGrid small {
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.gameFeatureGateGrid article.isUnlocked {
+  border-color: rgba(20, 125, 124, 0.28);
+  background: var(--game-teal-soft);
+  color: var(--game-teal);
+}
+
+.gameFeatureGateGrid article.isUnlocked > span {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.gameCollectionNotice {
+  margin: 0 !important;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--game-paper);
+  font-size: 12px !important;
+}
+
+.gameContentGate {
+  display: grid;
+  gap: 3px;
+  padding: 11px 12px;
+  border: 1px dashed rgba(23, 36, 58, 0.2);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.64);
+}
+
+.gameContentGate strong {
+  font-size: 12px;
+}
+
+.gameContentGate span {
+  color: var(--game-muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
 .gameLiveRegion {
   position: fixed;
   width: 1px;
@@ -525,6 +605,11 @@
   .gameRewardList li,
   .gameMapInventory div,
   .gameKnowledgeCard {
+    border: 1px solid CanvasText;
+  }
+
+  .gameFeatureGateGrid article,
+  .gameContentGate {
     border: 1px solid CanvasText;
   }
 
