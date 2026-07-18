@@ -19,6 +19,11 @@ describe("isSelfReferentialClue", () => {
   it("단서가 정답을 부분 문자열로 포함하면 true", () => {
     assert.equal(isSelfReferentialClue("사회", "사회의 한 구성원"), true);
     assert.equal(isSelfReferentialClue("평면", "두 평면이 만나는 선"), true);
+    assert.equal(
+      isSelfReferentialClue("지하철", "지하 철도를 달리는 차"),
+      true,
+    );
+    assert.equal(isSelfReferentialClue("글자", "한글 자모를 적는 기호"), true);
   });
 
   it("정답을 포함하지 않으면 false", () => {
@@ -144,7 +149,9 @@ describe("summarizeManualClueCoverage", () => {
     assert.equal(hard?.ratio, 1);
     assert.equal(hard?.exceedsGate, true);
 
-    const food = summary.groups.find((g) => g.kind === "theme" && g.key === "food");
+    const food = summary.groups.find(
+      (g) => g.kind === "theme" && g.key === "food",
+    );
     assert.equal(food?.total, 2);
     assert.equal(food?.ratio, 0.5);
     assert.equal(food?.exceedsGate, true);
@@ -199,7 +206,9 @@ describe("manual-clues.json 검수 단서 데이터", () => {
   const raw = JSON.parse(
     readFileSync("data/lexicon/manual-clues.json", "utf8"),
   ) as Record<string, string>;
-  const clues = Object.entries(raw).filter(([answer]) => !answer.startsWith("_"));
+  const clues = Object.entries(raw).filter(
+    ([answer]) => !answer.startsWith("_"),
+  );
 
   it("검수 단서 항목 수가 커버리지 확대 기준(500개 이상)을 충족한다(#201 → #250)", () => {
     assert.ok(

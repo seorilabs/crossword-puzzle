@@ -119,27 +119,32 @@ React/RN controller가 IME `isComposing`을 전달하고 조합 중에는 commit
 
 기존 unversioned puzzle·manifest DTO와 구분되는 신규 게임 전용 schema다. 하위 호환 reader를 유지하되 기존 `/puzzles` 경로를 즉시 교체하지 않는다.
 
-| 필드                                          | 계약                                   |
-| --------------------------------------------- | -------------------------------------- |
-| `schemaVersion`                               | `game-content/1`                       |
-| `contentLocale`, `releaseTimeZone`            | BCP 47 pack locale, 공개 기준 timezone |
-| `languageProfile`                             | `{ id, version }`; 출시 `ko-KR/v1`     |
-| `puzzleId`, `packId`, `slotId`                | 기존 안정 ID 유지                      |
-| `grid`, `entries[].answerCells`, `difficulty` | `answerCells`가 gameplay 권위 셀 배열  |
-| `themeId`, `chapterId`, `worldTriggerSet`     | 장면과 지도 연결                       |
-| `generatorCommit`, `generatorConfigHash`      | 생성기 재현성                          |
-| `contentChecksum`                             | 저장 snapshot과 무결성 비교            |
-| `licenseManifestId`                           | 단서·답 출처 원장 연결                 |
-| `review`                                      | 검수자 ID, 검수일, manual coverage     |
-| `minClientVersion`                            | 호환하지 않는 client 차단              |
+| 필드                                           | 계약                                   |
+| ---------------------------------------------- | -------------------------------------- |
+| `schemaVersion`                                | `game-content/1`                       |
+| `contentLocale`, `releaseTimeZone`             | BCP 47 pack locale, 공개 기준 timezone |
+| `languageProfile`                              | `{ id, version }`; 출시 `ko-KR/v1`     |
+| `puzzleId`, `packId`, `slotId`                 | 기존 안정 ID 유지                      |
+| `grid`, `entries[].answerCells`, `difficulty`  | `answerCells`가 gameplay 권위 셀 배열  |
+| `entries[].shortExplanation`, `domainTags`     | 결과 해설과 분야 분류                  |
+| `entries[].source`, `sourceEntryId`            | 원문 데이터셋과 안정 entry 식별자      |
+| `entries[].sourceUrl`, `licenseId`             | HTTPS 출처와 라이선스 원장 참조        |
+| `licenseManifestId`, `licenseManifestChecksum` | 공개 원장 ID와 immutable SHA-256 봉인  |
+| `themeId`, `chapterId`, `worldTriggerSet`      | 장면과 지도 연결                       |
+| `generatorCommit`, `generatorConfigHash`       | 생성기 재현성                          |
+| `contentChecksum`                              | 저장 snapshot과 무결성 비교            |
+| `review`                                       | 검수자 ID, 검수일, manual coverage     |
+| `minClientVersion`                             | 호환하지 않는 client 차단              |
 
-`entries[].answer`는 사람이 따로 작성하는 두 번째 권위값이 아니라 `answerCells.join("")`으로 생성하는 legacy projection이다. validator는 profile 정규화, `answer === answerCells.join("")`, grid 교차 셀, locale/profile version, checksum을 fail-closed로 비교한다. checksum에는 `contentLocale`, profile ID/version과 `answerCells`를 포함한다.
+`entries[].answer`는 사람이 따로 작성하는 두 번째 권위값이 아니라 `answerCells.join("")`으로 생성하는 legacy projection이다. validator는 profile 정규화, `answer === answerCells.join("")`, grid 교차 셀, locale/profile version, entry별 해설·분야·출처·라이선스와 checksum을 fail-closed로 비교한다. checksum은 `contentChecksum` 필드만 제외한 canonical payload 전체를 SHA-256으로 봉인하므로 `contentLocale`, profile ID/version, `answerCells`, 단서와 출처가 모두 포함된다.
 
 정답 JSON은 공개 클라이언트 자산이므로 secret으로 취급하지 않는다. 향후 경쟁 점수의 권위 판단은 공개 pack이 아닌 서버 검증으로 분리한다.
 
-JSON Schema는 `clueSource`를 허용 enum으로 제한하고 `needsManualClue`의 명시적 `false`, 검수자, 검수일, `licenseManifestId`, `contentChecksum`, `generatorCommit`, `generatorConfigHash`를 required로 둔다. 필드 누락을 수동 검수 완료로 해석하지 않는 fail-closed validator를 생성기, staging, live URL 검사에 공통 적용한다.
+JSON Schema는 `clueSource`를 허용 enum으로 제한하고 `needsManualClue`의 명시적 `false`, 검수자, 검수일, `licenseManifestId`, `licenseManifestChecksum`, `contentChecksum`, `generatorCommit`, `generatorConfigHash`를 required로 둔다. core parser도 top-level과 entry의 허용 key 집합을 exact 비교해 schema 밖 필드를 checksum 전에 차단한다. 필드 누락을 수동 검수 완료로 해석하지 않는 fail-closed validator를 생성기, staging, live URL 검사에 공통 적용한다.
 
 신규 pack은 `/game-content/v1/{contentLocale}/packs/{packId}/{contentChecksum}.json` immutable 경로에 발행하고 `/game-content/v1/{contentLocale}/current.json` pointer를 분리한다. 요청 locale, manifest locale, payload locale이 다르면 차단하며 bundled/cache fallback도 같은 `contentLocale`만 허용한다. 기존 84개 `/puzzles` manifest는 legacy client가 참조하는 동안 유지한다. 신규 runtime의 staged rollout과 Save v2 검증 뒤에만 `ko-KR` current pointer를 전환하며, 이전 client 영향과 CDN cache를 관측한다.
+
+ko-KR 출시 후보는 2,400개 후보마다 `approve|rewrite|reject` 결정, check set, 원 정의 checksum과 결과 해설을 명시한다. 범위 기본 승인으로 검수 원장을 합성하지 않는다. KRDIC provenance는 commit-pinned XML 11개의 byte 길이, raw SHA-256, Git blob SHA-1을 확인하고 2,400개 `sourceEntryId + answer + definition` tuple을 `source-provenance-index.json`으로 연결한다. 최종 validator는 generated entry를 이 원장과 exact join하고, catalog·report·pack-index·immutable pack·공개 license manifest를 1:1로 대조한다. 생성 route, search escalation, retry seed와 선택 후보 증거도 커밋된 생성기 정책에서 다시 계산하며, `current.json`의 생성 전 상태는 self-report가 아니라 generator commit의 Git blob 또는 `absent` 상태와 비교한다.
 
 ### game_bridge_v1
 
@@ -257,6 +262,8 @@ GATE-SAVE는 rollback 직후 각 시장의 legacy 표현 가능 필드가 pre-sw
 AIT의 canonical 영속 저장은 AppsInToss `Storage` API다. localStorage는 기존 사용자 migration source와 비치명 cache로만 사용한다. QR 테스트 origin과 live origin이 저장을 공유하지 않는 조건을 전제로, 실제 live-origin localStorage→Storage 변환과 rollback을 별도 gate로 검증한다.
 
 2026-07-18 구현 기준으로 raw legacy snapshot checksum, immutable backup, staging Save v2 검증, 초기·ongoing legacy projection outbox, active pointer, OFF→ON legacy 변경 병합, 구 FNV Save 재봉인, AIT localStorage mirror, native host AsyncStorage inventory와 `test:save-migration` 회귀 게이트가 코드에 연결됐다. 저장 tag fixture는 실제 tag의 manifest ID·cell key·archive reader shape로 합성한 단위 증거이며 실제 사용자 저장 추출본이 아니다. 따라서 AIT live-origin, Play internal, App Store TestFlight 실기기에서 강제 종료·저장공간 부족·OFF rollback을 확인하기 전에는 GATE-SAVE를 닫거나 `game_runtime_enabled`를 켜지 않는다.
+
+출시 전 내부 first-run save의 `bundled:onboarding-easy-0x:ko-KR:v1` alias는 실제 content SHA로 명시적으로 승격한다. 구조가 같은 1·2번 보드는 진행 셀과 phase를 보존하고, 답·셀 구조가 바뀐 3번 보드는 보드 로컬 상태만 reset한다. 완료·맵·카드·경제 원장은 보존하며 old identity journal은 새 snapshot에 replay하지 않는다.
 
 아직 모바일 game bridge는 저장 문자열 32,768자·wire 64KiB 제한 안에서 단일 Save v2를 왕복한다. 93보드 장기 저장은 이 경계를 넘을 수 있으므로 native-side 저장 repository 또는 chunked protocol과 경계 E2E가 선행돼야 한다. 신규 runtime에서 새로 완료한 퍼즐을 legacy mission·archive index/record까지 완전히 생성하는 projection도 남아 있다. 이 두 항목과 inactive A/B slot 복구가 닫힐 때까지 `native-webview` adapter와 모바일 runtime flag는 OFF를 유지한다.
 

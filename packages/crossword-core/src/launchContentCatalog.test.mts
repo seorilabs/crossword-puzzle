@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
 import {
+  BUNDLED_FIRST_RUN_CONTENT_IDENTITIES,
   BUNDLED_ONBOARDING_CONTENT_IDENTITY,
   DAILY_WEEKDAYS,
   KO_KR_LAUNCH_CONTENT_CONTRACT,
@@ -27,6 +28,17 @@ const FIXTURE_CHAPTER_IDS = [
   "fixture-chapter-03",
 ] as const;
 
+function fixtureAttribution(sourceEntryId: string, clue: string) {
+  return {
+    shortExplanation: clue,
+    source: "fixture source",
+    sourceEntryId,
+    sourceUrl: "https://example.com/fixture-source",
+    licenseId: "LicenseRef-Fixture",
+    domainTags: ["fixture"],
+  };
+}
+
 function onboardingGridAndEntries(): Pick<GameContentV1, "grid" | "entries"> {
   const entries: GameContentEntryV1[] = [
     {
@@ -34,6 +46,7 @@ function onboardingGridAndEntries(): Pick<GameContentV1, "grid" | "entries"> {
       answer: "토끼",
       answerCells: ["토", "끼"],
       clue: "귀가 길고 깡충깡충 뛰는 동물",
+      ...fixtureAttribution("fixture-onboarding-a1", "토끼 설명"),
       clueSource: "manual",
       direction: "across",
       row: 0,
@@ -46,6 +59,7 @@ function onboardingGridAndEntries(): Pick<GameContentV1, "grid" | "entries"> {
       answer: "토요일",
       answerCells: ["토", "요", "일"],
       clue: "일요일 바로 전날, 주말의 시작",
+      ...fixtureAttribution("fixture-onboarding-a2", "토요일 설명"),
       clueSource: "manual",
       direction: "across",
       row: 2,
@@ -58,6 +72,7 @@ function onboardingGridAndEntries(): Pick<GameContentV1, "grid" | "entries"> {
       answer: "기차",
       answerCells: ["기", "차"],
       clue: "철길 위를 달리는 긴 탈것",
+      ...fixtureAttribution("fixture-onboarding-a3", "기차 설명"),
       clueSource: "manual",
       direction: "across",
       row: 3,
@@ -70,6 +85,7 @@ function onboardingGridAndEntries(): Pick<GameContentV1, "grid" | "entries"> {
       answer: "토마토",
       answerCells: ["토", "마", "토"],
       clue: "빨갛고 둥근, 샐러드에 넣는 채소",
+      ...fixtureAttribution("fixture-onboarding-d1", "토마토 설명"),
       clueSource: "manual",
       direction: "down",
       row: 0,
@@ -82,6 +98,7 @@ function onboardingGridAndEntries(): Pick<GameContentV1, "grid" | "entries"> {
       answer: "일기",
       answerCells: ["일", "기"],
       clue: "하루 동안 있었던 일을 적는 글",
+      ...fixtureAttribution("fixture-onboarding-d2", "일기 설명"),
       clueSource: "manual",
       direction: "down",
       row: 2,
@@ -94,6 +111,7 @@ function onboardingGridAndEntries(): Pick<GameContentV1, "grid" | "entries"> {
       answer: "차표",
       answerCells: ["차", "표"],
       clue: "버스나 기차를 탈 때 내는 표",
+      ...fixtureAttribution("fixture-onboarding-d3", "차표 설명"),
       clueSource: "manual",
       direction: "down",
       row: 3,
@@ -132,6 +150,7 @@ function regularGridAndEntries(
         answer: "가나",
         answerCells: ["가", "나"],
         clue: "첫 번째 fixture 단서",
+        ...fixtureAttribution("fixture-regular-a1", "첫 번째 설명"),
         clueSource: "manual",
         direction: "across",
         row: 0,
@@ -144,6 +163,7 @@ function regularGridAndEntries(
         answer: "다라",
         answerCells: ["다", "라"],
         clue: "두 번째 fixture 단서",
+        ...fixtureAttribution("fixture-regular-a2", "두 번째 설명"),
         clueSource: "manual",
         direction: "across",
         row: 2,
@@ -175,6 +195,8 @@ function createContent(input: {
         slotId: input.slotId ?? `fixture-slot:${input.puzzleId}`,
         contentChecksum: `fixture-checksum:${input.puzzleId}`,
         licenseManifestId: `fixture-license:${input.puzzleId}`,
+        licenseManifestChecksum:
+          "sha256:0000000000000000000000000000000000000000000000000000000000000000",
       };
 
   return {
@@ -194,6 +216,7 @@ function createContent(input: {
     generatorConfigHash: `fixture-config:${input.puzzleId}`,
     contentChecksum: identity.contentChecksum,
     licenseManifestId: identity.licenseManifestId,
+    licenseManifestChecksum: identity.licenseManifestChecksum,
     review: {
       reviewerId: "fixture-reviewer",
       reviewedAt: "2026-07-17T00:00:00.000Z",
@@ -205,34 +228,19 @@ function createContent(input: {
 
 function createLaunchCatalogCandidate(): KoKrLaunchContentCatalogV1 {
   const boards: LaunchCatalogBoardV1[] = [];
-  boards.push({
-    route: { kind: "first-run" },
-    content: createContent({
-      puzzleId: BUNDLED_ONBOARDING_CONTENT_IDENTITY.puzzleId,
-      route: { kind: "first-run" },
-      difficulty: "easy",
-      chapterId: BUNDLED_ONBOARDING_CONTENT_IDENTITY.chapterId,
-      themeId: BUNDLED_ONBOARDING_CONTENT_IDENTITY.themeId,
-      onboarding: true,
-    }),
-  });
-  for (let index = 2; index <= 3; index += 1) {
-    const puzzleId = `fixture-first-run-${String(index).padStart(2, "0")}`;
+  for (const identity of BUNDLED_FIRST_RUN_CONTENT_IDENTITIES) {
     boards.push({
       route: { kind: "first-run" },
       content: {
         ...createContent({
-          puzzleId,
+          puzzleId: identity.puzzleId,
           route: { kind: "first-run" },
           difficulty: "easy",
-          chapterId: BUNDLED_ONBOARDING_CONTENT_IDENTITY.chapterId,
-          themeId: "fixture-first-run-theme",
+          chapterId: identity.chapterId,
+          themeId: identity.themeId,
           onboarding: true,
         }),
-        packId: `fixture-pack:${puzzleId}`,
-        slotId: `fixture-slot:${puzzleId}`,
-        contentChecksum: `fixture-checksum:${puzzleId}`,
-        licenseManifestId: `fixture-license:${puzzleId}`,
+        ...identity,
       },
     });
   }
@@ -322,9 +330,9 @@ function createLaunchCatalogCandidate(): KoKrLaunchContentCatalogV1 {
 
 function verifyFixtureChecksum(content: GameContentV1): boolean {
   return (
-    content.contentChecksum ===
-      BUNDLED_ONBOARDING_CONTENT_IDENTITY.contentChecksum ||
-    content.contentChecksum === `fixture-checksum:${content.puzzleId}`
+    BUNDLED_FIRST_RUN_CONTENT_IDENTITIES.some(
+      (identity) => identity.contentChecksum === content.contentChecksum,
+    ) || content.contentChecksum === `fixture-checksum:${content.puzzleId}`
   );
 }
 
@@ -459,6 +467,77 @@ describe("ko-KR launch content catalog contract", () => {
         (issue) => issue.code === "bundled_onboarding_mismatch",
       ),
     );
+  });
+
+  test("첫 실행 3개 route 순서와 board2·3 identity를 exact 검증한다", () => {
+    const reordered = createLaunchCatalogCandidate();
+    [reordered.boards[1], reordered.boards[2]] = [
+      reordered.boards[2],
+      reordered.boards[1],
+    ];
+    const reorderedResult = validateCatalog(reordered);
+    assert.equal(reorderedResult.pass, false);
+    assert.ok(
+      reorderedResult.issues.some(
+        (issue) =>
+          issue.code === "bundled_onboarding_mismatch" &&
+          issue.path === "boards[1]",
+      ),
+    );
+    assert.ok(
+      reorderedResult.issues.some(
+        (issue) =>
+          issue.code === "bundled_onboarding_mismatch" &&
+          issue.path === "boards[2]",
+      ),
+    );
+
+    const identityFields = [
+      "puzzleId",
+      "packId",
+      "slotId",
+      "themeId",
+      "chapterId",
+      "contentChecksum",
+      "licenseManifestId",
+      "licenseManifestChecksum",
+    ] as const satisfies readonly (keyof GameContentV1)[];
+    for (const boardIndex of [1, 2] as const) {
+      for (const field of identityFields) {
+        const changed = createLaunchCatalogCandidate();
+        const content = changed.boards[boardIndex].content;
+        if (field === "contentChecksum") {
+          content.contentChecksum =
+            BUNDLED_FIRST_RUN_CONTENT_IDENTITIES[
+              boardIndex === 1 ? 2 : 1
+            ].contentChecksum;
+        } else if (field === "licenseManifestChecksum") {
+          content.licenseManifestChecksum =
+            "sha256:0000000000000000000000000000000000000000000000000000000000000000";
+        } else {
+          (content[field] as string) += "-tampered";
+        }
+        const result = validateCatalog(changed);
+        assert.equal(
+          result.pass,
+          false,
+          `board ${boardIndex + 1} ${field} tampering must fail`,
+        );
+        assert.ok(
+          result.issues.some(
+            (issue) =>
+              issue.code === "bundled_onboarding_mismatch" &&
+              issue.path === `boards[${boardIndex}]`,
+          ),
+          `board ${boardIndex + 1} ${field} must report bundled identity mismatch`,
+        );
+        assert.equal(
+          result.issues.some((issue) => issue.code === "content_pack_invalid"),
+          false,
+          `board ${boardIndex + 1} ${field} must reach the exact identity gate`,
+        );
+      }
+    }
   });
 
   test("catalog과 모든 pack의 locale, timezone, profile이 다르면 거부한다", () => {

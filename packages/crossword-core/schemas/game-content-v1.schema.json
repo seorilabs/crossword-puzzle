@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://crossword-puzzle.seorilabs.com/schemas/game-content-v1.schema.json",
+  "title": "Seorilabs Crossword Game Content v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "contentLocale",
+    "releaseTimeZone",
+    "languageProfile",
+    "puzzleId",
+    "packId",
+    "slotId",
+    "grid",
+    "entries",
+    "difficulty",
+    "themeId",
+    "chapterId",
+    "worldTriggerSet",
+    "generatorCommit",
+    "generatorConfigHash",
+    "contentChecksum",
+    "licenseManifestId",
+    "licenseManifestChecksum",
+    "review",
+    "minClientVersion"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "game-content/1" },
+    "contentLocale": { "type": "string", "minLength": 1 },
+    "releaseTimeZone": { "type": "string", "minLength": 1 },
+    "languageProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "version": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "puzzleId": { "type": "string", "minLength": 1 },
+    "packId": { "type": "string", "minLength": 1 },
+    "slotId": { "type": "string", "minLength": 1 },
+    "grid": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "array",
+        "minItems": 1,
+        "items": { "type": "string" }
+      }
+    },
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/entry" }
+    },
+    "difficulty": { "enum": ["easy", "normal", "hard"] },
+    "themeId": { "type": "string", "minLength": 1 },
+    "chapterId": { "type": "string", "minLength": 1 },
+    "worldTriggerSet": { "type": "array" },
+    "generatorCommit": { "type": "string", "minLength": 1 },
+    "generatorConfigHash": { "type": "string", "minLength": 1 },
+    "contentChecksum": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "licenseManifestId": { "type": "string", "minLength": 1 },
+    "licenseManifestChecksum": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reviewerId", "reviewedAt", "manualCoverage"],
+      "properties": {
+        "reviewerId": { "type": "string", "minLength": 1 },
+        "reviewedAt": { "type": "string", "format": "date-time" },
+        "manualCoverage": { "const": 1 }
+      }
+    },
+    "minClientVersion": { "type": "string", "minLength": 1 }
+  },
+  "$defs": {
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "answer",
+        "answerCells",
+        "clue",
+        "clueSource",
+        "direction",
+        "row",
+        "col",
+        "generatedBy",
+        "needsManualClue",
+        "shortExplanation",
+        "source",
+        "sourceEntryId",
+        "sourceUrl",
+        "licenseId",
+        "domainTags"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "answer": { "type": "string", "minLength": 1 },
+        "answerCells": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "clue": { "type": "string", "minLength": 1 },
+        "clueSource": {
+          "enum": [
+            "manual",
+            "repo-authored-reviewed",
+            "editorial-reviewed-adaptation",
+            "krdict-definition-reviewed"
+          ]
+        },
+        "direction": { "enum": ["across", "down"] },
+        "row": { "type": "integer", "minimum": 0 },
+        "col": { "type": "integer", "minimum": 0 },
+        "generatedBy": { "enum": ["placed", "auto"] },
+        "needsManualClue": { "const": false },
+        "shortExplanation": { "type": "string", "minLength": 1 },
+        "source": { "type": "string", "minLength": 1 },
+        "sourceEntryId": { "type": "string", "minLength": 1 },
+        "sourceUrl": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://"
+        },
+        "licenseId": { "type": "string", "minLength": 1 },
+        "domainTags": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

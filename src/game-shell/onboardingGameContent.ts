@@ -1,5 +1,7 @@
 import {
+  calculateGameContentChecksum,
   validateGameContentV1,
+  verifyGameContentChecksum,
   type GameContentV1,
 } from "../../packages/crossword-core/src/gameContent.ts";
 import {
@@ -20,6 +22,9 @@ export const BUNDLED_ONBOARDING_CONTENT_CHECKSUM =
   BUNDLED_ONBOARDING_CONTENT_IDENTITY.contentChecksum;
 export const BUNDLED_ONBOARDING_KNOWLEDGE_CARD_ID =
   "chapter-01-forgotten-path:card:onboarding-easy-01";
+const FIRST_RUN_SOURCE_COMMIT = "70835adbd2e3cea298e9023f4d061dd3ee84b987";
+const FIRST_RUN_SOURCE_FILE_SHA256 =
+  "sha256:e121052048ed27db79a3c3ce3721095984b9ba9c1e4bb6613d71b8bf7bc31f60";
 
 type BundledFirstRunCatalogIdentity =
   (typeof BUNDLED_FIRST_RUN_CONTENT_IDENTITIES)[number];
@@ -46,7 +51,7 @@ function createBundledFirstRunCandidate(
   puzzle: Puzzle,
   identity: BundledFirstRunCatalogIdentity,
 ): GameContentV1 {
-  return {
+  const unsealedContent: GameContentV1 = {
     schemaVersion: "game-content/1",
     contentLocale: KO_KR_LAUNCH_CONTENT_CONTRACT.contentLocale,
     releaseTimeZone: KO_KR_LAUNCH_CONTENT_CONTRACT.releaseTimeZone,
@@ -58,8 +63,15 @@ function createBundledFirstRunCandidate(
     entries: puzzle.entries.map((entry) => ({
       ...entry,
       answerCells: koKrLanguageProfile.segmentAnswer(entry.answer),
-      clueSource: "manual",
+      clueSource: "repo-authored-reviewed",
       needsManualClue: false as const,
+      shortExplanation: entry.clue,
+      source: "Seorilabs crossword-puzzle first-run content",
+      sourceEntryId: `repo:${identity.puzzleId}:${entry.id}`,
+      sourceUrl:
+        "https://github.com/seorilabs/crossword-puzzle/blob/70835adbd2e3cea298e9023f4d061dd3ee84b987/src/data/onboardingPuzzle.ts",
+      licenseId: "LicenseRef-Seorilabs-First-Run-Content",
+      domainTags: [identity.themeId],
     })),
     difficulty: puzzle.difficulty,
     themeId: identity.themeId,
@@ -69,16 +81,21 @@ function createBundledFirstRunCandidate(
       entryId: entry.id,
       pathOrder: index,
     })),
-    generatorCommit: "bundled-hand-authored",
-    generatorConfigHash: `${identity.puzzleId}-v1`,
-    contentChecksum: identity.contentChecksum,
+    generatorCommit: FIRST_RUN_SOURCE_COMMIT,
+    generatorConfigHash: FIRST_RUN_SOURCE_FILE_SHA256,
+    contentChecksum: "sha256:unsealed",
     licenseManifestId: identity.licenseManifestId,
+    licenseManifestChecksum: identity.licenseManifestChecksum,
     review: {
       reviewerId: "repo-hand-authored",
       reviewedAt: "2026-07-18T00:00:00.000Z",
       manualCoverage: 1,
     },
     minClientVersion: "0.1.0",
+  };
+  return {
+    ...unsealedContent,
+    contentChecksum: calculateGameContentChecksum(unsealedContent),
   };
 }
 
@@ -113,6 +130,7 @@ export function loadBundledFirstRunGameContents(): readonly GameContentV1[] {
       const result = validateGameContentV1(candidate, {
         requestedContentLocale: KO_KR_LAUNCH_CONTENT_CONTRACT.contentLocale,
         verifyChecksum: (content) =>
+          verifyGameContentChecksum(content) &&
           content.contentChecksum === identity.contentChecksum,
       });
       if (!result.pass || result.content == null) {

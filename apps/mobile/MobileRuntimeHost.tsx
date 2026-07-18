@@ -21,6 +21,7 @@ import type {
   LaunchConfig,
 } from '../../packages/crossword-core/src';
 import {
+  BUNDLED_FIRST_RUN_CONTENT_CHECKSUMS,
   BUNDLED_FIRST_RUN_CONTENT_IDENTITIES,
   KO_KR_LAUNCH_CONTENT_CONTRACT,
 } from '../../packages/crossword-core/src/launchContentCatalog';
@@ -59,14 +60,7 @@ const ANDROID_GAME_INDEX_URL =
 
 export const MOBILE_FIRST_RUN_KNOWN_CONTENT_CHECKSUMS: Readonly<
   Record<string, string>
-> = Object.freeze(
-  Object.fromEntries(
-    BUNDLED_FIRST_RUN_CONTENT_IDENTITIES.map(identity => [
-      identity.puzzleId,
-      identity.contentChecksum,
-    ]),
-  ),
-);
+> = BUNDLED_FIRST_RUN_CONTENT_CHECKSUMS;
 
 export function createMobileRuntimeReadyExpectations(
   assetManifestChecksum: string,

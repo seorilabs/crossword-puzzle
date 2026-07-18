@@ -29,8 +29,9 @@ export const KO_KR_LAUNCH_CONTENT_CONTRACT = Object.freeze({
 
 /**
  * 최우선 출시 Gate에서 실제로 연속 플레이하는 첫 실행 3개 보드의 안정 식별자다.
- * 첫 보드 식별자는 기존 저장과의 호환을 위해 바꾸지 않는다. 나머지 90개 생산
- * ID는 승인된 콘텐츠가 생기기 전까지 이 파일에서 만들어 내지 않는다.
+ * 기존 `bundled:*` 내부 개발 snapshot은 save repository의 명시적 alias
+ * migration으로 승격하고, 출시 identity는 payload와 공개 license manifest를
+ * 봉인한 실제 SHA-256만 사용한다.
  */
 export const BUNDLED_FIRST_RUN_CONTENT_IDENTITIES = Object.freeze([
   Object.freeze({
@@ -39,8 +40,11 @@ export const BUNDLED_FIRST_RUN_CONTENT_IDENTITIES = Object.freeze([
     slotId: "2026-01-01",
     themeId: "memory-garden",
     chapterId: "chapter-01-forgotten-path",
-    contentChecksum: "bundled:onboarding-easy-01:ko-KR:v1",
-    licenseManifestId: "repo-owned-bundled-content-v1",
+    contentChecksum:
+      "sha256:1afa959d665f9ddc6ec4c0333f71bb43cfc31aae693e5b907344deef09cb7737",
+    licenseManifestId: "ko-kr-launch-license-manifest-v1",
+    licenseManifestChecksum:
+      "sha256:abaccaa41f73f4c5428f4d158c4626897d145a91a2d0cc8dd14299a2e8942d0c",
   }),
   Object.freeze({
     puzzleId: "onboarding-easy-02",
@@ -48,8 +52,11 @@ export const BUNDLED_FIRST_RUN_CONTENT_IDENTITIES = Object.freeze([
     slotId: "2026-01-02",
     themeId: "friendly-animals",
     chapterId: "chapter-01-forgotten-path",
-    contentChecksum: "bundled:onboarding-easy-02:ko-KR:v1",
-    licenseManifestId: "repo-owned-bundled-content-v1",
+    contentChecksum:
+      "sha256:038d359dba08bca12d7e609629d41282e4b285455fec9c91ccb85fd915e70268",
+    licenseManifestId: "ko-kr-launch-license-manifest-v1",
+    licenseManifestChecksum:
+      "sha256:abaccaa41f73f4c5428f4d158c4626897d145a91a2d0cc8dd14299a2e8942d0c",
   }),
   Object.freeze({
     puzzleId: "onboarding-easy-03",
@@ -57,10 +64,25 @@ export const BUNDLED_FIRST_RUN_CONTENT_IDENTITIES = Object.freeze([
     slotId: "2026-01-03",
     themeId: "everyday-journey",
     chapterId: "chapter-01-forgotten-path",
-    contentChecksum: "bundled:onboarding-easy-03:ko-KR:v1",
-    licenseManifestId: "repo-owned-bundled-content-v1",
+    contentChecksum:
+      "sha256:baee53a948d8748ce3737e2573bf0ad82e919a168bb810eba8211e306345de65",
+    licenseManifestId: "ko-kr-launch-license-manifest-v1",
+    licenseManifestChecksum:
+      "sha256:abaccaa41f73f4c5428f4d158c4626897d145a91a2d0cc8dd14299a2e8942d0c",
   }),
 ] as const);
+
+/** AIT/Web와 Android/iOS legacy migration이 공유하는 exact checksum map이다. */
+export const BUNDLED_FIRST_RUN_CONTENT_CHECKSUMS: Readonly<
+  Record<string, string>
+> = Object.freeze(
+  Object.fromEntries(
+    BUNDLED_FIRST_RUN_CONTENT_IDENTITIES.map((identity) => [
+      identity.puzzleId,
+      identity.contentChecksum,
+    ]),
+  ),
+);
 
 export const BUNDLED_FIRST_RUN_MAP_NODE_IDS = Object.freeze([
   "chapter-01-forgotten-path:node:onboarding-easy-01",
@@ -417,8 +439,10 @@ function parseReleaseSlotCalendar(slotId: string): ReleaseSlotCalendar | null {
 /**
  * 출시 카탈로그의 식별자, 수량, route, 날짜, 난이도와 game-content/1 무결성을
  * 검증하는 구조 게이트다. 단서 유사도 30일 cooldown, entry별 해설·분야·출처·
- * license 원장, generator의 minWordCount·crossRatio·bboxDensity 증거는 현재
- * GameContentV1에 없으므로 이 PASS를 콘텐츠 발행 승인으로 해석하면 안 된다.
+ * entry별 해설·분야·출처·license ID는 GameContentV1이 검증한다. 다만 단서 유사도
+ * 30일 cooldown, 실제 license 원장 해석, generator의 minWordCount·crossRatio·
+ * bboxDensity 증거는 별도 출시 validator가 담당하므로 이 PASS만 콘텐츠 발행
+ * 승인으로 해석하면 안 된다.
  */
 export function validateKoKrLaunchContentCatalogStructureV1(
   value: unknown,
@@ -737,24 +761,26 @@ export function validateKoKrLaunchContentCatalogStructureV1(
     );
   }
 
-  const onboarding = boards.find(
-    (board) =>
-      board.content.puzzleId === BUNDLED_ONBOARDING_CONTENT_IDENTITY.puzzleId,
-  );
-  const onboardingIdentityMatches =
-    onboarding?.route.kind === "first-run" &&
-    onboarding.content.difficulty === "easy" &&
-    Object.entries(BUNDLED_ONBOARDING_CONTENT_IDENTITY).every(
-      ([key, expected]) =>
-        onboarding.content[key as keyof GameContentV1] === expected,
-    );
-  if (!onboardingIdentityMatches) {
-    addIssue(
-      issues,
-      "bundled_onboarding_mismatch",
-      "boards",
-      "catalog must contain the exact bundled onboarding content identity",
-    );
+  for (const [
+    index,
+    expectedIdentity,
+  ] of BUNDLED_FIRST_RUN_CONTENT_IDENTITIES.entries()) {
+    const board = boards[index];
+    const identityMatches =
+      board?.route.kind === "first-run" &&
+      board.content.difficulty === "easy" &&
+      Object.entries(expectedIdentity).every(
+        ([key, expected]) =>
+          board.content[key as keyof GameContentV1] === expected,
+      );
+    if (!identityMatches) {
+      addIssue(
+        issues,
+        "bundled_onboarding_mismatch",
+        `boards[${index}]`,
+        `boards[${index}] must be bundled first-run route ${index + 1} with its exact content identity`,
+      );
+    }
   }
 
   const canBuild =

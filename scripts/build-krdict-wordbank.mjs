@@ -5,22 +5,14 @@ import path from "node:path";
 import { XMLParser } from "fast-xml-parser";
 
 import { assignThemeTags } from "../packages/crossword-core/src/themeTags.ts";
+import {
+  KRDIC_SOURCE_ARTIFACTS,
+  verifyKrdictSourceArtifact,
+} from "./krdict-source-lock.mjs";
 
-const SOURCE_BASE =
-  "https://raw.githubusercontent.com/spellcheck-ko/korean-dict-nikl-krdict/master";
-const SOURCE_FILES = [
-  "5000.xml",
-  "10000.xml",
-  "15000.xml",
-  "20000.xml",
-  "25000.xml",
-  "30000.xml",
-  "35000.xml",
-  "40000.xml",
-  "45000.xml",
-  "50000.xml",
-  "51947.xml",
-];
+const PINNED_ARTIFACT_BY_URL = new Map(
+  KRDIC_SOURCE_ARTIFACTS.map((artifact) => [artifact.rawUrl, artifact]),
+);
 
 const DEFAULT_OPTIONS = {
   limit: 25000,
@@ -29,7 +21,7 @@ const DEFAULT_OPTIONS = {
   maxLength: 5,
   minLength: 2,
   out: "data/lexicon/krdict-puzzle-wordbank.json",
-  sources: SOURCE_FILES.map((file) => `${SOURCE_BASE}/${file}`),
+  sources: KRDIC_SOURCE_ARTIFACTS.map((artifact) => artifact.rawUrl),
 };
 
 const LICENSE = {
@@ -45,6 +37,10 @@ const LEVEL_RANK = {
   없음: 3,
 };
 
+function compareUtf16Strings(left, right) {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
 function parseArgs(argv) {
   const options = { ...DEFAULT_OPTIONS };
 
@@ -55,9 +51,12 @@ function parseArgs(argv) {
     if (key === "source" && rawValue) options.sources = rawValue.split(",");
     if (key === "filter" && rawValue) options.filterPath = rawValue;
     if (key === "out" && rawValue) options.out = rawValue;
-    if (key === "limit" && Number.isFinite(numberValue)) options.limit = numberValue;
-    if (key === "minLength" && Number.isFinite(numberValue)) options.minLength = numberValue;
-    if (key === "maxLength" && Number.isFinite(numberValue)) options.maxLength = numberValue;
+    if (key === "limit" && Number.isFinite(numberValue))
+      options.limit = numberValue;
+    if (key === "minLength" && Number.isFinite(numberValue))
+      options.minLength = numberValue;
+    if (key === "maxLength" && Number.isFinite(numberValue))
+      options.maxLength = numberValue;
     if (key === "maxClueLength" && Number.isFinite(numberValue)) {
       options.maxClueLength = numberValue;
     }
@@ -67,14 +66,24 @@ function parseArgs(argv) {
 }
 
 async function readSource(source) {
+  let buffer;
   if (source.startsWith("http://") || source.startsWith("https://")) {
-    return fetchText(source);
+    buffer = await fetchBuffer(source);
+  } else {
+    buffer = await readFile(path.resolve(source));
   }
 
-  return readFile(path.resolve(source), "utf8");
+  const pinnedArtifact = PINNED_ARTIFACT_BY_URL.get(source);
+  if (pinnedArtifact != null) {
+    verifyKrdictSourceArtifact(buffer, pinnedArtifact);
+    console.log(
+      `Verified pinned KRDIC source ${pinnedArtifact.file} (${pinnedArtifact.bytes} bytes)`,
+    );
+  }
+  return buffer.toString("utf8");
 }
 
-function fetchText(url) {
+function fetchBuffer(url) {
   return new Promise((resolve, reject) => {
     https
       .get(url, (response) => {
@@ -84,7 +93,10 @@ function fetchText(url) {
           response.statusCode < 400 &&
           response.headers.location
         ) {
-          fetchText(response.headers.location).then(resolve, reject);
+          fetchBuffer(new URL(response.headers.location, url).href).then(
+            resolve,
+            reject,
+          );
           return;
         }
 
@@ -94,12 +106,11 @@ function fetchText(url) {
           return;
         }
 
-        response.setEncoding("utf8");
-        let body = "";
+        const chunks = [];
         response.on("data", (chunk) => {
-          body += chunk;
+          chunks.push(chunk);
         });
-        response.on("end", () => resolve(body));
+        response.on("end", () => resolve(Buffer.concat(chunks)));
       })
       .on("error", reject);
   });
@@ -184,7 +195,7 @@ function getBlockReason(candidate, filter) {
   }
 
   const blockedClueTerm = filter.blockedClueIncludes?.find((term) =>
-    candidate.definition.includes(term)
+    candidate.definition.includes(term),
   );
   if (blockedClueTerm != null) {
     return `blocked-clue:${blockedClueTerm}`;
@@ -258,7 +269,7 @@ function parseEntries(xmlDocuments, options) {
           pos,
           sourceId: String(entry.val ?? ""),
         },
-        options.filter
+        options.filter,
       );
       const existing = byAnswer.get(answer);
 
@@ -281,7 +292,7 @@ function parseEntries(xmlDocuments, options) {
       const lengthDiff = left.length - right.length;
       if (lengthDiff !== 0) return lengthDiff;
 
-      return left.answer.localeCompare(right.answer, "ko-KR");
+      return compareUtf16Strings(left.answer, right.answer);
     })
     .slice(0, options.limit);
 }
@@ -289,7 +300,9 @@ function parseEntries(xmlDocuments, options) {
 async function run() {
   const options = parseArgs(process.argv.slice(2));
   options.filter = await loadFilter(options.filterPath);
-  const xmlDocuments = await Promise.all(options.sources.map((source) => readSource(source)));
+  const xmlDocuments = await Promise.all(
+    options.sources.map((source) => readSource(source)),
+  );
   const words = parseEntries(xmlDocuments, options);
   const allowedCount = words.filter((word) => word.allowForPuzzle).length;
   const blockedCount = words.length - allowedCount;
@@ -326,7 +339,9 @@ async function run() {
   await mkdir(path.dirname(outPath), { recursive: true });
   await writeFile(outPath, `${JSON.stringify(output, null, 2)}\n`);
 
-  console.log(`Wrote ${words.length} words to ${outPath} (${allowedCount} allowed)`);
+  console.log(
+    `Wrote ${words.length} words to ${outPath} (${allowedCount} allowed)`,
+  );
 }
 
 run().catch((error) => {

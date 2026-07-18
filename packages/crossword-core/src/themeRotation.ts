@@ -14,6 +14,12 @@ export const THEME_CATEGORY_IDS = [
   "animal",
   "nature",
   "body",
+  "table-kitchen",
+  "living-world",
+  "home-family",
+  "road-places",
+  "learning-culture",
+  "work-community",
 ] as const;
 
 export type ThemeCategoryId = (typeof THEME_CATEGORY_IDS)[number];
@@ -22,9 +28,7 @@ export type ThemeCategoryId = (typeof THEME_CATEGORY_IDS)[number];
 export function isKnownThemeCategory(
   tag: string | null | undefined,
 ): tag is ThemeCategoryId {
-  return (
-    tag != null && (THEME_CATEGORY_IDS as readonly string[]).includes(tag)
-  );
+  return tag != null && (THEME_CATEGORY_IDS as readonly string[]).includes(tag);
 }
 
 // 요일(0=일 ~ 6=토, Date.getUTCDay 관례)별 주제 태그. null 이면 그 요일에는

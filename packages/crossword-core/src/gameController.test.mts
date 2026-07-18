@@ -5,6 +5,17 @@ import { createInitialGameSnapshot, GameController } from "./gameController.ts";
 import type { GameContentV1 } from "./gameContent.ts";
 import { koKrLanguageProfile } from "./languageProfile.ts";
 
+function fixtureAttribution(sourceEntryId: string, clue: string) {
+  return {
+    shortExplanation: clue,
+    source: "fixture source",
+    sourceEntryId,
+    sourceUrl: "https://example.com/fixture-source",
+    licenseId: "LicenseRef-Fixture",
+    domainTags: ["fixture"],
+  };
+}
+
 function createContent(): GameContentV1 {
   return {
     schemaVersion: "game-content/1",
@@ -24,6 +35,7 @@ function createContent(): GameContentV1 {
         answer: "가나",
         answerCells: ["가", "나"],
         clue: "fixture across",
+        ...fixtureAttribution("fixture-a1", "fixture across"),
         clueSource: "manual",
         direction: "across",
         row: 0,
@@ -36,6 +48,7 @@ function createContent(): GameContentV1 {
         answer: "가다",
         answerCells: ["가", "다"],
         clue: "fixture down",
+        ...fixtureAttribution("fixture-d1", "fixture down"),
         clueSource: "manual",
         direction: "down",
         row: 0,
@@ -52,6 +65,8 @@ function createContent(): GameContentV1 {
     generatorConfigHash: "fixture-config",
     contentChecksum: "fixture-content-checksum",
     licenseManifestId: "fixture-license",
+    licenseManifestChecksum:
+      "sha256:0000000000000000000000000000000000000000000000000000000000000000",
     review: {
       reviewerId: "fixture-reviewer",
       reviewedAt: "2026-07-17T00:00:00.000Z",

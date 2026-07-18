@@ -58,6 +58,44 @@ export type GameSaveIdentity = Readonly<{
   contentChecksum: string;
 }>;
 
+type LegacyBundledContentCutover = Readonly<{
+  legacyIdentity: GameSaveIdentity;
+  snapshotStrategy: "preserve" | "reset-board";
+}>;
+
+/**
+ * 최초 배포 전 bundled alias로 기록된 Save v2만 현재 호출자가 검증한 콘텐츠
+ * identity로 승격한다. 목적지 checksum은 의도적으로 이 표에 넣지 않는다.
+ * 콘텐츠 metadata가 다시 바뀌어도 restore 호출자가 넘긴 현재 identity가 단일
+ * source of truth다.
+ */
+const LEGACY_BUNDLED_CONTENT_CUTOVERS = Object.freeze([
+  Object.freeze({
+    legacyIdentity: Object.freeze({
+      contentLocale: "ko-KR",
+      puzzleId: "onboarding-easy-01",
+      contentChecksum: "bundled:onboarding-easy-01:ko-KR:v1",
+    }),
+    snapshotStrategy: "preserve",
+  }),
+  Object.freeze({
+    legacyIdentity: Object.freeze({
+      contentLocale: "ko-KR",
+      puzzleId: "onboarding-easy-02",
+      contentChecksum: "bundled:onboarding-easy-02:ko-KR:v1",
+    }),
+    snapshotStrategy: "preserve",
+  }),
+  Object.freeze({
+    legacyIdentity: Object.freeze({
+      contentLocale: "ko-KR",
+      puzzleId: "onboarding-easy-03",
+      contentChecksum: "bundled:onboarding-easy-03:ko-KR:v1",
+    }),
+    snapshotStrategy: "reset-board",
+  }),
+] as const satisfies readonly LegacyBundledContentCutover[]);
+
 export type LegacySavedProgressInput = Readonly<{
   progress: SavedProgress;
   sourceVersion: string;
@@ -627,6 +665,69 @@ function snapshotMatchesIdentity(
   return clonePuzzleSnapshot(snapshot);
 }
 
+function projectLegacyBundledContentCutover(
+  save: SaveV2Envelope,
+  identity: GameSaveIdentity,
+  updatedAt: string,
+): SaveV2PuzzleSnapshot | null {
+  if (
+    identity.contentLocale === "" ||
+    identity.puzzleId === "" ||
+    identity.contentChecksum === "" ||
+    save.profile.activeContentLocale !== identity.contentLocale
+  ) {
+    return null;
+  }
+
+  const snapshot =
+    save.content[identity.contentLocale]?.puzzles[identity.puzzleId];
+  if (
+    snapshot == null ||
+    snapshot.contentLocale !== identity.contentLocale ||
+    snapshot.puzzleId !== identity.puzzleId ||
+    snapshot.contentChecksum === identity.contentChecksum
+  ) {
+    return null;
+  }
+
+  const cutover = LEGACY_BUNDLED_CONTENT_CUTOVERS.find(
+    ({ legacyIdentity }) =>
+      legacyIdentity.contentLocale === snapshot.contentLocale &&
+      legacyIdentity.puzzleId === snapshot.puzzleId &&
+      legacyIdentity.contentChecksum === snapshot.contentChecksum,
+  );
+  if (cutover == null) {
+    return null;
+  }
+
+  if (cutover.snapshotStrategy === "preserve") {
+    return {
+      ...clonePuzzleSnapshot(snapshot),
+      contentChecksum: identity.contentChecksum,
+      updatedAt,
+    };
+  }
+
+  // onboarding-easy-03의 답과 셀 구조가 함께 바뀌었다. 이전 셀/entry/phase를
+  // 새 보드에 투영하지 않고 보드 로컬 상태만 초기화한다. 완료 원장, 맵, 카드,
+  // 개인 최고 기록과 economyRecords는 envelope에 그대로 남는다.
+  return {
+    contentLocale: identity.contentLocale,
+    puzzleId: identity.puzzleId,
+    contentChecksum: identity.contentChecksum,
+    currentEntryId: null,
+    cellValues: {},
+    earnedHintCredits: snapshot.earnedHintCredits,
+    hintCount: 0,
+    longestIntersectionChain: 0,
+    revealUsed: false,
+    tentativeCells: [],
+    commandSequence: 0,
+    phase: "intro",
+    updatedAt,
+  };
+}
+
 function normalizeCount(value: number | undefined, fallback: number): number {
   return value === undefined
     ? fallback
@@ -932,12 +1033,33 @@ export function createGameSaveRepository(
       if (readResult.status === "valid") {
         await options.legacyProjection?.synchronize(readResult.save);
         const restored = snapshotMatchesIdentity(readResult.save, input);
-        if (restored === null) {
+        if (restored !== null) {
+          return {
+            status: readResult.recovered ? "recovered" : "restored",
+            snapshot: restored,
+          };
+        }
+
+        // Journal은 readValidatedSave에서 기존 identity와 canonical checksum에
+        // 대해 먼저 적용/격리된다. 그 이후에만 sealed snapshot identity를
+        // 승격해 old/new identity를 한 journal replay에 섞지 않는다.
+        const cutoverSnapshot = projectLegacyBundledContentCutover(
+          readResult.save,
+          input,
+          now(),
+        );
+        if (cutoverSnapshot == null) {
           return { status: "identity-mismatch", snapshot: null };
         }
+        const cutoverSave = await sealSaveV2(
+          replacePuzzleSnapshot(readResult.save, cutoverSnapshot),
+          options.checksumPort,
+        );
+        assertValidSaveProjection(cutoverSave);
+        await persistCanonicalSave(cutoverSave);
         return {
-          status: readResult.recovered ? "recovered" : "restored",
-          snapshot: restored,
+          status: "migrated",
+          snapshot: clonePuzzleSnapshot(cutoverSnapshot),
         };
       }
 

@@ -6,6 +6,8 @@ import {
   type LanguageProfileReference,
 } from "./languageProfile.ts";
 import { validatePuzzleSlots } from "./puzzle.ts";
+import { canonicalizeForChecksum } from "./saveV2.ts";
+import { sha256Checksum } from "./sha256.ts";
 import type { Direction, Puzzle, PuzzleEntry } from "./types.ts";
 
 export const GAME_CONTENT_SCHEMA_VERSION = "game-content/1" as const;
@@ -23,6 +25,12 @@ export type GameContentEntryV1 = Omit<
   answerCells: string[];
   clueSource: string;
   needsManualClue: false;
+  shortExplanation: string;
+  source: string;
+  sourceEntryId: string;
+  sourceUrl: string;
+  licenseId: string;
+  domainTags: string[];
 };
 
 export type GameContentV1 = {
@@ -43,6 +51,7 @@ export type GameContentV1 = {
   generatorConfigHash: string;
   contentChecksum: string;
   licenseManifestId: string;
+  licenseManifestChecksum: string;
   review: GameContentReviewV1;
   minClientVersion: string;
 };
@@ -84,6 +93,49 @@ export type GameContentValidationResult = {
 
 type UnknownRecord = Record<string, unknown>;
 
+const GAME_CONTENT_KEYS = new Set([
+  "schemaVersion",
+  "contentLocale",
+  "releaseTimeZone",
+  "languageProfile",
+  "puzzleId",
+  "packId",
+  "slotId",
+  "grid",
+  "entries",
+  "difficulty",
+  "themeId",
+  "chapterId",
+  "worldTriggerSet",
+  "generatorCommit",
+  "generatorConfigHash",
+  "contentChecksum",
+  "licenseManifestId",
+  "licenseManifestChecksum",
+  "review",
+  "minClientVersion",
+]);
+const GAME_CONTENT_ENTRY_KEYS = new Set([
+  "id",
+  "answer",
+  "answerCells",
+  "clue",
+  "clueSource",
+  "needsManualClue",
+  "shortExplanation",
+  "source",
+  "sourceEntryId",
+  "sourceUrl",
+  "licenseId",
+  "domainTags",
+  "direction",
+  "row",
+  "col",
+  "generatedBy",
+]);
+const LANGUAGE_PROFILE_KEYS = new Set(["id", "version"]);
+const REVIEW_KEYS = new Set(["reviewerId", "reviewedAt", "manualCoverage"]);
+
 function isRecord(value: unknown): value is UnknownRecord {
   return typeof value === "object" && value != null && !Array.isArray(value);
 }
@@ -97,6 +149,24 @@ function addIssue(
   issues.push({ code, path, message });
 }
 
+function validateExactKeys(
+  value: UnknownRecord,
+  allowedKeys: ReadonlySet<string>,
+  issues: GameContentValidationIssue[],
+  path: string,
+) {
+  for (const key of Object.keys(value)) {
+    if (!allowedKeys.has(key)) {
+      addIssue(
+        issues,
+        "invalid_field",
+        path === "$" ? key : `${path}.${key}`,
+        `${key} is not allowed by game-content/1`,
+      );
+    }
+  }
+}
+
 function readString(
   record: UnknownRecord,
   key: string,
@@ -105,17 +175,17 @@ function readString(
 ): string | null {
   const value = record[key];
   if (value == null) {
-    addIssue(
-      issues,
-      "required_field_missing",
-      path,
-      `${path} is required`,
-    );
+    addIssue(issues, "required_field_missing", path, `${path} is required`);
     return null;
   }
 
   if (typeof value !== "string" || value.trim() === "") {
-    addIssue(issues, "invalid_field", path, `${path} must be a non-empty string`);
+    addIssue(
+      issues,
+      "invalid_field",
+      path,
+      `${path} must be a non-empty string`,
+    );
     return null;
   }
 
@@ -130,12 +200,7 @@ function readInteger(
 ): number | null {
   const value = record[key];
   if (value == null) {
-    addIssue(
-      issues,
-      "required_field_missing",
-      path,
-      `${path} is required`,
-    );
+    addIssue(issues, "required_field_missing", path, `${path} is required`);
     return null;
   }
 
@@ -150,6 +215,38 @@ function readInteger(
   }
 
   return value as number;
+}
+
+function readStringArray(
+  value: unknown,
+  issues: GameContentValidationIssue[],
+  path: string,
+): string[] | null {
+  if (
+    !Array.isArray(value) ||
+    value.length === 0 ||
+    !value.every((item) => typeof item === "string" && item.trim() !== "")
+  ) {
+    addIssue(
+      issues,
+      value == null ? "required_field_missing" : "invalid_field",
+      path,
+      `${path} must be a non-empty string array`,
+    );
+    return null;
+  }
+
+  const values = value.map((item) => item.trim());
+  if (new Set(values).size !== values.length) {
+    addIssue(
+      issues,
+      "invalid_field",
+      path,
+      `${path} must not contain duplicates`,
+    );
+    return null;
+  }
+  return values;
 }
 
 function readGrid(
@@ -215,6 +312,7 @@ function readLanguageProfileReference(
     );
     return null;
   }
+  validateExactKeys(value, LANGUAGE_PROFILE_KEYS, issues, "languageProfile");
 
   const id = readString(value, "id", issues, "languageProfile.id");
   const version = readInteger(
@@ -252,9 +350,20 @@ function readReview(
     );
     return null;
   }
+  validateExactKeys(value, REVIEW_KEYS, issues, "review");
 
-  const reviewerId = readString(value, "reviewerId", issues, "review.reviewerId");
-  const reviewedAt = readString(value, "reviewedAt", issues, "review.reviewedAt");
+  const reviewerId = readString(
+    value,
+    "reviewerId",
+    issues,
+    "review.reviewerId",
+  );
+  const reviewedAt = readString(
+    value,
+    "reviewedAt",
+    issues,
+    "review.reviewedAt",
+  );
   const manualCoverage = value.manualCoverage;
 
   if (
@@ -314,6 +423,7 @@ function readEntries(
       addIssue(issues, "invalid_field", basePath, "entry must be an object");
       continue;
     }
+    validateExactKeys(rawEntry, GAME_CONTENT_ENTRY_KEYS, issues, basePath);
 
     const id = readString(rawEntry, "id", issues, `${basePath}.id`);
     const answer = readString(rawEntry, "answer", issues, `${basePath}.answer`);
@@ -323,6 +433,36 @@ function readEntries(
       "clueSource",
       issues,
       `${basePath}.clueSource`,
+    );
+    const shortExplanation = readString(
+      rawEntry,
+      "shortExplanation",
+      issues,
+      `${basePath}.shortExplanation`,
+    );
+    const source = readString(rawEntry, "source", issues, `${basePath}.source`);
+    const sourceEntryId = readString(
+      rawEntry,
+      "sourceEntryId",
+      issues,
+      `${basePath}.sourceEntryId`,
+    );
+    const sourceUrl = readString(
+      rawEntry,
+      "sourceUrl",
+      issues,
+      `${basePath}.sourceUrl`,
+    );
+    const licenseId = readString(
+      rawEntry,
+      "licenseId",
+      issues,
+      `${basePath}.licenseId`,
+    );
+    const domainTags = readStringArray(
+      rawEntry.domainTags,
+      issues,
+      `${basePath}.domainTags`,
     );
     const row = readInteger(rawEntry, "row", issues, `${basePath}.row`);
     const col = readInteger(rawEntry, "col", issues, `${basePath}.col`);
@@ -361,6 +501,19 @@ function readEntries(
         `${basePath}.clueSource`,
         `clueSource ${clueSource} is not allowed`,
       );
+    }
+    if (sourceUrl != null) {
+      try {
+        const parsedSourceUrl = new URL(sourceUrl);
+        if (parsedSourceUrl.protocol !== "https:") throw new Error("protocol");
+      } catch {
+        addIssue(
+          issues,
+          "invalid_field",
+          `${basePath}.sourceUrl`,
+          "sourceUrl must be an absolute HTTPS URL",
+        );
+      }
     }
 
     let answerCells: string[] | null = null;
@@ -408,6 +561,12 @@ function readEntries(
       answerCells == null ||
       clue == null ||
       clueSource == null ||
+      shortExplanation == null ||
+      source == null ||
+      sourceEntryId == null ||
+      sourceUrl == null ||
+      licenseId == null ||
+      domainTags == null ||
       row == null ||
       col == null ||
       (direction !== "across" && direction !== "down") ||
@@ -422,6 +581,12 @@ function readEntries(
       answerCells,
       clue,
       clueSource,
+      shortExplanation,
+      source,
+      sourceEntryId,
+      sourceUrl,
+      licenseId,
+      domainTags,
       direction: direction as Direction,
       row,
       col,
@@ -442,12 +607,10 @@ export function validateGameContentV1(
     addIssue(issues, "invalid_field", "$", "content must be an object");
     return { pass: false, content: null, issues };
   }
+  validateExactKeys(value, GAME_CONTENT_KEYS, issues, "$");
 
   const schemaVersion = readString(value, "schemaVersion", issues);
-  if (
-    schemaVersion != null &&
-    schemaVersion !== GAME_CONTENT_SCHEMA_VERSION
-  ) {
+  if (schemaVersion != null && schemaVersion !== GAME_CONTENT_SCHEMA_VERSION) {
     addIssue(
       issues,
       "invalid_field",
@@ -470,17 +633,34 @@ export function validateGameContentV1(
   const themeId = readString(value, "themeId", issues);
   const chapterId = readString(value, "chapterId", issues);
   const generatorCommit = readString(value, "generatorCommit", issues);
-  const generatorConfigHash = readString(
-    value,
-    "generatorConfigHash",
-    issues,
-  );
+  const generatorConfigHash = readString(value, "generatorConfigHash", issues);
   const contentChecksum = readString(value, "contentChecksum", issues);
   const licenseManifestId = readString(value, "licenseManifestId", issues);
+  const licenseManifestChecksum = readString(
+    value,
+    "licenseManifestChecksum",
+    issues,
+  );
   const minClientVersion = readString(value, "minClientVersion", issues);
   const review = readReview(value.review, issues);
 
-  if (difficulty !== "easy" && difficulty !== "normal" && difficulty !== "hard") {
+  if (
+    licenseManifestChecksum != null &&
+    !/^sha256:[0-9a-f]{64}$/.test(licenseManifestChecksum)
+  ) {
+    addIssue(
+      issues,
+      "invalid_field",
+      "licenseManifestChecksum",
+      "licenseManifestChecksum must be a SHA-256 checksum",
+    );
+  }
+
+  if (
+    difficulty !== "easy" &&
+    difficulty !== "normal" &&
+    difficulty !== "hard"
+  ) {
     addIssue(
       issues,
       "invalid_field",
@@ -533,7 +713,14 @@ export function validateGameContentV1(
   const entries = readEntries(
     value.entries,
     profile,
-    new Set(options.allowedClueSources ?? ["manual"]),
+    new Set(
+      options.allowedClueSources ?? [
+        "manual",
+        "repo-authored-reviewed",
+        "editorial-reviewed-adaptation",
+        "krdict-definition-reviewed",
+      ],
+    ),
     issues,
   );
 
@@ -547,7 +734,9 @@ export function validateGameContentV1(
     slotId != null &&
     grid != null &&
     entries != null &&
-    (difficulty === "easy" || difficulty === "normal" || difficulty === "hard") &&
+    (difficulty === "easy" ||
+      difficulty === "normal" ||
+      difficulty === "hard") &&
     themeId != null &&
     chapterId != null &&
     Array.isArray(worldTriggerSet) &&
@@ -555,6 +744,7 @@ export function validateGameContentV1(
     generatorConfigHash != null &&
     contentChecksum != null &&
     licenseManifestId != null &&
+    licenseManifestChecksum != null &&
     review != null &&
     minClientVersion != null;
 
@@ -580,6 +770,7 @@ export function validateGameContentV1(
     generatorConfigHash,
     contentChecksum,
     licenseManifestId,
+    licenseManifestChecksum,
     review,
     minClientVersion,
   };
@@ -632,4 +823,16 @@ export function validateGameContentV1(
     content: issues.length === 0 ? content : null,
     issues,
   };
+}
+
+export function getCanonicalGameContentPayload(content: GameContentV1): string {
+  return canonicalizeForChecksum({ ...content, contentChecksum: undefined });
+}
+
+export function calculateGameContentChecksum(content: GameContentV1): string {
+  return sha256Checksum(getCanonicalGameContentPayload(content));
+}
+
+export function verifyGameContentChecksum(content: GameContentV1): boolean {
+  return content.contentChecksum === calculateGameContentChecksum(content);
 }

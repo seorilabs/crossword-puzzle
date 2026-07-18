@@ -47,7 +47,13 @@
     "validate:puzzles": "node scripts/validate-puzzle-pack.mjs",
     "clues:apply": "node scripts/apply-manual-clues.mjs",
     "wordbank:krdict": "node scripts/build-krdict-wordbank.mjs",
-    "wordbank:themes": "node scripts/build-theme-tags.mjs"
+    "wordbank:themes": "node scripts/build-theme-tags.mjs",
+    "content:candidates": "node --experimental-strip-types scripts/build-launch-content-candidates.mjs",
+    "content:review": "node --experimental-strip-types scripts/build-reviewed-launch-wordbank.mjs",
+    "check:krdict-provenance": "node --experimental-strip-types scripts/verify-krdict-launch-provenance.mjs",
+    "test:launch-content-builder": "node --experimental-strip-types --test scripts/build-ko-kr-launch-content.test.mjs scripts/validate-ko-kr-launch-content.test.mjs",
+    "build:launch-content": "node --experimental-strip-types scripts/build-ko-kr-launch-content.mjs",
+    "check:launch-content": "npm run check:krdict-provenance && node --experimental-strip-types scripts/validate-ko-kr-launch-content.mjs"
   },
   "dependencies": {
     "@apps-in-toss/web-framework": "^2.6.0",

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import { verifyGameContentChecksum } from "../../packages/crossword-core/src/gameContent.ts";
 import {
   BUNDLED_FIRST_RUN_CONTENT_IDENTITIES,
   BUNDLED_ONBOARDING_CONTENT_IDENTITY,
@@ -51,11 +52,15 @@ test("실제 번들 첫 실행 3보드는 ko-KR answerCells·수동 단서 계�
         candidate.entries.every(
           (entry) =>
             entry.needsManualClue === false &&
-            entry.clueSource === "manual" &&
+            entry.clueSource === "repo-authored-reviewed" &&
+            entry.sourceEntryId.startsWith(`repo:${candidate.puzzleId}:`) &&
+            entry.licenseId === "LicenseRef-Seorilabs-First-Run-Content" &&
+            entry.domainTags.length > 0 &&
             getEntryAnswerCells(entry).length > 0,
         ),
     ),
   );
+  assert.ok(contents.every(verifyGameContentChecksum));
 
   const card = loadBundledOnboardingKnowledgeCard();
   assert.equal(card.cardId, BUNDLED_ONBOARDING_KNOWLEDGE_CARD_ID);

@@ -13,7 +13,16 @@ export const CURATED_CLUE_SOURCE = "manual";
 // 0.4 로 조정했다.
 export const DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO = 0.4;
 
-// 단서가 정답을 부분 문자열로 포함하면 자기참조(답을 그대로 노출)로 본다.
+function normalizeForAnswerLeakCheck(value: string): string {
+  return value
+    .normalize("NFKC")
+    .toLocaleLowerCase("ko-KR")
+    .replace(/[\s\p{P}\p{S}]+/gu, "");
+}
+
+// 띄어쓰기나 문장부호를 제거한 뒤에도 단서가 정답을 부분 문자열로 포함하면
+// 자기참조로 본다. `지하철`/`지하 철도`, `글자`/`한글 자모`처럼 경계만
+// 갈라 답이 드러나는 경우도 같은 출시 게이트로 차단한다.
 export function isSelfReferentialClue(
   answer: string,
   clue: string | undefined | null,
@@ -22,7 +31,11 @@ export function isSelfReferentialClue(
     return false;
   }
 
-  return clue.includes(answer);
+  const normalizedAnswer = normalizeForAnswerLeakCheck(answer);
+  const normalizedClue = normalizeForAnswerLeakCheck(clue);
+  return (
+    normalizedAnswer.length > 0 && normalizedClue.includes(normalizedAnswer)
+  );
 }
 
 export function countNeedsManualClue(
@@ -126,7 +139,8 @@ export function summarizeManualClueCoverage(
 
   const groups: ManualClueCoverageGroup[] = [...buckets.values()]
     .map((bucket) => {
-      const ratio = bucket.total === 0 ? 0 : bucket.needsManualClue / bucket.total;
+      const ratio =
+        bucket.total === 0 ? 0 : bucket.needsManualClue / bucket.total;
       return {
         kind: bucket.kind,
         key: bucket.key,

@@ -8,7 +8,7 @@ import {
 } from "../adapters/firebaseClient.ts";
 import { createGameRuntimeHostStorage } from "../adapters/gameRuntimeHost.ts";
 import { captureLegacyWebSaveSnapshot } from "../adapters/legacyWebSaveInventory.ts";
-import { BUNDLED_ONBOARDING_CONTENT_IDENTITY } from "../../packages/crossword-core/src/launchContentCatalog.ts";
+import { BUNDLED_FIRST_RUN_CONTENT_CHECKSUMS } from "../../packages/crossword-core/src/launchContentCatalog.ts";
 import {
   prepareGameSaveMigration,
   recoverLegacyProjectionOutbox,
@@ -167,10 +167,7 @@ export function RuntimeHost({ legacy }: RuntimeHostProps) {
       await prepareGameSaveMigration({
         storage: runtimeStorage,
         legacySnapshot,
-        knownContentChecksums: {
-          [BUNDLED_ONBOARDING_CONTENT_IDENTITY.puzzleId]:
-            BUNDLED_ONBOARDING_CONTENT_IDENTITY.contentChecksum,
-        },
+        knownContentChecksums: BUNDLED_FIRST_RUN_CONTENT_CHECKSUMS,
       });
       const launchConfig = await readActivatedFirebaseLaunchConfig();
 

@@ -6,6 +6,7 @@ import {
   createLegacyRawSnapshot,
   type LegacySaveMarket,
 } from "../../packages/crossword-core/src/legacySaveMigration.ts";
+import { BUNDLED_FIRST_RUN_CONTENT_CHECKSUMS } from "../../packages/crossword-core/src/launchContentCatalog.ts";
 import {
   createEmptySaveV2,
   sealSaveV2,
@@ -99,6 +100,48 @@ const legacyFNVChecksumPort = {
 };
 
 describe("Save v2 migration transaction", () => {
+  test("AIT/Web legacy mirror의 두세 번째 첫 실행 보드를 exact checksum으로 복구한다", async () => {
+    for (const market of ["apps-in-toss", "web"] as const) {
+      const storage = new MemoryStorage();
+      const legacySnapshot = createLegacyRawSnapshot({
+        market,
+        sourceVersion: `${market}-main-0.1.0`,
+        capturedAt: "2026-07-18T00:00:00.000Z",
+        records: ["onboarding-easy-02", "onboarding-easy-03"].map(
+          (puzzleId) => ({
+            key: `crossword-puzzle:progress:${puzzleId}`,
+            rawValue: JSON.stringify({
+              cellValues: { "0:0": "가" },
+              earnedHintCredits: 1,
+              hintCount: 0,
+              revealUsed: false,
+              tentativeCells: [],
+            }),
+          }),
+        ),
+      });
+
+      const result = await prepareGameSaveMigration({
+        storage,
+        legacySnapshot,
+        knownContentChecksums: BUNDLED_FIRST_RUN_CONTENT_CHECKSUMS,
+        now,
+      });
+
+      assert.equal(result.status, "activated");
+      assert.deepEqual(result.migratedPuzzleIds, [
+        "onboarding-easy-02",
+        "onboarding-easy-03",
+      ]);
+      for (const puzzleId of result.migratedPuzzleIds) {
+        assert.equal(
+          result.save.content["ko-KR"].puzzles[puzzleId].contentChecksum,
+          BUNDLED_FIRST_RUN_CONTENT_CHECKSUMS[puzzleId],
+        );
+      }
+    }
+  });
+
   test("backup → staging 검증 → legacy projection → active save → pointer 순으로 활성화한다", async () => {
     const storage = new MemoryStorage();
     const legacySnapshot = fixtureSnapshot();

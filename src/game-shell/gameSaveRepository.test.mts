@@ -99,6 +99,24 @@ const identity = {
   contentChecksum: "content-checksum-1",
 } as const;
 
+const legacyBundledIdentities = {
+  board1: {
+    contentLocale: "ko-KR",
+    puzzleId: "onboarding-easy-01",
+    contentChecksum: "bundled:onboarding-easy-01:ko-KR:v1",
+  },
+  board2: {
+    contentLocale: "ko-KR",
+    puzzleId: "onboarding-easy-02",
+    contentChecksum: "bundled:onboarding-easy-02:ko-KR:v1",
+  },
+  board3: {
+    contentLocale: "ko-KR",
+    puzzleId: "onboarding-easy-03",
+    contentChecksum: "bundled:onboarding-easy-03:ko-KR:v1",
+  },
+} as const;
+
 describe("game Save v2 repository validation", () => {
   test("JSON parse 실패와 schema 위반을 쓰기 없이 fail-closed 처리한다", async () => {
     for (const raw of ["{broken", JSON.stringify({ saveVersion: 2 })]) {
@@ -185,6 +203,235 @@ describe("game Save v2 repository validation", () => {
       status: "invalid-save",
       snapshot: null,
     });
+  });
+});
+
+describe("legacy bundled content identity cutover", () => {
+  test("첫 두 보드는 old alias를 호출자가 준 current checksum으로 승격하며 진행을 보존한다", async () => {
+    for (const [index, legacyIdentity] of [
+      legacyBundledIdentities.board1,
+      legacyBundledIdentities.board2,
+    ].entries()) {
+      const storage = new MemoryStorage();
+      await repository(storage, "2026-07-17T01:00:00.000Z").persistSnapshot(
+        gameSnapshot({
+          ...legacyIdentity,
+          phase: "word-resolved",
+          selectedEntryId: `legacy-entry-${index + 1}`,
+          cellValues: { "0:0": "가", "0:1": "나" },
+          commandSequence: 7,
+        }),
+        {
+          earnedHintCredits: 3,
+          hintCount: 2,
+          longestIntersectionChain: 2,
+          revealUsed: true,
+          tentativeCells: ["0:1"],
+        },
+      );
+
+      const currentIdentity = {
+        contentLocale: legacyIdentity.contentLocale,
+        puzzleId: legacyIdentity.puzzleId,
+        contentChecksum: `sha256:caller-current-board-${index + 1}`,
+      };
+      storage.operations.length = 0;
+      const migrated = await repository(
+        storage,
+        "2026-07-18T01:00:00.000Z",
+      ).loadPuzzleSnapshot(currentIdentity);
+
+      assert.equal(migrated.status, "migrated");
+      assert.deepEqual(migrated.snapshot, {
+        contentLocale: "ko-KR",
+        puzzleId: legacyIdentity.puzzleId,
+        contentChecksum: currentIdentity.contentChecksum,
+        currentEntryId: `legacy-entry-${index + 1}`,
+        cellValues: { "0:0": "가", "0:1": "나" },
+        earnedHintCredits: 3,
+        hintCount: 2,
+        longestIntersectionChain: 2,
+        revealUsed: true,
+        tentativeCells: ["0:1"],
+        commandSequence: 7,
+        phase: "word-resolved",
+        updatedAt: "2026-07-18T01:00:00.000Z",
+      });
+      assert.equal(
+        storage.operations.filter(
+          (operation) => operation === `set:${DEFAULT_GAME_SAVE_V2_KEY}`,
+        ).length,
+        1,
+      );
+      assert.equal(storage.values.has(DEFAULT_GAME_CELL_JOURNAL_KEY), false);
+
+      storage.operations.length = 0;
+      const restarted =
+        await repository(storage).loadPuzzleSnapshot(currentIdentity);
+      assert.equal(restarted.status, "restored");
+      assert.equal(
+        storage.operations.some((operation) => operation.startsWith("set:")),
+        false,
+      );
+    }
+  });
+
+  test("구조가 바뀐 세 번째 보드는 보드 로컬 상태만 reset하고 완료·경제 원장을 보존한다", async () => {
+    const storage = new MemoryStorage();
+    const oldRepo = repository(storage, "2026-07-17T03:00:00.000Z");
+    await oldRepo.recordPuzzleCompletion({
+      snapshot: gameSnapshot({
+        ...legacyBundledIdentities.board3,
+        phase: "board-resolved",
+        selectedEntryId: "legacy-entry-completed",
+        cellValues: { "0:0": "기", "0:1": "차" },
+        completedEntryIds: ["legacy-entry-completed"],
+        lastResolvedEntryIds: ["legacy-entry-completed"],
+        commandSequence: 9,
+      }),
+      entryCount: 1,
+      mapNodeId: "chapter-01-forgotten-path:node:onboarding-easy-03",
+      cardIds: ["legacy-card-3"],
+    });
+    await oldRepo.persistSnapshot(
+      gameSnapshot({
+        ...legacyBundledIdentities.board3,
+        phase: "active",
+        selectedEntryId: "legacy-entry-active",
+        cellValues: { "0:0": "기", "1:0": "차" },
+        commandSequence: 4,
+      }),
+      {
+        earnedHintCredits: 5,
+        hintCount: 2,
+        longestIntersectionChain: 3,
+        revealUsed: true,
+        tentativeCells: ["1:0"],
+      },
+    );
+    const progressionBefore = await oldRepo.readProgression("ko-KR");
+    const rawBefore = storage.values.get(DEFAULT_GAME_SAVE_V2_KEY);
+    assert.ok(rawBefore);
+    const saveBefore = JSON.parse(rawBefore);
+
+    const currentIdentity = {
+      contentLocale: "ko-KR",
+      puzzleId: legacyBundledIdentities.board3.puzzleId,
+      contentChecksum: "sha256:caller-current-board-3",
+    } as const;
+    const currentRepo = repository(storage, "2026-07-18T03:00:00.000Z");
+    const migrated = await currentRepo.loadPuzzleSnapshot(currentIdentity);
+
+    assert.equal(migrated.status, "migrated");
+    assert.deepEqual(migrated.snapshot, {
+      contentLocale: "ko-KR",
+      puzzleId: "onboarding-easy-03",
+      contentChecksum: currentIdentity.contentChecksum,
+      currentEntryId: null,
+      cellValues: {},
+      earnedHintCredits: 5,
+      hintCount: 0,
+      longestIntersectionChain: 0,
+      revealUsed: false,
+      tentativeCells: [],
+      commandSequence: 0,
+      phase: "intro",
+      updatedAt: "2026-07-18T03:00:00.000Z",
+    });
+    assert.deepEqual(
+      await currentRepo.readProgression("ko-KR"),
+      progressionBefore,
+    );
+
+    const rawAfter = storage.values.get(DEFAULT_GAME_SAVE_V2_KEY);
+    assert.ok(rawAfter);
+    const saveAfter = JSON.parse(rawAfter);
+    assert.deepEqual(
+      saveAfter.content["ko-KR"].completionRecords,
+      saveBefore.content["ko-KR"].completionRecords,
+    );
+    assert.deepEqual(saveAfter.economyRecords, saveBefore.economyRecords);
+    assert.equal(
+      saveAfter.content["ko-KR"].completedPuzzleIds.includes(
+        "onboarding-easy-03",
+      ),
+      true,
+    );
+  });
+
+  test("알려진 alias라도 locale·puzzle tuple이 다르면 저장을 수정하지 않는다", async () => {
+    const storage = new MemoryStorage();
+    await repository(storage).persistSnapshot(
+      gameSnapshot({
+        puzzleId: "puzzle-1",
+        contentChecksum: legacyBundledIdentities.board1.contentChecksum,
+        cellValues: { "0:0": "가" },
+      }),
+    );
+    const durableSave = storage.values.get(DEFAULT_GAME_SAVE_V2_KEY);
+    storage.operations.length = 0;
+
+    assert.deepEqual(
+      await repository(storage).loadPuzzleSnapshot({
+        contentLocale: "ko-KR",
+        puzzleId: "puzzle-1",
+        contentChecksum: "sha256:untrusted-cutover-target",
+      }),
+      { status: "identity-mismatch", snapshot: null },
+    );
+    assert.equal(storage.values.get(DEFAULT_GAME_SAVE_V2_KEY), durableSave);
+    assert.equal(
+      storage.operations.some((operation) => operation.startsWith("set:")),
+      false,
+    );
+  });
+
+  test("승격 뒤 남은 old-identity journal은 새 snapshot에 replay하지 않고 격리한다", async () => {
+    const storage = new MemoryStorage();
+    const currentIdentity = {
+      contentLocale: "ko-KR",
+      puzzleId: legacyBundledIdentities.board1.puzzleId,
+      contentChecksum: "sha256:caller-current-board-1",
+    } as const;
+    await repository(storage).persistSnapshot(
+      gameSnapshot({
+        ...legacyBundledIdentities.board1,
+        cellValues: { "0:0": "가" },
+        commandSequence: 1,
+      }),
+    );
+    await repository(storage, "2026-07-18T04:00:00.000Z").loadPuzzleSnapshot(
+      currentIdentity,
+    );
+    const currentRaw = storage.values.get(DEFAULT_GAME_SAVE_V2_KEY);
+    assert.ok(currentRaw);
+    const currentSave = JSON.parse(currentRaw);
+    storage.values.set(
+      DEFAULT_GAME_CELL_JOURNAL_KEY,
+      JSON.stringify({
+        journalVersion: 1,
+        ...legacyBundledIdentities.board1,
+        cellKey: "9:9",
+        cellValue: "나",
+        commandSequence: 2,
+        baseSaveChecksum: currentSave.checksum,
+        createdAt: "2026-07-18T04:00:01.000Z",
+      }),
+    );
+
+    const restored = await repository(
+      storage,
+      "2026-07-18T04:00:02.000Z",
+    ).loadPuzzleSnapshot(currentIdentity);
+    assert.equal(restored.status, "recovered");
+    assert.deepEqual(restored.snapshot?.cellValues, { "0:0": "가" });
+    assert.equal(storage.values.has(DEFAULT_GAME_CELL_JOURNAL_KEY), false);
+    assert.ok(
+      storage.values.has(
+        `${DEFAULT_GAME_CELL_JOURNAL_KEY}:quarantine:20260718T040002000Z`,
+      ),
+    );
+    assert.equal(storage.values.get(DEFAULT_GAME_SAVE_V2_KEY), currentRaw);
   });
 });
 

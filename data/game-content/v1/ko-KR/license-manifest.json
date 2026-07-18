@@ -1,0 +1,142 @@
+{
+  "schemaVersion": "game-content-license-manifest/1",
+  "manifestId": "ko-kr-launch-license-manifest-v1",
+  "contentLocale": "ko-KR",
+  "artifactStatus": "candidate",
+  "activationApproved": false,
+  "generatedAt": "2026-07-18T00:00:00.000Z",
+  "sourceInputLock": {
+    "curatedWordbankPath": "data/lexicon/krdict-puzzle-wordbank.json",
+    "curatedWordbankSha256": "sha256:8602e7462c3ce216ba34de9d4f9139a040e4afea30e3d08f9f6c81197299a946",
+    "themeFilterPath": "data/lexicon/puzzle-word-filter.json",
+    "themeFilterSha256": "sha256:b794f1f306a6bf428c2f956c522edeccbca9df305114cbcd08cf5a155b7ccd10"
+  },
+  "licenses": [
+    {
+      "licenseId": "LicenseRef-Seorilabs-First-Run-Content",
+      "name": "Seorilabs first-run content",
+      "termsUrl": "https://github.com/seorilabs/crossword-puzzle/blob/70835adbd2e3cea298e9023f4d061dd3ee84b987/src/data/onboardingPuzzle.ts",
+      "redistributionAllowed": true
+    },
+    {
+      "licenseId": "CC-BY-SA-2.0-KR",
+      "name": "Creative Commons Attribution-ShareAlike 2.0 Korea",
+      "termsUrl": "https://creativecommons.org/licenses/by-sa/2.0/kr/",
+      "redistributionAllowed": true,
+      "shareAlikeRequired": true
+    }
+  ],
+  "sources": [
+    {
+      "sourceId": "repo-first-run-content-v1",
+      "sourceName": "Seorilabs crossword-puzzle first-run content",
+      "sourceUrl": "https://github.com/seorilabs/crossword-puzzle/blob/70835adbd2e3cea298e9023f4d061dd3ee84b987/src/data/onboardingPuzzle.ts",
+      "sourceCommit": "70835adbd2e3cea298e9023f4d061dd3ee84b987",
+      "sourceFileSha256": "sha256:e121052048ed27db79a3c3ce3721095984b9ba9c1e4bb6613d71b8bf7bc31f60",
+      "licenseId": "LicenseRef-Seorilabs-First-Run-Content",
+      "attributionText": "Seorilabs crossword-puzzle 첫 실행 콘텐츠",
+      "entryIdPrefix": "repo:onboarding-easy-"
+    },
+    {
+      "sourceId": "nikl-krdict-text-2019",
+      "sourceName": "국립국어원 한국어기초사전 XML",
+      "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
+      "sourceMirror": "https://github.com/spellcheck-ko/korean-dict-nikl-krdict",
+      "sourceMirrorCommit": "e7249562dca526461a347eb2cc5a2e67a17c4488",
+      "licenseId": "CC-BY-SA-2.0-KR",
+      "attributionText": "국립국어원 한국어기초사전의 텍스트를 이용했으며, 편집한 단서는 CC BY-SA 2.0 KR 조건으로 제공합니다.",
+      "sourceArtifacts": [
+        {
+          "file": "5000.xml",
+          "rawSha256": "sha256:385992e097dde2780b1d07ea13d4054aeda3cec89274c3577571e25847243d02",
+          "gitBlobSha1": "c11b53abd04a53c503ec107b94003ed66276d0a8",
+          "bytes": 33518435
+        },
+        {
+          "file": "10000.xml",
+          "rawSha256": "sha256:81c5dd78473795a13a92cf886f1928fa35e3c955643bb46c8bf620a98cd8f659",
+          "gitBlobSha1": "d345ec6a0d87b2809ea1feb6f6148ea8839025c7",
+          "bytes": 35673773
+        },
+        {
+          "file": "15000.xml",
+          "rawSha256": "sha256:dde06ca4b5247030a966589206aa1076c2b3f227870c2101536abbe14400bab7",
+          "gitBlobSha1": "d66c318e0d07f10da45634f0d6037820f1707afa",
+          "bytes": 36392804
+        },
+        {
+          "file": "20000.xml",
+          "rawSha256": "sha256:28cd04c09979dcacd6f1612e5896431cf75092146d3b1fa139cef2fa16a75e52",
+          "gitBlobSha1": "152c468c7fb2b1c75b7874c6f72712db80418504",
+          "bytes": 34406541
+        },
+        {
+          "file": "25000.xml",
+          "rawSha256": "sha256:9eb85ba9f6ec6a12f40de3c74bf75c65fcdbaca2839b2f03c630f0b38616b09a",
+          "gitBlobSha1": "9a865cab64ee88477eb3f7b4b07ccd0265423de2",
+          "bytes": 33474886
+        },
+        {
+          "file": "30000.xml",
+          "rawSha256": "sha256:99ffc43c3609e03c839a7a8cceda4dbaf772069f56e03f8a43df8087c85cc77e",
+          "gitBlobSha1": "96ffd985573462d22bc9ab3f13410bc5d8825ce8",
+          "bytes": 32946752
+        },
+        {
+          "file": "35000.xml",
+          "rawSha256": "sha256:6927e63b1be2c877a90ef5c12b74dcd33006debba5cd44137c0e329ddaa4e9cb",
+          "gitBlobSha1": "3a3d45454ab3433cb750827249661de34cefff42",
+          "bytes": 33682544
+        },
+        {
+          "file": "40000.xml",
+          "rawSha256": "sha256:6d8f3789503b02a269b243669816500562a68c172653cb18abd99d99cf4dcc7d",
+          "gitBlobSha1": "78f2152f70bf432abac96217ad7fce2ea7aaaee0",
+          "bytes": 33052228
+        },
+        {
+          "file": "45000.xml",
+          "rawSha256": "sha256:96fa24bde66f87384d1fc6c386ce5670115fa4c06f40fb1a3a2834843db3cdea",
+          "gitBlobSha1": "4514168fdcc081761972a646d11ae003a97519df",
+          "bytes": 33812290
+        },
+        {
+          "file": "50000.xml",
+          "rawSha256": "sha256:1f491e995ed6fd9ebec2f0cfb2057faa270642532efbea07c924a54171e7fb8f",
+          "gitBlobSha1": "a2cd1fd3da83b5e12debab29c603a3911da37014",
+          "bytes": 35537703
+        },
+        {
+          "file": "51947.xml",
+          "rawSha256": "sha256:71123ede933abaa8d7700fe665ee510656b04c5a2258d9f507b1d0d8f6e0e242",
+          "gitBlobSha1": "a0f48359625e32b7490ac4cf08521772e3593d25",
+          "bytes": 13457805
+        }
+      ]
+    }
+  ],
+  "reviewEvidence": {
+    "candidateFile": "data/game-content/v1/ko-KR/reviews/editorial-candidates.json",
+    "candidateFileSha256": "sha256:b73638293895ee31b0f11c3eea9d31f343c5e936df45faeea308a570ce16a44f",
+    "decisionFiles": [
+      "data/game-content/v1/ko-KR/reviews/editorial-decisions-0000-0799.json",
+      "data/game-content/v1/ko-KR/reviews/editorial-decisions-0800-1599.json",
+      "data/game-content/v1/ko-KR/reviews/editorial-decisions-1600-2399.json"
+    ],
+    "decisionFileSha256": [
+      "sha256:7bbd77cb72870e9abae0ead4267d5f695cb4626c7dc9fe5ed44e47f88097d08c",
+      "sha256:f2236283e85bc1b6d0e24996f2f4a2ed0e2a770ac0dbc654264da26ed82c5fe6",
+      "sha256:a8dd1d2f2fc4e83bd8ee86e0728546aba0590b143c70c27af7f5ade3a7ca7a88"
+    ],
+    "wordbankFile": "data/game-content/v1/ko-KR/reviewed-launch-wordbank.json",
+    "wordbankFileSha256": "sha256:c08638a2704599509299ec929d5d85d4b3489c01e3a710c7fff400e0b668ffdd",
+    "ledgerFile": "data/game-content/v1/ko-KR/reviews/editorial-ledger.json",
+    "ledgerFileSha256": "sha256:3bb61a4652491a64362368479f4840ccbb113d89ac9a29872b8e8fd0761af813"
+  },
+  "sourceProvenanceIndex": {
+    "path": "data/game-content/v1/ko-KR/source-provenance-index.json",
+    "sha256": "sha256:3a6e6b2e385daa58bcb16a29e8d10770fb6a7d19cf3587db4eaf0088502fae47",
+    "sourceLockSha256": "sha256:196ebc3a1c62e0c9821edf34fb0229b21bed9e04ddc3d2c3099dc1a4fb3b41a8",
+    "candidateCount": 2400
+  }
+}
