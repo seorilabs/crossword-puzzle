@@ -78,6 +78,7 @@ flowchart LR
 
 - 보드 topology 생성의 단일 source는 `server/batch/puzzle-board-engine.mjs`다. 기존 2시간 Job과 `ko-KR` 출시 snapshot builder가 retry·seed·품질 trace를 이 엔진으로 공유한다.
 - 운영 Job은 dynamic seed와 `--append --keep=84`를 사용해 최근 7일 rolling pack을 만든다. 출시 snapshot은 승인된 route plan·reviewed wordbank·고정 seed로 90개를 생성하고 첫 실행 3개와 합쳐 immutable candidate 93개를 검증한다.
+- 출시 snapshot은 generator commit/config hash별로 `tmp/launch-content-checkpoints`에 검증된 순서 prefix를 원자적으로 기록한다. `--max-new-boards=N`으로 작업량을 나눠도 같은 명령을 다시 실행하면 전역 answer cooldown 상태를 복원해 이어서 생성한다.
 - rolling manifest와 출시 snapshot은 보존 기간과 schema가 다르지만 별도 격자 생성기를 두지 않는다. `current.json` 활성화와 운영 배포는 candidate 생성과 분리한다.
 - `npm run batch:puzzles`는 JSON pack을 생성한다. 운영 Job은 `--append --keep=84`로 최근 84개만 유지한다.
 - `npm run job:puzzle-pack`은 생성, 슬롯 검증, Firebase publish를 순서대로 실행하는 Cloud Run Job entrypoint다.

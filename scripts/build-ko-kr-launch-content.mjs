@@ -2,7 +2,7 @@
 
 import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -57,6 +57,7 @@ const GRAPH_ID = "ko-kr-world-map-v1";
 const ARTIFACT_STATUS = "candidate";
 const GENERATED_AT = "2026-07-18T00:00:00.000Z";
 const DAILY_START_DATE = "2026-07-20";
+const CHECKPOINT_SCHEMA_VERSION = "ko-kr-launch-generation-checkpoint/1";
 const MIN_REVIEWED_WORD_COUNT = 1_100;
 const MIN_CLIENT_VERSION = "0.1.0";
 const MAX_AUTO_RUN_RATIO = 0.5;
@@ -96,8 +97,10 @@ const DEFAULT_OPTIONS = Object.freeze({
   beamWidth: 16,
   branchLimit: 14,
   candidateWordLimit: 600,
+  checkpointRoot: "tmp/launch-content-checkpoints",
   denseCandidateLimit: 96,
   dryRunCount: 0,
+  maxNewBoards: 0,
   outputRoot: "public/game-content/v1/ko-KR",
   retries: 6,
   samples: 5,
@@ -186,12 +189,18 @@ function parseArgs(argv) {
     if (key === "candidates" && rawValue != null) {
       options.candidateWordLimit = parsePositiveInteger(rawValue, key);
     }
+    if (key === "checkpoint" && rawValue) {
+      options.checkpointRoot = rawValue;
+    }
     if (key === "dense" && rawValue != null) {
       options.denseCandidateLimit = parsePositiveInteger(rawValue, key);
     }
     if (key === "dry-run") {
       options.dryRunCount =
         rawValue == null ? 1 : parsePositiveInteger(rawValue, key);
+    }
+    if (key === "max-new-boards" && rawValue != null) {
+      options.maxNewBoards = parsePositiveInteger(rawValue, key);
     }
     if (key === "out" && rawValue) options.outputRoot = rawValue;
     if (key === "retries" && rawValue != null) {
@@ -215,6 +224,10 @@ function parseArgs(argv) {
   requireCondition(
     options.dryRunCount > 0 || options.startIndex === 0,
     "--start-index is available only with --dry-run",
+  );
+  requireCondition(
+    options.dryRunCount === 0 || options.maxNewBoards === 0,
+    "--max-new-boards is available only for checkpointed full generation",
   );
   return options;
 }
@@ -1044,6 +1057,150 @@ async function writeJson(filePath, value) {
   await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`);
 }
 
+async function readJsonOptional(filePath) {
+  try {
+    return JSON.parse(await readFile(filePath, "utf8"));
+  } catch (error) {
+    if (error?.code === "ENOENT") return null;
+    throw error;
+  }
+}
+
+async function writeJsonAtomically(filePath, value) {
+  await mkdir(path.dirname(filePath), { recursive: true });
+  const temporaryPath = `${filePath}.tmp-${process.pid}`;
+  await writeFile(temporaryPath, `${JSON.stringify(value, null, 2)}\n`);
+  await rename(temporaryPath, filePath);
+}
+
+function checkpointPaths(checkpointRoot, puzzleId) {
+  return {
+    content: path.join(checkpointRoot, "boards", `${puzzleId}.json`),
+    report: path.join(checkpointRoot, "reports", `${puzzleId}.json`),
+  };
+}
+
+function checkpointMetadata({ generatorIdentity, generationQueue, completed }) {
+  return {
+    schemaVersion: CHECKPOINT_SCHEMA_VERSION,
+    generatorCommit: generatorIdentity.commit,
+    generatorConfigHash: generatorIdentity.configHash,
+    routePuzzleIds: generationQueue.map((route) => route.puzzleId),
+    completed: completed.map(({ content, report }) => ({
+      puzzleId: content.puzzleId,
+      contentSha256: sha256(canonicalJson(content)),
+      reportSha256: sha256(canonicalJson(report)),
+    })),
+  };
+}
+
+async function loadGenerationCheckpoint(
+  repositoryRoot,
+  options,
+  generatorIdentity,
+  generationQueue,
+) {
+  const checkpointRoot = path.resolve(
+    repositoryRoot,
+    options.checkpointRoot,
+    generatorIdentity.configHash.replace(/^sha256:/, ""),
+  );
+  const metadataPath = path.join(checkpointRoot, "checkpoint.json");
+  const metadata = await readJsonOptional(metadataPath);
+  if (metadata == null) {
+    return { checkpointRoot, metadataPath, completed: [] };
+  }
+
+  requireCondition(
+    metadata.schemaVersion === CHECKPOINT_SCHEMA_VERSION &&
+      metadata.generatorCommit === generatorIdentity.commit &&
+      metadata.generatorConfigHash === generatorIdentity.configHash,
+    "launch checkpoint generator identity mismatch",
+  );
+  requireCondition(
+    canonicalJson(metadata.routePuzzleIds) ===
+      canonicalJson(generationQueue.map((route) => route.puzzleId)),
+    "launch checkpoint route plan mismatch",
+  );
+  requireCondition(
+    Array.isArray(metadata.completed) &&
+      metadata.completed.length <= generationQueue.length,
+    "launch checkpoint completed inventory is invalid",
+  );
+
+  const completed = [];
+  const usedAnswers = new Set();
+  for (const [index, item] of metadata.completed.entries()) {
+    const route = generationQueue[index];
+    requireCondition(
+      item?.puzzleId === route.puzzleId,
+      "launch checkpoint must be a generation-order prefix",
+    );
+    const paths = checkpointPaths(checkpointRoot, route.puzzleId);
+    const content = await readJsonOptional(paths.content);
+    const report = await readJsonOptional(paths.report);
+    requireCondition(
+      content != null && report != null,
+      `${route.puzzleId} checkpoint files are incomplete`,
+    );
+    requireCondition(
+      item.contentSha256 === sha256(canonicalJson(content)) &&
+        item.reportSha256 === sha256(canonicalJson(report)),
+      `${route.puzzleId} checkpoint checksum mismatch`,
+    );
+    const validation = validateGameContentV1(content, {
+      requestedContentLocale: CONTENT_LOCALE,
+      verifyChecksum: verifyGameContentChecksum,
+    });
+    requireCondition(
+      validation.pass && validation.content != null,
+      `${route.puzzleId} checkpoint content is invalid`,
+    );
+    requireCondition(
+      content.puzzleId === route.puzzleId &&
+        content.slotId === route.slotId &&
+        content.difficulty === route.difficulty &&
+        content.themeId === route.themeId &&
+        content.chapterId === route.chapterId &&
+        content.generatorCommit === generatorIdentity.commit &&
+        content.generatorConfigHash === generatorIdentity.configHash &&
+        report.puzzleId === route.puzzleId &&
+        report.contentChecksum === content.contentChecksum &&
+        canonicalJson(report.route) === canonicalJson(route.route),
+      `${route.puzzleId} checkpoint route or generator identity mismatch`,
+    );
+    for (const entry of content.entries) {
+      requireCondition(
+        !usedAnswers.has(entry.answer),
+        `${route.puzzleId} checkpoint answer cooldown violation: ${entry.answer}`,
+      );
+      usedAnswers.add(entry.answer);
+    }
+    completed.push({ content: validation.content, report });
+  }
+  return { checkpointRoot, metadataPath, completed };
+}
+
+async function saveGenerationCheckpoint(
+  checkpoint,
+  generatorIdentity,
+  generationQueue,
+  completed,
+) {
+  const latest = completed.at(-1);
+  requireCondition(latest != null, "checkpoint requires generated content");
+  const paths = checkpointPaths(
+    checkpoint.checkpointRoot,
+    latest.content.puzzleId,
+  );
+  await writeJsonAtomically(paths.content, latest.content);
+  await writeJsonAtomically(paths.report, latest.report);
+  await writeJsonAtomically(
+    checkpoint.metadataPath,
+    checkpointMetadata({ generatorIdentity, generationQueue, completed }),
+  );
+}
+
 async function resolveGeneratorIdentity(repositoryRoot, options, wordBank) {
   const { stdout: dependencyStatus } = await execFileAsync(
     "git",
@@ -1270,6 +1427,25 @@ async function main() {
     "requested dry-run range exceeds the 90-board generation queue",
   );
 
+  const checkpoint =
+    options.dryRunCount > 0
+      ? null
+      : await loadGenerationCheckpoint(
+          repositoryRoot,
+          options,
+          generatorIdentity,
+          generationQueue,
+        );
+  const completed = checkpoint?.completed ?? [];
+  const remainingRoutes =
+    checkpoint == null
+      ? selectedRoutes
+      : selectedRoutes.slice(completed.length);
+  const routesToGenerate =
+    options.maxNewBoards > 0
+      ? remainingRoutes.slice(0, options.maxNewBoards)
+      : remainingRoutes;
+
   const usedAnswers = new Set(
     firstRunContents.flatMap((content) =>
       content.entries.map((entry) => entry.answer),
@@ -1277,7 +1453,25 @@ async function main() {
   );
   const generatedByPuzzleId = new Map();
   const generationReport = [];
-  for (const [index, route] of selectedRoutes.entries()) {
+  for (const cached of completed) {
+    for (const entry of cached.content.entries) {
+      requireCondition(
+        !usedAnswers.has(entry.answer),
+        `${cached.content.puzzleId} checkpoint reused answer ${entry.answer}`,
+      );
+      usedAnswers.add(entry.answer);
+    }
+    generatedByPuzzleId.set(cached.content.puzzleId, cached.content);
+    generationReport.push(cached.report);
+  }
+  if (completed.length > 0) {
+    console.log(
+      `Resuming launch generation from ${completed.length}/${selectedRoutes.length} verified checkpoint boards.`,
+    );
+  }
+
+  for (const [localIndex, route] of routesToGenerate.entries()) {
+    const index = completed.length + localIndex;
     console.log(
       `[${index + 1}/${selectedRoutes.length}] ${route.puzzleId} ${route.difficulty} ${route.themeId}`,
     );
@@ -1294,6 +1488,15 @@ async function main() {
       usedAnswers.add(entry.answer);
     generatedByPuzzleId.set(route.puzzleId, generated.content);
     generationReport.push(generated.report);
+    if (checkpoint != null) {
+      completed.push(generated);
+      await saveGenerationCheckpoint(
+        checkpoint,
+        generatorIdentity,
+        generationQueue,
+        completed,
+      );
+    }
     console.log(
       `  accepted entries=${generated.content.entries.length} checksum=${generated.content.contentChecksum}`,
     );
@@ -1318,6 +1521,13 @@ async function main() {
         null,
         2,
       ),
+    );
+    return;
+  }
+
+  if (generationReport.length < selectedRoutes.length) {
+    console.log(
+      `Checkpointed ${generationReport.length}/${selectedRoutes.length} boards under ${checkpoint.checkpointRoot}. Rerun the same command to continue.`,
     );
     return;
   }
