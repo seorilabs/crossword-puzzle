@@ -1733,6 +1733,14 @@ export function runLaunchRetryPhases({
   };
 }
 
+export function isLaunchCompactFallbackRetry(
+  retryIndex,
+  retryCount,
+  phaseHasPassingCandidate,
+) {
+  return retryIndex === retryCount - 1 && !phaseHasPassingCandidate;
+}
+
 async function generateRouteContent(
   route,
   nextRoute,
@@ -1755,6 +1763,7 @@ async function generateRouteContent(
       const contextByBoard = new WeakMap();
       const compactFallbackByWordPool = new WeakMap();
       let activeContext = null;
+      let phaseHasPassingCandidate = false;
 
       function contextForRetry(localRetryIndex) {
         const connectorLimit =
@@ -1853,6 +1862,11 @@ async function generateRouteContent(
             minPreferredRunRatio:
               route.route.kind === "daily" ? MIN_DAILY_THEME_ENTRY_RATIO : 0,
             minWordLength: profile.minWordLength,
+            runCompactFallback: isLaunchCompactFallbackRetry(
+              retryIndex,
+              phaseSpec.retryCount,
+              phaseHasPassingCandidate,
+            ),
             scoringPolicyId: LAUNCH_QUALITY_SCORING_POLICY.policyId,
             seed,
             wordBank: activeContext.selection.words,
@@ -1861,6 +1875,7 @@ async function generateRouteContent(
         generateCandidates: (generatorOptions) => {
           const standardBoards = generateBoards(generatorOptions);
           if (
+            generatorOptions.runCompactFallback !== true ||
             standardBoards.some(
               (board) => generatorOptions.evaluateBoardQuality(board)?.pass,
             )
@@ -1898,6 +1913,9 @@ async function generateRouteContent(
             route,
             activeContext.selection.words,
           );
+        },
+        onRetryComplete: ({ acceptedCandidateIndex }) => {
+          if (acceptedCandidateIndex !== -1) phaseHasPassingCandidate = true;
         },
         summarizeCandidate: (board, quality, candidateIndex) => {
           const context = contextByBoard.get(board);

@@ -1487,7 +1487,10 @@ test("재봉인한 route/search/attempt 허위 trace를 거부한다", () => {
 
 test("compact fallback trace의 정책·node cap·정답 inventory를 봉인한다", () => {
   const fixture = makeGeneratorTraceFixture();
-  const candidate = fixture.board.attempts[1].candidates[1];
+  const rejectedCandidate = structuredClone(
+    fixture.board.attempts[0].candidates[0],
+  );
+  const candidate = structuredClone(fixture.board.attempts[1].candidates[1]);
   candidate.generationMethod = "compact-fallback";
   candidate.compactSearch = {
     policyId: fixture.config.searchQuality.compactFallback.policyId,
@@ -1500,6 +1503,29 @@ test("compact fallback trace의 정책·node cap·정답 inventory를 봉인한�
       Math.ceil(DIFFICULTY_PROFILES[fixture.board.difficulty].boardSize / 2),
     selectedAnswers: [...candidate.answers],
   };
+  fixture.board.attempts = Array.from({ length: 8 }, (_, retryIndex) => ({
+    phase: "base",
+    phaseIndex: 0,
+    phaseId: "base",
+    retryIndex,
+    globalRetryIndex: retryIndex,
+    connectorLimit: null,
+    wordPool: structuredClone(fixture.board.wordPool),
+    seed: calculateLaunchRetrySeed(
+      fixture.config.baseSeed,
+      fixture.board.puzzleId,
+      retryIndex,
+    ),
+    searchOptions: searchOptionsForRetry(fixture.config, retryIndex),
+    candidateCount: retryIndex === 7 ? 2 : 1,
+    candidates:
+      retryIndex === 7
+        ? [structuredClone(rejectedCandidate), structuredClone(candidate)]
+        : [structuredClone(rejectedCandidate)],
+  }));
+  fixture.board.selectedRetryIndex = 7;
+  fixture.board.selectedCandidateIndex = 1;
+  fixture.board.selectedSeed = fixture.board.attempts[7].seed;
   assert.doesNotThrow(() =>
     validateGeneratorReportTrace(fixture.config, [fixture.board]),
   );
@@ -1533,7 +1559,7 @@ test("compact fallback trace의 정책·node cap·정답 inventory를 봉인한�
   ];
   for (const { mutate, expected } of forgeries) {
     const forged = structuredClone(fixture);
-    const forgedCandidate = forged.board.attempts[1].candidates[1];
+    const forgedCandidate = forged.board.attempts[7].candidates[1];
     mutate(forgedCandidate.compactSearch, forgedCandidate);
     assert.throws(
       () => validateGeneratorReportTrace(forged.config, [forged.board]),
@@ -1542,8 +1568,8 @@ test("compact fallback trace의 정책·node cap·정답 inventory를 봉인한�
   }
 
   const forgedActivation = structuredClone(fixture);
-  const compactCandidate = forgedActivation.board.attempts[1].candidates[1];
-  forgedActivation.board.attempts[1].candidates[0] = {
+  const compactCandidate = forgedActivation.board.attempts[7].candidates[1];
+  forgedActivation.board.attempts[7].candidates[0] = {
     ...structuredClone(compactCandidate),
     candidateIndex: 0,
     generationMethod: "standard-beam",
@@ -1553,6 +1579,43 @@ test("compact fallback trace의 정책·node cap·정답 inventory를 봉인한�
     () =>
       validateGeneratorReportTrace(forgedActivation.config, [
         forgedActivation.board,
+      ]),
+    /compact fallback candidate placement is invalid/,
+  );
+
+  const forgedPrefixPass = structuredClone(fixture);
+  forgedPrefixPass.board.attempts[6].candidates = [
+    {
+      ...structuredClone(forgedPrefixPass.board.attempts[7].candidates[1]),
+      candidateIndex: 0,
+      generationMethod: "standard-beam",
+      compactSearch: null,
+    },
+  ];
+  forgedPrefixPass.board.attempts[6].candidateCount = 1;
+  assert.throws(
+    () =>
+      validateGeneratorReportTrace(forgedPrefixPass.config, [
+        forgedPrefixPass.board,
+      ]),
+    /compact fallback candidate placement is invalid/,
+  );
+
+  const forgedEarlyActivation = structuredClone(fixture);
+  const earlyCandidate = structuredClone(
+    forgedEarlyActivation.board.attempts[7].candidates[1],
+  );
+  earlyCandidate.candidateIndex = 0;
+  forgedEarlyActivation.board.attempts[6].candidateCount = 1;
+  forgedEarlyActivation.board.attempts[6].candidates = [earlyCandidate];
+  forgedEarlyActivation.board.selectedRetryIndex = 6;
+  forgedEarlyActivation.board.selectedCandidateIndex = 0;
+  forgedEarlyActivation.board.selectedSeed =
+    forgedEarlyActivation.board.attempts[6].seed;
+  assert.throws(
+    () =>
+      validateGeneratorReportTrace(forgedEarlyActivation.config, [
+        forgedEarlyActivation.board,
       ]),
     /compact fallback candidate placement is invalid/,
   );

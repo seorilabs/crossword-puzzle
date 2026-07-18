@@ -5,8 +5,9 @@ import {
 } from "./crossword-generator-prototype.mjs";
 
 export const LAUNCH_COMPACT_FALLBACK_POLICY = Object.freeze({
-  policyId: "launch-compact-connected-dfs-v1",
-  activationScope: "launch-builder-only-after-standard-search-has-no-pass",
+  policyId: "launch-compact-connected-dfs-v2",
+  activationScope:
+    "launch-builder-final-retry-of-each-phase-after-all-standard-searches-have-no-pass",
   initialSymmetry: "each-word-across-at-origin-then-global-candidate-ranking",
   connectivity: "every-placement-after-first-overlaps-an-existing-letter",
   intermediateRunPolicy: "all-maximal-runs-known-unique-and-accepted",

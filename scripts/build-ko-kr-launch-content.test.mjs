@@ -25,6 +25,7 @@ import {
   generationProgressPosition,
   hasIndexedBoardClueConflict,
   isGenerationWordLengthEligible,
+  isLaunchCompactFallbackRetry,
   normalizeClueForCooldown,
   orderRoutesForGeneration,
   rankDailyConnectorWordsByConnectivity,
@@ -186,6 +187,24 @@ describe("ko-KR launch content builder", () => {
         },
       ],
     );
+  });
+
+  test("compact fallback은 각 retry phase의 마지막 표준 탐색 뒤에만 실행한다", () => {
+    assert.equal(
+      LAUNCH_COMPACT_FALLBACK_POLICY.policyId,
+      "launch-compact-connected-dfs-v2",
+    );
+    assert.equal(
+      LAUNCH_COMPACT_FALLBACK_POLICY.activationScope,
+      "launch-builder-final-retry-of-each-phase-after-all-standard-searches-have-no-pass",
+    );
+    assert.deepEqual(
+      Array.from({ length: 8 }, (_, retryIndex) =>
+        isLaunchCompactFallbackRetry(retryIndex, 8, false),
+      ),
+      [false, false, false, false, false, false, false, true],
+    );
+    assert.equal(isLaunchCompactFallbackRetry(7, 8, true), false);
   });
 
   test("base PASS는 fallback을 호출하지 않고 기존 선택 결과를 즉시 반환한다", () => {

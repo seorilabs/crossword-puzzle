@@ -196,8 +196,9 @@ export const KO_KR_LAUNCH_SEARCH_QUALITY_POLICY = Object.freeze({
     }),
   }),
   compactFallback: Object.freeze({
-    policyId: "launch-compact-connected-dfs-v1",
-    activationScope: "launch-builder-only-after-standard-search-has-no-pass",
+    policyId: "launch-compact-connected-dfs-v2",
+    activationScope:
+      "launch-builder-final-retry-of-each-phase-after-all-standard-searches-have-no-pass",
     initialSymmetry: "each-word-across-at-origin-then-global-candidate-ranking",
     connectivity: "every-placement-after-first-overlaps-an-existing-letter",
     intermediateRunPolicy: "all-maximal-runs-known-unique-and-accepted",
@@ -3085,7 +3086,16 @@ export function validateGeneratorReportTrace(
         compactCandidateIndexes.length <=
           config.searchQuality.compactFallback.maxCandidateCount &&
           (compactCandidateIndexes.length === 0 ||
-            (compactCandidateIndexes[0] === attempt.candidates.length - 1 &&
+            (localRetryIndex === phaseSpec.retryCount - 1 &&
+              compactCandidateIndexes[0] === attempt.candidates.length - 1 &&
+              reportBoard.attempts
+                .slice(phaseSpec.globalRetryStart, attemptIndex)
+                .every(
+                  (previousAttempt) =>
+                    !previousAttempt.candidates.some(
+                      (candidate) => candidate.pass,
+                    ),
+                ) &&
               attempt.candidates
                 .slice(0, compactCandidateIndexes[0])
                 .every((candidate) => candidate.pass === false))),
