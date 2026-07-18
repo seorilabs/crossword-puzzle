@@ -120,6 +120,11 @@ export const LAUNCH_ACCEPTED_CANDIDATE_POLICY = Object.freeze({
     "stable-generation-order",
   ],
 });
+export const LAUNCH_SEARCH_QUALITY_POLICY = Object.freeze({
+  policyId: "ko-kr-launch-search-quality-alignment-v1",
+  evaluator: "route-quality-plus-connected-components",
+  maxConnectedComponents: 1,
+});
 const MAX_GENERATION_WORD_LENGTH = Object.freeze({
   easy: 3,
   normal: 3,
@@ -1145,6 +1150,29 @@ function evaluateRouteBoardQuality(board, route, wordPool) {
   return quality;
 }
 
+export function evaluateLaunchSearchBoardQuality(board, route, wordPool) {
+  const routeQuality = evaluateRouteBoardQuality(board, route, wordPool);
+  const connectedComponentsCheck = {
+    key: "maxConnectedComponents",
+    actual: board.metrics.connectedComponents,
+    expected: LAUNCH_SEARCH_QUALITY_POLICY.maxConnectedComponents,
+    operator: "<=",
+    pass:
+      board.metrics.connectedComponents <=
+      LAUNCH_SEARCH_QUALITY_POLICY.maxConnectedComponents,
+  };
+  return {
+    ...routeQuality,
+    pass: routeQuality.pass && connectedComponentsCheck.pass,
+    checks: [...routeQuality.checks, connectedComponentsCheck],
+    thresholds: {
+      ...routeQuality.thresholds,
+      maxConnectedComponents:
+        LAUNCH_SEARCH_QUALITY_POLICY.maxConnectedComponents,
+    },
+  };
+}
+
 export function evaluateBoardClueQualityEntries(entries) {
   const conflicts = findBoardClueQualityConflicts(entries);
   const counts = {
@@ -1346,7 +1374,7 @@ async function generateRouteContent(
         !hasIndexedBoardClueConflict(runs, clueConflictIndex),
       boardSize: profile.boardSize,
       evaluateBoardQuality: (board) =>
-        evaluateGeneratedBoardQuality(board, route.difficulty),
+        evaluateLaunchSearchBoardQuality(board, route, selection.words),
       isPreferredRun:
         route.route.kind === "daily"
           ? (run) =>
@@ -1750,7 +1778,7 @@ async function resolveGeneratorIdentity(repositoryRoot, options, wordBank) {
     cwd: repositoryRoot,
   });
   const config = {
-    schemaVersion: "ko-kr-launch-generator-config/5",
+    schemaVersion: "ko-kr-launch-generator-config/6",
     baseSeed: options.baseSeed,
     attempts: options.attempts,
     searchEscalation: Array.from({ length: options.retries }, (_, index) =>
@@ -1769,6 +1797,7 @@ async function resolveGeneratorIdentity(repositoryRoot, options, wordBank) {
     dailyConnectorWordLimitByDifficulty:
       DAILY_CONNECTOR_WORD_LIMIT_BY_DIFFICULTY,
     acceptedCandidateSelection: LAUNCH_ACCEPTED_CANDIDATE_POLICY,
+    searchQuality: LAUNCH_SEARCH_QUALITY_POLICY,
     themeOwnership: LAUNCH_THEME_OWNER_POLICY,
     maxGenerationWordLength: MAX_GENERATION_WORD_LENGTH,
     clueSimilarity: {

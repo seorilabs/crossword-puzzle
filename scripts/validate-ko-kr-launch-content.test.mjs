@@ -11,6 +11,7 @@ import { promisify } from "node:util";
 import {
   DAILY_CONNECTOR_WORD_LIMIT_BY_DIFFICULTY,
   LAUNCH_ACCEPTED_CANDIDATE_POLICY,
+  LAUNCH_SEARCH_QUALITY_POLICY,
   LAUNCH_THEME_IDS,
   LAUNCH_THEME_OWNER_POLICY,
   allocateLaunchThemeOwners,
@@ -19,6 +20,7 @@ import {
 } from "./build-ko-kr-launch-content.mjs";
 import {
   KO_KR_LAUNCH_CLUE_QUALITY_POLICY,
+  KO_KR_LAUNCH_SEARCH_QUALITY_POLICY,
   calculateCanonicalDocumentChecksum,
   calculateContentQualityEvidence,
   calculateLaunchRetrySeed,
@@ -33,6 +35,7 @@ import {
   validateGeneratedEntryAgainstReviewedWord,
   validateGeneratorClueQualityPolicy,
   validateGeneratorReportTrace,
+  validateGeneratorSearchQualityPolicy,
   validateGeneratorThemeInventoryPolicy,
   validateGlobalInventory,
   validateLaunchWordBankReport,
@@ -129,6 +132,21 @@ test("clue quality v2 config의 threshold나 scope 재봉인을 거부한다", (
   assert.throws(
     () => validateGeneratorClueQualityPolicy(forgedScope),
     /clue quality policy does not exactly match/,
+  );
+});
+
+test("generator search quality의 route/연결성 정렬 정책 재봉인을 거부한다", () => {
+  const config = {
+    searchQuality: structuredClone(LAUNCH_SEARCH_QUALITY_POLICY),
+  };
+  assert.deepEqual(config.searchQuality, KO_KR_LAUNCH_SEARCH_QUALITY_POLICY);
+  assert.equal(validateGeneratorSearchQualityPolicy(config), true);
+
+  const forged = structuredClone(config);
+  forged.searchQuality.maxConnectedComponents = 2;
+  assert.throws(
+    () => validateGeneratorSearchQualityPolicy(forged),
+    /search quality policy does not exactly match/,
   );
 });
 
@@ -629,7 +647,7 @@ test("저품질 board의 report quality PASS 재봉인을 거부한다", () => {
 function makeGeneratorTraceFixture() {
   const route = buildLaunchRoutePlan()[0];
   const config = {
-    schemaVersion: "ko-kr-launch-generator-config/5",
+    schemaVersion: "ko-kr-launch-generator-config/6",
     acceptedCandidateSelection: structuredClone(
       LAUNCH_ACCEPTED_CANDIDATE_POLICY,
     ),
@@ -644,6 +662,7 @@ function makeGeneratorTraceFixture() {
     minMultiCrossRatio: 0.65,
     maxAutoRunRatio: 0.5,
     minDailyThemeEntryRatio: 0.5,
+    searchQuality: structuredClone(LAUNCH_SEARCH_QUALITY_POLICY),
     clueQuality: clueQualityConfig().clueQuality,
     routePlan: buildLaunchRoutePlan(),
   };
@@ -797,9 +816,15 @@ test("재봉인한 route/search/attempt 허위 trace를 거부한다", () => {
   const forgeries = [
     {
       mutate: ({ config }) => {
-        config.schemaVersion = "ko-kr-launch-generator-config/4";
+        config.schemaVersion = "ko-kr-launch-generator-config/5";
       },
-      expected: /trace config schema must be ko-kr-launch-generator-config\/5/,
+      expected: /trace config schema must be ko-kr-launch-generator-config\/6/,
+    },
+    {
+      mutate: ({ config }) => {
+        config.searchQuality.evaluator = "geometry-only";
+      },
+      expected: /search quality policy does not exactly match/,
     },
     {
       mutate: ({ config }) => {

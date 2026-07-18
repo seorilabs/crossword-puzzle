@@ -62,6 +62,11 @@ const EXPECTED_DAILY_CONNECTOR_WORD_LIMIT_BY_DIFFICULTY = Object.freeze({
   normal: 80,
   hard: 120,
 });
+export const KO_KR_LAUNCH_SEARCH_QUALITY_POLICY = Object.freeze({
+  policyId: "ko-kr-launch-search-quality-alignment-v1",
+  evaluator: "route-quality-plus-connected-components",
+  maxConnectedComponents: 1,
+});
 const CONTENT_LOCALE = "ko-KR";
 const LICENSE_MANIFEST_ID = "ko-kr-launch-license-manifest-v1";
 const FIRST_RUN_SOURCE_ID = "repo-first-run-content-v1";
@@ -90,7 +95,7 @@ const EXPECTED_GENERATOR_DEPENDENCY_PATHS = Object.freeze([
   "data/game-content/v1/ko-KR/license-manifest.json",
 ]);
 export const KO_KR_LAUNCH_CLUE_QUALITY_POLICY = Object.freeze({
-  schemaVersion: "ko-kr-launch-generator-config/5",
+  schemaVersion: "ko-kr-launch-generator-config/6",
   clueSimilarity: Object.freeze({
     policyId: LAUNCH_CLUE_SIMILARITY_POLICY_ID,
     normalization: "NFKC-lowercase-no-space-punctuation-symbol",
@@ -427,6 +432,15 @@ export function validateGeneratorThemeInventoryPolicy(config) {
     config?.dailyConnectorWordLimitByDifficulty,
     EXPECTED_DAILY_CONNECTOR_WORD_LIMIT_BY_DIFFICULTY,
     "generator daily connector word limit policy",
+  );
+  return true;
+}
+
+export function validateGeneratorSearchQualityPolicy(config) {
+  requireExact(
+    config?.searchQuality,
+    KO_KR_LAUNCH_SEARCH_QUALITY_POLICY,
+    "generator search quality policy",
   );
   return true;
 }
@@ -2066,8 +2080,8 @@ export function validateGeneratorReportTrace(
     "generator config is required for report trace validation",
   );
   requireCondition(
-    config.schemaVersion === "ko-kr-launch-generator-config/5",
-    "generator report trace config schema must be ko-kr-launch-generator-config/5",
+    config.schemaVersion === "ko-kr-launch-generator-config/6",
+    "generator report trace config schema must be ko-kr-launch-generator-config/6",
   );
   requireCondition(
     Array.isArray(reportBoards),
@@ -2096,6 +2110,7 @@ export function validateGeneratorReportTrace(
     );
   }
   const usedAnswers = new Set(initialUsedAnswers);
+  validateGeneratorSearchQualityPolicy(config);
   requireExact(
     config.acceptedCandidateSelection,
     LAUNCH_ACCEPTED_CANDIDATE_POLICY,
@@ -2468,6 +2483,7 @@ async function validateGeneratorIdentity(
   );
   validateGeneratorThemeInventoryPolicy(generator.config);
   validateGeneratorClueQualityPolicy(generator.config);
+  validateGeneratorSearchQualityPolicy(generator.config);
   requireCondition(
     generator.config.maxAutoRunRatio === 0.5 &&
       generator.config.minMultiCrossRatio === 0.65 &&

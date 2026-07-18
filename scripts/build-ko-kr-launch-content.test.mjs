@@ -4,6 +4,7 @@ import { describe, test } from "node:test";
 import {
   DAILY_CONNECTOR_WORD_LIMIT_BY_DIFFICULTY,
   LAUNCH_ACCEPTED_CANDIDATE_POLICY,
+  LAUNCH_SEARCH_QUALITY_POLICY,
   LAUNCH_THEME_OWNER_POLICY,
   LAUNCH_THEME_IDS,
   allocateLaunchThemeOwners,
@@ -16,6 +17,7 @@ import {
   deduplicateReviewedWords,
   evaluateBoardClueQualityEntries,
   evaluateGeneratedBoardQuality,
+  evaluateLaunchSearchBoardQuality,
   filterAvailableWords,
   generationProgressPosition,
   hasIndexedBoardClueConflict,
@@ -60,6 +62,63 @@ describe("ko-KR launch content builder", () => {
       "min-cooldown-answer-count",
       "stable-generation-order",
     ]);
+  });
+
+  test("launch 탐색 품질은 전체 route gate와 연결성 admission을 함께 강제한다", () => {
+    assert.deepEqual(LAUNCH_SEARCH_QUALITY_POLICY, {
+      policyId: "ko-kr-launch-search-quality-alignment-v1",
+      evaluator: "route-quality-plus-connected-components",
+      maxConnectedComponents: 1,
+    });
+    const connectedBoard = {
+      grid: [
+        ["가", "나", null, null, null, null, null, null],
+        [null, "다", null, null, null, null, null, null],
+        ...Array.from({ length: 6 }, () => Array(8).fill(null)),
+      ],
+      placements: [],
+      metrics: {
+        wordCount: 10,
+        autoRunCount: 0,
+        crossRatio: 0.6,
+        bboxDensity: 0.5,
+        multiIntersectionPlacements: 7,
+        connectedComponents: 1,
+      },
+    };
+    const route = {
+      difficulty: "normal",
+      route: { kind: "chapter" },
+      themeId: "chapter-fixture",
+    };
+    const wordPool = [
+      { answer: "가나", clue: "첫 번째 검수용 단서" },
+      { answer: "나다", clue: "두 번째 검수용 단서" },
+    ];
+
+    const connected = evaluateLaunchSearchBoardQuality(
+      connectedBoard,
+      route,
+      wordPool,
+    );
+    assert.equal(connected.pass, true);
+    assert.equal(connected.thresholds.maxConnectedComponents, 1);
+
+    const disconnected = evaluateLaunchSearchBoardQuality(
+      {
+        ...connectedBoard,
+        metrics: { ...connectedBoard.metrics, connectedComponents: 2 },
+      },
+      route,
+      wordPool,
+    );
+    assert.equal(disconnected.pass, false);
+    assert.deepEqual(
+      disconnected.checks
+        .filter((check) => !check.pass)
+        .map((check) => check.key),
+      ["maxConnectedComponents"],
+    );
   });
 
   test("next daily rerank pool의 unique edge를 세고 정책 순서로 비교한다", () => {
