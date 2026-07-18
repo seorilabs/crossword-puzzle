@@ -27,7 +27,7 @@ export type MobileGameRuntimeReadyExpectation = Readonly<
 
 export type MobileGameBridgeHostOptions = Readonly<{
   allowedMessageUrl: string;
-  runtimeReadyExpectation: MobileGameRuntimeReadyExpectation;
+  runtimeReadyExpectations: readonly MobileGameRuntimeReadyExpectation[];
   sendSerialized(message: string): void | Promise<void>;
   storage: MobileGameBridgeStorage;
   logAnalytics(
@@ -172,9 +172,17 @@ export function isAllowedMobileGameNavigation(
 export function createMobileGameBridgeHost(
   options: MobileGameBridgeHostOptions,
 ): MobileGameBridgeHost {
+  const runtimeReadyExpectations = Object.freeze(
+    options.runtimeReadyExpectations.map(expectation =>
+      Object.freeze({ ...expectation }),
+    ),
+  );
+  if (runtimeReadyExpectations.length === 0) {
+    throw new MobileGameBridgeError('runtime-proof-policy-empty');
+  }
   const handshakeReady = createDeferred();
   const runtimeReady = createDeferred();
-  let runtimeReadyAcknowledged = false;
+  let acknowledgedRuntimeReady: MobileGameRuntimeReadyExpectation | null = null;
 
   const coordinator = new GameBridgeCoordinator({
     role: 'host',
@@ -242,16 +250,23 @@ export function createMobileGameBridgeHost(
         outcome: (await options.requestNotification?.(reason)) ?? 'unsupported',
       }),
       'runtime.ready': payload => {
-        if (
-          !sameRuntimeReadyPayload(payload, options.runtimeReadyExpectation)
-        ) {
+        const expected = runtimeReadyExpectations.find(candidate =>
+          sameRuntimeReadyPayload(payload, candidate),
+        );
+        if (expected == null) {
           runtimeReady.reject(
             new MobileGameBridgeError('runtime-proof-mismatch'),
           );
           throw new MobileGameBridgeError('runtime-proof-mismatch');
         }
-        if (!runtimeReadyAcknowledged) {
-          runtimeReadyAcknowledged = true;
+        if (
+          acknowledgedRuntimeReady != null &&
+          !sameRuntimeReadyPayload(payload, acknowledgedRuntimeReady)
+        ) {
+          throw new MobileGameBridgeError('runtime-proof-changed');
+        }
+        if (acknowledgedRuntimeReady == null) {
+          acknowledgedRuntimeReady = Object.freeze({ ...payload });
           options.onRuntimeReady?.(payload);
           runtimeReady.resolve();
         }

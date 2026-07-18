@@ -3,7 +3,12 @@ jest.mock('react-native-webview', () => ({
   default: () => null,
 }));
 
-import { validateNativeGameBundle } from '../MobileRuntimeHost';
+import { BUNDLED_FIRST_RUN_CONTENT_IDENTITIES } from '../../../packages/crossword-core/src/launchContentCatalog';
+import {
+  createMobileRuntimeReadyExpectations,
+  MOBILE_FIRST_RUN_KNOWN_CONTENT_CHECKSUMS,
+  validateNativeGameBundle,
+} from '../MobileRuntimeHost';
 
 const checksum =
   'sha256:3fdc5808ada6c91ae0d355a1c8ea5d45aca3582d51f3013c52949ef0768663a8';
@@ -89,5 +94,27 @@ describe('validateNativeGameBundle', () => {
         'android',
       ),
     ).toBeNull();
+  });
+
+  test('마이그레이션과 runtime proof가 실제 첫 실행 3보드 identity를 모두 사용한다', () => {
+    expect(MOBILE_FIRST_RUN_KNOWN_CONTENT_CHECKSUMS).toEqual(
+      Object.fromEntries(
+        BUNDLED_FIRST_RUN_CONTENT_IDENTITIES.map(identity => [
+          identity.puzzleId,
+          identity.contentChecksum,
+        ]),
+      ),
+    );
+    expect(createMobileRuntimeReadyExpectations(checksum)).toEqual(
+      BUNDLED_FIRST_RUN_CONTENT_IDENTITIES.map(identity => ({
+        renderer: 'webgl',
+        scene: 'puzzle',
+        visible: true,
+        contentChecksum: identity.contentChecksum,
+        contentLocale: 'ko-KR',
+        puzzleId: identity.puzzleId,
+        assetManifestChecksum: checksum,
+      })),
+    );
   });
 });

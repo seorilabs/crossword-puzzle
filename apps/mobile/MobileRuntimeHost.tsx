@@ -20,7 +20,10 @@ import type {
   GameBridgeJsonValue,
   LaunchConfig,
 } from '../../packages/crossword-core/src';
-import { BUNDLED_ONBOARDING_CONTENT_IDENTITY } from '../../packages/crossword-core/src/launchContentCatalog';
+import {
+  BUNDLED_FIRST_RUN_CONTENT_IDENTITIES,
+  KO_KR_LAUNCH_CONTENT_CONTRACT,
+} from '../../packages/crossword-core/src/launchContentCatalog';
 import {
   prepareGameSaveMigration,
   recoverLegacyProjectionOutbox,
@@ -35,10 +38,6 @@ import {
   type RuntimeSchedulerPort,
 } from '../../src/game-shell/runtimeSelection';
 import {
-  BUNDLED_ONBOARDING_CONTENT_CHECKSUM,
-  loadBundledOnboardingGameContent,
-} from '../../src/game-shell/onboardingGameContent';
-import {
   loadFirebaseLaunchConfig,
   logFirebaseAnalyticsEvent,
 } from './firebaseClient';
@@ -46,6 +45,7 @@ import {
   createMobileGameBridgeHost,
   isAllowedMobileGameNavigation,
   type MobileGameBridgeHost,
+  type MobileGameRuntimeReadyExpectation,
 } from './gameBridgeHost';
 import { captureMobileLegacySaveSnapshot } from './legacyMobileSaveInventory';
 import { showInterstitialAd, showRewardedAd } from './mobileAds';
@@ -56,6 +56,35 @@ const APP_RUNTIME_VERSION = '0.1.0';
 const PENDING_MARKER_KEY = `${GAME_BOOT_PENDING_KEY}:${APP_RUNTIME_VERSION}`;
 const ANDROID_GAME_INDEX_URL =
   'https://appassets.androidplatform.net/assets/crossword-game/index.html';
+
+export const MOBILE_FIRST_RUN_KNOWN_CONTENT_CHECKSUMS: Readonly<
+  Record<string, string>
+> = Object.freeze(
+  Object.fromEntries(
+    BUNDLED_FIRST_RUN_CONTENT_IDENTITIES.map(identity => [
+      identity.puzzleId,
+      identity.contentChecksum,
+    ]),
+  ),
+);
+
+export function createMobileRuntimeReadyExpectations(
+  assetManifestChecksum: string,
+): readonly MobileGameRuntimeReadyExpectation[] {
+  return Object.freeze(
+    BUNDLED_FIRST_RUN_CONTENT_IDENTITIES.map(identity =>
+      Object.freeze({
+        renderer: 'webgl' as const,
+        scene: 'puzzle' as const,
+        visible: true as const,
+        contentChecksum: identity.contentChecksum,
+        contentLocale: KO_KR_LAUNCH_CONTENT_CONTRACT.contentLocale,
+        puzzleId: identity.puzzleId,
+        assetManifestChecksum,
+      }),
+    ),
+  );
+}
 
 export type NativeGameBundleInitialProps = Readonly<{
   indexUrl: string;
@@ -419,10 +448,7 @@ export function MobileRuntimeHost({
       await prepareGameSaveMigration({
         storage: AsyncStorage,
         legacySnapshot,
-        knownContentChecksums: {
-          [BUNDLED_ONBOARDING_CONTENT_IDENTITY.puzzleId]:
-            BUNDLED_ONBOARDING_CONTENT_IDENTITY.contentChecksum,
-        },
+        knownContentChecksums: MOBILE_FIRST_RUN_KNOWN_CONTENT_CHECKSUMS,
       });
 
       const result = await bootSelectedRuntime(selection, {
@@ -443,21 +469,11 @@ export function MobileRuntimeHost({
           }
         },
         async importGameRuntime() {
-          const content = loadBundledOnboardingGameContent();
-          if (content.contentChecksum !== BUNDLED_ONBOARDING_CONTENT_CHECKSUM) {
-            throw new Error('bundled game content checksum mismatch');
-          }
           const bridge = createMobileGameBridgeHost({
             allowedMessageUrl: bundle.indexUrl,
-            runtimeReadyExpectation: {
-              renderer: 'webgl',
-              scene: 'puzzle',
-              visible: true,
-              contentChecksum: content.contentChecksum,
-              contentLocale: content.contentLocale,
-              puzzleId: content.puzzleId,
-              assetManifestChecksum: bundle.assetManifestChecksum,
-            },
+            runtimeReadyExpectations: createMobileRuntimeReadyExpectations(
+              bundle.assetManifestChecksum,
+            ),
             sendSerialized(serialized) {
               const webView = webViewRef.current;
               if (webView == null) {

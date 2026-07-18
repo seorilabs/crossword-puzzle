@@ -1,8 +1,4 @@
 import {
-  BUNDLED_ONBOARDING_CONTENT_CHECKSUM,
-  loadBundledOnboardingGameContent,
-} from "./onboardingGameContent.ts";
-import {
   normalizeLaunchConfig,
   type LaunchConfig,
 } from "../../packages/crossword-core/src/launchConfig.ts";
@@ -62,7 +58,8 @@ async function main(): Promise<void> {
     playHaptic: (semantic) => bridge.playHaptic(semantic),
   });
 
-  await Promise.all([
+  const [activeContentIdentity] = await Promise.all([
+    runtime.waitForActiveContentIdentity(),
     runtime.waitForWebGlContext(),
     runtime.waitForFirstInteractiveAck(),
   ]);
@@ -70,17 +67,13 @@ async function main(): Promise<void> {
     throw new Error("native game visible surface unavailable");
   }
 
-  const content = loadBundledOnboardingGameContent();
-  if (content.contentChecksum !== BUNDLED_ONBOARDING_CONTENT_CHECKSUM) {
-    throw new Error("native game content checksum mismatch");
-  }
   await bridge.reportRuntimeReady({
     renderer: "webgl",
     scene: "puzzle",
     visible: true,
-    contentChecksum: content.contentChecksum,
-    contentLocale: content.contentLocale,
-    puzzleId: content.puzzleId,
+    contentChecksum: activeContentIdentity.contentChecksum,
+    contentLocale: activeContentIdentity.contentLocale,
+    puzzleId: activeContentIdentity.puzzleId,
     assetManifestChecksum: manifest.aggregateChecksum,
   });
 

@@ -18,7 +18,11 @@ export type GameRuntimeHostKind = "web" | "apps-in-toss" | "native-webview";
 export function isGameRuntimeHostSupported(
   hostKind: GameRuntimeHostKind,
 ): boolean {
-  return hostKind === "web" || hostKind === "apps-in-toss";
+  return (
+    hostKind === "web" ||
+    hostKind === "apps-in-toss" ||
+    hostKind === "native-webview"
+  );
 }
 
 export type RuntimeConfigSource = "fetched" | "cache" | "bundled";
@@ -113,6 +117,20 @@ export interface GameRuntimeSession {
   /** False means the mounted surface is blank or otherwise not visible. */
   probeVisibleSurface(): boolean | Promise<boolean>;
   dispose(): void | Promise<void>;
+}
+
+export interface GameRuntimeContentIdentity {
+  puzzleId: string;
+  contentChecksum: string;
+  contentLocale: string;
+}
+
+/**
+ * Game shell sessions expose the content selected after save restoration.
+ * Native entrypoints use this proof instead of assuming the first bundled board.
+ */
+export interface ContentAwareGameRuntimeSession extends GameRuntimeSession {
+  waitForActiveContentIdentity(): Promise<GameRuntimeContentIdentity>;
 }
 
 export interface RuntimeBootPorts {

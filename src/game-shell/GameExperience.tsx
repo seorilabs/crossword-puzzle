@@ -42,8 +42,9 @@ import {
   type CrosswordGameRuntime,
 } from "../../packages/crossword-game/src/index.ts";
 import type {
+  ContentAwareGameRuntimeSession,
   GameRuntimeHostKind,
-  GameRuntimeSession,
+  GameRuntimeContentIdentity,
 } from "./runtimeSelection.ts";
 import {
   type GameProgressionSnapshot,
@@ -81,6 +82,7 @@ export type MountGameExperienceOptions = Readonly<{
 }>;
 
 type HostCallbacks = Readonly<{
+  onActiveContentIdentity(identity: GameRuntimeContentIdentity): void;
   onBridgeReady(): void;
   onFatal(error: Error): void;
   onInteractive(ack: CrosswordGameInteractiveAck): void;
@@ -275,6 +277,11 @@ function GameExperience({
     void initialize().then(
       (nextModel) => {
         if (cancelled) return;
+        callbacks.onActiveContentIdentity({
+          puzzleId: nextModel.content.puzzleId,
+          contentChecksum: nextModel.content.contentChecksum,
+          contentLocale: nextModel.content.contentLocale,
+        });
         previousSnapshotRef.current = nextModel.snapshot;
         setContent(nextModel.content);
         setModel(nextModel);
@@ -1254,7 +1261,8 @@ class GameExperienceErrorBoundary extends Component<
 export function mountGameExperience(
   container: HTMLElement,
   options: MountGameExperienceOptions,
-): GameRuntimeSession {
+): ContentAwareGameRuntimeSession {
+  const activeContentIdentity = createDeferred<GameRuntimeContentIdentity>();
   const webGlReady = createDeferred<void>();
   const bridgeReady = createDeferred<void>();
   const interactiveReady = createDeferred<void>();
@@ -1262,12 +1270,16 @@ export function mountGameExperience(
   let root: Root | null = createRoot(container);
 
   const rejectBoot = (error: Error) => {
+    activeContentIdentity.reject(error);
     webGlReady.reject(error);
     bridgeReady.reject(error);
     interactiveReady.reject(error);
   };
 
   const callbacks: HostCallbacks = {
+    onActiveContentIdentity(identity) {
+      activeContentIdentity.resolve(Object.freeze({ ...identity }));
+    },
     onBridgeReady() {
       bridgeReady.resolve(undefined);
     },
@@ -1294,6 +1306,7 @@ export function mountGameExperience(
   );
 
   return {
+    waitForActiveContentIdentity: () => activeContentIdentity.promise,
     waitForWebGlContext: () => webGlReady.promise,
     waitForBridgeHandshake: () => bridgeReady.promise,
     waitForFirstInteractiveAck: () => interactiveReady.promise,

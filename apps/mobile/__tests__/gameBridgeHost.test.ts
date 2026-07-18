@@ -12,19 +12,25 @@ import {
 const indexUrl =
   'https://appassets.androidplatform.net/assets/crossword-game/index.html';
 
-const runtimeReadyExpectation: MobileGameRuntimeReadyExpectation = {
+const assetManifestChecksum =
+  'sha256:3fdc5808ada6c91ae0d355a1c8ea5d45aca3582d51f3013c52949ef0768663a8';
+const runtimeReadyExpectations: readonly MobileGameRuntimeReadyExpectation[] = [
+  'onboarding-easy-01',
+  'onboarding-easy-02',
+  'onboarding-easy-03',
+].map(puzzleId => ({
   renderer: 'webgl',
   scene: 'puzzle',
   visible: true,
-  contentChecksum: 'bundled:onboarding-easy-01:ko-KR:v1',
+  contentChecksum: `bundled:${puzzleId}:ko-KR:v1`,
   contentLocale: 'ko-KR',
-  puzzleId: 'onboarding-easy-01',
-  assetManifestChecksum:
-    'sha256:3fdc5808ada6c91ae0d355a1c8ea5d45aca3582d51f3013c52949ef0768663a8',
-};
+  puzzleId,
+  assetManifestChecksum,
+}));
+const runtimeReadyExpectation = runtimeReadyExpectations[1]!;
 
 function createFixture(
-  expectedRuntimeReady: MobileGameRuntimeReadyExpectation = runtimeReadyExpectation,
+  expectedRuntimeReady: readonly MobileGameRuntimeReadyExpectation[] = runtimeReadyExpectations,
 ) {
   const storage = new Map<string, string>();
   const analytics: Array<{
@@ -38,7 +44,7 @@ function createFixture(
 
   const host = createMobileGameBridgeHost({
     allowedMessageUrl: indexUrl,
-    runtimeReadyExpectation: expectedRuntimeReady,
+    runtimeReadyExpectations: expectedRuntimeReady,
     storage: {
       getItem: async key => storage.get(key) ?? null,
       setItem: async (key, value) => {
@@ -118,6 +124,10 @@ function createFixture(
 }
 
 describe('mobile game bridge host', () => {
+  test('runtime proof allowlist가 비어 있으면 host를 생성하지 않는다', () => {
+    expect(() => createFixture([])).toThrow('runtime-proof-policy-empty');
+  });
+
   test('exact local index navigation only', () => {
     expect(isAllowedMobileGameNavigation(indexUrl, indexUrl)).toBe(true);
     expect(isAllowedMobileGameNavigation(`${indexUrl}#escape`, indexUrl)).toBe(
@@ -241,5 +251,57 @@ describe('mobile game bridge host', () => {
       'runtime-proof-mismatch',
     );
     expect(fixture.runtimeReadyCount()).toBe(0);
+  });
+
+  test('3개 active board의 exact tuple만 허용하고 puzzle/checksum 교차 조합은 거부한다', async () => {
+    for (const expected of runtimeReadyExpectations) {
+      const fixture = createFixture();
+      await fixture.host.startSession(`exact-${expected.puzzleId}`);
+      await fixture.host.waitUntilHandshakeReady();
+      expect(
+        (await fixture.game.request('runtime.ready', expected)).status,
+      ).toBe('result');
+      await fixture.host.waitUntilRuntimeReady();
+    }
+
+    const mixedFixture = createFixture();
+    await mixedFixture.host.startSession('mixed-runtime-proof');
+    await mixedFixture.host.waitUntilHandshakeReady();
+    const mixedPayload: GameBridgeMethodPayloads['runtime.ready'] = {
+      ...runtimeReadyExpectations[0]!,
+      puzzleId: runtimeReadyExpectations[2]!.puzzleId,
+    };
+    expect(
+      await mixedFixture.game.request('runtime.ready', mixedPayload),
+    ).toMatchObject({
+      status: 'error',
+      error: { code: 'handler-failed' },
+    });
+    await expect(mixedFixture.host.waitUntilRuntimeReady()).rejects.toThrow(
+      'runtime-proof-mismatch',
+    );
+  });
+
+  test('첫 인증 후에는 다른 allowlisted board로 runtime proof를 바꾸지 못한다', async () => {
+    const fixture = createFixture();
+    await fixture.host.startSession('pinned-runtime-proof');
+    await fixture.host.waitUntilHandshakeReady();
+    expect(
+      (
+        await fixture.game.request(
+          'runtime.ready',
+          runtimeReadyExpectations[0]!,
+        )
+      ).status,
+    ).toBe('result');
+    await fixture.host.waitUntilRuntimeReady();
+
+    expect(
+      await fixture.game.request('runtime.ready', runtimeReadyExpectations[2]!),
+    ).toMatchObject({
+      status: 'error',
+      error: { code: 'handler-failed' },
+    });
+    expect(fixture.runtimeReadyCount()).toBe(1);
   });
 });

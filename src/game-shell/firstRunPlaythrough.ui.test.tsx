@@ -83,9 +83,13 @@ class MemoryStorage implements KeyValueStoragePort {
 
 let activeSession: ReturnType<typeof mountGameExperience> | null = null;
 
-afterEach(() => {
+function disposeActiveSession() {
   activeSession?.dispose();
   activeSession = null;
+}
+
+afterEach(() => {
+  disposeActiveSession();
   document.body.replaceChildren();
 });
 
@@ -98,6 +102,16 @@ function mount(storage: KeyValueStoragePort) {
     launchConfig: defaultLaunchConfig,
   });
   return container;
+}
+
+async function expectActiveContentIdentity(content: GameContentV1) {
+  const session = activeSession;
+  expect(session).not.toBeNull();
+  await expect(session!.waitForActiveContentIdentity()).resolves.toEqual({
+    puzzleId: content.puzzleId,
+    contentChecksum: content.contentChecksum,
+    contentLocale: content.contentLocale,
+  });
 }
 
 async function solveVisibleBoard(
@@ -155,6 +169,7 @@ describe("첫 실행 3보드 화면 플레이스루", () => {
     let container = mount(storage);
 
     await within(container).findByText("기억의 정원 · 1번째 말길");
+    await expectActiveContentIdentity(contents[0]!);
     await solveVisibleBoard(container, contents[0]!);
     fireEvent.click(
       within(container).getByRole("button", { name: "다음 보드 시작" }),
@@ -178,10 +193,10 @@ describe("첫 실행 3보드 화면 플레이스루", () => {
       ).toContain("완료"),
     );
 
-    activeSession?.dispose();
-    activeSession = null;
+    disposeActiveSession();
     container = mount(storage);
     await within(container).findByText("기억의 정원 · 2번째 말길");
+    await expectActiveContentIdentity(contents[1]!);
     await solveVisibleBoard(container, contents[1]!);
 
     fireEvent.click(
@@ -190,5 +205,10 @@ describe("첫 실행 3보드 화면 플레이스루", () => {
     await within(container).findByText("기억의 정원 · 3번째 말길");
     await solveVisibleBoard(container, contents[2]!);
     await within(container).findByText("입문 말길 3개를 모두 복원했어요");
+
+    disposeActiveSession();
+    container = mount(storage);
+    await within(container).findByText("기억의 정원 · 3번째 말길");
+    await expectActiveContentIdentity(contents[2]!);
   });
 });
