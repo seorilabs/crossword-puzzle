@@ -1645,7 +1645,8 @@ async function validateGeneratorIdentity(
   requireCondition(
     generator.config.maxAutoRunRatio === 0.5 &&
       generator.config.minMultiCrossRatio === 0.65 &&
-      generator.config.minDailyThemeEntryRatio === 0.5,
+      generator.config.minDailyThemeEntryRatio === 0.5 &&
+      generator.config.dailyConnectorWordLimit === 80,
     "generator quality threshold policy drifted",
   );
   const dependencies = generator.config.dependencies;

@@ -84,7 +84,7 @@ const GENERATOR_DEPENDENCY_PATHS = Object.freeze([
   "data/game-content/v1/ko-KR/license-manifest.json",
 ]);
 const MIN_DAILY_THEME_ENTRY_RATIO = 0.5;
-const DAILY_CONNECTOR_WORD_LIMIT = 160;
+export const DAILY_CONNECTOR_WORD_LIMIT = 80;
 const MAX_GENERATION_WORD_LENGTH = Object.freeze({
   easy: 3,
   normal: 3,

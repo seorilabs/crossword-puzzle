@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
 import {
+  DAILY_CONNECTOR_WORD_LIMIT,
   LAUNCH_THEME_IDS,
   areCluesSimilar,
   attemptsForRetry,
@@ -15,6 +16,9 @@ import {
 } from "./build-ko-kr-launch-content.mjs";
 
 describe("ko-KR launch content builder", () => {
+  test("일일 테마 보드는 비테마 연결어 풀을 제한한다", () => {
+    assert.equal(DAILY_CONNECTOR_WORD_LIMIT, 80);
+  });
   test("90개 생성 경로와 6주 일일 일정을 결정론적으로 고정한다", () => {
     const routes = buildLaunchRoutePlan();
     const counts = routes.reduce((result, route) => {
