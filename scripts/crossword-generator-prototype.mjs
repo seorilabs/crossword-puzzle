@@ -736,20 +736,62 @@ function compareGenerationCandidatesByPreferredRunGate(left, right, options) {
   return right.score - left.score;
 }
 
+function getBoardQualityDeficit(quality) {
+  if (!Array.isArray(quality?.checks)) return Number.POSITIVE_INFINITY;
+  return quality.checks.reduce((sum, check) => {
+    if (check.pass) return sum;
+    const scale = Math.abs(check.expected) || 1;
+    if (check.operator === ">=") {
+      return sum + Math.max(0, check.expected - check.actual) / scale;
+    }
+    if (check.operator === "<=") {
+      return sum + Math.max(0, check.actual - check.expected) / scale;
+    }
+    return sum + 1;
+  }, 0);
+}
+
+export function compareGenerationCandidatesByGeometryQuality(left, right) {
+  const deficitOrder =
+    getBoardQualityDeficit(left.quality) -
+    getBoardQualityDeficit(right.quality);
+  if (Number.isFinite(deficitOrder) && deficitOrder !== 0) {
+    return deficitOrder;
+  }
+  return right.score - left.score;
+}
+
 export function selectDiverseGenerationCandidates(candidates, limit, options) {
   const scoreRanked = [...candidates].sort(
     (left, right) => right.score - left.score,
   );
-  if (options.isPreferredRun == null) return scoreRanked.slice(0, limit);
-
-  const priorityRanked = [...candidates].sort((left, right) =>
-    compareGenerationCandidatesByPreferredRunGate(left, right, options),
-  );
+  const priorityRanked =
+    options.isPreferredRun == null
+      ? null
+      : [...candidates].sort((left, right) =>
+          compareGenerationCandidatesByPreferredRunGate(left, right, options),
+        );
+  const geometryRanked = candidates.some(
+    (candidate) => candidate.quality != null,
+  )
+    ? [...candidates].sort(compareGenerationCandidatesByGeometryQuality)
+    : null;
+  if (priorityRanked == null && geometryRanked == null) {
+    return scoreRanked.slice(0, limit);
+  }
   const selected = [];
   const selectedSet = new Set();
-  const quotas = [Math.ceil(limit / 2), Math.floor(limit / 2)];
-  const rankedGroups = [priorityRanked, scoreRanked];
-  const indexes = [0, 0];
+  const rankedGroups = [
+    ...(priorityRanked == null ? [] : [priorityRanked]),
+    ...(geometryRanked == null ? [] : [geometryRanked]),
+    scoreRanked,
+  ];
+  const quotas = rankedGroups.map(
+    (_, index) =>
+      Math.floor(limit / rankedGroups.length) +
+      (index < limit % rankedGroups.length ? 1 : 0),
+  );
+  const indexes = rankedGroups.map(() => 0);
 
   function takeNext(groupIndex) {
     const ranked = rankedGroups[groupIndex];
@@ -775,7 +817,7 @@ export function selectDiverseGenerationCandidates(candidates, limit, options) {
   }
   for (
     let groupIndex = 0;
-    selected.length < limit && groupIndex < 2;
+    selected.length < limit && groupIndex < rankedGroups.length;
     groupIndex += 1
   ) {
     while (selected.length < limit && takeNext(groupIndex)) {
@@ -984,6 +1026,7 @@ function runAttempt(words, random, options) {
             (word) => !usedAnswers.has(word.answer),
           ),
           preferredRunRatio: getPreferredRunRatio(runAnalysis.runs, options),
+          quality: options.evaluateBoardQuality?.(scoredBoard),
           score: scoredBoard.metrics.score + candidate.score,
         });
       }

@@ -352,6 +352,10 @@ export function orderRoutesForGeneration(routes) {
   );
 }
 
+export function generationProgressPosition(completedAtStart, localIndex) {
+  return completedAtStart + localIndex + 1;
+}
+
 export { areCluesSimilar };
 
 export function normalizeClueForCooldown(clue) {
@@ -1774,10 +1778,11 @@ async function main() {
           generationQueue,
         );
   const completed = checkpoint?.completed ?? [];
+  const completedAtStart = completed.length;
   const remainingRoutes =
     checkpoint == null
       ? selectedRoutes
-      : selectedRoutes.slice(completed.length);
+      : selectedRoutes.slice(completedAtStart);
   const routesToGenerate =
     options.maxNewBoards > 0
       ? remainingRoutes.slice(0, options.maxNewBoards)
@@ -1801,16 +1806,16 @@ async function main() {
     generatedByPuzzleId.set(cached.content.puzzleId, cached.content);
     generationReport.push(cached.report);
   }
-  if (completed.length > 0) {
+  if (completedAtStart > 0) {
     console.log(
-      `Resuming launch generation from ${completed.length}/${selectedRoutes.length} verified checkpoint boards.`,
+      `Resuming launch generation from ${completedAtStart}/${selectedRoutes.length} verified checkpoint boards.`,
     );
   }
 
   for (const [localIndex, route] of routesToGenerate.entries()) {
-    const index = completed.length + localIndex;
+    const position = generationProgressPosition(completedAtStart, localIndex);
     console.log(
-      `[${index + 1}/${selectedRoutes.length}] ${route.puzzleId} ${route.difficulty} ${route.themeId}`,
+      `[${position}/${selectedRoutes.length}] ${route.puzzleId} ${route.difficulty} ${route.themeId}`,
     );
     const generated = await generateRouteContent(
       route,

@@ -15,6 +15,7 @@ import {
   evaluateBoardClueQualityEntries,
   evaluateGeneratedBoardQuality,
   filterAvailableWords,
+  generationProgressPosition,
   hasIndexedBoardClueConflict,
   isGenerationWordLengthEligible,
   normalizeClueForCooldown,
@@ -23,6 +24,7 @@ import {
   searchOptionsForRetry,
 } from "./build-ko-kr-launch-content.mjs";
 import {
+  compareGenerationCandidatesByGeometryQuality,
   compareGeneratedBoardCandidates,
   generateBoards,
   selectDiverseGenerationCandidates,
@@ -244,6 +246,13 @@ describe("ko-KR launch content builder", () => {
     );
   });
 
+  test("checkpoint 저장 중 completed가 늘어도 progress position은 시작 offset을 유지한다", () => {
+    const completed = [{ puzzleId: "cached" }];
+    const completedAtStart = completed.length;
+    completed.push({ puzzleId: "generated-1" });
+    assert.equal(generationProgressPosition(completedAtStart, 1), 3);
+  });
+
   test("구두점·공백·Unicode 차이와 높은 유사도의 단서를 cooldown 충돌로 본다", () => {
     assert.equal(
       normalizeClueForCooldown("  물건을 넣어, 들고 다니는 것! "),
@@ -374,6 +383,72 @@ describe("ko-KR launch content builder", () => {
         minPreferredRunRatio: 0.5,
       }).map((candidate) => candidate.id),
       ["theme-a", "score-a", "theme-b", "score-b"],
+    );
+  });
+
+  test("beam에서 theme, geometry 근접도, 기존 score 후보를 3-way로 보존한다", () => {
+    const check = (actual, expected) => ({
+      actual,
+      expected,
+      operator: ">=",
+      pass: actual >= expected,
+    });
+    const candidates = [
+      {
+        id: "theme-a",
+        preferredRunRatio: 1,
+        quality: { checks: [check(0.1, 0.5)] },
+        score: 20,
+      },
+      {
+        id: "theme-b",
+        preferredRunRatio: 0.5,
+        quality: { checks: [check(0.1, 0.5)] },
+        score: 10,
+      },
+      {
+        id: "geometry-a",
+        preferredRunRatio: 0,
+        quality: { checks: [check(0.5, 0.5)] },
+        score: 8,
+      },
+      {
+        id: "geometry-b",
+        preferredRunRatio: 0,
+        quality: { checks: [check(0.49, 0.5)] },
+        score: 7,
+      },
+      {
+        id: "score-a",
+        preferredRunRatio: 0,
+        quality: { checks: [check(0, 0.5)] },
+        score: 1_000,
+      },
+      {
+        id: "score-b",
+        preferredRunRatio: 0,
+        quality: { checks: [check(0, 0.5)] },
+        score: 900,
+      },
+    ];
+    assert.ok(
+      compareGenerationCandidatesByGeometryQuality(
+        candidates[2],
+        candidates[4],
+      ) < 0,
+    );
+    assert.deepEqual(
+      selectDiverseGenerationCandidates(candidates, 6, {
+        isPreferredRun: () => true,
+        minPreferredRunRatio: 0.5,
+      }).map((candidate) => candidate.id),
+      ["theme-a", "geometry-a", "score-a", "theme-b", "geometry-b", "score-b"],
+    );
+    assert.deepEqual(
+      selectDiverseGenerationCandidates(candidates.slice(2), 4, {}).map(
+        (candidate) => candidate.id,
+      ),
+      ["geometry-a", "score-a", "geometry-b", "score-b"],
     );
   });
 
