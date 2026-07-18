@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
   type FormEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -16,6 +17,17 @@ import {
   GameController,
   type GameSnapshot,
 } from "../../packages/crossword-core/src/gameController.ts";
+import {
+  projectGameFeedbackActions,
+  type GameFeedbackHaptic,
+} from "../../packages/crossword-core/src/gameFeedback.ts";
+import {
+  DEFAULT_GAME_EXPERIENCE_PREFERENCES,
+  getGameTextScaleMultiplier,
+  resolveHighContrast,
+  resolveReducedMotion,
+  type GameExperiencePreferences,
+} from "../../packages/crossword-core/src/gamePreferences.ts";
 import {
   defaultLaunchConfig,
   type LaunchConfig,
@@ -59,6 +71,11 @@ import {
   loadBundledOnboardingGameContent,
   loadBundledOnboardingKnowledgeCard,
 } from "./onboardingGameContent.ts";
+import { initSafeAreaInsets } from "../adapters/safeArea.ts";
+import {
+  createGameFeedbackRuntime,
+  type GameFeedbackRuntime,
+} from "./gameFeedbackRuntime.ts";
 import "./GameExperience.css";
 
 export type GameExperienceHostKind = GameRuntimeHostKind;
@@ -68,6 +85,7 @@ export type MountGameExperienceOptions = Readonly<{
   storage: KeyValueStoragePort;
   bridgeReady?: Promise<void>;
   launchConfig?: LaunchConfig;
+  playHaptic?: (semantic: GameFeedbackHaptic) => Promise<void> | void;
 }>;
 
 type HostCallbacks = Readonly<{
@@ -80,6 +98,7 @@ type GameModel = Readonly<{
   completionReward: RecordGameCompletionResult | null;
   controller: GameController;
   progression: GameProgressionSnapshot;
+  preferences: GameExperiencePreferences;
   repository: GameSaveRepository;
   restoreNotice: string | null;
   snapshot: GameSnapshot;
@@ -269,6 +288,9 @@ async function createGameModel(
     });
   }
 
+  if (controller.getSnapshot().phase === "intro") {
+    controller.dispatch({ type: "intro.complete" });
+  }
   const snapshot = controller.getSnapshot();
   await repository.persistSnapshot(snapshot, {
     longestIntersectionChain: snapshot.lastResolvedEntryIds.length,
@@ -287,14 +309,35 @@ async function createGameModel(
   const progression =
     completionReward?.progression ??
     (await repository.readProgression(content.contentLocale));
+  const preferences = await repository.readExperiencePreferences();
   return {
     completionReward,
     controller,
     progression,
+    preferences,
     repository,
     restoreNotice,
     snapshot,
   };
+}
+
+function useMediaPreference(query: string): boolean {
+  const [matches, setMatches] = useState(() =>
+    typeof window === "undefined" || typeof window.matchMedia !== "function"
+      ? false
+      : window.matchMedia(query).matches,
+  );
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const media = window.matchMedia(query);
+    const update = () => setMatches(media.matches);
+    update();
+    media.addEventListener?.("change", update);
+    return () => media.removeEventListener?.("change", update);
+  }, [query]);
+
+  return matches;
 }
 
 function getDraftForEntry(
@@ -314,12 +357,14 @@ function GameExperience({
   callbacks,
   hostKind,
   initialLaunchConfig,
+  playHaptic,
   storage,
 }: Readonly<{
   callbacks: HostCallbacks;
   bridgeReady?: Promise<void>;
   hostKind: GameExperienceHostKind;
   initialLaunchConfig: LaunchConfig;
+  playHaptic?: (semantic: GameFeedbackHaptic) => Promise<void> | void;
   storage: KeyValueStoragePort;
 }>) {
   const content = useMemo(loadBundledOnboardingGameContent, []);
@@ -333,16 +378,76 @@ function GameExperience({
     useState<GameProgressionSnapshot | null>(null);
   const [completionReward, setCompletionReward] =
     useState<RecordGameCompletionResult | null>(null);
+  const [preferences, setPreferences] = useState<GameExperiencePreferences>(
+    DEFAULT_GAME_EXPERIENCE_PREFERENCES,
+  );
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [preferenceWarning, setPreferenceWarning] = useState<string | null>(
+    null,
+  );
   const [draft, setDraft] = useState("");
   const [liveMessage, setLiveMessage] = useState("게임을 준비하고 있어요.");
   const [saveWarning, setSaveWarning] = useState<string | null>(null);
   const [saveRetrying, setSaveRetrying] = useState(false);
   const [fatalError, setFatalError] = useState(false);
+  const topBarRef = useRef<HTMLElement>(null);
   const canvasParentRef = useRef<HTMLDivElement>(null);
   const runtimeRef = useRef<CrosswordGameRuntime | null>(null);
+  const feedbackRuntimeRef = useRef<GameFeedbackRuntime | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const settingsButtonRef = useRef<HTMLButtonElement>(null);
+  const settingsCloseButtonRef = useRef<HTMLButtonElement>(null);
+  const settingsDialogRef = useRef<HTMLElement>(null);
   const composingRef = useRef(false);
+  const restoringSettingsFocusRef = useRef(false);
   const previousSnapshotRef = useRef<GameSnapshot | null>(null);
+  const preferencesRef = useRef<GameExperiencePreferences>(preferences);
+  const preferenceMutationRef = useRef(0);
+  const settingsOpenRef = useRef(settingsOpen);
+  settingsOpenRef.current = settingsOpen;
+  const systemReducedMotion = useMediaPreference(
+    "(prefers-reduced-motion: reduce)",
+  );
+  const systemHighContrast = useMediaPreference(
+    "(prefers-contrast: more), (forced-colors: active)",
+  );
+  const reducedMotion =
+    initialLaunchConfig.worldRestoreMotionLevel === "reduced" ||
+    resolveReducedMotion(preferences, systemReducedMotion);
+  const highContrast = resolveHighContrast(preferences, systemHighContrast);
+  const textScaleMultiplier = getGameTextScaleMultiplier(preferences.textScale);
+  const visualPreferencesRef = useRef({ highContrast, reducedMotion });
+  visualPreferencesRef.current = { highContrast, reducedMotion };
+
+  useEffect(() => {
+    preferencesRef.current = preferences;
+  }, [preferences]);
+
+  useEffect(() => {
+    if (hostKind !== "apps-in-toss") return;
+    return initSafeAreaInsets();
+  }, [hostKind]);
+
+  useEffect(() => {
+    const feedback = createGameFeedbackRuntime({ playHaptic });
+    feedbackRuntimeRef.current = feedback;
+    return () => {
+      feedbackRuntimeRef.current = null;
+      feedback.dispose();
+    };
+  }, [playHaptic]);
+
+  useEffect(() => {
+    feedbackRuntimeRef.current?.setBgmEnabled(preferences.bgmEnabled);
+  }, [preferences.bgmEnabled]);
+
+  useEffect(() => {
+    for (const element of [topBarRef.current, canvasParentRef.current]) {
+      if (element == null) continue;
+      if (settingsOpen) element.setAttribute("inert", "");
+      else element.removeAttribute("inert");
+    }
+  }, [settingsOpen]);
 
   useEffect(() => {
     let cancelled = false;
@@ -364,6 +469,12 @@ function GameExperience({
         setSnapshot(nextModel.snapshot);
         setProgression(nextModel.progression);
         setCompletionReward(nextModel.completionReward);
+        preferencesRef.current = nextModel.preferences;
+        setPreferences(nextModel.preferences);
+        setLiveMessage(
+          nextModel.restoreNotice ??
+            "첫 단서가 선택됐어요. 답을 완성해 길을 연결해 보세요.",
+        );
       },
       (error: unknown) => {
         if (cancelled) return;
@@ -385,15 +496,32 @@ function GameExperience({
       previousSnapshotRef.current = nextSnapshot;
       setSnapshot(nextSnapshot);
       runtimeRef.current?.update(nextSnapshot, events);
+      for (const action of projectGameFeedbackActions(events, {
+        sfxEnabled: preferencesRef.current.sfxEnabled,
+        hapticEnabled: preferencesRef.current.hapticEnabled,
+      })) {
+        feedbackRuntimeRef.current?.emit(action);
+      }
 
       const resolved = events.find(
         (event) => event.type === "game.word.resolved",
       );
-      if (resolved?.type === "game.word.resolved") {
+      const incorrect = events.some(
+        (event) => event.type === "game.entry.incorrect",
+      );
+      if (resolved?.type === "game.word.resolved" && incorrect) {
+        setLiveMessage(
+          "교차 말길 하나는 연결됐지만 선택한 말길은 아직 열리지 않았어요. 입력을 살펴보세요.",
+        );
+      } else if (resolved?.type === "game.word.resolved") {
         setLiveMessage(
           resolved.entryIds.length > 1
             ? "교차하는 말길이 함께 연결됐어요."
             : "정답이에요. 말길이 복원됐어요.",
+        );
+      } else if (incorrect) {
+        setLiveMessage(
+          "아직 길이 열리지 않았어요. 입력은 그대로 두었으니 교차 글자를 살펴보세요.",
         );
       } else if (events.some((event) => event.type === "game.board.resolved")) {
         setLiveMessage("모든 말길이 이어져 기억의 정원이 깨어났어요.");
@@ -439,14 +567,13 @@ function GameExperience({
     if (model == null || canvasParentRef.current == null) {
       return;
     }
-    const reducedMotion =
-      initialLaunchConfig.worldRestoreMotionLevel === "reduced" ||
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const initialVisualPreferences = visualPreferencesRef.current;
     const runtime = createCrosswordGameRuntime({
       parent: canvasParentRef.current,
       content,
       initialSnapshot: model.snapshot,
-      reducedMotion,
+      highContrast: initialVisualPreferences.highContrast,
+      reducedMotion: initialVisualPreferences.reducedMotion,
       onEntrySelect(entryId, context) {
         if (
           model.controller.getSnapshot().commandSequence !==
@@ -467,7 +594,6 @@ function GameExperience({
       },
       onInteractive(ack) {
         callbacks.onInteractive(ack);
-        setLiveMessage("첫 단서를 선택했어요. 답을 완성해 길을 연결해 보세요.");
       },
     });
     runtimeRef.current = runtime;
@@ -479,12 +605,23 @@ function GameExperience({
   }, [callbacks, content, initialLaunchConfig.worldRestoreMotionLevel, model]);
 
   useEffect(() => {
+    runtimeRef.current?.updateVisualPreferences({
+      highContrast,
+      reducedMotion,
+    });
+  }, [highContrast, reducedMotion]);
+
+  useEffect(() => {
     if (snapshot == null) return;
     setDraft(getDraftForEntry(snapshot.selectedEntryId, snapshot));
-    if (snapshot.phase === "active") {
+    if (
+      snapshot.phase === "active" &&
+      !settingsOpen &&
+      !restoringSettingsFocusRef.current
+    ) {
       window.setTimeout(() => inputRef.current?.focus(), 0);
     }
-  }, [snapshot]);
+  }, [settingsOpen, snapshot]);
 
   useEffect(() => {
     if (model == null) return;
@@ -498,22 +635,29 @@ function GameExperience({
         model.controller.dispatch({ type: "app.suspend" });
       }
       runtimeRef.current?.suspend();
+      feedbackRuntimeRef.current?.suspend();
     };
     const resume = () => {
+      if (settingsOpenRef.current) return;
       if (model.controller.getSnapshot().phase === "suspended") {
         model.controller.dispatch({ type: "app.resume" });
       }
       runtimeRef.current?.resume();
+      feedbackRuntimeRef.current?.resume();
     };
     const onVisibilityChange = () => {
       if (document.visibilityState === "hidden") suspend();
       else resume();
     };
     document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("pagehide", suspend);
+    window.addEventListener("pageshow", resume);
     window.addEventListener(NATIVE_GAME_EVENT.pause, suspend);
     window.addEventListener(NATIVE_GAME_EVENT.resume, resume);
     return () => {
       document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("pagehide", suspend);
+      window.removeEventListener("pageshow", resume);
       window.removeEventListener(NATIVE_GAME_EVENT.pause, suspend);
       window.removeEventListener(NATIVE_GAME_EVENT.resume, resume);
     };
@@ -551,14 +695,6 @@ function GameExperience({
         entryId: selectedEntry.id,
         cells,
       });
-      if (
-        cells.length === selectedEntry.answerCells.length &&
-        !model.controller
-          .getSnapshot()
-          .completedEntryIds.includes(selectedEntry.id)
-      ) {
-        setLiveMessage("아직 길이 열리지 않았어요. 교차 글자를 살펴보세요.");
-      }
     },
     [model, selectedEntry],
   );
@@ -605,6 +741,91 @@ function GameExperience({
     saveRetrying,
     snapshot,
   ]);
+  const updatePreference = useCallback(
+    (patch: Partial<GameExperiencePreferences>) => {
+      if (model == null) return;
+      const next = Object.freeze({
+        ...preferencesRef.current,
+        ...patch,
+      }) as GameExperiencePreferences;
+      const mutation = preferenceMutationRef.current + 1;
+      preferenceMutationRef.current = mutation;
+      preferencesRef.current = next;
+      setPreferences(next);
+      setPreferenceWarning(null);
+      void model.repository
+        .updateExperiencePreferences(content.contentLocale, next)
+        .then(
+          (stored) => {
+            if (preferenceMutationRef.current !== mutation) return;
+            preferencesRef.current = stored;
+            setPreferences(stored);
+            setPreferenceWarning(null);
+          },
+          () => {
+            if (preferenceMutationRef.current !== mutation) return;
+            setPreferenceWarning(
+              "설정을 저장하지 못했어요. 현재 세션에는 적용되며 다음 변경 때 다시 시도합니다.",
+            );
+          },
+        );
+    },
+    [content.contentLocale, model],
+  );
+  const openSettings = useCallback(() => {
+    if (model == null) return;
+    const current = model.controller.getSnapshot();
+    if (
+      current.phase !== "suspended" &&
+      current.phase !== "loading" &&
+      current.phase !== "recovery"
+    ) {
+      model.controller.dispatch({ type: "app.suspend" });
+    }
+    runtimeRef.current?.suspend();
+    feedbackRuntimeRef.current?.suspend();
+    setSettingsOpen(true);
+  }, [model]);
+  const closeSettings = useCallback(() => {
+    restoringSettingsFocusRef.current = true;
+    setSettingsOpen(false);
+    window.setTimeout(() => {
+      settingsButtonRef.current?.focus();
+      restoringSettingsFocusRef.current = false;
+    }, 0);
+    if (model == null || document.visibilityState === "hidden") return;
+    if (model.controller.getSnapshot().phase === "suspended") {
+      model.controller.dispatch({ type: "app.resume" });
+    }
+    runtimeRef.current?.resume();
+    feedbackRuntimeRef.current?.resume();
+  }, [model]);
+  const handleSettingsKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLElement>) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeSettings();
+        return;
+      }
+      if (event.key !== "Tab" || settingsDialogRef.current == null) return;
+      const focusable = [
+        ...settingsDialogRef.current.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+        ),
+      ];
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (first == null || last == null) return;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    },
+    [closeSettings],
+  );
   const memoryInkBalance = progression?.memoryInkBalance ?? 0;
   const mapFragmentCount = progression?.mapFragmentCount ?? 0;
   const knowledgeCardCount = progression?.cardIds.length ?? 0;
@@ -627,8 +848,18 @@ function GameExperience({
   }
 
   return (
-    <main className="gameExperience" data-game-runtime="phaser-v1">
-      <header className="gameTopBar">
+    <main
+      className="gameExperience"
+      data-game-runtime="phaser-v1"
+      data-high-contrast={highContrast ? "true" : "false"}
+      data-reduced-motion={reducedMotion ? "true" : "false"}
+      data-text-scale={preferences.textScale}
+    >
+      <header
+        ref={topBarRef}
+        className="gameTopBar"
+        aria-hidden={settingsOpen || undefined}
+      >
         <div>
           <span>기억의 정원 · 첫 번째 말길</span>
           <h1>말길</h1>
@@ -645,12 +876,157 @@ function GameExperience({
             <strong>{snapshot?.completedEntryIds.length ?? 0}</strong>
             <span>/ {content.entries.length}</span>
           </div>
+          <button
+            ref={settingsButtonRef}
+            className="gameSettingsButton"
+            type="button"
+            aria-label="설정과 접근성 열기"
+            aria-expanded={settingsOpen}
+            aria-controls="game-settings-dialog"
+            disabled={model == null || settingsOpen}
+            onClick={openSettings}
+          >
+            설정
+          </button>
         </div>
       </header>
 
-      <div className="gameCanvasStage" ref={canvasParentRef} />
+      <div
+        className="gameCanvasStage"
+        ref={canvasParentRef}
+        aria-hidden={settingsOpen || undefined}
+      />
 
-      {model == null || snapshot == null ? (
+      {settingsOpen && model != null ? (
+        <section
+          ref={settingsDialogRef}
+          id="game-settings-dialog"
+          className="gamePanel gameSettingsPanel"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="game-settings-title"
+          onKeyDown={handleSettingsKeyDown}
+        >
+          <div className="gameSettingsHeading">
+            <div>
+              <span className="gameEyebrow">즉시 미리보기</span>
+              <h2 id="game-settings-title">설정과 접근성</h2>
+            </div>
+            <button
+              ref={settingsCloseButtonRef}
+              type="button"
+              className="gameIconButton"
+              aria-label="설정 닫기"
+              autoFocus
+              onClick={closeSettings}
+            >
+              닫기
+            </button>
+          </div>
+          <div className="gameSettingsRows">
+            <button
+              type="button"
+              aria-pressed={preferences.bgmEnabled}
+              onClick={() =>
+                updatePreference({ bgmEnabled: !preferences.bgmEnabled })
+              }
+            >
+              <span>배경음악</span>
+              <strong>{preferences.bgmEnabled ? "켜짐" : "꺼짐"}</strong>
+            </button>
+            <button
+              type="button"
+              aria-pressed={preferences.sfxEnabled}
+              onClick={() => {
+                const enabled = !preferences.sfxEnabled;
+                updatePreference({ sfxEnabled: enabled });
+                if (!enabled) feedbackRuntimeRef.current?.stopSfx();
+              }}
+            >
+              <span>효과음</span>
+              <strong>{preferences.sfxEnabled ? "켜짐" : "꺼짐"}</strong>
+            </button>
+            <button
+              type="button"
+              aria-pressed={preferences.hapticEnabled}
+              onClick={() =>
+                updatePreference({ hapticEnabled: !preferences.hapticEnabled })
+              }
+            >
+              <span>햅틱</span>
+              <strong>{preferences.hapticEnabled ? "켜짐" : "꺼짐"}</strong>
+            </button>
+            <button
+              type="button"
+              aria-pressed={preferences.motionMode === "reduced"}
+              onClick={() =>
+                updatePreference({
+                  motionMode:
+                    preferences.motionMode === "reduced" ? "system" : "reduced",
+                })
+              }
+            >
+              <span>움직임 줄이기</span>
+              <strong>
+                {preferences.motionMode === "reduced" ? "항상" : "시스템"}
+              </strong>
+            </button>
+            <button
+              type="button"
+              aria-pressed={preferences.contrastMode === "high"}
+              onClick={() =>
+                updatePreference({
+                  contrastMode:
+                    preferences.contrastMode === "high" ? "system" : "high",
+                })
+              }
+            >
+              <span>고대비</span>
+              <strong>
+                {preferences.contrastMode === "high" ? "항상" : "시스템"}
+              </strong>
+            </button>
+          </div>
+          <fieldset className="gameTextScalePicker">
+            <legend>글자 크기</legend>
+            <div>
+              {(
+                [
+                  ["normal", "100%"],
+                  ["large", "150%"],
+                  ["extra-large", "200%"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={preferences.textScale === value}
+                  onClick={() => updatePreference({ textScale: value })}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+          <p className="gameSettingsNote">
+            시스템에서 움직임 줄이기 또는 고대비를 켜면 앱 설정이 시스템 값을
+            해제하지 않습니다. 현재 글자 배율은 {textScaleMultiplier * 100}
+            %입니다.
+          </p>
+          {preferenceWarning == null ? null : (
+            <p className="gameSaveAlert" role="alert">
+              {preferenceWarning}
+            </p>
+          )}
+          <button
+            className="gamePrimaryButton"
+            type="button"
+            onClick={closeSettings}
+          >
+            설정 적용하고 돌아가기
+          </button>
+        </section>
+      ) : model == null || snapshot == null ? (
         <section className="gamePanel gameBootPanel" aria-live="polite">
           <div className="gameBootGlyph" aria-hidden="true">
             길
@@ -937,38 +1313,42 @@ function GameExperience({
           )}
 
           <div className="gameClueRail" aria-label="단서 목록">
-            {content.entries.map((entry, index) => (
-              <button
-                key={entry.id}
-                type="button"
-                aria-pressed={snapshot.selectedEntryId === entry.id}
-                className={
-                  snapshot.completedEntryIds.includes(entry.id)
-                    ? "isComplete"
-                    : ""
-                }
-                onClick={() =>
-                  model.controller.dispatch({
-                    type: "entry.select",
-                    entryId: entry.id,
-                  })
-                }
-              >
-                <span>
-                  {entry.direction === "down" ? "세" : "가"}
-                  {index + 1}
-                </span>
-                {snapshot.completedEntryIds.includes(entry.id)
-                  ? "완료"
-                  : entry.answerCells.length}
-              </button>
-            ))}
+            {content.entries.map((entry, index) => {
+              const completed = snapshot.completedEntryIds.includes(entry.id);
+              const selected = snapshot.selectedEntryId === entry.id;
+              const enteredCellCount = getEntryCells(entry).filter(
+                (cell) =>
+                  snapshot.cellValues[getCellKey(cell.row, cell.col)] != null,
+              ).length;
+              const direction = entry.direction === "down" ? "세로" : "가로";
+              return (
+                <button
+                  key={entry.id}
+                  type="button"
+                  aria-label={`${index + 1} ${direction}, ${entry.answerCells.length}글자, ${enteredCellCount}글자 입력됨${selected ? ", 선택됨" : ""}${completed ? ", 완료" : ""}`}
+                  aria-pressed={selected}
+                  className={completed ? "isComplete" : ""}
+                  onClick={() =>
+                    model.controller.dispatch({
+                      type: "entry.select",
+                      entryId: entry.id,
+                    })
+                  }
+                >
+                  <span>
+                    {entry.direction === "down" ? "세" : "가"}
+                    {index + 1}
+                  </span>
+                  {completed ? "완료" : entry.answerCells.length}
+                </button>
+              );
+            })}
           </div>
         </section>
       )}
 
       <div className="gameLiveRegion" aria-live="polite" aria-atomic="true">
-        {model?.restoreNotice ?? liveMessage}
+        {liveMessage}
         {saveWarning == null ? "" : ` ${saveWarning}`}
       </div>
     </main>
@@ -1037,6 +1417,7 @@ export function mountGameExperience(
         callbacks={callbacks}
         hostKind={options.hostKind}
         initialLaunchConfig={options.launchConfig ?? defaultLaunchConfig}
+        playHaptic={options.playHaptic}
         storage={options.storage}
       />
     </GameExperienceErrorBoundary>,

@@ -7,8 +7,13 @@ import type {
   CrosswordGameOptions,
   CrosswordGameRuntime,
   CrosswordGameRuntimeEvent,
+  CrosswordGameVisualPreferences,
 } from "./contracts.ts";
-import { projectGameSnapshot } from "./projection.ts";
+import {
+  createCrosswordGameSceneUpdate,
+  DEFAULT_CROSSWORD_GAME_VISUAL_PREFERENCES,
+  updateCrosswordGameVisualPreferences,
+} from "./presentationPolicy.ts";
 import {
   CrosswordBootScene,
   CrosswordPuzzleScene,
@@ -23,10 +28,16 @@ function errorMessage(error: unknown): string {
 export function createCrosswordGameRuntime(
   options: CrosswordGameOptions,
 ): CrosswordGameRuntime {
-  let currentPresentation = projectGameSnapshot(
+  let currentPresentation = createCrosswordGameSceneUpdate(
     options.content,
     options.initialSnapshot,
-  );
+    [],
+  ).presentation;
+  let visualPreferences: CrosswordGameVisualPreferences = Object.freeze({
+    ...DEFAULT_CROSSWORD_GAME_VISUAL_PREFERENCES,
+    highContrast: options.highContrast ?? false,
+    reducedMotion: options.reducedMotion ?? false,
+  });
   let destroyed = false;
   let interactiveSettled = false;
   let runtimeSuspended = false;
@@ -158,9 +169,9 @@ export function createCrosswordGameRuntime(
     acknowledgeInteractive,
     content: options.content,
     getPresentation: () => currentPresentation,
+    getVisualPreferences: () => visualPreferences,
     isRuntimeSuspended: () => runtimeSuspended,
     onEntrySelect: requestEntrySelection,
-    reducedMotion: options.reducedMotion ?? false,
     requestPresentationCommand: (command, commandSequence) => {
       requestCommand(command, commandSequence, "presentation-ack");
     },
@@ -261,15 +272,41 @@ export function createCrosswordGameRuntime(
       if (destroyed) {
         throw new Error("cannot update a destroyed crossword-game runtime");
       }
-      void events;
-      const nextPresentation = projectGameSnapshot(options.content, snapshot);
+      const sceneUpdate = createCrosswordGameSceneUpdate(
+        options.content,
+        snapshot,
+        events,
+      );
+      const nextPresentation = sceneUpdate.presentation;
       if (
         nextPresentation.commandSequence < currentPresentation.commandSequence
       ) {
         throw new Error("cannot project a stale game snapshot");
       }
       currentPresentation = nextPresentation;
-      getPuzzleScene()?.updatePresentation(nextPresentation);
+      getPuzzleScene()?.updatePresentation(
+        nextPresentation,
+        sceneUpdate.events,
+      );
+    },
+    updateVisualPreferences: (update) => {
+      if (destroyed) {
+        throw new Error(
+          "cannot update visual preferences on a destroyed crossword-game runtime",
+        );
+      }
+      const next = updateCrosswordGameVisualPreferences(
+        visualPreferences,
+        update,
+      );
+      if (
+        next.highContrast === visualPreferences.highContrast &&
+        next.reducedMotion === visualPreferences.reducedMotion
+      ) {
+        return;
+      }
+      visualPreferences = next;
+      getPuzzleScene()?.updateVisualPreferences();
     },
     suspend: () => {
       if (destroyed || runtimeSuspended) {

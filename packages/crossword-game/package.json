@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --experimental-strip-types --test src/projection.test.mts",
+    "test": "node --experimental-strip-types --test src/*.test.mts",
     "typecheck": "tsc -p tsconfig.json"
   },
   "peerDependencies": {

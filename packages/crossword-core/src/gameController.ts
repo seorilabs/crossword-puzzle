@@ -79,6 +79,11 @@ export type GameDomainEvent =
       entryIds: readonly string[];
       commandSequence: number;
     }
+  | {
+      type: "game.entry.incorrect";
+      entryId: string;
+      commandSequence: number;
+    }
   | { type: "game.board.resolved"; commandSequence: number }
   | { type: "game.result.opened"; commandSequence: number }
   | { type: "game.map.opened"; commandSequence: number }
@@ -369,6 +374,16 @@ function reduceGameCommand(
         commandSequence: next.commandSequence,
       });
     }
+    if (
+      normalizedCells.length === entry.answerCells.length &&
+      !completedEntryIds.includes(entry.id)
+    ) {
+      events.push({
+        type: "game.entry.incorrect",
+        entryId: entry.id,
+        commandSequence: next.commandSequence,
+      });
+    }
     return { snapshot: next, events: Object.freeze(events) };
   }
 
@@ -560,7 +575,10 @@ export function createInitialGameSnapshot(
   content: GameContentV1,
 ): GameSnapshot {
   return freezeSnapshot({
-    phase: "intro",
+    // FTUE starts with the first clue already selected. Guidance is projected
+    // over the playable board instead of gating the first action behind a
+    // modal/button.
+    phase: "active",
     suspendedFrom: null,
     puzzleId: content.puzzleId,
     contentLocale: content.contentLocale,

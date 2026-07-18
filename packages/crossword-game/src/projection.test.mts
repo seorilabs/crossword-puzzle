@@ -131,6 +131,37 @@ describe("Phaser immutable snapshot projection", () => {
     assert.equal(board.world.restoredLandmarks, board.world.totalLandmarks);
   });
 
+  test("선택·완료·방금 해결 상태를 색상과 독립된 scene 표식 입력으로 보존한다", () => {
+    const presentation = projectGameSnapshot(
+      createContent(),
+      createSnapshot({
+        phase: "word-resolved",
+        lastResolvedEntryIds: Object.freeze(["a1", "d1"]),
+        completedEntryIds: Object.freeze(["a1", "d1"]),
+        commandSequence: 3,
+      }),
+    );
+    const crossing = presentation.board.cells.find(
+      (cell) => cell.key === "0:0",
+    );
+
+    assert.ok(crossing);
+    assert.equal(crossing.selected, true);
+    assert.equal(crossing.completed, true);
+    assert.equal(crossing.justResolved, true);
+    assert.deepEqual(
+      presentation.board.paths.map((path) => ({
+        completed: path.completed,
+        justResolved: path.justResolved,
+        selected: path.selected,
+      })),
+      [
+        { completed: true, justResolved: true, selected: true },
+        { completed: true, justResolved: true, selected: false },
+      ],
+    );
+  });
+
   test("교차 셀을 다시 누르면 현재 단어의 반대 방향으로 순환한다", () => {
     const crossing = projectGameSnapshot(
       createContent(),

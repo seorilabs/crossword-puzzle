@@ -6,6 +6,25 @@
   --game-teal-soft: #d9f2ee;
   --game-gold: #d89035;
   --game-muted: #6e7888;
+  --game-font-scale: 1;
+}
+
+.gameExperience[data-text-scale="large"] {
+  --game-font-scale: 1.5;
+}
+
+.gameExperience[data-text-scale="extra-large"] {
+  --game-font-scale: 2;
+}
+
+.gameExperience[data-high-contrast="true"] {
+  --game-ink: #07101f;
+  --game-paper: #fffdf5;
+  --game-paper-strong: #ffffff;
+  --game-teal: #005f5b;
+  --game-teal-soft: #d7fffa;
+  --game-gold: #9a5200;
+  --game-muted: #2f3742;
 }
 
 .gameExperience {
@@ -26,12 +45,23 @@
     var(--game-paper);
   color: var(--game-ink);
   font-family: Pretendard, "Noto Sans KR", system-ui, sans-serif;
+  font-size: calc(16px * var(--game-font-scale));
   box-sizing: border-box;
 }
 
 .gameTopBar {
   min-height: 58px;
-  padding: calc(12px + env(safe-area-inset-top, 0px)) 18px 8px;
+  padding: calc(
+      12px + max(env(safe-area-inset-top, 0px), var(--ait-safe-area-top, 0px))
+    )
+    calc(
+      18px +
+        max(env(safe-area-inset-right, 0px), var(--ait-safe-area-right, 0px))
+    )
+    8px
+    calc(
+      18px + max(env(safe-area-inset-left, 0px), var(--ait-safe-area-left, 0px))
+    );
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -50,7 +80,7 @@
 }
 .gameTopBar h1 {
   margin: 0;
-  font-size: 24px;
+  font-size: calc(24px * var(--game-font-scale));
   line-height: 1.1;
   letter-spacing: -0.04em;
 }
@@ -71,6 +101,23 @@
   display: flex;
   align-items: center;
   gap: 7px;
+}
+
+.gameSettingsButton,
+.gameIconButton {
+  min-width: 48px;
+  min-height: 48px;
+  border: 1px solid rgba(23, 36, 58, 0.18);
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--game-ink);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.gameSettingsButton:disabled {
+  opacity: 0.45;
 }
 
 .gameInkBalance {
@@ -114,7 +161,18 @@
 .gamePanel {
   position: relative;
   z-index: 4;
-  margin: 0 10px calc(10px + env(safe-area-inset-bottom, 0px));
+  margin: 0
+    calc(
+      10px +
+        max(env(safe-area-inset-right, 0px), var(--ait-safe-area-right, 0px))
+    )
+    calc(
+      10px +
+        max(env(safe-area-inset-bottom, 0px), var(--ait-safe-area-bottom, 0px))
+    )
+    calc(
+      10px + max(env(safe-area-inset-left, 0px), var(--ait-safe-area-left, 0px))
+    );
   padding: 16px;
   border: 1px solid rgba(23, 36, 58, 0.1);
   border-radius: 22px;
@@ -125,7 +183,7 @@
 
 .gamePanel h2 {
   margin: 4px 0 8px;
-  font-size: 19px;
+  font-size: calc(19px * var(--game-font-scale));
   line-height: 1.4;
   letter-spacing: -0.02em;
 }
@@ -133,11 +191,11 @@
   margin: 0 0 14px;
   color: var(--game-muted);
   line-height: 1.55;
-  font-size: 14px;
+  font-size: calc(14px * var(--game-font-scale));
 }
 .gameEyebrow {
   color: var(--game-teal);
-  font-size: 12px;
+  font-size: calc(12px * var(--game-font-scale));
   font-weight: 850;
 }
 
@@ -149,6 +207,15 @@
   border-radius: 15px;
   font: inherit;
   font-weight: 850;
+}
+
+.gameExperience button {
+  touch-action: manipulation;
+}
+
+.gameExperience button:not(:disabled):active {
+  transform: scale(0.975);
+  filter: brightness(0.94);
 }
 
 .gamePrimaryButton {
@@ -218,7 +285,7 @@
   border: 2px solid var(--game-teal);
   border-radius: 13px;
   background: var(--game-teal-soft);
-  font-size: 23px;
+  font-size: calc(23px * var(--game-font-scale));
   font-weight: 900;
 }
 
@@ -268,7 +335,7 @@
   border: 2px solid rgba(20, 125, 124, 0.42);
   background: #fff;
   color: var(--game-ink);
-  font-size: 20px;
+  font-size: calc(20px * var(--game-font-scale));
   font-weight: 850;
 }
 .gameWordForm input:focus {
@@ -293,10 +360,10 @@
   display: grid;
   place-items: center;
   gap: 0;
-  font-size: 11px;
+  font-size: calc(11px * var(--game-font-scale));
 }
 .gameClueRail button span {
-  font-size: 10px;
+  font-size: calc(10px * var(--game-font-scale));
   color: var(--game-muted);
 }
 .gameClueRail button[aria-pressed="true"] {
@@ -320,6 +387,89 @@
   max-height: min(48dvh, 480px);
   overflow-y: auto;
   overscroll-behavior: contain;
+}
+
+.gameSettingsPanel {
+  max-height: min(58vh, 620px);
+  max-height: min(58dvh, 620px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.gameSettingsHeading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.gameSettingsRows {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.gameSettingsRows button {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 13px;
+  border: 2px solid transparent;
+  border-radius: 14px;
+  background: #f2f3ef;
+  color: var(--game-ink);
+  font: inherit;
+  text-align: left;
+}
+
+.gameSettingsRows button[aria-pressed="true"] {
+  border-color: var(--game-teal);
+  background: var(--game-teal-soft);
+}
+
+.gameSettingsRows strong {
+  color: var(--game-teal);
+}
+
+.gameTextScalePicker {
+  margin: 0 0 12px;
+  padding: 0;
+  border: 0;
+}
+
+.gameTextScalePicker legend {
+  margin-bottom: 7px;
+  color: var(--game-muted);
+  font-size: calc(13px * var(--game-font-scale));
+  font-weight: 800;
+}
+
+.gameTextScalePicker > div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.gameTextScalePicker button {
+  min-height: 48px;
+  border: 2px solid rgba(23, 36, 58, 0.13);
+  border-radius: 13px;
+  background: #fff;
+  color: var(--game-ink);
+  font: inherit;
+  font-weight: 850;
+}
+
+.gameTextScalePicker button[aria-pressed="true"] {
+  border-color: var(--game-teal);
+  background: var(--game-teal-soft);
+  color: var(--game-teal);
+}
+
+.gameSettingsNote {
+  font-size: calc(12px * var(--game-font-scale)) !important;
 }
 .gameResultPanel .gamePrimaryButton {
   grid-column: 1 / -1;
@@ -619,6 +769,19 @@
   }
 }
 
+.gameExperience[data-high-contrast="true"] .gamePanel,
+.gameExperience[data-high-contrast="true"] .gameProgress,
+.gameExperience[data-high-contrast="true"] .gameInkBalance,
+.gameExperience[data-high-contrast="true"] .gameSettingsRows button,
+.gameExperience[data-high-contrast="true"] .gameTextScalePicker button {
+  border-color: var(--game-ink);
+  box-shadow: none;
+}
+
+.gameExperience[data-high-contrast="true"] .gamePanel {
+  background: #fff;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .gameBootGlyph {
     animation: none;
@@ -627,4 +790,13 @@
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+.gameExperience[data-reduced-motion="true"] .gameBootGlyph {
+  animation: none;
+}
+
+.gameExperience[data-reduced-motion="true"] * {
+  scroll-behavior: auto !important;
+  transition-duration: 0.01ms !important;
 }

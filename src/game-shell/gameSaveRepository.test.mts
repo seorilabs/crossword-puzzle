@@ -294,6 +294,54 @@ describe("game progression ledger repository", () => {
   });
 });
 
+describe("game experience preference repository", () => {
+  test("BGM·SFX·햅틱·motion·contrast·100/150/200 설정을 sealed Save v2에 보존한다", async () => {
+    const storage = new MemoryStorage();
+    const repo = repository(storage);
+    assert.deepEqual(await repo.readExperiencePreferences(), {
+      bgmEnabled: true,
+      sfxEnabled: true,
+      hapticEnabled: true,
+      motionMode: "system",
+      contrastMode: "system",
+      textScale: "normal",
+    });
+
+    await repo.persistSnapshot(gameSnapshot());
+    const updated = await repo.updateExperiencePreferences("ko-KR", {
+      bgmEnabled: false,
+      sfxEnabled: true,
+      hapticEnabled: false,
+      motionMode: "reduced",
+      contrastMode: "high",
+      textScale: "extra-large",
+    });
+    assert.deepEqual(updated, {
+      bgmEnabled: false,
+      sfxEnabled: true,
+      hapticEnabled: false,
+      motionMode: "reduced",
+      contrastMode: "high",
+      textScale: "extra-large",
+    });
+
+    const raw = storage.values.get(DEFAULT_GAME_SAVE_V2_KEY);
+    assert.ok(raw);
+    const saved = JSON.parse(raw);
+    assert.equal(saved.profile.settings.bgmEnabled, false);
+    assert.equal(saved.profile.settings.sfxEnabled, true);
+    assert.equal(saved.profile.settings.soundEnabled, false);
+    assert.equal(saved.profile.accessibility.reducedMotion, true);
+    assert.equal(saved.profile.accessibility.highContrast, true);
+    assert.equal(saved.profile.accessibility.textScale, "extra-large");
+
+    assert.deepEqual(
+      await repository(storage).readExperiencePreferences(),
+      updated,
+    );
+  });
+});
+
 describe("GameSnapshot projection and compact journal", () => {
   test("GameSnapshot만 snapshot schema로 투영하고 정답·단서 원문 필드는 저장하지 않는다", async () => {
     const storage = new MemoryStorage();

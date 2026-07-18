@@ -348,14 +348,16 @@ function playBridgeHaptic(
     | 'medium'
     | 'heavy',
 ): void {
-  if (
-    semanticType === 'success' ||
-    semanticType === 'warning' ||
-    semanticType === 'error' ||
-    semanticType === 'heavy'
-  ) {
-    Vibration.vibrate(20);
-  }
+  const duration = {
+    selection: 10,
+    light: 10,
+    medium: 18,
+    success: 20,
+    warning: 24,
+    error: 28,
+    heavy: 30,
+  }[semanticType];
+  Vibration.vibrate(duration);
 }
 
 export function MobileRuntimeHost({

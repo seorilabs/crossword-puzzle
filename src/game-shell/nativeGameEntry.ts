@@ -59,6 +59,7 @@ async function main(): Promise<void> {
     storage: bridge.storage,
     bridgeReady,
     launchConfig,
+    playHaptic: (semantic) => bridge.playHaptic(semantic),
   });
 
   await Promise.all([

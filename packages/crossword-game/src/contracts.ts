@@ -26,6 +26,15 @@ export type CrosswordGameInteractiveAck = Readonly<{
   scene: "puzzle";
 }>;
 
+export type CrosswordGameVisualPreferences = Readonly<{
+  highContrast: boolean;
+  reducedMotion: boolean;
+}>;
+
+export type CrosswordGameVisualPreferenceUpdate = Readonly<
+  Partial<CrosswordGameVisualPreferences>
+>;
+
 export type CrosswordGameRuntimeEvent =
   | Readonly<{
       type: "interactive";
@@ -74,6 +83,7 @@ export type CrosswordGameOptions = Readonly<{
   onInteractive?: (ack: CrosswordGameInteractiveAck) => void;
   onRuntimeEvent?: (event: CrosswordGameRuntimeEvent) => void;
   parent: HTMLElement | string;
+  highContrast?: boolean;
   reducedMotion?: boolean;
 }>;
 
@@ -81,6 +91,9 @@ export type CrosswordGameRuntime = Readonly<{
   canvas: HTMLCanvasElement;
   interactive: Promise<CrosswordGameInteractiveAck>;
   update: (snapshot: GameSnapshot, events?: readonly GameDomainEvent[]) => void;
+  updateVisualPreferences: (
+    preferences: CrosswordGameVisualPreferenceUpdate,
+  ) => void;
   suspend: () => void;
   resume: () => void;
   destroy: () => void;

@@ -549,7 +549,10 @@ export function projectSaveV2ToLegacyWrites(
   );
   writes.set(
     LEGACY_SETTING_KEYS.textScale,
-    save.profile.accessibility.textScale === "large" ? "large" : "normal",
+    save.profile.accessibility.textScale === "large" ||
+      save.profile.accessibility.textScale === "extra-large"
+      ? "large"
+      : "normal",
   );
 
   if (typeof settings.returnReminderPromptCount === "number") {

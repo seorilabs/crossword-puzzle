@@ -71,6 +71,7 @@ function createLoopbackFixture() {
   const storage = new Map<string, string>();
   const handlerCalls = {
     get: 0,
+    haptic: 0,
     set: 0,
     remove: 0,
     runtimeReady: 0,
@@ -89,7 +90,7 @@ function createLoopbackFixture() {
 
   const host = new GameBridgeCoordinator({
     role: "host",
-    capabilities: ["storage", "runtime", "lifecycle", "config"],
+    capabilities: ["storage", "haptic", "runtime", "lifecycle", "config"],
     transport: { send: deliverHostMessage },
     handlers: {
       "storage.get": ({ key, schemaVersion }) => {
@@ -109,6 +110,11 @@ function createLoopbackFixture() {
         handlerCalls.remove += 1;
         storage.delete(key);
         return { removed: true, transactionId };
+      },
+      "haptic.play": ({ semanticType }) => {
+        handlerCalls.haptic += 1;
+        assert.equal(semanticType, "success");
+        return { ack: true };
       },
       "runtime.ready": (payload) => {
         handlerCalls.runtimeReady += 1;
@@ -156,7 +162,13 @@ describe("native game bridge loopback contract", () => {
       state: "ready",
       role: "host",
       sessionId: "native-loopback-session",
-      negotiatedCapabilities: ["storage", "runtime", "lifecycle", "config"],
+      negotiatedCapabilities: [
+        "storage",
+        "haptic",
+        "runtime",
+        "lifecycle",
+        "config",
+      ],
     });
     assert.equal(fixture.windowTarget.listenerCount, 1);
     assert.equal(fixture.documentTarget.listenerCount, 1);
@@ -183,6 +195,8 @@ describe("native game bridge loopback contract", () => {
     assert.equal(await fixture.client.storage.getItem("save/current"), null);
     assert.equal(fixture.handlerCalls.set, 1);
     assert.equal(fixture.handlerCalls.remove, 1);
+    await fixture.client.playHaptic("success");
+    assert.equal(fixture.handlerCalls.haptic, 1);
 
     const runtimeReady: GameBridgeMethodPayloads["runtime.ready"] = {
       renderer: "webgl",

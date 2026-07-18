@@ -32,6 +32,11 @@ import {
   type SaveV2PuzzlePhase,
 } from "../../packages/crossword-core/src/saveV2.ts";
 import type { SavedProgress } from "../../packages/crossword-core/src/types.ts";
+import {
+  normalizeGameExperiencePreferences,
+  projectGamePreferenceRecords,
+  type GameExperiencePreferences,
+} from "../../packages/crossword-core/src/gamePreferences.ts";
 
 export const DEFAULT_GAME_SAVE_V2_KEY = "crossword:game-save:v2";
 export const DEFAULT_GAME_CELL_JOURNAL_KEY =
@@ -202,6 +207,11 @@ export interface GameSaveRepository {
   ): Promise<SaveV2PuzzleSnapshot>;
   commitCell(input: CommitGameCellInput): Promise<SaveV2PuzzleSnapshot>;
   readProgression(contentLocale: string): Promise<GameProgressionSnapshot>;
+  readExperiencePreferences(): Promise<GameExperiencePreferences>;
+  updateExperiencePreferences(
+    contentLocale: string,
+    preferences: GameExperiencePreferences,
+  ): Promise<GameExperiencePreferences>;
   recordPuzzleCompletion(
     input: RecordGameCompletionInput,
   ): Promise<RecordGameCompletionResult>;
@@ -751,6 +761,15 @@ function projectProgression(
   };
 }
 
+function projectExperiencePreferences(
+  save: SaveV2Envelope | null,
+): GameExperiencePreferences {
+  return normalizeGameExperiencePreferences(
+    save?.profile.settings,
+    save?.profile.accessibility,
+  );
+}
+
 export function createGameSaveRepository(
   options: CreateGameSaveRepositoryOptions,
 ): GameSaveRepository {
@@ -1048,6 +1067,39 @@ export function createGameSaveRepository(
       return projectProgression(save, contentLocale);
     });
 
+  const readExperiencePreferences = (): Promise<GameExperiencePreferences> =>
+    serialized(async () =>
+      projectExperiencePreferences(await requireValidSave()),
+    );
+
+  const updateExperiencePreferences = (
+    contentLocale: string,
+    preferences: GameExperiencePreferences,
+  ): Promise<GameExperiencePreferences> =>
+    serialized(async () => {
+      const timestamp = now();
+      const existing = await requireValidSave();
+      const base = existing ?? createFreshSave(contentLocale, timestamp);
+      const projectedPreferences = projectGamePreferenceRecords(preferences);
+      const next: SaveV2Envelope = {
+        ...base,
+        profile: {
+          ...base.profile,
+          settings: {
+            ...base.profile.settings,
+            ...projectedPreferences.settings,
+          },
+          accessibility: {
+            ...base.profile.accessibility,
+            ...projectedPreferences.accessibility,
+          },
+        },
+      };
+      const sealed = await sealSaveV2(next, options.checksumPort);
+      await persistCanonicalSave(sealed);
+      return projectExperiencePreferences(sealed);
+    });
+
   const recordPuzzleCompletion = (
     input: RecordGameCompletionInput,
   ): Promise<RecordGameCompletionResult> =>
@@ -1140,6 +1192,8 @@ export function createGameSaveRepository(
     persistSnapshot,
     commitCell,
     readProgression,
+    readExperiencePreferences,
+    updateExperiencePreferences,
     recordPuzzleCompletion,
     purchaseCosmetic,
   };

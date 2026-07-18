@@ -62,16 +62,15 @@ function createContent(): GameContentV1 {
 }
 
 describe("GameController single-writer state machine", () => {
-  test("intro부터 단어·교차·보드·결과·지도까지 결정적으로 진행한다", () => {
+  test("첫 단서가 선택된 상태부터 단어·교차·보드·결과·지도까지 결정적으로 진행한다", () => {
     const controller = new GameController({
       content: createContent(),
       profile: koKrLanguageProfile,
     });
 
-    assert.equal(controller.getSnapshot().phase, "intro");
+    assert.equal(controller.getSnapshot().phase, "active");
     assert.equal(controller.getSnapshot().selectedEntryId, "a1");
 
-    controller.dispatch({ type: "intro.complete" });
     const firstWord = controller.dispatch({
       type: "input.commit",
       entryId: "a1",
@@ -128,7 +127,6 @@ describe("GameController single-writer state machine", () => {
       content: createContent(),
       profile: koKrLanguageProfile,
     });
-    controller.dispatch({ type: "intro.complete" });
     controller.dispatch({
       type: "input.commit",
       entryId: "a1",
@@ -150,7 +148,6 @@ describe("GameController single-writer state machine", () => {
       content: createContent(),
       profile: koKrLanguageProfile,
     });
-    controller.dispatch({ type: "intro.complete" });
     controller.dispatch({ type: "composition.start" });
 
     const rejected = controller.dispatch({
@@ -163,12 +160,88 @@ describe("GameController single-writer state machine", () => {
     assert.deepEqual(rejected.snapshot.cellValues, {});
   });
 
+  test("길이를 모두 채운 오답은 정답 문자열 없이 semantic 사건을 발행한다", () => {
+    const controller = new GameController({
+      content: createContent(),
+      profile: koKrLanguageProfile,
+    });
+
+    const result = controller.dispatch({
+      type: "input.commit",
+      entryId: "a1",
+      cells: ["다", "라"],
+    });
+
+    assert.equal(result.snapshot.phase, "active");
+    assert.deepEqual(result.events, [
+      {
+        type: "game.input.committed",
+        entryId: "a1",
+        committedCellCount: 2,
+        commandSequence: result.snapshot.commandSequence,
+      },
+      {
+        type: "game.entry.incorrect",
+        entryId: "a1",
+        commandSequence: result.snapshot.commandSequence,
+      },
+    ]);
+    assert.equal(JSON.stringify(result.events).includes("다라"), false);
+  });
+
+  test("이미 완료한 정답을 다시 제출해도 오답 사건을 만들지 않는다", () => {
+    const controller = new GameController({
+      content: createContent(),
+      profile: koKrLanguageProfile,
+    });
+    controller.dispatch({
+      type: "input.commit",
+      entryId: "a1",
+      cells: ["가", "나"],
+    });
+    controller.dispatch({ type: "resolution.complete" });
+
+    const result = controller.dispatch({
+      type: "input.commit",
+      entryId: "a1",
+      cells: ["가", "나"],
+    });
+
+    assert.equal(
+      result.events.some((event) => event.type === "game.entry.incorrect"),
+      false,
+    );
+  });
+
+  test("교차 단어가 완성돼도 선택한 말길이 오답이면 두 사건을 모두 보존한다", () => {
+    const controller = new GameController({
+      content: createContent(),
+      profile: koKrLanguageProfile,
+    });
+    controller.dispatch({
+      type: "input.commit",
+      entryId: "d1",
+      cells: ["나", "다"],
+    });
+
+    const result = controller.dispatch({
+      type: "input.commit",
+      entryId: "a1",
+      cells: ["가", "라"],
+    });
+
+    assert.deepEqual(
+      result.events.map((event) => event.type),
+      ["game.input.committed", "game.word.resolved", "game.entry.incorrect"],
+    );
+    assert.deepEqual(result.snapshot.completedEntryIds, ["d1"]);
+  });
+
   test("완료된 교차 글자를 다른 값으로 덮어쓰지 못한다", () => {
     const controller = new GameController({
       content: createContent(),
       profile: koKrLanguageProfile,
     });
-    controller.dispatch({ type: "intro.complete" });
     controller.dispatch({
       type: "input.commit",
       entryId: "a1",
@@ -193,7 +266,6 @@ describe("GameController single-writer state machine", () => {
       content: createContent(),
       profile: koKrLanguageProfile,
     });
-    controller.dispatch({ type: "intro.complete" });
     controller.dispatch({ type: "composition.start" });
     assert.equal(
       controller.dispatch({ type: "app.suspend" }).snapshot.phase,
@@ -215,11 +287,11 @@ describe("GameController single-writer state machine", () => {
       calls.push(`${snapshot.phase}:${events[0]?.type ?? "none"}`);
     });
 
-    controller.dispatch({ type: "intro.complete" });
+    controller.dispatch({ type: "entry.select", entryId: "a1" });
     unsubscribe();
     controller.dispatch({ type: "composition.start" });
 
-    assert.deepEqual(calls, ["active:game.intro.completed"]);
+    assert.deepEqual(calls, ["active:game.entry.selected"]);
     assert.equal(Object.isFrozen(controller.getSnapshot()), true);
     assert.equal(Object.isFrozen(controller.getSnapshot().cellValues), true);
   });

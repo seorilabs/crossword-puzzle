@@ -1,8 +1,24 @@
 import Phaser from "phaser";
 
-import type { GameCommand } from "../../crossword-core/src/gameController.ts";
+import type {
+  GameCommand,
+  GameDomainEvent,
+} from "../../crossword-core/src/gameController.ts";
 import type { GameContentV1 } from "../../crossword-core/src/gameContent.ts";
-import type { CrosswordGameInteractiveAck } from "./contracts.ts";
+import type {
+  CrosswordGameInteractiveAck,
+  CrosswordGameVisualPreferences,
+} from "./contracts.ts";
+import {
+  ABBREVIATED_VFX_DURATION_MS,
+  INCORRECT_FEEDBACK_DURATION_MS,
+  INPUT_SETTLE_DURATION_MS,
+  planCrosswordGamePresentationCues,
+  resolveCrosswordGamePalette,
+  shouldAbbreviateCrosswordGameVfx,
+  type CrosswordGamePalette,
+  type CrosswordGamePresentationCue,
+} from "./presentationPolicy.ts";
 import {
   pickEntryForCell,
   type BoardCellPresentation,
@@ -12,28 +28,13 @@ import {
 export const BOOT_SCENE_KEY = "crossword-boot";
 export const PUZZLE_SCENE_KEY = "crossword-puzzle";
 
-const COLOR = Object.freeze({
-  complete: 0xd89035,
-  completeSoft: 0xffe4b8,
-  focus: 0x147d7c,
-  focusSoft: 0xd9f2ee,
-  ink: 0x17243a,
-  muted: 0x748093,
-  paper: 0xfffbef,
-  paperShade: 0xeee5d1,
-  path: 0x9aa4ae,
-  sky: 0xe6f0eb,
-  worldDormant: 0x85908f,
-  worldRestored: 0x4e9270,
-});
-
 type SceneServices = Readonly<{
   acknowledgeInteractive: (ack: CrosswordGameInteractiveAck) => void;
   content: GameContentV1;
   getPresentation: () => CrosswordPresentation;
+  getVisualPreferences: () => CrosswordGameVisualPreferences;
   isRuntimeSuspended: () => boolean;
   onEntrySelect: (entryId: string, commandSequence: number) => void;
-  reducedMotion: boolean;
   requestPresentationCommand: (
     command: GameCommand,
     commandSequence: number,
@@ -50,6 +51,11 @@ type SceneLayout = Readonly<{
   width: number;
   worldHeight: number;
 }>;
+
+type CrosswordVfxObject =
+  | Phaser.GameObjects.Arc
+  | Phaser.GameObjects.Rectangle
+  | Phaser.GameObjects.Text;
 
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, value));
@@ -113,7 +119,9 @@ export class CrosswordBootScene extends Phaser.Scene {
   }
 
   create(): void {
-    this.cameras.main.setBackgroundColor(COLOR.paper);
+    this.cameras.main.setBackgroundColor(
+      resolveCrosswordGamePalette(this.services.getVisualPreferences()).paper,
+    );
     this.scene.start(PUZZLE_SCENE_KEY, {
       puzzleId: this.services.content.puzzleId,
     });
@@ -125,8 +133,10 @@ export class CrosswordPuzzleScene extends Phaser.Scene {
   #backgroundLayer: Phaser.GameObjects.Container | null = null;
   #boardLayer: Phaser.GameObjects.Container | null = null;
   #contextLost = false;
-  #lastAnimatedEffectKey: string | null = null;
+  #activeVfxObjects = new Set<CrosswordVfxObject>();
+  #pendingVfxTimers = new Set<Phaser.Time.TimerEvent>();
   #pendingPresentationAck: Phaser.Time.TimerEvent | null = null;
+  #playedCueKeys = new Set<string>();
   #presentation: CrosswordPresentation;
   #sentPresentationAcks = new Set<string>();
   #shutdownComplete = false;
@@ -157,7 +167,7 @@ export class CrosswordPuzzleScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.#shutdown, this);
     this.events.once(Phaser.Scenes.Events.DESTROY, this.#shutdown, this);
 
-    this.#render(false);
+    this.#renderStatic();
     this.#syncInputState();
 
     this.game.renderer.once(Phaser.Renderer.Events.POST_RENDER, () => {
@@ -179,10 +189,18 @@ export class CrosswordPuzzleScene extends Phaser.Scene {
     });
   }
 
-  updatePresentation(presentation: CrosswordPresentation): void {
+  updatePresentation(
+    presentation: CrosswordPresentation,
+    events: readonly GameDomainEvent[] = [],
+  ): void {
     const previousSequence = this.#presentation.commandSequence;
     this.#presentation = presentation;
-    this.#render(presentation.commandSequence !== previousSequence);
+    const presentationChanged =
+      presentation.commandSequence !== previousSequence;
+    if (presentationChanged) {
+      this.#renderStatic();
+    }
+    this.#playPresentationEvents(events, presentationChanged);
     this.#syncInputState();
 
     if (presentation.suspended) {
@@ -199,8 +217,14 @@ export class CrosswordPuzzleScene extends Phaser.Scene {
   resumePresentation(): void {
     if (!this.#contextLost && !this.#presentation.suspended) {
       this.#resumePresentation();
-      this.#render(false);
+      this.#renderStatic();
     }
+  }
+
+  updateVisualPreferences(): void {
+    this.#clearActiveVfx();
+    this.cameras.main.setBackgroundColor(this.#palette().paper);
+    this.#renderStatic();
   }
 
   handleContextLost(): void {
@@ -210,17 +234,19 @@ export class CrosswordPuzzleScene extends Phaser.Scene {
 
   handleContextRestored(): void {
     this.#contextLost = false;
-    this.#render(false);
+    this.#clearActiveVfx();
+    this.#renderStatic();
     if (!this.#services.isRuntimeSuspended() && !this.#presentation.suspended) {
       this.#resumePresentation();
     }
   }
 
   #handleResize(): void {
-    this.#render(false);
+    this.#clearActiveVfx();
+    this.#renderStatic();
   }
 
-  #render(animate: boolean): void {
+  #renderStatic(): void {
     if (
       this.#backgroundLayer == null ||
       this.#worldLayer == null ||
@@ -239,24 +265,22 @@ export class CrosswordPuzzleScene extends Phaser.Scene {
     this.#backgroundLayer.removeAll(true);
     this.#worldLayer.removeAll(true);
     this.#boardLayer.removeAll(true);
-    this.#vfxLayer.removeAll(true);
-    this.tweens.killAll();
 
     this.#renderBackground(layout);
     this.#renderWorld(layout);
     this.#renderBoard(layout);
-
-    if (animate) {
-      this.#playEffect(layout);
-    }
     this.#schedulePresentationAck();
   }
 
   #renderBackground(layout: SceneLayout): void {
+    const palette = this.#palette();
     const graphics = this.add.graphics();
-    graphics.fillStyle(COLOR.paper, 1);
+    graphics.fillStyle(palette.paper, 1);
     graphics.fillRect(0, 0, layout.width, layout.height);
-    graphics.fillStyle(COLOR.paperShade, 0.2);
+    graphics.fillStyle(
+      palette.paperShade,
+      this.#preferences().highContrast ? 0.08 : 0.2,
+    );
     for (let y = 12; y < layout.height; y += 28) {
       graphics.fillRect(0, y, layout.width, 1);
     }
@@ -264,6 +288,8 @@ export class CrosswordPuzzleScene extends Phaser.Scene {
   }
 
   #renderWorld(layout: SceneLayout): void {
+    const palette = this.#palette();
+    const highContrast = this.#preferences().highContrast;
     const graphics = this.add.graphics();
     const world = this.#presentation.world;
     const left = Math.max(18, layout.width * 0.08);
@@ -272,10 +298,10 @@ export class CrosswordPuzzleScene extends Phaser.Scene {
     const span = right - left;
 
     graphics.fillGradientStyle(
-      COLOR.sky,
-      COLOR.sky,
-      COLOR.paper,
-      COLOR.paper,
+      palette.sky,
+      palette.sky,
+      palette.paper,
+      palette.paper,
       1,
     );
     graphics.fillRoundedRect(
@@ -286,14 +312,22 @@ export class CrosswordPuzzleScene extends Phaser.Scene {
       20,
     );
 
-    graphics.lineStyle(8, COLOR.worldDormant, 0.22);
+    graphics.lineStyle(
+      highContrast ? 10 : 8,
+      palette.worldDormant,
+      highContrast ? 0.7 : 0.22,
+    );
     graphics.beginPath();
     graphics.moveTo(left, centerY);
     graphics.lineTo(right, centerY);
     graphics.strokePath();
 
     if (world.progress > 0) {
-      graphics.lineStyle(8, COLOR.worldRestored, 0.82);
+      graphics.lineStyle(
+        highContrast ? 10 : 8,
+        palette.worldRestored,
+        highContrast ? 1 : 0.82,
+      );
       graphics.beginPath();
       graphics.moveTo(left, centerY);
       graphics.lineTo(left + span * world.progress, centerY);
@@ -305,12 +339,12 @@ export class CrosswordPuzzleScene extends Phaser.Scene {
       const x = left + (span * index) / denominator;
       const restored = index < world.restoredLandmarks;
       graphics.fillStyle(
-        restored ? COLOR.worldRestored : COLOR.worldDormant,
-        restored ? 1 : 0.42,
+        restored ? palette.worldRestored : palette.worldDormant,
+        restored ? 1 : highContrast ? 0.82 : 0.42,
       );
       graphics.fillCircle(x, centerY, restored ? 11 : 8);
       if (restored) {
-        graphics.lineStyle(2, COLOR.paper, 0.9);
+        graphics.lineStyle(highContrast ? 3 : 2, palette.paper, 0.9);
         graphics.strokeCircle(x, centerY, 5);
       }
     }
@@ -318,8 +352,8 @@ export class CrosswordPuzzleScene extends Phaser.Scene {
     const houseX = layout.width * 0.5;
     const houseY = layout.worldHeight * 0.3;
     graphics.fillStyle(
-      world.stage === "restored" ? COLOR.complete : COLOR.worldDormant,
-      world.stage === "dormant" ? 0.25 : 0.72,
+      world.stage === "restored" ? palette.complete : palette.worldDormant,
+      world.stage === "dormant" ? (highContrast ? 0.62 : 0.25) : 0.82,
     );
     graphics.fillRoundedRect(houseX - 22, houseY, 44, 34, 5);
     graphics.beginPath();
@@ -333,6 +367,8 @@ export class CrosswordPuzzleScene extends Phaser.Scene {
   }
 
   #renderBoard(layout: SceneLayout): void {
+    const palette = this.#palette();
+    const highContrast = this.#preferences().highContrast;
     const pathGraphics = this.add.graphics();
     const pathsByEntryId = new Map(
       this.#presentation.board.paths.map((path) => [path.entryId, path]),
@@ -350,12 +386,17 @@ export class CrosswordPuzzleScene extends Phaser.Scene {
       const firstCenter = cellCenter(layout, first.row, first.col);
       const lastCenter = cellCenter(layout, last.row, last.col);
       const color = path.completed
-        ? COLOR.complete
+        ? palette.complete
         : path.selected
-          ? COLOR.focus
-          : COLOR.path;
-      const alpha = path.completed || path.selected ? 0.78 : 0.28;
-      pathGraphics.lineStyle(layout.cellSize * 0.23, color, alpha);
+          ? palette.focus
+          : palette.path;
+      const alpha =
+        path.completed || path.selected ? 0.92 : highContrast ? 0.6 : 0.28;
+      pathGraphics.lineStyle(
+        layout.cellSize * (path.selected && highContrast ? 0.3 : 0.23),
+        color,
+        alpha,
+      );
       pathGraphics.beginPath();
       pathGraphics.moveTo(firstCenter.x, firstCenter.y);
       pathGraphics.lineTo(lastCenter.x, lastCenter.y);
@@ -366,15 +407,15 @@ export class CrosswordPuzzleScene extends Phaser.Scene {
     for (const cell of this.#presentation.board.cells) {
       const center = cellCenter(layout, cell.row, cell.col);
       const fillColor = cell.completed
-        ? COLOR.completeSoft
+        ? palette.completeSoft
         : cell.selected
-          ? COLOR.focusSoft
-          : COLOR.paper;
+          ? palette.focusSoft
+          : palette.paper;
       const strokeColor = cell.completed
-        ? COLOR.complete
+        ? palette.complete
         : cell.selected
-          ? COLOR.focus
-          : COLOR.ink;
+          ? palette.focus
+          : palette.ink;
       const cellRectangle = this.add
         .rectangle(
           center.x,
@@ -384,7 +425,11 @@ export class CrosswordPuzzleScene extends Phaser.Scene {
           fillColor,
           0.98,
         )
-        .setStrokeStyle(cell.selected ? 4 : 2, strokeColor, 1);
+        .setStrokeStyle(
+          cell.selected ? (highContrast ? 5 : 4) : highContrast ? 3 : 2,
+          strokeColor,
+          1,
+        );
 
       if (this.#canSelectEntry()) {
         cellRectangle.setInteractive({ useHandCursor: true });
@@ -406,7 +451,7 @@ export class CrosswordPuzzleScene extends Phaser.Scene {
       if (cell.value != null) {
         const valueText = this.add
           .text(center.x, center.y, cell.value, {
-            color: "#17243A",
+            color: highContrast ? "#000000" : "#17243A",
             fontFamily: "sans-serif",
             fontSize: `${Math.max(18, Math.floor(layout.cellSize * 0.46))}px`,
             fontStyle: cell.justResolved ? "bold" : "normal",
@@ -422,7 +467,7 @@ export class CrosswordPuzzleScene extends Phaser.Scene {
             center.y - layout.cellSize * 0.3,
             "✓",
             {
-              color: "#8A4E06",
+              color: highContrast ? "#000000" : "#8A4E06",
               fontFamily: "sans-serif",
               fontSize: `${Math.max(10, Math.floor(layout.cellSize * 0.19))}px`,
               fontStyle: "bold",
@@ -442,68 +487,220 @@ export class CrosswordPuzzleScene extends Phaser.Scene {
       if (first != null) {
         const center = cellCenter(layout, first.row, first.col);
         const marker = this.add
-          .circle(
+          .text(
             center.x - layout.cellSize * 0.28,
             center.y - layout.cellSize * 0.28,
-            Math.max(3, layout.cellSize * 0.065),
-            COLOR.focus,
-            1,
+            "◆",
+            {
+              color: highContrast ? "#000000" : "#147D7C",
+              fontFamily: "sans-serif",
+              fontSize: `${Math.max(9, Math.floor(layout.cellSize * 0.2))}px`,
+              fontStyle: "bold",
+            },
           )
-          .setStrokeStyle(1, COLOR.paper, 1);
+          .setOrigin(0.5);
         this.#boardLayer?.add(marker);
       }
     }
   }
 
-  #playEffect(layout: SceneLayout): void {
-    const effect = this.#presentation.effect;
-    if (effect.kind === "none") {
+  #playPresentationEvents(
+    events: readonly GameDomainEvent[],
+    presentationChanged: boolean,
+  ): void {
+    if (shouldAbbreviateCrosswordGameVfx(events)) {
+      this.#abbreviateActiveVfx();
+    }
+
+    const cues = planCrosswordGamePresentationCues(
+      events,
+      presentationChanged
+        ? this.#presentation.effect
+        : Object.freeze({
+            kind: "none" as const,
+            sequence: this.#presentation.commandSequence,
+            entryIds: Object.freeze([]),
+          }),
+    );
+    if (cues.length === 0) return;
+
+    const boardCue = cues.find((cue) => cue.kind === "board");
+    if (boardCue != null) {
+      this.#clearActiveVfx();
+      this.#playCue(boardCue);
       return;
     }
 
-    const effectKey = `${effect.sequence}:${effect.kind}`;
-    if (effectKey === this.#lastAnimatedEffectKey) {
-      return;
+    const inputSequences = new Set(
+      cues
+        .filter((cue) => cue.kind === "input-settle")
+        .map((cue) => cue.commandSequence),
+    );
+    for (const cue of cues) {
+      if (
+        cue.kind !== "input-settle" &&
+        inputSequences.has(cue.commandSequence)
+      ) {
+        this.#delayVfx(INPUT_SETTLE_DURATION_MS, () => this.#playCue(cue));
+      } else {
+        this.#playCue(cue);
+      }
     }
-    this.#lastAnimatedEffectKey = effectKey;
+  }
 
-    if (effect.kind === "board") {
+  #playCue(cue: CrosswordGamePresentationCue): void {
+    const cueKey = `${cue.commandSequence}:${cue.kind}:${cue.entryIds.join(",")}`;
+    if (this.#playedCueKeys.has(cueKey)) return;
+    if (this.#playedCueKeys.size >= 128) this.#playedCueKeys.clear();
+    this.#playedCueKeys.add(cueKey);
+
+    const layout = createLayout(
+      this.#presentation,
+      this.scale.width,
+      this.scale.height,
+    );
+    if (cue.kind === "input-settle") {
+      this.#playInputSettle(layout, cue);
+    } else if (cue.kind === "incorrect") {
+      this.#playIncorrectFeedback(layout, cue);
+    } else if (cue.kind === "board") {
       this.#playBoardRestore(layout);
-      return;
+    } else {
+      this.#playWordRestore(layout, cue);
+    }
+  }
+
+  #playInputSettle(
+    layout: SceneLayout,
+    cue: CrosswordGamePresentationCue,
+  ): void {
+    const palette = this.#palette();
+    const cellKeys = this.#getCueCellKeys(cue).slice(
+      0,
+      cue.committedCellCount ?? undefined,
+    );
+    for (const key of cellKeys) {
+      const cell = this.#getCellByKey(key);
+      if (cell == null || cell.value == null) continue;
+      const center = cellCenter(layout, cell.row, cell.col);
+      const ink = this.#trackVfx(
+        this.add.rectangle(
+          center.x,
+          center.y,
+          layout.cellSize * 0.7,
+          layout.cellSize * 0.7,
+          palette.ink,
+          this.#preferences().highContrast ? 0.18 : 0.12,
+        ),
+      );
+      if (!this.#preferences().reducedMotion) ink.setScale(1.08);
+      this.tweens.add({
+        alpha: 0,
+        duration: INPUT_SETTLE_DURATION_MS,
+        ease: "Sine.Out",
+        onComplete: () => this.#destroyVfx(ink),
+        scale: 1,
+        targets: ink,
+      });
+    }
+  }
+
+  #playIncorrectFeedback(
+    layout: SceneLayout,
+    cue: CrosswordGamePresentationCue,
+  ): void {
+    const palette = this.#palette();
+    const cellKeys = this.#getCueCellKeys(cue);
+    for (const key of cellKeys) {
+      const cell = this.#getCellByKey(key);
+      if (cell == null) continue;
+      const center = cellCenter(layout, cell.row, cell.col);
+      const outline = this.#trackVfx(
+        this.add
+          .rectangle(
+            center.x,
+            center.y,
+            layout.cellSize - 2,
+            layout.cellSize - 2,
+            palette.errorSoft,
+            this.#preferences().highContrast ? 0.16 : 0.08,
+          )
+          .setStrokeStyle(
+            this.#preferences().highContrast ? 5 : 3,
+            palette.error,
+            1,
+          ),
+      );
+      if (this.#preferences().reducedMotion) {
+        this.tweens.add({
+          alpha: 0,
+          duration: INCORRECT_FEEDBACK_DURATION_MS,
+          onComplete: () => this.#destroyVfx(outline),
+          targets: outline,
+        });
+      } else {
+        this.tweens.add({
+          duration: INCORRECT_FEEDBACK_DURATION_MS / 2,
+          ease: "Sine.InOut",
+          onComplete: () => this.#destroyVfx(outline),
+          scaleY: 0.78,
+          targets: outline,
+          yoyo: true,
+        });
+      }
     }
 
-    const targetCells = effect.entryIds.flatMap((entryId) => {
-      const path = this.#presentation.board.paths.find(
-        (candidate) => candidate.entryId === entryId,
+    const first = this.#getCellByKey(cellKeys[0]);
+    if (first != null) {
+      const center = cellCenter(layout, first.row, first.col);
+      const marker = this.#trackVfx(
+        this.add
+          .text(center.x, center.y, "!", {
+            color: this.#preferences().highContrast ? "#000000" : "#A50016",
+            fontFamily: "sans-serif",
+            fontSize: `${Math.max(16, Math.floor(layout.cellSize * 0.42))}px`,
+            fontStyle: "bold",
+          })
+          .setOrigin(0.5),
       );
-      return path?.cellKeys ?? [];
-    });
-    const uniqueCellKeys = [...new Set(targetCells)];
+      this.tweens.add({
+        alpha: 0,
+        duration: INCORRECT_FEEDBACK_DURATION_MS,
+        onComplete: () => this.#destroyVfx(marker),
+        targets: marker,
+      });
+    }
+  }
 
+  #playWordRestore(
+    layout: SceneLayout,
+    cue: CrosswordGamePresentationCue,
+  ): void {
+    const palette = this.#palette();
+    const uniqueCellKeys = this.#getCueCellKeys(cue);
     this.#playWorldRestorePulse(layout);
 
     for (const [index, key] of uniqueCellKeys.entries()) {
       const cell = this.#getCellByKey(key);
-      if (cell == null) {
-        continue;
-      }
+      if (cell == null) continue;
       const center = cellCenter(layout, cell.row, cell.col);
-      const sweep = this.add.rectangle(
-        center.x,
-        center.y,
-        layout.cellSize * 0.78,
-        layout.cellSize * 0.78,
-        COLOR.complete,
-        0.38,
+      const sweep = this.#trackVfx(
+        this.add.rectangle(
+          center.x,
+          center.y,
+          layout.cellSize * 0.78,
+          layout.cellSize * 0.78,
+          palette.complete,
+          this.#preferences().highContrast ? 0.52 : 0.38,
+        ),
       );
-      this.#vfxLayer?.add(sweep);
 
-      if (this.#services.reducedMotion) {
-        sweep.setFillStyle(COLOR.complete, 0.22);
+      if (this.#preferences().reducedMotion) {
+        sweep.setFillStyle(palette.complete, 0.22);
         this.tweens.add({
           alpha: 0,
           duration: 150,
-          onComplete: () => sweep.destroy(),
+          onComplete: () => this.#destroyVfx(sweep),
           targets: sweep,
         });
       } else {
@@ -513,31 +710,42 @@ export class CrosswordPuzzleScene extends Phaser.Scene {
           delay: Math.min(250, index * 45),
           duration: 200,
           ease: "Sine.Out",
-          onComplete: () => sweep.destroy(),
+          onComplete: () => this.#destroyVfx(sweep),
           scaleX: 1,
           targets: sweep,
         });
       }
     }
 
-    if (effect.kind === "chain") {
+    if (cue.kind === "chain") {
       const crossing = this.#presentation.board.cells.find(
         (cell) =>
-          cell.entryIds.filter((entryId) => effect.entryIds.includes(entryId))
+          cell.entryIds.filter((entryId) => cue.entryIds.includes(entryId))
             .length > 1,
       );
       if (crossing != null) {
         const center = cellCenter(layout, crossing.row, crossing.col);
-        const wave = this.add
-          .circle(center.x, center.y, layout.cellSize * 0.18, COLOR.focus, 0)
-          .setStrokeStyle(4, COLOR.complete, 0.9);
-        this.#vfxLayer?.add(wave);
+        const wave = this.#trackVfx(
+          this.add
+            .circle(
+              center.x,
+              center.y,
+              layout.cellSize * 0.18,
+              palette.focus,
+              0,
+            )
+            .setStrokeStyle(
+              this.#preferences().highContrast ? 6 : 4,
+              palette.complete,
+              1,
+            ),
+        );
         this.tweens.add({
           alpha: 0,
-          duration: this.#services.reducedMotion ? 150 : 380,
+          duration: this.#preferences().reducedMotion ? 150 : 380,
           ease: "Sine.Out",
-          onComplete: () => wave.destroy(),
-          scale: this.#services.reducedMotion ? 1 : 2.6,
+          onComplete: () => this.#destroyVfx(wave),
+          scale: this.#preferences().reducedMotion ? 1 : 2.6,
           targets: wave,
         });
       }
@@ -545,59 +753,162 @@ export class CrosswordPuzzleScene extends Phaser.Scene {
   }
 
   #playBoardRestore(layout: SceneLayout): void {
-    const paper = this.add.rectangle(
-      layout.boardX + layout.boardWidth / 2,
-      layout.boardY + layout.boardHeight / 2,
-      layout.boardWidth + 12,
-      layout.boardHeight + 12,
-      COLOR.completeSoft,
-      0.42,
+    const palette = this.#palette();
+    const paper = this.#trackVfx(
+      this.add.rectangle(
+        layout.boardX + layout.boardWidth / 2,
+        layout.boardY + layout.boardHeight / 2,
+        layout.boardWidth + 12,
+        layout.boardHeight + 12,
+        palette.completeSoft,
+        this.#preferences().highContrast ? 0.62 : 0.42,
+      ),
     );
-    this.#vfxLayer?.add(paper);
+    const marker = this.#trackVfx(
+      this.add
+        .text(
+          layout.boardX + layout.boardWidth / 2,
+          layout.boardY + layout.boardHeight / 2,
+          "✓",
+          {
+            color: this.#preferences().highContrast ? "#000000" : "#8A4E06",
+            fontFamily: "sans-serif",
+            fontSize: `${Math.max(28, Math.floor(layout.cellSize * 0.9))}px`,
+            fontStyle: "bold",
+          },
+        )
+        .setOrigin(0.5),
+    );
 
-    if (this.#services.reducedMotion) {
-      this.tweens.add({
-        alpha: 0,
-        duration: 180,
-        onComplete: () => paper.destroy(),
-        targets: paper,
-      });
+    if (this.#preferences().reducedMotion) {
+      for (const target of [paper, marker]) {
+        this.tweens.add({
+          alpha: 0,
+          duration: INCORRECT_FEEDBACK_DURATION_MS,
+          onComplete: () => this.#destroyVfx(target),
+          targets: target,
+        });
+      }
       return;
     }
 
     paper.setScale(1, 0.04);
+    marker.setScale(0.7);
     this.tweens.add({
       alpha: 0,
       duration: 650,
       ease: "Cubic.Out",
-      onComplete: () => paper.destroy(),
+      onComplete: () => this.#destroyVfx(paper),
       scaleY: 1,
       targets: paper,
+    });
+    this.tweens.add({
+      alpha: 0,
+      delay: 120,
+      duration: 420,
+      ease: "Back.Out",
+      onComplete: () => this.#destroyVfx(marker),
+      scale: 1.15,
+      targets: marker,
     });
   }
 
   #playWorldRestorePulse(layout: SceneLayout): void {
     const world = this.#presentation.world;
-    if (world.progress <= 0) {
-      return;
-    }
+    if (world.progress <= 0) return;
+    const palette = this.#palette();
     const left = Math.max(18, layout.width * 0.08);
     const right = layout.width - left;
     const x = left + (right - left) * world.progress;
     const y = layout.worldHeight * 0.58;
-    const pulse = this.add
-      .circle(x, y, 10, COLOR.worldRestored, 0)
-      .setStrokeStyle(4, COLOR.worldRestored, 0.82);
-    this.#vfxLayer?.add(pulse);
+    const pulse = this.#trackVfx(
+      this.add
+        .circle(x, y, 10, palette.worldRestored, 0)
+        .setStrokeStyle(
+          this.#preferences().highContrast ? 6 : 4,
+          palette.worldRestored,
+          1,
+        ),
+    );
 
     this.tweens.add({
       alpha: 0,
-      duration: this.#services.reducedMotion ? 150 : 420,
+      duration: this.#preferences().reducedMotion ? 150 : 420,
       ease: "Sine.Out",
-      onComplete: () => pulse.destroy(),
-      scale: this.#services.reducedMotion ? 1 : 2.4,
+      onComplete: () => this.#destroyVfx(pulse),
+      scale: this.#preferences().reducedMotion ? 1 : 2.4,
       targets: pulse,
     });
+  }
+
+  #getCueCellKeys(cue: CrosswordGamePresentationCue): string[] {
+    return [
+      ...new Set(
+        cue.entryIds.flatMap((entryId) => {
+          const path = this.#presentation.board.paths.find(
+            (candidate) => candidate.entryId === entryId,
+          );
+          return path?.cellKeys ?? [];
+        }),
+      ),
+    ];
+  }
+
+  #trackVfx<T extends CrosswordVfxObject>(object: T): T {
+    this.#activeVfxObjects.add(object);
+    this.#vfxLayer?.add(object);
+    return object;
+  }
+
+  #destroyVfx(object: CrosswordVfxObject): void {
+    if (!this.#activeVfxObjects.delete(object)) return;
+    object.destroy();
+  }
+
+  #delayVfx(delay: number, callback: () => void): void {
+    const timer = this.time.delayedCall(delay, () => {
+      this.#pendingVfxTimers.delete(timer);
+      callback();
+    });
+    this.#pendingVfxTimers.add(timer);
+  }
+
+  #abbreviateActiveVfx(): void {
+    for (const timer of this.#pendingVfxTimers) timer.remove(false);
+    this.#pendingVfxTimers.clear();
+    if (this.#activeVfxObjects.size === 0) return;
+
+    if (this.#preferences().reducedMotion) {
+      this.#clearActiveVfx();
+      return;
+    }
+    for (const object of [...this.#activeVfxObjects]) {
+      this.tweens.killTweensOf(object);
+      this.tweens.add({
+        alpha: 0,
+        duration: ABBREVIATED_VFX_DURATION_MS,
+        onComplete: () => this.#destroyVfx(object),
+        targets: object,
+      });
+    }
+  }
+
+  #clearActiveVfx(): void {
+    for (const timer of this.#pendingVfxTimers) timer.remove(false);
+    this.#pendingVfxTimers.clear();
+    for (const object of this.#activeVfxObjects) {
+      this.tweens.killTweensOf(object);
+    }
+    this.#vfxLayer?.removeAll(true);
+    this.#activeVfxObjects.clear();
+  }
+
+  #preferences(): CrosswordGameVisualPreferences {
+    return this.#services.getVisualPreferences();
+  }
+
+  #palette(): CrosswordGamePalette {
+    return resolveCrosswordGamePalette(this.#preferences());
   }
 
   #getCellByKey(key: string | undefined): BoardCellPresentation | null {
@@ -640,10 +951,10 @@ export class CrosswordPuzzleScene extends Phaser.Scene {
     let delay = 0;
     if (this.#presentation.phase === "word-resolved") {
       command = { type: "resolution.complete" };
-      delay = this.#services.reducedMotion ? 180 : 460;
+      delay = this.#preferences().reducedMotion ? 180 : 460;
     } else if (this.#presentation.phase === "board-resolved") {
       command = { type: "board.presentation.complete" };
-      delay = this.#services.reducedMotion ? 200 : 680;
+      delay = this.#preferences().reducedMotion ? 200 : 680;
     }
 
     if (command == null) {
@@ -667,11 +978,13 @@ export class CrosswordPuzzleScene extends Phaser.Scene {
   #pausePresentation(): void {
     this.#pendingPresentationAck?.remove(false);
     this.#pendingPresentationAck = null;
+    for (const timer of this.#pendingVfxTimers) timer.paused = true;
     this.tweens.pauseAll();
     this.input.enabled = false;
   }
 
   #resumePresentation(): void {
+    for (const timer of this.#pendingVfxTimers) timer.paused = false;
     this.tweens.resumeAll();
     this.#syncInputState();
     this.#schedulePresentationAck();
@@ -685,7 +998,7 @@ export class CrosswordPuzzleScene extends Phaser.Scene {
     this.scale.off(Phaser.Scale.Events.RESIZE, this.#handleResize, this);
     this.#pendingPresentationAck?.remove(false);
     this.#pendingPresentationAck = null;
-    this.tweens.killAll();
+    this.#clearActiveVfx();
     this.#backgroundLayer = null;
     this.#worldLayer = null;
     this.#boardLayer = null;

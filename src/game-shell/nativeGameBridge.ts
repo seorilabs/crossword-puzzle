@@ -32,6 +32,9 @@ export type NativeGameBridgeClient = Readonly<{
   storage: KeyValueStoragePort;
   waitUntilReady(): Promise<void>;
   waitForConfigSnapshot(): Promise<NativeHostConfigSnapshot>;
+  playHaptic(
+    semanticType: GameBridgeMethodPayloads["haptic.play"]["semanticType"],
+  ): Promise<void>;
   reportRuntimeReady(payload: NativeRuntimeReadyPayload): Promise<void>;
   dispose(): void;
 }>;
@@ -226,6 +229,9 @@ export function createNativeGameBridgeClient(
     storage,
     waitUntilReady: () => ready.promise,
     waitForConfigSnapshot: () => configSnapshot.promise,
+    async playHaptic(semanticType) {
+      unwrapResult(await coordinator.request("haptic.play", { semanticType }));
+    },
     async reportRuntimeReady(payload) {
       unwrapResult(await coordinator.request("runtime.ready", payload));
     },
