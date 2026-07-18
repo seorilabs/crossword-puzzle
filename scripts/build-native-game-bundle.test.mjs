@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import test from "node:test";
 
 import {
   checkNativeGameAssetManifest,
   createNativeGameAssetManifest,
+  isPinnedPhaserModuleId,
   NATIVE_GAME_ASSET_MANIFEST,
   sanitizePhaserForNativeWebView,
   serializeNativeGameAssetManifest,
@@ -38,6 +39,16 @@ test("fails closed when the pinned Phaser fallback shape changes", () => {
         `${phaserDynamicFallbackFixture}${phaserDynamicFallbackFixture}`,
       ),
     /found 2/,
+  );
+});
+
+test("matches the pinned Phaser module through npm and pnpm symlink paths", () => {
+  const configuredPath = resolve("node_modules/phaser/dist/phaser.esm.js");
+  assert.equal(isPinnedPhaserModuleId(configuredPath), true);
+  assert.equal(isPinnedPhaserModuleId(`${configuredPath}?v=fixture`), true);
+  assert.equal(
+    isPinnedPhaserModuleId(resolve("node_modules/phaser/dist/phaser.js")),
+    false,
   );
 });
 

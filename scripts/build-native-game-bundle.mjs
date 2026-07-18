@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { createHash } from "node:crypto";
+import { realpathSync } from "node:fs";
 import { readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,10 +13,11 @@ export const NATIVE_GAME_ASSET_MANIFEST = "asset-manifest.json";
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const defaultBundleDirectory = join(repositoryRoot, "apps/mobile/game-bundle");
 const nativeGameViteConfig = join(repositoryRoot, "vite.native-game.config.ts");
-const pinnedPhaserModulePath = join(
+const configuredPhaserModulePath = join(
   repositoryRoot,
   "node_modules/phaser/dist/phaser.esm.js",
-)
+);
+const pinnedPhaserModulePath = realpathSync(configuredPhaserModulePath)
   .split(sep)
   .join("/");
 const executableTextExtensions = new Set([
@@ -47,13 +49,23 @@ export function sanitizePhaserForNativeWebView(source) {
   return code;
 }
 
+export function isPinnedPhaserModuleId(id) {
+  const rawPath = id.split("?", 1)[0];
+  let resolvedPath;
+  try {
+    resolvedPath = realpathSync(rawPath);
+  } catch {
+    resolvedPath = rawPath;
+  }
+  return resolvedPath.split(sep).join("/") === pinnedPhaserModulePath;
+}
+
 function phaserNativeWebViewCspPlugin() {
   return {
     name: "crossword-phaser-native-webview-csp",
     enforce: "pre",
     transform(source, id) {
-      const modulePath = id.split("?", 1)[0].replaceAll("\\", "/");
-      if (modulePath !== pinnedPhaserModulePath) {
+      if (!isPinnedPhaserModuleId(id)) {
         return null;
       }
 
