@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { fireEvent, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
@@ -201,6 +203,20 @@ async function solveVisibleBoard(
 }
 
 describe("첫 실행 3보드 화면 플레이스루", () => {
+  test("모바일 폭에서 캔버스의 intrinsic width가 게임 그리드 열을 넓히지 않는다", () => {
+    const gameExperienceCss = readFileSync(
+      "src/game-shell/GameExperience.css",
+      "utf8",
+    );
+    const gameExperienceRule = gameExperienceCss.match(
+      /\.gameExperience\s*\{(?<declarations>[^}]+)\}/u,
+    )?.groups?.declarations;
+
+    expect(gameExperienceRule).toMatch(
+      /grid-template-columns:\s*minmax\(0,\s*1fr\);/u,
+    );
+  });
+
   test("결과·지도·다음 보드와 화면 재마운트 이어하기를 실제 shell에서 연결한다", async () => {
     const storage = new MemoryStorage();
     const contents = loadBundledFirstRunGameContents();

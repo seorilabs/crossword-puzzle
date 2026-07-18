@@ -34,6 +34,7 @@
   min-height: 100vh;
   min-height: 100dvh;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(260px, 1fr) auto;
   overflow: hidden;
   background:
