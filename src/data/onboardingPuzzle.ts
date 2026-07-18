@@ -156,7 +156,7 @@ export const onboardingPuzzleTwo: Puzzle = {
   },
 };
 
-/** 세 번째 보드는 일상 이동 어휘로 첫 실행 3보드 여정을 마무리한다. */
+/** 세 번째 보드는 앞선 두 보드와 답이 겹치지 않는 생활 어휘로 여정을 마친다. */
 export const onboardingPuzzleThree: Puzzle = {
   alias: "입문 3",
   puzzleId: "onboarding-easy-03",
@@ -164,8 +164,8 @@ export const onboardingPuzzleThree: Puzzle = {
   difficulty: "easy",
   gridSize: 5,
   grid: [
-    ["아", "주", "머", "니", ""],
-    ["기", "차", "", "", ""],
+    ["자", "동", "차", "", ""],
+    ["연", "기", "", "", ""],
     ["", "", "", "", ""],
     ["", "", "", "", ""],
     ["", "", "", "", ""],
@@ -173,8 +173,8 @@ export const onboardingPuzzleThree: Puzzle = {
   entries: [
     {
       id: "a1",
-      answer: "아주머니",
-      clue: "어른 여성을 친근하고 예의 있게 부르는 말",
+      answer: "자동차",
+      clue: "엔진의 힘으로 바퀴를 굴려 도로를 달리는 차",
       direction: "across",
       row: 0,
       col: 0,
@@ -182,8 +182,8 @@ export const onboardingPuzzleThree: Puzzle = {
     },
     {
       id: "d1",
-      answer: "아기",
-      clue: "태어난 지 얼마 되지 않은 어린아이",
+      answer: "자연",
+      clue: "사람의 힘을 보태지 않아도 저절로 이루어진 것",
       direction: "down",
       row: 0,
       col: 0,
@@ -191,8 +191,8 @@ export const onboardingPuzzleThree: Puzzle = {
     },
     {
       id: "a2",
-      answer: "기차",
-      clue: "철길 위를 달리는 여러 칸의 탈것",
+      answer: "연기",
+      clue: "불이 탈 때 생겨 공중으로 퍼지는 흐린 기체",
       direction: "across",
       row: 1,
       col: 0,
@@ -200,8 +200,8 @@ export const onboardingPuzzleThree: Puzzle = {
     },
     {
       id: "d2",
-      answer: "주차",
-      clue: "자동차를 정해진 곳에 세워 두는 일",
+      answer: "동기",
+      clue: "어떤 일을 시작하거나 계속하게 만드는 까닭",
       direction: "down",
       row: 0,
       col: 1,
@@ -210,10 +210,10 @@ export const onboardingPuzzleThree: Puzzle = {
   ],
   metrics: {
     autoRunCount: 0,
-    bboxDensity: 0.75,
+    bboxDensity: 0.833,
     crossCells: 2,
     crossRatio: 0.5,
-    filledCells: 6,
+    filledCells: 5,
     multiCrossEntries: 2,
     placedWordCount: 4,
     wordCount: 4,
