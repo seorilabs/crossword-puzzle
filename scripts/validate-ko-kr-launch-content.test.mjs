@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
 import {
+  DAILY_CONNECTOR_RANKING_POLICY,
   DAILY_CONNECTOR_WORD_LIMIT_BY_DIFFICULTY,
   LAUNCH_ACCEPTED_CANDIDATE_POLICY,
   LAUNCH_RETRY_PHASE_POLICY,
@@ -28,8 +29,11 @@ import {
   calculateCanonicalDocumentChecksum,
   calculateContentQualityEvidence,
   calculateLaunchRetrySeed,
+  calculateWordPoolAnswerSetSha256,
   deriveLaunchWordBankReport,
   independentlyAllocateLaunchThemeOwners,
+  independentlyFilterAvailableWords,
+  independentlySummarizeFuturePoolConnectivity,
   resolvePublicArtifactPath,
   snapshotCommittedCurrentPointer,
   validateBundledFirstRunCatalog,
@@ -68,6 +72,20 @@ function clueQualityConfig() {
 
 function sha256(value) {
   return `sha256:${createHash("sha256").update(value).digest("hex")}`;
+}
+
+function fixtureWordPool({
+  answers = [],
+  connectors = null,
+  theme = null,
+  total = answers.length,
+} = {}) {
+  return {
+    answerSetSha256: sha256(JSON.stringify([...answers].sort())),
+    total,
+    theme,
+    connectors,
+  };
 }
 const firstRunSourceLock = Object.freeze({
   sourceId: "repo-first-run-content-v1",
@@ -193,6 +211,7 @@ test("generator theme inventory의 길이 상한과 owner 정책 재봉인을 �
     dailyConnectorWordLimitByDifficulty: structuredClone(
       DAILY_CONNECTOR_WORD_LIMIT_BY_DIFFICULTY,
     ),
+    dailyConnectorRanking: structuredClone(DAILY_CONNECTOR_RANKING_POLICY),
     maxGenerationWordLength: { easy: 3, normal: 3, hard: 3 },
     themeOwnership: structuredClone(LAUNCH_THEME_OWNER_POLICY),
   };
@@ -217,6 +236,18 @@ test("generator theme inventory의 길이 상한과 owner 정책 재봉인을 �
   assert.throws(
     () => validateGeneratorThemeInventoryPolicy(forgedConnectorPolicy),
     /daily connector word limit policy does not exactly match/,
+  );
+
+  const forgedConnectorRanking = structuredClone(config);
+  forgedConnectorRanking.dailyConnectorRanking.connectorOrder = [
+    "max-theme-word-degree",
+    ...forgedConnectorRanking.dailyConnectorRanking.connectorOrder.filter(
+      (item) => item !== "max-theme-word-degree",
+    ),
+  ];
+  assert.throws(
+    () => validateGeneratorThemeInventoryPolicy(forgedConnectorRanking),
+    /daily connector ranking policy does not exactly match/,
   );
 });
 
@@ -683,8 +714,9 @@ test("저품질 board의 report quality PASS 재봉인을 거부한다", () => {
 });
 
 function makeGeneratorTraceFixture(route = buildLaunchRoutePlan()[0]) {
+  const clueConfig = clueQualityConfig();
   const config = {
-    schemaVersion: "ko-kr-launch-generator-config/8",
+    schemaVersion: "ko-kr-launch-generator-config/9",
     acceptedCandidateSelection: structuredClone(
       LAUNCH_ACCEPTED_CANDIDATE_POLICY,
     ),
@@ -697,12 +729,24 @@ function makeGeneratorTraceFixture(route = buildLaunchRoutePlan()[0]) {
     branchLimit: 14,
     candidateWordLimit: 600,
     denseCandidateLimit: 96,
+    dailyConnectorWordLimitByDifficulty: structuredClone(
+      DAILY_CONNECTOR_WORD_LIMIT_BY_DIFFICULTY,
+    ),
+    dailyConnectorRanking: structuredClone(DAILY_CONNECTOR_RANKING_POLICY),
+    difficultyProfiles: structuredClone(DIFFICULTY_PROFILES),
+    maxGenerationWordLength: { easy: 3, normal: 3, hard: 3 },
+    themeOwnership: structuredClone(LAUNCH_THEME_OWNER_POLICY),
     minMultiCrossRatio: 0.65,
     maxAutoRunRatio: 0.5,
     minDailyThemeEntryRatio: 0.5,
     searchQuality: structuredClone(LAUNCH_SEARCH_QUALITY_POLICY),
-    clueQuality: clueQualityConfig().clueQuality,
+    clueSimilarity: clueConfig.clueSimilarity,
+    clueQuality: clueConfig.clueQuality,
+    dependencies: [],
+    dependencyTreeSha256: sha256("fixture-dependencies"),
     routePlan: buildLaunchRoutePlan(),
+    scriptSha256: sha256("fixture-generator-script"),
+    wordBankSha256: sha256("fixture-wordbank"),
   };
   const retryScheduleLength = LAUNCH_RETRY_PHASE_POLICY.phases.reduce(
     (count, phase) => count + phase.retryCount,
@@ -766,6 +810,10 @@ function makeGeneratorTraceFixture(route = buildLaunchRoutePlan()[0]) {
     isolatedThemeOwnerCount: 0,
     cooldownAnswerCount: selectedAnswers.length,
   };
+  const traceWordPool = fixtureWordPool({
+    answers: Array.from({ length: 200 }, (_, index) => `pool-${index}`),
+    total: 200,
+  });
   const attempts = [
     {
       phase: "base",
@@ -774,7 +822,7 @@ function makeGeneratorTraceFixture(route = buildLaunchRoutePlan()[0]) {
       retryIndex: 0,
       globalRetryIndex: 0,
       connectorLimit: null,
-      wordPool: { total: 200, theme: null, connectors: null },
+      wordPool: structuredClone(traceWordPool),
       seed: calculateLaunchRetrySeed(config.baseSeed, route.puzzleId, 0),
       searchOptions: searchOptionsForRetry(config, 0),
       candidateCount: 1,
@@ -798,7 +846,7 @@ function makeGeneratorTraceFixture(route = buildLaunchRoutePlan()[0]) {
       retryIndex: 1,
       globalRetryIndex: 1,
       connectorLimit: null,
-      wordPool: { total: 200, theme: null, connectors: null },
+      wordPool: structuredClone(traceWordPool),
       seed: calculateLaunchRetrySeed(config.baseSeed, route.puzzleId, 1),
       searchOptions: searchOptionsForRetry(config, 1),
       candidateCount: 2,
@@ -832,7 +880,7 @@ function makeGeneratorTraceFixture(route = buildLaunchRoutePlan()[0]) {
       retryIndex: 2,
       globalRetryIndex: 2,
       connectorLimit: null,
-      wordPool: { total: 200, theme: null, connectors: null },
+      wordPool: structuredClone(traceWordPool),
       seed: calculateLaunchRetrySeed(config.baseSeed, route.puzzleId, 2),
       searchOptions: searchOptionsForRetry(config, 2),
       candidateCount: 1,
@@ -866,7 +914,7 @@ function makeGeneratorTraceFixture(route = buildLaunchRoutePlan()[0]) {
       selectedSeed: attempts[1].seed,
       metrics: { ...selectedMetrics },
       quality: { ratios: { ...selectedRatios } },
-      wordPool: { total: 200, theme: null, connectors: null },
+      wordPool: structuredClone(traceWordPool),
       attempts,
     },
   };
@@ -892,7 +940,7 @@ function makeFallbackGeneratorTraceFixture(routeKind = "chapter") {
     retryIndex,
     globalRetryIndex: retryIndex,
     connectorLimit: null,
-    wordPool: { total: 200, theme: null, connectors: null },
+    wordPool: structuredClone(fixture.board.wordPool),
     seed: calculateLaunchRetrySeed(
       fixture.config.baseSeed,
       fixture.board.puzzleId,
@@ -911,7 +959,7 @@ function makeFallbackGeneratorTraceFixture(routeKind = "chapter") {
       retryIndex,
       globalRetryIndex,
       connectorLimit: null,
-      wordPool: { total: 200, theme: null, connectors: null },
+      wordPool: structuredClone(fixture.board.wordPool),
       seed: calculateLaunchRetrySeed(
         fixture.config.baseSeed,
         fixture.board.puzzleId,
@@ -1020,6 +1068,7 @@ function makeDailyFallbackPoolTraceFixture() {
     },
   };
   const wordPool = (selection) => ({
+    answerSetSha256: calculateWordPoolAnswerSetSha256(selection.words),
     total: selection.words.length,
     theme: selection.themeWordCount,
     connectors: selection.connectorWordCount,
@@ -1079,6 +1128,175 @@ function makeDailyFallbackPoolTraceFixture() {
   };
 }
 
+function makeDailyGreedyPoolTraceFixture() {
+  const { config } = makeGeneratorTraceFixture();
+  const routes = orderRoutesForGeneration(buildLaunchRoutePlan());
+  const route = routes[0];
+  const nextRoute = routes[1];
+  const themeWords = Array.from({ length: 100 }, (_, index) => ({
+    answer: `테마-${String(index).padStart(3, "0")}`,
+    answerCells: [index < 60 ? "가" : "나"],
+    clue: `테마 단서 ${index}`,
+    difficulty: "normal",
+    reviewLedgerIndex: index,
+    themeOwner: route.themeId,
+    themeHardReserve: false,
+  }));
+  const redundantConnectors = Array.from({ length: 159 }, (_, index) => ({
+    answer: `중복-${String(index).padStart(3, "0")}`,
+    answerCells: ["가", "다"],
+    clue: `중복 연결 단서 ${index}`,
+    difficulty: "normal",
+    reviewLedgerIndex: index + 100,
+    themeOwner: null,
+    themeHardReserve: false,
+  }));
+  const uncoveredConnector = {
+    answer: "미연결-owner-coverage",
+    answerCells: ["나", "라"],
+    clue: "남은 테마 owner를 덮는 연결 단서",
+    difficulty: "normal",
+    reviewLedgerIndex: 259,
+    themeOwner: null,
+    themeHardReserve: false,
+  };
+  const reviewedWords = [
+    ...themeWords,
+    ...redundantConnectors,
+    uncoveredConnector,
+  ];
+  const selection = filterAvailableWords(reviewedWords, route, new Set());
+  const independentSelection = independentlyFilterAvailableWords(
+    reviewedWords,
+    route,
+    new Set(),
+  );
+  assert.equal(
+    calculateWordPoolAnswerSetSha256(independentSelection.words),
+    calculateWordPoolAnswerSetSha256(selection.words),
+  );
+
+  const oldConnectorPrefix = redundantConnectors.slice(0, 80);
+  const oldPoolWords = [...themeWords, ...oldConnectorPrefix];
+  const newPoolAnswers = new Set(selection.words.map((word) => word.answer));
+  const oldPoolAnswers = new Set(oldPoolWords.map((word) => word.answer));
+  assert.equal(newPoolAnswers.has(uncoveredConnector.answer), true);
+  assert.equal(oldPoolAnswers.has(uncoveredConnector.answer), false);
+
+  const answers = [
+    ...themeWords.slice(0, 5),
+    ...redundantConnectors.slice(0, 5),
+  ]
+    .map((word) => word.answer)
+    .sort();
+  assert.equal(
+    answers.every(
+      (answer) => newPoolAnswers.has(answer) && oldPoolAnswers.has(answer),
+    ),
+    true,
+  );
+  const futureUsedAnswers = new Set(answers);
+  const futureConnectivity = summarizeFuturePoolConnectivity(
+    filterAvailableWords(reviewedWords, nextRoute, futureUsedAnswers).words,
+    nextRoute,
+  );
+  assert.deepEqual(
+    independentlySummarizeFuturePoolConnectivity(
+      independentlyFilterAvailableWords(
+        reviewedWords,
+        nextRoute,
+        futureUsedAnswers,
+      ).words,
+      nextRoute,
+    ),
+    futureConnectivity,
+  );
+  const metrics = {
+    wordCount: 10,
+    autoRunCount: 0,
+    crossRatio: 0.6,
+    bboxDensity: 0.6,
+    multiIntersectionPlacements: 7,
+    connectedComponents: 1,
+    accidentalRunCount: 0,
+    crossAnswerClueLeakCount: 0,
+    answerContainmentCount: 0,
+  };
+  const ratios = {
+    autoRunRatio: 0,
+    multiCrossRatio: 0.7,
+    themeEntryRatio: 0.5,
+  };
+  const candidate = {
+    candidateIndex: 0,
+    pass: true,
+    failedChecks: [],
+    metrics,
+    ratios,
+    themeEntryCount: 5,
+    answers,
+    selectionScore: {
+      ...futureConnectivity,
+      cooldownAnswerCount: answers.length,
+    },
+  };
+  const wordPool = fixtureWordPool({
+    answers: selection.words.map((word) => word.answer),
+    total: selection.words.length,
+    theme: selection.themeWordCount,
+    connectors: selection.connectorWordCount,
+  });
+  const attempts = [
+    {
+      phase: "base",
+      phaseIndex: 0,
+      phaseId: "base",
+      retryIndex: 0,
+      globalRetryIndex: 0,
+      connectorLimit: 80,
+      wordPool: structuredClone(wordPool),
+      seed: calculateLaunchRetrySeed(config.baseSeed, route.puzzleId, 0),
+      searchOptions: searchOptionsForRetry(config, 0),
+      candidateCount: 1,
+      candidates: [candidate],
+    },
+    {
+      phase: "base",
+      phaseIndex: 0,
+      phaseId: "base",
+      retryIndex: 1,
+      globalRetryIndex: 1,
+      connectorLimit: 80,
+      wordPool: structuredClone(wordPool),
+      seed: calculateLaunchRetrySeed(config.baseSeed, route.puzzleId, 1),
+      searchOptions: searchOptionsForRetry(config, 1),
+      candidateCount: 0,
+      candidates: [],
+    },
+  ];
+  return {
+    config,
+    reviewedWords,
+    oldAnswerSetSha256: calculateWordPoolAnswerSetSha256(oldPoolWords),
+    newAnswerSetSha256: wordPool.answerSetSha256,
+    board: {
+      puzzleId: route.puzzleId,
+      route: route.route,
+      difficulty: route.difficulty,
+      themeId: route.themeId,
+      effectiveWordDifficulties: ["easy", "normal"],
+      broadenedDifficultyPool: false,
+      selectedCandidateIndex: 0,
+      selectedRetryIndex: 0,
+      selectedSeed: attempts[0].seed,
+      metrics: structuredClone(metrics),
+      quality: { ratios: structuredClone(ratios) },
+      wordPool: structuredClone(wordPool),
+      attempts,
+    },
+  };
+}
+
 test("재봉인한 route/search/attempt 허위 trace를 거부한다", () => {
   const fixture = makeGeneratorTraceFixture();
   assert.doesNotThrow(() =>
@@ -1088,15 +1306,27 @@ test("재봉인한 route/search/attempt 허위 trace를 거부한다", () => {
   const forgeries = [
     {
       mutate: ({ config }) => {
-        config.schemaVersion = "ko-kr-launch-generator-config/7";
+        config.unrecognizedSearchPolicy = "forged";
       },
-      expected: /trace config schema must be ko-kr-launch-generator-config\/8/,
+      expected: /generator config keys does not exactly match/,
+    },
+    {
+      mutate: ({ config }) => {
+        config.schemaVersion = "ko-kr-launch-generator-config/8";
+      },
+      expected: /trace config schema must be ko-kr-launch-generator-config\/9/,
     },
     {
       mutate: ({ config }) => {
         config.searchQuality.evaluator = "geometry-only";
       },
       expected: /search quality policy does not exactly match/,
+    },
+    {
+      mutate: ({ config }) => {
+        config.dailyConnectorRanking.connectorOrder.reverse();
+      },
+      expected: /daily connector ranking policy does not exactly match/,
     },
     {
       mutate: ({ config }) => {
@@ -1383,6 +1613,29 @@ test("fallback 후보 답과 selection score를 해당 retry의 확장 pool로 �
         reviewedWords: forgedScore.reviewedWords,
       }),
     /selectionScore independently recalculated does not exactly match/,
+  );
+});
+
+test("old ranking과 겹치는 후보만 있어도 word pool answer-set seal 변조를 거부한다", () => {
+  const fixture = makeDailyGreedyPoolTraceFixture();
+  assert.notEqual(fixture.oldAnswerSetSha256, fixture.newAnswerSetSha256);
+  assert.doesNotThrow(() =>
+    validateGeneratorReportTrace(fixture.config, [fixture.board], {
+      reviewedWords: fixture.reviewedWords,
+    }),
+  );
+
+  const forged = structuredClone(fixture);
+  forged.board.wordPool.answerSetSha256 = forged.oldAnswerSetSha256;
+  for (const attempt of forged.board.attempts) {
+    attempt.wordPool.answerSetSha256 = forged.oldAnswerSetSha256;
+  }
+  assert.throws(
+    () =>
+      validateGeneratorReportTrace(forged.config, [forged.board], {
+        reviewedWords: forged.reviewedWords,
+      }),
+    /wordPool independently recalculated does not exactly match/,
   );
 });
 

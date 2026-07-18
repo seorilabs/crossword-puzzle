@@ -100,6 +100,22 @@ export const DAILY_CONNECTOR_WORD_LIMIT_BY_DIFFICULTY = Object.freeze({
   normal: 80,
   hard: 120,
 });
+export const DAILY_CONNECTOR_RANKING_POLICY = Object.freeze({
+  policyId: "ko-kr-launch-daily-connector-theme-coverage-v2",
+  coverageScope:
+    "greedy-prefix-over-distinct-theme-owner-answers-in-current-route-pool",
+  sharedThemeCellDefinition:
+    "unique-answer-cell-values-present-in-at-least-one-theme-answer",
+  connectorOrder: Object.freeze([
+    "max-marginal-uncovered-theme-owner-count",
+    "max-distinct-shared-theme-cell-count",
+    "max-theme-word-degree",
+    "max-answer-cell-count",
+    "max-connector-word-degree",
+    "min-review-ledger-index",
+    "stable-input-order",
+  ]),
+});
 export const LAUNCH_THEME_OWNER_POLICY = Object.freeze({
   policyId: "ko-kr-launch-theme-owner-matching-v1",
   productionTargetDistinctOwnerCountPerTheme: 75,
@@ -108,15 +124,15 @@ export const LAUNCH_THEME_OWNER_POLICY = Object.freeze({
   connectorPolicy: "unowned-only-during-daily-generation",
 });
 export const LAUNCH_ACCEPTED_CANDIDATE_POLICY = Object.freeze({
-  policyId: "ko-kr-launch-future-pool-lookahead-v1",
+  policyId: "ko-kr-launch-future-pool-lookahead-v2",
   defaultRetries: 8,
   acceptedLookaheadRetries: 1,
   edgeDefinition:
     "unique-answer-pairs-sharing-at-least-one-cell-after-next-route-filter-and-rerank",
   candidateAnswerOrder: "unique-answers-ascending-js-code-unit",
   dailyOrder: [
-    "max-theme-connector-edges",
     "min-isolated-theme-owners",
+    "max-theme-connector-edges",
     "max-total-edges",
     "min-cooldown-answer-count",
     "stable-generation-order",
@@ -1120,9 +1136,9 @@ export function summarizeFuturePoolConnectivity(words, nextRoute) {
 export function compareLaunchAcceptedCandidateScores(left, right, nextRoute) {
   if (nextRoute?.route.kind === "daily") {
     return (
+      left.isolatedThemeOwnerCount - right.isolatedThemeOwnerCount ||
       right.themeConnectorSharedCellEdges -
         left.themeConnectorSharedCellEdges ||
-      left.isolatedThemeOwnerCount - right.isolatedThemeOwnerCount ||
       right.totalSharedCellEdges - left.totalSharedCellEdges ||
       left.cooldownAnswerCount - right.cooldownAnswerCount
     );
@@ -1200,34 +1216,68 @@ export function makeLaunchAcceptedCandidateComparator(options) {
 }
 
 /**
- * 일일 테마 단어와 실제로 교차 가능한 연결어를 먼저 공급한다. 동일 연결성에서는
- * 긴 단어, 남은 연결어 풀과의 연결성, 검수 ledger 순으로 결정적으로 정렬한다.
+ * 선택할 때마다 아직 연결되지 않은 테마 owner 단어를 가장 많이 덮는 연결어를
+ * 고른다. 같은 한글 음절의 edge 중복이 prefix를 독점하지 않게 공유 음절 다양성,
+ * 기존 연결성·길이·ledger 순으로 결정적인 tie-break를 적용한다.
  */
 export function rankDailyConnectorWordsByConnectivity(
   themeWords,
   connectorWords,
 ) {
-  return connectorWords
-    .map((word, originalIndex) => ({
-      word,
-      originalIndex,
-      themeDegree: themeWords.filter((themeWord) =>
-        sharesAnswerCell(word, themeWord),
-      ).length,
-      connectorDegree: connectorWords.filter(
-        (other) => other !== word && sharesAnswerCell(word, other),
-      ).length,
-    }))
-    .sort(
-      (left, right) =>
+  const themeCells = new Set(themeWords.flatMap(answerCellsOf));
+  const candidates = connectorWords.map((word, originalIndex) => ({
+    word,
+    originalIndex,
+    connectedThemeOwnerIndexes: themeWords
+      .map((themeWord, themeOwnerIndex) => ({
+        themeOwnerIndex,
+        connected: sharesAnswerCell(word, themeWord),
+      }))
+      .filter(({ connected }) => connected)
+      .map(({ themeOwnerIndex }) => themeOwnerIndex),
+    distinctSharedThemeCellCount: new Set(
+      answerCellsOf(word).filter((cell) => themeCells.has(cell)),
+    ).size,
+    themeDegree: themeWords.filter((themeWord) =>
+      sharesAnswerCell(word, themeWord),
+    ).length,
+    connectorDegree: connectorWords.filter(
+      (other) => other !== word && sharesAnswerCell(word, other),
+    ).length,
+  }));
+  const uncoveredThemeOwnerIndexes = new Set(themeWords.keys());
+  const ranked = [];
+
+  function marginalCoverage(candidate) {
+    return candidate.connectedThemeOwnerIndexes.filter((themeOwnerIndex) =>
+      uncoveredThemeOwnerIndexes.has(themeOwnerIndex),
+    ).length;
+  }
+
+  while (candidates.length > 0) {
+    let selectedIndex = 0;
+    for (let index = 1; index < candidates.length; index += 1) {
+      const left = candidates[index];
+      const right = candidates[selectedIndex];
+      const order =
+        marginalCoverage(right) - marginalCoverage(left) ||
+        right.distinctSharedThemeCellCount -
+          left.distinctSharedThemeCellCount ||
         right.themeDegree - left.themeDegree ||
         answerCellsOf(right.word).length - answerCellsOf(left.word).length ||
         right.connectorDegree - left.connectorDegree ||
         (left.word.reviewLedgerIndex ?? Number.POSITIVE_INFINITY) -
           (right.word.reviewLedgerIndex ?? Number.POSITIVE_INFINITY) ||
-        left.originalIndex - right.originalIndex,
-    )
-    .map(({ word }) => word);
+        left.originalIndex - right.originalIndex;
+      if (order < 0) selectedIndex = index;
+    }
+    const [selected] = candidates.splice(selectedIndex, 1);
+    ranked.push(selected.word);
+    for (const themeOwnerIndex of selected.connectedThemeOwnerIndexes) {
+      uncoveredThemeOwnerIndexes.delete(themeOwnerIndex);
+    }
+  }
+  return ranked;
 }
 
 function evaluateRouteBoardQuality(board, route, wordPool) {
@@ -1465,8 +1515,18 @@ function serializeGeneratedContent(
   return validation.content;
 }
 
+export function calculateLaunchWordPoolAnswerSetSha256(words) {
+  const answers = words.map((word) => word.answer).sort();
+  requireCondition(
+    new Set(answers).size === answers.length,
+    "selection word pool answers must be unique",
+  );
+  return sha256(canonicalJson(answers));
+}
+
 function summarizeSelectionWordPool(selection) {
   return {
+    answerSetSha256: calculateLaunchWordPoolAnswerSetSha256(selection.words),
     total: selection.words.length,
     theme: selection.themeWordCount ?? null,
     connectors: selection.connectorWordCount ?? null,
@@ -2157,7 +2217,7 @@ async function resolveGeneratorIdentity(repositoryRoot, options, wordBank) {
     0,
   );
   const config = {
-    schemaVersion: "ko-kr-launch-generator-config/8",
+    schemaVersion: "ko-kr-launch-generator-config/9",
     baseSeed: options.baseSeed,
     attempts: options.attempts,
     searchEscalation: Array.from(
@@ -2176,6 +2236,7 @@ async function resolveGeneratorIdentity(repositoryRoot, options, wordBank) {
     minDailyThemeEntryRatio: MIN_DAILY_THEME_ENTRY_RATIO,
     dailyConnectorWordLimitByDifficulty:
       DAILY_CONNECTOR_WORD_LIMIT_BY_DIFFICULTY,
+    dailyConnectorRanking: DAILY_CONNECTOR_RANKING_POLICY,
     retryPhasePolicy: LAUNCH_RETRY_PHASE_POLICY,
     acceptedCandidateSelection: LAUNCH_ACCEPTED_CANDIDATE_POLICY,
     searchQuality: LAUNCH_SEARCH_QUALITY_POLICY,
@@ -2540,7 +2601,7 @@ async function main() {
       .join(",")}`,
   );
   const report = {
-    schemaVersion: "ko-kr-launch-generation-report/5",
+    schemaVersion: "ko-kr-launch-generation-report/6",
     artifactStatus: ARTIFACT_STATUS,
     activationApproved: false,
     generatedAt: GENERATED_AT,

@@ -8,8 +8,25 @@ import {
 } from "./launch-board-review-ledger.mjs";
 
 const GENERATOR_COMMIT = "a".repeat(40);
+const DAILY_CONNECTOR_RANKING_POLICY = Object.freeze({
+  policyId: "ko-kr-launch-daily-connector-theme-coverage-v2",
+  coverageScope:
+    "greedy-prefix-over-distinct-theme-owner-answers-in-current-route-pool",
+  sharedThemeCellDefinition:
+    "unique-answer-cell-values-present-in-at-least-one-theme-answer",
+  connectorOrder: Object.freeze([
+    "max-marginal-uncovered-theme-owner-count",
+    "max-distinct-shared-theme-cell-count",
+    "max-theme-word-degree",
+    "max-answer-cell-count",
+    "max-connector-word-degree",
+    "min-review-ledger-index",
+    "stable-input-order",
+  ]),
+});
 const GENERATOR_CONFIG = Object.freeze({
-  schemaVersion: "fixture-launch-generator-config/1",
+  schemaVersion: "ko-kr-launch-generator-config/9",
+  dailyConnectorRanking: DAILY_CONNECTOR_RANKING_POLICY,
   seedPolicy: "deterministic",
 });
 const GENERATOR_CONFIG_HASH =
@@ -67,6 +84,18 @@ function makeGeneratedBoard(index) {
       entries: sourceEntryIds.map((sourceEntryId) => ({ sourceEntryId })),
     },
   };
+  const wordPool = {
+    answerSetSha256: checksumFor(index + 1_000),
+    total: 200,
+    theme: null,
+    connectors: null,
+  };
+  const previousWordPool = {
+    answerSetSha256: checksumFor(index + 2_000),
+    total: 201,
+    theme: null,
+    connectors: null,
+  };
   const reportBoard = {
     puzzleId,
     contentChecksum,
@@ -76,6 +105,12 @@ function makeGeneratedBoard(index) {
     themeId,
     difficulty,
     entryProvenance: sourceEntryIds.map((sourceEntryId) => ({ sourceEntryId })),
+    selectedRetryIndex: 1,
+    wordPool: structuredClone(wordPool),
+    attempts: [
+      { wordPool: structuredClone(previousWordPool) },
+      { wordPool: structuredClone(wordPool) },
+    ],
   };
   return { catalogBoard, reportBoard, sourceEntryIds };
 }
@@ -95,7 +130,7 @@ function createFixture() {
     ],
   };
   const generationReport = {
-    schemaVersion: "ko-kr-launch-generation-report/5",
+    schemaVersion: "ko-kr-launch-generation-report/6",
     artifactStatus: "candidate",
     activationApproved: false,
     generatedAt: "2026-07-18T14:00:00.000Z",
@@ -145,6 +180,21 @@ function relock({ catalog, generationReport, ledger }) {
     calculateCanonicalDocumentChecksum(generationReport);
 }
 
+function relockGeneratorIdentity({ catalog, generationReport, ledger }) {
+  const configHash = calculateCanonicalDocumentChecksum(
+    generationReport.generator.config,
+  );
+  generationReport.generator.configHash = configHash;
+  ledger.generatorConfigHash = configHash;
+  for (const board of generationReport.boards) {
+    board.generatorConfigHash = configHash;
+  }
+  for (const board of catalog.boards.slice(3)) {
+    board.content.generatorConfigHash = configHash;
+  }
+  relock({ catalog, generationReport, ledger });
+}
+
 function expectRejected(fixture, pattern = /./) {
   assert.throws(
     () =>
@@ -175,6 +225,85 @@ describe("launch board review ledger", () => {
       fixture.generationReport.boards[0].puzzleId,
       fixture.ledger.boards[0].puzzleId,
     );
+  });
+
+  test("이전 generation report/5는 새 검수 source로 재사용하지 않는다", () => {
+    const fixture = createFixture();
+    fixture.generationReport.schemaVersion = "ko-kr-launch-generation-report/5";
+    relock(fixture);
+    expectRejected(fixture, /generation report\.schemaVersion/);
+  });
+
+  test("report/5 본문을 /6으로 이름만 바꿔 relock해도 검수 source로 재사용하지 않는다", () => {
+    const fixture = createFixture();
+    fixture.generationReport.generator.config.schemaVersion =
+      "ko-kr-launch-generator-config/8";
+    delete fixture.generationReport.generator.config.dailyConnectorRanking;
+    for (const board of fixture.generationReport.boards) {
+      delete board.selectedRetryIndex;
+      delete board.wordPool;
+      delete board.attempts;
+    }
+    // 구 report 본문에 새 schema 문자열만 붙이고 모든 외부 checksum까지 다시 봉인한 경우.
+    fixture.generationReport.schemaVersion = "ko-kr-launch-generation-report/6";
+    relockGeneratorIdentity(fixture);
+
+    expectRejected(
+      fixture,
+      /generator\.config\.schemaVersion must be ko-kr-launch-generator-config\/9/,
+    );
+  });
+
+  test("report/6 daily connector ranking 정책 재봉인을 거부한다", () => {
+    const fixture = createFixture();
+    fixture.generationReport.generator.config.dailyConnectorRanking = {
+      ...fixture.generationReport.generator.config.dailyConnectorRanking,
+      connectorOrder: [
+        ...fixture.generationReport.generator.config.dailyConnectorRanking
+          .connectorOrder,
+      ].reverse(),
+    };
+    relockGeneratorIdentity(fixture);
+
+    expectRejected(
+      fixture,
+      /generator\.config\.dailyConnectorRanking does not exactly match/,
+    );
+  });
+
+  test("report/6 word pool SHA와 selected attempt 결합을 fail closed한다", async (t) => {
+    for (const [name, mutate, pattern] of [
+      [
+        "invalid board answer-set SHA",
+        (fixture) => {
+          fixture.generationReport.boards[0].wordPool.answerSetSha256 =
+            "sha256:invalid";
+        },
+        /wordPool\.answerSetSha256/,
+      ],
+      [
+        "missing non-selected attempt answer-set SHA",
+        (fixture) => {
+          delete fixture.generationReport.boards[0].attempts[0].wordPool
+            .answerSetSha256;
+        },
+        /attempts\[0\]\.wordPool\.answerSetSha256/,
+      ],
+      [
+        "selected pool mismatch",
+        (fixture) => {
+          fixture.generationReport.boards[0].attempts[1].wordPool.total = 199;
+        },
+        /wordPool\/selected attempt wordPool/,
+      ],
+    ]) {
+      await t.test(name, () => {
+        const fixture = createFixture();
+        mutate(fixture);
+        relock(fixture);
+        expectRejected(fixture, pattern);
+      });
+    }
   });
 
   test("canonical checksum은 객체 key 순서와 무관하게 동일하다", () => {

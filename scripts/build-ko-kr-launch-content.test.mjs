@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
 import {
+  DAILY_CONNECTOR_RANKING_POLICY,
   DAILY_CONNECTOR_WORD_LIMIT_BY_DIFFICULTY,
   LAUNCH_ACCEPTED_CANDIDATE_POLICY,
   LAUNCH_RETRY_PHASE_POLICY,
@@ -13,6 +14,7 @@ import {
   attemptsForRetry,
   buildBoardClueConflictIndex,
   buildLaunchRoutePlan,
+  calculateLaunchWordPoolAnswerSetSha256,
   buildWorldMap,
   compareLaunchAcceptedCandidateScores,
   deduplicateReviewedWords,
@@ -40,11 +42,84 @@ import {
 } from "./crossword-generator-prototype.mjs";
 
 describe("ko-KR launch content builder", () => {
+  test("word pool evidence는 정렬된 unique answer set SHA로 봉인한다", () => {
+    const left = calculateLaunchWordPoolAnswerSetSha256([
+      { answer: "나무" },
+      { answer: "가방" },
+    ]);
+    const right = calculateLaunchWordPoolAnswerSetSha256([
+      { answer: "가방" },
+      { answer: "나무" },
+    ]);
+    assert.equal(left, right);
+    assert.match(left, /^sha256:[0-9a-f]{64}$/);
+    assert.throws(
+      () =>
+        calculateLaunchWordPoolAnswerSetSha256([
+          { answer: "가방" },
+          { answer: "가방" },
+        ]),
+      /answers must be unique/,
+    );
+  });
+
   test("일일 테마 보드는 난이도별 비테마 연결어 풀을 제한한다", () => {
     assert.deepEqual(DAILY_CONNECTOR_WORD_LIMIT_BY_DIFFICULTY, {
       normal: 80,
       hard: 120,
     });
+  });
+
+  test("일일 연결어 순위는 marginal owner coverage 뒤 공유 음절 다양성을 우선한다", () => {
+    assert.equal(
+      DAILY_CONNECTOR_RANKING_POLICY.coverageScope,
+      "greedy-prefix-over-distinct-theme-owner-answers-in-current-route-pool",
+    );
+    assert.deepEqual(DAILY_CONNECTOR_RANKING_POLICY.connectorOrder, [
+      "max-marginal-uncovered-theme-owner-count",
+      "max-distinct-shared-theme-cell-count",
+      "max-theme-word-degree",
+      "max-answer-cell-count",
+      "max-connector-word-degree",
+      "min-review-ledger-index",
+      "stable-input-order",
+    ]);
+    const word = (answerCells, reviewLedgerIndex) => ({
+      answer: answerCells.join(""),
+      answerCells,
+      reviewLedgerIndex,
+    });
+    const ranked = rankDailyConnectorWordsByConnectivity(
+      [
+        word(["가", "바"], 0),
+        word(["가", "사"], 1),
+        word(["나", "카"], 2),
+        word(["라", "타"], 3),
+      ],
+      [word(["가", "다"], 4), word(["나", "라"], 5)],
+    );
+
+    assert.deepEqual(
+      ranked.map((entry) => entry.answer),
+      ["나라", "가다"],
+    );
+  });
+
+  test("일일 연결어 greedy prefix는 이미 덮은 owner의 중복 edge를 뒤로 보낸다", () => {
+    const word = (answerCells, reviewLedgerIndex) => ({
+      answer: answerCells.join(""),
+      answerCells,
+      reviewLedgerIndex,
+    });
+    const ranked = rankDailyConnectorWordsByConnectivity(
+      [word(["가", "바"], 0), word(["가", "사"], 1), word(["나", "카"], 2)],
+      [word(["가", "다"], 3), word(["가", "라"], 4), word(["나", "요"], 5)],
+    );
+
+    assert.deepEqual(
+      ranked.map((entry) => entry.answer),
+      ["가다", "나요", "가라"],
+    );
   });
 
   test("launch PASS lookahead와 미래 pool 선택 순서를 generator config 정책으로 고정한다", () => {
@@ -55,8 +130,8 @@ describe("ko-KR launch content builder", () => {
       "unique-answers-ascending-js-code-unit",
     );
     assert.deepEqual(LAUNCH_ACCEPTED_CANDIDATE_POLICY.dailyOrder, [
-      "max-theme-connector-edges",
       "min-isolated-theme-owners",
+      "max-theme-connector-edges",
       "max-total-edges",
       "min-cooldown-answer-count",
       "stable-generation-order",
@@ -312,7 +387,7 @@ describe("ko-KR launch content builder", () => {
     );
   });
 
-  test("next daily rerank pool의 unique edge를 세고 정책 순서로 비교한다", () => {
+  test("next daily rerank pool은 고립 theme owner를 raw edge보다 먼저 줄인다", () => {
     const nextDaily = {
       themeId: "table-kitchen",
       route: { kind: "daily" },
@@ -352,12 +427,19 @@ describe("ko-KR launch content builder", () => {
         score({ themeConnectorSharedCellEdges: 6 }),
         score({ isolatedThemeOwnerCount: 0, totalSharedCellEdges: 100 }),
         nextDaily,
-      ) < 0,
+      ) > 0,
     );
     assert.ok(
       compareLaunchAcceptedCandidateScores(
         score({ isolatedThemeOwnerCount: 0 }),
         score({ totalSharedCellEdges: 100 }),
+        nextDaily,
+      ) < 0,
+    );
+    assert.ok(
+      compareLaunchAcceptedCandidateScores(
+        score({ themeConnectorSharedCellEdges: 6 }),
+        score({ themeConnectorSharedCellEdges: 5 }),
         nextDaily,
       ) < 0,
     );
@@ -574,7 +656,7 @@ describe("ko-KR launch content builder", () => {
     );
   });
 
-  test("daily connector를 테마 연결성, 길이, connector 연결성, ledger 순으로 고른다", () => {
+  test("daily connector를 공유 음절 다양성, 테마 연결성, 길이, connector 연결성, ledger 순으로 고른다", () => {
     const word = (answerCells, reviewLedgerIndex) => ({
       answer: answerCells.join(""),
       answerCells,

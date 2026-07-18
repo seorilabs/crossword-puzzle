@@ -26,6 +26,7 @@ import {
   DIFFICULTY_ORDER,
   DIFFICULTY_PROFILES,
   isWordDifficultyWithinProfile,
+  selectWordsForProfile,
 } from "../packages/crossword-core/src/difficultyProfiles.ts";
 import { verifyGameContentChecksum } from "../packages/crossword-core/src/gameContent.ts";
 import { canonicalizeForChecksum } from "../packages/crossword-core/src/saveV2.ts";
@@ -41,14 +42,10 @@ import {
 } from "./build-launch-theme-wordbank.mjs";
 import { validateLaunchBoardReviewLedger } from "./launch-board-review-ledger.mjs";
 import {
-  LAUNCH_ACCEPTED_CANDIDATE_POLICY,
   LAUNCH_THEME_IDS,
-  LAUNCH_THEME_OWNER_POLICY,
   buildLaunchRoutePlan,
-  filterAvailableWords,
   orderRoutesForGeneration,
   searchOptionsForRetry,
-  summarizeFuturePoolConnectivity,
 } from "./build-ko-kr-launch-content.mjs";
 
 const execFileAsync = promisify(execFile);
@@ -66,6 +63,79 @@ const EXPECTED_DAILY_CONNECTOR_WORD_LIMIT_BY_DIFFICULTY = Object.freeze({
   normal: 80,
   hard: 120,
 });
+const EXPECTED_LAUNCH_THEME_OWNER_POLICY = Object.freeze({
+  policyId: "ko-kr-launch-theme-owner-matching-v1",
+  productionTargetDistinctOwnerCountPerTheme: 75,
+  productionTargetNormalOrHardReservePerTheme: 16,
+  reserveProtection: "before-friday-daily-board",
+  connectorPolicy: "unowned-only-during-daily-generation",
+});
+const EXPECTED_DAILY_CONNECTOR_RANKING_POLICY = Object.freeze({
+  policyId: "ko-kr-launch-daily-connector-theme-coverage-v2",
+  coverageScope:
+    "greedy-prefix-over-distinct-theme-owner-answers-in-current-route-pool",
+  sharedThemeCellDefinition:
+    "unique-answer-cell-values-present-in-at-least-one-theme-answer",
+  connectorOrder: Object.freeze([
+    "max-marginal-uncovered-theme-owner-count",
+    "max-distinct-shared-theme-cell-count",
+    "max-theme-word-degree",
+    "max-answer-cell-count",
+    "max-connector-word-degree",
+    "min-review-ledger-index",
+    "stable-input-order",
+  ]),
+});
+const EXPECTED_LAUNCH_ACCEPTED_CANDIDATE_POLICY = Object.freeze({
+  policyId: "ko-kr-launch-future-pool-lookahead-v2",
+  defaultRetries: 8,
+  acceptedLookaheadRetries: 1,
+  edgeDefinition:
+    "unique-answer-pairs-sharing-at-least-one-cell-after-next-route-filter-and-rerank",
+  candidateAnswerOrder: "unique-answers-ascending-js-code-unit",
+  dailyOrder: Object.freeze([
+    "min-isolated-theme-owners",
+    "max-theme-connector-edges",
+    "max-total-edges",
+    "min-cooldown-answer-count",
+    "stable-generation-order",
+  ]),
+  otherOrder: Object.freeze([
+    "max-total-edges",
+    "min-cooldown-answer-count",
+    "stable-generation-order",
+  ]),
+});
+const EXPECTED_GENERATOR_CONFIG_KEYS = Object.freeze([
+  "acceptedCandidateSelection",
+  "attempts",
+  "baseSeed",
+  "beamWidth",
+  "branchLimit",
+  "candidateWordLimit",
+  "clueQuality",
+  "clueSimilarity",
+  "dailyConnectorRanking",
+  "dailyConnectorWordLimitByDifficulty",
+  "denseCandidateLimit",
+  "dependencies",
+  "dependencyTreeSha256",
+  "difficultyProfiles",
+  "maxAutoRunRatio",
+  "maxGenerationWordLength",
+  "minDailyThemeEntryRatio",
+  "minMultiCrossRatio",
+  "retries",
+  "retryPhasePolicy",
+  "routePlan",
+  "samples",
+  "schemaVersion",
+  "scriptSha256",
+  "searchEscalation",
+  "searchQuality",
+  "themeOwnership",
+  "wordBankSha256",
+]);
 const EXPECTED_RETRIES_PER_PHASE = 8;
 function repeatedExpectedConnectorLimit(limit) {
   return Object.freeze(
@@ -134,7 +204,7 @@ const EXPECTED_GENERATOR_DEPENDENCY_PATHS = Object.freeze([
   "data/game-content/v1/ko-KR/license-manifest.json",
 ]);
 export const KO_KR_LAUNCH_CLUE_QUALITY_POLICY = Object.freeze({
-  schemaVersion: "ko-kr-launch-generator-config/8",
+  schemaVersion: "ko-kr-launch-generator-config/9",
   clueSimilarity: Object.freeze({
     policyId: LAUNCH_CLUE_SIMILARITY_POLICY_ID,
     normalization: "NFKC-lowercase-no-space-punctuation-symbol",
@@ -265,12 +335,248 @@ function validatorGenerationWordLengthEligible(word, difficulty) {
   return Array.isArray(word.answerCells) && word.answerCells.length <= maximum;
 }
 
+function validatorAnswerCellsOf(word) {
+  if (Array.isArray(word?.answerCells)) return word.answerCells;
+  requireCondition(
+    typeof word?.answer === "string" && word.answer !== "",
+    "validator word must provide answer cells",
+  );
+  return [...word.answer];
+}
+
+function validatorSharesAnswerCell(left, right) {
+  const rightCells = new Set(validatorAnswerCellsOf(right));
+  return validatorAnswerCellsOf(left).some((cell) => rightCells.has(cell));
+}
+
+/** Generator 구현을 호출하지 않고 v2 greedy connector prefix를 재계산한다. */
+export function independentlyRankDailyConnectorWords(
+  themeWords,
+  connectorWords,
+) {
+  const themeCells = new Set(themeWords.flatMap(validatorAnswerCellsOf));
+  const candidates = connectorWords.map((word, originalIndex) => ({
+    word,
+    originalIndex,
+    connectedThemeOwnerIndexes: themeWords
+      .map((themeWord, themeOwnerIndex) => ({
+        themeOwnerIndex,
+        connected: validatorSharesAnswerCell(word, themeWord),
+      }))
+      .filter(({ connected }) => connected)
+      .map(({ themeOwnerIndex }) => themeOwnerIndex),
+    distinctSharedThemeCellCount: new Set(
+      validatorAnswerCellsOf(word).filter((cell) => themeCells.has(cell)),
+    ).size,
+    themeDegree: themeWords.filter((themeWord) =>
+      validatorSharesAnswerCell(word, themeWord),
+    ).length,
+    connectorDegree: connectorWords.filter(
+      (other) => other !== word && validatorSharesAnswerCell(word, other),
+    ).length,
+  }));
+  const uncoveredThemeOwnerIndexes = new Set(themeWords.keys());
+  const ranked = [];
+
+  const marginalCoverage = (candidate) =>
+    candidate.connectedThemeOwnerIndexes.filter((themeOwnerIndex) =>
+      uncoveredThemeOwnerIndexes.has(themeOwnerIndex),
+    ).length;
+
+  while (candidates.length > 0) {
+    let selectedIndex = 0;
+    for (let index = 1; index < candidates.length; index += 1) {
+      const candidate = candidates[index];
+      const selected = candidates[selectedIndex];
+      const order =
+        marginalCoverage(selected) - marginalCoverage(candidate) ||
+        selected.distinctSharedThemeCellCount -
+          candidate.distinctSharedThemeCellCount ||
+        selected.themeDegree - candidate.themeDegree ||
+        validatorAnswerCellsOf(selected.word).length -
+          validatorAnswerCellsOf(candidate.word).length ||
+        selected.connectorDegree - candidate.connectorDegree ||
+        (candidate.word.reviewLedgerIndex ?? Number.POSITIVE_INFINITY) -
+          (selected.word.reviewLedgerIndex ?? Number.POSITIVE_INFINITY) ||
+        candidate.originalIndex - selected.originalIndex;
+      if (order < 0) selectedIndex = index;
+    }
+    const [selected] = candidates.splice(selectedIndex, 1);
+    ranked.push(selected.word);
+    for (const themeOwnerIndex of selected.connectedThemeOwnerIndexes) {
+      uncoveredThemeOwnerIndexes.delete(themeOwnerIndex);
+    }
+  }
+  return ranked;
+}
+
+function requireIndependentSelectionDifficulty(selection, profile, field) {
+  requireCondition(
+    selection.words.every((word) => {
+      const difficulty = ["easy", "normal", "hard"].includes(word.difficulty)
+        ? word.difficulty
+        : "normal";
+      return (
+        selection.difficulties.includes(difficulty) &&
+        isWordDifficultyWithinProfile(difficulty, profile)
+      );
+    }),
+    `${field} exceeds ${profile.wordDifficultyCeiling} difficulty ceiling`,
+  );
+}
+
+/** Generator의 route/cooldown selection을 공유 코드 없이 재계산한다. */
+export function independentlyFilterAvailableWords(
+  words,
+  route,
+  usedAnswers,
+  { connectorWordLimit: connectorWordLimitOverride } = {},
+) {
+  const available = words.filter(
+    (word) =>
+      !usedAnswers.has(word.answer) &&
+      validatorGenerationWordLengthEligible(word, route.difficulty),
+  );
+  const profile = DIFFICULTY_PROFILES[route.difficulty];
+  requireCondition(profile != null, `${route.puzzleId} difficulty is invalid`);
+  if (route.route.kind !== "daily") {
+    const selection = selectWordsForProfile(available, profile);
+    requireIndependentSelectionDifficulty(
+      selection,
+      profile,
+      `${route.puzzleId} word selection`,
+    );
+    requireCondition(
+      selection.words.length >= 150,
+      `${route.puzzleId} has insufficient validator words after difficulty/cooldown filters: ${selection.words.length}`,
+    );
+    return selection;
+  }
+
+  const protectHardReserve = [
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+  ].includes(route.route.weekday);
+  const themeSelection = selectWordsForProfile(
+    available.filter(
+      (word) =>
+        word.themeOwner === route.themeId &&
+        !(protectHardReserve && word.themeHardReserve),
+    ),
+    profile,
+    EXPECTED_LAUNCH_THEME_OWNER_POLICY.productionTargetNormalOrHardReservePerTheme,
+  );
+  const connectorSelection = selectWordsForProfile(
+    available.filter((word) => word.themeOwner == null),
+    profile,
+  );
+  const connectorWordLimit =
+    connectorWordLimitOverride ??
+    EXPECTED_DAILY_CONNECTOR_WORD_LIMIT_BY_DIFFICULTY[route.difficulty];
+  requireCondition(
+    Number.isSafeInteger(connectorWordLimit) && connectorWordLimit > 0,
+    `${route.puzzleId} validator connector limit is invalid`,
+  );
+  const connectorWords = independentlyRankDailyConnectorWords(
+    themeSelection.words,
+    connectorSelection.words,
+  ).slice(0, connectorWordLimit);
+  const selection = {
+    words: [...themeSelection.words, ...connectorWords],
+    difficulties: [
+      ...new Set([
+        ...themeSelection.difficulties,
+        ...connectorSelection.difficulties,
+      ]),
+    ],
+    broadened: themeSelection.broadened || connectorSelection.broadened,
+    broadenedWith: [
+      ...new Set([
+        ...themeSelection.broadenedWith,
+        ...connectorSelection.broadenedWith,
+      ]),
+    ],
+    themeWordCount: themeSelection.words.length,
+    connectorWordCount: connectorWords.length,
+  };
+  requireIndependentSelectionDifficulty(
+    selection,
+    profile,
+    `${route.puzzleId} daily word selection`,
+  );
+  requireCondition(
+    selection.words.length >= 96 && themeSelection.words.length >= 16,
+    `${route.puzzleId} has insufficient validator words after theme/difficulty/cooldown filters: ${selection.words.length}`,
+  );
+  return selection;
+}
+
+export function independentlySummarizeFuturePoolConnectivity(words, nextRoute) {
+  let totalSharedCellEdges = 0;
+  let themeConnectorSharedCellEdges = 0;
+  const connectedThemeOwners = new Set();
+  const isDaily = nextRoute?.route.kind === "daily";
+
+  for (let leftIndex = 0; leftIndex < words.length; leftIndex += 1) {
+    const left = words[leftIndex];
+    for (
+      let rightIndex = leftIndex + 1;
+      rightIndex < words.length;
+      rightIndex += 1
+    ) {
+      const right = words[rightIndex];
+      if (!validatorSharesAnswerCell(left, right)) continue;
+      totalSharedCellEdges += 1;
+      if (!isDaily) continue;
+      const leftIsTheme = left.themeOwner === nextRoute.themeId;
+      const rightIsTheme = right.themeOwner === nextRoute.themeId;
+      const leftIsConnector = left.themeOwner == null;
+      const rightIsConnector = right.themeOwner == null;
+      if (
+        (leftIsTheme && rightIsConnector) ||
+        (rightIsTheme && leftIsConnector)
+      ) {
+        themeConnectorSharedCellEdges += 1;
+        connectedThemeOwners.add(leftIsTheme ? left.answer : right.answer);
+      }
+    }
+  }
+  return {
+    totalSharedCellEdges,
+    themeConnectorSharedCellEdges,
+    isolatedThemeOwnerCount: isDaily
+      ? words.filter(
+          (word) =>
+            word.themeOwner === nextRoute.themeId &&
+            !connectedThemeOwners.has(word.answer),
+        ).length
+      : 0,
+  };
+}
+
+export function calculateWordPoolAnswerSetSha256(words) {
+  const answers = words.map((word) => word.answer).sort();
+  requireUniqueStrings(answers, "validator word pool answers");
+  return sha256(canonicalJson(answers));
+}
+
+function summarizeIndependentWordPool(selection) {
+  return {
+    answerSetSha256: calculateWordPoolAnswerSetSha256(selection.words),
+    total: selection.words.length,
+    theme: selection.themeWordCount ?? null,
+    connectors: selection.connectorWordCount ?? null,
+  };
+}
+
 /** Generator와 코드를 공유하지 않고 같은 명세에서 owner map을 재계산한다. */
 export function independentlyAllocateLaunchThemeOwners(words) {
   const ownerTarget =
-    LAUNCH_THEME_OWNER_POLICY.productionTargetDistinctOwnerCountPerTheme;
+    EXPECTED_LAUNCH_THEME_OWNER_POLICY.productionTargetDistinctOwnerCountPerTheme;
   const reserveTarget =
-    LAUNCH_THEME_OWNER_POLICY.productionTargetNormalOrHardReservePerTheme;
+    EXPECTED_LAUNCH_THEME_OWNER_POLICY.productionTargetNormalOrHardReservePerTheme;
   const slots = [];
   for (const themeId of LAUNCH_THEME_IDS) {
     for (let index = 0; index < reserveTarget; index += 1) {
@@ -387,7 +693,7 @@ export function independentlyAllocateLaunchThemeOwners(words) {
     selectedWords,
     themeInventory,
     themeOwnership: {
-      policy: LAUNCH_THEME_OWNER_POLICY,
+      policy: EXPECTED_LAUNCH_THEME_OWNER_POLICY,
       assignmentSha256: sha256(canonicalJson(assignment)),
       assignedWordCount: ownerByWord.size,
       unownedWordCount: words.length - ownerByWord.size,
@@ -464,13 +770,18 @@ export function validateGeneratorThemeInventoryPolicy(config) {
   );
   requireExact(
     config?.themeOwnership,
-    LAUNCH_THEME_OWNER_POLICY,
+    EXPECTED_LAUNCH_THEME_OWNER_POLICY,
     "generator theme ownership policy",
   );
   requireExact(
     config?.dailyConnectorWordLimitByDifficulty,
     EXPECTED_DAILY_CONNECTOR_WORD_LIMIT_BY_DIFFICULTY,
     "generator daily connector word limit policy",
+  );
+  requireExact(
+    config?.dailyConnectorRanking,
+    EXPECTED_DAILY_CONNECTOR_RANKING_POLICY,
+    "generator daily connector ranking policy",
   );
   return true;
 }
@@ -2132,9 +2443,9 @@ function validateCandidateTraceQuality(candidate, route, config, field) {
 function compareReportedSelectionScores(left, right, nextRoute) {
   if (nextRoute?.route.kind === "daily") {
     return (
+      left.isolatedThemeOwnerCount - right.isolatedThemeOwnerCount ||
       right.themeConnectorSharedCellEdges -
         left.themeConnectorSharedCellEdges ||
-      left.isolatedThemeOwnerCount - right.isolatedThemeOwnerCount ||
       right.totalSharedCellEdges - left.totalSharedCellEdges ||
       left.cooldownAnswerCount - right.cooldownAnswerCount
     );
@@ -2154,8 +2465,12 @@ function validateReportedWordPool(wordPool, route, connectorLimit, field) {
   );
   requireExact(
     Object.keys(wordPool).sort(),
-    ["connectors", "theme", "total"],
+    ["answerSetSha256", "connectors", "theme", "total"],
     `${field} keys`,
+  );
+  requireCondition(
+    /^sha256:[0-9a-f]{64}$/.test(wordPool.answerSetSha256),
+    `${field}.answerSetSha256 must be SHA-256`,
   );
   const total = requirePositiveSafeInteger(wordPool.total, `${field}.total`);
   if (route.route.kind !== "daily") {
@@ -2165,7 +2480,12 @@ function validateReportedWordPool(wordPool, route, connectorLimit, field) {
         wordPool.connectors === null,
       `${field} must not report daily connector inventory`,
     );
-    return { total, theme: null, connectors: null };
+    return {
+      answerSetSha256: wordPool.answerSetSha256,
+      total,
+      theme: null,
+      connectors: null,
+    };
   }
   const theme = requirePositiveSafeInteger(wordPool.theme, `${field}.theme`);
   const connectors = requirePositiveSafeInteger(
@@ -2176,7 +2496,12 @@ function validateReportedWordPool(wordPool, route, connectorLimit, field) {
     total === theme + connectors && connectors <= connectorLimit,
     `${field} daily totals do not match its connector limit`,
   );
-  return { total, theme, connectors };
+  return {
+    answerSetSha256: wordPool.answerSetSha256,
+    total,
+    theme,
+    connectors,
+  };
 }
 
 function retryPhaseForGlobalIndex(globalRetryIndex) {
@@ -2251,9 +2576,19 @@ export function validateGeneratorReportTrace(
     config != null && typeof config === "object" && !Array.isArray(config),
     "generator config is required for report trace validation",
   );
+  requireExact(
+    Object.keys(config).sort(),
+    EXPECTED_GENERATOR_CONFIG_KEYS,
+    "generator config keys",
+  );
   requireCondition(
-    config.schemaVersion === "ko-kr-launch-generator-config/8",
-    "generator report trace config schema must be ko-kr-launch-generator-config/8",
+    config.schemaVersion === "ko-kr-launch-generator-config/9",
+    "generator report trace config schema must be ko-kr-launch-generator-config/9",
+  );
+  requireExact(
+    config.dailyConnectorRanking,
+    EXPECTED_DAILY_CONNECTOR_RANKING_POLICY,
+    "generator daily connector ranking policy",
   );
   requireCondition(
     Array.isArray(reportBoards),
@@ -2288,7 +2623,7 @@ export function validateGeneratorReportTrace(
   validateGeneratorRetryPhasePolicy(config);
   requireExact(
     config.acceptedCandidateSelection,
-    LAUNCH_ACCEPTED_CANDIDATE_POLICY,
+    EXPECTED_LAUNCH_ACCEPTED_CANDIDATE_POLICY,
     "generator config acceptedCandidateSelection",
   );
   const acceptedLookaheadRetries = requirePositiveSafeInteger(
@@ -2311,7 +2646,7 @@ export function validateGeneratorReportTrace(
     maximumAttemptCount,
   );
   requireCondition(
-    retries === LAUNCH_ACCEPTED_CANDIDATE_POLICY.defaultRetries,
+    retries === EXPECTED_LAUNCH_ACCEPTED_CANDIDATE_POLICY.defaultRetries,
     "generator config retries must match the launch candidate policy default",
   );
   requireExact(
@@ -2447,9 +2782,14 @@ export function validateGeneratorReportTrace(
         `${field}.attempts[${attemptIndex}].wordPool`,
       );
       const currentSelection = shouldRecalculateSelectionScores
-        ? filterAvailableWords(reviewedWords, plannedRoute, usedAnswers, {
-            connectorWordLimit: connectorLimit,
-          })
+        ? independentlyFilterAvailableWords(
+            reviewedWords,
+            plannedRoute,
+            usedAnswers,
+            {
+              connectorWordLimit: connectorLimit,
+            },
+          )
         : null;
       const currentAvailableWordByAnswer =
         currentSelection == null
@@ -2459,11 +2799,7 @@ export function validateGeneratorReportTrace(
         if (attemptIndex === selectedRetryIndex) {
           selectedCurrentSelection = currentSelection;
         }
-        const expectedWordPool = {
-          total: currentSelection.words.length,
-          theme: currentSelection.themeWordCount ?? null,
-          connectors: currentSelection.connectorWordCount ?? null,
-        };
+        const expectedWordPool = summarizeIndependentWordPool(currentSelection);
         requireExact(
           reportedWordPool,
           expectedWordPool,
@@ -2522,8 +2858,8 @@ export function validateGeneratorReportTrace(
                   themeConnectorSharedCellEdges: 0,
                   isolatedThemeOwnerCount: 0,
                 }
-              : summarizeFuturePoolConnectivity(
-                  filterAvailableWords(
+              : independentlySummarizeFuturePoolConnectivity(
+                  independentlyFilterAvailableWords(
                     reviewedWords,
                     nextRoute,
                     futureUsedAnswers,
@@ -2664,7 +3000,7 @@ export function validateGeneratorReportTrace(
 function validateReportCatalogJoin(rawCatalog, report) {
   requireCandidateFlags(report, "generation report");
   requireCondition(
-    report.schemaVersion === "ko-kr-launch-generation-report/5" &&
+    report.schemaVersion === "ko-kr-launch-generation-report/6" &&
       report.catalogId === rawCatalog.catalogId &&
       report.generatedAt === rawCatalog.generatedAt &&
       Array.isArray(report.boards) &&
@@ -2844,9 +3180,9 @@ async function validateGeneratorIdentity(
     Object.values(derivedWordBank.themeInventory).every(
       (inventory) =>
         inventory.owned >=
-          LAUNCH_THEME_OWNER_POLICY.productionTargetDistinctOwnerCountPerTheme &&
+          EXPECTED_LAUNCH_THEME_OWNER_POLICY.productionTargetDistinctOwnerCountPerTheme &&
         inventory.hardReserve ===
-          LAUNCH_THEME_OWNER_POLICY.productionTargetNormalOrHardReservePerTheme,
+          EXPECTED_LAUNCH_THEME_OWNER_POLICY.productionTargetNormalOrHardReservePerTheme,
     ),
     "derived launch wordbank theme inventory is insufficient",
   );

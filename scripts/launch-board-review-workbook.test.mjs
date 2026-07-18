@@ -29,8 +29,25 @@ import {
 } from "./launch-board-review-workbook.mjs";
 
 const GENERATOR_COMMIT = "a".repeat(40);
+const DAILY_CONNECTOR_RANKING_POLICY = Object.freeze({
+  policyId: "ko-kr-launch-daily-connector-theme-coverage-v2",
+  coverageScope:
+    "greedy-prefix-over-distinct-theme-owner-answers-in-current-route-pool",
+  sharedThemeCellDefinition:
+    "unique-answer-cell-values-present-in-at-least-one-theme-answer",
+  connectorOrder: Object.freeze([
+    "max-marginal-uncovered-theme-owner-count",
+    "max-distinct-shared-theme-cell-count",
+    "max-theme-word-degree",
+    "max-answer-cell-count",
+    "max-connector-word-degree",
+    "min-review-ledger-index",
+    "stable-input-order",
+  ]),
+});
 const GENERATOR_CONFIG = Object.freeze({
-  schemaVersion: "fixture-launch-generator-config/1",
+  schemaVersion: "ko-kr-launch-generator-config/9",
+  dailyConnectorRanking: DAILY_CONNECTOR_RANKING_POLICY,
   seedPolicy: "deterministic",
 });
 const GENERATOR_CONFIG_HASH =
@@ -73,6 +90,12 @@ function makeGeneratedBoard(index) {
   template.contentChecksum = calculateGameContentChecksum(template);
   assert.equal(verifyGameContentChecksum(template), true);
   const artifactPath = `/game-content/v1/ko-KR/packs/fixture/${template.contentChecksum}.json`;
+  const wordPool = {
+    answerSetSha256: `sha256:${(index + 1_000).toString(16).padStart(64, "0")}`,
+    total: 200,
+    theme: null,
+    connectors: null,
+  };
   const report = {
     puzzleId,
     contentChecksum: template.contentChecksum,
@@ -93,6 +116,9 @@ function makeGeneratedBoard(index) {
       pass: true,
       checks: [{ key: "connectedComponents", pass: true }],
     },
+    selectedRetryIndex: 0,
+    wordPool: clone(wordPool),
+    attempts: [{ wordPool: clone(wordPool) }],
   };
   return {
     catalogBoard: {
@@ -121,7 +147,7 @@ function createFixture() {
     boards: [...firstRun, ...generated.map((item) => item.catalogBoard)],
   };
   const generationReport = {
-    schemaVersion: "ko-kr-launch-generation-report/5",
+    schemaVersion: "ko-kr-launch-generation-report/6",
     artifactStatus: "candidate",
     activationApproved: false,
     generatedAt: "2026-07-19T00:00:00.000Z",

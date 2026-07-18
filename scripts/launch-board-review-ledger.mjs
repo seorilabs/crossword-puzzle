@@ -6,7 +6,24 @@ export const LAUNCH_BOARD_REVIEW_LEDGER_SCHEMA_VERSION =
   "game-content-launch-board-review-ledger/1";
 
 const CATALOG_SCHEMA_VERSION = "launch-content-catalog/1";
-const GENERATION_REPORT_SCHEMA_VERSION = "ko-kr-launch-generation-report/5";
+const GENERATION_REPORT_SCHEMA_VERSION = "ko-kr-launch-generation-report/6";
+const GENERATOR_CONFIG_SCHEMA_VERSION = "ko-kr-launch-generator-config/9";
+const EXPECTED_DAILY_CONNECTOR_RANKING_POLICY = Object.freeze({
+  policyId: "ko-kr-launch-daily-connector-theme-coverage-v2",
+  coverageScope:
+    "greedy-prefix-over-distinct-theme-owner-answers-in-current-route-pool",
+  sharedThemeCellDefinition:
+    "unique-answer-cell-values-present-in-at-least-one-theme-answer",
+  connectorOrder: Object.freeze([
+    "max-marginal-uncovered-theme-owner-count",
+    "max-distinct-shared-theme-cell-count",
+    "max-theme-word-degree",
+    "max-answer-cell-count",
+    "max-connector-word-degree",
+    "min-review-ledger-index",
+    "stable-input-order",
+  ]),
+});
 const EXPECTED_FIRST_RUN_BOARD_COUNT = 3;
 const EXPECTED_GENERATED_BOARD_COUNT = 90;
 const GENERATED_ROUTE_KINDS = Object.freeze([
@@ -192,6 +209,46 @@ function sourceEntryIdsFromReportBoard(board, field) {
   return sourceEntryIds;
 }
 
+function validateReportBoardWordPoolEvidence(board, field) {
+  const selectedWordPool = requirePlainObject(
+    board.wordPool,
+    `${field}.wordPool`,
+  );
+  requireSha256(
+    selectedWordPool.answerSetSha256,
+    `${field}.wordPool.answerSetSha256`,
+  );
+  requireCondition(
+    Number.isSafeInteger(board.selectedRetryIndex) &&
+      board.selectedRetryIndex >= 0,
+    `${field}.selectedRetryIndex must be a non-negative safe integer`,
+  );
+  requireCondition(
+    Array.isArray(board.attempts) && board.attempts.length > 0,
+    `${field}.attempts must be a non-empty array`,
+  );
+  for (const [attemptIndex, attempt] of board.attempts.entries()) {
+    const attemptWordPool = requirePlainObject(
+      requirePlainObject(attempt, `${field}.attempts[${attemptIndex}]`)
+        .wordPool,
+      `${field}.attempts[${attemptIndex}].wordPool`,
+    );
+    requireSha256(
+      attemptWordPool.answerSetSha256,
+      `${field}.attempts[${attemptIndex}].wordPool.answerSetSha256`,
+    );
+  }
+  const selectedAttempt = requirePlainObject(
+    board.attempts[board.selectedRetryIndex],
+    `${field}.attempts[selectedRetryIndex]`,
+  );
+  requireExact(
+    selectedWordPool,
+    selectedAttempt.wordPool,
+    `${field}.wordPool/selected attempt wordPool`,
+  );
+}
+
 function expectedReviewIdentity(catalogBoard, field) {
   const content = catalogBoard.content;
   return {
@@ -262,6 +319,15 @@ export function deriveLaunchBoardReviewSource(catalog, generationReport) {
   const generatorConfig = requirePlainObject(
     generator.config,
     "generation report.generator.config",
+  );
+  requireCondition(
+    generatorConfig.schemaVersion === GENERATOR_CONFIG_SCHEMA_VERSION,
+    `generation report.generator.config.schemaVersion must be ${GENERATOR_CONFIG_SCHEMA_VERSION}`,
+  );
+  requireExact(
+    generatorConfig.dailyConnectorRanking,
+    EXPECTED_DAILY_CONNECTOR_RANKING_POLICY,
+    "generation report.generator.config.dailyConnectorRanking",
   );
   requireCondition(
     generator.configHash ===
@@ -343,6 +409,10 @@ export function deriveLaunchBoardReviewSource(catalog, generationReport) {
       `generation report board ${expected.puzzleId}`,
     );
     const reportSourceEntryIds = sourceEntryIdsFromReportBoard(
+      reportBoard,
+      `generation report board ${expected.puzzleId}`,
+    );
+    validateReportBoardWordPoolEvidence(
       reportBoard,
       `generation report board ${expected.puzzleId}`,
     );
