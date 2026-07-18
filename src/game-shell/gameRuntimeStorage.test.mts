@@ -80,6 +80,24 @@ describe("game runtime durable storage", () => {
     assert.equal(await storage.getItem("save"), null);
   });
 
+  test("rollback 대상 legacy key는 승격 뒤 보존하고 이후 write를 양쪽에 반영한다", async () => {
+    const progressKey = "crossword-puzzle:progress:p1";
+    const canonical = memoryStorage();
+    const legacy = memoryStorage({ [progressKey]: "legacy-progress" });
+    const storage = createCanonicalGameRuntimeStorage({
+      canonical: canonical.port,
+      migrationSource: legacy.port,
+      shouldMirrorMigrationSource: (key) =>
+        key.startsWith("crossword-puzzle:progress:"),
+    });
+
+    assert.equal(await storage.getItem(progressKey), "legacy-progress");
+    assert.equal(legacy.values.get(progressKey), "legacy-progress");
+    await storage.setItem(progressKey, "projected-progress");
+    assert.equal(canonical.values.get(progressKey), "projected-progress");
+    assert.equal(legacy.values.get(progressKey), "projected-progress");
+  });
+
   test("canonical read-back이 다르면 durable ack를 거부한다", async () => {
     const broken: KeyValueStoragePort = {
       async getItem() {

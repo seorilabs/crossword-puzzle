@@ -456,7 +456,7 @@ describe("journal restart recovery and legacy migration", () => {
     assert.equal(storage.values.has(DEFAULT_GAME_CELL_JOURNAL_KEY), false);
   });
 
-  test("malformed journal은 save를 건드리지 않고 fail-closed 처리한다", async () => {
+  test("malformed journal은 격리하고 마지막 정상 canonical save로 복구한다", async () => {
     const storage = new MemoryStorage();
     const repo = repository(storage);
     await repo.persistSnapshot(gameSnapshot());
@@ -464,18 +464,47 @@ describe("journal restart recovery and legacy migration", () => {
     storage.values.set(DEFAULT_GAME_CELL_JOURNAL_KEY, "{broken");
     storage.operations.length = 0;
 
-    assert.deepEqual(await repo.loadPuzzleSnapshot(identity), {
-      status: "invalid-journal",
-      snapshot: null,
-    });
+    const result = await repo.loadPuzzleSnapshot(identity);
+    assert.equal(result.status, "recovered");
+    assert.ok(result.snapshot != null);
     assert.equal(storage.values.get(DEFAULT_GAME_SAVE_V2_KEY), durableSave);
-    assert.equal(storage.values.has(DEFAULT_GAME_CELL_JOURNAL_KEY), true);
+    assert.equal(storage.values.has(DEFAULT_GAME_CELL_JOURNAL_KEY), false);
     assert.equal(
-      storage.operations.some(
-        (operation) =>
-          operation.startsWith("set:") || operation.startsWith("remove:"),
+      storage.values.get(
+        `${DEFAULT_GAME_CELL_JOURNAL_KEY}:quarantine:20260717T010000000Z`,
       ),
-      false,
+      "{broken",
+    );
+  });
+
+  test("canonical checksum과 맞지 않는 stale journal도 save 대신 journal만 격리한다", async () => {
+    const storage = new MemoryStorage();
+    const repo = repository(storage, "2026-07-17T01:00:01.000Z");
+    await repo.persistSnapshot(gameSnapshot());
+    const durableSave = storage.values.get(DEFAULT_GAME_SAVE_V2_KEY);
+    storage.values.set(
+      DEFAULT_GAME_CELL_JOURNAL_KEY,
+      JSON.stringify({
+        journalVersion: 1,
+        contentLocale: "ko-KR",
+        puzzleId: "puzzle-1",
+        contentChecksum: "content-checksum-1",
+        cellKey: "0:0",
+        cellValue: "가",
+        commandSequence: 1,
+        baseSaveChecksum: "stale-checksum",
+        createdAt: "2026-07-17T01:00:00.000Z",
+      }),
+    );
+
+    const result = await repo.loadPuzzleSnapshot(identity);
+    assert.equal(result.status, "recovered");
+    assert.equal(storage.values.get(DEFAULT_GAME_SAVE_V2_KEY), durableSave);
+    assert.equal(storage.values.has(DEFAULT_GAME_CELL_JOURNAL_KEY), false);
+    assert.ok(
+      storage.values.has(
+        `${DEFAULT_GAME_CELL_JOURNAL_KEY}:quarantine:20260717T010001000Z`,
+      ),
     );
   });
 

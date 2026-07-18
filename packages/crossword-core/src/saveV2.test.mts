@@ -3,6 +3,8 @@ import { describe, test } from "node:test";
 
 import {
   applyCellCommitJournal,
+  canonicalizeForChecksum,
+  compareCanonicalStrings,
   createCellCommitJournal,
   getCanonicalSavePayload,
   migrateLegacyProgressToSaveV2,
@@ -64,6 +66,18 @@ describe("Save v2 migration and checksum", () => {
     assert.deepEqual(validateSaveV2Namespaces(first), []);
   });
 
+  test("legacy content checksum을 해석할 수 없으면 unknown identity를 만들지 않는다", () => {
+    const input = createMigrationInput();
+    assert.throws(
+      () =>
+        migrateLegacyProgressToSaveV2({
+          ...input,
+          contentChecksumByPuzzleId: {},
+        }),
+      /Missing content checksum/,
+    );
+  });
+
   test("canonical payload는 object key 순서와 무관하다", () => {
     const save = migrateLegacyProgressToSaveV2(createMigrationInput());
     const reordered = {
@@ -80,6 +94,20 @@ describe("Save v2 migration and checksum", () => {
     assert.equal(
       getCanonicalSavePayload(save),
       getCanonicalSavePayload(reordered),
+    );
+  });
+
+  test("Unicode key 정렬은 OS locale과 무관한 UTF-16 순서를 고정한다", () => {
+    const keys = ["가", "ä", "z", "a"];
+    assert.deepEqual([...keys].sort(compareCanonicalStrings), [
+      "a",
+      "z",
+      "ä",
+      "가",
+    ]);
+    assert.equal(
+      canonicalizeForChecksum({ 가: 4, ä: 3, z: 2, a: 1 }),
+      '{"a":1,"z":2,"ä":3,"가":4}',
     );
   });
 

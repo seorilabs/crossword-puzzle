@@ -20,6 +20,11 @@ import type {
   GameBridgeJsonValue,
   LaunchConfig,
 } from '../../packages/crossword-core/src';
+import { BUNDLED_ONBOARDING_CONTENT_IDENTITY } from '../../packages/crossword-core/src/launchContentCatalog';
+import {
+  prepareGameSaveMigration,
+  recoverLegacyProjectionOutbox,
+} from '../../src/game-shell/gameSaveMigration';
 import {
   GAME_BOOT_PENDING_KEY,
   bootSelectedRuntime,
@@ -42,6 +47,7 @@ import {
   isAllowedMobileGameNavigation,
   type MobileGameBridgeHost,
 } from './gameBridgeHost';
+import { captureMobileLegacySaveSnapshot } from './legacyMobileSaveInventory';
 import { showInterstitialAd, showRewardedAd } from './mobileAds';
 
 declare const __DEV__: boolean;
@@ -377,6 +383,7 @@ export function MobileRuntimeHost({
     let launchConfigSnapshot: LaunchConfig | null = null;
 
     const run = async () => {
+      await recoverLegacyProjectionOutbox(AsyncStorage);
       const selection = await resolveRuntimeSelection({
         scheduler,
         readPendingBootMarker: async () =>
@@ -402,6 +409,19 @@ export function MobileRuntimeHost({
         setState({ status: 'legacy', reason: selection.reason });
         return;
       }
+      const legacySnapshot = await captureMobileLegacySaveSnapshot({
+        market: Platform.OS === 'ios' ? 'app-store' : 'google-play',
+        sourceVersion: `${Platform.OS}-main-${APP_RUNTIME_VERSION}`,
+        capturedAt: new Date().toISOString(),
+      });
+      await prepareGameSaveMigration({
+        storage: AsyncStorage,
+        legacySnapshot,
+        knownContentChecksums: {
+          [BUNDLED_ONBOARDING_CONTENT_IDENTITY.puzzleId]:
+            BUNDLED_ONBOARDING_CONTENT_IDENTITY.contentChecksum,
+        },
+      });
 
       const result = await bootSelectedRuntime(selection, {
         scheduler,

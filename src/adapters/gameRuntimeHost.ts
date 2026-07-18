@@ -1,6 +1,7 @@
 import { Storage } from "@apps-in-toss/web-framework";
 
 import type { KeyValueStoragePort } from "../game-shell/gameSaveRepository.ts";
+import { isLegacyCrosswordStorageKey } from "../../packages/crossword-core/src/legacySaveMigration.ts";
 import {
   createBrowserGameRuntimeStorage,
   createCanonicalGameRuntimeStorage,
@@ -41,6 +42,7 @@ export function createGameRuntimeHostStorage(
         browserStorage == null
           ? null
           : createBrowserGameRuntimeStorage(browserStorage),
+      shouldMirrorMigrationSource: isLegacyCrosswordStorageKey,
     });
   }
 

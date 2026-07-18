@@ -245,16 +245,20 @@ fixture는 확인된 AIT/Play internal `v0.3.108`, App Store TestFlight `v1.0.1`
 
 legacy dual-write는 completion·settings뿐 아니라 시장별 기존 reader가 실제로 읽는 진행 필드를 projection한다. 선택 단어, 지도, cosmetic, 신규 재화처럼 legacy DTO가 표현하지 못하는 값은 v2 namespace에 보존하며 rollback 비교 report에 명시한다.
 
-| 저장 필드 그룹                                         | AIT/Web legacy  | mobile legacy 현재 main      | rollout 계약                                                                 |
-| ------------------------------------------------------ | --------------- | ---------------------------- | ---------------------------------------------------------------------------- |
-| `cellValues`, `earnedHintCredits`, `hintCount`         | 읽기·쓰기       | 읽기·쓰기                    | 양쪽 dual-write와 fixture equality                                           |
-| `revealUsed`, `tentativeCells`                         | 읽기·쓰기       | reader·write effect에서 누락 | mobile legacy를 먼저 보정하고 tag fixture를 통과하기 전 mobile runtime은 OFF |
-| mission, streak, completion record, settings           | 시장별 기존 key | 시장별 기존 key              | 각 tag의 실제 key/DTO inventory로 projection하고 필드별 equality 검증        |
-| current word, map, cosmetic, 신규 currency·entitlement | 표현 불가       | 표현 불가                    | v2 namespace와 원자적 ledger에 보존, legacy에서는 숨김                       |
+| 저장 필드 그룹                                         | AIT/Web legacy  | mobile legacy 현재 main                               | rollout 계약                                                          |
+| ------------------------------------------------------ | --------------- | ----------------------------------------------------- | --------------------------------------------------------------------- |
+| `cellValues`, `earnedHintCredits`, `hintCount`         | 읽기·쓰기       | 읽기·쓰기                                             | 양쪽 dual-write와 fixture equality                                    |
+| `revealUsed`, `tentativeCells`                         | 읽기·쓰기       | 현재 main 읽기·쓰기 보정 완료, v0.3.108·v1.0.1은 누락 | tag fixture와 실기기 leapfrog를 통과하기 전 mobile runtime은 OFF      |
+| mission, streak, completion record, settings           | 시장별 기존 key | 시장별 기존 key                                       | 각 tag의 실제 key/DTO inventory로 projection하고 필드별 equality 검증 |
+| current word, map, cosmetic, 신규 currency·entitlement | 표현 불가       | 표현 불가                                             | v2 namespace와 원자적 ledger에 보존, legacy에서는 숨김                |
 
 GATE-SAVE는 rollback 직후 각 시장의 legacy 표현 가능 필드가 pre-switch fixture와 같고, v2-only 값이 runtime 재활성화 뒤 그대로 복구되는지 검증한다.
 
 AIT의 canonical 영속 저장은 AppsInToss `Storage` API다. localStorage는 기존 사용자 migration source와 비치명 cache로만 사용한다. QR 테스트 origin과 live origin이 저장을 공유하지 않는 조건을 전제로, 실제 live-origin localStorage→Storage 변환과 rollback을 별도 gate로 검증한다.
+
+2026-07-18 구현 기준으로 raw legacy snapshot checksum, immutable backup, staging Save v2 검증, 초기·ongoing legacy projection outbox, active pointer, OFF→ON legacy 변경 병합, 구 FNV Save 재봉인, AIT localStorage mirror, native host AsyncStorage inventory와 `test:save-migration` 회귀 게이트가 코드에 연결됐다. 저장 tag fixture는 실제 tag의 manifest ID·cell key·archive reader shape로 합성한 단위 증거이며 실제 사용자 저장 추출본이 아니다. 따라서 AIT live-origin, Play internal, App Store TestFlight 실기기에서 강제 종료·저장공간 부족·OFF rollback을 확인하기 전에는 GATE-SAVE를 닫거나 `game_runtime_enabled`를 켜지 않는다.
+
+아직 모바일 game bridge는 저장 문자열 32,768자·wire 64KiB 제한 안에서 단일 Save v2를 왕복한다. 93보드 장기 저장은 이 경계를 넘을 수 있으므로 native-side 저장 repository 또는 chunked protocol과 경계 E2E가 선행돼야 한다. 신규 runtime에서 새로 완료한 퍼즐을 legacy mission·archive index/record까지 완전히 생성하는 projection도 남아 있다. 이 두 항목과 inactive A/B slot 복구가 닫힐 때까지 `native-webview` adapter와 모바일 runtime flag는 OFF를 유지한다.
 
 ## 백엔드와 보안 경계
 

@@ -7,6 +7,12 @@ import {
   type FirebaseRuntimeGateSnapshot,
 } from "../adapters/firebaseClient.ts";
 import { createGameRuntimeHostStorage } from "../adapters/gameRuntimeHost.ts";
+import { captureLegacyWebSaveSnapshot } from "../adapters/legacyWebSaveInventory.ts";
+import { BUNDLED_ONBOARDING_CONTENT_IDENTITY } from "../../packages/crossword-core/src/launchContentCatalog.ts";
+import {
+  prepareGameSaveMigration,
+  recoverLegacyProjectionOutbox,
+} from "./gameSaveMigration.ts";
 import {
   GAME_BOOT_PENDING_KEY,
   bootSelectedRuntime,
@@ -126,6 +132,7 @@ export function RuntimeHost({ legacy }: RuntimeHostProps) {
         return;
       }
       const runtimeStorage = createGameRuntimeHostStorage(hostKind);
+      await recoverLegacyProjectionOutbox(runtimeStorage);
 
       const selection = await resolveRuntimeSelection({
         scheduler,
@@ -151,6 +158,20 @@ export function RuntimeHost({ legacy }: RuntimeHostProps) {
         setState({ status: "legacy", reason: selection.reason });
         return;
       }
+      const legacySnapshot = captureLegacyWebSaveSnapshot({
+        storage: window.localStorage,
+        market: hostKind === "apps-in-toss" ? "apps-in-toss" : "web",
+        sourceVersion: `${hostKind}-main-${APP_RUNTIME_VERSION}`,
+        capturedAt: new Date().toISOString(),
+      });
+      await prepareGameSaveMigration({
+        storage: runtimeStorage,
+        legacySnapshot,
+        knownContentChecksums: {
+          [BUNDLED_ONBOARDING_CONTENT_IDENTITY.puzzleId]:
+            BUNDLED_ONBOARDING_CONTENT_IDENTITY.contentChecksum,
+        },
+      });
       const launchConfig = await readActivatedFirebaseLaunchConfig();
 
       setState({ status: "booting" });

@@ -259,7 +259,8 @@ Apple의 빈번한 게임 조작 44×44pt 권고와 Android 48×48dp 접근성 �
 ### 런타임 롤백
 
 - `game_runtime_enabled`를 시장·버전 조건으로 끄면 legacy 화면으로 돌아가게 하고, leapfrog upgrade와 단계 배포 지표가 닫힐 때까지 legacy runtime을 제거하지 않는다.
-- Save v2는 legacy key를 leapfrog upgrade 성공 전까지 보존한다. `cellValues`, `earnedHintCredits`, `hintCount`는 세 시장에 계속 projection한다. Web/AIT만 현재 읽는 `revealUsed`·`tentativeCells`는 mobile legacy reader와 write effect를 먼저 보정한 뒤 공통 projection하며, 그 전에는 mobile 신규 runtime을 켜지 않는다. 시장별 기존 mission·streak·completion·settings key도 tag fixture 기준으로 보존하고, 실제 reader가 읽지 못하는 필드만 v2 namespace에 둔다.
+- Save v2는 legacy key를 leapfrog upgrade 성공 전까지 보존한다. `cellValues`, `earnedHintCredits`, `hintCount`는 세 시장에 계속 projection한다. `revealUsed`·`tentativeCells`는 현재 main mobile reader/write effect까지 보정됐지만 출시 tag에는 없었으므로 tag fixture와 실기기 leapfrog를 통과하기 전에는 mobile 신규 runtime을 켜지 않는다. 시장별 기존 mission·streak·completion·settings key도 tag fixture 기준으로 보존하고, 실제 reader가 읽지 못하는 필드만 v2 namespace에 둔다.
+- native bridge의 저장 문자열 32,768자·wire 64KiB 경계에서 93보드 Save v2를 읽기·쓰기·재시작하는 E2E와, 신규 완료를 legacy mission·archive index/record로 되돌리는 round-trip이 통과하기 전에는 Android/iOS runtime을 켜지 않는다.
 - 신규 런타임을 끄더라도 완료·재화 ledger를 삭제하지 않는다.
 - host는 2초 안에 fetched→validated cache→bundled false 순으로 config를 확정하고, boot marker durable ack를 최대 1초 기다린 뒤에만 import한다. 5초 boot watchdog·직전 `game_boot_pending` marker로 cached ON 상태의 crash·white screen도 legacy로 복구한다. config timeout, marker write failure, 손상 chunk와 멈춘 bridge를 주입한 세 시장 release E2E가 통과하기 전 SEV-0 롤백을 약속하지 않는다.
 

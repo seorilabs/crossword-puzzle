@@ -26,7 +26,6 @@ import {
   getCellKey,
   getEntryCells,
 } from "../../packages/crossword-core/src/puzzle.ts";
-import type { SavedProgress } from "../../packages/crossword-core/src/types.ts";
 import {
   createCrosswordGameRuntime,
   type CrosswordGameInteractiveAck,
@@ -46,6 +45,13 @@ import {
   type KeyValueStoragePort,
   type RecordGameCompletionResult,
 } from "./gameSaveRepository.ts";
+import {
+  GAME_SAVE_ACTIVE_POINTER_KEY,
+  GAME_SAVE_LEGACY_PROJECTION_OUTBOX_KEY,
+  GAME_SAVE_MIGRATION_STAGING_KEY,
+  createGameSaveLegacyProjectionPort,
+  portableGameSaveChecksumPort,
+} from "./gameSaveMigration.ts";
 import { createRestoredGameSnapshot } from "./gameRestore.ts";
 import { NATIVE_GAME_EVENT } from "./nativeGameEvents.ts";
 import {
@@ -121,72 +127,6 @@ function createDeferred<T>(): Deferred<T> {
   };
 }
 
-async function digestSavePayload(payload: string): Promise<string> {
-  const bytes = new TextEncoder().encode(payload);
-  if (globalThis.crypto?.subtle != null) {
-    const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);
-    return `sha256:${[...new Uint8Array(digest)]
-      .map((value) => value.toString(16).padStart(2, "0"))
-      .join("")}`;
-  }
-
-  // Old WebViews still get deterministic corruption detection. The prefix
-  // keeps these values distinguishable from cryptographic digests.
-  let hash = 2166136261;
-  for (const byte of bytes) {
-    hash ^= byte;
-    hash = Math.imul(hash, 16777619);
-  }
-  return `fnv1a32:${(hash >>> 0).toString(16).padStart(8, "0")}`;
-}
-
-function readLegacyProgress(puzzleId: string): SavedProgress | undefined {
-  let raw: string | null = null;
-  try {
-    raw = window.localStorage.getItem(`crossword-puzzle:progress:${puzzleId}`);
-  } catch {
-    return undefined;
-  }
-  if (raw == null) return undefined;
-
-  try {
-    const candidate = JSON.parse(raw) as Record<string, unknown>;
-    const rawCells =
-      candidate.cellValues != null &&
-      typeof candidate.cellValues === "object" &&
-      !Array.isArray(candidate.cellValues)
-        ? (candidate.cellValues as Record<string, unknown>)
-        : {};
-    const cellValues = Object.fromEntries(
-      Object.entries(rawCells)
-        .filter(([, value]) => typeof value === "string")
-        .map(([key, value]) => [key.replace(",", ":"), value as string]),
-    );
-
-    return {
-      cellValues,
-      earnedHintCredits:
-        typeof candidate.earnedHintCredits === "number" &&
-        Number.isFinite(candidate.earnedHintCredits)
-          ? Math.max(0, Math.floor(candidate.earnedHintCredits))
-          : 0,
-      hintCount:
-        typeof candidate.hintCount === "number" &&
-        Number.isFinite(candidate.hintCount)
-          ? Math.max(0, Math.floor(candidate.hintCount))
-          : 0,
-      revealUsed: candidate.revealUsed === true,
-      tentativeCells: Array.isArray(candidate.tentativeCells)
-        ? candidate.tentativeCells.filter(
-            (value): value is string => typeof value === "string",
-          )
-        : [],
-    };
-  } catch {
-    return undefined;
-  }
-}
-
 function changedCellKeys(previous: GameSnapshot, next: GameSnapshot): string[] {
   const keys = new Set([
     ...Object.keys(previous.cellValues),
@@ -251,24 +191,16 @@ async function createGameModel(
   const content = loadBundledOnboardingGameContent();
   const repository = createGameSaveRepository({
     storage,
-    checksumPort: { digest: digestSavePayload },
+    checksumPort: portableGameSaveChecksumPort,
     uiLocale: "ko-KR",
     inputMode: "word-strip",
+    legacyProjection: createGameSaveLegacyProjectionPort(storage),
   });
   const initial = createInitialGameSnapshot(content);
-  const legacy = readLegacyProgress(content.puzzleId);
   const loadResult = await repository.loadPuzzleSnapshot({
     contentLocale: content.contentLocale,
     puzzleId: content.puzzleId,
     contentChecksum: content.contentChecksum,
-    legacy:
-      legacy == null
-        ? undefined
-        : {
-            progress: legacy,
-            sourceVersion: "legacy-web-main",
-            migrationChecksum: "legacy-local-progress-v1",
-          },
   });
 
   let restoreNotice: string | null = null;
@@ -288,15 +220,14 @@ async function createGameModel(
       loadResult.status === "migrated"
         ? "기존 진행을 새 게임 저장으로 옮겼어요."
         : "이어서 복원할 위치를 불러왔어요.";
-  } else if (
-    loadResult.status === "invalid-save" ||
-    loadResult.status === "invalid-journal" ||
-    loadResult.status === "journal-rejected"
-  ) {
+  } else if (loadResult.status === "invalid-save") {
     const quarantineSuffix = Date.now().toString(36);
     for (const key of [
       DEFAULT_GAME_SAVE_V2_KEY,
       DEFAULT_GAME_CELL_JOURNAL_KEY,
+      GAME_SAVE_ACTIVE_POINTER_KEY,
+      GAME_SAVE_MIGRATION_STAGING_KEY,
+      GAME_SAVE_LEGACY_PROJECTION_OUTBOX_KEY,
     ]) {
       const raw = await storage.getItem(key);
       if (raw != null) {
@@ -311,6 +242,26 @@ async function createGameModel(
     });
     controller.dispatch({ type: "recovery.fail" });
     restoreNotice = "손상된 진행 대신 안전한 새 보드로 시작해요.";
+  } else if (
+    loadResult.status === "invalid-journal" ||
+    loadResult.status === "journal-rejected"
+  ) {
+    const rawJournal = await storage.getItem(DEFAULT_GAME_CELL_JOURNAL_KEY);
+    if (rawJournal != null) {
+      const quarantineSuffix = Date.now().toString(36);
+      await storage.setItem(
+        `${DEFAULT_GAME_CELL_JOURNAL_KEY}:quarantine:${quarantineSuffix}`,
+        rawJournal,
+      );
+      await storage.removeItem(DEFAULT_GAME_CELL_JOURNAL_KEY);
+    }
+    controller = new GameController({
+      content,
+      profile: koKrLanguageProfile,
+      initialSnapshot: { ...initial, phase: "recovery" },
+    });
+    controller.dispatch({ type: "recovery.fail" });
+    restoreNotice = "손상된 복구 기록을 격리하고 마지막 저장을 보호했어요.";
   } else {
     controller = new GameController({
       content,

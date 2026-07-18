@@ -1,0 +1,23 @@
+{
+  "fixtureProvenance": "tag-synthesized",
+  "market": "google-play",
+  "sourceVersion": "v0.3.108",
+  "sourceCommit": "e9e3653d00817e7da165e3f427e0fde79dc2f42a",
+  "records": [
+    ["crossword-puzzle:archive:index", "[\"2026-05-26-normal-02\"]"],
+    [
+      "crossword-puzzle:archive:record:2026-05-26-normal-02",
+      "{\"savedAt\":\"2026-05-26T00:00:00.000Z\",\"lastPlayedAt\":\"2026-05-26T00:04:00.000Z\",\"completedAt\":\"2026-05-26T00:04:00.000Z\",\"puzzleId\":\"2026-05-26-normal-02\",\"puzzle\":{\"puzzleId\":\"2026-05-26-normal-02\",\"date\":\"2026-05-26\",\"difficulty\":\"normal\",\"gridSize\":2,\"grid\":[[\"말\",\"실\"],[\"\",\"\"]],\"entries\":[{\"id\":\"a1\",\"answer\":\"말실\",\"clue\":\"fixture\",\"direction\":\"across\",\"row\":0,\"col\":0,\"generatedBy\":\"placed\"}],\"metrics\":{}}}"
+    ],
+    [
+      "crossword-puzzle:mission:2026-05-26:2026-05-26-normal-02",
+      "{\"date\":\"2026-05-26\",\"puzzleId\":\"2026-05-26-normal-02\",\"attemptsUsed\":1,\"maxAttempts\":3,\"completedAt\":\"2026-05-26T00:04:00.000Z\"}"
+    ],
+    [
+      "crossword-puzzle:progress:2026-05-26-normal-02",
+      "{\"cellValues\":{\"0:1\":\"말\"},\"earnedHintCredits\":2,\"hintCount\":0}"
+    ],
+    ["crossword:answer-input-mode", "box"],
+    ["crossword:how-to-play-seen", "1"]
+  ]
+}

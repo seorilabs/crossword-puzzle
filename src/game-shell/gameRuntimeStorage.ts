@@ -9,6 +9,8 @@ export type BrowserStorageLike = Readonly<{
 export type CreateCanonicalStorageOptions = Readonly<{
   canonical: KeyValueStoragePort;
   migrationSource?: KeyValueStoragePort | null;
+  /** Keys that must remain readable by the legacy rollback runtime. */
+  shouldMirrorMigrationSource?: (key: string) => boolean;
 }>;
 
 function durableAckError(operation: "set" | "remove"): Error {
@@ -51,6 +53,7 @@ export function createBrowserGameRuntimeStorage(
 export function createCanonicalGameRuntimeStorage({
   canonical,
   migrationSource = null,
+  shouldMirrorMigrationSource = () => false,
 }: CreateCanonicalStorageOptions): KeyValueStoragePort {
   return {
     async getItem(key) {
@@ -68,7 +71,9 @@ export function createCanonicalGameRuntimeStorage({
       if ((await canonical.getItem(key)) !== legacyValue) {
         throw durableAckError("set");
       }
-      await migrationSource.removeItem(key);
+      if (!shouldMirrorMigrationSource(key)) {
+        await migrationSource.removeItem(key);
+      }
       return legacyValue;
     },
     async setItem(key, value) {
@@ -77,7 +82,14 @@ export function createCanonicalGameRuntimeStorage({
         throw durableAckError("set");
       }
       if (migrationSource != null) {
-        await migrationSource.removeItem(key);
+        if (shouldMirrorMigrationSource(key)) {
+          await migrationSource.setItem(key, value);
+          if ((await migrationSource.getItem(key)) !== value) {
+            throw durableAckError("set");
+          }
+        } else {
+          await migrationSource.removeItem(key);
+        }
       }
     },
     async removeItem(key) {

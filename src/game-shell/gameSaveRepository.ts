@@ -24,8 +24,10 @@ import {
   type SaveChecksumPort,
   type SaveV2CompletionRecord,
   type SaveV2ContentState,
+  type SaveV2DailyExtraAttemptGrants,
   type SaveV2EconomyRecord,
   type SaveV2Envelope,
+  type SaveV2MissionState,
   type SaveV2PuzzleSnapshot,
   type SaveV2PuzzlePhase,
 } from "../../packages/crossword-core/src/saveV2.ts";
@@ -157,7 +159,14 @@ export type CreateGameSaveRepositoryOptions = Readonly<{
   now?: () => string;
   freshSaveSourceVersion?: string;
   freshSaveMigrationChecksum?: string;
+  legacyProjection?: GameSaveLegacyProjectionPort;
 }>;
+
+export interface GameSaveLegacyProjectionPort {
+  prepareCanonicalWrite(save: SaveV2Envelope): Promise<void>;
+  commitCanonicalWrite(save: SaveV2Envelope): Promise<void>;
+  synchronize(save: SaveV2Envelope): Promise<void>;
+}
 
 export type GameSaveRepositoryErrorCode =
   | "invalid-save"
@@ -321,13 +330,81 @@ function isCompletionRecord(value: unknown): value is SaveV2CompletionRecord {
       "completedAt",
       "hintCount",
       "revealUsed",
+      "assistanceKnown",
     ]) &&
     typeof value.puzzleId === "string" &&
     typeof value.contentLocale === "string" &&
     typeof value.contentChecksum === "string" &&
     typeof value.completedAt === "string" &&
     isNonNegativeInteger(value.hintCount) &&
-    typeof value.revealUsed === "boolean"
+    typeof value.revealUsed === "boolean" &&
+    (value.assistanceKnown === undefined ||
+      typeof value.assistanceKnown === "boolean")
+  );
+}
+
+function isMissionState(value: unknown): value is SaveV2MissionState {
+  if (!isRecord(value)) return false;
+  return (
+    hasOnlyKeys(value, [
+      "sourceKey",
+      "date",
+      "puzzleId",
+      "attemptsUsed",
+      "maxAttempts",
+      "completedAt",
+      "lastStartedAt",
+      "extraAttemptsGranted",
+    ]) &&
+    typeof value.sourceKey === "string" &&
+    value.sourceKey !== "" &&
+    typeof value.date === "string" &&
+    value.date !== "" &&
+    typeof value.puzzleId === "string" &&
+    value.puzzleId !== "" &&
+    isNonNegativeInteger(value.attemptsUsed) &&
+    isNonNegativeInteger(value.maxAttempts) &&
+    value.maxAttempts > 0 &&
+    (value.completedAt === undefined ||
+      typeof value.completedAt === "string") &&
+    (value.lastStartedAt === undefined ||
+      typeof value.lastStartedAt === "string") &&
+    (value.extraAttemptsGranted === undefined ||
+      isNonNegativeInteger(value.extraAttemptsGranted))
+  );
+}
+
+function isDailyExtraAttemptGrants(
+  value: unknown,
+): value is SaveV2DailyExtraAttemptGrants {
+  return (
+    isRecord(value) &&
+    hasOnlyKeys(value, ["date", "count"]) &&
+    typeof value.date === "string" &&
+    value.date !== "" &&
+    isNonNegativeInteger(value.count)
+  );
+}
+
+function isBonusUnlock(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    hasOnlyKeys(value, ["date", "puzzleId", "unlockedAt"]) &&
+    typeof value.date === "string" &&
+    value.date !== "" &&
+    typeof value.puzzleId === "string" &&
+    value.puzzleId !== "" &&
+    typeof value.unlockedAt === "string" &&
+    value.unlockedAt !== ""
+  );
+}
+
+function isNonNegativeIntegerRecord(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    Object.entries(value).every(
+      ([key, child]) => key !== "" && isNonNegativeInteger(child),
+    )
   );
 }
 
@@ -344,6 +421,10 @@ function isContentState(value: unknown): value is SaveV2ContentState {
       "cardIds",
       "streakCompletedDates",
       "completionRecords",
+      "missions",
+      "dailyExtraAttemptGrants",
+      "bonusUnlocks",
+      "personalBestMsByPuzzleId",
     ]) &&
     Object.values(value.puzzles).every(isPuzzleSnapshot) &&
     isStringArray(value.completedPuzzleIds) &&
@@ -351,7 +432,17 @@ function isContentState(value: unknown): value is SaveV2ContentState {
     isStringArray(value.cardIds) &&
     isStringArray(value.streakCompletedDates) &&
     Array.isArray(value.completionRecords) &&
-    value.completionRecords.every(isCompletionRecord)
+    value.completionRecords.every(isCompletionRecord) &&
+    (value.missions === undefined ||
+      (isRecord(value.missions) &&
+        Object.values(value.missions).every(isMissionState))) &&
+    (value.dailyExtraAttemptGrants === undefined ||
+      isDailyExtraAttemptGrants(value.dailyExtraAttemptGrants)) &&
+    (value.bonusUnlocks === undefined ||
+      (Array.isArray(value.bonusUnlocks) &&
+        value.bonusUnlocks.every(isBonusUnlock))) &&
+    (value.personalBestMsByPuzzleId === undefined ||
+      isNonNegativeIntegerRecord(value.personalBestMsByPuzzleId))
   );
 }
 
@@ -380,7 +471,7 @@ function isEconomyRecord(value: unknown): value is SaveV2EconomyRecord {
   );
 }
 
-function isSaveV2Envelope(value: unknown): value is SaveV2Envelope {
+export function isSaveV2Envelope(value: unknown): value is SaveV2Envelope {
   if (!isRecord(value)) {
     return false;
   }
@@ -475,6 +566,11 @@ function parseJson(raw: string): unknown | null {
   }
 }
 
+export function parseGameSaveV2(raw: string): SaveV2Envelope | null {
+  const candidate = parseJson(raw);
+  return isSaveV2Envelope(candidate) ? candidate : null;
+}
+
 function createEmptyContentState(): SaveV2ContentState {
   return {
     puzzles: {},
@@ -483,6 +579,9 @@ function createEmptyContentState(): SaveV2ContentState {
     cardIds: [],
     streakCompletedDates: [],
     completionRecords: [],
+    missions: {},
+    bonusUnlocks: [],
+    personalBestMsByPuzzleId: {},
   };
 }
 
@@ -671,6 +770,22 @@ export function createGameSaveRepository(
     return result;
   };
 
+  const persistCanonicalSave = async (save: SaveV2Envelope): Promise<void> => {
+    await options.legacyProjection?.prepareCanonicalWrite(save);
+    await options.storage.setItem(saveKey, JSON.stringify(save));
+    await options.legacyProjection?.commitCanonicalWrite(save);
+  };
+
+  const quarantineJournal = async (rawJournal: string): Promise<void> => {
+    const suffix = now().replace(/[^0-9A-Za-z]/g, "");
+    const quarantineKey = `${journalKey}:quarantine:${suffix}`;
+    await options.storage.setItem(quarantineKey, rawJournal);
+    if ((await options.storage.getItem(quarantineKey)) !== rawJournal) {
+      throw new GameSaveRepositoryError("invalid-journal");
+    }
+    await options.storage.removeItem(journalKey);
+  };
+
   const readValidatedSave = async (): Promise<ReadSaveResult> => {
     const [rawSave, rawJournal] = await Promise.all([
       options.storage.getItem(saveKey),
@@ -705,7 +820,9 @@ export function createGameSaveRepository(
 
     const journalCandidate = parseJson(rawJournal);
     if (!isCellCommitJournal(journalCandidate)) {
-      return { status: "invalid-journal" };
+      await quarantineJournal(rawJournal);
+      await options.legacyProjection?.synchronize(saveCandidate);
+      return { status: "valid", save: saveCandidate, recovered: true };
     }
 
     const recovery = await applyCellCommitJournal(
@@ -714,11 +831,15 @@ export function createGameSaveRepository(
       options.checksumPort,
     );
     if (recovery.status === "rejected") {
-      return { status: "journal-rejected" };
+      await quarantineJournal(rawJournal);
+      await options.legacyProjection?.synchronize(saveCandidate);
+      return { status: "valid", save: saveCandidate, recovered: true };
     }
 
     if (recovery.status === "applied") {
-      await options.storage.setItem(saveKey, JSON.stringify(recovery.save));
+      await persistCanonicalSave(recovery.save);
+    } else {
+      await options.legacyProjection?.synchronize(recovery.save);
     }
     await options.storage.removeItem(journalKey);
 
@@ -776,7 +897,7 @@ export function createGameSaveRepository(
       replacePuzzleSnapshot(base, projected),
       options.checksumPort,
     );
-    await options.storage.setItem(saveKey, JSON.stringify(sealed));
+    await persistCanonicalSave(sealed);
     return clonePuzzleSnapshot(projected);
   };
 
@@ -790,6 +911,7 @@ export function createGameSaveRepository(
       }
 
       if (readResult.status === "valid") {
+        await options.legacyProjection?.synchronize(readResult.save);
         const restored = snapshotMatchesIdentity(readResult.save, input);
         if (restored === null) {
           return { status: "identity-mismatch", snapshot: null };
@@ -832,7 +954,7 @@ export function createGameSaveRepository(
         configuredMigration,
         options.checksumPort,
       );
-      await options.storage.setItem(saveKey, JSON.stringify(sealed));
+      await persistCanonicalSave(sealed);
       const restored = snapshotMatchesIdentity(sealed, input);
       if (restored === null) {
         return { status: "identity-mismatch", snapshot: null };
@@ -898,7 +1020,8 @@ export function createGameSaveRepository(
       });
 
       // Ordering is part of the product contract: durable compact journal,
-      // canonical sealed save, then journal removal acknowledgement.
+      // projection outbox, canonical sealed save, projection acknowledgement,
+      // then journal removal acknowledgement.
       await options.storage.setItem(journalKey, JSON.stringify(journal));
 
       const projected = projectGameSnapshot(
@@ -911,7 +1034,7 @@ export function createGameSaveRepository(
         replacePuzzleSnapshot(base, projected),
         options.checksumPort,
       );
-      await options.storage.setItem(saveKey, JSON.stringify(sealed));
+      await persistCanonicalSave(sealed);
       await options.storage.removeItem(journalKey);
 
       return clonePuzzleSnapshot(projected);
@@ -969,7 +1092,7 @@ export function createGameSaveRepository(
       );
       assertValidSaveProjection(completion.save);
       const sealed = await sealSaveV2(completion.save, options.checksumPort);
-      await options.storage.setItem(saveKey, JSON.stringify(sealed));
+      await persistCanonicalSave(sealed);
 
       return {
         status: completion.status,
@@ -997,7 +1120,7 @@ export function createGameSaveRepository(
       if (purchase.status === "purchased") {
         assertValidSaveProjection(purchase.save);
         const sealed = await sealSaveV2(purchase.save, options.checksumPort);
-        await options.storage.setItem(saveKey, JSON.stringify(sealed));
+        await persistCanonicalSave(sealed);
         return {
           status: purchase.status,
           price: purchase.price,

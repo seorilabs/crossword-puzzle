@@ -280,6 +280,7 @@ export function applyFirstCompletionRewards(
     completedAt: input.completedAt,
     hintCount: input.hintCount,
     revealUsed: input.revealUsed,
+    assistanceKnown: true,
   };
   const economyRecords: SaveV2EconomyRecord[] = [
     {

@@ -9,6 +9,11 @@ export type JsonValue =
   | JsonValue[]
   | { [key: string]: JsonValue };
 
+/** Locale-independent UTF-16 ordering for checksummed payloads. */
+export function compareCanonicalStrings(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
 export type SaveV2Profile = {
   settings: Record<string, JsonPrimitive>;
   uiLocale: string;
@@ -51,6 +56,30 @@ export type SaveV2CompletionRecord = {
   completedAt: string;
   hintCount: number;
   revealUsed: boolean;
+  /** False when an old client never persisted reveal/tentative metadata. */
+  assistanceKnown?: boolean;
+};
+
+export type SaveV2MissionState = {
+  sourceKey: string;
+  date: string;
+  puzzleId: string;
+  attemptsUsed: number;
+  maxAttempts: number;
+  completedAt?: string;
+  lastStartedAt?: string;
+  extraAttemptsGranted?: number;
+};
+
+export type SaveV2DailyExtraAttemptGrants = {
+  date: string;
+  count: number;
+};
+
+export type SaveV2BonusUnlock = {
+  date: string;
+  puzzleId: string;
+  unlockedAt: string;
 };
 
 export type SaveV2ContentState = {
@@ -60,6 +89,11 @@ export type SaveV2ContentState = {
   cardIds: string[];
   streakCompletedDates: string[];
   completionRecords: SaveV2CompletionRecord[];
+  /** Added after the first experimental Save v2 writer; optional on read. */
+  missions?: Record<string, SaveV2MissionState>;
+  dailyExtraAttemptGrants?: SaveV2DailyExtraAttemptGrants;
+  bonusUnlocks?: SaveV2BonusUnlock[];
+  personalBestMsByPuzzleId?: Record<string, number>;
 };
 
 export type SaveV2EconomyRecord = {
@@ -142,6 +176,9 @@ function createEmptyContentState(): SaveV2ContentState {
     cardIds: [],
     streakCompletedDates: [],
     completionRecords: [],
+    missions: {},
+    bonusUnlocks: [],
+    personalBestMsByPuzzleId: {},
   };
 }
 
@@ -171,22 +208,40 @@ export function createEmptySaveV2(
   };
 }
 
-function normalizeLegacyProgress(progress: SavedProgress): SavedProgress {
+export function normalizeLegacyProgress(
+  progress: Partial<SavedProgress>,
+): SavedProgress {
+  const rawCellValues =
+    progress.cellValues != null &&
+    typeof progress.cellValues === "object" &&
+    !Array.isArray(progress.cellValues)
+      ? progress.cellValues
+      : {};
   return {
     cellValues: Object.fromEntries(
-      Object.entries(progress.cellValues).filter(
-        ([key, value]) => key !== "" && typeof value === "string",
-      ),
+      Object.entries(rawCellValues)
+        .filter(([key, value]) => key !== "" && typeof value === "string")
+        .map(([key, value]) => [key.replace(",", ":"), value]),
     ),
-    earnedHintCredits: Number.isFinite(progress.earnedHintCredits)
-      ? Math.max(0, Math.floor(progress.earnedHintCredits))
-      : 0,
-    hintCount: Number.isFinite(progress.hintCount)
-      ? Math.max(0, Math.floor(progress.hintCount))
-      : 0,
+    earnedHintCredits:
+      typeof progress.earnedHintCredits === "number" &&
+      Number.isFinite(progress.earnedHintCredits)
+        ? Math.max(0, Math.floor(progress.earnedHintCredits))
+        : 0,
+    hintCount:
+      typeof progress.hintCount === "number" &&
+      Number.isFinite(progress.hintCount)
+        ? Math.max(0, Math.floor(progress.hintCount))
+        : 0,
     revealUsed: progress.revealUsed === true,
     tentativeCells: Array.isArray(progress.tentativeCells)
-      ? [...new Set(progress.tentativeCells.filter((key) => key !== ""))].sort()
+      ? [
+          ...new Set(
+            progress.tentativeCells
+              .filter((key) => key !== "")
+              .map((key) => key.replace(",", ":")),
+          ),
+        ].sort()
       : [],
   };
 }
@@ -197,14 +252,19 @@ export function migrateLegacyProgressToSaveV2(
   const save = createEmptySaveV2(input);
   const puzzles = Object.fromEntries(
     Object.entries(input.progressByPuzzleId)
-      .sort(([left], [right]) => left.localeCompare(right))
+      .sort(([left], [right]) => compareCanonicalStrings(left, right))
       .map(([puzzleId, rawProgress]) => {
         const progress = normalizeLegacyProgress(rawProgress);
+        const contentChecksum = input.contentChecksumByPuzzleId[puzzleId];
+        if (typeof contentChecksum !== "string" || contentChecksum === "") {
+          throw new Error(
+            `Missing content checksum for legacy puzzle ${puzzleId}`,
+          );
+        }
         const snapshot: SaveV2PuzzleSnapshot = {
           contentLocale: input.contentLocale,
           puzzleId,
-          contentChecksum:
-            input.contentChecksumByPuzzleId[puzzleId] ?? "legacy-unknown",
+          contentChecksum,
           currentEntryId: input.currentEntryIdByPuzzleId?.[puzzleId] ?? null,
           cellValues: progress.cellValues,
           earnedHintCredits: progress.earnedHintCredits,
@@ -250,7 +310,7 @@ export function projectLegacyProgress(
   };
 }
 
-function canonicalize(value: unknown): string {
+export function canonicalizeForChecksum(value: unknown): string {
   if (
     value === null ||
     typeof value === "boolean" ||
@@ -267,15 +327,18 @@ function canonicalize(value: unknown): string {
   }
 
   if (Array.isArray(value)) {
-    return `[${value.map((item) => canonicalize(item)).join(",")}]`;
+    return `[${value.map((item) => canonicalizeForChecksum(item)).join(",")}]`;
   }
 
   if (typeof value === "object" && value != null) {
     const entries = Object.entries(value as Record<string, unknown>)
       .filter(([, child]) => child !== undefined)
-      .sort(([left], [right]) => left.localeCompare(right));
+      .sort(([left], [right]) => compareCanonicalStrings(left, right));
     return `{${entries
-      .map(([key, child]) => `${JSON.stringify(key)}:${canonicalize(child)}`)
+      .map(
+        ([key, child]) =>
+          `${JSON.stringify(key)}:${canonicalizeForChecksum(child)}`,
+      )
       .join(",")}}`;
   }
 
@@ -283,7 +346,7 @@ function canonicalize(value: unknown): string {
 }
 
 export function getCanonicalSavePayload(save: SaveV2Envelope): string {
-  return canonicalize({ ...save, checksum: undefined });
+  return canonicalizeForChecksum({ ...save, checksum: undefined });
 }
 
 export async function sealSaveV2(
