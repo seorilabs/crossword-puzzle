@@ -7,11 +7,8 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { promisify } from "node:util";
 
-import {
-  analyzeRuns,
-  generateBoards,
-  makeWordMap,
-} from "./crossword-generator-prototype.mjs";
+import { analyzeRuns, makeWordMap } from "./crossword-generator-prototype.mjs";
+import { generateBoardWithRetries } from "../server/batch/puzzle-board-engine.mjs";
 import {
   calculateGameContentChecksum,
   validateGameContentV1,
@@ -67,6 +64,7 @@ const MIN_MULTI_CROSS_RATIO = 0.65;
 const GENERATOR_DEPENDENCY_PATHS = Object.freeze([
   "scripts/build-ko-kr-launch-content.mjs",
   "scripts/crossword-generator-prototype.mjs",
+  "server/batch/puzzle-board-engine.mjs",
   "packages/crossword-core/src/clueCuration.ts",
   "packages/crossword-core/src/clueSimilarity.ts",
   "packages/crossword-core/src/difficultyProfiles.ts",
@@ -835,44 +833,29 @@ async function generateRouteContent(
   licenseManifestChecksum,
 ) {
   const selection = filterAvailableWords(reviewedWords, route, usedAnswers);
-  const attempts = [];
-  for (let retryIndex = 0; retryIndex < options.retries; retryIndex += 1) {
-    const seed = retrySeed(options.baseSeed, route, retryIndex);
-    const searchOptions = searchOptionsForRetry(options, retryIndex);
-    const boards = generateBoards({
+  const generation = generateBoardWithRetries({
+    retries: options.retries,
+    seedForRetry: (retryIndex) =>
+      retrySeed(options.baseSeed, route, retryIndex),
+    searchOptionsForRetry: (retryIndex) =>
+      searchOptionsForRetry(options, retryIndex),
+    buildGeneratorOptions: ({ searchOptions, seed }) => ({
       allowAdjacent: true,
-      attempts: searchOptions.attempts,
-      beamWidth: searchOptions.beamWidth,
+      ...searchOptions,
       boardSize: DIFFICULTY_PROFILES[route.difficulty].boardSize,
-      branchLimit: searchOptions.branchLimit,
-      candidateWordLimit: searchOptions.candidateWordLimit,
-      denseCandidateLimit: searchOptions.denseCandidateLimit,
       maxWords: DIFFICULTY_PROFILES[route.difficulty].maxWords,
       minWordLength: DIFFICULTY_PROFILES[route.difficulty].minWordLength,
-      samples: searchOptions.samples,
       seed,
       wordBank: selection.words,
-    });
-    const candidates = boards.map((board, candidateIndex) => {
-      const quality = evaluateRouteBoardQuality(board, route, selection.words);
-      return {
-        board,
-        quality,
-        report: summarizeCandidateBoard(board, quality, candidateIndex),
-      };
-    });
-    attempts.push({
-      retryIndex,
-      seed,
-      searchOptions,
-      candidateCount: candidates.length,
-      candidates: candidates.map((candidate) => candidate.report),
-    });
-    const accepted = candidates.find((candidate) => candidate.quality.pass);
-    if (accepted == null) continue;
+    }),
+    evaluateCandidate: (board) =>
+      evaluateRouteBoardQuality(board, route, selection.words),
+    summarizeCandidate: summarizeCandidateBoard,
+  });
 
+  if (generation.accepted) {
     const content = serializeGeneratedContent(
-      accepted.board,
+      generation.board,
       route,
       selection.words,
       generatorIdentity,
@@ -886,6 +869,10 @@ async function generateRouteContent(
       );
     }
     const selectedWordMap = makeWordMap(selection.words);
+    const selectedReport =
+      generation.attempts[generation.selectedRetryIndex].candidates[
+        generation.selectedCandidateIndex
+      ];
     return {
       content,
       report: {
@@ -899,8 +886,8 @@ async function generateRouteContent(
         difficulty: route.difficulty,
         themeId: route.themeId,
         accepted: true,
-        selectedRetryIndex: retryIndex,
-        selectedSeed: seed,
+        selectedRetryIndex: generation.selectedRetryIndex,
+        selectedSeed: generation.selectedSeed,
         effectiveWordDifficulties: selection.difficulties,
         broadenedDifficultyPool: selection.broadened,
         wordPool: {
@@ -908,8 +895,8 @@ async function generateRouteContent(
           theme: selection.themeWordCount ?? null,
           connectors: selection.connectorWordCount ?? null,
         },
-        quality: accepted.quality,
-        metrics: accepted.report.metrics,
+        quality: generation.quality,
+        metrics: selectedReport.metrics,
         entryProvenance: content.entries.map((entry) => {
           const word = selectedWordMap.get(entry.answer);
           requireCondition(
@@ -926,13 +913,13 @@ async function generateRouteContent(
             generatedBy: entry.generatedBy,
           };
         }),
-        attempts,
+        attempts: generation.attempts,
       },
     };
   }
   throw new Error(
     `${route.puzzleId} failed quality gates after ${options.retries} deterministic retries: ${JSON.stringify(
-      attempts.map((attempt) => ({
+      generation.attempts.map((attempt) => ({
         seed: attempt.seed,
         candidates: attempt.candidates,
       })),

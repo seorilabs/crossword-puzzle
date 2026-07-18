@@ -46,6 +46,7 @@ const PUBLIC_ARTIFACT_PREFIX = "/game-content/v1/ko-KR";
 const EXPECTED_GENERATOR_DEPENDENCY_PATHS = Object.freeze([
   "scripts/build-ko-kr-launch-content.mjs",
   "scripts/crossword-generator-prototype.mjs",
+  "server/batch/puzzle-board-engine.mjs",
   "packages/crossword-core/src/clueCuration.ts",
   "packages/crossword-core/src/clueSimilarity.ts",
   "packages/crossword-core/src/difficultyProfiles.ts",
