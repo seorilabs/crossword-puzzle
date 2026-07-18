@@ -11,12 +11,16 @@ import { promisify } from "node:util";
 import {
   DAILY_CONNECTOR_WORD_LIMIT_BY_DIFFICULTY,
   LAUNCH_ACCEPTED_CANDIDATE_POLICY,
+  LAUNCH_RETRY_PHASE_POLICY,
   LAUNCH_SEARCH_QUALITY_POLICY,
   LAUNCH_THEME_IDS,
   LAUNCH_THEME_OWNER_POLICY,
   allocateLaunchThemeOwners,
   buildLaunchRoutePlan,
+  filterAvailableWords,
+  orderRoutesForGeneration,
   searchOptionsForRetry,
+  summarizeFuturePoolConnectivity,
 } from "./build-ko-kr-launch-content.mjs";
 import {
   KO_KR_LAUNCH_CLUE_QUALITY_POLICY,
@@ -35,6 +39,7 @@ import {
   validateGeneratedEntryAgainstReviewedWord,
   validateGeneratorClueQualityPolicy,
   validateGeneratorReportTrace,
+  validateGeneratorRetryPhasePolicy,
   validateGeneratorSearchQualityPolicy,
   validateGeneratorThemeInventoryPolicy,
   validateGlobalInventory,
@@ -147,6 +152,34 @@ test("generator search quality의 route/연결성 정렬 정책 재봉인을 거
   assert.throws(
     () => validateGeneratorSearchQualityPolicy(forged),
     /search quality policy does not exactly match/,
+  );
+});
+
+test("generator bounded fallback phase와 connector schedule 재봉인을 거부한다", () => {
+  const config = {
+    retryPhasePolicy: structuredClone(LAUNCH_RETRY_PHASE_POLICY),
+  };
+  assert.equal(validateGeneratorRetryPhasePolicy(config), true);
+
+  const forgedTransition = structuredClone(config);
+  forgedTransition.retryPhasePolicy.transition = "fallback-after-any-rejection";
+  assert.throws(
+    () => validateGeneratorRetryPhasePolicy(forgedTransition),
+    /retry phase policy does not exactly match/,
+  );
+
+  const forgedScope = structuredClone(config);
+  forgedScope.retryPhasePolicy.fallbackRouteKind = "chapter";
+  assert.throws(
+    () => validateGeneratorRetryPhasePolicy(forgedScope),
+    /retry phase policy does not exactly match/,
+  );
+
+  const forgedSchedule = structuredClone(config);
+  forgedSchedule.retryPhasePolicy.phases[1].connectorLimitScheduleByDifficulty.normal[0] = 80;
+  assert.throws(
+    () => validateGeneratorRetryPhasePolicy(forgedSchedule),
+    /retry phase policy does not exactly match/,
   );
 });
 
@@ -644,13 +677,13 @@ test("저품질 board의 report quality PASS 재봉인을 거부한다", () => {
   );
 });
 
-function makeGeneratorTraceFixture() {
-  const route = buildLaunchRoutePlan()[0];
+function makeGeneratorTraceFixture(route = buildLaunchRoutePlan()[0]) {
   const config = {
-    schemaVersion: "ko-kr-launch-generator-config/6",
+    schemaVersion: "ko-kr-launch-generator-config/7",
     acceptedCandidateSelection: structuredClone(
       LAUNCH_ACCEPTED_CANDIDATE_POLICY,
     ),
+    retryPhasePolicy: structuredClone(LAUNCH_RETRY_PHASE_POLICY),
     baseSeed: 20260718,
     attempts: 30,
     retries: LAUNCH_ACCEPTED_CANDIDATE_POLICY.defaultRetries,
@@ -666,8 +699,12 @@ function makeGeneratorTraceFixture() {
     clueQuality: clueQualityConfig().clueQuality,
     routePlan: buildLaunchRoutePlan(),
   };
+  const retryScheduleLength = LAUNCH_RETRY_PHASE_POLICY.phases.reduce(
+    (count, phase) => count + phase.retryCount,
+    0,
+  );
   config.searchEscalation = Array.from(
-    { length: config.retries },
+    { length: retryScheduleLength },
     (_, retryIndex) => searchOptionsForRetry(config, retryIndex),
   );
   const rejectedMetrics = {
@@ -726,7 +763,13 @@ function makeGeneratorTraceFixture() {
   };
   const attempts = [
     {
+      phase: "base",
+      phaseIndex: 0,
+      phaseId: "base",
       retryIndex: 0,
+      globalRetryIndex: 0,
+      connectorLimit: null,
+      wordPool: { total: 200, theme: null, connectors: null },
       seed: calculateLaunchRetrySeed(config.baseSeed, route.puzzleId, 0),
       searchOptions: searchOptionsForRetry(config, 0),
       candidateCount: 1,
@@ -744,7 +787,13 @@ function makeGeneratorTraceFixture() {
       ],
     },
     {
+      phase: "base",
+      phaseIndex: 0,
+      phaseId: "base",
       retryIndex: 1,
+      globalRetryIndex: 1,
+      connectorLimit: null,
+      wordPool: { total: 200, theme: null, connectors: null },
       seed: calculateLaunchRetrySeed(config.baseSeed, route.puzzleId, 1),
       searchOptions: searchOptionsForRetry(config, 1),
       candidateCount: 2,
@@ -772,7 +821,13 @@ function makeGeneratorTraceFixture() {
       ],
     },
     {
+      phase: "base",
+      phaseIndex: 0,
+      phaseId: "base",
       retryIndex: 2,
+      globalRetryIndex: 2,
+      connectorLimit: null,
+      wordPool: { total: 200, theme: null, connectors: null },
       seed: calculateLaunchRetrySeed(config.baseSeed, route.puzzleId, 2),
       searchOptions: searchOptionsForRetry(config, 2),
       candidateCount: 1,
@@ -802,7 +857,213 @@ function makeGeneratorTraceFixture() {
       selectedSeed: attempts[1].seed,
       metrics: { ...selectedMetrics },
       quality: { ratios: { ...selectedRatios } },
+      wordPool: { total: 200, theme: null, connectors: null },
       attempts,
+    },
+  };
+}
+
+function makeFallbackGeneratorTraceFixture(routeKind = "chapter") {
+  const route = buildLaunchRoutePlan().find(
+    (candidate) => candidate.route.kind === routeKind,
+  );
+  assert.ok(route != null);
+  const fixture = makeGeneratorTraceFixture(route);
+  const rejectedCandidate = structuredClone(
+    fixture.board.attempts[0].candidates[0],
+  );
+  const passingCandidate = structuredClone(
+    fixture.board.attempts[1].candidates[1],
+  );
+  passingCandidate.candidateIndex = 0;
+  const baseAttempts = Array.from({ length: 8 }, (_, retryIndex) => ({
+    phase: "base",
+    phaseIndex: 0,
+    phaseId: "base",
+    retryIndex,
+    globalRetryIndex: retryIndex,
+    connectorLimit: null,
+    wordPool: { total: 200, theme: null, connectors: null },
+    seed: calculateLaunchRetrySeed(
+      fixture.config.baseSeed,
+      fixture.board.puzzleId,
+      retryIndex,
+    ),
+    searchOptions: searchOptionsForRetry(fixture.config, retryIndex),
+    candidateCount: 1,
+    candidates: [structuredClone(rejectedCandidate)],
+  }));
+  const fallbackAttempts = Array.from({ length: 2 }, (_, retryIndex) => {
+    const globalRetryIndex = retryIndex + 8;
+    return {
+      phase: "fallback",
+      phaseIndex: 1,
+      phaseId: "fallback",
+      retryIndex,
+      globalRetryIndex,
+      connectorLimit: null,
+      wordPool: { total: 200, theme: null, connectors: null },
+      seed: calculateLaunchRetrySeed(
+        fixture.config.baseSeed,
+        fixture.board.puzzleId,
+        globalRetryIndex,
+      ),
+      searchOptions: searchOptionsForRetry(fixture.config, globalRetryIndex),
+      candidateCount: 1,
+      candidates: [structuredClone(passingCandidate)],
+    };
+  });
+  fixture.board.attempts = [...baseAttempts, ...fallbackAttempts];
+  fixture.board.selectedRetryIndex = 8;
+  fixture.board.selectedCandidateIndex = 0;
+  fixture.board.selectedSeed = fallbackAttempts[0].seed;
+  fixture.board.metrics = structuredClone(passingCandidate.metrics);
+  fixture.board.quality = {
+    ratios: structuredClone(passingCandidate.ratios),
+  };
+  fixture.board.wordPool = structuredClone(fallbackAttempts[0].wordPool);
+  return fixture;
+}
+
+function makeDailyFallbackPoolTraceFixture() {
+  const { config } = makeGeneratorTraceFixture();
+  const routes = orderRoutesForGeneration(buildLaunchRoutePlan());
+  const route = routes[0];
+  const nextRoute = routes[1];
+  const reviewedWords = [
+    ...Array.from({ length: 100 }, (_, index) => ({
+      answer: `테마-${String(index).padStart(3, "0")}`,
+      answerCells: ["가"],
+      clue: `테마 단서 ${index}`,
+      difficulty: "normal",
+      reviewLedgerIndex: index,
+      themeOwner: route.themeId,
+      themeHardReserve: false,
+    })),
+    ...Array.from({ length: 160 }, (_, index) => ({
+      answer: `연결-${String(index).padStart(3, "0")}`,
+      answerCells: ["가", "나"],
+      clue: `연결 단서 ${index}`,
+      difficulty: "normal",
+      reviewLedgerIndex: index + 100,
+      themeOwner: null,
+      themeHardReserve: false,
+    })),
+  ];
+  const baseSelection = filterAvailableWords(reviewedWords, route, new Set());
+  const fallbackLimit =
+    LAUNCH_RETRY_PHASE_POLICY.phases[1].connectorLimitScheduleByDifficulty
+      .normal[0];
+  const fallbackSelection = filterAvailableWords(
+    reviewedWords,
+    route,
+    new Set(),
+    { connectorWordLimit: fallbackLimit },
+  );
+  const baseAnswers = new Set(baseSelection.words.map((word) => word.answer));
+  const fallbackOnlyWord = fallbackSelection.words.find(
+    (word) => word.themeOwner == null && !baseAnswers.has(word.answer),
+  );
+  assert.ok(fallbackOnlyWord != null);
+  const answers = [
+    ...fallbackSelection.words
+      .filter((word) => word.themeOwner === route.themeId)
+      .slice(0, 5)
+      .map((word) => word.answer),
+    ...fallbackSelection.words
+      .filter((word) => word.themeOwner == null && baseAnswers.has(word.answer))
+      .slice(0, 4)
+      .map((word) => word.answer),
+    fallbackOnlyWord.answer,
+  ].sort();
+  const futureUsedAnswers = new Set(answers);
+  const futureConnectivity = summarizeFuturePoolConnectivity(
+    filterAvailableWords(reviewedWords, nextRoute, futureUsedAnswers).words,
+    nextRoute,
+  );
+  const metrics = {
+    wordCount: 10,
+    autoRunCount: 0,
+    crossRatio: 0.6,
+    bboxDensity: 0.6,
+    multiIntersectionPlacements: 7,
+    connectedComponents: 1,
+    accidentalRunCount: 0,
+    crossAnswerClueLeakCount: 0,
+    answerContainmentCount: 0,
+  };
+  const ratios = {
+    autoRunRatio: 0,
+    multiCrossRatio: 0.7,
+    themeEntryRatio: 0.5,
+  };
+  const passingCandidate = {
+    candidateIndex: 0,
+    pass: true,
+    failedChecks: [],
+    metrics,
+    ratios,
+    themeEntryCount: 5,
+    answers,
+    selectionScore: {
+      ...futureConnectivity,
+      cooldownAnswerCount: answers.length,
+    },
+  };
+  const wordPool = (selection) => ({
+    total: selection.words.length,
+    theme: selection.themeWordCount,
+    connectors: selection.connectorWordCount,
+  });
+  const baseAttempts = Array.from({ length: 8 }, (_, retryIndex) => ({
+    phase: "base",
+    phaseIndex: 0,
+    phaseId: "base",
+    retryIndex,
+    globalRetryIndex: retryIndex,
+    connectorLimit: 80,
+    wordPool: wordPool(baseSelection),
+    seed: calculateLaunchRetrySeed(config.baseSeed, route.puzzleId, retryIndex),
+    searchOptions: searchOptionsForRetry(config, retryIndex),
+    candidateCount: 0,
+    candidates: [],
+  }));
+  const fallbackAttempts = Array.from({ length: 2 }, (_, retryIndex) => {
+    const globalRetryIndex = retryIndex + 8;
+    return {
+      phase: "fallback",
+      phaseIndex: 1,
+      phaseId: "fallback",
+      retryIndex,
+      globalRetryIndex,
+      connectorLimit: fallbackLimit,
+      wordPool: wordPool(fallbackSelection),
+      seed: calculateLaunchRetrySeed(
+        config.baseSeed,
+        route.puzzleId,
+        globalRetryIndex,
+      ),
+      searchOptions: searchOptionsForRetry(config, globalRetryIndex),
+      candidateCount: retryIndex === 0 ? 1 : 0,
+      candidates: retryIndex === 0 ? [passingCandidate] : [],
+    };
+  });
+  return {
+    config,
+    reviewedWords,
+    fallbackOnlyAnswer: fallbackOnlyWord.answer,
+    board: {
+      puzzleId: route.puzzleId,
+      route: route.route,
+      difficulty: route.difficulty,
+      themeId: route.themeId,
+      selectedCandidateIndex: 0,
+      selectedRetryIndex: 8,
+      selectedSeed: fallbackAttempts[0].seed,
+      metrics: structuredClone(metrics),
+      quality: { ratios: structuredClone(ratios) },
+      wordPool: wordPool(fallbackSelection),
+      attempts: [...baseAttempts, ...fallbackAttempts],
     },
   };
 }
@@ -816,9 +1077,9 @@ test("재봉인한 route/search/attempt 허위 trace를 거부한다", () => {
   const forgeries = [
     {
       mutate: ({ config }) => {
-        config.schemaVersion = "ko-kr-launch-generator-config/5";
+        config.schemaVersion = "ko-kr-launch-generator-config/6";
       },
-      expected: /trace config schema must be ko-kr-launch-generator-config\/6/,
+      expected: /trace config schema must be ko-kr-launch-generator-config\/7/,
     },
     {
       mutate: ({ config }) => {
@@ -852,10 +1113,16 @@ test("재봉인한 route/search/attempt 허위 trace를 거부한다", () => {
       expected: /generator config searchEscalation does not exactly match/,
     },
     {
+      mutate: ({ config }) => {
+        config.searchEscalation[8].attempts += 1;
+      },
+      expected: /generator config searchEscalation does not exactly match/,
+    },
+    {
       mutate: ({ board }) => {
         board.attempts[0].retryIndex = 1;
       },
-      expected: /retryIndex must be sequential/,
+      expected: /phase\/local\/global retry identity is invalid/,
     },
     {
       mutate: ({ board }) => {
@@ -950,6 +1217,98 @@ test("재봉인한 route/search/attempt 허위 trace를 거부한다", () => {
       expected,
     );
   }
+});
+
+test("chapter·bonus·weekly report의 fallback attempt를 명시적으로 거부한다", () => {
+  for (const routeKind of ["chapter", "bonus", "weekly-challenge"]) {
+    const fixture = makeFallbackGeneratorTraceFixture(routeKind);
+    assert.throws(
+      () => validateGeneratorReportTrace(fixture.config, [fixture.board]),
+      /fallback is allowed only for daily routes/,
+    );
+  }
+});
+
+test("daily는 base를 모두 소진한 뒤에만 fallback global retry trace를 허용한다", () => {
+  const fixture = makeDailyFallbackPoolTraceFixture();
+  assert.doesNotThrow(() =>
+    validateGeneratorReportTrace(fixture.config, [fixture.board]),
+  );
+
+  const earlyFallback = structuredClone(fixture);
+  earlyFallback.board.attempts[7].candidates = structuredClone(
+    earlyFallback.board.attempts[8].candidates,
+  );
+  earlyFallback.board.attempts[7].candidateCount =
+    earlyFallback.board.attempts[7].candidates.length;
+  assert.throws(
+    () =>
+      validateGeneratorReportTrace(earlyFallback.config, [earlyFallback.board]),
+    /fallback requires an exhausted non-passing base phase/,
+  );
+
+  const forgedGlobalIndex = structuredClone(fixture);
+  forgedGlobalIndex.board.attempts[8].globalRetryIndex = 7;
+  assert.throws(
+    () =>
+      validateGeneratorReportTrace(forgedGlobalIndex.config, [
+        forgedGlobalIndex.board,
+      ]),
+    /phase\/local\/global retry identity is invalid/,
+  );
+
+  const forgedConnectorLimit = structuredClone(fixture);
+  forgedConnectorLimit.board.attempts[8].connectorLimit = 80;
+  assert.throws(
+    () =>
+      validateGeneratorReportTrace(forgedConnectorLimit.config, [
+        forgedConnectorLimit.board,
+      ]),
+    /connectorLimit mismatch/,
+  );
+
+  const forgedSelectedPool = structuredClone(fixture);
+  forgedSelectedPool.board.wordPool.total += 1;
+  assert.throws(
+    () =>
+      validateGeneratorReportTrace(forgedSelectedPool.config, [
+        forgedSelectedPool.board,
+      ]),
+    /wordPool must match the selected phase pool/,
+  );
+});
+
+test("fallback 후보 답과 selection score를 해당 retry의 확장 pool로 재계산한다", () => {
+  const fixture = makeDailyFallbackPoolTraceFixture();
+  assert.doesNotThrow(() =>
+    validateGeneratorReportTrace(fixture.config, [fixture.board], {
+      reviewedWords: fixture.reviewedWords,
+    }),
+  );
+
+  const fallbackCandidate = fixture.board.attempts[8].candidates[0];
+  assert.ok(fallbackCandidate.answers.includes(fixture.fallbackOnlyAnswer));
+
+  const outsidePool = structuredClone(fixture);
+  outsidePool.board.attempts[8].candidates[0].answers[0] = "연결-159";
+  outsidePool.board.attempts[8].candidates[0].answers.sort();
+  assert.throws(
+    () =>
+      validateGeneratorReportTrace(outsidePool.config, [outsidePool.board], {
+        reviewedWords: outsidePool.reviewedWords,
+      }),
+    /answers contain a word outside the current route pool/,
+  );
+
+  const forgedScore = structuredClone(fixture);
+  forgedScore.board.attempts[8].candidates[0].selectionScore.totalSharedCellEdges += 1;
+  assert.throws(
+    () =>
+      validateGeneratorReportTrace(forgedScore.config, [forgedScore.board], {
+        reviewedWords: forgedScore.reviewedWords,
+      }),
+    /selectionScore independently recalculated does not exactly match/,
+  );
 });
 
 test("current pointer before는 generator commit의 Git blob과 일치해야 한다", async (t) => {

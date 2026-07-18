@@ -7,7 +7,11 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { promisify } from "node:util";
 
-import { analyzeRuns, makeWordMap } from "./crossword-generator-prototype.mjs";
+import {
+  analyzeRuns,
+  generateBoards,
+  makeWordMap,
+} from "./crossword-generator-prototype.mjs";
 import { generateBoardWithRetries } from "../server/batch/puzzle-board-engine.mjs";
 import {
   calculateGameContentChecksum,
@@ -119,6 +123,56 @@ export const LAUNCH_ACCEPTED_CANDIDATE_POLICY = Object.freeze({
     "min-cooldown-answer-count",
     "stable-generation-order",
   ],
+});
+function repeatedConnectorLimit(limit) {
+  return Object.freeze(
+    Array.from(
+      { length: LAUNCH_ACCEPTED_CANDIDATE_POLICY.defaultRetries },
+      () => limit,
+    ),
+  );
+}
+
+function steppedConnectorLimits(firstLimit, secondLimit) {
+  const half = LAUNCH_ACCEPTED_CANDIDATE_POLICY.defaultRetries / 2;
+  return Object.freeze([
+    ...Array.from({ length: half }, () => firstLimit),
+    ...Array.from({ length: half }, () => secondLimit),
+  ]);
+}
+
+export const LAUNCH_RETRY_PHASE_POLICY = Object.freeze({
+  policyId: "ko-kr-launch-bounded-connector-fallback-v1",
+  transition: "fallback-only-after-base-exhausted-with-no-pass",
+  fallbackRouteKind: "daily",
+  seedIndex: "global-retry-index",
+  searchEscalationIndex: "global-retry-index",
+  phases: Object.freeze([
+    Object.freeze({
+      phaseIndex: 0,
+      phaseId: "base",
+      globalRetryStart: 0,
+      retryCount: LAUNCH_ACCEPTED_CANDIDATE_POLICY.defaultRetries,
+      connectorLimitScheduleByDifficulty: Object.freeze({
+        normal: repeatedConnectorLimit(
+          DAILY_CONNECTOR_WORD_LIMIT_BY_DIFFICULTY.normal,
+        ),
+        hard: repeatedConnectorLimit(
+          DAILY_CONNECTOR_WORD_LIMIT_BY_DIFFICULTY.hard,
+        ),
+      }),
+    }),
+    Object.freeze({
+      phaseIndex: 1,
+      phaseId: "fallback",
+      globalRetryStart: LAUNCH_ACCEPTED_CANDIDATE_POLICY.defaultRetries,
+      retryCount: LAUNCH_ACCEPTED_CANDIDATE_POLICY.defaultRetries,
+      connectorLimitScheduleByDifficulty: Object.freeze({
+        normal: steppedConnectorLimits(120, 160),
+        hard: steppedConnectorLimits(160, 200),
+      }),
+    }),
+  ]),
 });
 export const LAUNCH_SEARCH_QUALITY_POLICY = Object.freeze({
   policyId: "ko-kr-launch-search-quality-alignment-v1",
@@ -862,7 +916,12 @@ export function searchOptionsForRetry(options, retryIndex) {
   };
 }
 
-export function filterAvailableWords(words, route, usedAnswers) {
+export function filterAvailableWords(
+  words,
+  route,
+  usedAnswers,
+  { connectorWordLimit: connectorWordLimitOverride } = {},
+) {
   const available = words.filter(
     (word) =>
       !usedAnswers.has(word.answer) &&
@@ -898,6 +957,7 @@ export function filterAvailableWords(words, route, usedAnswers) {
     profile,
   );
   const connectorWordLimit =
+    connectorWordLimitOverride ??
     DAILY_CONNECTOR_WORD_LIMIT_BY_DIFFICULTY[route.difficulty];
   requireCondition(
     Number.isInteger(connectorWordLimit) && connectorWordLimit > 0,
@@ -1337,6 +1397,133 @@ function serializeGeneratedContent(
   return validation.content;
 }
 
+function summarizeSelectionWordPool(selection) {
+  return {
+    total: selection.words.length,
+    theme: selection.themeWordCount ?? null,
+    connectors: selection.connectorWordCount ?? null,
+  };
+}
+
+function attemptHasPassingCandidate(attempt) {
+  return attempt.candidates.some((candidate) => candidate.pass);
+}
+
+export function runLaunchRetryPhases({
+  phasePolicy = LAUNCH_RETRY_PHASE_POLICY,
+  routeKind,
+  runPhase,
+}) {
+  requireCondition(
+    typeof runPhase === "function",
+    "runPhase must be a function",
+  );
+  const attempts = [];
+  const activePhases =
+    routeKind === phasePolicy.fallbackRouteKind
+      ? phasePolicy.phases
+      : phasePolicy.phases.slice(0, 1);
+
+  for (const [phaseIndex, phaseSpec] of activePhases.entries()) {
+    requireCondition(
+      phaseSpec.phaseIndex === phaseIndex,
+      `${phaseSpec.phaseId} phase index is invalid`,
+    );
+    requireCondition(
+      phaseSpec.globalRetryStart === attempts.length,
+      `${phaseSpec.phaseId} phase global retry boundary is invalid`,
+    );
+    if (phaseIndex > 0) {
+      requireCondition(
+        attempts.length === phaseSpec.globalRetryStart &&
+          attempts.every((attempt) => !attemptHasPassingCandidate(attempt)),
+        `${phaseSpec.phaseId} phase requires an exhausted non-passing prefix`,
+      );
+    }
+
+    const phaseResult = runPhase(phaseSpec);
+    const generation = phaseResult?.generation;
+    requireCondition(
+      generation != null && Array.isArray(generation.attempts),
+      `${phaseSpec.phaseId} phase generation result is invalid`,
+    );
+    requireCondition(
+      Array.isArray(phaseResult.attemptEvidence) &&
+        phaseResult.attemptEvidence.length === generation.attempts.length,
+      `${phaseSpec.phaseId} phase attempt evidence is incomplete`,
+    );
+    requireCondition(
+      generation.attempts.length > 0 &&
+        generation.attempts.length <= phaseSpec.retryCount,
+      `${phaseSpec.phaseId} phase attempt count is out of bounds`,
+    );
+    requireCondition(
+      generation.accepted ||
+        generation.attempts.length === phaseSpec.retryCount,
+      `${phaseSpec.phaseId} phase must exhaust every retry before fallback`,
+    );
+
+    const attemptOffset = attempts.length;
+    const phaseAttempts = generation.attempts.map(
+      (attempt, localRetryIndex) => {
+        const globalRetryIndex = phaseSpec.globalRetryStart + localRetryIndex;
+        const evidence = phaseResult.attemptEvidence[localRetryIndex];
+        requireCondition(
+          attempt.retryIndex === localRetryIndex,
+          `${phaseSpec.phaseId} phase retryIndex must be local and sequential`,
+        );
+        return {
+          ...attempt,
+          phase: phaseSpec.phaseId,
+          phaseIndex,
+          phaseId: phaseSpec.phaseId,
+          globalRetryIndex,
+          connectorLimit: evidence.connectorLimit,
+          wordPool: evidence.wordPool,
+        };
+      },
+    );
+    attempts.push(...phaseAttempts);
+
+    if (!generation.accepted) {
+      requireCondition(
+        phaseAttempts.every((attempt) => !attemptHasPassingCandidate(attempt)),
+        `${phaseSpec.phaseId} phase rejected a passing candidate`,
+      );
+      continue;
+    }
+
+    requireCondition(
+      generation.selectedRetryIndex >= 0 &&
+        generation.selectedRetryIndex < phaseAttempts.length,
+      `${phaseSpec.phaseId} phase selected retry is invalid`,
+    );
+    requireCondition(
+      attemptHasPassingCandidate(phaseAttempts[generation.selectedRetryIndex]),
+      `${phaseSpec.phaseId} phase selected retry has no passing candidate`,
+    );
+    const {
+      attemptEvidence: _attemptEvidence,
+      generation: _generation,
+      ...context
+    } = phaseResult;
+    return {
+      ...context,
+      selectedPhase: phaseSpec.phaseId,
+      generation: {
+        ...generation,
+        attempts,
+        selectedRetryIndex: attemptOffset + generation.selectedRetryIndex,
+      },
+    };
+  }
+
+  return {
+    selectedPhase: null,
+    generation: { accepted: false, attempts },
+  };
+}
+
 async function generateRouteContent(
   route,
   nextRoute,
@@ -1347,72 +1534,192 @@ async function generateRouteContent(
   reviewIdentity,
   licenseManifestChecksum,
 ) {
-  const selection = filterAvailableWords(reviewedWords, route, usedAnswers);
+  requireCondition(
+    options.retries === LAUNCH_ACCEPTED_CANDIDATE_POLICY.defaultRetries,
+    `launch retry phases require ${LAUNCH_ACCEPTED_CANDIDATE_POLICY.defaultRetries} retries per phase`,
+  );
   const profile = DIFFICULTY_PROFILES[route.difficulty];
-  const selectedWordMap = makeWordMap(selection.words);
-  const clueConflictIndex = buildBoardClueConflictIndex(selection.words);
-  const acceptedCandidateSelection = makeLaunchAcceptedCandidateSelection({
-    currentWordPool: selection.words,
-    nextRoute,
-    reviewedWords,
-    usedAnswers,
-  });
-  const generation = generateBoardWithRetries({
-    acceptedLookaheadRetries:
-      LAUNCH_ACCEPTED_CANDIDATE_POLICY.acceptedLookaheadRetries,
-    compareAcceptedCandidates:
-      acceptedCandidateSelection.compareAcceptedCandidates,
-    retries: options.retries,
-    seedForRetry: (retryIndex) =>
-      retrySeed(options.baseSeed, route, retryIndex),
-    searchOptionsForRetry: (retryIndex) =>
-      searchOptionsForRetry(options, retryIndex),
-    buildGeneratorOptions: ({ searchOptions, seed }) => ({
-      allowAdjacent: true,
-      ...searchOptions,
-      acceptRuns: (runs) =>
-        !hasIndexedBoardClueConflict(runs, clueConflictIndex),
-      boardSize: profile.boardSize,
-      evaluateBoardQuality: (board) =>
-        evaluateLaunchSearchBoardQuality(board, route, selection.words),
-      isPreferredRun:
-        route.route.kind === "daily"
-          ? (run) =>
-              selectedWordMap.get(run.answer)?.themeOwner === route.themeId
-          : undefined,
-      maxWords: profile.maxWords,
-      minPreferredRunRatio:
-        route.route.kind === "daily" ? MIN_DAILY_THEME_ENTRY_RATIO : 0,
-      minWordLength: profile.minWordLength,
-      seed,
-      wordBank: selection.words,
-    }),
-    evaluateCandidate: (board) =>
-      evaluateRouteBoardQuality(board, route, selection.words),
-    summarizeCandidate: (board, quality, candidateIndex) => {
-      const summary = summarizeCandidateBoard(board, quality, candidateIndex);
-      const answers = acceptedCandidateSelection.answersForBoard(board);
+  const phaseResult = runLaunchRetryPhases({
+    routeKind: route.route.kind,
+    runPhase: (phaseSpec) => {
+      const contextByConnectorLimit = new Map();
+      const contextByBoard = new WeakMap();
+      let activeContext = null;
+
+      function contextForRetry(localRetryIndex) {
+        const connectorLimit =
+          route.route.kind === "daily"
+            ? phaseSpec.connectorLimitScheduleByDifficulty[route.difficulty]?.[
+                localRetryIndex
+              ]
+            : null;
+        requireCondition(
+          route.route.kind !== "daily" ||
+            (Number.isInteger(connectorLimit) && connectorLimit > 0),
+          `${route.puzzleId} ${phaseSpec.phaseId} retry ${localRetryIndex} has no connector limit`,
+        );
+        const cacheKey = connectorLimit ?? "not-daily";
+        const cached = contextByConnectorLimit.get(cacheKey);
+        if (cached != null) return cached;
+        const selection = filterAvailableWords(
+          reviewedWords,
+          route,
+          usedAnswers,
+          { connectorWordLimit: connectorLimit },
+        );
+        const wordMap = makeWordMap(selection.words);
+        const context = {
+          connectorLimit,
+          selection,
+          wordMap,
+          clueConflictIndex: buildBoardClueConflictIndex(selection.words),
+          acceptedCandidateSelection: makeLaunchAcceptedCandidateSelection({
+            currentWordPool: selection.words,
+            nextRoute,
+            reviewedWords,
+            usedAnswers,
+          }),
+        };
+        contextByConnectorLimit.set(cacheKey, context);
+        return context;
+      }
+
+      const generation = generateBoardWithRetries({
+        acceptedLookaheadRetries:
+          LAUNCH_ACCEPTED_CANDIDATE_POLICY.acceptedLookaheadRetries,
+        compareAcceptedCandidates: (left, right) => {
+          const leftContext = contextByBoard.get(left.board);
+          const rightContext = contextByBoard.get(right.board);
+          requireCondition(
+            leftContext != null && rightContext != null,
+            `${route.puzzleId} candidate pool context is missing`,
+          );
+          return compareLaunchAcceptedCandidateScores(
+            leftContext.acceptedCandidateSelection.selectionScoreForBoard(
+              left.board,
+            ),
+            rightContext.acceptedCandidateSelection.selectionScoreForBoard(
+              right.board,
+            ),
+            nextRoute,
+          );
+        },
+        retries: phaseSpec.retryCount,
+        seedForRetry: (localRetryIndex) =>
+          retrySeed(
+            options.baseSeed,
+            route,
+            phaseSpec.globalRetryStart + localRetryIndex,
+          ),
+        searchOptionsForRetry: (localRetryIndex) =>
+          searchOptionsForRetry(
+            options,
+            phaseSpec.globalRetryStart + localRetryIndex,
+          ),
+        buildGeneratorOptions: ({ retryIndex, searchOptions, seed }) => {
+          activeContext = contextForRetry(retryIndex);
+          return {
+            allowAdjacent: true,
+            ...searchOptions,
+            acceptRuns: (runs) =>
+              !hasIndexedBoardClueConflict(
+                runs,
+                activeContext.clueConflictIndex,
+              ),
+            boardSize: profile.boardSize,
+            evaluateBoardQuality: (board) =>
+              evaluateLaunchSearchBoardQuality(
+                board,
+                route,
+                activeContext.selection.words,
+              ),
+            isPreferredRun:
+              route.route.kind === "daily"
+                ? (run) =>
+                    activeContext.wordMap.get(run.answer)?.themeOwner ===
+                    route.themeId
+                : undefined,
+            maxWords: profile.maxWords,
+            minPreferredRunRatio:
+              route.route.kind === "daily" ? MIN_DAILY_THEME_ENTRY_RATIO : 0,
+            minWordLength: profile.minWordLength,
+            seed,
+            wordBank: activeContext.selection.words,
+          };
+        },
+        generateCandidates: generateBoards,
+        evaluateCandidate: (board) => {
+          requireCondition(
+            activeContext != null,
+            `${route.puzzleId} active candidate pool is missing`,
+          );
+          contextByBoard.set(board, activeContext);
+          return evaluateRouteBoardQuality(
+            board,
+            route,
+            activeContext.selection.words,
+          );
+        },
+        summarizeCandidate: (board, quality, candidateIndex) => {
+          const context = contextByBoard.get(board);
+          requireCondition(
+            context != null,
+            `${route.puzzleId} candidate ${candidateIndex} pool is missing`,
+          );
+          const summary = summarizeCandidateBoard(
+            board,
+            quality,
+            candidateIndex,
+          );
+          const answers =
+            context.acceptedCandidateSelection.answersForBoard(board);
+          requireCondition(
+            answers.length === summary.metrics.wordCount,
+            `${route.puzzleId} candidate ${candidateIndex} answer trace does not match wordCount`,
+          );
+          return {
+            ...summary,
+            themeEntryCount:
+              route.route.kind === "daily"
+                ? answers.filter(
+                    (answer) =>
+                      context.wordMap.get(answer)?.themeOwner === route.themeId,
+                  ).length
+                : null,
+            answers,
+            selectionScore:
+              context.acceptedCandidateSelection.selectionScoreForBoard(board),
+          };
+        },
+      });
+      const selectedContext = generation.accepted
+        ? contextByBoard.get(generation.board)
+        : null;
       requireCondition(
-        answers.length === summary.metrics.wordCount,
-        `${route.puzzleId} candidate ${candidateIndex} answer trace does not match wordCount`,
+        !generation.accepted || selectedContext != null,
+        `${route.puzzleId} selected candidate pool is missing`,
       );
       return {
-        ...summary,
-        themeEntryCount:
-          route.route.kind === "daily"
-            ? answers.filter(
-                (answer) =>
-                  selectedWordMap.get(answer)?.themeOwner === route.themeId,
-              ).length
-            : null,
-        answers,
-        selectionScore:
-          acceptedCandidateSelection.selectionScoreForBoard(board),
+        generation,
+        attemptEvidence: generation.attempts.map((_, localRetryIndex) => {
+          const context = contextForRetry(localRetryIndex);
+          return {
+            connectorLimit: context.connectorLimit,
+            wordPool: summarizeSelectionWordPool(context.selection),
+          };
+        }),
+        selection: selectedContext?.selection,
+        selectedWordMap: selectedContext?.wordMap,
       };
     },
   });
+  const { generation, selection, selectedWordMap } = phaseResult;
 
   if (generation.accepted) {
+    requireCondition(
+      selection != null && selectedWordMap != null,
+      `${route.puzzleId} selected phase context is missing`,
+    );
     const content = serializeGeneratedContent(
       generation.board,
       route,
@@ -1449,11 +1756,7 @@ async function generateRouteContent(
         selectedSeed: generation.selectedSeed,
         effectiveWordDifficulties: selection.difficulties,
         broadenedDifficultyPool: selection.broadened,
-        wordPool: {
-          total: selection.words.length,
-          theme: selection.themeWordCount ?? null,
-          connectors: selection.connectorWordCount ?? null,
-        },
+        wordPool: summarizeSelectionWordPool(selection),
         quality: generation.quality,
         metrics: selectedReport.metrics,
         entryProvenance: content.entries.map((entry) => {
@@ -1477,8 +1780,12 @@ async function generateRouteContent(
     };
   }
   throw new Error(
-    `${route.puzzleId} failed quality gates after ${options.retries} deterministic retries: ${JSON.stringify(
+    `${route.puzzleId} failed quality gates after ${generation.attempts.length} deterministic retries: ${JSON.stringify(
       generation.attempts.map((attempt) => ({
+        phase: attempt.phase,
+        globalRetryIndex: attempt.globalRetryIndex,
+        connectorLimit: attempt.connectorLimit,
+        wordPool: attempt.wordPool,
         seed: attempt.seed,
         candidates: attempt.candidates,
       })),
@@ -1777,12 +2084,17 @@ async function resolveGeneratorIdentity(repositoryRoot, options, wordBank) {
   const { stdout } = await execFileAsync("git", ["rev-parse", "HEAD"], {
     cwd: repositoryRoot,
   });
+  const launchRetryScheduleLength = LAUNCH_RETRY_PHASE_POLICY.phases.reduce(
+    (count, phase) => count + phase.retryCount,
+    0,
+  );
   const config = {
-    schemaVersion: "ko-kr-launch-generator-config/6",
+    schemaVersion: "ko-kr-launch-generator-config/7",
     baseSeed: options.baseSeed,
     attempts: options.attempts,
-    searchEscalation: Array.from({ length: options.retries }, (_, index) =>
-      searchOptionsForRetry(options, index),
+    searchEscalation: Array.from(
+      { length: launchRetryScheduleLength },
+      (_, index) => searchOptionsForRetry(options, index),
     ),
     retries: options.retries,
     samples: options.samples,
@@ -1796,6 +2108,7 @@ async function resolveGeneratorIdentity(repositoryRoot, options, wordBank) {
     minDailyThemeEntryRatio: MIN_DAILY_THEME_ENTRY_RATIO,
     dailyConnectorWordLimitByDifficulty:
       DAILY_CONNECTOR_WORD_LIMIT_BY_DIFFICULTY,
+    retryPhasePolicy: LAUNCH_RETRY_PHASE_POLICY,
     acceptedCandidateSelection: LAUNCH_ACCEPTED_CANDIDATE_POLICY,
     searchQuality: LAUNCH_SEARCH_QUALITY_POLICY,
     themeOwnership: LAUNCH_THEME_OWNER_POLICY,
@@ -2159,7 +2472,7 @@ async function main() {
       .join(",")}`,
   );
   const report = {
-    schemaVersion: "ko-kr-launch-generation-report/4",
+    schemaVersion: "ko-kr-launch-generation-report/5",
     artifactStatus: ARTIFACT_STATUS,
     activationApproved: false,
     generatedAt: GENERATED_AT,

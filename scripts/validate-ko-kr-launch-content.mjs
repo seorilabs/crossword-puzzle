@@ -62,6 +62,41 @@ const EXPECTED_DAILY_CONNECTOR_WORD_LIMIT_BY_DIFFICULTY = Object.freeze({
   normal: 80,
   hard: 120,
 });
+const EXPECTED_RETRIES_PER_PHASE = 8;
+function repeatedExpectedConnectorLimit(limit) {
+  return Object.freeze(
+    Array.from({ length: EXPECTED_RETRIES_PER_PHASE }, () => limit),
+  );
+}
+const EXPECTED_LAUNCH_RETRY_PHASE_POLICY = Object.freeze({
+  policyId: "ko-kr-launch-bounded-connector-fallback-v1",
+  transition: "fallback-only-after-base-exhausted-with-no-pass",
+  fallbackRouteKind: "daily",
+  seedIndex: "global-retry-index",
+  searchEscalationIndex: "global-retry-index",
+  phases: Object.freeze([
+    Object.freeze({
+      phaseIndex: 0,
+      phaseId: "base",
+      globalRetryStart: 0,
+      retryCount: EXPECTED_RETRIES_PER_PHASE,
+      connectorLimitScheduleByDifficulty: Object.freeze({
+        normal: repeatedExpectedConnectorLimit(80),
+        hard: repeatedExpectedConnectorLimit(120),
+      }),
+    }),
+    Object.freeze({
+      phaseIndex: 1,
+      phaseId: "fallback",
+      globalRetryStart: EXPECTED_RETRIES_PER_PHASE,
+      retryCount: EXPECTED_RETRIES_PER_PHASE,
+      connectorLimitScheduleByDifficulty: Object.freeze({
+        normal: Object.freeze([120, 120, 120, 120, 160, 160, 160, 160]),
+        hard: Object.freeze([160, 160, 160, 160, 200, 200, 200, 200]),
+      }),
+    }),
+  ]),
+});
 export const KO_KR_LAUNCH_SEARCH_QUALITY_POLICY = Object.freeze({
   policyId: "ko-kr-launch-search-quality-alignment-v1",
   evaluator: "route-quality-plus-connected-components",
@@ -95,7 +130,7 @@ const EXPECTED_GENERATOR_DEPENDENCY_PATHS = Object.freeze([
   "data/game-content/v1/ko-KR/license-manifest.json",
 ]);
 export const KO_KR_LAUNCH_CLUE_QUALITY_POLICY = Object.freeze({
-  schemaVersion: "ko-kr-launch-generator-config/6",
+  schemaVersion: "ko-kr-launch-generator-config/7",
   clueSimilarity: Object.freeze({
     policyId: LAUNCH_CLUE_SIMILARITY_POLICY_ID,
     normalization: "NFKC-lowercase-no-space-punctuation-symbol",
@@ -441,6 +476,15 @@ export function validateGeneratorSearchQualityPolicy(config) {
     config?.searchQuality,
     KO_KR_LAUNCH_SEARCH_QUALITY_POLICY,
     "generator search quality policy",
+  );
+  return true;
+}
+
+export function validateGeneratorRetryPhasePolicy(config) {
+  requireExact(
+    config?.retryPhasePolicy,
+    EXPECTED_LAUNCH_RETRY_PHASE_POLICY,
+    "generator retry phase policy",
   );
   return true;
 }
@@ -1812,21 +1856,21 @@ export function validateReportedQualityEvidence(
   return evidence;
 }
 
-export function calculateLaunchRetrySeed(baseSeed, puzzleId, retryIndex) {
+export function calculateLaunchRetrySeed(baseSeed, puzzleId, globalRetryIndex) {
   requirePositiveSafeInteger(baseSeed, "generator baseSeed", {
     allowZero: true,
   });
   requireNonEmptyString(puzzleId, "generator puzzleId");
-  requirePositiveSafeInteger(retryIndex, "generator retryIndex", {
+  requirePositiveSafeInteger(globalRetryIndex, "generator globalRetryIndex", {
     allowZero: true,
   });
   return createHash("sha256")
-    .update(`${baseSeed}:${puzzleId}:retry:${retryIndex}`, "utf8")
+    .update(`${baseSeed}:${puzzleId}:retry:${globalRetryIndex}`, "utf8")
     .digest()
     .readUInt32BE(0);
 }
 
-function generatorSearchOptions(config) {
+function generatorSearchOptions(config, scheduleLength) {
   const options = {
     attempts: requirePositiveSafeInteger(
       config.attempts,
@@ -1857,10 +1901,14 @@ function generatorSearchOptions(config) {
     config.retries,
     "generator config retries",
   );
+  requirePositiveSafeInteger(
+    scheduleLength,
+    "generator config searchEscalation schedule length",
+  );
   return {
     options,
     retries,
-    escalation: Array.from({ length: retries }, (_, retryIndex) =>
+    escalation: Array.from({ length: scheduleLength }, (_, retryIndex) =>
       searchOptionsForRetry(options, retryIndex),
     ),
   };
@@ -1882,6 +1930,19 @@ const CANDIDATE_SELECTION_SCORE_KEYS = Object.freeze([
   "isolatedThemeOwnerCount",
   "themeConnectorSharedCellEdges",
   "totalSharedCellEdges",
+]);
+const GENERATOR_ATTEMPT_KEYS = Object.freeze([
+  "candidateCount",
+  "candidates",
+  "connectorLimit",
+  "globalRetryIndex",
+  "phase",
+  "phaseId",
+  "phaseIndex",
+  "retryIndex",
+  "searchOptions",
+  "seed",
+  "wordPool",
 ]);
 
 function roundedRatio(numerator, denominator) {
@@ -2070,6 +2131,48 @@ function compareReportedSelectionScores(left, right, nextRoute) {
   );
 }
 
+function validateReportedWordPool(wordPool, route, connectorLimit, field) {
+  requireCondition(
+    wordPool != null &&
+      typeof wordPool === "object" &&
+      !Array.isArray(wordPool),
+    `${field} must be an object`,
+  );
+  requireExact(
+    Object.keys(wordPool).sort(),
+    ["connectors", "theme", "total"],
+    `${field} keys`,
+  );
+  const total = requirePositiveSafeInteger(wordPool.total, `${field}.total`);
+  if (route.route.kind !== "daily") {
+    requireCondition(
+      connectorLimit === null &&
+        wordPool.theme === null &&
+        wordPool.connectors === null,
+      `${field} must not report daily connector inventory`,
+    );
+    return { total, theme: null, connectors: null };
+  }
+  const theme = requirePositiveSafeInteger(wordPool.theme, `${field}.theme`);
+  const connectors = requirePositiveSafeInteger(
+    wordPool.connectors,
+    `${field}.connectors`,
+  );
+  requireCondition(
+    total === theme + connectors && connectors <= connectorLimit,
+    `${field} daily totals do not match its connector limit`,
+  );
+  return { total, theme, connectors };
+}
+
+function retryPhaseForGlobalIndex(globalRetryIndex) {
+  return EXPECTED_LAUNCH_RETRY_PHASE_POLICY.phases.find(
+    (phase) =>
+      globalRetryIndex >= phase.globalRetryStart &&
+      globalRetryIndex < phase.globalRetryStart + phase.retryCount,
+  );
+}
+
 export function validateGeneratorReportTrace(
   config,
   reportBoards,
@@ -2080,8 +2183,8 @@ export function validateGeneratorReportTrace(
     "generator config is required for report trace validation",
   );
   requireCondition(
-    config.schemaVersion === "ko-kr-launch-generator-config/6",
-    "generator report trace config schema must be ko-kr-launch-generator-config/6",
+    config.schemaVersion === "ko-kr-launch-generator-config/7",
+    "generator report trace config schema must be ko-kr-launch-generator-config/7",
   );
   requireCondition(
     Array.isArray(reportBoards),
@@ -2105,12 +2208,15 @@ export function validateGeneratorReportTrace(
     requireUniqueStrings(initialUsedAnswers, "initialUsedAnswers");
     requireExact(
       reportBoards.map((board) => board.puzzleId),
-      generationQueue.map((route) => route.puzzleId),
+      generationQueue
+        .slice(0, reportBoards.length)
+        .map((route) => route.puzzleId),
       "generator report board generation order",
     );
   }
   const usedAnswers = new Set(initialUsedAnswers);
   validateGeneratorSearchQualityPolicy(config);
+  validateGeneratorRetryPhasePolicy(config);
   requireExact(
     config.acceptedCandidateSelection,
     LAUNCH_ACCEPTED_CANDIDATE_POLICY,
@@ -2126,7 +2232,15 @@ export function validateGeneratorReportTrace(
     expectedRoutePlan,
     "generator config routePlan",
   );
-  const { options, retries, escalation } = generatorSearchOptions(config);
+  const retryPhases = EXPECTED_LAUNCH_RETRY_PHASE_POLICY.phases;
+  const maximumAttemptCount = retryPhases.reduce(
+    (count, phase) => count + phase.retryCount,
+    0,
+  );
+  const { options, retries, escalation } = generatorSearchOptions(
+    config,
+    maximumAttemptCount,
+  );
   requireCondition(
     retries === LAUNCH_ACCEPTED_CANDIDATE_POLICY.defaultRetries,
     "generator config retries must match the launch candidate policy default",
@@ -2169,60 +2283,123 @@ export function validateGeneratorReportTrace(
       { allowZero: true },
     );
     requireCondition(
-      selectedRetryIndex < retries,
-      `${field}.selectedRetryIndex exceeds configured retries`,
+      selectedRetryIndex < maximumAttemptCount,
+      `${field}.selectedRetryIndex exceeds configured retry phases`,
     );
     requireCondition(
       Array.isArray(reportBoard.attempts) &&
         reportBoard.attempts.length > 0 &&
-        reportBoard.attempts.length <= retries,
+        reportBoard.attempts.length <= maximumAttemptCount,
       `${field}.attempts length is invalid`,
     );
-
-    const currentSelection = shouldRecalculateSelectionScores
-      ? filterAvailableWords(reviewedWords, plannedRoute, usedAnswers)
-      : null;
-    const currentAvailableWordByAnswer =
-      currentSelection == null
-        ? null
-        : new Map(currentSelection.words.map((word) => [word.answer, word]));
-    if (currentSelection != null) {
-      requireExact(
-        reportBoard.wordPool,
-        {
-          total: currentSelection.words.length,
-          theme: currentSelection.themeWordCount ?? null,
-          connectors: currentSelection.connectorWordCount ?? null,
-        },
-        `${field}.wordPool independently recalculated`,
-      );
-    }
+    requireCondition(
+      plannedRoute.route.kind ===
+        EXPECTED_LAUNCH_RETRY_PHASE_POLICY.fallbackRouteKind ||
+        reportBoard.attempts.length <= retryPhases[0].retryCount,
+      `${field}.attempts fallback is allowed only for daily routes`,
+    );
     let firstPassRetryIndex = null;
     let policyWinner = null;
-    for (const [retryIndex, attempt] of reportBoard.attempts.entries()) {
+    for (const [attemptIndex, attempt] of reportBoard.attempts.entries()) {
+      const phaseSpec = retryPhaseForGlobalIndex(attemptIndex);
       requireCondition(
-        attempt?.retryIndex === retryIndex,
-        `${field}.attempts retryIndex must be sequential`,
+        phaseSpec != null,
+        `${field}.attempts[${attemptIndex}] has no configured retry phase`,
       );
-      const expectedSearchOptions = searchOptionsForRetry(options, retryIndex);
+      requireCondition(
+        phaseSpec.phaseIndex === 0 ||
+          plannedRoute.route.kind ===
+            EXPECTED_LAUNCH_RETRY_PHASE_POLICY.fallbackRouteKind,
+        `${field}.attempts[${attemptIndex}] fallback is allowed only for daily routes`,
+      );
+      requireExact(
+        Object.keys(attempt).sort(),
+        GENERATOR_ATTEMPT_KEYS,
+        `${field}.attempts[${attemptIndex}] keys`,
+      );
+      const localRetryIndex = attemptIndex - phaseSpec.globalRetryStart;
+      requireCondition(
+        attempt?.phase === phaseSpec.phaseId &&
+          attempt.phaseId === phaseSpec.phaseId &&
+          attempt.phaseIndex === phaseSpec.phaseIndex &&
+          attempt.retryIndex === localRetryIndex &&
+          attempt.globalRetryIndex === attemptIndex,
+        `${field}.attempts[${attemptIndex}] phase/local/global retry identity is invalid`,
+      );
+      if (phaseSpec.phaseIndex > 0) {
+        const previousPhase = retryPhases[phaseSpec.phaseIndex - 1];
+        const previousAttempts = reportBoard.attempts.slice(
+          previousPhase.globalRetryStart,
+          previousPhase.globalRetryStart + previousPhase.retryCount,
+        );
+        requireCondition(
+          previousAttempts.length === previousPhase.retryCount &&
+            previousAttempts.every(
+              (previousAttempt) =>
+                !previousAttempt.candidates.some((candidate) => candidate.pass),
+            ),
+          `${field}.attempts fallback requires an exhausted non-passing base phase`,
+        );
+      }
+      const expectedSearchOptions = searchOptionsForRetry(
+        options,
+        attemptIndex,
+      );
       requireExact(
         attempt.searchOptions,
         expectedSearchOptions,
-        `${field}.attempts[${retryIndex}].searchOptions`,
+        `${field}.attempts[${attemptIndex}].searchOptions`,
       );
       const expectedSeed = calculateLaunchRetrySeed(
         baseSeed,
         reportBoard.puzzleId,
-        retryIndex,
+        attemptIndex,
       );
       requireCondition(
         attempt.seed === expectedSeed,
-        `${field}.attempts[${retryIndex}].seed mismatch`,
+        `${field}.attempts[${attemptIndex}].seed mismatch`,
       );
+      const connectorLimit =
+        plannedRoute.route.kind === "daily"
+          ? phaseSpec.connectorLimitScheduleByDifficulty[
+              plannedRoute.difficulty
+            ]?.[localRetryIndex]
+          : null;
+      requireCondition(
+        attempt.connectorLimit === connectorLimit,
+        `${field}.attempts[${attemptIndex}].connectorLimit mismatch`,
+      );
+      const reportedWordPool = validateReportedWordPool(
+        attempt.wordPool,
+        plannedRoute,
+        connectorLimit,
+        `${field}.attempts[${attemptIndex}].wordPool`,
+      );
+      const currentSelection = shouldRecalculateSelectionScores
+        ? filterAvailableWords(reviewedWords, plannedRoute, usedAnswers, {
+            connectorWordLimit: connectorLimit,
+          })
+        : null;
+      const currentAvailableWordByAnswer =
+        currentSelection == null
+          ? null
+          : new Map(currentSelection.words.map((word) => [word.answer, word]));
+      if (currentSelection != null) {
+        const expectedWordPool = {
+          total: currentSelection.words.length,
+          theme: currentSelection.themeWordCount ?? null,
+          connectors: currentSelection.connectorWordCount ?? null,
+        };
+        requireExact(
+          reportedWordPool,
+          expectedWordPool,
+          `${field}.attempts[${attemptIndex}].wordPool independently recalculated`,
+        );
+      }
       requireCondition(
         Array.isArray(attempt.candidates) &&
           attempt.candidateCount === attempt.candidates.length,
-        `${field}.attempts[${retryIndex}].candidateCount mismatch`,
+        `${field}.attempts[${attemptIndex}].candidateCount mismatch`,
       );
       requireCondition(
         attempt.candidates.every(
@@ -2230,10 +2407,10 @@ export function validateGeneratorReportTrace(
             candidate?.candidateIndex === candidateIndex &&
             typeof candidate.pass === "boolean",
         ),
-        `${field}.attempts[${retryIndex}] candidate indexes/pass flags are invalid`,
+        `${field}.attempts[${attemptIndex}] candidate indexes/pass flags are invalid`,
       );
       for (const [candidateIndex, candidate] of attempt.candidates.entries()) {
-        const candidateField = `${field}.attempts[${retryIndex}].candidates[${candidateIndex}]`;
+        const candidateField = `${field}.attempts[${attemptIndex}].candidates[${candidateIndex}]`;
         const selectionScore = validateCandidateTraceQuality(
           candidate,
           plannedRoute,
@@ -2259,7 +2436,7 @@ export function validateGeneratorReportTrace(
             );
           }
         }
-        if (shouldRecalculateSelectionScores && candidate.pass) {
+        if (shouldRecalculateSelectionScores) {
           const futureUsedAnswers = new Set(usedAnswers);
           for (const answer of candidate.answers) {
             futureUsedAnswers.add(answer);
@@ -2298,7 +2475,7 @@ export function validateGeneratorReportTrace(
             ) < 0)
         ) {
           policyWinner = {
-            retryIndex,
+            retryIndex: attemptIndex,
             candidateIndex,
             candidate,
             selectionScore,
@@ -2309,7 +2486,7 @@ export function validateGeneratorReportTrace(
         firstPassRetryIndex == null &&
         attempt.candidates.some((candidate) => candidate.pass)
       ) {
-        firstPassRetryIndex = retryIndex;
+        firstPassRetryIndex = attemptIndex;
       }
     }
 
@@ -2321,10 +2498,19 @@ export function validateGeneratorReportTrace(
       policyWinner != null,
       `${field}.attempts contain no policy candidate`,
     );
-    const expectedAttemptCount = Math.min(
-      firstPassRetryIndex + acceptedLookaheadRetries + 1,
-      retries,
+    const selectedPhaseSpec = retryPhaseForGlobalIndex(firstPassRetryIndex);
+    requireCondition(
+      selectedPhaseSpec != null,
+      `${field}.first passing retry has no configured phase`,
     );
+    const firstPassLocalRetryIndex =
+      firstPassRetryIndex - selectedPhaseSpec.globalRetryStart;
+    const expectedAttemptCount =
+      selectedPhaseSpec.globalRetryStart +
+      Math.min(
+        firstPassLocalRetryIndex + acceptedLookaheadRetries + 1,
+        selectedPhaseSpec.retryCount,
+      );
     requireCondition(
       reportBoard.attempts.length === expectedAttemptCount,
       `${field}.attempts must end after the configured PASS lookahead`,
@@ -2336,6 +2522,10 @@ export function validateGeneratorReportTrace(
     );
 
     const selectedAttempt = reportBoard.attempts[selectedRetryIndex];
+    requireCondition(
+      selectedAttempt.globalRetryIndex === selectedRetryIndex,
+      `${field}.selectedRetryIndex must address the concatenated attempt trace`,
+    );
     const selectedCandidateIndex = requirePositiveSafeInteger(
       reportBoard.selectedCandidateIndex,
       `${field}.selectedCandidateIndex`,
@@ -2363,6 +2553,11 @@ export function validateGeneratorReportTrace(
       reportBoard.quality?.ratios,
       `${field} selected candidate ratios`,
     );
+    requireExact(
+      reportBoard.wordPool,
+      selectedAttempt.wordPool,
+      `${field}.wordPool must match the selected phase pool`,
+    );
     const expectedSelectedSeed = calculateLaunchRetrySeed(
       baseSeed,
       reportBoard.puzzleId,
@@ -2384,7 +2579,7 @@ export function validateGeneratorReportTrace(
 function validateReportCatalogJoin(rawCatalog, report) {
   requireCandidateFlags(report, "generation report");
   requireCondition(
-    report.schemaVersion === "ko-kr-launch-generation-report/4" &&
+    report.schemaVersion === "ko-kr-launch-generation-report/5" &&
       report.catalogId === rawCatalog.catalogId &&
       report.generatedAt === rawCatalog.generatedAt &&
       Array.isArray(report.boards) &&
@@ -2484,6 +2679,7 @@ async function validateGeneratorIdentity(
   validateGeneratorThemeInventoryPolicy(generator.config);
   validateGeneratorClueQualityPolicy(generator.config);
   validateGeneratorSearchQualityPolicy(generator.config);
+  validateGeneratorRetryPhasePolicy(generator.config);
   requireCondition(
     generator.config.maxAutoRunRatio === 0.5 &&
       generator.config.minMultiCrossRatio === 0.65 &&

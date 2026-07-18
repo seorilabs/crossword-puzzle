@@ -89,6 +89,7 @@ function createReport(content: GameContentV1, index: number) {
     attempts: [
       {
         retryIndex: 0,
+        globalRetryIndex: 0,
         seed,
         candidates: [
           {
@@ -316,6 +317,73 @@ describe("launch preview checkpoint loader", () => {
   });
 
   test("report의 selected retry, candidate, answers를 실제 content에 고정한다", async () => {
+    const legacyBaseFixture = createFixture();
+    Reflect.deleteProperty(
+      legacyBaseFixture.reports[0].attempts[0],
+      "globalRetryIndex",
+    );
+    refreshCompleted(legacyBaseFixture, 0);
+    const legacyBaseResult = await loadLaunchPreviewContent({
+      checkpointHash: CHECKPOINT_HASH,
+      fetch: createFetch(legacyBaseFixture),
+    });
+    assert.equal(legacyBaseResult.items[0]?.content.puzzleId, PUZZLE_IDS[0]);
+
+    const fallbackFixture = createFixture();
+    const fallbackAttempt = clone(fallbackFixture.reports[0].attempts[0]);
+    fallbackAttempt.retryIndex = 0;
+    fallbackAttempt.globalRetryIndex = 8;
+    fallbackFixture.reports[0].attempts = [
+      ...Array.from({ length: 8 }, (_, index) => {
+        const baseAttempt = clone(fallbackAttempt);
+        baseAttempt.retryIndex = index;
+        baseAttempt.globalRetryIndex = index;
+        baseAttempt.candidates[0].pass = false;
+        return baseAttempt;
+      }),
+      fallbackAttempt,
+    ];
+    fallbackFixture.reports[0].selectedRetryIndex = 8;
+    refreshCompleted(fallbackFixture, 0);
+    const fallbackResult = await loadLaunchPreviewContent({
+      checkpointHash: CHECKPOINT_HASH,
+      fetch: createFetch(fallbackFixture),
+    });
+    assert.equal(fallbackResult.items[0]?.content.puzzleId, PUZZLE_IDS[0]);
+
+    const fallbackLocalFixture = structuredClone(fallbackFixture);
+    fallbackLocalFixture.reports[0].attempts[8].retryIndex = 1;
+    refreshCompleted(fallbackLocalFixture, 0);
+    await expectRejected(
+      fallbackLocalFixture,
+      /selected retry identity does not match its phase index/,
+    );
+
+    const globalRetryFixture = createFixture();
+    globalRetryFixture.reports[0].attempts[0].globalRetryIndex = 1;
+    refreshCompleted(globalRetryFixture, 0);
+    await expectRejected(
+      globalRetryFixture,
+      /selected retry identity does not match/,
+    );
+
+    const unboundedGlobalFixture = createFixture();
+    const unboundedAttempt = clone(
+      unboundedGlobalFixture.reports[0].attempts[0],
+    );
+    unboundedAttempt.retryIndex = 0;
+    unboundedAttempt.globalRetryIndex = 16;
+    unboundedGlobalFixture.reports[0].attempts = Array.from(
+      { length: 17 },
+      () => clone(unboundedAttempt),
+    );
+    unboundedGlobalFixture.reports[0].selectedRetryIndex = 16;
+    refreshCompleted(unboundedGlobalFixture, 0);
+    await expectRejected(
+      unboundedGlobalFixture,
+      /selected global retry exceeds bounded retry phases/,
+    );
+
     const retryFixture = createFixture();
     retryFixture.reports[0].selectedSeed += 1;
     refreshCompleted(retryFixture, 0);

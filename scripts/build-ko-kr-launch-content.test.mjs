@@ -4,6 +4,7 @@ import { describe, test } from "node:test";
 import {
   DAILY_CONNECTOR_WORD_LIMIT_BY_DIFFICULTY,
   LAUNCH_ACCEPTED_CANDIDATE_POLICY,
+  LAUNCH_RETRY_PHASE_POLICY,
   LAUNCH_SEARCH_QUALITY_POLICY,
   LAUNCH_THEME_OWNER_POLICY,
   LAUNCH_THEME_IDS,
@@ -25,6 +26,7 @@ import {
   normalizeClueForCooldown,
   orderRoutesForGeneration,
   rankDailyConnectorWordsByConnectivity,
+  runLaunchRetryPhases,
   searchOptionsForRetry,
   summarizeFuturePoolConnectivity,
 } from "./build-ko-kr-launch-content.mjs";
@@ -62,6 +64,193 @@ describe("ko-KR launch content builder", () => {
       "min-cooldown-answer-count",
       "stable-generation-order",
     ]);
+  });
+
+  test("base와 bounded fallback의 retry별 connector schedule을 고정한다", () => {
+    assert.equal(
+      LAUNCH_RETRY_PHASE_POLICY.transition,
+      "fallback-only-after-base-exhausted-with-no-pass",
+    );
+    assert.equal(LAUNCH_RETRY_PHASE_POLICY.fallbackRouteKind, "daily");
+    assert.deepEqual(
+      LAUNCH_RETRY_PHASE_POLICY.phases.map((phase) => ({
+        phaseIndex: phase.phaseIndex,
+        phaseId: phase.phaseId,
+        globalRetryStart: phase.globalRetryStart,
+        retryCount: phase.retryCount,
+        normal: phase.connectorLimitScheduleByDifficulty.normal,
+        hard: phase.connectorLimitScheduleByDifficulty.hard,
+      })),
+      [
+        {
+          phaseIndex: 0,
+          phaseId: "base",
+          globalRetryStart: 0,
+          retryCount: 8,
+          normal: Array(8).fill(80),
+          hard: Array(8).fill(120),
+        },
+        {
+          phaseIndex: 1,
+          phaseId: "fallback",
+          globalRetryStart: 8,
+          retryCount: 8,
+          normal: [120, 120, 120, 120, 160, 160, 160, 160],
+          hard: [160, 160, 160, 160, 200, 200, 200, 200],
+        },
+      ],
+    );
+  });
+
+  test("base PASS는 fallback을 호출하지 않고 기존 선택 결과를 즉시 반환한다", () => {
+    const selectedBoard = { id: "base-board" };
+    let phaseCallCount = 0;
+    const result = runLaunchRetryPhases({
+      routeKind: "daily",
+      runPhase: (phaseSpec) => {
+        phaseCallCount += 1;
+        assert.equal(phaseSpec.phaseId, "base");
+        return {
+          tag: "base-context",
+          generation: {
+            accepted: true,
+            board: selectedBoard,
+            quality: { pass: true },
+            selectedCandidateIndex: 0,
+            selectedRetryIndex: 0,
+            selectedSeed: 101,
+            attempts: [
+              {
+                retryIndex: 0,
+                candidates: [{ candidateIndex: 0, pass: true }],
+              },
+            ],
+          },
+          attemptEvidence: [
+            {
+              connectorLimit: 80,
+              wordPool: { total: 180, theme: 100, connectors: 80 },
+            },
+          ],
+        };
+      },
+    });
+
+    assert.equal(phaseCallCount, 1);
+    assert.strictEqual(result.generation.board, selectedBoard);
+    assert.equal(result.generation.selectedRetryIndex, 0);
+    assert.equal(result.selectedPhase, "base");
+    assert.equal(result.tag, "base-context");
+    assert.deepEqual(result.generation.attempts[0], {
+      retryIndex: 0,
+      phase: "base",
+      phaseIndex: 0,
+      phaseId: "base",
+      globalRetryIndex: 0,
+      connectorLimit: 80,
+      wordPool: { total: 180, theme: 100, connectors: 80 },
+      candidates: [{ candidateIndex: 0, pass: true }],
+    });
+  });
+
+  test("base 8회가 모두 실패한 뒤 fallback selected index를 전체 trace로 변환한다", () => {
+    const calls = [];
+    const result = runLaunchRetryPhases({
+      routeKind: "daily",
+      runPhase: (phaseSpec) => {
+        calls.push(phaseSpec.phaseId);
+        const attemptCount = phaseSpec.phaseId === "base" ? 8 : 6;
+        const attempts = Array.from({ length: attemptCount }, (_, index) => ({
+          retryIndex: index,
+          candidates: [
+            {
+              candidateIndex: 0,
+              pass: phaseSpec.phaseId === "fallback" && index >= 4,
+            },
+          ],
+        }));
+        return {
+          generation:
+            phaseSpec.phaseId === "base"
+              ? { accepted: false, attempts }
+              : {
+                  accepted: true,
+                  board: { id: "fallback-board" },
+                  quality: { pass: true },
+                  selectedCandidateIndex: 0,
+                  selectedRetryIndex: 5,
+                  selectedSeed: 113,
+                  attempts,
+                },
+          attemptEvidence: attempts.map((_, index) => {
+            const connectorLimit =
+              phaseSpec.connectorLimitScheduleByDifficulty.normal[index];
+            return {
+              connectorLimit,
+              wordPool: {
+                total: 100 + connectorLimit,
+                theme: 100,
+                connectors: connectorLimit,
+              },
+            };
+          }),
+        };
+      },
+    });
+
+    assert.deepEqual(calls, ["base", "fallback"]);
+    assert.equal(result.selectedPhase, "fallback");
+    assert.equal(result.generation.attempts.length, 14);
+    assert.equal(result.generation.selectedRetryIndex, 13);
+    assert.deepEqual(
+      result.generation.attempts
+        .slice(8)
+        .map((attempt) => attempt.connectorLimit),
+      [120, 120, 120, 120, 160, 160],
+    );
+    assert.deepEqual(
+      result.generation.attempts.map((attempt) => [
+        attempt.phase,
+        attempt.retryIndex,
+        attempt.globalRetryIndex,
+      ]),
+      [
+        ...Array.from({ length: 8 }, (_, index) => ["base", index, index]),
+        ...Array.from({ length: 6 }, (_, index) => [
+          "fallback",
+          index,
+          index + 8,
+        ]),
+      ],
+    );
+  });
+
+  test("chapter·bonus·weekly route는 base 8회 실패 뒤 fallback을 실행하지 않는다", () => {
+    for (const routeKind of ["chapter", "bonus", "weekly-challenge"]) {
+      const calls = [];
+      const attempts = Array.from({ length: 8 }, (_, retryIndex) => ({
+        retryIndex,
+        candidates: [{ candidateIndex: 0, pass: false }],
+      }));
+      const result = runLaunchRetryPhases({
+        routeKind,
+        runPhase: (phaseSpec) => {
+          calls.push(phaseSpec.phaseId);
+          return {
+            generation: { accepted: false, attempts },
+            attemptEvidence: attempts.map(() => ({
+              connectorLimit: null,
+              wordPool: { total: 200, theme: null, connectors: null },
+            })),
+          };
+        },
+      });
+
+      assert.deepEqual(calls, ["base"]);
+      assert.equal(result.selectedPhase, null);
+      assert.equal(result.generation.accepted, false);
+      assert.equal(result.generation.attempts.length, 8);
+    }
   });
 
   test("launch 탐색 품질은 전체 route gate와 연결성 admission을 함께 강제한다", () => {
@@ -287,6 +476,21 @@ describe("ko-KR launch content builder", () => {
     assert.equal(
       monday.connectorWordCount,
       DAILY_CONNECTOR_WORD_LIMIT_BY_DIFFICULTY.normal,
+    );
+    const expandedMonday = filterAvailableWords(
+      [...allocated, ...connectors],
+      {
+        ...baseRoute,
+        difficulty: "normal",
+        route: { kind: "daily", weekday: "monday" },
+      },
+      new Set(),
+      { connectorWordLimit: 120 },
+    );
+    assert.equal(expandedMonday.connectorWordCount, 120);
+    assert.deepEqual(
+      expandedMonday.words.slice(0, monday.words.length),
+      monday.words,
     );
 
     const friday = filterAvailableWords(

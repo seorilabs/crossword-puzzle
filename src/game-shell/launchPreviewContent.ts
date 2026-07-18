@@ -15,6 +15,8 @@ const SHA256_PATTERN = /^sha256:[0-9a-f]{64}$/;
 const LOWER_SHA256_HEX_PATTERN = /^[0-9a-f]{64}$/;
 const GENERATOR_COMMIT_PATTERN = /^[0-9a-f]{40}$/;
 const SAFE_PUZZLE_ID_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,126}[a-z0-9])?$/;
+const RETRIES_PER_PHASE = 8;
+const MAX_GLOBAL_RETRY_INDEX = RETRIES_PER_PHASE * 2 - 1;
 
 const LAUNCH_PREVIEW_ROUTES = Object.freeze([
   Object.freeze({
@@ -166,8 +168,35 @@ function validateSelectedCandidate(
     attempts[selectedRetryIndex],
     `${field}.attempts[${selectedRetryIndex}]`,
   );
-  if (selectedAttempt.retryIndex !== selectedRetryIndex) {
-    fail(`${field} selected retry identity does not match its array index`);
+  const localRetryIndex = requireSafeIndex(
+    selectedAttempt.retryIndex,
+    `${field}.selectedAttempt.retryIndex`,
+  );
+  if (selectedAttempt.globalRetryIndex == null) {
+    if (
+      selectedRetryIndex >= RETRIES_PER_PHASE ||
+      localRetryIndex !== selectedRetryIndex
+    ) {
+      fail(`${field} legacy selected retry identity does not match`);
+    }
+  } else {
+    const globalRetryIndex = requireSafeIndex(
+      selectedAttempt.globalRetryIndex,
+      `${field}.selectedAttempt.globalRetryIndex`,
+    );
+    if (globalRetryIndex > MAX_GLOBAL_RETRY_INDEX) {
+      fail(`${field} selected global retry exceeds bounded retry phases`);
+    }
+    const expectedLocalRetryIndex =
+      globalRetryIndex < RETRIES_PER_PHASE
+        ? globalRetryIndex
+        : globalRetryIndex - RETRIES_PER_PHASE;
+    if (
+      globalRetryIndex !== selectedRetryIndex ||
+      localRetryIndex !== expectedLocalRetryIndex
+    ) {
+      fail(`${field} selected retry identity does not match its phase index`);
+    }
   }
   const selectedSeed = requireSafeIndex(
     report.selectedSeed,
