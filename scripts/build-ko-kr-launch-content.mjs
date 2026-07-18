@@ -590,7 +590,7 @@ export function evaluateGeneratedBoardQuality(board, difficulty) {
 }
 
 export function attemptsForRetry(maxAttempts, retryIndex) {
-  const escalation = [3, 5, 8, 12, 20, maxAttempts];
+  const escalation = [3, 5, 8, 12, 20, 30, maxAttempts];
   return Math.min(
     maxAttempts,
     escalation[Math.min(retryIndex, escalation.length - 1)],
@@ -610,24 +610,24 @@ export function searchOptionsForRetry(options, retryIndex) {
     beamWidth: escalatedValue(
       options.beamWidth,
       retryIndex,
-      [6, 8, 10, 12, 14],
+      [6, 8, 10, 12, 14, 16],
     ),
     branchLimit: escalatedValue(
       options.branchLimit,
       retryIndex,
-      [6, 8, 10, 12],
+      [6, 8, 10, 12, 14, 14],
     ),
     candidateWordLimit: escalatedValue(
       options.candidateWordLimit,
       retryIndex,
-      [240, 320, 400, 500],
+      [240, 320, 400, 500, 600, 600],
     ),
     denseCandidateLimit: escalatedValue(
       options.denseCandidateLimit,
       retryIndex,
-      [32, 48, 64, 80],
+      [32, 48, 64, 80, 96, 96],
     ),
-    samples: escalatedValue(options.samples, retryIndex, [3, 3, 4, 4]),
+    samples: escalatedValue(options.samples, retryIndex, [3, 3, 4, 4, 5, 5]),
   };
 }
 

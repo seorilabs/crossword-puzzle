@@ -157,6 +157,10 @@ describe("ko-KR launch content builder", () => {
       [3, 5, 8, 12],
     );
     assert.deepEqual(
+      Array.from({ length: 8 }, (_, index) => attemptsForRetry(80, index)),
+      [3, 5, 8, 12, 20, 30, 80, 80],
+    );
+    assert.deepEqual(
       searchOptionsForRetry(
         {
           attempts: 30,
@@ -175,6 +179,48 @@ describe("ko-KR launch content builder", () => {
         candidateWordLimit: 240,
         denseCandidateLimit: 32,
         samples: 3,
+      },
+    );
+    assert.deepEqual(
+      searchOptionsForRetry(
+        {
+          attempts: 80,
+          beamWidth: 24,
+          branchLimit: 20,
+          candidateWordLimit: 1000,
+          denseCandidateLimit: 160,
+          samples: 8,
+        },
+        6,
+      ),
+      {
+        attempts: 80,
+        beamWidth: 24,
+        branchLimit: 20,
+        candidateWordLimit: 1000,
+        denseCandidateLimit: 160,
+        samples: 8,
+      },
+    );
+    assert.deepEqual(
+      searchOptionsForRetry(
+        {
+          attempts: 80,
+          beamWidth: 24,
+          branchLimit: 20,
+          candidateWordLimit: 1000,
+          denseCandidateLimit: 160,
+          samples: 8,
+        },
+        5,
+      ),
+      {
+        attempts: 30,
+        beamWidth: 16,
+        branchLimit: 14,
+        candidateWordLimit: 600,
+        denseCandidateLimit: 96,
+        samples: 5,
       },
     );
   });
