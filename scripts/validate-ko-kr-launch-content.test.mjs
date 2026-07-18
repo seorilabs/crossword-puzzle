@@ -57,10 +57,10 @@ function sha256(value) {
 const firstRunSourceLock = Object.freeze({
   sourceId: "repo-first-run-content-v1",
   sourceUrl:
-    "https://github.com/seorilabs/crossword-puzzle/blob/70835adbd2e3cea298e9023f4d061dd3ee84b987/src/data/onboardingPuzzle.ts",
-  sourceCommit: "70835adbd2e3cea298e9023f4d061dd3ee84b987",
+    "https://github.com/seorilabs/crossword-puzzle/blob/07dc409a4d7bfdd136487904fa8eb8d7c3a81afd/src/data/onboardingPuzzle.ts",
+  sourceCommit: "07dc409a4d7bfdd136487904fa8eb8d7c3a81afd",
   sourceFileSha256:
-    "sha256:e121052048ed27db79a3c3ce3721095984b9ba9c1e4bb6613d71b8bf7bc31f60",
+    "sha256:ec1738ceb0ba334eb874572fdfc73abf0bfbb6c7e1f0b36d31132e86c85dadb6",
 });
 const licensePolicyAnchors = Object.freeze([
   Object.freeze({
@@ -430,7 +430,7 @@ test("license manifest checksum은 core canonicalizer 결과로 고정된다", a
   );
   assert.equal(
     calculateCanonicalDocumentChecksum(manifest),
-    "sha256:abaccaa41f73f4c5428f4d158c4626897d145a91a2d0cc8dd14299a2e8942d0c",
+    "sha256:18ee800bc56bb69fdb20ce87ed385443dbaec7f8fa985f375ebfa46ac7f0b4ee",
   );
 });
 
@@ -449,7 +449,7 @@ test("first-run source lock은 manifest GitHub blob의 raw bytes를 검증한다
     ],
     [
       "sourceUrl",
-      "https://github.com/seorilabs/crossword-puzzle/blob/70835adbd2e3cea298e9023f4d061dd3ee84b987/src/data/../game-shell/onboardingGameContent.ts",
+      "https://github.com/seorilabs/crossword-puzzle/blob/07dc409a4d7bfdd136487904fa8eb8d7c3a81afd/src/data/../game-shell/onboardingGameContent.ts",
       /sourceUrl path is not a safe repository-relative path/,
     ],
     [

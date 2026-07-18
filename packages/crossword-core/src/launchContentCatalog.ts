@@ -45,10 +45,10 @@ export const BUNDLED_FIRST_RUN_CONTENT_IDENTITIES = Object.freeze([
     themeId: "memory-garden",
     chapterId: "chapter-01-forgotten-path",
     contentChecksum:
-      "sha256:aa76d2b541ce13b72e32ac10613f6b7bdafaf83eec6b89ff32b1286ccfa44ae5",
+      "sha256:fb04e8e71df09c95c30465a5c04a49a3a2ff3cf5db05022263a2805bf1acba79",
     licenseManifestId: "ko-kr-launch-license-manifest-v1",
     licenseManifestChecksum:
-      "sha256:abaccaa41f73f4c5428f4d158c4626897d145a91a2d0cc8dd14299a2e8942d0c",
+      "sha256:18ee800bc56bb69fdb20ce87ed385443dbaec7f8fa985f375ebfa46ac7f0b4ee",
   }),
   Object.freeze({
     puzzleId: "onboarding-easy-02",
@@ -57,10 +57,10 @@ export const BUNDLED_FIRST_RUN_CONTENT_IDENTITIES = Object.freeze([
     themeId: "friendly-animals",
     chapterId: "chapter-01-forgotten-path",
     contentChecksum:
-      "sha256:8d0372b07f5b2eb7eacc041186f3070274ef5e08360784da206e4c99d4024541",
+      "sha256:b31507ccbd70e8f40d0a9364b92913d77e62559468ed0528ec45ea90d0580f40",
     licenseManifestId: "ko-kr-launch-license-manifest-v1",
     licenseManifestChecksum:
-      "sha256:abaccaa41f73f4c5428f4d158c4626897d145a91a2d0cc8dd14299a2e8942d0c",
+      "sha256:18ee800bc56bb69fdb20ce87ed385443dbaec7f8fa985f375ebfa46ac7f0b4ee",
   }),
   Object.freeze({
     puzzleId: "onboarding-easy-03",
@@ -69,10 +69,10 @@ export const BUNDLED_FIRST_RUN_CONTENT_IDENTITIES = Object.freeze([
     themeId: "everyday-journey",
     chapterId: "chapter-01-forgotten-path",
     contentChecksum:
-      "sha256:baee53a948d8748ce3737e2573bf0ad82e919a168bb810eba8211e306345de65",
+      "sha256:cbdca0562bd92efa7884ea1a7fa3feb3cd76cff0d2c617e79b4667933c71da50",
     licenseManifestId: "ko-kr-launch-license-manifest-v1",
     licenseManifestChecksum:
-      "sha256:abaccaa41f73f4c5428f4d158c4626897d145a91a2d0cc8dd14299a2e8942d0c",
+      "sha256:18ee800bc56bb69fdb20ce87ed385443dbaec7f8fa985f375ebfa46ac7f0b4ee",
   }),
 ] as const);
 

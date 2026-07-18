@@ -22,9 +22,9 @@ export const BUNDLED_ONBOARDING_CONTENT_CHECKSUM =
   BUNDLED_ONBOARDING_CONTENT_IDENTITY.contentChecksum;
 export const BUNDLED_ONBOARDING_KNOWLEDGE_CARD_ID =
   "chapter-01-forgotten-path:card:onboarding-easy-01";
-const FIRST_RUN_SOURCE_COMMIT = "70835adbd2e3cea298e9023f4d061dd3ee84b987";
+const FIRST_RUN_SOURCE_COMMIT = "07dc409a4d7bfdd136487904fa8eb8d7c3a81afd";
 const FIRST_RUN_SOURCE_FILE_SHA256 =
-  "sha256:e121052048ed27db79a3c3ce3721095984b9ba9c1e4bb6613d71b8bf7bc31f60";
+  "sha256:ec1738ceb0ba334eb874572fdfc73abf0bfbb6c7e1f0b36d31132e86c85dadb6";
 
 type BundledFirstRunCatalogIdentity =
   (typeof BUNDLED_FIRST_RUN_CONTENT_IDENTITIES)[number];
@@ -69,7 +69,7 @@ function createBundledFirstRunCandidate(
       source: "Seorilabs crossword-puzzle first-run content",
       sourceEntryId: `repo:${identity.puzzleId}:${entry.id}`,
       sourceUrl:
-        "https://github.com/seorilabs/crossword-puzzle/blob/70835adbd2e3cea298e9023f4d061dd3ee84b987/src/data/onboardingPuzzle.ts",
+        "https://github.com/seorilabs/crossword-puzzle/blob/07dc409a4d7bfdd136487904fa8eb8d7c3a81afd/src/data/onboardingPuzzle.ts",
       licenseId: "LicenseRef-Seorilabs-First-Run-Content",
       domainTags: [identity.themeId],
     })),

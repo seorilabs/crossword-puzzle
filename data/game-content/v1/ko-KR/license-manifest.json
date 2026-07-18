@@ -15,7 +15,7 @@
     {
       "licenseId": "LicenseRef-Seorilabs-First-Run-Content",
       "name": "Seorilabs first-run content",
-      "termsUrl": "https://github.com/seorilabs/crossword-puzzle/blob/70835adbd2e3cea298e9023f4d061dd3ee84b987/src/data/onboardingPuzzle.ts",
+      "termsUrl": "https://github.com/seorilabs/crossword-puzzle/blob/07dc409a4d7bfdd136487904fa8eb8d7c3a81afd/src/data/onboardingPuzzle.ts",
       "redistributionAllowed": true
     },
     {
@@ -30,9 +30,9 @@
     {
       "sourceId": "repo-first-run-content-v1",
       "sourceName": "Seorilabs crossword-puzzle first-run content",
-      "sourceUrl": "https://github.com/seorilabs/crossword-puzzle/blob/70835adbd2e3cea298e9023f4d061dd3ee84b987/src/data/onboardingPuzzle.ts",
-      "sourceCommit": "70835adbd2e3cea298e9023f4d061dd3ee84b987",
-      "sourceFileSha256": "sha256:e121052048ed27db79a3c3ce3721095984b9ba9c1e4bb6613d71b8bf7bc31f60",
+      "sourceUrl": "https://github.com/seorilabs/crossword-puzzle/blob/07dc409a4d7bfdd136487904fa8eb8d7c3a81afd/src/data/onboardingPuzzle.ts",
+      "sourceCommit": "07dc409a4d7bfdd136487904fa8eb8d7c3a81afd",
+      "sourceFileSha256": "sha256:ec1738ceb0ba334eb874572fdfc73abf0bfbb6c7e1f0b36d31132e86c85dadb6",
       "licenseId": "LicenseRef-Seorilabs-First-Run-Content",
       "attributionText": "Seorilabs crossword-puzzle 첫 실행 콘텐츠",
       "entryIdPrefix": "repo:onboarding-easy-"
@@ -128,10 +128,26 @@
       "sha256:f2236283e85bc1b6d0e24996f2f4a2ed0e2a770ac0dbc654264da26ed82c5fe6",
       "sha256:a8dd1d2f2fc4e83bd8ee86e0728546aba0590b143c70c27af7f5ade3a7ca7a88"
     ],
-    "wordbankFile": "data/game-content/v1/ko-KR/reviewed-launch-wordbank.json",
-    "wordbankFileSha256": "sha256:c08638a2704599509299ec929d5d85d4b3489c01e3a710c7fff400e0b668ffdd",
-    "ledgerFile": "data/game-content/v1/ko-KR/reviews/editorial-ledger.json",
-    "ledgerFileSha256": "sha256:3bb61a4652491a64362368479f4840ccbb113d89ac9a29872b8e8fd0761af813"
+    "baseWordbankFile": "data/game-content/v1/ko-KR/reviewed-launch-wordbank.json",
+    "baseWordbankFileSha256": "sha256:c08638a2704599509299ec929d5d85d4b3489c01e3a710c7fff400e0b668ffdd",
+    "baseLedgerFile": "data/game-content/v1/ko-KR/reviews/editorial-ledger.json",
+    "baseLedgerFileSha256": "sha256:3bb61a4652491a64362368479f4840ccbb113d89ac9a29872b8e8fd0761af813",
+    "themeTaxonomyFile": "data/game-content/v1/ko-KR/reviews/launch-theme-taxonomy.json",
+    "themeTaxonomyFileSha256": "sha256:f6719bfad3c4d1b6555e1988633dc712a526dd5025e112e398eab6d6097cbc2d",
+    "themeDecisionFiles": [
+      "data/game-content/v1/ko-KR/reviews/editorial-theme-decisions-0000-0799.json",
+      "data/game-content/v1/ko-KR/reviews/editorial-theme-decisions-0800-1599.json",
+      "data/game-content/v1/ko-KR/reviews/editorial-theme-decisions-1600-2399.json"
+    ],
+    "themeDecisionFileSha256": [
+      "sha256:577e197cbac67bd52fe56db0f56cd9d3387ddd8cf966f50a602cb0d05051813d",
+      "sha256:c16f1378fb6a6fb5e4c6c23da68520aed0401a1cb4f0171a6f5d3b16940a10eb",
+      "sha256:bf02338765a7a42dba979cc5653f119c8fcb2e4b9436f522c5aaffcc1010626f"
+    ],
+    "wordbankFile": "data/game-content/v1/ko-KR/reviewed-launch-wordbank-v2.json",
+    "wordbankFileSha256": "sha256:568c464dcb84e1f0a0300742173784b70b5c4daf990bc09c7b167748522f4886",
+    "ledgerFile": "data/game-content/v1/ko-KR/reviews/launch-theme-ledger.json",
+    "ledgerFileSha256": "sha256:28cb95260340e4cbe0f439e19945abcda0d43cf7b92d896939dc9e6ceb0f4053"
   },
   "sourceProvenanceIndex": {
     "path": "data/game-content/v1/ko-KR/source-provenance-index.json",
