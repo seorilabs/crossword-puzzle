@@ -8,17 +8,25 @@ import {
   allocateLaunchThemeOwners,
   areCluesSimilar,
   attemptsForRetry,
+  buildBoardClueConflictIndex,
   buildLaunchRoutePlan,
   buildWorldMap,
   deduplicateReviewedWords,
   evaluateBoardClueQualityEntries,
   evaluateGeneratedBoardQuality,
   filterAvailableWords,
+  hasIndexedBoardClueConflict,
   isGenerationWordLengthEligible,
   normalizeClueForCooldown,
   orderRoutesForGeneration,
+  rankDailyConnectorWordsByConnectivity,
   searchOptionsForRetry,
 } from "./build-ko-kr-launch-content.mjs";
+import {
+  compareGeneratedBoardCandidates,
+  generateBoards,
+  selectDiverseGenerationCandidates,
+} from "./crossword-generator-prototype.mjs";
 
 describe("ko-KR launch content builder", () => {
   test("일일 테마 보드는 비테마 연결어 풀을 제한한다", () => {
@@ -138,6 +146,47 @@ describe("ko-KR launch content builder", () => {
       16,
     );
     assert.equal(friday.connectorWordCount, DAILY_CONNECTOR_WORD_LIMIT);
+  });
+
+  test("daily connector를 테마 연결성, 길이, connector 연결성, ledger 순으로 고른다", () => {
+    const word = (answerCells, reviewLedgerIndex) => ({
+      answer: answerCells.join(""),
+      answerCells,
+      reviewLedgerIndex,
+    });
+
+    assert.deepEqual(
+      rankDailyConnectorWordsByConnectivity(
+        [word(["가"], 0), word(["나"], 1)],
+        [word(["가", "다"], 1), word(["가", "나"], 2)],
+      ).map((entry) => entry.answer),
+      ["가나", "가다"],
+    );
+    assert.deepEqual(
+      rankDailyConnectorWordsByConnectivity(
+        [word(["가"], 0)],
+        [word(["가", "나"], 1), word(["가", "다", "라"], 2)],
+      ).map((entry) => entry.answer),
+      ["가다라", "가나"],
+    );
+    assert.deepEqual(
+      rankDailyConnectorWordsByConnectivity(
+        [word(["가"], 0), word(["다"], 1)],
+        [
+          word(["가", "나"], 30),
+          word(["다", "라"], 10),
+          word(["나", "마"], 20),
+        ],
+      ).map((entry) => entry.answer),
+      ["가나", "다라", "나마"],
+    );
+    assert.deepEqual(
+      rankDailyConnectorWordsByConnectivity(
+        [word(["가"], 0), word(["다"], 1)],
+        [word(["가", "나"], 30), word(["다", "라"], 10)],
+      ).map((entry) => entry.answer),
+      ["다라", "가나"],
+    );
   });
   test("90개 생성 경로와 6주 일일 일정을 결정론적으로 고정한다", () => {
     const routes = buildLaunchRoutePlan();
@@ -269,6 +318,71 @@ describe("ko-KR launch content builder", () => {
         { answer: "기차", clue: "철길 위를 달리는 긴 탈것" },
       ]).pass,
       true,
+    );
+  });
+
+  test("같은 보드 단서 충돌 index를 생성 탐색 중 hard mask로 사용할 수 있다", () => {
+    const index = buildBoardClueConflictIndex([
+      { answer: "방앗간", clue: "곡식을 찧거나 빻는 가게" },
+      { answer: "가게", clue: "물건을 파는 작은 상점" },
+      { answer: "토끼", clue: "귀가 길고 깡충깡충 뛰는 동물" },
+    ]);
+    assert.equal(
+      hasIndexedBoardClueConflict(
+        [{ answer: "방앗간" }, { answer: "가게" }],
+        index,
+      ),
+      true,
+    );
+    assert.equal(
+      hasIndexedBoardClueConflict(
+        [{ answer: "방앗간" }, { answer: "토끼" }],
+        index,
+      ),
+      false,
+    );
+  });
+
+  test("생성기는 run hard mask를 배치 단계부터 적용한다", () => {
+    let inspectedRunCount = 0;
+    const boards = generateBoards({
+      acceptRuns: (runs) => {
+        inspectedRunCount += runs.length;
+        return false;
+      },
+      attempts: 1,
+      beamWidth: 1,
+      branchLimit: 1,
+      denseCandidateLimit: 1,
+      samples: 1,
+      topCandidates: 1,
+    });
+    assert.ok(inspectedRunCount > 0);
+    assert.deepEqual(boards, []);
+  });
+
+  test("theme 우선 후보와 기존 score 우선 후보를 절반씩 보존한다", () => {
+    const candidates = [
+      { id: "theme-a", preferredRunRatio: 1, score: 20 },
+      { id: "theme-b", preferredRunRatio: 0.5, score: 10 },
+      { id: "score-a", preferredRunRatio: 0, score: 1_000 },
+      { id: "score-b", preferredRunRatio: 0, score: 900 },
+    ];
+    assert.deepEqual(
+      selectDiverseGenerationCandidates(candidates, 4, {
+        isPreferredRun: () => true,
+        minPreferredRunRatio: 0.5,
+      }).map((candidate) => candidate.id),
+      ["theme-a", "score-a", "theme-b", "score-b"],
+    );
+  });
+
+  test("final beam에서는 geometry gate PASS를 기존 score보다 먼저 선택한다", () => {
+    assert.ok(
+      compareGeneratedBoardCandidates(
+        { board: { metrics: { score: 1 } }, quality: { pass: true } },
+        { board: { metrics: { score: 100_000 } }, quality: { pass: false } },
+      ) < 0,
     );
   });
 

@@ -865,10 +865,10 @@ export function filterAvailableWords(words, route, usedAnswers) {
     available.filter((word) => word.themeOwner == null),
     profile,
   );
-  const connectorWords = connectorSelection.words.slice(
-    0,
-    DAILY_CONNECTOR_WORD_LIMIT,
-  );
+  const connectorWords = rankDailyConnectorWordsByConnectivity(
+    themeSelection.words,
+    connectorSelection.words,
+  ).slice(0, DAILY_CONNECTOR_WORD_LIMIT);
   const selection = {
     words: [...themeSelection.words, ...connectorWords],
     difficulties: [
@@ -892,6 +892,46 @@ export function filterAvailableWords(words, route, usedAnswers) {
     `${route.puzzleId} has insufficient words after theme/difficulty/cooldown filters: ${selection.words.length}`,
   );
   return selection;
+}
+
+function answerCellsOf(word) {
+  return Array.isArray(word.answerCells) ? word.answerCells : [...word.answer];
+}
+
+function sharesAnswerCell(left, right) {
+  const rightCells = new Set(answerCellsOf(right));
+  return answerCellsOf(left).some((cell) => rightCells.has(cell));
+}
+
+/**
+ * 일일 테마 단어와 실제로 교차 가능한 연결어를 먼저 공급한다. 동일 연결성에서는
+ * 긴 단어, 남은 연결어 풀과의 연결성, 검수 ledger 순으로 결정적으로 정렬한다.
+ */
+export function rankDailyConnectorWordsByConnectivity(
+  themeWords,
+  connectorWords,
+) {
+  return connectorWords
+    .map((word, originalIndex) => ({
+      word,
+      originalIndex,
+      themeDegree: themeWords.filter((themeWord) =>
+        sharesAnswerCell(word, themeWord),
+      ).length,
+      connectorDegree: connectorWords.filter(
+        (other) => other !== word && sharesAnswerCell(word, other),
+      ).length,
+    }))
+    .sort(
+      (left, right) =>
+        right.themeDegree - left.themeDegree ||
+        answerCellsOf(right.word).length - answerCellsOf(left.word).length ||
+        right.connectorDegree - left.connectorDegree ||
+        (left.word.reviewLedgerIndex ?? Number.POSITIVE_INFINITY) -
+          (right.word.reviewLedgerIndex ?? Number.POSITIVE_INFINITY) ||
+        left.originalIndex - right.originalIndex,
+    )
+    .map(({ word }) => word);
 }
 
 function evaluateRouteBoardQuality(board, route, wordPool) {
@@ -981,6 +1021,25 @@ export function evaluateBoardClueQualityEntries(entries) {
     counts,
     thresholds,
   };
+}
+
+export function buildBoardClueConflictIndex(entries) {
+  const index = new Map(entries.map((entry) => [entry.answer, new Set()]));
+  for (const conflict of findBoardClueQualityConflicts(entries)) {
+    index.get(conflict.answer)?.add(conflict.otherAnswer);
+    index.get(conflict.otherAnswer)?.add(conflict.answer);
+  }
+  return index;
+}
+
+export function hasIndexedBoardClueConflict(runs, conflictIndex) {
+  const answers = new Set(runs.map((run) => run.answer));
+  for (const answer of answers) {
+    for (const otherAnswer of conflictIndex.get(answer) ?? []) {
+      if (answers.has(otherAnswer)) return true;
+    }
+  }
+  return false;
 }
 
 function summarizeCandidateBoard(board, quality, candidateIndex) {
@@ -1097,6 +1156,9 @@ async function generateRouteContent(
   licenseManifestChecksum,
 ) {
   const selection = filterAvailableWords(reviewedWords, route, usedAnswers);
+  const profile = DIFFICULTY_PROFILES[route.difficulty];
+  const selectedWordMap = makeWordMap(selection.words);
+  const clueConflictIndex = buildBoardClueConflictIndex(selection.words);
   const generation = generateBoardWithRetries({
     retries: options.retries,
     seedForRetry: (retryIndex) =>
@@ -1106,9 +1168,20 @@ async function generateRouteContent(
     buildGeneratorOptions: ({ searchOptions, seed }) => ({
       allowAdjacent: true,
       ...searchOptions,
-      boardSize: DIFFICULTY_PROFILES[route.difficulty].boardSize,
-      maxWords: DIFFICULTY_PROFILES[route.difficulty].maxWords,
-      minWordLength: DIFFICULTY_PROFILES[route.difficulty].minWordLength,
+      acceptRuns: (runs) =>
+        !hasIndexedBoardClueConflict(runs, clueConflictIndex),
+      boardSize: profile.boardSize,
+      evaluateBoardQuality: (board) =>
+        evaluateGeneratedBoardQuality(board, route.difficulty),
+      isPreferredRun:
+        route.route.kind === "daily"
+          ? (run) =>
+              selectedWordMap.get(run.answer)?.themeOwner === route.themeId
+          : undefined,
+      maxWords: profile.maxWords,
+      minPreferredRunRatio:
+        route.route.kind === "daily" ? MIN_DAILY_THEME_ENTRY_RATIO : 0,
+      minWordLength: profile.minWordLength,
       seed,
       wordBank: selection.words,
     }),
@@ -1132,7 +1205,6 @@ async function generateRouteContent(
         `${route.puzzleId} reused answer ${entry.answer}`,
       );
     }
-    const selectedWordMap = makeWordMap(selection.words);
     const selectedReport =
       generation.attempts[generation.selectedRetryIndex].candidates[
         generation.selectedCandidateIndex

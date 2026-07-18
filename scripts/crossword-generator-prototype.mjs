@@ -110,10 +110,13 @@ function parseArgs(argv) {
     if (key === "size" && Number.isFinite(value)) options.boardSize = value;
     if (key === "beam" && Number.isFinite(value)) options.beamWidth = value;
     if (key === "branch" && Number.isFinite(value)) options.branchLimit = value;
-    if (key === "candidates" && Number.isFinite(value)) options.candidateWordLimit = value;
-    if (key === "dense" && Number.isFinite(value)) options.denseCandidateLimit = value;
+    if (key === "candidates" && Number.isFinite(value))
+      options.candidateWordLimit = value;
+    if (key === "dense" && Number.isFinite(value))
+      options.denseCandidateLimit = value;
     if (key === "words" && Number.isFinite(value)) options.maxWords = value;
-    if (key === "minLength" && Number.isFinite(value)) options.minWordLength = value;
+    if (key === "minLength" && Number.isFinite(value))
+      options.minWordLength = value;
     if (key === "samples" && Number.isFinite(value)) options.samples = value;
     if (key === "seed" && Number.isFinite(value)) options.seed = value;
     if (key === "wordbank" && rawValue) options.wordBankPath = rawValue;
@@ -152,7 +155,7 @@ function limitCandidateWords(words, options) {
 
   return shuffle(words, createRandom(options.seed ^ 0x9e3779b9)).slice(
     0,
-    options.candidateWordLimit
+    options.candidateWordLimit,
   );
 }
 
@@ -184,7 +187,7 @@ function buildLetterIndex(words) {
     [...byLetter.entries()].map(([letter, letterWords]) => [
       letter,
       [...letterWords.values()],
-    ])
+    ]),
   );
 }
 
@@ -208,12 +211,14 @@ export async function loadWordBank(filePath) {
 }
 
 function makeEmptyGrid(size) {
-  return Array.from({ length: size }, () => Array.from({ length: size }, () => null));
+  return Array.from({ length: size }, () =>
+    Array.from({ length: size }, () => null),
+  );
 }
 
 function makeDirectionGrid(size) {
   return Array.from({ length: size }, () =>
-    Array.from({ length: size }, () => new Set())
+    Array.from({ length: size }, () => new Set()),
   );
 }
 
@@ -270,7 +275,12 @@ function validatePlacement(state, word, row, col, direction, options) {
   const cells = [];
   const intersections = [];
 
-  for (const [endRow, endCol] of endpointCells(row, col, letters.length, direction)) {
+  for (const [endRow, endCol] of endpointCells(
+    row,
+    col,
+    letters.length,
+    direction,
+  )) {
     if (inBounds(size, endRow, endCol) && state.grid[endRow][endCol] !== null) {
       return null;
     }
@@ -299,7 +309,7 @@ function validatePlacement(state, word, row, col, direction, options) {
       for (const [neighborRow, neighborCol] of perpendicularNeighbors(
         currentRow,
         currentCol,
-        direction
+        direction,
       )) {
         if (
           inBounds(size, neighborRow, neighborCol) &&
@@ -315,7 +325,11 @@ function validatePlacement(state, word, row, col, direction, options) {
     cells.push({ row: currentRow, col: currentCol, letter: letters[index] });
   }
 
-  if (state.placements.length > 0 && intersections.length === 0 && !options.allowAdjacent) {
+  if (
+    state.placements.length > 0 &&
+    intersections.length === 0 &&
+    !options.allowAdjacent
+  ) {
     return null;
   }
 
@@ -346,7 +360,7 @@ function bridgesNewAndExistingCells(autoRun, state, validated) {
   const newCellKeys = new Set(
     validated.cells
       .filter((cell) => state.grid[cell.row][cell.col] === null)
-      .map((cell) => `${cell.row},${cell.col}`)
+      .map((cell) => `${cell.row},${cell.col}`),
   );
 
   let touchesNewCell = false;
@@ -391,7 +405,8 @@ function findPlacementCandidates(state, words, random, options) {
 
   if (state.placements.length === 0) {
     const sorted = [...words].sort(
-      (left, right) => splitWord(right.answer).length - splitWord(left.answer).length
+      (left, right) =>
+        splitWord(right.answer).length - splitWord(left.answer).length,
     );
     const seedWords = sorted.slice(0, Math.min(12, sorted.length));
 
@@ -406,13 +421,31 @@ function findPlacementCandidates(state, words, random, options) {
           direction === "across"
             ? Math.floor((options.boardSize - letters.length) / 2)
             : Math.floor(options.boardSize / 2);
-        const validated = validatePlacement(state, word, row, col, direction, options);
+        const validated = validatePlacement(
+          state,
+          word,
+          row,
+          col,
+          direction,
+          options,
+        );
 
         if (validated !== null) {
-          const nextState = applyPlacement(state, word, row, col, direction, validated);
+          const nextState = applyPlacement(
+            state,
+            word,
+            row,
+            col,
+            direction,
+            validated,
+          );
           const runAnalysis = analyzeRuns(nextState, options.wordMap);
 
-          if (runAnalysis.invalidRuns.length > 0 || hasDuplicateAnswers(runAnalysis.runs)) {
+          if (
+            runAnalysis.invalidRuns.length > 0 ||
+            hasDuplicateAnswers(runAnalysis.runs) ||
+            !acceptsRunSet(runAnalysis.runs, options)
+          ) {
             continue;
           }
 
@@ -423,6 +456,7 @@ function findPlacementCandidates(state, words, random, options) {
             direction,
             validated,
             nextState,
+            preferredRunRatio: getPreferredRunRatio(runAnalysis.runs, options),
             score: letters.length + random(),
           });
         }
@@ -453,21 +487,39 @@ function findPlacementCandidates(state, words, random, options) {
           const [dr, dc] = directionDelta(direction);
           const row = occupied.row - dr * letterIndex;
           const col = occupied.col - dc * letterIndex;
-          const validated = validatePlacement(state, word, row, col, direction, options);
+          const validated = validatePlacement(
+            state,
+            word,
+            row,
+            col,
+            direction,
+            options,
+          );
 
           if (validated === null) {
             continue;
           }
 
-          const nextState = applyPlacement(state, word, row, col, direction, validated);
+          const nextState = applyPlacement(
+            state,
+            word,
+            row,
+            col,
+            direction,
+            validated,
+          );
           const runAnalysis = analyzeRuns(nextState, options.wordMap);
 
-          if (runAnalysis.invalidRuns.length > 0 || hasDuplicateAnswers(runAnalysis.runs)) {
+          if (
+            runAnalysis.invalidRuns.length > 0 ||
+            hasDuplicateAnswers(runAnalysis.runs) ||
+            !acceptsRunSet(runAnalysis.runs, options)
+          ) {
             continue;
           }
 
           const newCells = validated.cells.filter(
-            (cell) => state.grid[cell.row][cell.col] === null
+            (cell) => state.grid[cell.row][cell.col] === null,
           ).length;
           const currentStats = getPreviewStats(state, []);
           const previewStats = getPreviewStats(state, validated.cells);
@@ -479,9 +531,11 @@ function findPlacementCandidates(state, words, random, options) {
             .filter((cell) => state.grid[cell.row][cell.col] !== null)
             .reduce((sum, cell) => {
               const wordIndex = validated.cells.findIndex(
-                (target) => target.row === cell.row && target.col === cell.col
+                (target) => target.row === cell.row && target.col === cell.col,
               );
-              const distanceFromMiddle = Math.abs(wordIndex - (letters.length - 1) / 2);
+              const distanceFromMiddle = Math.abs(
+                wordIndex - (letters.length - 1) / 2,
+              );
               return sum + Math.max(0, 20 - distanceFromMiddle * 10);
             }, 0);
           const intersectionCount = validated.intersections.length;
@@ -499,6 +553,7 @@ function findPlacementCandidates(state, words, random, options) {
             direction,
             validated,
             nextState,
+            preferredRunRatio: getPreferredRunRatio(runAnalysis.runs, options),
             score:
               intersectionCount ** 2 * 620 +
               runAnalysis.autoRuns.length * 900 +
@@ -524,13 +579,12 @@ function findPlacementCandidates(state, words, random, options) {
     const candidateKeys = new Set(
       candidates.map(
         (candidate) =>
-          `${candidate.word.answer}:${candidate.direction}:${candidate.row}:${candidate.col}`
-      )
+          `${candidate.word.answer}:${candidate.direction}:${candidate.row}:${candidate.col}`,
+      ),
     );
     let denseCandidateCount = 0;
 
-    denseSearch:
-    for (const word of words) {
+    denseSearch: for (const word of words) {
       const letters = splitWord(word.answer);
 
       for (const direction of ["across", "down"]) {
@@ -538,31 +592,57 @@ function findPlacementCandidates(state, words, random, options) {
           state,
           direction,
           letters.length,
-          options.boardSize
+          options.boardSize,
         );
 
-        for (let row = searchWindow.minRow; row <= searchWindow.maxRow; row += 1) {
-          for (let col = searchWindow.minCol; col <= searchWindow.maxCol; col += 1) {
+        for (
+          let row = searchWindow.minRow;
+          row <= searchWindow.maxRow;
+          row += 1
+        ) {
+          for (
+            let col = searchWindow.minCol;
+            col <= searchWindow.maxCol;
+            col += 1
+          ) {
             const key = `${word.answer}:${direction}:${row}:${col}`;
             if (candidateKeys.has(key)) {
               continue;
             }
 
-            const validated = validatePlacement(state, word, row, col, direction, options);
+            const validated = validatePlacement(
+              state,
+              word,
+              row,
+              col,
+              direction,
+              options,
+            );
 
             if (validated === null) {
               continue;
             }
 
-            const nextState = applyPlacement(state, word, row, col, direction, validated);
+            const nextState = applyPlacement(
+              state,
+              word,
+              row,
+              col,
+              direction,
+              validated,
+            );
             const runAnalysis = analyzeRuns(nextState, options.wordMap);
 
-            if (runAnalysis.invalidRuns.length > 0 || hasDuplicateAnswers(runAnalysis.runs)) {
+            if (
+              runAnalysis.invalidRuns.length > 0 ||
+              hasDuplicateAnswers(runAnalysis.runs) ||
+              !acceptsRunSet(runAnalysis.runs, options)
+            ) {
               continue;
             }
 
             const bridgingAutoRuns = runAnalysis.autoRuns.filter((run) =>
-              bridgesNewAndExistingCells(run, state, validated)
+              bridgesNewAndExistingCells(run, state, validated),
             );
 
             if (
@@ -574,7 +654,7 @@ function findPlacementCandidates(state, words, random, options) {
             }
 
             const newCells = validated.cells.filter(
-              (cell) => state.grid[cell.row][cell.col] === null
+              (cell) => state.grid[cell.row][cell.col] === null,
             ).length;
             const currentStats = getPreviewStats(state, []);
             const previewStats = getPreviewStats(state, validated.cells);
@@ -585,7 +665,8 @@ function findPlacementCandidates(state, words, random, options) {
             const intersectionCount = validated.intersections.length;
             const multiIntersectionBonus =
               intersectionCount >= 3 ? 4200 : intersectionCount >= 2 ? 1800 : 0;
-            const bboxEmptyCells = previewStats.bboxArea - previewStats.occupiedCount;
+            const bboxEmptyCells =
+              previewStats.bboxArea - previewStats.occupiedCount;
             const shortWordPenalty = letters.length <= 2 ? 80 : 0;
 
             candidateKeys.add(key);
@@ -597,6 +678,10 @@ function findPlacementCandidates(state, words, random, options) {
               direction,
               validated,
               nextState,
+              preferredRunRatio: getPreferredRunRatio(
+                runAnalysis.runs,
+                options,
+              ),
               score:
                 intersectionCount ** 2 * 620 +
                 bridgingAutoRuns.length * 3200 +
@@ -622,14 +707,98 @@ function findPlacementCandidates(state, words, random, options) {
     }
   }
 
-  candidates.sort((left, right) => right.score - left.score);
-  return candidates.slice(0, options.topCandidates);
+  return selectDiverseGenerationCandidates(
+    candidates,
+    options.topCandidates,
+    options,
+  );
+}
+
+function acceptsRunSet(runs, options) {
+  return options.acceptRuns == null || options.acceptRuns(runs) !== false;
+}
+
+function getPreferredRunRatio(runs, options) {
+  if (options.isPreferredRun == null || runs.length === 0) return 1;
+  return runs.filter((run) => options.isPreferredRun(run)).length / runs.length;
+}
+
+function compareGenerationCandidatesByPreferredRunGate(left, right, options) {
+  if (options.isPreferredRun == null) return right.score - left.score;
+  const minimum = options.minPreferredRunRatio ?? 0;
+  const leftPass = left.preferredRunRatio >= minimum;
+  const rightPass = right.preferredRunRatio >= minimum;
+
+  if (leftPass !== rightPass) return leftPass ? -1 : 1;
+  if (!leftPass && left.preferredRunRatio !== right.preferredRunRatio) {
+    return right.preferredRunRatio - left.preferredRunRatio;
+  }
+  return right.score - left.score;
+}
+
+export function selectDiverseGenerationCandidates(candidates, limit, options) {
+  const scoreRanked = [...candidates].sort(
+    (left, right) => right.score - left.score,
+  );
+  if (options.isPreferredRun == null) return scoreRanked.slice(0, limit);
+
+  const priorityRanked = [...candidates].sort((left, right) =>
+    compareGenerationCandidatesByPreferredRunGate(left, right, options),
+  );
+  const selected = [];
+  const selectedSet = new Set();
+  const quotas = [Math.ceil(limit / 2), Math.floor(limit / 2)];
+  const rankedGroups = [priorityRanked, scoreRanked];
+  const indexes = [0, 0];
+
+  function takeNext(groupIndex) {
+    const ranked = rankedGroups[groupIndex];
+    while (indexes[groupIndex] < ranked.length) {
+      const candidate = ranked[indexes[groupIndex]];
+      indexes[groupIndex] += 1;
+      if (selectedSet.has(candidate)) continue;
+      selectedSet.add(candidate);
+      selected.push(candidate);
+      return true;
+    }
+    return false;
+  }
+
+  for (let index = 0; index < Math.max(...quotas); index += 1) {
+    for (
+      let groupIndex = 0;
+      groupIndex < rankedGroups.length;
+      groupIndex += 1
+    ) {
+      if (index < quotas[groupIndex]) takeNext(groupIndex);
+    }
+  }
+  for (
+    let groupIndex = 0;
+    selected.length < limit && groupIndex < 2;
+    groupIndex += 1
+  ) {
+    while (selected.length < limit && takeNext(groupIndex)) {
+      // Fill a quota shortened by overlap or a small candidate set.
+    }
+  }
+  return selected;
+}
+
+export function compareGeneratedBoardCandidates(left, right) {
+  if (left.quality?.pass !== right.quality?.pass) {
+    return left.quality?.pass ? -1 : 1;
+  }
+  return 0;
 }
 
 function getPreviewStats(state, nextCells) {
   const occupied = getOccupiedCells(state);
   const byKey = new Map(
-    occupied.map((cell) => [`${cell.row},${cell.col}`, { row: cell.row, col: cell.col }])
+    occupied.map((cell) => [
+      `${cell.row},${cell.col}`,
+      { row: cell.row, col: cell.col },
+    ]),
   );
 
   for (const cell of nextCells) {
@@ -800,21 +969,22 @@ function runAttempt(words, random, options) {
         item.state,
         item.remainingWords,
         random,
-        options
+        options,
       );
 
       for (const candidate of candidates.slice(0, options.branchLimit)) {
         const nextState = candidate.nextState;
-        const usedAnswers = new Set(
-          analyzeRuns(nextState, options.wordMap).runs.map((run) => run.answer)
-        );
+        const runAnalysis = analyzeRuns(nextState, options.wordMap);
+        const usedAnswers = new Set(runAnalysis.runs.map((run) => run.answer));
+        const scoredBoard = scoreBoard(nextState, options.wordMap);
 
         expanded.push({
           state: nextState,
           remainingWords: item.remainingWords.filter(
-            (word) => !usedAnswers.has(word.answer)
+            (word) => !usedAnswers.has(word.answer),
           ),
-          score: scoreBoard(nextState, options.wordMap).metrics.score + candidate.score,
+          preferredRunRatio: getPreferredRunRatio(runAnalysis.runs, options),
+          score: scoredBoard.metrics.score + candidate.score,
         });
       }
     }
@@ -824,23 +994,46 @@ function runAttempt(words, random, options) {
     }
 
     const seen = new Set();
-    beam = expanded
-      .sort((left, right) => right.score - left.score)
-      .filter((item) => {
-        const key = renderGrid(item.state.grid);
-        if (seen.has(key)) {
-          return false;
-        }
+    const uniqueExpanded = expanded.filter((item) => {
+      const key = renderGrid(item.state.grid);
+      if (seen.has(key)) {
+        return false;
+      }
 
-        seen.add(key);
-        return true;
-      })
-      .slice(0, options.beamWidth);
+      seen.add(key);
+      return true;
+    });
+    beam = selectDiverseGenerationCandidates(
+      uniqueExpanded,
+      options.beamWidth,
+      options,
+    );
   }
 
   return beam
-    .map((item) => scoreBoard(item.state, options.wordMap))
-    .sort((left, right) => right.metrics.score - left.metrics.score)[0];
+    .map((item) => {
+      const board = scoreBoard(item.state, options.wordMap);
+      return {
+        board,
+        preferredRunRatio: item.preferredRunRatio,
+        quality: options.evaluateBoardQuality?.(board),
+      };
+    })
+    .sort((left, right) => {
+      const qualityOrder = compareGeneratedBoardCandidates(left, right);
+      if (qualityOrder !== 0) return qualityOrder;
+      return compareGenerationCandidatesByPreferredRunGate(
+        {
+          preferredRunRatio: left.preferredRunRatio,
+          score: left.board.metrics.score,
+        },
+        {
+          preferredRunRatio: right.preferredRunRatio,
+          score: right.board.metrics.score,
+        },
+        options,
+      );
+    })[0]?.board;
 }
 
 function scoreBoard(state, wordMap = makeWordMap(WORDS)) {
@@ -869,16 +1062,19 @@ function scoreBoard(state, wordMap = makeWordMap(WORDS)) {
   const crossCellKeys = new Set(
     [...cellsToWords.entries()]
       .filter(([, runIndexes]) => {
-        const directions = new Set(runIndexes.map((runIndex) => runs[runIndex].direction));
+        const directions = new Set(
+          runIndexes.map((runIndex) => runs[runIndex].direction),
+        );
         return directions.size > 1;
       })
-      .map(([key]) => key)
+      .map(([key]) => key),
   );
   const totalRunCrossTouches = runs.reduce(
     (sum, run) =>
       sum +
-      run.cells.filter((cell) => crossCellKeys.has(`${cell.row},${cell.col}`)).length,
-    0
+      run.cells.filter((cell) => crossCellKeys.has(`${cell.row},${cell.col}`))
+        .length,
+    0,
   );
   const size = state.grid.length;
   const emptyRatio = (size * size - occupied.length) / (size * size);
@@ -893,8 +1089,8 @@ function scoreBoard(state, wordMap = makeWordMap(WORDS)) {
       : Number((totalRunCrossTouches / runs.length).toFixed(2));
   const multiIntersectionPlacements = runs.filter(
     (run) =>
-      run.cells.filter((cell) => crossCellKeys.has(`${cell.row},${cell.col}`)).length >=
-      2
+      run.cells.filter((cell) => crossCellKeys.has(`${cell.row},${cell.col}`))
+        .length >= 2,
   ).length;
   const bboxEmptyCells = bbox.bboxArea - bbox.occupiedCount;
 
@@ -974,16 +1170,32 @@ export function generateBoards(inputOptions = {}) {
   const seen = new Set();
   const inputWords = inputOptions.wordBank ?? WORDS;
   const words = inputWords.filter(
-    (word) => splitWord(word.answer).length >= options.minWordLength
+    (word) => splitWord(word.answer).length >= options.minWordLength,
   );
   const candidateWords = limitCandidateWords(words, options);
   options.wordMap = makeWordMap(words);
   options.wordsByLetter = buildLetterIndex(candidateWords);
+  if (options.acceptRuns != null && typeof options.acceptRuns !== "function") {
+    throw new TypeError("acceptRuns must be a function");
+  }
+  if (
+    options.isPreferredRun != null &&
+    typeof options.isPreferredRun !== "function"
+  ) {
+    throw new TypeError("isPreferredRun must be a function");
+  }
+  if (
+    options.evaluateBoardQuality != null &&
+    typeof options.evaluateBoardQuality !== "function"
+  ) {
+    throw new TypeError("evaluateBoardQuality must be a function");
+  }
 
   for (let attempt = 0; attempt < options.attempts; attempt += 1) {
     const board = runAttempt(candidateWords, random, options);
 
     if (
+      board != null &&
       board.metrics.wordCount >= 6 &&
       board.metrics.connectedComponents === 1 &&
       board.metrics.accidentalRuns.length === 0 &&
@@ -999,14 +1211,31 @@ export function generateBoards(inputOptions = {}) {
     }
   }
 
-  boards.sort((left, right) => right.metrics.score - left.metrics.score);
+  boards.sort((left, right) => {
+    const qualityOrder = compareGeneratedBoardCandidates(
+      { board: left, quality: options.evaluateBoardQuality?.(left) },
+      { board: right, quality: options.evaluateBoardQuality?.(right) },
+    );
+    if (qualityOrder !== 0) return qualityOrder;
+    const leftRuns = analyzeRuns(left, options.wordMap).runs;
+    const rightRuns = analyzeRuns(right, options.wordMap).runs;
+    return compareGenerationCandidatesByPreferredRunGate(
+      {
+        preferredRunRatio: getPreferredRunRatio(leftRuns, options),
+        score: left.metrics.score,
+      },
+      {
+        preferredRunRatio: getPreferredRunRatio(rightRuns, options),
+        score: right.metrics.score,
+      },
+      options,
+    );
+  });
   return boards.slice(0, options.samples);
 }
 
 export function renderGrid(grid) {
-  return grid
-    .map((row) => row.map((cell) => cell ?? "·").join(" "))
-    .join("\n");
+  return grid.map((row) => row.map((cell) => cell ?? "·").join(" ")).join("\n");
 }
 
 export function renderBoard(board, index, words = WORDS) {
@@ -1028,7 +1257,9 @@ export function renderBoard(board, index, words = WORDS) {
       const directionLabel = run.direction === "across" ? "가로" : "세로";
       const sourceLabel = run.isPlaced ? "배치" : "자동";
       const finalIntersections = run.cells
-        .filter((cell) => cellToDirections.get(`${cell.row},${cell.col}`)?.size > 1)
+        .filter(
+          (cell) => cellToDirections.get(`${cell.row},${cell.col}`)?.size > 1,
+        )
         .map((cell) => `${cell.row},${cell.col}`);
       const intersections =
         finalIntersections.length === 0 ? "-" : finalIntersections.join(" ");
@@ -1054,18 +1285,27 @@ async function runCli() {
   const candidateCount = Math.min(words.length, options.candidateWordLimit);
 
   console.log(
-    `options size=${options.boardSize} words=${options.maxWords} minLength=${options.minWordLength} attempts=${options.attempts} beam=${options.beamWidth} branch=${options.branchLimit} dense=${options.denseCandidateLimit} candidates=${candidateCount} allowAdjacent=${options.allowAdjacent} seed=${options.seed} wordbank=${words.length}`
+    `options size=${options.boardSize} words=${options.maxWords} minLength=${options.minWordLength} attempts=${options.attempts} beam=${options.beamWidth} branch=${options.branchLimit} dense=${options.denseCandidateLimit} candidates=${candidateCount} allowAdjacent=${options.allowAdjacent} seed=${options.seed} wordbank=${words.length}`,
   );
 
   if (boards.length === 0) {
-    console.log("No valid boards generated. Try increasing --attempts or --size.");
+    console.log(
+      "No valid boards generated. Try increasing --attempts or --size.",
+    );
     process.exitCode = 1;
   } else {
-    console.log(boards.map((board, index) => renderBoard(board, index, words)).join("\n\n"));
+    console.log(
+      boards
+        .map((board, index) => renderBoard(board, index, words))
+        .join("\n\n"),
+    );
   }
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
+if (
+  process.argv[1] &&
+  fileURLToPath(import.meta.url) === path.resolve(process.argv[1])
+) {
   runCli().catch((error) => {
     console.error(error);
     process.exitCode = 1;
