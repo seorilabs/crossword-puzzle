@@ -46,7 +46,12 @@ import {
   validateLaunchWordBankReport,
   validateLicensePolicyAnchors,
   validateReportedQualityEvidence,
+  validateReportedDifficultySelection,
 } from "./validate-ko-kr-launch-content.mjs";
+import {
+  DIFFICULTY_PROFILES,
+  selectWordsForProfile,
+} from "../packages/crossword-core/src/difficultyProfiles.ts";
 
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 const execFileAsync = promisify(execFile);
@@ -493,7 +498,7 @@ test("license manifest checksum은 core canonicalizer 결과로 고정된다", a
   );
   assert.equal(
     calculateCanonicalDocumentChecksum(manifest),
-    "sha256:18ee800bc56bb69fdb20ce87ed385443dbaec7f8fa985f375ebfa46ac7f0b4ee",
+    "sha256:959f2a7eaacb5fe81f9c4ae6585f12c07285455b541ac973d3a2f994314caa7a",
   );
 });
 
@@ -679,7 +684,7 @@ test("저품질 board의 report quality PASS 재봉인을 거부한다", () => {
 
 function makeGeneratorTraceFixture(route = buildLaunchRoutePlan()[0]) {
   const config = {
-    schemaVersion: "ko-kr-launch-generator-config/7",
+    schemaVersion: "ko-kr-launch-generator-config/8",
     acceptedCandidateSelection: structuredClone(
       LAUNCH_ACCEPTED_CANDIDATE_POLICY,
     ),
@@ -852,6 +857,10 @@ function makeGeneratorTraceFixture(route = buildLaunchRoutePlan()[0]) {
       route: route.route,
       difficulty: route.difficulty,
       themeId: route.themeId,
+      effectiveWordDifficulties: [
+        ...DIFFICULTY_PROFILES[route.difficulty].wordDifficulties,
+      ],
+      broadenedDifficultyPool: false,
       selectedCandidateIndex: 1,
       selectedRetryIndex: 1,
       selectedSeed: attempts[1].seed,
@@ -1057,6 +1066,8 @@ function makeDailyFallbackPoolTraceFixture() {
       route: route.route,
       difficulty: route.difficulty,
       themeId: route.themeId,
+      effectiveWordDifficulties: ["easy", "normal"],
+      broadenedDifficultyPool: false,
       selectedCandidateIndex: 0,
       selectedRetryIndex: 8,
       selectedSeed: fallbackAttempts[0].seed,
@@ -1077,9 +1088,9 @@ test("재봉인한 route/search/attempt 허위 trace를 거부한다", () => {
   const forgeries = [
     {
       mutate: ({ config }) => {
-        config.schemaVersion = "ko-kr-launch-generator-config/6";
+        config.schemaVersion = "ko-kr-launch-generator-config/7";
       },
-      expected: /trace config schema must be ko-kr-launch-generator-config\/7/,
+      expected: /trace config schema must be ko-kr-launch-generator-config\/8/,
     },
     {
       mutate: ({ config }) => {
@@ -1217,6 +1228,70 @@ test("재봉인한 route/search/attempt 허위 trace를 거부한다", () => {
       expected,
     );
   }
+});
+
+test("normal report의 hard effective 난이도와 허위 broadened 상태를 거부한다", () => {
+  const reportBoard = {
+    difficulty: "normal",
+    effectiveWordDifficulties: ["easy", "normal"],
+    broadenedDifficultyPool: false,
+  };
+  assert.equal(validateReportedDifficultySelection(reportBoard), true);
+
+  const hardBroadened = structuredClone(reportBoard);
+  hardBroadened.effectiveWordDifficulties.push("hard");
+  hardBroadened.broadenedDifficultyPool = true;
+  assert.throws(
+    () => validateReportedDifficultySelection(hardBroadened),
+    /exceeds normal ceiling/,
+  );
+
+  const forgedFlag = structuredClone(reportBoard);
+  forgedFlag.broadenedDifficultyPool = true;
+  assert.throws(
+    () => validateReportedDifficultySelection(forgedFlag),
+    /broadenedDifficultyPool does not match/,
+  );
+});
+
+test("report 난이도 evidence를 재계산한 selected word selection과 exact binding한다", () => {
+  const currentSelection = selectWordsForProfile(
+    [
+      ...Array.from({ length: 5 }, (_, index) => ({
+        answer: `쉬움-${index}`,
+        difficulty: "easy",
+      })),
+      ...Array.from({ length: 200 }, (_, index) => ({
+        answer: `보통-${index}`,
+        difficulty: "normal",
+      })),
+      ...Array.from({ length: 200 }, (_, index) => ({
+        answer: `어려움-${index}`,
+        difficulty: "hard",
+      })),
+    ],
+    DIFFICULTY_PROFILES.easy,
+  );
+  assert.deepEqual(currentSelection.difficulties, ["easy", "normal"]);
+  assert.equal(currentSelection.broadened, true);
+
+  const forgedReportBoard = {
+    difficulty: "easy",
+    // 구조상 canonical이고 easy ceiling 안이지만, 실제 selector가 normal을 건너뛴 채
+    // hard만 보강할 수는 없다.
+    effectiveWordDifficulties: ["easy", "hard"],
+    broadenedDifficultyPool: true,
+  };
+  assert.equal(validateReportedDifficultySelection(forgedReportBoard), true);
+  assert.throws(
+    () =>
+      validateReportedDifficultySelection(
+        forgedReportBoard,
+        "generator report board",
+        currentSelection,
+      ),
+    /effectiveWordDifficulties independently recalculated does not exactly match/,
+  );
 });
 
 test("chapter·bonus·weekly report의 fallback attempt를 명시적으로 거부한다", () => {

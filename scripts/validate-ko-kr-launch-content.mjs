@@ -22,7 +22,11 @@ import {
   findKoKrAnswerFragmentExposure,
   isSelfReferentialClue,
 } from "../packages/crossword-core/src/clueCuration.ts";
-import { DIFFICULTY_PROFILES } from "../packages/crossword-core/src/difficultyProfiles.ts";
+import {
+  DIFFICULTY_ORDER,
+  DIFFICULTY_PROFILES,
+  isWordDifficultyWithinProfile,
+} from "../packages/crossword-core/src/difficultyProfiles.ts";
 import { verifyGameContentChecksum } from "../packages/crossword-core/src/gameContent.ts";
 import { canonicalizeForChecksum } from "../packages/crossword-core/src/saveV2.ts";
 import { loadBundledFirstRunGameContents } from "../src/game-shell/onboardingGameContent.ts";
@@ -130,7 +134,7 @@ const EXPECTED_GENERATOR_DEPENDENCY_PATHS = Object.freeze([
   "data/game-content/v1/ko-KR/license-manifest.json",
 ]);
 export const KO_KR_LAUNCH_CLUE_QUALITY_POLICY = Object.freeze({
-  schemaVersion: "ko-kr-launch-generator-config/7",
+  schemaVersion: "ko-kr-launch-generator-config/8",
   clueSimilarity: Object.freeze({
     policyId: LAUNCH_CLUE_SIMILARITY_POLICY_ID,
     normalization: "NFKC-lowercase-no-space-punctuation-symbol",
@@ -1505,6 +1509,16 @@ function validateCatalogEntryProvenance(
           reviewedWord,
           `${content.puzzleId}.entries[${entryIndex}]`,
         );
+        const profile = DIFFICULTY_PROFILES[content.difficulty];
+        requireCondition(
+          profile != null &&
+            isWordDifficultyWithinProfile(reviewedWord.difficulty, profile) &&
+            Array.isArray(reportBoard.effectiveWordDifficulties) &&
+            reportBoard.effectiveWordDifficulties.includes(
+              reviewedWord.difficulty,
+            ),
+          `${content.puzzleId}/${entry.id} exceeds its reported difficulty ceiling`,
+        );
         if (board.route.kind === "daily") {
           requireCondition(
             reviewedWord.themeOwner == null ||
@@ -2173,6 +2187,61 @@ function retryPhaseForGlobalIndex(globalRetryIndex) {
   );
 }
 
+export function validateReportedDifficultySelection(
+  reportBoard,
+  field = "generator report board",
+  expectedSelection = null,
+) {
+  const profile = DIFFICULTY_PROFILES[reportBoard?.difficulty];
+  requireCondition(profile != null, `${field} difficulty is invalid`);
+  requireCondition(
+    Array.isArray(reportBoard.effectiveWordDifficulties),
+    `${field}.effectiveWordDifficulties must be an array`,
+  );
+  requireUniqueStrings(
+    reportBoard.effectiveWordDifficulties,
+    `${field}.effectiveWordDifficulties`,
+  );
+  const effectiveSet = new Set(reportBoard.effectiveWordDifficulties);
+  requireExact(
+    reportBoard.effectiveWordDifficulties,
+    DIFFICULTY_ORDER.filter((difficulty) => effectiveSet.has(difficulty)),
+    `${field}.effectiveWordDifficulties canonical order`,
+  );
+  requireCondition(
+    profile.wordDifficulties.every((difficulty) =>
+      effectiveSet.has(difficulty),
+    ),
+    `${field}.effectiveWordDifficulties omits a profile difficulty`,
+  );
+  requireCondition(
+    reportBoard.effectiveWordDifficulties.every((difficulty) =>
+      isWordDifficultyWithinProfile(difficulty, profile),
+    ),
+    `${field}.effectiveWordDifficulties exceeds ${profile.wordDifficultyCeiling} ceiling`,
+  );
+  const expectedBroadened = reportBoard.effectiveWordDifficulties.some(
+    (difficulty) => !profile.wordDifficulties.includes(difficulty),
+  );
+  requireCondition(
+    reportBoard.broadenedDifficultyPool === expectedBroadened,
+    `${field}.broadenedDifficultyPool does not match effectiveWordDifficulties`,
+  );
+  if (expectedSelection != null) {
+    requireExact(
+      reportBoard.effectiveWordDifficulties,
+      expectedSelection.difficulties,
+      `${field}.effectiveWordDifficulties independently recalculated`,
+    );
+    requireExact(
+      reportBoard.broadenedDifficultyPool,
+      expectedSelection.broadened,
+      `${field}.broadenedDifficultyPool independently recalculated`,
+    );
+  }
+  return true;
+}
+
 export function validateGeneratorReportTrace(
   config,
   reportBoards,
@@ -2183,8 +2252,8 @@ export function validateGeneratorReportTrace(
     "generator config is required for report trace validation",
   );
   requireCondition(
-    config.schemaVersion === "ko-kr-launch-generator-config/7",
-    "generator report trace config schema must be ko-kr-launch-generator-config/7",
+    config.schemaVersion === "ko-kr-launch-generator-config/8",
+    "generator report trace config schema must be ko-kr-launch-generator-config/8",
   );
   requireCondition(
     Array.isArray(reportBoards),
@@ -2277,6 +2346,7 @@ export function validateGeneratorReportTrace(
         reportBoard.themeId === plannedRoute.themeId,
       `${field} route identity does not match routePlan`,
     );
+    validateReportedDifficultySelection(reportBoard, field);
     const selectedRetryIndex = requirePositiveSafeInteger(
       reportBoard.selectedRetryIndex,
       `${field}.selectedRetryIndex`,
@@ -2300,6 +2370,7 @@ export function validateGeneratorReportTrace(
     );
     let firstPassRetryIndex = null;
     let policyWinner = null;
+    let selectedCurrentSelection = null;
     for (const [attemptIndex, attempt] of reportBoard.attempts.entries()) {
       const phaseSpec = retryPhaseForGlobalIndex(attemptIndex);
       requireCondition(
@@ -2385,6 +2456,9 @@ export function validateGeneratorReportTrace(
           ? null
           : new Map(currentSelection.words.map((word) => [word.answer, word]));
       if (currentSelection != null) {
+        if (attemptIndex === selectedRetryIndex) {
+          selectedCurrentSelection = currentSelection;
+        }
         const expectedWordPool = {
           total: currentSelection.words.length,
           theme: currentSelection.themeWordCount ?? null,
@@ -2526,6 +2600,17 @@ export function validateGeneratorReportTrace(
       selectedAttempt.globalRetryIndex === selectedRetryIndex,
       `${field}.selectedRetryIndex must address the concatenated attempt trace`,
     );
+    if (shouldRecalculateSelectionScores) {
+      requireCondition(
+        selectedCurrentSelection != null,
+        `${field} selected difficulty selection was not recalculated`,
+      );
+      validateReportedDifficultySelection(
+        reportBoard,
+        field,
+        selectedCurrentSelection,
+      );
+    }
     const selectedCandidateIndex = requirePositiveSafeInteger(
       reportBoard.selectedCandidateIndex,
       `${field}.selectedCandidateIndex`,

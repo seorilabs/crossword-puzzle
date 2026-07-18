@@ -92,13 +92,13 @@
       "launchWordBankV1": {
         "schemaVersion": "launch-wordbank/1",
         "path": "data/game-content/v1/ko-KR/reviewed-launch-wordbank.json",
-        "sha256": "sha256:c08638a2704599509299ec929d5d85d4b3489c01e3a710c7fff400e0b668ffdd",
-        "wordCount": 2179
+        "sha256": "sha256:0b17e62c567e17c2f992dd1d470b203362e3843f63a4fc9316ec9b83f53012e8",
+        "wordCount": 2151
       },
       "editorialLedger": {
         "schemaVersion": "game-content-editorial-ledger/1",
         "path": "data/game-content/v1/ko-KR/reviews/editorial-ledger.json",
-        "sha256": "sha256:3bb61a4652491a64362368479f4840ccbb113d89ac9a29872b8e8fd0761af813",
+        "sha256": "sha256:ac98679ead880d0e9dab86fc4a0d6bcd6086578dbc0e6fbdaba0830a84a4d85a",
         "candidateFileSha256": "sha256:b73638293895ee31b0f11c3eea9d31f343c5e936df45faeea308a570ce16a44f",
         "decisionCount": 2400
       }
@@ -134,7 +134,7 @@
         "startIndex": 0,
         "endIndexInclusive": 799,
         "decisionFile": "data/game-content/v1/ko-KR/reviews/editorial-theme-decisions-0000-0799.json",
-        "decisionFileSha256": "sha256:577e197cbac67bd52fe56db0f56cd9d3387ddd8cf966f50a602cb0d05051813d"
+        "decisionFileSha256": "sha256:68301625688e6c493f5b2ca4a72119e9037745b09721af4d0f4f9d55b802a5b4"
       },
       {
         "reviewerId": "seorilabs-content-review-b",
@@ -142,7 +142,7 @@
         "startIndex": 800,
         "endIndexInclusive": 1599,
         "decisionFile": "data/game-content/v1/ko-KR/reviews/editorial-theme-decisions-0800-1599.json",
-        "decisionFileSha256": "sha256:c16f1378fb6a6fb5e4c6c23da68520aed0401a1cb4f0171a6f5d3b16940a10eb"
+        "decisionFileSha256": "sha256:bcc5e2d72c56632bcdc65620ea35a6735b3bd80e2a26cf44322c26cda306b630"
       },
       {
         "reviewerId": "seorilabs-content-review-c",
@@ -150,65 +150,65 @@
         "startIndex": 1600,
         "endIndexInclusive": 2399,
         "decisionFile": "data/game-content/v1/ko-KR/reviews/editorial-theme-decisions-1600-2399.json",
-        "decisionFileSha256": "sha256:bf02338765a7a42dba979cc5653f119c8fcb2e4b9436f522c5aaffcc1010626f"
+        "decisionFileSha256": "sha256:c6fe42decf91f49c7398f4f689ceb72bb2d66dc16e13a6c38e32120cbf106869"
       }
     ],
     "exclusionCounts": {
-      "baseEditorialRejected": 221,
+      "baseEditorialRejected": 249,
       "themeNeedsEditorialFix": 21,
-      "excludedFromCandidateSet": 242,
+      "excludedFromCandidateSet": 270,
       "excludedFromBaseWordBank": 21
     },
     "themeEligibilitySummary": {
-      "eligibleWordCount": 2158,
+      "eligibleWordCount": 2130,
       "byDifficulty": {
-        "easy": 427,
-        "normal": 1098,
-        "hard": 633
+        "easy": 419,
+        "normal": 1085,
+        "hard": 626
       },
       "withoutEligibleTheme": {
-        "total": 623,
+        "total": 606,
         "difficulty": {
-          "easy": 155,
-          "normal": 312,
-          "hard": 156
+          "easy": 149,
+          "normal": 305,
+          "hard": 152
         }
       },
       "byTheme": [
         {
           "themeId": "table-kitchen",
-          "total": 219,
+          "total": 217,
           "difficulty": {
             "easy": 54,
-            "normal": 102,
-            "hard": 63
+            "normal": 101,
+            "hard": 62
           }
         },
         {
           "themeId": "living-world",
-          "total": 234,
+          "total": 233,
           "difficulty": {
             "easy": 36,
-            "normal": 115,
+            "normal": 114,
             "hard": 83
           }
         },
         {
           "themeId": "home-family",
-          "total": 179,
+          "total": 176,
           "difficulty": {
-            "easy": 32,
-            "normal": 91,
-            "hard": 56
+            "easy": 31,
+            "normal": 90,
+            "hard": 55
           }
         },
         {
           "themeId": "road-places",
-          "total": 330,
+          "total": 325,
           "difficulty": {
-            "easy": 93,
-            "normal": 150,
-            "hard": 87
+            "easy": 92,
+            "normal": 147,
+            "hard": 86
           }
         },
         {
@@ -222,11 +222,11 @@
         },
         {
           "themeId": "work-community",
-          "total": 465,
+          "total": 464,
           "difficulty": {
             "easy": 61,
             "normal": 257,
-            "hard": 147
+            "hard": 146
           }
         }
       ]
@@ -648,37 +648,6 @@
       "reviewDecision": "rewrite",
       "reviewLedgerIndex": 12,
       "themeDecisionLedgerIndex": 12
-    },
-    {
-      "answer": "가상도",
-      "answerCells": [
-        "가",
-        "상",
-        "도"
-      ],
-      "definition": "어떤 일의 상황을 가정하고 상상하여 그린 그림",
-      "definitionChecksum": "sha256:02459dca661ba52e47c034700156f341f8fde7786cd88494ec5335367e7764e7",
-      "length": 3,
-      "level": "없음",
-      "pos": "명사",
-      "sourceId": "14565",
-      "sourceEntryId": "14565",
-      "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
-      "licenseId": "CC-BY-SA-2.0-KR",
-      "allowForPuzzle": true,
-      "clue": "어떤 일의 상황을 가정하고 상상하여 그린 그림",
-      "clueSource": "krdict-definition-reviewed",
-      "shortExplanation": "어떤 일의 상황을 가정하고 상상하여 그린 그림",
-      "source": "국립국어원 한국어기초사전 XML",
-      "difficulty": "normal",
-      "needsManualClue": false,
-      "themeTags": [],
-      "domainTags": [
-        "general"
-      ],
-      "reviewDecision": "approve",
-      "reviewLedgerIndex": 13,
-      "themeDecisionLedgerIndex": 13
     },
     {
       "answer": "가수",
@@ -4268,36 +4237,6 @@
       "themeDecisionLedgerIndex": 135
     },
     {
-      "answer": "경기",
-      "answerCells": [
-        "경",
-        "기"
-      ],
-      "definition": "운동이나 기술 등의 능력을 서로 겨룸",
-      "definitionChecksum": "sha256:27fea44aa83e59ea670c3616f5f7634ed4eafbb4bff63bf39857010afaa32341",
-      "length": 2,
-      "level": "초급",
-      "pos": "명사",
-      "sourceId": "60094",
-      "sourceEntryId": "60094",
-      "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
-      "licenseId": "CC-BY-SA-2.0-KR",
-      "allowForPuzzle": true,
-      "clue": "승부를 가리려고 실력을 맞붙여 겨루는 시합",
-      "clueSource": "editorial-reviewed-adaptation",
-      "shortExplanation": "운동이나 기술 등의 능력을 서로 겨룸",
-      "source": "국립국어원 한국어기초사전 XML",
-      "difficulty": "easy",
-      "needsManualClue": false,
-      "themeTags": [],
-      "domainTags": [
-        "general"
-      ],
-      "reviewDecision": "approve",
-      "reviewLedgerIndex": 136,
-      "themeDecisionLedgerIndex": 136
-    },
-    {
       "answer": "경대",
       "answerCells": [
         "경",
@@ -4784,37 +4723,6 @@
       "themeDecisionLedgerIndex": 154
     },
     {
-      "answer": "경화증",
-      "answerCells": [
-        "경",
-        "화",
-        "증"
-      ],
-      "definition": "몸의 조직이나 기관이 단단하게 굳어지는 증상",
-      "definitionChecksum": "sha256:4bcf35f525484dd9e9bea30265ac8a1113476d09b5a25a429e1ff77bae90a5d1",
-      "length": 3,
-      "level": "없음",
-      "pos": "명사",
-      "sourceId": "26112",
-      "sourceEntryId": "26112",
-      "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
-      "licenseId": "CC-BY-SA-2.0-KR",
-      "allowForPuzzle": true,
-      "clue": "몸의 조직이나 기관이 단단하게 굳어지는 증상",
-      "clueSource": "krdict-definition-reviewed",
-      "shortExplanation": "몸의 조직이나 기관이 단단하게 굳어지는 증상",
-      "source": "국립국어원 한국어기초사전 XML",
-      "difficulty": "normal",
-      "needsManualClue": false,
-      "themeTags": [],
-      "domainTags": [
-        "general"
-      ],
-      "reviewDecision": "approve",
-      "reviewLedgerIndex": 155,
-      "themeDecisionLedgerIndex": 155
-    },
-    {
       "answer": "곁다리",
       "answerCells": [
         "곁",
@@ -5007,36 +4915,6 @@
       "reviewDecision": "approve",
       "reviewLedgerIndex": 161,
       "themeDecisionLedgerIndex": 161
-    },
-    {
-      "answer": "계산",
-      "answerCells": [
-        "계",
-        "산"
-      ],
-      "definition": "물건값이나 비용을 냄",
-      "definitionChecksum": "sha256:91a22a77f8e79918f689971924d6f17a268bcefbd5538cdffd74ab8a9bd88041",
-      "length": 2,
-      "level": "초급",
-      "pos": "명사",
-      "sourceId": "26229",
-      "sourceEntryId": "26229",
-      "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
-      "licenseId": "CC-BY-SA-2.0-KR",
-      "allowForPuzzle": true,
-      "clue": "식당에서 먹은 값이나 물건값을 치르는 일",
-      "clueSource": "editorial-reviewed-adaptation",
-      "shortExplanation": "물건값이나 비용을 냄",
-      "source": "국립국어원 한국어기초사전 XML",
-      "difficulty": "easy",
-      "needsManualClue": false,
-      "themeTags": [],
-      "domainTags": [
-        "general"
-      ],
-      "reviewDecision": "approve",
-      "reviewLedgerIndex": 162,
-      "themeDecisionLedgerIndex": 162
     },
     {
       "answer": "계속",
@@ -13656,36 +13534,6 @@
       "themeDecisionLedgerIndex": 453
     },
     {
-      "answer": "꽃삽",
-      "answerCells": [
-        "꽃",
-        "삽"
-      ],
-      "definition": "화초나 꽃나무를 심거나 가꾸는 데 쓰는 작은 삽",
-      "definitionChecksum": "sha256:b0129932fa78c34b909cedf68a6d55ccb00c09df072e7920116f650e5aeb6dc9",
-      "length": 2,
-      "level": "없음",
-      "pos": "명사",
-      "sourceId": "17522",
-      "sourceEntryId": "17522",
-      "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
-      "licenseId": "CC-BY-SA-2.0-KR",
-      "allowForPuzzle": true,
-      "clue": "화초나 꽃나무를 심거나 가꾸는 데 쓰는 작은 삽",
-      "clueSource": "krdict-definition-reviewed",
-      "shortExplanation": "화초나 꽃나무를 심거나 가꾸는 데 쓰는 작은 삽",
-      "source": "국립국어원 한국어기초사전 XML",
-      "difficulty": "normal",
-      "needsManualClue": false,
-      "themeTags": [],
-      "domainTags": [
-        "general"
-      ],
-      "reviewDecision": "approve",
-      "reviewLedgerIndex": 454,
-      "themeDecisionLedgerIndex": 454
-    },
-    {
       "answer": "꽃샘추위",
       "answerCells": [
         "꽃",
@@ -20372,38 +20220,6 @@
       "themeDecisionLedgerIndex": 682
     },
     {
-      "answer": "동생",
-      "answerCells": [
-        "동",
-        "생"
-      ],
-      "definition": "나이가 더 많은 사람이 나이가 어린 사람을 친숙하게 이르거나 부르는 말",
-      "definitionChecksum": "sha256:27b09ec552331ff2e7d599ee60726a07c032af9b3699efd472d6218dd7a5951d",
-      "length": 2,
-      "level": "초급",
-      "pos": "명사",
-      "sourceId": "70748",
-      "sourceEntryId": "70748",
-      "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
-      "licenseId": "CC-BY-SA-2.0-KR",
-      "allowForPuzzle": true,
-      "clue": "형이나 언니가 손아래 형제를 부르는 말",
-      "clueSource": "editorial-reviewed-adaptation",
-      "shortExplanation": "나이가 더 많은 사람이 나이가 어린 사람을 친숙하게 이르거나 부르는 말",
-      "source": "국립국어원 한국어기초사전 XML",
-      "difficulty": "easy",
-      "needsManualClue": false,
-      "themeTags": [
-        "home-family"
-      ],
-      "domainTags": [
-        "general"
-      ],
-      "reviewDecision": "approve",
-      "reviewLedgerIndex": 684,
-      "themeDecisionLedgerIndex": 684
-    },
-    {
       "answer": "동성애",
       "answerCells": [
         "동",
@@ -24570,9 +24386,9 @@
       "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
       "licenseId": "CC-BY-SA-2.0-KR",
       "allowForPuzzle": true,
-      "clue": "어린 식물을 옮겨 심을 때 사용하는 작은 삽",
-      "clueSource": "krdict-definition-reviewed",
-      "shortExplanation": "어린 식물을 옮겨 심을 때 사용하는 작은 삽",
+      "clue": "어린 식물의 뿌리를 흙째 떠 옮겨 심을 때 쓰는 작은 삽",
+      "clueSource": "editorial-reviewed-adaptation",
+      "shortExplanation": "어린 식물의 뿌리를 흙째 떠 옮겨 심을 때 쓰는 작은 삽",
       "source": "국립국어원 한국어기초사전 XML",
       "difficulty": "normal",
       "needsManualClue": false,
@@ -24580,7 +24396,7 @@
       "domainTags": [
         "general"
       ],
-      "reviewDecision": "approve",
+      "reviewDecision": "rewrite",
       "reviewLedgerIndex": 827,
       "themeDecisionLedgerIndex": 827
     },
@@ -24851,9 +24667,9 @@
       "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
       "licenseId": "CC-BY-SA-2.0-KR",
       "allowForPuzzle": true,
-      "clue": "일을 벌일 때 이루려고 겨냥하는 바",
+      "clue": "단순한 까닭이 아니라, 실현하려고 하는 일이나 나아가려는 방향",
       "clueSource": "editorial-reviewed-adaptation",
-      "shortExplanation": "이루려고 하는 일이나 나아가고자 하는 방향",
+      "shortExplanation": "단순한 까닭이 아니라, 실현하려고 하는 일이나 나아가려는 방향",
       "source": "국립국어원 한국어기초사전 XML",
       "difficulty": "easy",
       "needsManualClue": false,
@@ -24861,7 +24677,7 @@
       "domainTags": [
         "general"
       ],
-      "reviewDecision": "approve",
+      "reviewDecision": "rewrite",
       "reviewLedgerIndex": 836,
       "themeDecisionLedgerIndex": 836
     },
@@ -28253,9 +28069,9 @@
       "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
       "licenseId": "CC-BY-SA-2.0-KR",
       "allowForPuzzle": true,
-      "clue": "공연이 끝나면 손뼉을 마주쳐 보내는 갈채",
+      "clue": "기쁨이나 칭찬을 나타내려고 두 손바닥을 마주쳐 소리를 내는 행동",
       "clueSource": "editorial-reviewed-adaptation",
-      "shortExplanation": "기쁨, 축하, 환영, 칭찬 등을 나타내거나 장단을 맞추려고 두 손뼉을 마주 침",
+      "shortExplanation": "기쁨이나 칭찬을 나타내려고 두 손바닥을 마주쳐 소리를 내는 행동",
       "source": "국립국어원 한국어기초사전 XML",
       "difficulty": "easy",
       "needsManualClue": false,
@@ -28263,7 +28079,7 @@
       "domainTags": [
         "general"
       ],
-      "reviewDecision": "approve",
+      "reviewDecision": "rewrite",
       "reviewLedgerIndex": 948,
       "themeDecisionLedgerIndex": 948
     },
@@ -29424,38 +29240,6 @@
       "reviewDecision": "approve",
       "reviewLedgerIndex": 991,
       "themeDecisionLedgerIndex": 991
-    },
-    {
-      "answer": "배아",
-      "answerCells": [
-        "배",
-        "아"
-      ],
-      "definition": "식물의 씨 속에 있는 앞으로 싹이 될 부분",
-      "definitionChecksum": "sha256:f6a0e61d33c0bb5530a504f17bc221bb33bd66c64e738f49b57b5e93ca52851d",
-      "length": 2,
-      "level": "없음",
-      "pos": "명사",
-      "sourceId": "59168",
-      "sourceEntryId": "59168",
-      "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
-      "licenseId": "CC-BY-SA-2.0-KR",
-      "allowForPuzzle": true,
-      "clue": "식물의 씨 속에 있는 앞으로 싹이 될 부분",
-      "clueSource": "krdict-definition-reviewed",
-      "shortExplanation": "식물의 씨 속에 있는 앞으로 싹이 될 부분",
-      "source": "국립국어원 한국어기초사전 XML",
-      "difficulty": "normal",
-      "needsManualClue": false,
-      "themeTags": [
-        "living-world"
-      ],
-      "domainTags": [
-        "general"
-      ],
-      "reviewDecision": "approve",
-      "reviewLedgerIndex": 993,
-      "themeDecisionLedgerIndex": 993
     },
     {
       "answer": "배우",
@@ -30754,9 +30538,9 @@
       "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
       "licenseId": "CC-BY-SA-2.0-KR",
       "allowForPuzzle": true,
-      "clue": "잘못되는 일이 없도록 보증하고 지켜 줌",
+      "clue": "법이나 제도로 권리나 안전을 확실히 누리도록 지키는 일",
       "clueSource": "editorial-reviewed-adaptation",
-      "shortExplanation": "잘못되는 일이 없도록 보증하거나 보호함",
+      "shortExplanation": "법이나 제도로 권리나 안전을 확실히 누리도록 지키는 일",
       "source": "국립국어원 한국어기초사전 XML",
       "difficulty": "normal",
       "needsManualClue": false,
@@ -30764,7 +30548,7 @@
       "domainTags": [
         "general"
       ],
-      "reviewDecision": "approve",
+      "reviewDecision": "rewrite",
       "reviewLedgerIndex": 1037,
       "themeDecisionLedgerIndex": 1037
     },
@@ -31617,36 +31401,6 @@
       "themeDecisionLedgerIndex": 1067
     },
     {
-      "answer": "부분",
-      "answerCells": [
-        "부",
-        "분"
-      ],
-      "definition": "전체를 이루고 있는 작은 범위. 또는 전체를 여러 개로 나눈 것 가운데 하나",
-      "definitionChecksum": "sha256:8e6e5c4df78452ae80188895f93f07e7ad87831fcd13dab1113af3afb8fb9878",
-      "length": 2,
-      "level": "초급",
-      "pos": "명사",
-      "sourceId": "65853",
-      "sourceEntryId": "65853",
-      "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
-      "licenseId": "CC-BY-SA-2.0-KR",
-      "allowForPuzzle": true,
-      "clue": "전체에서 떼어 낸 어느 한 토막이나 갈래",
-      "clueSource": "editorial-reviewed-adaptation",
-      "shortExplanation": "전체를 이루고 있는 작은 범위. 또는 전체를 여러 개로 나눈 것 가운데 하나",
-      "source": "국립국어원 한국어기초사전 XML",
-      "difficulty": "easy",
-      "needsManualClue": false,
-      "themeTags": [],
-      "domainTags": [
-        "general"
-      ],
-      "reviewDecision": "approve",
-      "reviewLedgerIndex": 1068,
-      "themeDecisionLedgerIndex": 1068
-    },
-    {
       "answer": "부산",
       "answerCells": [
         "부",
@@ -31761,9 +31515,9 @@
       "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
       "licenseId": "CC-BY-SA-2.0-KR",
       "allowForPuzzle": true,
-      "clue": "재물이 많아서 살림이 아주 넉넉한 사람들의 계층",
-      "clueSource": "krdict-definition-reviewed",
-      "shortExplanation": "재물이 많아서 살림이 아주 넉넉한 사람들의 계층",
+      "clue": "재산과 소득이 많아 경제적으로 넉넉한 사람들의 계층",
+      "clueSource": "editorial-reviewed-adaptation",
+      "shortExplanation": "재산과 소득이 많아 경제적으로 넉넉한 사람들의 계층",
       "source": "국립국어원 한국어기초사전 XML",
       "difficulty": "hard",
       "needsManualClue": false,
@@ -31771,7 +31525,7 @@
       "domainTags": [
         "general"
       ],
-      "reviewDecision": "approve",
+      "reviewDecision": "rewrite",
       "reviewLedgerIndex": 1072,
       "themeDecisionLedgerIndex": 1072
     },
@@ -32953,39 +32707,6 @@
       "themeDecisionLedgerIndex": 1112
     },
     {
-      "answer": "불효자",
-      "answerCells": [
-        "불",
-        "효",
-        "자"
-      ],
-      "definition": "부모를 효성스럽게 모시어 받들지 않은 자식",
-      "definitionChecksum": "sha256:37af289713281d7acea94d18159f918968a629a33dea84fc4db210f70f1d0be5",
-      "length": 3,
-      "level": "고급",
-      "pos": "명사",
-      "sourceId": "93428",
-      "sourceEntryId": "93428",
-      "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
-      "licenseId": "CC-BY-SA-2.0-KR",
-      "allowForPuzzle": true,
-      "clue": "부모를 효성스럽게 모시어 받들지 않은 자식",
-      "clueSource": "krdict-definition-reviewed",
-      "shortExplanation": "부모를 효성스럽게 모시어 받들지 않은 자식",
-      "source": "국립국어원 한국어기초사전 XML",
-      "difficulty": "hard",
-      "needsManualClue": false,
-      "themeTags": [
-        "home-family"
-      ],
-      "domainTags": [
-        "general"
-      ],
-      "reviewDecision": "approve",
-      "reviewLedgerIndex": 1113,
-      "themeDecisionLedgerIndex": 1113
-    },
-    {
       "answer": "비과학적",
       "answerCells": [
         "비",
@@ -34055,36 +33776,6 @@
       "themeDecisionLedgerIndex": 1153
     },
     {
-      "answer": "사이",
-      "answerCells": [
-        "사",
-        "이"
-      ],
-      "definition": "어떤 때부터 다른 때까지의 동안",
-      "definitionChecksum": "sha256:c33edfb2302a89e6d63cbfacecdb944efc98f85e3927437f966eb129ccf114ee",
-      "length": 2,
-      "level": "초급",
-      "pos": "명사",
-      "sourceId": "61187",
-      "sourceEntryId": "61187",
-      "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
-      "licenseId": "CC-BY-SA-2.0-KR",
-      "allowForPuzzle": true,
-      "clue": "어떤 때부터 다른 때까지의 동안",
-      "clueSource": "krdict-definition-reviewed",
-      "shortExplanation": "어떤 때부터 다른 때까지의 동안",
-      "source": "국립국어원 한국어기초사전 XML",
-      "difficulty": "easy",
-      "needsManualClue": false,
-      "themeTags": [],
-      "domainTags": [
-        "general"
-      ],
-      "reviewDecision": "approve",
-      "reviewLedgerIndex": 1154,
-      "themeDecisionLedgerIndex": 1154
-    },
-    {
       "answer": "사이다",
       "answerCells": [
         "사",
@@ -35149,17 +34840,19 @@
       "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
       "licenseId": "CC-BY-SA-2.0-KR",
       "allowForPuzzle": true,
-      "clue": "여러 사람들이 공식적으로 처음 만나 서로 인사하는 일",
-      "clueSource": "krdict-definition-reviewed",
-      "shortExplanation": "여러 사람들이 공식적으로 처음 만나 서로 인사하는 일",
+      "clue": "결혼을 앞둔 두 집안의 가족들이 처음 공식적으로 만나 인사하는 자리",
+      "clueSource": "editorial-reviewed-adaptation",
+      "shortExplanation": "결혼을 앞둔 두 집안의 가족들이 처음 공식적으로 만나 인사하는 자리",
       "source": "국립국어원 한국어기초사전 XML",
       "difficulty": "hard",
       "needsManualClue": false,
-      "themeTags": [],
+      "themeTags": [
+        "home-family"
+      ],
       "domainTags": [
         "general"
       ],
-      "reviewDecision": "approve",
+      "reviewDecision": "rewrite",
       "reviewLedgerIndex": 1188,
       "themeDecisionLedgerIndex": 1188
     },
@@ -35244,9 +34937,9 @@
       "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
       "licenseId": "CC-BY-SA-2.0-KR",
       "allowForPuzzle": true,
-      "clue": "짝을 이루어 마주하는 쪽",
+      "clue": "대화나 일을 할 때 나와 마주하여 짝을 이루는 한 사람",
       "clueSource": "editorial-reviewed-adaptation",
-      "shortExplanation": "일을 하거나 말을 할 때 짝을 이루는 사람",
+      "shortExplanation": "대화나 일을 할 때 나와 마주하여 짝을 이루는 한 사람",
       "source": "국립국어원 한국어기초사전 XML",
       "difficulty": "normal",
       "needsManualClue": false,
@@ -35254,40 +34947,9 @@
       "domainTags": [
         "general"
       ],
-      "reviewDecision": "approve",
+      "reviewDecision": "rewrite",
       "reviewLedgerIndex": 1191,
       "themeDecisionLedgerIndex": 1191
-    },
-    {
-      "answer": "상류층",
-      "answerCells": [
-        "상",
-        "류",
-        "층"
-      ],
-      "definition": "사회적 지위나 생활 수준 등이 높은 계층",
-      "definitionChecksum": "sha256:9565ba22d4a77fa0f846719728e6bc4edb66f0306100fbd7edbcec9ec54cb961",
-      "length": 3,
-      "level": "고급",
-      "pos": "명사",
-      "sourceId": "61705",
-      "sourceEntryId": "61705",
-      "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
-      "licenseId": "CC-BY-SA-2.0-KR",
-      "allowForPuzzle": true,
-      "clue": "사회적 지위나 생활 수준 등이 높은 계층",
-      "clueSource": "krdict-definition-reviewed",
-      "shortExplanation": "사회적 지위나 생활 수준 등이 높은 계층",
-      "source": "국립국어원 한국어기초사전 XML",
-      "difficulty": "hard",
-      "needsManualClue": false,
-      "themeTags": [],
-      "domainTags": [
-        "general"
-      ],
-      "reviewDecision": "approve",
-      "reviewLedgerIndex": 1192,
-      "themeDecisionLedgerIndex": 1192
     },
     {
       "answer": "상식",
@@ -35777,37 +35439,6 @@
       "reviewDecision": "approve",
       "reviewLedgerIndex": 1210,
       "themeDecisionLedgerIndex": 1210
-    },
-    {
-      "answer": "생가슴",
-      "answerCells": [
-        "생",
-        "가",
-        "슴"
-      ],
-      "definition": "필요 없는 근심이나 걱정 때문에 상하는 마음",
-      "definitionChecksum": "sha256:19b70460df746603e6731f357b89580e9d8745e742f69571ee4649509166e928",
-      "length": 3,
-      "level": "없음",
-      "pos": "명사",
-      "sourceId": "62549",
-      "sourceEntryId": "62549",
-      "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
-      "licenseId": "CC-BY-SA-2.0-KR",
-      "allowForPuzzle": true,
-      "clue": "필요 없는 근심이나 걱정 때문에 상하는 마음",
-      "clueSource": "krdict-definition-reviewed",
-      "shortExplanation": "필요 없는 근심이나 걱정 때문에 상하는 마음",
-      "source": "국립국어원 한국어기초사전 XML",
-      "difficulty": "normal",
-      "needsManualClue": false,
-      "themeTags": [],
-      "domainTags": [
-        "general"
-      ],
-      "reviewDecision": "approve",
-      "reviewLedgerIndex": 1211,
-      "themeDecisionLedgerIndex": 1211
     },
     {
       "answer": "생가죽",
@@ -36323,37 +35954,6 @@
       "reviewDecision": "approve",
       "reviewLedgerIndex": 1230,
       "themeDecisionLedgerIndex": 1230
-    },
-    {
-      "answer": "생필품",
-      "answerCells": [
-        "생",
-        "필",
-        "품"
-      ],
-      "definition": "일상생활에 꼭 필요한 물건",
-      "definitionChecksum": "sha256:632f24f1efd17dd8c0d5dd3c61ddd6511f82a098b24a829c2b06e1ffffd6c91c",
-      "length": 3,
-      "level": "고급",
-      "pos": "명사",
-      "sourceId": "62725",
-      "sourceEntryId": "62725",
-      "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
-      "licenseId": "CC-BY-SA-2.0-KR",
-      "allowForPuzzle": true,
-      "clue": "일상생활에 꼭 필요한 물건",
-      "clueSource": "krdict-definition-reviewed",
-      "shortExplanation": "일상생활에 꼭 필요한 물건",
-      "source": "국립국어원 한국어기초사전 XML",
-      "difficulty": "hard",
-      "needsManualClue": false,
-      "themeTags": [],
-      "domainTags": [
-        "general"
-      ],
-      "reviewDecision": "approve",
-      "reviewLedgerIndex": 1231,
-      "themeDecisionLedgerIndex": 1231
     },
     {
       "answer": "생활",
@@ -37723,9 +37323,9 @@
       "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
       "licenseId": "CC-BY-SA-2.0-KR",
       "allowForPuzzle": true,
-      "clue": "고려 시대 유학을 가르치던 최고의 교육 기관",
-      "clueSource": "krdict-definition-reviewed",
-      "shortExplanation": "고려 시대 유학을 가르치던 최고의 교육 기관",
+      "clue": "고려 말부터 조선 시대까지 유학 교육을 맡은 최고 교육 기관",
+      "clueSource": "editorial-reviewed-adaptation",
+      "shortExplanation": "고려 말부터 조선 시대까지 유학 교육을 맡은 최고 교육 기관",
       "source": "국립국어원 한국어기초사전 XML",
       "difficulty": "normal",
       "needsManualClue": false,
@@ -37736,7 +37336,7 @@
       "domainTags": [
         "general"
       ],
-      "reviewDecision": "approve",
+      "reviewDecision": "rewrite",
       "reviewLedgerIndex": 1278,
       "themeDecisionLedgerIndex": 1278
     },
@@ -38929,36 +38529,6 @@
       "reviewDecision": "approve",
       "reviewLedgerIndex": 1320,
       "themeDecisionLedgerIndex": 1320
-    },
-    {
-      "answer": "수고",
-      "answerCells": [
-        "수",
-        "고"
-      ],
-      "definition": "어떤 일을 하느라 힘을 들이고 애를 씀. 또는 그런 어려움",
-      "definitionChecksum": "sha256:081ff98b48613c849066c8a0b16b916d2139e9f50a4905ad0889a1de73696872",
-      "length": 2,
-      "level": "초급",
-      "pos": "명사",
-      "sourceId": "15619",
-      "sourceEntryId": "15619",
-      "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
-      "licenseId": "CC-BY-SA-2.0-KR",
-      "allowForPuzzle": true,
-      "clue": "어떤 일에 힘과 애를 들이는 것",
-      "clueSource": "editorial-reviewed-adaptation",
-      "shortExplanation": "어떤 일을 하느라 힘을 들이고 애를 씀. 또는 그런 어려움",
-      "source": "국립국어원 한국어기초사전 XML",
-      "difficulty": "easy",
-      "needsManualClue": false,
-      "themeTags": [],
-      "domainTags": [
-        "general"
-      ],
-      "reviewDecision": "approve",
-      "reviewLedgerIndex": 1321,
-      "themeDecisionLedgerIndex": 1321
     },
     {
       "answer": "수난",
@@ -40418,9 +39988,9 @@
       "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
       "licenseId": "CC-BY-SA-2.0-KR",
       "allowForPuzzle": true,
-      "clue": "정거장이나 역에서 버스나 기차 등을 타고 내리는 곳",
-      "clueSource": "krdict-definition-reviewed",
-      "shortExplanation": "정거장이나 역에서 버스나 기차 등을 타고 내리는 곳",
+      "clue": "역에서 선로나 차도 옆에 승객이 기다렸다 오르내리도록 마련한 곳을 이르는 한자어",
+      "clueSource": "editorial-reviewed-adaptation",
+      "shortExplanation": "역에서 선로나 차도 옆에 승객이 기다렸다 오르내리도록 마련한 곳을 이르는 한자어",
       "source": "국립국어원 한국어기초사전 XML",
       "difficulty": "hard",
       "needsManualClue": false,
@@ -40430,7 +40000,7 @@
       "domainTags": [
         "general"
       ],
-      "reviewDecision": "approve",
+      "reviewDecision": "rewrite",
       "reviewLedgerIndex": 1372,
       "themeDecisionLedgerIndex": 1372
     },
@@ -41868,67 +41438,6 @@
       "reviewDecision": "approve",
       "reviewLedgerIndex": 1418,
       "themeDecisionLedgerIndex": 1418
-    },
-    {
-      "answer": "실리콘",
-      "answerCells": [
-        "실",
-        "리",
-        "콘"
-      ],
-      "definition": "생물의 결합 조직이나 뼈를 이루는 비금속 원소",
-      "definitionChecksum": "sha256:8ba4eb604844f8a607bfeaeed5c9a2899976551804eb0e9370e856b3eb37e1ad",
-      "length": 3,
-      "level": "없음",
-      "pos": "명사",
-      "sourceId": "78475",
-      "sourceEntryId": "78475",
-      "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
-      "licenseId": "CC-BY-SA-2.0-KR",
-      "allowForPuzzle": true,
-      "clue": "생물의 결합 조직이나 뼈를 이루는 비금속 원소",
-      "clueSource": "krdict-definition-reviewed",
-      "shortExplanation": "생물의 결합 조직이나 뼈를 이루는 비금속 원소",
-      "source": "국립국어원 한국어기초사전 XML",
-      "difficulty": "normal",
-      "needsManualClue": false,
-      "themeTags": [],
-      "domainTags": [
-        "general"
-      ],
-      "reviewDecision": "approve",
-      "reviewLedgerIndex": 1419,
-      "themeDecisionLedgerIndex": 1419
-    },
-    {
-      "answer": "실수",
-      "answerCells": [
-        "실",
-        "수"
-      ],
-      "definition": "잘 알지 못하거나 조심하지 않아서 저지르는 잘못",
-      "definitionChecksum": "sha256:25104baa4f597db654975fa23f28e53ed5bd60cdb7167629e963b453a55e4cc3",
-      "length": 2,
-      "level": "초급",
-      "pos": "명사",
-      "sourceId": "64947",
-      "sourceEntryId": "64947",
-      "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
-      "licenseId": "CC-BY-SA-2.0-KR",
-      "allowForPuzzle": true,
-      "clue": "조심하지 않아 저지르는 잘못",
-      "clueSource": "editorial-reviewed-adaptation",
-      "shortExplanation": "잘 알지 못하거나 조심하지 않아서 저지르는 잘못",
-      "source": "국립국어원 한국어기초사전 XML",
-      "difficulty": "easy",
-      "needsManualClue": false,
-      "themeTags": [],
-      "domainTags": [
-        "general"
-      ],
-      "reviewDecision": "approve",
-      "reviewLedgerIndex": 1420,
-      "themeDecisionLedgerIndex": 1420
     },
     {
       "answer": "실습",
@@ -43566,39 +43075,6 @@
       "reviewDecision": "approve",
       "reviewLedgerIndex": 1478,
       "themeDecisionLedgerIndex": 1478
-    },
-    {
-      "answer": "약소국",
-      "answerCells": [
-        "약",
-        "소",
-        "국"
-      ],
-      "definition": "경제적이나 군사적으로 힘이 약하고 작은 나라",
-      "definitionChecksum": "sha256:38a6ac37f84b096529b06f736aad63a93e78bbee1bbe672d6f35be0e7197daa6",
-      "length": 3,
-      "level": "없음",
-      "pos": "명사",
-      "sourceId": "66982",
-      "sourceEntryId": "66982",
-      "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
-      "licenseId": "CC-BY-SA-2.0-KR",
-      "allowForPuzzle": true,
-      "clue": "경제적이나 군사적으로 힘이 약하고 작은 나라",
-      "clueSource": "krdict-definition-reviewed",
-      "shortExplanation": "경제적이나 군사적으로 힘이 약하고 작은 나라",
-      "source": "국립국어원 한국어기초사전 XML",
-      "difficulty": "normal",
-      "needsManualClue": false,
-      "themeTags": [
-        "road-places"
-      ],
-      "domainTags": [
-        "general"
-      ],
-      "reviewDecision": "approve",
-      "reviewLedgerIndex": 1479,
-      "themeDecisionLedgerIndex": 1479
     },
     {
       "answer": "양귀비",
@@ -45645,9 +45121,9 @@
       "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
       "licenseId": "CC-BY-SA-2.0-KR",
       "allowForPuzzle": true,
-      "clue": "도서관 등에서 책이나 자료 등을 읽는 방",
-      "clueSource": "krdict-definition-reviewed",
-      "shortExplanation": "도서관 등에서 책이나 자료 등을 읽는 방",
+      "clue": "도서관 자료를 대출하지 않고 그 자리에서 읽거나 살펴보는 방",
+      "clueSource": "editorial-reviewed-adaptation",
+      "shortExplanation": "도서관 자료를 대출하지 않고 그 자리에서 읽거나 살펴보는 방",
       "source": "국립국어원 한국어기초사전 XML",
       "difficulty": "hard",
       "needsManualClue": false,
@@ -45658,7 +45134,7 @@
       "domainTags": [
         "general"
       ],
-      "reviewDecision": "approve",
+      "reviewDecision": "rewrite",
       "reviewLedgerIndex": 1547,
       "themeDecisionLedgerIndex": 1547
     },
@@ -45721,38 +45197,6 @@
       "reviewDecision": "approve",
       "reviewLedgerIndex": 1549,
       "themeDecisionLedgerIndex": 1549
-    },
-    {
-      "answer": "열차",
-      "answerCells": [
-        "열",
-        "차"
-      ],
-      "definition": "여러 개의 칸을 길게 이어 놓은 기차나 전철",
-      "definitionChecksum": "sha256:f4394516b0eb4c469e8a08fbd03ec040691997554afc0ec71bdb67abc1c18110",
-      "length": 2,
-      "level": "초급",
-      "pos": "명사",
-      "sourceId": "67586",
-      "sourceEntryId": "67586",
-      "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
-      "licenseId": "CC-BY-SA-2.0-KR",
-      "allowForPuzzle": true,
-      "clue": "여러 개의 칸을 길게 이어 놓은 기차나 전철",
-      "clueSource": "krdict-definition-reviewed",
-      "shortExplanation": "여러 개의 칸을 길게 이어 놓은 기차나 전철",
-      "source": "국립국어원 한국어기초사전 XML",
-      "difficulty": "easy",
-      "needsManualClue": false,
-      "themeTags": [
-        "road-places"
-      ],
-      "domainTags": [
-        "general"
-      ],
-      "reviewDecision": "approve",
-      "reviewLedgerIndex": 1550,
-      "themeDecisionLedgerIndex": 1550
     },
     {
       "answer": "열처리",
@@ -48551,37 +47995,6 @@
       "themeDecisionLedgerIndex": 1648
     },
     {
-      "answer": "원천적",
-      "answerCells": [
-        "원",
-        "천",
-        "적"
-      ],
-      "definition": "어떤 사물이 나거나 생기는 바탕에 관계된 것",
-      "definitionChecksum": "sha256:f701cf1950122eb7220a789a3b6114d06f101775a894d6a58832c6a166a0eb27",
-      "length": 3,
-      "level": "없음",
-      "pos": "명사",
-      "sourceId": "70304",
-      "sourceEntryId": "70304",
-      "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
-      "licenseId": "CC-BY-SA-2.0-KR",
-      "allowForPuzzle": true,
-      "clue": "어떤 사물이 나거나 생기는 바탕에 관계된 것",
-      "clueSource": "krdict-definition-reviewed",
-      "shortExplanation": "어떤 사물이 나거나 생기는 바탕에 관계된 것",
-      "source": "국립국어원 한국어기초사전 XML",
-      "difficulty": "normal",
-      "needsManualClue": false,
-      "themeTags": [],
-      "domainTags": [
-        "general"
-      ],
-      "reviewDecision": "approve",
-      "reviewLedgerIndex": 1649,
-      "themeDecisionLedgerIndex": 1649
-    },
-    {
       "answer": "원탁",
       "answerCells": [
         "원",
@@ -49068,9 +48481,9 @@
       "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
       "licenseId": "CC-BY-SA-2.0-KR",
       "allowForPuzzle": true,
-      "clue": "사람이나 물건을 원하는 방향이나 장소로 이끎",
-      "clueSource": "krdict-definition-reviewed",
-      "shortExplanation": "사람이나 물건을 원하는 방향이나 장소로 이끎",
+      "clue": "안내 표시나 신호로 사람이나 차량을 정해진 방향으로 움직이게 하는 일",
+      "clueSource": "editorial-reviewed-adaptation",
+      "shortExplanation": "안내 표시나 신호로 사람이나 차량을 정해진 방향으로 움직이게 하는 일",
       "source": "국립국어원 한국어기초사전 XML",
       "difficulty": "normal",
       "needsManualClue": false,
@@ -49080,7 +48493,7 @@
       "domainTags": [
         "general"
       ],
-      "reviewDecision": "approve",
+      "reviewDecision": "rewrite",
       "reviewLedgerIndex": 1668,
       "themeDecisionLedgerIndex": 1668
     },
@@ -51817,36 +51230,6 @@
       "themeDecisionLedgerIndex": 1763
     },
     {
-      "answer": "입신",
-      "answerCells": [
-        "입",
-        "신"
-      ],
-      "definition": "사회적으로 성공하여 자신의 지위를 확실하게 세움",
-      "definitionChecksum": "sha256:a4f04a9de293df7a8fd00a1fb0780d2d297f91d348ba50e274e6ab8d1eed46ef",
-      "length": 2,
-      "level": "없음",
-      "pos": "명사",
-      "sourceId": "73433",
-      "sourceEntryId": "73433",
-      "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
-      "licenseId": "CC-BY-SA-2.0-KR",
-      "allowForPuzzle": true,
-      "clue": "사회적으로 성공하여 자신의 지위를 확실하게 세움",
-      "clueSource": "krdict-definition-reviewed",
-      "shortExplanation": "사회적으로 성공하여 자신의 지위를 확실하게 세움",
-      "source": "국립국어원 한국어기초사전 XML",
-      "difficulty": "normal",
-      "needsManualClue": false,
-      "themeTags": [],
-      "domainTags": [
-        "general"
-      ],
-      "reviewDecision": "approve",
-      "reviewLedgerIndex": 1765,
-      "themeDecisionLedgerIndex": 1765
-    },
-    {
       "answer": "입신양명",
       "answerCells": [
         "입",
@@ -51927,19 +51310,17 @@
       "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
       "licenseId": "CC-BY-SA-2.0-KR",
       "allowForPuzzle": true,
-      "clue": "행사나 공연 등이 열리는 장소에 들어간 손님",
-      "clueSource": "krdict-definition-reviewed",
-      "shortExplanation": "행사나 공연 등이 열리는 장소에 들어간 손님",
+      "clue": "행사나 공연 장소 안으로 들어온 손님",
+      "clueSource": "editorial-reviewed-adaptation",
+      "shortExplanation": "행사나 공연 장소 안으로 들어온 손님",
       "source": "국립국어원 한국어기초사전 XML",
       "difficulty": "normal",
       "needsManualClue": false,
-      "themeTags": [
-        "road-places"
-      ],
+      "themeTags": [],
       "domainTags": [
         "general"
       ],
-      "reviewDecision": "approve",
+      "reviewDecision": "rewrite",
       "reviewLedgerIndex": 1768,
       "themeDecisionLedgerIndex": 1768
     },
@@ -55440,9 +54821,9 @@
       "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
       "licenseId": "CC-BY-SA-2.0-KR",
       "allowForPuzzle": true,
-      "clue": "어려움을 이겨 내고 자기 뜻을 이루려는 욕구",
-      "clueSource": "krdict-definition-reviewed",
-      "shortExplanation": "어려움을 이겨 내고 자기 뜻을 이루려는 욕구",
+      "clue": "산 정상이나 미지의 대상을 끝내 이겨 내고 싶어 하는 욕구",
+      "clueSource": "editorial-reviewed-adaptation",
+      "shortExplanation": "산 정상이나 미지의 대상을 끝내 이겨 내고 싶어 하는 욕구",
       "source": "국립국어원 한국어기초사전 XML",
       "difficulty": "normal",
       "needsManualClue": false,
@@ -55450,7 +54831,7 @@
       "domainTags": [
         "general"
       ],
-      "reviewDecision": "approve",
+      "reviewDecision": "rewrite",
       "reviewLedgerIndex": 1889,
       "themeDecisionLedgerIndex": 1889
     },
@@ -56206,40 +55587,6 @@
       "themeDecisionLedgerIndex": 1917
     },
     {
-      "answer": "조리사",
-      "answerCells": [
-        "조",
-        "리",
-        "사"
-      ],
-      "definition": "음식점에서 음식을 만드는 사람",
-      "definitionChecksum": "sha256:fb2b380768296416f5781fe0b43d741073f7bb4693ea132c7d8d8edcab03e6cd",
-      "length": 3,
-      "level": "고급",
-      "pos": "명사",
-      "sourceId": "75499",
-      "sourceEntryId": "75499",
-      "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
-      "licenseId": "CC-BY-SA-2.0-KR",
-      "allowForPuzzle": true,
-      "clue": "음식점에서 음식을 만드는 사람",
-      "clueSource": "krdict-definition-reviewed",
-      "shortExplanation": "음식점에서 음식을 만드는 사람",
-      "source": "국립국어원 한국어기초사전 XML",
-      "difficulty": "hard",
-      "needsManualClue": false,
-      "themeTags": [
-        "table-kitchen",
-        "work-community"
-      ],
-      "domainTags": [
-        "general"
-      ],
-      "reviewDecision": "approve",
-      "reviewLedgerIndex": 1918,
-      "themeDecisionLedgerIndex": 1918
-    },
-    {
       "answer": "조리용",
       "answerCells": [
         "조",
@@ -56662,39 +56009,6 @@
       "reviewDecision": "approve",
       "reviewLedgerIndex": 1933,
       "themeDecisionLedgerIndex": 1933
-    },
-    {
-      "answer": "종주국",
-      "answerCells": [
-        "종",
-        "주",
-        "국"
-      ],
-      "definition": "어떤 현상이나 대상 등이 처음 시작된 나라",
-      "definitionChecksum": "sha256:7b271f799069eec86254bb7c169b368e5b597cf87fdac4b2f9166e60cf546a6f",
-      "length": 3,
-      "level": "없음",
-      "pos": "명사",
-      "sourceId": "75988",
-      "sourceEntryId": "75988",
-      "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
-      "licenseId": "CC-BY-SA-2.0-KR",
-      "allowForPuzzle": true,
-      "clue": "어떤 현상이나 대상 등이 처음 시작된 나라",
-      "clueSource": "krdict-definition-reviewed",
-      "shortExplanation": "어떤 현상이나 대상 등이 처음 시작된 나라",
-      "source": "국립국어원 한국어기초사전 XML",
-      "difficulty": "normal",
-      "needsManualClue": false,
-      "themeTags": [
-        "road-places"
-      ],
-      "domainTags": [
-        "general"
-      ],
-      "reviewDecision": "approve",
-      "reviewLedgerIndex": 1934,
-      "themeDecisionLedgerIndex": 1934
     },
     {
       "answer": "종지",
@@ -59095,66 +58409,6 @@
       "themeDecisionLedgerIndex": 2019
     },
     {
-      "answer": "진상",
-      "answerCells": [
-        "진",
-        "상"
-      ],
-      "definition": "사물이나 사건, 현상의 거짓 없는 모습이나 내용",
-      "definitionChecksum": "sha256:50a3324dd4693380bc8a8dff0dea2dc3deb31908ad8d82e30c1eb6c7c94875d7",
-      "length": 2,
-      "level": "고급",
-      "pos": "명사",
-      "sourceId": "76815",
-      "sourceEntryId": "76815",
-      "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
-      "licenseId": "CC-BY-SA-2.0-KR",
-      "allowForPuzzle": true,
-      "clue": "사건이나 현상의 참모습",
-      "clueSource": "editorial-reviewed-adaptation",
-      "shortExplanation": "사물이나 사건, 현상의 거짓 없는 모습이나 내용",
-      "source": "국립국어원 한국어기초사전 XML",
-      "difficulty": "hard",
-      "needsManualClue": false,
-      "themeTags": [],
-      "domainTags": [
-        "general"
-      ],
-      "reviewDecision": "approve",
-      "reviewLedgerIndex": 2020,
-      "themeDecisionLedgerIndex": 2020
-    },
-    {
-      "answer": "진수",
-      "answerCells": [
-        "진",
-        "수"
-      ],
-      "definition": "사물이나 현상의 가장 중요하고 근본적인 부분",
-      "definitionChecksum": "sha256:cf17318093c64d834183704879dc8a60c755842d088ee4f5622e6bee939a0fcd",
-      "length": 2,
-      "level": "없음",
-      "pos": "명사",
-      "sourceId": "76822",
-      "sourceEntryId": "76822",
-      "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
-      "licenseId": "CC-BY-SA-2.0-KR",
-      "allowForPuzzle": true,
-      "clue": "사물이나 현상의 가장 중요하고 근본적인 부분",
-      "clueSource": "krdict-definition-reviewed",
-      "shortExplanation": "사물이나 현상의 가장 중요하고 근본적인 부분",
-      "source": "국립국어원 한국어기초사전 XML",
-      "difficulty": "normal",
-      "needsManualClue": false,
-      "themeTags": [],
-      "domainTags": [
-        "general"
-      ],
-      "reviewDecision": "approve",
-      "reviewLedgerIndex": 2021,
-      "themeDecisionLedgerIndex": 2021
-    },
-    {
       "answer": "진수성찬",
       "answerCells": [
         "진",
@@ -59661,38 +58915,6 @@
       "reviewDecision": "approve",
       "reviewLedgerIndex": 2039,
       "themeDecisionLedgerIndex": 2039
-    },
-    {
-      "answer": "찜통",
-      "answerCells": [
-        "찜",
-        "통"
-      ],
-      "definition": "뜨거운 김으로 음식을 찌는 조리 기구",
-      "definitionChecksum": "sha256:3a728ca50067b727da2a019b0d18fd8ce47e91f9791f249f7d3f2db698c1b1e5",
-      "length": 2,
-      "level": "없음",
-      "pos": "명사",
-      "sourceId": "79682",
-      "sourceEntryId": "79682",
-      "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
-      "licenseId": "CC-BY-SA-2.0-KR",
-      "allowForPuzzle": true,
-      "clue": "뜨거운 김으로 음식을 찌는 조리 기구",
-      "clueSource": "krdict-definition-reviewed",
-      "shortExplanation": "뜨거운 김으로 음식을 찌는 조리 기구",
-      "source": "국립국어원 한국어기초사전 XML",
-      "difficulty": "normal",
-      "needsManualClue": false,
-      "themeTags": [
-        "table-kitchen"
-      ],
-      "domainTags": [
-        "general"
-      ],
-      "reviewDecision": "approve",
-      "reviewLedgerIndex": 2040,
-      "themeDecisionLedgerIndex": 2040
     },
     {
       "answer": "차고",
@@ -62124,9 +61346,9 @@
       "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
       "licenseId": "CC-BY-SA-2.0-KR",
       "allowForPuzzle": true,
-      "clue": "출생 당시 가정이 속한 사회적 신분",
-      "clueSource": "krdict-definition-reviewed",
-      "shortExplanation": "출생 당시 가정이 속한 사회적 신분",
+      "clue": "태어날 당시 집안이 속해 있던 사회적 신분을 이르는 말",
+      "clueSource": "editorial-reviewed-adaptation",
+      "shortExplanation": "태어날 당시 집안이 속해 있던 사회적 신분을 이르는 말",
       "source": "국립국어원 한국어기초사전 XML",
       "difficulty": "normal",
       "needsManualClue": false,
@@ -62134,7 +61356,7 @@
       "domainTags": [
         "general"
       ],
-      "reviewDecision": "approve",
+      "reviewDecision": "rewrite",
       "reviewLedgerIndex": 2125,
       "themeDecisionLedgerIndex": 2125
     },
@@ -62780,9 +62002,9 @@
       "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
       "licenseId": "CC-BY-SA-2.0-KR",
       "allowForPuzzle": true,
-      "clue": "음식물을 씹는 일을 하는 기관",
-      "clueSource": "krdict-definition-reviewed",
-      "shortExplanation": "음식물을 씹는 일을 하는 기관",
+      "clue": "사람의 입안에서 음식을 씹는 단단한 기관을 이르는 의학적·공식적 말",
+      "clueSource": "editorial-reviewed-adaptation",
+      "shortExplanation": "사람의 입안에서 음식을 씹는 단단한 기관을 이르는 의학적·공식적 말",
       "source": "국립국어원 한국어기초사전 XML",
       "difficulty": "hard",
       "needsManualClue": false,
@@ -62790,7 +62012,7 @@
       "domainTags": [
         "general"
       ],
-      "reviewDecision": "approve",
+      "reviewDecision": "rewrite",
       "reviewLedgerIndex": 2147,
       "themeDecisionLedgerIndex": 2147
     },
@@ -65915,9 +65137,9 @@
       "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
       "licenseId": "CC-BY-SA-2.0-KR",
       "allowForPuzzle": true,
-      "clue": "일상생활에 없어서는 안 되는 반드시 필요한 물건",
-      "clueSource": "krdict-definition-reviewed",
-      "shortExplanation": "일상생활에 없어서는 안 되는 반드시 필요한 물건",
+      "clue": "어떤 활동이나 생활을 위해 반드시 갖추어야 하는 물건",
+      "clueSource": "editorial-reviewed-adaptation",
+      "shortExplanation": "어떤 활동이나 생활을 위해 반드시 갖추어야 하는 물건",
       "source": "국립국어원 한국어기초사전 XML",
       "difficulty": "normal",
       "needsManualClue": false,
@@ -65925,7 +65147,7 @@
       "domainTags": [
         "general"
       ],
-      "reviewDecision": "approve",
+      "reviewDecision": "rewrite",
       "reviewLedgerIndex": 2261,
       "themeDecisionLedgerIndex": 2261
     },
@@ -67122,9 +66344,9 @@
       "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
       "licenseId": "CC-BY-SA-2.0-KR",
       "allowForPuzzle": true,
-      "clue": "사람이나 물건을 싣고 공중을 날아다닐 수 있는 교통수단",
-      "clueSource": "krdict-definition-reviewed",
-      "shortExplanation": "사람이나 물건을 싣고 공중을 날아다닐 수 있는 교통수단",
+      "clue": "공기의 반작용을 이용해 뜨고 이동하며 비행기·헬리콥터·글라이더를 아우르는 기계",
+      "clueSource": "editorial-reviewed-adaptation",
+      "shortExplanation": "공기의 반작용을 이용해 뜨고 이동하며 비행기·헬리콥터·글라이더를 아우르는 기계",
       "source": "국립국어원 한국어기초사전 XML",
       "difficulty": "hard",
       "needsManualClue": false,
@@ -67134,7 +66356,7 @@
       "domainTags": [
         "general"
       ],
-      "reviewDecision": "approve",
+      "reviewDecision": "rewrite",
       "reviewLedgerIndex": 2304,
       "themeDecisionLedgerIndex": 2304
     },
@@ -67169,38 +66391,6 @@
       "reviewDecision": "approve",
       "reviewLedgerIndex": 2305,
       "themeDecisionLedgerIndex": 2305
-    },
-    {
-      "answer": "항로",
-      "answerCells": [
-        "항",
-        "로"
-      ],
-      "definition": "배가 바다 위에서 지나다니는 길",
-      "definitionChecksum": "sha256:91fc62d0b45df7bcf62f1acb87e15f704bfa21520646a24007e58f08f6f7ef34",
-      "length": 2,
-      "level": "고급",
-      "pos": "명사",
-      "sourceId": "85360",
-      "sourceEntryId": "85360",
-      "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
-      "licenseId": "CC-BY-SA-2.0-KR",
-      "allowForPuzzle": true,
-      "clue": "배가 바다 위에서 지나다니는 길",
-      "clueSource": "krdict-definition-reviewed",
-      "shortExplanation": "배가 바다 위에서 지나다니는 길",
-      "source": "국립국어원 한국어기초사전 XML",
-      "difficulty": "hard",
-      "needsManualClue": false,
-      "themeTags": [
-        "road-places"
-      ],
-      "domainTags": [
-        "general"
-      ],
-      "reviewDecision": "approve",
-      "reviewLedgerIndex": 2306,
-      "themeDecisionLedgerIndex": 2306
     },
     {
       "answer": "항아리",
@@ -69312,38 +68502,6 @@
       "themeDecisionLedgerIndex": 2382
     },
     {
-      "answer": "효녀",
-      "answerCells": [
-        "효",
-        "녀"
-      ],
-      "definition": "부모를 잘 모시어 받드는 딸",
-      "definitionChecksum": "sha256:2a92b621f42b33b80e29e3c417f70a3a76cb914e1c817b9bf0853a9240cef737",
-      "length": 2,
-      "level": "고급",
-      "pos": "명사",
-      "sourceId": "89091",
-      "sourceEntryId": "89091",
-      "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
-      "licenseId": "CC-BY-SA-2.0-KR",
-      "allowForPuzzle": true,
-      "clue": "부모를 잘 모시어 받드는 딸",
-      "clueSource": "krdict-definition-reviewed",
-      "shortExplanation": "부모를 잘 모시어 받드는 딸",
-      "source": "국립국어원 한국어기초사전 XML",
-      "difficulty": "hard",
-      "needsManualClue": false,
-      "themeTags": [
-        "home-family"
-      ],
-      "domainTags": [
-        "general"
-      ],
-      "reviewDecision": "approve",
-      "reviewLedgerIndex": 2383,
-      "themeDecisionLedgerIndex": 2383
-    },
-    {
       "answer": "효도",
       "answerCells": [
         "효",
@@ -69374,38 +68532,6 @@
       "reviewDecision": "approve",
       "reviewLedgerIndex": 2384,
       "themeDecisionLedgerIndex": 2384
-    },
-    {
-      "answer": "효부",
-      "answerCells": [
-        "효",
-        "부"
-      ],
-      "definition": "시부모를 잘 모시어 받드는 며느리",
-      "definitionChecksum": "sha256:2ca56579f0a1e12e2b45dee0bc0ec9b2f98839dfec6b3b311e362cffddc7f6f1",
-      "length": 2,
-      "level": "없음",
-      "pos": "명사",
-      "sourceId": "89085",
-      "sourceEntryId": "89085",
-      "sourceUrl": "https://krdict.korean.go.kr/kor/openApi/openApiRegister",
-      "licenseId": "CC-BY-SA-2.0-KR",
-      "allowForPuzzle": true,
-      "clue": "시부모를 잘 모시어 받드는 며느리",
-      "clueSource": "krdict-definition-reviewed",
-      "shortExplanation": "시부모를 잘 모시어 받드는 며느리",
-      "source": "국립국어원 한국어기초사전 XML",
-      "difficulty": "normal",
-      "needsManualClue": false,
-      "themeTags": [
-        "home-family"
-      ],
-      "domainTags": [
-        "general"
-      ],
-      "reviewDecision": "approve",
-      "reviewLedgerIndex": 2385,
-      "themeDecisionLedgerIndex": 2385
     },
     {
       "answer": "효소",

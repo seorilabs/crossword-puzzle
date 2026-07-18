@@ -29,7 +29,9 @@ import {
   runLaunchRetryPhases,
   searchOptionsForRetry,
   summarizeFuturePoolConnectivity,
+  validateWordSelectionDifficultyPolicy,
 } from "./build-ko-kr-launch-content.mjs";
+import { DIFFICULTY_PROFILES } from "../packages/crossword-core/src/difficultyProfiles.ts";
 import {
   compareGenerationCandidatesByGeometryQuality,
   compareGeneratedBoardCandidates,
@@ -509,6 +511,66 @@ describe("ko-KR launch content builder", () => {
     assert.equal(
       friday.connectorWordCount,
       DAILY_CONNECTOR_WORD_LIMIT_BY_DIFFICULTY.hard,
+    );
+  });
+
+  test("normal 후보 풀은 150개 미만이어도 hard 어휘로 자동 보강하지 않는다", () => {
+    const route = {
+      puzzleId: "normal-ceiling-fixture",
+      themeId: LAUNCH_THEME_IDS[0],
+      difficulty: "normal",
+      route: { kind: "daily", weekday: "monday" },
+    };
+    const reviewedWords = [
+      ...Array.from({ length: 16 }, (_, index) => ({
+        answer: `테마-${index}`,
+        answerCells: ["가", "나"],
+        difficulty: "normal",
+        themeOwner: route.themeId,
+        themeHardReserve: false,
+        reviewLedgerIndex: index,
+      })),
+      ...Array.from({ length: 149 }, (_, index) => ({
+        answer: `연결-${index}`,
+        answerCells: ["나", "다"],
+        difficulty: "normal",
+        themeOwner: null,
+        themeHardReserve: false,
+        reviewLedgerIndex: index + 16,
+      })),
+      ...Array.from({ length: 100 }, (_, index) => ({
+        answer: `고급-${index}`,
+        answerCells: ["다", "라"],
+        difficulty: "hard",
+        themeOwner: null,
+        themeHardReserve: false,
+        reviewLedgerIndex: index + 165,
+      })),
+    ];
+    const selection = filterAvailableWords(reviewedWords, route, new Set());
+    assert.deepEqual(selection.difficulties, ["easy", "normal"]);
+    assert.equal(selection.broadened, false);
+    assert.deepEqual(selection.broadenedWith, []);
+    assert.equal(
+      selection.words.some((word) => word.difficulty === "hard"),
+      false,
+    );
+  });
+
+  test("generator selection evidence가 normal hard 상한을 넘으면 fail closed한다", () => {
+    assert.throws(
+      () =>
+        validateWordSelectionDifficultyPolicy(
+          {
+            words: [{ difficulty: "hard" }],
+            difficulties: ["easy", "normal", "hard"],
+            broadened: true,
+            broadenedWith: ["hard"],
+          },
+          DIFFICULTY_PROFILES.normal,
+          "fixture",
+        ),
+      /exceeds normal difficulty ceiling/,
     );
   });
 

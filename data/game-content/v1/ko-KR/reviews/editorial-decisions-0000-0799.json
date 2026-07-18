@@ -187,13 +187,11 @@
       "sourceEntryId": "14565",
       "answer": "가상도",
       "definitionChecksum": "sha256:02459dca661ba52e47c034700156f341f8fde7786cd88494ec5335367e7764e7",
-      "decision": "approve",
+      "decision": "reject",
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
-      ],
-      "shortExplanation": "어떤 일의 상황을 가정하고 상상하여 그린 그림",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+        "ambiguous-or-misleading-sense"
+      ]
     },
     {
       "candidateIndex": 14,
@@ -1781,13 +1779,11 @@
       "sourceEntryId": "60094",
       "answer": "경기",
       "definitionChecksum": "sha256:27fea44aa83e59ea670c3616f5f7634ed4eafbb4bff63bf39857010afaa32341",
-      "decision": "approve",
+      "decision": "reject",
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
-      ],
-      "shortExplanation": "운동이나 기술 등의 능력을 서로 겨룸",
-      "explanationReasonCode": "source-definition-adds-result-context"
+        "duplicate-definition"
+      ]
     },
     {
       "candidateIndex": 137,
@@ -2024,13 +2020,11 @@
       "sourceEntryId": "26112",
       "answer": "경화증",
       "definitionChecksum": "sha256:4bcf35f525484dd9e9bea30265ac8a1113476d09b5a25a429e1ff77bae90a5d1",
-      "decision": "approve",
+      "decision": "reject",
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
-      ],
-      "shortExplanation": "몸의 조직이나 기관이 단단하게 굳어지는 증상",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+        "difficulty-mismatch"
+      ]
     },
     {
       "candidateIndex": 156,
@@ -2116,13 +2110,11 @@
       "sourceEntryId": "26229",
       "answer": "계산",
       "definitionChecksum": "sha256:91a22a77f8e79918f689971924d6f17a268bcefbd5538cdffd74ab8a9bd88041",
-      "decision": "approve",
+      "decision": "reject",
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
-      ],
-      "shortExplanation": "물건값이나 비용을 냄",
-      "explanationReasonCode": "source-definition-adds-result-context"
+        "ambiguous-or-misleading-sense"
+      ]
     },
     {
       "candidateIndex": 163,
@@ -5902,13 +5894,11 @@
       "sourceEntryId": "17522",
       "answer": "꽃삽",
       "definitionChecksum": "sha256:b0129932fa78c34b909cedf68a6d55ccb00c09df072e7920116f650e5aeb6dc9",
-      "decision": "approve",
+      "decision": "reject",
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
-      ],
-      "shortExplanation": "화초나 꽃나무를 심거나 가꾸는 데 쓰는 작은 삽",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+        "duplicate-definition"
+      ]
     },
     {
       "candidateIndex": 455,
@@ -8879,13 +8869,11 @@
       "sourceEntryId": "70748",
       "answer": "동생",
       "definitionChecksum": "sha256:27b09ec552331ff2e7d599ee60726a07c032af9b3699efd472d6218dd7a5951d",
-      "decision": "approve",
+      "decision": "reject",
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
-      ],
-      "shortExplanation": "나이가 더 많은 사람이 나이가 어린 사람을 친숙하게 이르거나 부르는 말",
-      "explanationReasonCode": "source-definition-adds-result-context"
+        "ambiguous-or-misleading-sense"
+      ]
     },
     {
       "candidateIndex": 685,

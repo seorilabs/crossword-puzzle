@@ -2,7 +2,7 @@
   "schemaVersion": "game-content-theme-editorial-decisions/1",
   "contentLocale": "ko-KR",
   "candidateFileSha256": "sha256:b73638293895ee31b0f11c3eea9d31f343c5e936df45faeea308a570ce16a44f",
-  "baseEditorialLedgerSha256": "sha256:3bb61a4652491a64362368479f4840ccbb113d89ac9a29872b8e8fd0761af813",
+  "baseEditorialLedgerSha256": "sha256:ac98679ead880d0e9dab86fc4a0d6bcd6086578dbc0e6fbdaba0830a84a4d85a",
   "taxonomyId": "ko-kr-launch-theme-taxonomy-v1",
   "taxonomySha256": "sha256:f6719bfad3c4d1b6555e1988633dc712a526dd5025e112e398eab6d6097cbc2d",
   "reviewerId": "seorilabs-content-review-a",
@@ -207,11 +207,11 @@
       "answer": "가상도",
       "definitionChecksum": "sha256:02459dca661ba52e47c034700156f341f8fde7786cd88494ec5335367e7764e7",
       "resolvedClueChecksum": "sha256:983a3faf3e2e464c9281ee6d79f08055b6c183320df2e148763a45a86b02cae0",
-      "editorialStatus": "approved",
-      "senseAlignment": "same-sense",
+      "editorialStatus": "not-applicable-rejected",
+      "senseAlignment": "not-applicable",
       "eligibleThemeIds": [],
       "reasonCodes": [
-        "no-direct-theme-fit"
+        "base-editorial-rejected"
       ]
     },
     {
@@ -1980,11 +1980,11 @@
       "answer": "경기",
       "definitionChecksum": "sha256:27fea44aa83e59ea670c3616f5f7634ed4eafbb4bff63bf39857010afaa32341",
       "resolvedClueChecksum": "sha256:c7739a2e47596995e3c9caa3e5809a0e67abe26015ae1ba18dc9577653554dd7",
-      "editorialStatus": "approved",
-      "senseAlignment": "same-sense",
+      "editorialStatus": "not-applicable-rejected",
+      "senseAlignment": "not-applicable",
       "eligibleThemeIds": [],
       "reasonCodes": [
-        "no-direct-theme-fit"
+        "base-editorial-rejected"
       ]
     },
     {
@@ -2257,11 +2257,11 @@
       "answer": "경화증",
       "definitionChecksum": "sha256:4bcf35f525484dd9e9bea30265ac8a1113476d09b5a25a429e1ff77bae90a5d1",
       "resolvedClueChecksum": "sha256:969d40d8cff70eea8f3185268f15db66ac57169d85cd4089c4a36b863e19b33b",
-      "editorialStatus": "approved",
-      "senseAlignment": "same-sense",
+      "editorialStatus": "not-applicable-rejected",
+      "senseAlignment": "not-applicable",
       "eligibleThemeIds": [],
       "reasonCodes": [
-        "no-direct-theme-fit"
+        "base-editorial-rejected"
       ]
     },
     {
@@ -2356,11 +2356,11 @@
       "answer": "계산",
       "definitionChecksum": "sha256:91a22a77f8e79918f689971924d6f17a268bcefbd5538cdffd74ab8a9bd88041",
       "resolvedClueChecksum": "sha256:dd0fe2bd912e7e072553c818c5c65befd02a8d1a758cb95f9654a2e47b092df6",
-      "editorialStatus": "approved",
-      "senseAlignment": "same-sense",
+      "editorialStatus": "not-applicable-rejected",
+      "senseAlignment": "not-applicable",
       "eligibleThemeIds": [],
       "reasonCodes": [
-        "no-direct-theme-fit"
+        "base-editorial-rejected"
       ]
     },
     {
@@ -6640,11 +6640,11 @@
       "answer": "꽃삽",
       "definitionChecksum": "sha256:b0129932fa78c34b909cedf68a6d55ccb00c09df072e7920116f650e5aeb6dc9",
       "resolvedClueChecksum": "sha256:51c26d67bfa3e9651d9f0a1dd3746a862a16c62fc77c0c9497b780d5fa3a8a0c",
-      "editorialStatus": "approved",
-      "senseAlignment": "same-sense",
+      "editorialStatus": "not-applicable-rejected",
+      "senseAlignment": "not-applicable",
       "eligibleThemeIds": [],
       "reasonCodes": [
-        "no-direct-theme-fit"
+        "base-editorial-rejected"
       ]
     },
     {
@@ -9992,13 +9992,11 @@
       "answer": "동생",
       "definitionChecksum": "sha256:27b09ec552331ff2e7d599ee60726a07c032af9b3699efd472d6218dd7a5951d",
       "resolvedClueChecksum": "sha256:673c32ad4e713793246d01a867ee0b5673f65d84467e354ff6640cef48dc22ef",
-      "editorialStatus": "approved",
-      "senseAlignment": "same-sense",
-      "eligibleThemeIds": [
-        "home-family"
-      ],
+      "editorialStatus": "not-applicable-rejected",
+      "senseAlignment": "not-applicable",
+      "eligibleThemeIds": [],
       "reasonCodes": [
-        "direct-fit:home-family"
+        "base-editorial-rejected"
       ]
     },
     {

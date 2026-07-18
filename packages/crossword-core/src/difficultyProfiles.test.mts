@@ -10,6 +10,7 @@ import {
   filterWordsByDifficulty,
   getWordDifficulty,
   isDifficulty,
+  isWordDifficultyWithinProfile,
   resolveDifficultyProfile,
   selectWordsForProfile,
   summarizeWordDifficulties,
@@ -163,9 +164,12 @@ describe("filterWordsByDifficulty", () => {
     assert.deepEqual(answers, ["미상", "정정", "평면"]);
   });
 
-  it("normal 프로파일은 모든 단어를 허용한다", () => {
+  it("normal 프로파일은 hard 단어를 제외한다", () => {
     const result = filterWordsByDifficulty(words, DIFFICULTY_PROFILES.normal);
-    assert.equal(result.length, words.length);
+    assert.deepEqual(
+      result.map((word) => word.answer),
+      ["가게", "평면", "미상"],
+    );
   });
 });
 
@@ -198,6 +202,37 @@ describe("selectWordsForProfile", () => {
     assert.equal(selection.broadenedWith[0], "normal");
     assert.ok(selection.words.length >= MIN_GENERATION_WORD_POOL);
     assert.ok(summarizeWordDifficulties(selection.words).normal > 0);
+  });
+
+  it("normal 풀은 임계값 미만이어도 hard 상한을 넘겨 보강하지 않는다", () => {
+    const selection = selectWordsForProfile(
+      [
+        ...makeWords("easy", 5),
+        ...makeWords("normal", 5),
+        ...makeWords("hard", 1000),
+      ],
+      DIFFICULTY_PROFILES.normal,
+    );
+    assert.equal(selection.words.length, 10);
+    assert.equal(selection.broadened, false);
+    assert.deepEqual(selection.broadenedWith, []);
+    assert.deepEqual(selection.difficulties, ["easy", "normal"]);
+    assert.equal(summarizeWordDifficulties(selection.words).hard, 0);
+  });
+
+  it("프로파일의 명시적 단어 난이도 상한을 판정한다", () => {
+    assert.equal(
+      isWordDifficultyWithinProfile("normal", DIFFICULTY_PROFILES.normal),
+      true,
+    );
+    assert.equal(
+      isWordDifficultyWithinProfile("hard", DIFFICULTY_PROFILES.normal),
+      false,
+    );
+    assert.equal(
+      isWordDifficultyWithinProfile("hard", DIFFICULTY_PROFILES.easy),
+      true,
+    );
   });
 
   it("minPool 을 0 으로 주면 보강 없이 빈 풀도 그대로 반환(테스트 편의)", () => {
@@ -237,7 +272,10 @@ describe("DIFFICULTY_PROFILES hard 점프 완화 (#154)", () => {
     const minWordCountJump = (h.minWordCount - n.minWordCount) / n.minWordCount;
     // 과거 값(maxWords 16, minWordCount 18) 기준 점프: 0.6, 0.8
     assert.ok(maxWordsJump < 0.6, `maxWords 증가율 ${maxWordsJump} < 0.6`);
-    assert.ok(minWordCountJump < 0.8, `minWordCount 증가율 ${minWordCountJump} < 0.8`);
+    assert.ok(
+      minWordCountJump < 0.8,
+      `minWordCount 증가율 ${minWordCountJump} < 0.8`,
+    );
   });
 
   it("hard 품질 게이트(교차율·밀도) 하한은 유지한다", () => {

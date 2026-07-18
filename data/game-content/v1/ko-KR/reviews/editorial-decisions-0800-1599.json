@@ -367,13 +367,14 @@
       "sourceEntryId": "55589",
       "answer": "모종삽",
       "definitionChecksum": "sha256:1e989abed36c8e072418fcf510a4be8796de6c1f5e24f8b2fe975ef9c8c0468a",
-      "decision": "approve",
+      "decision": "rewrite",
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "duplicate-definition"
       ],
-      "shortExplanation": "어린 식물을 옮겨 심을 때 사용하는 작은 삽",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "shortExplanation": "어린 식물의 뿌리를 흙째 떠 옮겨 심을 때 쓰는 작은 삽",
+      "explanationReasonCode": "reviewed-clue-serves-as-result-explanation",
+      "clue": "어린 식물의 뿌리를 흙째 떠 옮겨 심을 때 쓰는 작은 삽"
     },
     {
       "candidateIndex": 828,
@@ -485,13 +486,14 @@
       "sourceEntryId": "69465",
       "answer": "목적",
       "definitionChecksum": "sha256:f2e2aa76be98cbcd0fd4c1dcbb04551fa5c5c4a227c13a345af59d953bd94b4b",
-      "decision": "approve",
+      "decision": "rewrite",
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "ambiguous-or-misleading-sense"
       ],
-      "shortExplanation": "이루려고 하는 일이나 나아가고자 하는 방향",
-      "explanationReasonCode": "source-definition-adds-result-context"
+      "shortExplanation": "단순한 까닭이 아니라, 실현하려고 하는 일이나 나아가려는 방향",
+      "explanationReasonCode": "reviewed-clue-serves-as-result-explanation",
+      "clue": "단순한 까닭이 아니라, 실현하려고 하는 일이나 나아가려는 방향"
     },
     {
       "candidateIndex": 837,
@@ -1936,13 +1938,14 @@
       "sourceEntryId": "57325",
       "answer": "박수",
       "definitionChecksum": "sha256:a930916fb926e411a597b46c95dfd421487146fdce2c436344c3eb37e830938a",
-      "decision": "approve",
+      "decision": "rewrite",
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "ambiguous-or-misleading-sense"
       ],
-      "shortExplanation": "기쁨, 축하, 환영, 칭찬 등을 나타내거나 장단을 맞추려고 두 손뼉을 마주 침",
-      "explanationReasonCode": "source-definition-adds-result-context"
+      "shortExplanation": "기쁨이나 칭찬을 나타내려고 두 손바닥을 마주쳐 소리를 내는 행동",
+      "explanationReasonCode": "reviewed-clue-serves-as-result-explanation",
+      "clue": "기쁨이나 칭찬을 나타내려고 두 손바닥을 마주쳐 소리를 내는 행동"
     },
     {
       "candidateIndex": 949,
@@ -2511,13 +2514,11 @@
       "sourceEntryId": "59168",
       "answer": "배아",
       "definitionChecksum": "sha256:f6a0e61d33c0bb5530a504f17bc221bb33bd66c64e738f49b57b5e93ca52851d",
-      "decision": "approve",
+      "decision": "reject",
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
-      ],
-      "shortExplanation": "식물의 씨 속에 있는 앞으로 싹이 될 부분",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+        "duplicate-definition"
+      ]
     },
     {
       "candidateIndex": 994,
@@ -3082,13 +3083,14 @@
       "sourceEntryId": "14520",
       "answer": "보장",
       "definitionChecksum": "sha256:b785dd7b888b30511ca7e2d28832f82aba5e6789af5f4b5558840f43b6564a42",
-      "decision": "approve",
+      "decision": "rewrite",
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "ambiguous-or-misleading-sense"
       ],
-      "shortExplanation": "잘못되는 일이 없도록 보증하거나 보호함",
-      "explanationReasonCode": "source-definition-adds-result-context"
+      "shortExplanation": "법이나 제도로 권리나 안전을 확실히 누리도록 지키는 일",
+      "explanationReasonCode": "reviewed-clue-serves-as-result-explanation",
+      "clue": "법이나 제도로 권리나 안전을 확실히 누리도록 지키는 일"
     },
     {
       "candidateIndex": 1038,
@@ -3483,13 +3485,11 @@
       "sourceEntryId": "65853",
       "answer": "부분",
       "definitionChecksum": "sha256:8e6e5c4df78452ae80188895f93f07e7ad87831fcd13dab1113af3afb8fb9878",
-      "decision": "approve",
+      "decision": "reject",
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
-      ],
-      "shortExplanation": "전체를 이루고 있는 작은 범위. 또는 전체를 여러 개로 나눈 것 가운데 하나",
-      "explanationReasonCode": "source-definition-adds-result-context"
+        "duplicate-definition"
+      ]
     },
     {
       "candidateIndex": 1069,
@@ -3535,13 +3535,14 @@
       "sourceEntryId": "59700",
       "answer": "부유층",
       "definitionChecksum": "sha256:2056b37e46ccb7ea606cfbaff3ba9a8c67c0f1190fd28b7a9f96925329d7c894",
-      "decision": "approve",
+      "decision": "rewrite",
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "ambiguous-or-misleading-sense"
       ],
-      "shortExplanation": "재물이 많아서 살림이 아주 넉넉한 사람들의 계층",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "shortExplanation": "재산과 소득이 많아 경제적으로 넉넉한 사람들의 계층",
+      "explanationReasonCode": "reviewed-clue-serves-as-result-explanation",
+      "clue": "재산과 소득이 많아 경제적으로 넉넉한 사람들의 계층"
     },
     {
       "candidateIndex": 1073,
@@ -4066,13 +4067,12 @@
       "sourceEntryId": "93428",
       "answer": "불효자",
       "definitionChecksum": "sha256:37af289713281d7acea94d18159f918968a629a33dea84fc4db210f70f1d0be5",
-      "decision": "approve",
+      "decision": "reject",
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
-      ],
-      "shortExplanation": "부모를 효성스럽게 모시어 받들지 않은 자식",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+        "biased-or-loaded-wording",
+        "launch-family-safety-policy"
+      ]
     },
     {
       "candidateIndex": 1114,
@@ -4585,13 +4585,11 @@
       "sourceEntryId": "61187",
       "answer": "사이",
       "definitionChecksum": "sha256:c33edfb2302a89e6d63cbfacecdb944efc98f85e3927437f966eb129ccf114ee",
-      "decision": "approve",
+      "decision": "reject",
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
-      ],
-      "shortExplanation": "어떤 때부터 다른 때까지의 동안",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+        "ambiguous-or-misleading-sense"
+      ]
     },
     {
       "candidateIndex": 1155,
@@ -5029,13 +5027,14 @@
       "sourceEntryId": "62121",
       "answer": "상견례",
       "definitionChecksum": "sha256:2b82e35cfb61e742a0d8b639d61650c4d812ed594bb095a9f32751e56ab3b30c",
-      "decision": "approve",
+      "decision": "rewrite",
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "ambiguous-or-misleading-sense"
       ],
-      "shortExplanation": "여러 사람들이 공식적으로 처음 만나 서로 인사하는 일",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "shortExplanation": "결혼을 앞둔 두 집안의 가족들이 처음 공식적으로 만나 인사하는 자리",
+      "explanationReasonCode": "reviewed-clue-serves-as-result-explanation",
+      "clue": "결혼을 앞둔 두 집안의 가족들이 처음 공식적으로 만나 인사하는 자리"
     },
     {
       "candidateIndex": 1189,
@@ -5068,26 +5067,25 @@
       "sourceEntryId": "71096",
       "answer": "상대방",
       "definitionChecksum": "sha256:0a37c65a91dfe45bb464ac33ca92e8e7ad1a49d3dd5e0c3f037c36e6dbdb867b",
-      "decision": "approve",
+      "decision": "rewrite",
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "ambiguous-or-misleading-sense"
       ],
-      "shortExplanation": "일을 하거나 말을 할 때 짝을 이루는 사람",
-      "explanationReasonCode": "source-definition-adds-result-context"
+      "shortExplanation": "대화나 일을 할 때 나와 마주하여 짝을 이루는 한 사람",
+      "explanationReasonCode": "reviewed-clue-serves-as-result-explanation",
+      "clue": "대화나 일을 할 때 나와 마주하여 짝을 이루는 한 사람"
     },
     {
       "candidateIndex": 1192,
       "sourceEntryId": "61705",
       "answer": "상류층",
       "definitionChecksum": "sha256:9565ba22d4a77fa0f846719728e6bc4edb66f0306100fbd7edbcec9ec54cb961",
-      "decision": "approve",
+      "decision": "reject",
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
-      ],
-      "shortExplanation": "사회적 지위나 생활 수준 등이 높은 계층",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+        "duplicate-definition"
+      ]
     },
     {
       "candidateIndex": 1193,
@@ -5322,13 +5320,12 @@
       "sourceEntryId": "62549",
       "answer": "생가슴",
       "definitionChecksum": "sha256:19b70460df746603e6731f357b89580e9d8745e742f69571ee4649509166e928",
-      "decision": "approve",
+      "decision": "reject",
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
-      ],
-      "shortExplanation": "필요 없는 근심이나 걱정 때문에 상하는 마음",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+        "rare-or-obscure-expression",
+        "difficulty-mismatch"
+      ]
     },
     {
       "candidateIndex": 1212,
@@ -5577,13 +5574,11 @@
       "sourceEntryId": "62725",
       "answer": "생필품",
       "definitionChecksum": "sha256:632f24f1efd17dd8c0d5dd3c61ddd6511f82a098b24a829c2b06e1ffffd6c91c",
-      "decision": "approve",
+      "decision": "reject",
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
-      ],
-      "shortExplanation": "일상생활에 꼭 필요한 물건",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+        "duplicate-definition"
+      ]
     },
     {
       "candidateIndex": 1232,
@@ -6182,13 +6177,14 @@
       "sourceEntryId": "69717",
       "answer": "성균관",
       "definitionChecksum": "sha256:2723ccfcb8fbd3b6603a8aa1fdbf32730c29f82898de1e1f5d57b47d9b8fd33e",
-      "decision": "approve",
+      "decision": "rewrite",
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "factual-inaccuracy"
       ],
-      "shortExplanation": "고려 시대 유학을 가르치던 최고의 교육 기관",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "shortExplanation": "고려 말부터 조선 시대까지 유학 교육을 맡은 최고 교육 기관",
+      "explanationReasonCode": "reviewed-clue-serves-as-result-explanation",
+      "clue": "고려 말부터 조선 시대까지 유학 교육을 맡은 최고 교육 기관"
     },
     {
       "candidateIndex": 1279,
@@ -6735,13 +6731,11 @@
       "sourceEntryId": "15619",
       "answer": "수고",
       "definitionChecksum": "sha256:081ff98b48613c849066c8a0b16b916d2139e9f50a4905ad0889a1de73696872",
-      "decision": "approve",
+      "decision": "reject",
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
-      ],
-      "shortExplanation": "어떤 일을 하느라 힘을 들이고 애를 씀. 또는 그런 어려움",
-      "explanationReasonCode": "source-definition-adds-result-context"
+        "ambiguous-or-misleading-sense"
+      ]
     },
     {
       "candidateIndex": 1322,
@@ -7387,13 +7381,14 @@
       "sourceEntryId": "65890",
       "answer": "승강장",
       "definitionChecksum": "sha256:8fa07099d6b96505d7ad8a3b2a8ae751a5374dacc1dee13e1a585b62ff80aef0",
-      "decision": "approve",
+      "decision": "rewrite",
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "ambiguous-or-misleading-sense"
       ],
-      "shortExplanation": "정거장이나 역에서 버스나 기차 등을 타고 내리는 곳",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "shortExplanation": "역에서 선로나 차도 옆에 승객이 기다렸다 오르내리도록 마련한 곳을 이르는 한자어",
+      "explanationReasonCode": "reviewed-clue-serves-as-result-explanation",
+      "clue": "역에서 선로나 차도 옆에 승객이 기다렸다 오르내리도록 마련한 곳을 이르는 한자어"
     },
     {
       "candidateIndex": 1373,
@@ -7998,26 +7993,23 @@
       "sourceEntryId": "78475",
       "answer": "실리콘",
       "definitionChecksum": "sha256:8ba4eb604844f8a607bfeaeed5c9a2899976551804eb0e9370e856b3eb37e1ad",
-      "decision": "approve",
+      "decision": "reject",
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
-      ],
-      "shortExplanation": "생물의 결합 조직이나 뼈를 이루는 비금속 원소",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+        "scientific-inaccuracy",
+        "ambiguous-or-misleading-sense"
+      ]
     },
     {
       "candidateIndex": 1420,
       "sourceEntryId": "64947",
       "answer": "실수",
       "definitionChecksum": "sha256:25104baa4f597db654975fa23f28e53ed5bd60cdb7167629e963b453a55e4cc3",
-      "decision": "approve",
+      "decision": "reject",
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
-      ],
-      "shortExplanation": "잘 알지 못하거나 조심하지 않아서 저지르는 잘못",
-      "explanationReasonCode": "source-definition-adds-result-context"
+        "ambiguous-or-misleading-sense"
+      ]
     },
     {
       "candidateIndex": 1421,
@@ -8764,13 +8756,11 @@
       "sourceEntryId": "66982",
       "answer": "약소국",
       "definitionChecksum": "sha256:38a6ac37f84b096529b06f736aad63a93e78bbee1bbe672d6f35be0e7197daa6",
-      "decision": "approve",
+      "decision": "reject",
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
-      ],
-      "shortExplanation": "경제적이나 군사적으로 힘이 약하고 작은 나라",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+        "political-or-ideological-context"
+      ]
     },
     {
       "candidateIndex": 1480,
@@ -9647,13 +9637,14 @@
       "sourceEntryId": "67831",
       "answer": "열람실",
       "definitionChecksum": "sha256:e49129e261224c51d171bad614ee96d6d8f61a8afcaeff90e7884ca8814108fb",
-      "decision": "approve",
+      "decision": "rewrite",
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "ambiguous-or-misleading-sense"
       ],
-      "shortExplanation": "도서관 등에서 책이나 자료 등을 읽는 방",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "shortExplanation": "도서관 자료를 대출하지 않고 그 자리에서 읽거나 살펴보는 방",
+      "explanationReasonCode": "reviewed-clue-serves-as-result-explanation",
+      "clue": "도서관 자료를 대출하지 않고 그 자리에서 읽거나 살펴보는 방"
     },
     {
       "candidateIndex": 1548,
@@ -9686,13 +9677,11 @@
       "sourceEntryId": "67586",
       "answer": "열차",
       "definitionChecksum": "sha256:f4394516b0eb4c469e8a08fbd03ec040691997554afc0ec71bdb67abc1c18110",
-      "decision": "approve",
+      "decision": "reject",
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
-      ],
-      "shortExplanation": "여러 개의 칸을 길게 이어 놓은 기차나 전철",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+        "duplicate-definition"
+      ]
     },
     {
       "candidateIndex": 1551,

@@ -2,7 +2,7 @@
   "schemaVersion": "game-content-theme-editorial-decisions/1",
   "contentLocale": "ko-KR",
   "candidateFileSha256": "sha256:b73638293895ee31b0f11c3eea9d31f343c5e936df45faeea308a570ce16a44f",
-  "baseEditorialLedgerSha256": "sha256:3bb61a4652491a64362368479f4840ccbb113d89ac9a29872b8e8fd0761af813",
+  "baseEditorialLedgerSha256": "sha256:ac98679ead880d0e9dab86fc4a0d6bcd6086578dbc0e6fbdaba0830a84a4d85a",
   "taxonomyId": "ko-kr-launch-theme-taxonomy-v1",
   "taxonomySha256": "sha256:f6719bfad3c4d1b6555e1988633dc712a526dd5025e112e398eab6d6097cbc2d",
   "reviewerId": "seorilabs-content-review-c",
@@ -719,11 +719,11 @@
       "answer": "원천적",
       "definitionChecksum": "sha256:f701cf1950122eb7220a789a3b6114d06f101775a894d6a58832c6a166a0eb27",
       "resolvedClueChecksum": "sha256:290d6edb90c492c098ba6bc4394bdd38d46e901509397f9817ba8a67d4866a87",
-      "editorialStatus": "approved",
-      "senseAlignment": "same-sense",
+      "editorialStatus": "not-applicable-rejected",
+      "senseAlignment": "not-applicable",
       "eligibleThemeIds": [],
       "reasonCodes": [
-        "no-direct-theme-fit"
+        "base-editorial-rejected"
       ]
     },
     {
@@ -985,7 +985,7 @@
       "sourceEntryId": "72443",
       "answer": "유도",
       "definitionChecksum": "sha256:13211938ae1ff4244f0708ea47c16864fa56e261de388b572e8f02ce5ae3c391",
-      "resolvedClueChecksum": "sha256:a698c812869fc480d592f464f7a7c98ee71b6875d02bfa67dfda1e99df053c06",
+      "resolvedClueChecksum": "sha256:05d3476a898726ad7f1ea056bfad0f33b37030e9e89a58ef024c63ae59c78f45",
       "editorialStatus": "approved",
       "senseAlignment": "same-sense",
       "eligibleThemeIds": [
@@ -2383,11 +2383,11 @@
       "answer": "입신",
       "definitionChecksum": "sha256:a4f04a9de293df7a8fd00a1fb0780d2d297f91d348ba50e274e6ab8d1eed46ef",
       "resolvedClueChecksum": "sha256:0bbd55427ddc1f6e77f5c10590b2e54344ef78ba72329fae9c2d03122fe8747e",
-      "editorialStatus": "approved",
-      "senseAlignment": "same-sense",
+      "editorialStatus": "not-applicable-rejected",
+      "senseAlignment": "not-applicable",
       "eligibleThemeIds": [],
       "reasonCodes": [
-        "no-direct-theme-fit"
+        "base-editorial-rejected"
       ]
     },
     {
@@ -2423,14 +2423,12 @@
       "sourceEntryId": "73457",
       "answer": "입장객",
       "definitionChecksum": "sha256:072cf703e839a4fa4a06ceba65b4dac6e7c464032b3713000234017da204063f",
-      "resolvedClueChecksum": "sha256:674b34b54cd27a942cf3a81711b1f5b6616be80c55d604d6dbc0e0c9af4038c4",
+      "resolvedClueChecksum": "sha256:70f12408d2159531b41d95a3e032698de0a77599b5d0eaedc492f9dbd953aa74",
       "editorialStatus": "approved",
       "senseAlignment": "same-sense",
-      "eligibleThemeIds": [
-        "road-places"
-      ],
+      "eligibleThemeIds": [],
       "reasonCodes": [
-        "direct-fit:road-places"
+        "no-direct-theme-fit"
       ]
     },
     {
@@ -4180,7 +4178,7 @@
       "sourceEntryId": "75799",
       "answer": "정복욕",
       "definitionChecksum": "sha256:9e87cdbc0882645ea4009837c9bbec5a65c73c294e6c9cd9a12179752bed75a4",
-      "resolvedClueChecksum": "sha256:54caf4d92c9fea13bc6ea3e419385fbc4411aae304d52d8fe6a2fa7fc87b800a",
+      "resolvedClueChecksum": "sha256:58444aec742d79799cb120ed5e30ee8398d7416ed8bdc8c8347c139ed87c1eed",
       "editorialStatus": "approved",
       "senseAlignment": "same-sense",
       "eligibleThemeIds": [],
@@ -4610,15 +4608,11 @@
       "answer": "조리사",
       "definitionChecksum": "sha256:fb2b380768296416f5781fe0b43d741073f7bb4693ea132c7d8d8edcab03e6cd",
       "resolvedClueChecksum": "sha256:b34da8cc679ac74c63ef4229b307128c54f12f6ae9466d77f0cfe94ee09bec62",
-      "editorialStatus": "approved",
-      "senseAlignment": "same-sense",
-      "eligibleThemeIds": [
-        "table-kitchen",
-        "work-community"
-      ],
+      "editorialStatus": "not-applicable-rejected",
+      "senseAlignment": "not-applicable",
+      "eligibleThemeIds": [],
       "reasonCodes": [
-        "direct-fit:table-kitchen",
-        "direct-fit:work-community"
+        "base-editorial-rejected"
       ]
     },
     {
@@ -4852,13 +4846,11 @@
       "answer": "종주국",
       "definitionChecksum": "sha256:7b271f799069eec86254bb7c169b368e5b597cf87fdac4b2f9166e60cf546a6f",
       "resolvedClueChecksum": "sha256:44c673ae7691735f997d0dc5494df36a9cdca18110d8d9e06ba331cedf12a358",
-      "editorialStatus": "approved",
-      "senseAlignment": "same-sense",
-      "eligibleThemeIds": [
-        "road-places"
-      ],
+      "editorialStatus": "not-applicable-rejected",
+      "senseAlignment": "not-applicable",
+      "eligibleThemeIds": [],
       "reasonCodes": [
-        "direct-fit:road-places"
+        "base-editorial-rejected"
       ]
     },
     {
@@ -6102,11 +6094,11 @@
       "answer": "진상",
       "definitionChecksum": "sha256:50a3324dd4693380bc8a8dff0dea2dc3deb31908ad8d82e30c1eb6c7c94875d7",
       "resolvedClueChecksum": "sha256:cfcd996f5a22b4d7706b496cae4ea59faa62dd8f8b3f14c18dba00fd05fba4f2",
-      "editorialStatus": "approved",
-      "senseAlignment": "same-sense",
+      "editorialStatus": "not-applicable-rejected",
+      "senseAlignment": "not-applicable",
       "eligibleThemeIds": [],
       "reasonCodes": [
-        "no-direct-theme-fit"
+        "base-editorial-rejected"
       ]
     },
     {
@@ -6115,11 +6107,11 @@
       "answer": "진수",
       "definitionChecksum": "sha256:cf17318093c64d834183704879dc8a60c755842d088ee4f5622e6bee939a0fcd",
       "resolvedClueChecksum": "sha256:03fbff71b6999f35e9d098b8cc0d806ee79b2374ca9063490be5709441f9ed27",
-      "editorialStatus": "approved",
-      "senseAlignment": "same-sense",
+      "editorialStatus": "not-applicable-rejected",
+      "senseAlignment": "not-applicable",
       "eligibleThemeIds": [],
       "reasonCodes": [
-        "no-direct-theme-fit"
+        "base-editorial-rejected"
       ]
     },
     {
@@ -6384,13 +6376,11 @@
       "answer": "찜통",
       "definitionChecksum": "sha256:3a728ca50067b727da2a019b0d18fd8ce47e91f9791f249f7d3f2db698c1b1e5",
       "resolvedClueChecksum": "sha256:698ee3a43bffd10024c6c3bf972f9ed02a011404f8759938d0baf0798c6bcfa1",
-      "editorialStatus": "approved",
-      "senseAlignment": "same-sense",
-      "eligibleThemeIds": [
-        "table-kitchen"
-      ],
+      "editorialStatus": "not-applicable-rejected",
+      "senseAlignment": "not-applicable",
+      "eligibleThemeIds": [],
       "reasonCodes": [
-        "direct-fit:table-kitchen"
+        "base-editorial-rejected"
       ]
     },
     {
@@ -7634,7 +7624,7 @@
       "sourceEntryId": "27824",
       "answer": "출신",
       "definitionChecksum": "sha256:3a736279375298126509243d50d0f13d822f41f93722be3c642dc471da1ec217",
-      "resolvedClueChecksum": "sha256:b47e5366a17b7f4c4d5ce7d83a6367805a768925429e9afc99cd5fb74b35dc3d",
+      "resolvedClueChecksum": "sha256:42831380f5b70d698f0bd2b28286d6cf78b134043529531e29f5c34e618a7975",
       "editorialStatus": "approved",
       "senseAlignment": "same-sense",
       "eligibleThemeIds": [],
@@ -7976,7 +7966,7 @@
       "sourceEntryId": "28122",
       "answer": "치아",
       "definitionChecksum": "sha256:385cb4833290ba18828e496d14fc28d6554859dea34aae42a79e877803bb9386",
-      "resolvedClueChecksum": "sha256:4cf4787d8735eb4bb15b990bc25b71897ca6aadf6ff5864da9598f5470301e1c",
+      "resolvedClueChecksum": "sha256:77d9b7a03013fa1766a89c624bb822d11463e78068308fc168fd141fcfdf4102",
       "editorialStatus": "approved",
       "senseAlignment": "same-sense",
       "eligibleThemeIds": [],
@@ -9646,7 +9636,7 @@
       "sourceEntryId": "86167",
       "answer": "필수품",
       "definitionChecksum": "sha256:7649260041304e5e1093d2f66300013e0dde30da173d26a27bebcda36d069cf1",
-      "resolvedClueChecksum": "sha256:09145ddc83ad13dd1404a88c1325fb658392e541cf3359139d38a10d7d65d17c",
+      "resolvedClueChecksum": "sha256:4a91bd9241b985135fb93e5f2219aa540c145e22a064eec4fbc175bf94b4fbb3",
       "editorialStatus": "approved",
       "senseAlignment": "same-sense",
       "eligibleThemeIds": [],
@@ -10291,7 +10281,7 @@
       "sourceEntryId": "84808",
       "answer": "항공기",
       "definitionChecksum": "sha256:a9ad8bc9456c803dc21212947c67cf523fa8cbc3600471a5961d098fbd43864a",
-      "resolvedClueChecksum": "sha256:f21dea562137b2b72cb3d18a925b2a6e35255113c6e265ce2dcfc95b2d7e4749",
+      "resolvedClueChecksum": "sha256:d2e2233898f7bd409f80c866cf60da120422425ab5b897f868b9d2cdbb913323",
       "editorialStatus": "approved",
       "senseAlignment": "same-sense",
       "eligibleThemeIds": [
@@ -10322,13 +10312,11 @@
       "answer": "항로",
       "definitionChecksum": "sha256:91fc62d0b45df7bcf62f1acb87e15f704bfa21520646a24007e58f08f6f7ef34",
       "resolvedClueChecksum": "sha256:1ee89a2aa07a138aff5da78f39d0c601633f848527465abf90aa86ec930a4abb",
-      "editorialStatus": "approved",
-      "senseAlignment": "same-sense",
-      "eligibleThemeIds": [
-        "road-places"
-      ],
+      "editorialStatus": "not-applicable-rejected",
+      "senseAlignment": "not-applicable",
+      "eligibleThemeIds": [],
       "reasonCodes": [
-        "direct-fit:road-places"
+        "base-editorial-rejected"
       ]
     },
     {
@@ -11449,13 +11437,11 @@
       "answer": "효녀",
       "definitionChecksum": "sha256:2a92b621f42b33b80e29e3c417f70a3a76cb914e1c817b9bf0853a9240cef737",
       "resolvedClueChecksum": "sha256:9201b6376f92563f64a8a546e5affb83f21520402c626efc72a83b94b5120b34",
-      "editorialStatus": "approved",
-      "senseAlignment": "same-sense",
-      "eligibleThemeIds": [
-        "home-family"
-      ],
+      "editorialStatus": "not-applicable-rejected",
+      "senseAlignment": "not-applicable",
+      "eligibleThemeIds": [],
       "reasonCodes": [
-        "direct-fit:home-family"
+        "base-editorial-rejected"
       ]
     },
     {
@@ -11479,13 +11465,11 @@
       "answer": "효부",
       "definitionChecksum": "sha256:2ca56579f0a1e12e2b45dee0bc0ec9b2f98839dfec6b3b311e362cffddc7f6f1",
       "resolvedClueChecksum": "sha256:bc5b073edf673bcc51535d50744943a10ad34d9cd4707f13123e15af27e1ace3",
-      "editorialStatus": "approved",
-      "senseAlignment": "same-sense",
-      "eligibleThemeIds": [
-        "home-family"
-      ],
+      "editorialStatus": "not-applicable-rejected",
+      "senseAlignment": "not-applicable",
+      "eligibleThemeIds": [],
       "reasonCodes": [
-        "direct-fit:home-family"
+        "base-editorial-rejected"
       ]
     },
     {

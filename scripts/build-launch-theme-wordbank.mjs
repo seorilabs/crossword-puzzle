@@ -60,9 +60,9 @@ export const LAUNCH_THEME_REVIEW_CONTRACT = Object.freeze({
   expectedCandidateFileSha256:
     "sha256:b73638293895ee31b0f11c3eea9d31f343c5e936df45faeea308a570ce16a44f",
   expectedBaseWordBankSha256:
-    "sha256:c08638a2704599509299ec929d5d85d4b3489c01e3a710c7fff400e0b668ffdd",
+    "sha256:0b17e62c567e17c2f992dd1d470b203362e3843f63a4fc9316ec9b83f53012e8",
   expectedBaseEditorialLedgerSha256:
-    "sha256:3bb61a4652491a64362368479f4840ccbb113d89ac9a29872b8e8fd0761af813",
+    "sha256:ac98679ead880d0e9dab86fc4a0d6bcd6086578dbc0e6fbdaba0830a84a4d85a",
   expectedTaxonomySha256:
     "sha256:f6719bfad3c4d1b6555e1988633dc712a526dd5025e112e398eab6d6097cbc2d",
   shardSpecs: LAUNCH_THEME_SHARD_SPECS,

@@ -3,7 +3,7 @@
   "contentLocale": "ko-KR",
   "editorialCheckSetId": "ko-kr-launch-editorial-checks-v1",
   "candidateFileSha256": "sha256:b73638293895ee31b0f11c3eea9d31f343c5e936df45faeea308a570ce16a44f",
-  "wordbankFileSha256": "sha256:c08638a2704599509299ec929d5d85d4b3489c01e3a710c7fff400e0b668ffdd",
+  "wordbankFileSha256": "sha256:0b17e62c567e17c2f992dd1d470b203362e3843f63a4fc9316ec9b83f53012e8",
   "coverage": [
     {
       "reviewerId": "content-editorial-pass-a",
@@ -11,7 +11,7 @@
       "startIndex": 0,
       "endIndexInclusive": 799,
       "decisionFile": "data/game-content/v1/ko-KR/reviews/editorial-decisions-0000-0799.json",
-      "decisionFileSha256": "sha256:7bbd77cb72870e9abae0ead4267d5f695cb4626c7dc9fe5ed44e47f88097d08c"
+      "decisionFileSha256": "sha256:196b0614a0d358d1e4fda92269533ae7b867dab64d10e7cac1c3e0b2cb1836c9"
     },
     {
       "reviewerId": "content-editorial-pass-b",
@@ -19,7 +19,7 @@
       "startIndex": 800,
       "endIndexInclusive": 1599,
       "decisionFile": "data/game-content/v1/ko-KR/reviews/editorial-decisions-0800-1599.json",
-      "decisionFileSha256": "sha256:f2236283e85bc1b6d0e24996f2f4a2ed0e2a770ac0dbc654264da26ed82c5fe6"
+      "decisionFileSha256": "sha256:a6d387bbcefa6e621c732dbcd56f5f2e33d8c88283fc3961c78f9667aa206af8"
     },
     {
       "reviewerId": "content-editorial-pass-c",
@@ -27,26 +27,26 @@
       "startIndex": 1600,
       "endIndexInclusive": 2399,
       "decisionFile": "data/game-content/v1/ko-KR/reviews/editorial-decisions-1600-2399.json",
-      "decisionFileSha256": "sha256:a8dd1d2f2fc4e83bd8ee86e0728546aba0590b143c70c27af7f5ade3a7ca7a88"
+      "decisionFileSha256": "sha256:6fbd18f0daa4af38182fe52d65b5c05dfca58524469b80629d403b571b4539d0"
     }
   ],
   "summary": {
-    "approved": 2179,
-    "rejected": 221,
-    "rewritten": 148,
+    "approved": 2151,
+    "rejected": 249,
+    "rewritten": 165,
     "difficulty": {
-      "easy": 438,
-      "normal": 1104,
-      "hard": 637
+      "easy": 430,
+      "normal": 1091,
+      "hard": 630
     },
     "themes": {
-      "general": 415,
-      "home-family": 266,
+      "general": 405,
+      "home-family": 260,
       "learning-culture": 353,
-      "table-kitchen": 316,
-      "living-world": 322,
-      "work-community": 414,
-      "road-places": 340
+      "table-kitchen": 314,
+      "living-world": 318,
+      "work-community": 408,
+      "road-places": 337
     }
   },
   "decisions": [
@@ -252,16 +252,14 @@
       "candidateIndex": 13,
       "sourceEntryId": "14565",
       "answer": "가상도",
-      "decision": "approve",
+      "decision": "reject",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "ambiguous-or-misleading-sense"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:02459dca661ba52e47c034700156f341f8fde7786cd88494ec5335367e7764e7",
       "reviewerId": "content-editorial-pass-a",
-      "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "어떤 일의 상황을 가정하고 상상하여 그린 그림",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "reviewedAt": "2026-07-18T00:00:00.000Z"
     },
     {
       "candidateIndex": 14,
@@ -2092,16 +2090,14 @@
       "candidateIndex": 136,
       "sourceEntryId": "60094",
       "answer": "경기",
-      "decision": "approve",
+      "decision": "reject",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "duplicate-definition"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:27fea44aa83e59ea670c3616f5f7634ed4eafbb4bff63bf39857010afaa32341",
       "reviewerId": "content-editorial-pass-a",
-      "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "운동이나 기술 등의 능력을 서로 겨룸",
-      "explanationReasonCode": "source-definition-adds-result-context"
+      "reviewedAt": "2026-07-18T00:00:00.000Z"
     },
     {
       "candidateIndex": 137,
@@ -2373,16 +2369,14 @@
       "candidateIndex": 155,
       "sourceEntryId": "26112",
       "answer": "경화증",
-      "decision": "approve",
+      "decision": "reject",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "difficulty-mismatch"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:4bcf35f525484dd9e9bea30265ac8a1113476d09b5a25a429e1ff77bae90a5d1",
       "reviewerId": "content-editorial-pass-a",
-      "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "몸의 조직이나 기관이 단단하게 굳어지는 증상",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "reviewedAt": "2026-07-18T00:00:00.000Z"
     },
     {
       "candidateIndex": 156,
@@ -2479,16 +2473,14 @@
       "candidateIndex": 162,
       "sourceEntryId": "26229",
       "answer": "계산",
-      "decision": "approve",
+      "decision": "reject",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "ambiguous-or-misleading-sense"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:91a22a77f8e79918f689971924d6f17a268bcefbd5538cdffd74ab8a9bd88041",
       "reviewerId": "content-editorial-pass-a",
-      "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "물건값이나 비용을 냄",
-      "explanationReasonCode": "source-definition-adds-result-context"
+      "reviewedAt": "2026-07-18T00:00:00.000Z"
     },
     {
       "candidateIndex": 163,
@@ -6849,16 +6841,14 @@
       "candidateIndex": 454,
       "sourceEntryId": "17522",
       "answer": "꽃삽",
-      "decision": "approve",
+      "decision": "reject",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "duplicate-definition"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:b0129932fa78c34b909cedf68a6d55ccb00c09df072e7920116f650e5aeb6dc9",
       "reviewerId": "content-editorial-pass-a",
-      "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "화초나 꽃나무를 심거나 가꾸는 데 쓰는 작은 삽",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "reviewedAt": "2026-07-18T00:00:00.000Z"
     },
     {
       "candidateIndex": 455,
@@ -10286,16 +10276,14 @@
       "candidateIndex": 684,
       "sourceEntryId": "70748",
       "answer": "동생",
-      "decision": "approve",
+      "decision": "reject",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "ambiguous-or-misleading-sense"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:27b09ec552331ff2e7d599ee60726a07c032af9b3699efd472d6218dd7a5951d",
       "reviewerId": "content-editorial-pass-a",
-      "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "나이가 더 많은 사람이 나이가 어린 사람을 친숙하게 이르거나 부르는 말",
-      "explanationReasonCode": "source-definition-adds-result-context"
+      "reviewedAt": "2026-07-18T00:00:00.000Z"
     },
     {
       "candidateIndex": 685,
@@ -12420,16 +12408,17 @@
       "candidateIndex": 827,
       "sourceEntryId": "55589",
       "answer": "모종삽",
-      "decision": "approve",
+      "decision": "rewrite",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "duplicate-definition"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:1e989abed36c8e072418fcf510a4be8796de6c1f5e24f8b2fe975ef9c8c0468a",
       "reviewerId": "content-editorial-pass-b",
       "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "어린 식물을 옮겨 심을 때 사용하는 작은 삽",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "rewrittenClue": "어린 식물의 뿌리를 흙째 떠 옮겨 심을 때 쓰는 작은 삽",
+      "shortExplanation": "어린 식물의 뿌리를 흙째 떠 옮겨 심을 때 쓰는 작은 삽",
+      "explanationReasonCode": "reviewed-clue-serves-as-result-explanation"
     },
     {
       "candidateIndex": 828,
@@ -12556,16 +12545,17 @@
       "candidateIndex": 836,
       "sourceEntryId": "69465",
       "answer": "목적",
-      "decision": "approve",
+      "decision": "rewrite",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "ambiguous-or-misleading-sense"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:f2e2aa76be98cbcd0fd4c1dcbb04551fa5c5c4a227c13a345af59d953bd94b4b",
       "reviewerId": "content-editorial-pass-b",
       "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "이루려고 하는 일이나 나아가고자 하는 방향",
-      "explanationReasonCode": "source-definition-adds-result-context"
+      "rewrittenClue": "단순한 까닭이 아니라, 실현하려고 하는 일이나 나아가려는 방향",
+      "shortExplanation": "단순한 까닭이 아니라, 실현하려고 하는 일이나 나아가려는 방향",
+      "explanationReasonCode": "reviewed-clue-serves-as-result-explanation"
     },
     {
       "candidateIndex": 837,
@@ -14231,16 +14221,17 @@
       "candidateIndex": 948,
       "sourceEntryId": "57325",
       "answer": "박수",
-      "decision": "approve",
+      "decision": "rewrite",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "ambiguous-or-misleading-sense"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:a930916fb926e411a597b46c95dfd421487146fdce2c436344c3eb37e830938a",
       "reviewerId": "content-editorial-pass-b",
       "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "기쁨, 축하, 환영, 칭찬 등을 나타내거나 장단을 맞추려고 두 손뼉을 마주 침",
-      "explanationReasonCode": "source-definition-adds-result-context"
+      "rewrittenClue": "기쁨이나 칭찬을 나타내려고 두 손바닥을 마주쳐 소리를 내는 행동",
+      "shortExplanation": "기쁨이나 칭찬을 나타내려고 두 손바닥을 마주쳐 소리를 내는 행동",
+      "explanationReasonCode": "reviewed-clue-serves-as-result-explanation"
     },
     {
       "candidateIndex": 949,
@@ -14896,16 +14887,14 @@
       "candidateIndex": 993,
       "sourceEntryId": "59168",
       "answer": "배아",
-      "decision": "approve",
+      "decision": "reject",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "duplicate-definition"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:f6a0e61d33c0bb5530a504f17bc221bb33bd66c64e738f49b57b5e93ca52851d",
       "reviewerId": "content-editorial-pass-b",
-      "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "식물의 씨 속에 있는 앞으로 싹이 될 부분",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "reviewedAt": "2026-07-18T00:00:00.000Z"
     },
     {
       "candidateIndex": 994,
@@ -15555,16 +15544,17 @@
       "candidateIndex": 1037,
       "sourceEntryId": "14520",
       "answer": "보장",
-      "decision": "approve",
+      "decision": "rewrite",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "ambiguous-or-misleading-sense"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:b785dd7b888b30511ca7e2d28832f82aba5e6789af5f4b5558840f43b6564a42",
       "reviewerId": "content-editorial-pass-b",
       "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "잘못되는 일이 없도록 보증하거나 보호함",
-      "explanationReasonCode": "source-definition-adds-result-context"
+      "rewrittenClue": "법이나 제도로 권리나 안전을 확실히 누리도록 지키는 일",
+      "shortExplanation": "법이나 제도로 권리나 안전을 확실히 누리도록 지키는 일",
+      "explanationReasonCode": "reviewed-clue-serves-as-result-explanation"
     },
     {
       "candidateIndex": 1038,
@@ -16018,16 +16008,14 @@
       "candidateIndex": 1068,
       "sourceEntryId": "65853",
       "answer": "부분",
-      "decision": "approve",
+      "decision": "reject",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "duplicate-definition"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:8e6e5c4df78452ae80188895f93f07e7ad87831fcd13dab1113af3afb8fb9878",
       "reviewerId": "content-editorial-pass-b",
-      "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "전체를 이루고 있는 작은 범위. 또는 전체를 여러 개로 나눈 것 가운데 하나",
-      "explanationReasonCode": "source-definition-adds-result-context"
+      "reviewedAt": "2026-07-18T00:00:00.000Z"
     },
     {
       "candidateIndex": 1069,
@@ -16078,16 +16066,17 @@
       "candidateIndex": 1072,
       "sourceEntryId": "59700",
       "answer": "부유층",
-      "decision": "approve",
+      "decision": "rewrite",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "ambiguous-or-misleading-sense"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:2056b37e46ccb7ea606cfbaff3ba9a8c67c0f1190fd28b7a9f96925329d7c894",
       "reviewerId": "content-editorial-pass-b",
       "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "재물이 많아서 살림이 아주 넉넉한 사람들의 계층",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "rewrittenClue": "재산과 소득이 많아 경제적으로 넉넉한 사람들의 계층",
+      "shortExplanation": "재산과 소득이 많아 경제적으로 넉넉한 사람들의 계층",
+      "explanationReasonCode": "reviewed-clue-serves-as-result-explanation"
     },
     {
       "candidateIndex": 1073,
@@ -16691,16 +16680,15 @@
       "candidateIndex": 1113,
       "sourceEntryId": "93428",
       "answer": "불효자",
-      "decision": "approve",
+      "decision": "reject",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "biased-or-loaded-wording",
+        "launch-family-safety-policy"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:37af289713281d7acea94d18159f918968a629a33dea84fc4db210f70f1d0be5",
       "reviewerId": "content-editorial-pass-b",
-      "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "부모를 효성스럽게 모시어 받들지 않은 자식",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "reviewedAt": "2026-07-18T00:00:00.000Z"
     },
     {
       "candidateIndex": 1114,
@@ -17292,16 +17280,14 @@
       "candidateIndex": 1154,
       "sourceEntryId": "61187",
       "answer": "사이",
-      "decision": "approve",
+      "decision": "reject",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "ambiguous-or-misleading-sense"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:c33edfb2302a89e6d63cbfacecdb944efc98f85e3927437f966eb129ccf114ee",
       "reviewerId": "content-editorial-pass-b",
-      "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "어떤 때부터 다른 때까지의 동안",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "reviewedAt": "2026-07-18T00:00:00.000Z"
     },
     {
       "candidateIndex": 1155,
@@ -17804,16 +17790,17 @@
       "candidateIndex": 1188,
       "sourceEntryId": "62121",
       "answer": "상견례",
-      "decision": "approve",
+      "decision": "rewrite",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "ambiguous-or-misleading-sense"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:2b82e35cfb61e742a0d8b639d61650c4d812ed594bb095a9f32751e56ab3b30c",
       "reviewerId": "content-editorial-pass-b",
       "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "여러 사람들이 공식적으로 처음 만나 서로 인사하는 일",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "rewrittenClue": "결혼을 앞둔 두 집안의 가족들이 처음 공식적으로 만나 인사하는 자리",
+      "shortExplanation": "결혼을 앞둔 두 집안의 가족들이 처음 공식적으로 만나 인사하는 자리",
+      "explanationReasonCode": "reviewed-clue-serves-as-result-explanation"
     },
     {
       "candidateIndex": 1189,
@@ -17849,31 +17836,30 @@
       "candidateIndex": 1191,
       "sourceEntryId": "71096",
       "answer": "상대방",
-      "decision": "approve",
+      "decision": "rewrite",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "ambiguous-or-misleading-sense"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:0a37c65a91dfe45bb464ac33ca92e8e7ad1a49d3dd5e0c3f037c36e6dbdb867b",
       "reviewerId": "content-editorial-pass-b",
       "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "일을 하거나 말을 할 때 짝을 이루는 사람",
-      "explanationReasonCode": "source-definition-adds-result-context"
+      "rewrittenClue": "대화나 일을 할 때 나와 마주하여 짝을 이루는 한 사람",
+      "shortExplanation": "대화나 일을 할 때 나와 마주하여 짝을 이루는 한 사람",
+      "explanationReasonCode": "reviewed-clue-serves-as-result-explanation"
     },
     {
       "candidateIndex": 1192,
       "sourceEntryId": "61705",
       "answer": "상류층",
-      "decision": "approve",
+      "decision": "reject",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "duplicate-definition"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:9565ba22d4a77fa0f846719728e6bc4edb66f0306100fbd7edbcec9ec54cb961",
       "reviewerId": "content-editorial-pass-b",
-      "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "사회적 지위나 생활 수준 등이 높은 계층",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "reviewedAt": "2026-07-18T00:00:00.000Z"
     },
     {
       "candidateIndex": 1193,
@@ -18143,16 +18129,15 @@
       "candidateIndex": 1211,
       "sourceEntryId": "62549",
       "answer": "생가슴",
-      "decision": "approve",
+      "decision": "reject",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "rare-or-obscure-expression",
+        "difficulty-mismatch"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:19b70460df746603e6731f357b89580e9d8745e742f69571ee4649509166e928",
       "reviewerId": "content-editorial-pass-b",
-      "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "필요 없는 근심이나 걱정 때문에 상하는 마음",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "reviewedAt": "2026-07-18T00:00:00.000Z"
     },
     {
       "candidateIndex": 1212,
@@ -18438,16 +18423,14 @@
       "candidateIndex": 1231,
       "sourceEntryId": "62725",
       "answer": "생필품",
-      "decision": "approve",
+      "decision": "reject",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "duplicate-definition"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:632f24f1efd17dd8c0d5dd3c61ddd6511f82a098b24a829c2b06e1ffffd6c91c",
       "reviewerId": "content-editorial-pass-b",
-      "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "일상생활에 꼭 필요한 물건",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "reviewedAt": "2026-07-18T00:00:00.000Z"
     },
     {
       "candidateIndex": 1232,
@@ -19137,16 +19120,17 @@
       "candidateIndex": 1278,
       "sourceEntryId": "69717",
       "answer": "성균관",
-      "decision": "approve",
+      "decision": "rewrite",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "factual-inaccuracy"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:2723ccfcb8fbd3b6603a8aa1fdbf32730c29f82898de1e1f5d57b47d9b8fd33e",
       "reviewerId": "content-editorial-pass-b",
       "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "고려 시대 유학을 가르치던 최고의 교육 기관",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "rewrittenClue": "고려 말부터 조선 시대까지 유학 교육을 맡은 최고 교육 기관",
+      "shortExplanation": "고려 말부터 조선 시대까지 유학 교육을 맡은 최고 교육 기관",
+      "explanationReasonCode": "reviewed-clue-serves-as-result-explanation"
     },
     {
       "candidateIndex": 1279,
@@ -19776,16 +19760,14 @@
       "candidateIndex": 1321,
       "sourceEntryId": "15619",
       "answer": "수고",
-      "decision": "approve",
+      "decision": "reject",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "ambiguous-or-misleading-sense"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:081ff98b48613c849066c8a0b16b916d2139e9f50a4905ad0889a1de73696872",
       "reviewerId": "content-editorial-pass-b",
-      "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "어떤 일을 하느라 힘을 들이고 애를 씀. 또는 그런 어려움",
-      "explanationReasonCode": "source-definition-adds-result-context"
+      "reviewedAt": "2026-07-18T00:00:00.000Z"
     },
     {
       "candidateIndex": 1322,
@@ -20530,16 +20512,17 @@
       "candidateIndex": 1372,
       "sourceEntryId": "65890",
       "answer": "승강장",
-      "decision": "approve",
+      "decision": "rewrite",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "ambiguous-or-misleading-sense"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:8fa07099d6b96505d7ad8a3b2a8ae751a5374dacc1dee13e1a585b62ff80aef0",
       "reviewerId": "content-editorial-pass-b",
       "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "정거장이나 역에서 버스나 기차 등을 타고 내리는 곳",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "rewrittenClue": "역에서 선로나 차도 옆에 승객이 기다렸다 오르내리도록 마련한 곳을 이르는 한자어",
+      "shortExplanation": "역에서 선로나 차도 옆에 승객이 기다렸다 오르내리도록 마련한 곳을 이르는 한자어",
+      "explanationReasonCode": "reviewed-clue-serves-as-result-explanation"
     },
     {
       "candidateIndex": 1373,
@@ -21235,31 +21218,28 @@
       "candidateIndex": 1419,
       "sourceEntryId": "78475",
       "answer": "실리콘",
-      "decision": "approve",
+      "decision": "reject",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "scientific-inaccuracy",
+        "ambiguous-or-misleading-sense"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:8ba4eb604844f8a607bfeaeed5c9a2899976551804eb0e9370e856b3eb37e1ad",
       "reviewerId": "content-editorial-pass-b",
-      "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "생물의 결합 조직이나 뼈를 이루는 비금속 원소",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "reviewedAt": "2026-07-18T00:00:00.000Z"
     },
     {
       "candidateIndex": 1420,
       "sourceEntryId": "64947",
       "answer": "실수",
-      "decision": "approve",
+      "decision": "reject",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "ambiguous-or-misleading-sense"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:25104baa4f597db654975fa23f28e53ed5bd60cdb7167629e963b453a55e4cc3",
       "reviewerId": "content-editorial-pass-b",
-      "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "잘 알지 못하거나 조심하지 않아서 저지르는 잘못",
-      "explanationReasonCode": "source-definition-adds-result-context"
+      "reviewedAt": "2026-07-18T00:00:00.000Z"
     },
     {
       "candidateIndex": 1421,
@@ -22121,16 +22101,14 @@
       "candidateIndex": 1479,
       "sourceEntryId": "66982",
       "answer": "약소국",
-      "decision": "approve",
+      "decision": "reject",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "political-or-ideological-context"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:38a6ac37f84b096529b06f736aad63a93e78bbee1bbe672d6f35be0e7197daa6",
       "reviewerId": "content-editorial-pass-b",
-      "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "경제적이나 군사적으로 힘이 약하고 작은 나라",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "reviewedAt": "2026-07-18T00:00:00.000Z"
     },
     {
       "candidateIndex": 1480,
@@ -23140,16 +23118,17 @@
       "candidateIndex": 1547,
       "sourceEntryId": "67831",
       "answer": "열람실",
-      "decision": "approve",
+      "decision": "rewrite",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "ambiguous-or-misleading-sense"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:e49129e261224c51d171bad614ee96d6d8f61a8afcaeff90e7884ca8814108fb",
       "reviewerId": "content-editorial-pass-b",
       "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "도서관 등에서 책이나 자료 등을 읽는 방",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "rewrittenClue": "도서관 자료를 대출하지 않고 그 자리에서 읽거나 살펴보는 방",
+      "shortExplanation": "도서관 자료를 대출하지 않고 그 자리에서 읽거나 살펴보는 방",
+      "explanationReasonCode": "reviewed-clue-serves-as-result-explanation"
     },
     {
       "candidateIndex": 1548,
@@ -23185,16 +23164,14 @@
       "candidateIndex": 1550,
       "sourceEntryId": "67586",
       "answer": "열차",
-      "decision": "approve",
+      "decision": "reject",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "duplicate-definition"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:f4394516b0eb4c469e8a08fbd03ec040691997554afc0ec71bdb67abc1c18110",
       "reviewerId": "content-editorial-pass-b",
-      "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "여러 개의 칸을 길게 이어 놓은 기차나 전철",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "reviewedAt": "2026-07-18T00:00:00.000Z"
     },
     {
       "candidateIndex": 1551,
@@ -24653,16 +24630,14 @@
       "candidateIndex": 1649,
       "sourceEntryId": "70304",
       "answer": "원천적",
-      "decision": "approve",
+      "decision": "reject",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "ambiguous-or-misleading-sense"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:f701cf1950122eb7220a789a3b6114d06f101775a894d6a58832c6a166a0eb27",
       "reviewerId": "content-editorial-pass-c",
-      "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "어떤 사물이 나거나 생기는 바탕에 관계된 것",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "reviewedAt": "2026-07-18T00:00:00.000Z"
     },
     {
       "candidateIndex": 1650,
@@ -24933,16 +24908,17 @@
       "candidateIndex": 1668,
       "sourceEntryId": "72443",
       "answer": "유도",
-      "decision": "approve",
+      "decision": "rewrite",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "ambiguous-or-misleading-sense"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:13211938ae1ff4244f0708ea47c16864fa56e261de388b572e8f02ce5ae3c391",
       "reviewerId": "content-editorial-pass-c",
       "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "사람이나 물건을 원하는 방향이나 장소로 이끎",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "rewrittenClue": "안내 표시나 신호로 사람이나 차량을 정해진 방향으로 움직이게 하는 일",
+      "shortExplanation": "안내 표시나 신호로 사람이나 차량을 정해진 방향으로 움직이게 하는 일",
+      "explanationReasonCode": "reviewed-clue-serves-as-result-explanation"
     },
     {
       "candidateIndex": 1669,
@@ -26372,16 +26348,15 @@
       "candidateIndex": 1765,
       "sourceEntryId": "73433",
       "answer": "입신",
-      "decision": "approve",
+      "decision": "reject",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "ambiguous-or-misleading-sense",
+        "outdated-or-stereotyped-expression"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:a4f04a9de293df7a8fd00a1fb0780d2d297f91d348ba50e274e6ab8d1eed46ef",
       "reviewerId": "content-editorial-pass-c",
-      "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "사회적으로 성공하여 자신의 지위를 확실하게 세움",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "reviewedAt": "2026-07-18T00:00:00.000Z"
     },
     {
       "candidateIndex": 1766,
@@ -26417,16 +26392,17 @@
       "candidateIndex": 1768,
       "sourceEntryId": "73457",
       "answer": "입장객",
-      "decision": "approve",
+      "decision": "rewrite",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "ambiguous-or-misleading-sense"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:072cf703e839a4fa4a06ceba65b4dac6e7c464032b3713000234017da204063f",
       "reviewerId": "content-editorial-pass-c",
       "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "행사나 공연 등이 열리는 장소에 들어간 손님",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "rewrittenClue": "행사나 공연 장소 안으로 들어온 손님",
+      "shortExplanation": "행사나 공연 장소 안으로 들어온 손님",
+      "explanationReasonCode": "reviewed-clue-serves-as-result-explanation"
     },
     {
       "candidateIndex": 1769,
@@ -28218,16 +28194,17 @@
       "candidateIndex": 1889,
       "sourceEntryId": "75799",
       "answer": "정복욕",
-      "decision": "approve",
+      "decision": "rewrite",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "source-sense-provenance-mismatch"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:9e87cdbc0882645ea4009837c9bbec5a65c73c294e6c9cd9a12179752bed75a4",
       "reviewerId": "content-editorial-pass-c",
       "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "어려움을 이겨 내고 자기 뜻을 이루려는 욕구",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "rewrittenClue": "산 정상이나 미지의 대상을 끝내 이겨 내고 싶어 하는 욕구",
+      "shortExplanation": "산 정상이나 미지의 대상을 끝내 이겨 내고 싶어 하는 욕구",
+      "explanationReasonCode": "reviewed-clue-serves-as-result-explanation"
     },
     {
       "candidateIndex": 1890,
@@ -28647,16 +28624,15 @@
       "candidateIndex": 1918,
       "sourceEntryId": "75499",
       "answer": "조리사",
-      "decision": "approve",
+      "decision": "reject",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "duplicate-definition",
+        "factual-inaccuracy"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:fb2b380768296416f5781fe0b43d741073f7bb4693ea132c7d8d8edcab03e6cd",
       "reviewerId": "content-editorial-pass-c",
-      "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "음식점에서 음식을 만드는 사람",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "reviewedAt": "2026-07-18T00:00:00.000Z"
     },
     {
       "candidateIndex": 1919,
@@ -28883,16 +28859,14 @@
       "candidateIndex": 1934,
       "sourceEntryId": "75988",
       "answer": "종주국",
-      "decision": "approve",
+      "decision": "reject",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "ambiguous-or-misleading-sense"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:7b271f799069eec86254bb7c169b368e5b597cf87fdac4b2f9166e60cf546a6f",
       "reviewerId": "content-editorial-pass-c",
-      "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "어떤 현상이나 대상 등이 처음 시작된 나라",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "reviewedAt": "2026-07-18T00:00:00.000Z"
     },
     {
       "candidateIndex": 1935,
@@ -30157,31 +30131,27 @@
       "candidateIndex": 2020,
       "sourceEntryId": "76815",
       "answer": "진상",
-      "decision": "approve",
+      "decision": "reject",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "ambiguous-or-misleading-sense"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:50a3324dd4693380bc8a8dff0dea2dc3deb31908ad8d82e30c1eb6c7c94875d7",
       "reviewerId": "content-editorial-pass-c",
-      "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "사물이나 사건, 현상의 거짓 없는 모습이나 내용",
-      "explanationReasonCode": "source-definition-adds-result-context"
+      "reviewedAt": "2026-07-18T00:00:00.000Z"
     },
     {
       "candidateIndex": 2021,
       "sourceEntryId": "76822",
       "answer": "진수",
-      "decision": "approve",
+      "decision": "reject",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "ambiguous-or-misleading-sense"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:cf17318093c64d834183704879dc8a60c755842d088ee4f5622e6bee939a0fcd",
       "reviewerId": "content-editorial-pass-c",
-      "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "사물이나 현상의 가장 중요하고 근본적인 부분",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "reviewedAt": "2026-07-18T00:00:00.000Z"
     },
     {
       "candidateIndex": 2022,
@@ -30453,16 +30423,14 @@
       "candidateIndex": 2040,
       "sourceEntryId": "79682",
       "answer": "찜통",
-      "decision": "approve",
+      "decision": "reject",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "duplicate-definition"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:3a728ca50067b727da2a019b0d18fd8ce47e91f9791f249f7d3f2db698c1b1e5",
       "reviewerId": "content-editorial-pass-c",
-      "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "뜨거운 김으로 음식을 찌는 조리 기구",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "reviewedAt": "2026-07-18T00:00:00.000Z"
     },
     {
       "candidateIndex": 2041,
@@ -31712,16 +31680,17 @@
       "candidateIndex": 2125,
       "sourceEntryId": "27824",
       "answer": "출신",
-      "decision": "approve",
+      "decision": "rewrite",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "ambiguous-or-misleading-sense"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:3a736279375298126509243d50d0f13d822f41f93722be3c642dc471da1ec217",
       "reviewerId": "content-editorial-pass-c",
       "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "출생 당시 가정이 속한 사회적 신분",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "rewrittenClue": "태어날 당시 집안이 속해 있던 사회적 신분을 이르는 말",
+      "shortExplanation": "태어날 당시 집안이 속해 있던 사회적 신분을 이르는 말",
+      "explanationReasonCode": "reviewed-clue-serves-as-result-explanation"
     },
     {
       "candidateIndex": 2126,
@@ -32038,16 +32007,17 @@
       "candidateIndex": 2147,
       "sourceEntryId": "28122",
       "answer": "치아",
-      "decision": "approve",
+      "decision": "rewrite",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "ambiguous-or-misleading-sense"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:385cb4833290ba18828e496d14fc28d6554859dea34aae42a79e877803bb9386",
       "reviewerId": "content-editorial-pass-c",
       "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "음식물을 씹는 일을 하는 기관",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "rewrittenClue": "사람의 입안에서 음식을 씹는 단단한 기관을 이르는 의학적·공식적 말",
+      "shortExplanation": "사람의 입안에서 음식을 씹는 단단한 기관을 이르는 의학적·공식적 말",
+      "explanationReasonCode": "reviewed-clue-serves-as-result-explanation"
     },
     {
       "candidateIndex": 2148,
@@ -33717,16 +33687,17 @@
       "candidateIndex": 2261,
       "sourceEntryId": "86167",
       "answer": "필수품",
-      "decision": "approve",
+      "decision": "rewrite",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "duplicate-definition"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:7649260041304e5e1093d2f66300013e0dde30da173d26a27bebcda36d069cf1",
       "reviewerId": "content-editorial-pass-c",
       "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "일상생활에 없어서는 안 되는 반드시 필요한 물건",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "rewrittenClue": "어떤 활동이나 생활을 위해 반드시 갖추어야 하는 물건",
+      "shortExplanation": "어떤 활동이나 생활을 위해 반드시 갖추어야 하는 물건",
+      "explanationReasonCode": "reviewed-clue-serves-as-result-explanation"
     },
     {
       "candidateIndex": 2262,
@@ -34352,16 +34323,17 @@
       "candidateIndex": 2304,
       "sourceEntryId": "84808",
       "answer": "항공기",
-      "decision": "approve",
+      "decision": "rewrite",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "ambiguous-or-misleading-sense"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:a9ad8bc9456c803dc21212947c67cf523fa8cbc3600471a5961d098fbd43864a",
       "reviewerId": "content-editorial-pass-c",
       "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "사람이나 물건을 싣고 공중을 날아다닐 수 있는 교통수단",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "rewrittenClue": "공기의 반작용을 이용해 뜨고 이동하며 비행기·헬리콥터·글라이더를 아우르는 기계",
+      "shortExplanation": "공기의 반작용을 이용해 뜨고 이동하며 비행기·헬리콥터·글라이더를 아우르는 기계",
+      "explanationReasonCode": "reviewed-clue-serves-as-result-explanation"
     },
     {
       "candidateIndex": 2305,
@@ -34382,16 +34354,14 @@
       "candidateIndex": 2306,
       "sourceEntryId": "85360",
       "answer": "항로",
-      "decision": "approve",
+      "decision": "reject",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "duplicate-definition"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:91fc62d0b45df7bcf62f1acb87e15f704bfa21520646a24007e58f08f6f7ef34",
       "reviewerId": "content-editorial-pass-c",
-      "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "배가 바다 위에서 지나다니는 길",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "reviewedAt": "2026-07-18T00:00:00.000Z"
     },
     {
       "candidateIndex": 2307,
@@ -35519,16 +35489,15 @@
       "candidateIndex": 2383,
       "sourceEntryId": "89091",
       "answer": "효녀",
-      "decision": "approve",
+      "decision": "reject",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "outdated-or-gendered-expression",
+        "launch-family-safety-policy"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:2a92b621f42b33b80e29e3c417f70a3a76cb914e1c817b9bf0853a9240cef737",
       "reviewerId": "content-editorial-pass-c",
-      "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "부모를 잘 모시어 받드는 딸",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "reviewedAt": "2026-07-18T00:00:00.000Z"
     },
     {
       "candidateIndex": 2384,
@@ -35549,16 +35518,15 @@
       "candidateIndex": 2385,
       "sourceEntryId": "89085",
       "answer": "효부",
-      "decision": "approve",
+      "decision": "reject",
       "reasonCodes": [
-        "editorially-reviewed-no-change"
+        "outdated-or-gendered-expression",
+        "rare-or-obscure-expression"
       ],
       "checkSetId": "ko-kr-launch-editorial-checks-v1",
       "definitionChecksum": "sha256:2ca56579f0a1e12e2b45dee0bc0ec9b2f98839dfec6b3b311e362cffddc7f6f1",
       "reviewerId": "content-editorial-pass-c",
-      "reviewedAt": "2026-07-18T00:00:00.000Z",
-      "shortExplanation": "시부모를 잘 모시어 받드는 며느리",
-      "explanationReasonCode": "source-definition-serves-as-clue-and-explanation"
+      "reviewedAt": "2026-07-18T00:00:00.000Z"
     },
     {
       "candidateIndex": 2386,

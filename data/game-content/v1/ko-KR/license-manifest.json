@@ -124,14 +124,14 @@
       "data/game-content/v1/ko-KR/reviews/editorial-decisions-1600-2399.json"
     ],
     "decisionFileSha256": [
-      "sha256:7bbd77cb72870e9abae0ead4267d5f695cb4626c7dc9fe5ed44e47f88097d08c",
-      "sha256:f2236283e85bc1b6d0e24996f2f4a2ed0e2a770ac0dbc654264da26ed82c5fe6",
-      "sha256:a8dd1d2f2fc4e83bd8ee86e0728546aba0590b143c70c27af7f5ade3a7ca7a88"
+      "sha256:196b0614a0d358d1e4fda92269533ae7b867dab64d10e7cac1c3e0b2cb1836c9",
+      "sha256:a6d387bbcefa6e621c732dbcd56f5f2e33d8c88283fc3961c78f9667aa206af8",
+      "sha256:6fbd18f0daa4af38182fe52d65b5c05dfca58524469b80629d403b571b4539d0"
     ],
     "baseWordbankFile": "data/game-content/v1/ko-KR/reviewed-launch-wordbank.json",
-    "baseWordbankFileSha256": "sha256:c08638a2704599509299ec929d5d85d4b3489c01e3a710c7fff400e0b668ffdd",
+    "baseWordbankFileSha256": "sha256:0b17e62c567e17c2f992dd1d470b203362e3843f63a4fc9316ec9b83f53012e8",
     "baseLedgerFile": "data/game-content/v1/ko-KR/reviews/editorial-ledger.json",
-    "baseLedgerFileSha256": "sha256:3bb61a4652491a64362368479f4840ccbb113d89ac9a29872b8e8fd0761af813",
+    "baseLedgerFileSha256": "sha256:ac98679ead880d0e9dab86fc4a0d6bcd6086578dbc0e6fbdaba0830a84a4d85a",
     "themeTaxonomyFile": "data/game-content/v1/ko-KR/reviews/launch-theme-taxonomy.json",
     "themeTaxonomyFileSha256": "sha256:f6719bfad3c4d1b6555e1988633dc712a526dd5025e112e398eab6d6097cbc2d",
     "themeDecisionFiles": [
@@ -140,14 +140,14 @@
       "data/game-content/v1/ko-KR/reviews/editorial-theme-decisions-1600-2399.json"
     ],
     "themeDecisionFileSha256": [
-      "sha256:577e197cbac67bd52fe56db0f56cd9d3387ddd8cf966f50a602cb0d05051813d",
-      "sha256:c16f1378fb6a6fb5e4c6c23da68520aed0401a1cb4f0171a6f5d3b16940a10eb",
-      "sha256:bf02338765a7a42dba979cc5653f119c8fcb2e4b9436f522c5aaffcc1010626f"
+      "sha256:68301625688e6c493f5b2ca4a72119e9037745b09721af4d0f4f9d55b802a5b4",
+      "sha256:bcc5e2d72c56632bcdc65620ea35a6735b3bd80e2a26cf44322c26cda306b630",
+      "sha256:c6fe42decf91f49c7398f4f689ceb72bb2d66dc16e13a6c38e32120cbf106869"
     ],
     "wordbankFile": "data/game-content/v1/ko-KR/reviewed-launch-wordbank-v2.json",
-    "wordbankFileSha256": "sha256:568c464dcb84e1f0a0300742173784b70b5c4daf990bc09c7b167748522f4886",
+    "wordbankFileSha256": "sha256:fff16c5c63ce7c59be3b9286b29306951f3e4e13c2d89d524be67cb429288085",
     "ledgerFile": "data/game-content/v1/ko-KR/reviews/launch-theme-ledger.json",
-    "ledgerFileSha256": "sha256:28cb95260340e4cbe0f439e19945abcda0d43cf7b92d896939dc9e6ceb0f4053"
+    "ledgerFileSha256": "sha256:7a88431935cd58e927e4d604bb4e21c008e55b54a3ebc49614089c1dbf7e19e3"
   },
   "sourceProvenanceIndex": {
     "path": "data/game-content/v1/ko-KR/source-provenance-index.json",

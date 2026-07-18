@@ -23,7 +23,10 @@ import {
   compareCanonicalStrings,
 } from "../packages/crossword-core/src/saveV2.ts";
 import {
+  DIFFICULTY_ORDER,
   DIFFICULTY_PROFILES,
+  getWordDifficulty,
+  isWordDifficultyWithinProfile,
   selectWordsForProfile,
 } from "../packages/crossword-core/src/difficultyProfiles.ts";
 import {
@@ -916,6 +919,61 @@ export function searchOptionsForRetry(options, retryIndex) {
   };
 }
 
+export function validateWordSelectionDifficultyPolicy(
+  selection,
+  profile,
+  field = "word selection",
+) {
+  requireCondition(
+    Array.isArray(selection?.words) &&
+      Array.isArray(selection.difficulties) &&
+      Array.isArray(selection.broadenedWith) &&
+      typeof selection.broadened === "boolean",
+    `${field} difficulty evidence is invalid`,
+  );
+  const effectiveSet = new Set(selection.difficulties);
+  requireCondition(
+    effectiveSet.size === selection.difficulties.length &&
+      canonicalJson(selection.difficulties) ===
+        canonicalJson(
+          DIFFICULTY_ORDER.filter((difficulty) => effectiveSet.has(difficulty)),
+        ),
+    `${field} effective difficulties are not canonical`,
+  );
+  requireCondition(
+    profile.wordDifficulties.every((difficulty) =>
+      effectiveSet.has(difficulty),
+    ),
+    `${field} omits a profile difficulty`,
+  );
+  requireCondition(
+    selection.difficulties.every((difficulty) =>
+      isWordDifficultyWithinProfile(difficulty, profile),
+    ) &&
+      selection.words.every((word) => {
+        const difficulty = getWordDifficulty(word);
+        return (
+          effectiveSet.has(difficulty) &&
+          isWordDifficultyWithinProfile(difficulty, profile)
+        );
+      }),
+    `${field} exceeds ${profile.wordDifficultyCeiling} difficulty ceiling`,
+  );
+  const expectedBroadenedWith = selection.difficulties.filter(
+    (difficulty) => !profile.wordDifficulties.includes(difficulty),
+  );
+  requireCondition(
+    canonicalJson(selection.broadenedWith) ===
+      canonicalJson(expectedBroadenedWith),
+    `${field} broadenedWith does not match effective difficulties`,
+  );
+  requireCondition(
+    selection.broadened === expectedBroadenedWith.length > 0,
+    `${field} broadened flag does not match effective difficulties`,
+  );
+  return true;
+}
+
 export function filterAvailableWords(
   words,
   route,
@@ -930,6 +988,11 @@ export function filterAvailableWords(
   const profile = DIFFICULTY_PROFILES[route.difficulty];
   if (route.route.kind !== "daily") {
     const selection = selectWordsForProfile(available, profile);
+    validateWordSelectionDifficultyPolicy(
+      selection,
+      profile,
+      `${route.puzzleId} word selection`,
+    );
     requireCondition(
       selection.words.length >= 150,
       `${route.puzzleId} has insufficient words after difficulty/cooldown filters: ${selection.words.length}`,
@@ -985,6 +1048,11 @@ export function filterAvailableWords(
     themeWordCount: themeSelection.words.length,
     connectorWordCount: connectorWords.length,
   };
+  validateWordSelectionDifficultyPolicy(
+    selection,
+    profile,
+    `${route.puzzleId} daily word selection`,
+  );
   requireCondition(
     selection.words.length >= 96 && themeSelection.words.length >= 16,
     `${route.puzzleId} has insufficient words after theme/difficulty/cooldown filters: ${selection.words.length}`,
@@ -2089,7 +2157,7 @@ async function resolveGeneratorIdentity(repositoryRoot, options, wordBank) {
     0,
   );
   const config = {
-    schemaVersion: "ko-kr-launch-generator-config/7",
+    schemaVersion: "ko-kr-launch-generator-config/8",
     baseSeed: options.baseSeed,
     attempts: options.attempts,
     searchEscalation: Array.from(

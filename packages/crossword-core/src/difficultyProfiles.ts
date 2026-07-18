@@ -23,14 +23,21 @@ export type DifficultyProfile = {
   minBboxDensity: number;
   // 이 티어에서 허용하는 워드뱅크 difficulty 값(단어 선택 편향)
   wordDifficulties: readonly Difficulty[];
+  // 후보 풀이 부족할 때 자동 보강으로 넘어갈 수 있는 최대 단어 난이도.
+  // wordDifficulties보다 높은 티어가 필요해도 이 상한을 넘으면 보강하지 않는다.
+  wordDifficultyCeiling: Difficulty;
 };
 
-export const DIFFICULTY_ORDER: readonly Difficulty[] = ["easy", "normal", "hard"];
+export const DIFFICULTY_ORDER: readonly Difficulty[] = [
+  "easy",
+  "normal",
+  "hard",
+];
 
 // easy < normal < hard 로 boardSize/maxWords 가 단조 증가하도록 유지한다.
 // "사이즈와 난이도를 동시에 올리지 말 것" 원칙에 따라 easy 는 작은 보드+적은 단어+
-// 초급 어휘로, hard 는 큰 보드+많은 단어+고급 어휘로 구성한다. normal 은 기존
-// 기본 생성값과 동일하게 유지해 회귀가 없도록 한다.
+// 초급 어휘로, hard 는 큰 보드+많은 단어+고급 어휘로 구성한다. normal 은 easy와
+// normal 어휘만 허용해 희귀 어휘 수로 체감 난도를 올리지 않는다.
 export const DIFFICULTY_PROFILES: Record<Difficulty, DifficultyProfile> = {
   easy: {
     difficulty: "easy",
@@ -43,6 +50,8 @@ export const DIFFICULTY_PROFILES: Record<Difficulty, DifficultyProfile> = {
     minCrossRatio: 0.6,
     minBboxDensity: 0.5,
     wordDifficulties: ["easy"],
+    // 기존 생성 안정성 보강 동작은 유지한다.
+    wordDifficultyCeiling: "hard",
   },
   normal: {
     difficulty: "normal",
@@ -56,7 +65,9 @@ export const DIFFICULTY_PROFILES: Record<Difficulty, DifficultyProfile> = {
     minWordCount: 10,
     minCrossRatio: 0.55,
     minBboxDensity: 0.5,
-    wordDifficulties: ["easy", "normal", "hard"],
+    wordDifficulties: ["easy", "normal"],
+    // normal 후보가 부족해도 hard 어휘로 자동 보강하지 않는다.
+    wordDifficultyCeiling: "normal",
   },
   hard: {
     difficulty: "hard",
@@ -72,6 +83,8 @@ export const DIFFICULTY_PROFILES: Record<Difficulty, DifficultyProfile> = {
     minCrossRatio: 0.5,
     minBboxDensity: 0.45,
     wordDifficulties: ["normal", "hard"],
+    // 기존 hard 프로파일의 easy 하향 보강 가능성은 유지한다.
+    wordDifficultyCeiling: "hard",
   },
 };
 
@@ -119,6 +132,17 @@ export function summarizeWordDifficulties<
   return counts;
 }
 
+export function isWordDifficultyWithinProfile(
+  difficulty: Difficulty,
+  profile: DifficultyProfile,
+): boolean {
+  const difficultyIndex = DIFFICULTY_ORDER.indexOf(difficulty);
+  const ceilingIndex = DIFFICULTY_ORDER.indexOf(profile.wordDifficultyCeiling);
+  return (
+    difficultyIndex >= 0 && ceilingIndex >= 0 && difficultyIndex <= ceilingIndex
+  );
+}
+
 // 보드를 안정적으로 생성하기 위한 최소 후보 단어 수. 프로파일 difficulty 필터가
 // 워드뱅크 대부분을 잘라낸 결과 이 수치를 밑돌면(예: easy 풀이 비정상적으로 작아진
 // 경우) 생성이 막힐 수 있으므로, 인접 티어 단어로 풀을 보강한다.
@@ -135,15 +159,23 @@ export type WordSelection<T> = {
 };
 
 // 프로파일 difficulty 로 단어를 거른다. 1차 풀이 minPool 미만이면 생성 실패를
-// 막기 위해 인접(난이도 순) 티어 단어를 차례로 더해 minPool 이상이 되도록
-// 보강한다. 1차 풀이 충분하면(예: easy 907단어) 보강 없이 순수 티어 풀을 쓴다.
-export function selectWordsForProfile<
-  T extends { difficulty?: string | null },
->(
+// 막기 위해 인접(난이도 순) 티어 단어를 wordDifficultyCeiling 안에서만 차례로
+// 더한다. 상한 안에서 minPool을 채울 수 없으면 작은 풀을 그대로 반환해 호출자가
+// fail closed하도록 한다. 1차 풀이 충분하면 보강 없이 순수 티어 풀을 쓴다.
+export function selectWordsForProfile<T extends { difficulty?: string | null }>(
   words: readonly T[],
   profile: DifficultyProfile,
   minPool: number = MIN_GENERATION_WORD_POOL,
 ): WordSelection<T> {
+  if (
+    !profile.wordDifficulties.every((difficulty) =>
+      isWordDifficultyWithinProfile(difficulty, profile),
+    )
+  ) {
+    throw new Error(
+      `${profile.difficulty} wordDifficulties exceed ${profile.wordDifficultyCeiling} ceiling`,
+    );
+  }
   const allowed = new Set<Difficulty>(profile.wordDifficulties);
   let selected = words.filter((word) => allowed.has(getWordDifficulty(word)));
   const broadenedWith: Difficulty[] = [];
@@ -154,6 +186,9 @@ export function selectWordsForProfile<
     }
 
     if (allowed.has(difficulty)) {
+      continue;
+    }
+    if (!isWordDifficultyWithinProfile(difficulty, profile)) {
       continue;
     }
 

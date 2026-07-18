@@ -172,6 +172,17 @@
 - 확장 조건: 새 `contentLocale`은 별도 word bank, 원어민 단서 편집, 난이도 모델, 라이선스, 전체 콘텐츠 예산과 실기기 QA가 승인된 뒤 추가한다.
 - 승인자: 사용자 (2026-07-17)
 
+### DEC-016 normal 단어 난이도 상한
+
+- 상태: 검증 중
+- 날짜: 2026-07-19
+- 결정: `normal` 보드는 `easy`와 `normal` 어휘만 사용하며, 후보 풀이 부족해도 `hard` 어휘로 자동 보강하지 않는다. `hard` 난도는 단어 희귀도보다 격자 크기·교차 제약·단서 간접성으로 구분한다.
+- 근거: 첫 25판 편집 pre-screen에서 normal 보드에 전문·비일상 어휘가 집중된 결함이 확인됐고, GDD의 "희귀 단어 수로 난이도를 올리지 않는다" 원칙과 충돌했다.
+- 영향: 공통 core의 난이도 프로파일과 출시 90판의 생성기 report·독립 validator가 같은 상한을 fail-closed 검증한다. AIT·Android·iOS는 동일 콘텐츠 계약을 사용한다. 2시간 운영 배치의 실제 단어 선택에도 상한은 적용되지만, 기존 84개 rolling pack을 새 정책으로 오표기하지 않는 per-item cutover evidence는 `BLK-CONTENT-002`로 분리한다.
+- 검증 조건: 새 generator identity로 90판을 완주하고, normal 70판의 모든 실제 entry가 `easy|normal`이며 사람 검수의 `difficultyFit=true`를 받아야 한다. 운영 배치는 cutover 이후 신규 item을 strict 검증하고 기존 item이 84개 retention에서 자연 퇴출되는 migration을 별도 통과해야 한다.
+- 되돌림 조건: 90판 생성 중 normal 풀이 구조적으로 고갈되면 hard 어휘를 섞지 않고 wordbank 보강 또는 배치 탐색 정책을 먼저 수정한다.
+- 승인자: 기존 GDD 난이도 원칙의 구현 상세(Content + QA); 90판 검수 전 최종 확정 금지
+
 ## Blocker 원장
 
 | ID               | 질문 또는 증거             | 닫는 조건                                                                              | 소유자          |
@@ -180,6 +191,7 @@
 | BLK-ENG-001      | Phaser 세 시장 적합성      | Phase 0 성능·IME·접근성·복귀 통과                                                      | Tech            |
 | BLK-INPUT-001    | 직접 입력과 쉬운 입력 비중 | 10명 테스트와 A/B 결과                                                                 | UX              |
 | BLK-CONTENT-001  | live pack 무결성           | 검수 후보 생성기·fail-closed schema·image digest·live audit                            | Content/Ops     |
+| BLK-CONTENT-002  | 배치 난이도 evidence       | per-item cutover 봉인·신규 item strict 검증·기존 84개 무중단 자연 퇴출                 | Content/Ops     |
 | BLK-MON-001      | 출시 수익화 범위           | 카탈로그와 노출 정책 사용자 승인                                                       | Product         |
 | BLK-CAP-001      | 93개 보드 생산성           | 2주간 10개 보드 처리량 측정                                                            | Producer        |
 | BLK-A11Y-001     | 엔진과 WebView 접근성      | AC-005 실기기 완료 영상                                                                | UX/QA           |
