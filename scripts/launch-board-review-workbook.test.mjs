@@ -27,6 +27,10 @@ import {
   prepareLaunchBoardReviewWorkbook,
   preserveManualReviewFields,
 } from "./launch-board-review-workbook.mjs";
+import {
+  LAUNCH_ACCEPTED_CANDIDATE_POLICY,
+  LAUNCH_SEARCH_QUALITY_POLICY,
+} from "./build-ko-kr-launch-content.mjs";
 
 const GENERATOR_COMMIT = "a".repeat(40);
 const DAILY_CONNECTOR_RANKING_POLICY = Object.freeze({
@@ -46,8 +50,10 @@ const DAILY_CONNECTOR_RANKING_POLICY = Object.freeze({
   ]),
 });
 const GENERATOR_CONFIG = Object.freeze({
-  schemaVersion: "ko-kr-launch-generator-config/9",
+  schemaVersion: "ko-kr-launch-generator-config/11",
+  acceptedCandidateSelection: LAUNCH_ACCEPTED_CANDIDATE_POLICY,
   dailyConnectorRanking: DAILY_CONNECTOR_RANKING_POLICY,
+  searchQuality: LAUNCH_SEARCH_QUALITY_POLICY,
   seedPolicy: "deterministic",
 });
 const GENERATOR_CONFIG_HASH =
@@ -147,7 +153,7 @@ function createFixture() {
     boards: [...firstRun, ...generated.map((item) => item.catalogBoard)],
   };
   const generationReport = {
-    schemaVersion: "ko-kr-launch-generation-report/6",
+    schemaVersion: "ko-kr-launch-generation-report/8",
     artifactStatus: "candidate",
     activationApproved: false,
     generatedAt: "2026-07-19T00:00:00.000Z",

@@ -35,11 +35,13 @@ import {
 } from "./build-ko-kr-launch-content.mjs";
 import { DIFFICULTY_PROFILES } from "../packages/crossword-core/src/difficultyProfiles.ts";
 import {
+  LAUNCH_QUALITY_SCORING_POLICY,
   compareGenerationCandidatesByGeometryQuality,
   compareGeneratedBoardCandidates,
   generateBoards,
   selectDiverseGenerationCandidates,
 } from "./crossword-generator-prototype.mjs";
+import { LAUNCH_COMPACT_FALLBACK_POLICY } from "./compact-crossword-generator.mjs";
 
 describe("ko-KR launch content builder", () => {
   test("word pool evidence는 정렬된 unique answer set SHA로 봉인한다", () => {
@@ -129,14 +131,21 @@ describe("ko-KR launch content builder", () => {
       LAUNCH_ACCEPTED_CANDIDATE_POLICY.candidateAnswerOrder,
       "unique-answers-ascending-js-code-unit",
     );
+    assert.equal(
+      LAUNCH_ACCEPTED_CANDIDATE_POLICY.multiPositionDefinition,
+      "maximum-matching-of-distinct-answer-cell-positions-to-clue-compatible-distinct-partner-answers-at-least-two",
+    );
     assert.deepEqual(LAUNCH_ACCEPTED_CANDIDATE_POLICY.dailyOrder, [
       "min-isolated-theme-owners",
+      "max-usable-multi-position-theme-owners",
+      "max-usable-multi-position-answers",
       "max-theme-connector-edges",
       "max-total-edges",
       "min-cooldown-answer-count",
       "stable-generation-order",
     ]);
     assert.deepEqual(LAUNCH_ACCEPTED_CANDIDATE_POLICY.otherOrder, [
+      "max-usable-multi-position-answers",
       "max-total-edges",
       "min-cooldown-answer-count",
       "stable-generation-order",
@@ -332,9 +341,12 @@ describe("ko-KR launch content builder", () => {
 
   test("launch 탐색 품질은 전체 route gate와 연결성 admission을 함께 강제한다", () => {
     assert.deepEqual(LAUNCH_SEARCH_QUALITY_POLICY, {
-      policyId: "ko-kr-launch-search-quality-alignment-v1",
+      policyId: "ko-kr-launch-search-quality-alignment-v3",
       evaluator: "route-quality-plus-connected-components",
       maxConnectedComponents: 1,
+      placementIntersectionDefinition: "preexisting-matching-letter-cell-only",
+      scoringPolicy: LAUNCH_QUALITY_SCORING_POLICY,
+      compactFallback: LAUNCH_COMPACT_FALLBACK_POLICY,
     });
     const connectedBoard = {
       grid: [
@@ -397,15 +409,27 @@ describe("ko-KR launch content builder", () => {
         {
           answer: "테마가",
           answerCells: ["가", "나"],
+          clue: "첫 번째 테마 단서",
           themeOwner: "table-kitchen",
         },
         {
           answer: "테마다",
           answerCells: ["다"],
+          clue: "두 번째 테마 단서",
           themeOwner: "table-kitchen",
         },
-        { answer: "연결가", answerCells: ["가", "라"], themeOwner: null },
-        { answer: "연결라", answerCells: ["라"], themeOwner: null },
+        {
+          answer: "연결가",
+          answerCells: ["가", "라"],
+          clue: "첫 번째 연결 단서",
+          themeOwner: null,
+        },
+        {
+          answer: "연결라",
+          answerCells: ["라"],
+          clue: "두 번째 연결 단서",
+          themeOwner: null,
+        },
       ],
       nextDaily,
     );
@@ -413,15 +437,33 @@ describe("ko-KR launch content builder", () => {
       totalSharedCellEdges: 2,
       themeConnectorSharedCellEdges: 1,
       isolatedThemeOwnerCount: 1,
+      usableMultiPositionThemeOwnerCount: 0,
+      usableMultiPositionAnswerCount: 1,
     });
 
     const score = (overrides) => ({
       totalSharedCellEdges: 10,
       themeConnectorSharedCellEdges: 5,
       isolatedThemeOwnerCount: 1,
+      usableMultiPositionThemeOwnerCount: 3,
+      usableMultiPositionAnswerCount: 8,
       cooldownAnswerCount: 12,
       ...overrides,
     });
+    assert.ok(
+      compareLaunchAcceptedCandidateScores(
+        score({ usableMultiPositionThemeOwnerCount: 4 }),
+        score({ themeConnectorSharedCellEdges: 100 }),
+        nextDaily,
+      ) < 0,
+    );
+    assert.ok(
+      compareLaunchAcceptedCandidateScores(
+        score({ usableMultiPositionAnswerCount: 9 }),
+        score({ themeConnectorSharedCellEdges: 100 }),
+        nextDaily,
+      ) < 0,
+    );
     assert.ok(
       compareLaunchAcceptedCandidateScores(
         score({ themeConnectorSharedCellEdges: 6 }),
@@ -955,6 +997,50 @@ describe("ko-KR launch content builder", () => {
         (candidate) => candidate.id,
       ),
       ["geometry-a", "score-a", "geometry-b", "score-b"],
+    );
+  });
+
+  test("launch 품질 beam은 geometry와 score 후보를 절반씩 보존한다", () => {
+    const check = (actual, expected) => ({
+      actual,
+      expected,
+      operator: ">=",
+      pass: actual >= expected,
+    });
+    const candidates = [
+      {
+        id: "theme-score",
+        preferredRunRatio: 1,
+        quality: { checks: [check(0, 0.5)] },
+        score: 1_000,
+      },
+      {
+        id: "geometry-a",
+        preferredRunRatio: 0,
+        quality: { checks: [check(0.5, 0.5)] },
+        score: 10,
+      },
+      {
+        id: "geometry-b",
+        preferredRunRatio: 0,
+        quality: { checks: [check(0.49, 0.5)] },
+        score: 9,
+      },
+      {
+        id: "score-b",
+        preferredRunRatio: 0,
+        quality: { checks: [check(0, 0.5)] },
+        score: 900,
+      },
+    ];
+
+    assert.deepEqual(
+      selectDiverseGenerationCandidates(candidates, 4, {
+        isPreferredRun: () => true,
+        minPreferredRunRatio: 0.5,
+        scoringPolicyId: LAUNCH_QUALITY_SCORING_POLICY.policyId,
+      }).map((candidate) => candidate.id),
+      ["geometry-a", "theme-score", "geometry-b", "score-b"],
     );
   });
 

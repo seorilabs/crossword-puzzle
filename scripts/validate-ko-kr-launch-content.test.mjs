@@ -176,6 +176,13 @@ test("generator search quality의 route/연결성 정렬 정책 재봉인을 거
     () => validateGeneratorSearchQualityPolicy(forged),
     /search quality policy does not exactly match/,
   );
+
+  const forgedScoring = structuredClone(config);
+  forgedScoring.searchQuality.scoringPolicy.weights.boardAutoRunCount = 1;
+  assert.throws(
+    () => validateGeneratorSearchQualityPolicy(forgedScoring),
+    /search quality policy does not exactly match/,
+  );
 });
 
 test("generator bounded fallback phase와 connector schedule 재봉인을 거부한다", () => {
@@ -716,7 +723,7 @@ test("저품질 board의 report quality PASS 재봉인을 거부한다", () => {
 function makeGeneratorTraceFixture(route = buildLaunchRoutePlan()[0]) {
   const clueConfig = clueQualityConfig();
   const config = {
-    schemaVersion: "ko-kr-launch-generator-config/9",
+    schemaVersion: "ko-kr-launch-generator-config/11",
     acceptedCandidateSelection: structuredClone(
       LAUNCH_ACCEPTED_CANDIDATE_POLICY,
     ),
@@ -760,6 +767,7 @@ function makeGeneratorTraceFixture(route = buildLaunchRoutePlan()[0]) {
     wordCount: 10,
     autoRunCount: 6,
     crossRatio: 0.3,
+    bboxArea: 40,
     bboxDensity: 0.3,
     multiIntersectionPlacements: 2,
     connectedComponents: 1,
@@ -776,6 +784,7 @@ function makeGeneratorTraceFixture(route = buildLaunchRoutePlan()[0]) {
     wordCount: 16,
     autoRunCount: 4,
     crossRatio: 0.6,
+    bboxArea: 28,
     bboxDensity: 0.7,
     multiIntersectionPlacements: 12,
     connectedComponents: 1,
@@ -802,12 +811,16 @@ function makeGeneratorTraceFixture(route = buildLaunchRoutePlan()[0]) {
     totalSharedCellEdges: 10,
     themeConnectorSharedCellEdges: 0,
     isolatedThemeOwnerCount: 0,
+    usableMultiPositionThemeOwnerCount: 0,
+    usableMultiPositionAnswerCount: 0,
     cooldownAnswerCount: rejectedAnswers.length,
   };
   const selectedSelectionScore = {
     totalSharedCellEdges: 100,
     themeConnectorSharedCellEdges: 0,
     isolatedThemeOwnerCount: 0,
+    usableMultiPositionThemeOwnerCount: 0,
+    usableMultiPositionAnswerCount: 0,
     cooldownAnswerCount: selectedAnswers.length,
   };
   const traceWordPool = fixtureWordPool({
@@ -898,6 +911,12 @@ function makeGeneratorTraceFixture(route = buildLaunchRoutePlan()[0]) {
       ],
     },
   ];
+  for (const attempt of attempts) {
+    for (const candidate of attempt.candidates) {
+      candidate.generationMethod = "standard-beam";
+      candidate.compactSearch = null;
+    }
+  }
   return {
     config,
     board: {
@@ -1042,6 +1061,7 @@ function makeDailyFallbackPoolTraceFixture() {
     wordCount: 10,
     autoRunCount: 0,
     crossRatio: 0.6,
+    bboxArea: 30,
     bboxDensity: 0.6,
     multiIntersectionPlacements: 7,
     connectedComponents: 1,
@@ -1056,6 +1076,8 @@ function makeDailyFallbackPoolTraceFixture() {
   };
   const passingCandidate = {
     candidateIndex: 0,
+    generationMethod: "standard-beam",
+    compactSearch: null,
     pass: true,
     failedChecks: [],
     metrics,
@@ -1215,6 +1237,7 @@ function makeDailyGreedyPoolTraceFixture() {
     wordCount: 10,
     autoRunCount: 0,
     crossRatio: 0.6,
+    bboxArea: 30,
     bboxDensity: 0.6,
     multiIntersectionPlacements: 7,
     connectedComponents: 1,
@@ -1229,6 +1252,8 @@ function makeDailyGreedyPoolTraceFixture() {
   };
   const candidate = {
     candidateIndex: 0,
+    generationMethod: "standard-beam",
+    compactSearch: null,
     pass: true,
     failedChecks: [],
     metrics,
@@ -1314,7 +1339,7 @@ test("재봉인한 route/search/attempt 허위 trace를 거부한다", () => {
       mutate: ({ config }) => {
         config.schemaVersion = "ko-kr-launch-generator-config/8";
       },
-      expected: /trace config schema must be ko-kr-launch-generator-config\/9/,
+      expected: /trace config schema must be ko-kr-launch-generator-config\/11/,
     },
     {
       mutate: ({ config }) => {
@@ -1458,6 +1483,79 @@ test("재봉인한 route/search/attempt 허위 trace를 거부한다", () => {
       expected,
     );
   }
+});
+
+test("compact fallback trace의 정책·node cap·정답 inventory를 봉인한다", () => {
+  const fixture = makeGeneratorTraceFixture();
+  const candidate = fixture.board.attempts[1].candidates[1];
+  candidate.generationMethod = "compact-fallback";
+  candidate.compactSearch = {
+    policyId: fixture.config.searchQuality.compactFallback.policyId,
+    termination: "pass",
+    nodeCount: 120,
+    uniqueStateCount: 80,
+    maxNodeCount: fixture.config.searchQuality.compactFallback.maxNodeCount,
+    maxBboxArea:
+      DIFFICULTY_PROFILES[fixture.board.difficulty].boardSize *
+      Math.ceil(DIFFICULTY_PROFILES[fixture.board.difficulty].boardSize / 2),
+    selectedAnswers: [...candidate.answers],
+  };
+  assert.doesNotThrow(() =>
+    validateGeneratorReportTrace(fixture.config, [fixture.board]),
+  );
+
+  const forgeries = [
+    {
+      mutate: (trace) => {
+        trace.policyId = "forged-compact-policy";
+      },
+      expected: /compactSearch policy or termination is invalid/,
+    },
+    {
+      mutate: (trace) => {
+        trace.nodeCount = trace.maxNodeCount + 1;
+      },
+      expected: /exceeds its deterministic node cap/,
+    },
+    {
+      mutate: (trace) => {
+        trace.selectedAnswers[0] = "forged-answer";
+        trace.selectedAnswers.sort();
+      },
+      expected: /selected answer inventory/,
+    },
+    {
+      mutate: (trace, candidate) => {
+        candidate.metrics.bboxArea = trace.maxBboxArea + 1;
+      },
+      expected: /candidate exceeds maxBboxArea/,
+    },
+  ];
+  for (const { mutate, expected } of forgeries) {
+    const forged = structuredClone(fixture);
+    const forgedCandidate = forged.board.attempts[1].candidates[1];
+    mutate(forgedCandidate.compactSearch, forgedCandidate);
+    assert.throws(
+      () => validateGeneratorReportTrace(forged.config, [forged.board]),
+      expected,
+    );
+  }
+
+  const forgedActivation = structuredClone(fixture);
+  const compactCandidate = forgedActivation.board.attempts[1].candidates[1];
+  forgedActivation.board.attempts[1].candidates[0] = {
+    ...structuredClone(compactCandidate),
+    candidateIndex: 0,
+    generationMethod: "standard-beam",
+    compactSearch: null,
+  };
+  assert.throws(
+    () =>
+      validateGeneratorReportTrace(forgedActivation.config, [
+        forgedActivation.board,
+      ]),
+    /compact fallback candidate placement is invalid/,
+  );
 });
 
 test("normal report의 hard effective 난이도와 허위 broadened 상태를 거부한다", () => {

@@ -6,8 +6,8 @@ export const LAUNCH_BOARD_REVIEW_LEDGER_SCHEMA_VERSION =
   "game-content-launch-board-review-ledger/1";
 
 const CATALOG_SCHEMA_VERSION = "launch-content-catalog/1";
-const GENERATION_REPORT_SCHEMA_VERSION = "ko-kr-launch-generation-report/6";
-const GENERATOR_CONFIG_SCHEMA_VERSION = "ko-kr-launch-generator-config/9";
+const GENERATION_REPORT_SCHEMA_VERSION = "ko-kr-launch-generation-report/8";
+const GENERATOR_CONFIG_SCHEMA_VERSION = "ko-kr-launch-generator-config/11";
 const EXPECTED_DAILY_CONNECTOR_RANKING_POLICY = Object.freeze({
   policyId: "ko-kr-launch-daily-connector-theme-coverage-v2",
   coverageScope:
@@ -23,6 +23,62 @@ const EXPECTED_DAILY_CONNECTOR_RANKING_POLICY = Object.freeze({
     "min-review-ledger-index",
     "stable-input-order",
   ]),
+});
+const EXPECTED_LAUNCH_ACCEPTED_CANDIDATE_POLICY = Object.freeze({
+  policyId: "ko-kr-launch-future-pool-lookahead-v3",
+  defaultRetries: 8,
+  acceptedLookaheadRetries: 1,
+  edgeDefinition:
+    "unique-answer-pairs-sharing-at-least-one-cell-after-next-route-filter-and-rerank",
+  multiPositionDefinition:
+    "maximum-matching-of-distinct-answer-cell-positions-to-clue-compatible-distinct-partner-answers-at-least-two",
+  candidateAnswerOrder: "unique-answers-ascending-js-code-unit",
+  dailyOrder: Object.freeze([
+    "min-isolated-theme-owners",
+    "max-usable-multi-position-theme-owners",
+    "max-usable-multi-position-answers",
+    "max-theme-connector-edges",
+    "max-total-edges",
+    "min-cooldown-answer-count",
+    "stable-generation-order",
+  ]),
+  otherOrder: Object.freeze([
+    "max-usable-multi-position-answers",
+    "max-total-edges",
+    "min-cooldown-answer-count",
+    "stable-generation-order",
+  ]),
+});
+const EXPECTED_SEARCH_QUALITY_POLICY = Object.freeze({
+  policyId: "ko-kr-launch-search-quality-alignment-v3",
+  evaluator: "route-quality-plus-connected-components",
+  maxConnectedComponents: 1,
+  placementIntersectionDefinition: "preexisting-matching-letter-cell-only",
+  scoringPolicy: Object.freeze({
+    policyId: "launch-quality-aligned-v2",
+    denseConnectivityAdmission: "actual-overlap-or-bridging-auto-run",
+    placementIntersectionScoreBasis: "actual-overlap",
+    qualityBeforeBranchLimit: true,
+    qualityBeamRanking: "quality-score",
+    weights: Object.freeze({
+      boardAutoRunCount: 0,
+      boardMultiIntersection: 300,
+      denseBridgingAutoRunCount: 0,
+      directAutoRunCount: 0,
+      autoRunExtraCell: 0,
+    }),
+  }),
+  compactFallback: Object.freeze({
+    policyId: "launch-compact-connected-dfs-v1",
+    activationScope: "launch-builder-only-after-standard-search-has-no-pass",
+    initialSymmetry: "each-word-across-at-origin-then-global-candidate-ranking",
+    connectivity: "every-placement-after-first-overlaps-an-existing-letter",
+    intermediateRunPolicy: "all-maximal-runs-known-unique-and-accepted",
+    bboxAreaLimit: "board-size-times-ceiling-half-board-size",
+    maxNodeCount: 25_000,
+    maxCandidateCount: 1,
+    finalAcceptance: "full-route-quality-pass-only",
+  }),
 });
 const EXPECTED_FIRST_RUN_BOARD_COUNT = 3;
 const EXPECTED_GENERATED_BOARD_COUNT = 90;
@@ -328,6 +384,16 @@ export function deriveLaunchBoardReviewSource(catalog, generationReport) {
     generatorConfig.dailyConnectorRanking,
     EXPECTED_DAILY_CONNECTOR_RANKING_POLICY,
     "generation report.generator.config.dailyConnectorRanking",
+  );
+  requireExact(
+    generatorConfig.acceptedCandidateSelection,
+    EXPECTED_LAUNCH_ACCEPTED_CANDIDATE_POLICY,
+    "generation report.generator.config.acceptedCandidateSelection",
+  );
+  requireExact(
+    generatorConfig.searchQuality,
+    EXPECTED_SEARCH_QUALITY_POLICY,
+    "generation report.generator.config.searchQuality",
   );
   requireCondition(
     generator.configHash ===

@@ -6,6 +6,10 @@ import {
   calculateCanonicalDocumentChecksum,
   validateLaunchBoardReviewLedger,
 } from "./launch-board-review-ledger.mjs";
+import {
+  LAUNCH_ACCEPTED_CANDIDATE_POLICY,
+  LAUNCH_SEARCH_QUALITY_POLICY,
+} from "./build-ko-kr-launch-content.mjs";
 
 const GENERATOR_COMMIT = "a".repeat(40);
 const DAILY_CONNECTOR_RANKING_POLICY = Object.freeze({
@@ -25,8 +29,10 @@ const DAILY_CONNECTOR_RANKING_POLICY = Object.freeze({
   ]),
 });
 const GENERATOR_CONFIG = Object.freeze({
-  schemaVersion: "ko-kr-launch-generator-config/9",
+  schemaVersion: "ko-kr-launch-generator-config/11",
+  acceptedCandidateSelection: LAUNCH_ACCEPTED_CANDIDATE_POLICY,
   dailyConnectorRanking: DAILY_CONNECTOR_RANKING_POLICY,
+  searchQuality: LAUNCH_SEARCH_QUALITY_POLICY,
   seedPolicy: "deterministic",
 });
 const GENERATOR_CONFIG_HASH =
@@ -130,7 +136,7 @@ function createFixture() {
     ],
   };
   const generationReport = {
-    schemaVersion: "ko-kr-launch-generation-report/6",
+    schemaVersion: "ko-kr-launch-generation-report/8",
     artifactStatus: "candidate",
     activationApproved: false,
     generatedAt: "2026-07-18T14:00:00.000Z",
@@ -234,27 +240,26 @@ describe("launch board review ledger", () => {
     expectRejected(fixture, /generation report\.schemaVersion/);
   });
 
-  test("report/5 본문을 /6으로 이름만 바꿔 relock해도 검수 source로 재사용하지 않는다", () => {
+  test("report/6 본문을 /7로 이름만 바꿔 relock해도 검수 source로 재사용하지 않는다", () => {
     const fixture = createFixture();
     fixture.generationReport.generator.config.schemaVersion =
-      "ko-kr-launch-generator-config/8";
-    delete fixture.generationReport.generator.config.dailyConnectorRanking;
+      "ko-kr-launch-generator-config/9";
     for (const board of fixture.generationReport.boards) {
       delete board.selectedRetryIndex;
       delete board.wordPool;
       delete board.attempts;
     }
     // 구 report 본문에 새 schema 문자열만 붙이고 모든 외부 checksum까지 다시 봉인한 경우.
-    fixture.generationReport.schemaVersion = "ko-kr-launch-generation-report/6";
+    fixture.generationReport.schemaVersion = "ko-kr-launch-generation-report/8";
     relockGeneratorIdentity(fixture);
 
     expectRejected(
       fixture,
-      /generator\.config\.schemaVersion must be ko-kr-launch-generator-config\/9/,
+      /generator\.config\.schemaVersion must be ko-kr-launch-generator-config\/11/,
     );
   });
 
-  test("report/6 daily connector ranking 정책 재봉인을 거부한다", () => {
+  test("report/7 daily connector ranking 정책 재봉인을 거부한다", () => {
     const fixture = createFixture();
     fixture.generationReport.generator.config.dailyConnectorRanking = {
       ...fixture.generationReport.generator.config.dailyConnectorRanking,
@@ -271,7 +276,46 @@ describe("launch board review ledger", () => {
     );
   });
 
-  test("report/6 word pool SHA와 selected attempt 결합을 fail closed한다", async (t) => {
+  test("report/7 scoring과 future-pool 정책 재봉인을 거부한다", async (t) => {
+    for (const [name, mutate, pattern] of [
+      [
+        "scoring policy",
+        (fixture) => {
+          fixture.generationReport.generator.config.searchQuality =
+            structuredClone(
+              fixture.generationReport.generator.config.searchQuality,
+            );
+          fixture.generationReport.generator.config.searchQuality.scoringPolicy.weights.boardAutoRunCount = 1;
+        },
+        /config\.searchQuality does not exactly match/,
+      ],
+      [
+        "future pool policy",
+        (fixture) => {
+          fixture.generationReport.generator.config.acceptedCandidateSelection =
+            structuredClone(
+              fixture.generationReport.generator.config
+                .acceptedCandidateSelection,
+            );
+          fixture.generationReport.generator.config.acceptedCandidateSelection.dailyOrder =
+            [
+              ...fixture.generationReport.generator.config
+                .acceptedCandidateSelection.dailyOrder,
+            ].reverse();
+        },
+        /config\.acceptedCandidateSelection does not exactly match/,
+      ],
+    ]) {
+      await t.test(name, () => {
+        const fixture = createFixture();
+        mutate(fixture);
+        relockGeneratorIdentity(fixture);
+        expectRejected(fixture, pattern);
+      });
+    }
+  });
+
+  test("report/7 word pool SHA와 selected attempt 결합을 fail closed한다", async (t) => {
     for (const [name, mutate, pattern] of [
       [
         "invalid board answer-set SHA",

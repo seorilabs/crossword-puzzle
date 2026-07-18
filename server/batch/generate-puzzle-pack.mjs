@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import {
+  BATCH_LEGACY_SCORING_POLICY,
   WORDS,
   analyzeRuns,
   makeWordMap,
@@ -795,6 +796,7 @@ async function run() {
           boardSize: options.boardSize,
           maxWords: options.maxWords,
           minWordLength: options.minWordLength,
+          scoringPolicyId: BATCH_LEGACY_SCORING_POLICY.policyId,
           seed,
           wordBank: difficultyFilteredWords,
         };

@@ -8,10 +8,15 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 import {
+  LAUNCH_QUALITY_SCORING_POLICY,
   analyzeRuns,
   generateBoards,
   makeWordMap,
 } from "./crossword-generator-prototype.mjs";
+import {
+  LAUNCH_COMPACT_FALLBACK_POLICY,
+  generateCompactLaunchBoard,
+} from "./compact-crossword-generator.mjs";
 import { generateBoardWithRetries } from "../server/batch/puzzle-board-engine.mjs";
 import {
   calculateGameContentChecksum,
@@ -77,6 +82,7 @@ const MAX_AUTO_RUN_RATIO = 0.5;
 const MIN_MULTI_CROSS_RATIO = 0.65;
 const GENERATOR_DEPENDENCY_PATHS = Object.freeze([
   "scripts/build-ko-kr-launch-content.mjs",
+  "scripts/compact-crossword-generator.mjs",
   "scripts/crossword-generator-prototype.mjs",
   "server/batch/puzzle-board-engine.mjs",
   "packages/crossword-core/src/clueCuration.ts",
@@ -124,20 +130,25 @@ export const LAUNCH_THEME_OWNER_POLICY = Object.freeze({
   connectorPolicy: "unowned-only-during-daily-generation",
 });
 export const LAUNCH_ACCEPTED_CANDIDATE_POLICY = Object.freeze({
-  policyId: "ko-kr-launch-future-pool-lookahead-v2",
+  policyId: "ko-kr-launch-future-pool-lookahead-v3",
   defaultRetries: 8,
   acceptedLookaheadRetries: 1,
   edgeDefinition:
     "unique-answer-pairs-sharing-at-least-one-cell-after-next-route-filter-and-rerank",
+  multiPositionDefinition:
+    "maximum-matching-of-distinct-answer-cell-positions-to-clue-compatible-distinct-partner-answers-at-least-two",
   candidateAnswerOrder: "unique-answers-ascending-js-code-unit",
   dailyOrder: [
     "min-isolated-theme-owners",
+    "max-usable-multi-position-theme-owners",
+    "max-usable-multi-position-answers",
     "max-theme-connector-edges",
     "max-total-edges",
     "min-cooldown-answer-count",
     "stable-generation-order",
   ],
   otherOrder: [
+    "max-usable-multi-position-answers",
     "max-total-edges",
     "min-cooldown-answer-count",
     "stable-generation-order",
@@ -194,9 +205,12 @@ export const LAUNCH_RETRY_PHASE_POLICY = Object.freeze({
   ]),
 });
 export const LAUNCH_SEARCH_QUALITY_POLICY = Object.freeze({
-  policyId: "ko-kr-launch-search-quality-alignment-v1",
+  policyId: "ko-kr-launch-search-quality-alignment-v3",
   evaluator: "route-quality-plus-connected-components",
   maxConnectedComponents: 1,
+  placementIntersectionDefinition: "preexisting-matching-letter-cell-only",
+  scoringPolicy: LAUNCH_QUALITY_SCORING_POLICY,
+  compactFallback: LAUNCH_COMPACT_FALLBACK_POLICY,
 });
 const MAX_GENERATION_WORD_LENGTH = Object.freeze({
   easy: 3,
@@ -1085,11 +1099,49 @@ function sharesAnswerCell(left, right) {
   return answerCellsOf(left).some((cell) => rightCells.has(cell));
 }
 
+function maximumDistinctPartnerPositionMatching(word, words, conflictIndex) {
+  const positions = answerCellsOf(word);
+  const partnerAnswersByPosition = positions.map((cell) =>
+    words
+      .filter(
+        (partner) =>
+          partner.answer !== word.answer &&
+          !(conflictIndex.get(word.answer) ?? new Set()).has(partner.answer) &&
+          answerCellsOf(partner).includes(cell),
+      )
+      .map((partner) => partner.answer),
+  );
+  const positionByPartnerAnswer = new Map();
+
+  function augment(positionIndex, visitedPartnerAnswers) {
+    for (const partnerAnswer of partnerAnswersByPosition[positionIndex]) {
+      if (visitedPartnerAnswers.has(partnerAnswer)) continue;
+      visitedPartnerAnswers.add(partnerAnswer);
+      const previousPosition = positionByPartnerAnswer.get(partnerAnswer);
+      if (
+        previousPosition == null ||
+        augment(previousPosition, visitedPartnerAnswers)
+      ) {
+        positionByPartnerAnswer.set(partnerAnswer, positionIndex);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  let matchingSize = 0;
+  for (const positionIndex of positions.keys()) {
+    if (augment(positionIndex, new Set())) matchingSize += 1;
+  }
+  return matchingSize;
+}
+
 export function summarizeFuturePoolConnectivity(words, nextRoute) {
   let totalSharedCellEdges = 0;
   let themeConnectorSharedCellEdges = 0;
   const themeOwnersConnectedToConnector = new Set();
   const isDaily = nextRoute?.route.kind === "daily";
+  const clueConflictIndex = buildBoardClueConflictIndex(words);
 
   for (let leftIndex = 0; leftIndex < words.length; leftIndex += 1) {
     const left = words[leftIndex];
@@ -1126,10 +1178,27 @@ export function summarizeFuturePoolConnectivity(words, nextRoute) {
           !themeOwnersConnectedToConnector.has(word.answer),
       ).length
     : 0;
+  const multiPositionAnswers =
+    nextRoute == null
+      ? []
+      : words.filter(
+          (word) =>
+            maximumDistinctPartnerPositionMatching(
+              word,
+              words,
+              clueConflictIndex,
+            ) >= 2,
+        );
   return {
     totalSharedCellEdges,
     themeConnectorSharedCellEdges,
     isolatedThemeOwnerCount,
+    usableMultiPositionThemeOwnerCount: isDaily
+      ? multiPositionAnswers.filter(
+          (word) => word.themeOwner === nextRoute.themeId,
+        ).length
+      : 0,
+    usableMultiPositionAnswerCount: multiPositionAnswers.length,
   };
 }
 
@@ -1137,6 +1206,10 @@ export function compareLaunchAcceptedCandidateScores(left, right, nextRoute) {
   if (nextRoute?.route.kind === "daily") {
     return (
       left.isolatedThemeOwnerCount - right.isolatedThemeOwnerCount ||
+      right.usableMultiPositionThemeOwnerCount -
+        left.usableMultiPositionThemeOwnerCount ||
+      right.usableMultiPositionAnswerCount -
+        left.usableMultiPositionAnswerCount ||
       right.themeConnectorSharedCellEdges -
         left.themeConnectorSharedCellEdges ||
       right.totalSharedCellEdges - left.totalSharedCellEdges ||
@@ -1144,6 +1217,8 @@ export function compareLaunchAcceptedCandidateScores(left, right, nextRoute) {
     );
   }
   return (
+    right.usableMultiPositionAnswerCount -
+      left.usableMultiPositionAnswerCount ||
     right.totalSharedCellEdges - left.totalSharedCellEdges ||
     left.cooldownAnswerCount - right.cooldownAnswerCount
   );
@@ -1184,6 +1259,8 @@ export function makeLaunchAcceptedCandidateSelection({
             totalSharedCellEdges: 0,
             themeConnectorSharedCellEdges: 0,
             isolatedThemeOwnerCount: 0,
+            usableMultiPositionThemeOwnerCount: 0,
+            usableMultiPositionAnswerCount: 0,
           }
         : summarizeFuturePoolConnectivity(
             filterAvailableWords(reviewedWords, nextRoute, futureUsedAnswers)
@@ -1414,6 +1491,9 @@ export function hasIndexedBoardClueConflict(runs, conflictIndex) {
 function summarizeCandidateBoard(board, quality, candidateIndex) {
   return {
     candidateIndex,
+    generationMethod:
+      board.compactSearch == null ? "standard-beam" : "compact-fallback",
+    compactSearch: board.compactSearch ?? null,
     pass: quality.pass,
     failedChecks: quality.checks
       .filter((check) => !check.pass)
@@ -1422,6 +1502,7 @@ function summarizeCandidateBoard(board, quality, candidateIndex) {
       wordCount: board.metrics.wordCount,
       autoRunCount: board.metrics.autoRunCount,
       crossRatio: board.metrics.crossRatio,
+      bboxArea: board.metrics.bboxArea,
       bboxDensity: board.metrics.bboxDensity,
       multiIntersectionPlacements: board.metrics.multiIntersectionPlacements,
       connectedComponents: board.metrics.connectedComponents,
@@ -1672,6 +1753,7 @@ async function generateRouteContent(
     runPhase: (phaseSpec) => {
       const contextByConnectorLimit = new Map();
       const contextByBoard = new WeakMap();
+      const compactFallbackByWordPool = new WeakMap();
       let activeContext = null;
 
       function contextForRetry(localRetryIndex) {
@@ -1771,11 +1853,40 @@ async function generateRouteContent(
             minPreferredRunRatio:
               route.route.kind === "daily" ? MIN_DAILY_THEME_ENTRY_RATIO : 0,
             minWordLength: profile.minWordLength,
+            scoringPolicyId: LAUNCH_QUALITY_SCORING_POLICY.policyId,
             seed,
             wordBank: activeContext.selection.words,
           };
         },
-        generateCandidates: generateBoards,
+        generateCandidates: (generatorOptions) => {
+          const standardBoards = generateBoards(generatorOptions);
+          if (
+            standardBoards.some(
+              (board) => generatorOptions.evaluateBoardQuality(board)?.pass,
+            )
+          ) {
+            return standardBoards;
+          }
+          let compactFallback = compactFallbackByWordPool.get(
+            generatorOptions.wordBank,
+          );
+          if (compactFallback == null) {
+            compactFallback = generateCompactLaunchBoard({
+              ...generatorOptions,
+              compactMinimumBboxDensity: profile.minBboxDensity,
+              compactMinimumCrossRatio: profile.minCrossRatio,
+              compactMinimumMultiIntersectionRunRatio: MIN_MULTI_CROSS_RATIO,
+              compactMinimumWordCount: profile.minWordCount,
+            });
+            compactFallbackByWordPool.set(
+              generatorOptions.wordBank,
+              compactFallback,
+            );
+          }
+          return compactFallback.board == null
+            ? standardBoards
+            : [...standardBoards, compactFallback.board];
+        },
         evaluateCandidate: (board) => {
           requireCondition(
             activeContext != null,
@@ -2217,7 +2328,7 @@ async function resolveGeneratorIdentity(repositoryRoot, options, wordBank) {
     0,
   );
   const config = {
-    schemaVersion: "ko-kr-launch-generator-config/9",
+    schemaVersion: "ko-kr-launch-generator-config/11",
     baseSeed: options.baseSeed,
     attempts: options.attempts,
     searchEscalation: Array.from(
@@ -2601,7 +2712,7 @@ async function main() {
       .join(",")}`,
   );
   const report = {
-    schemaVersion: "ko-kr-launch-generation-report/6",
+    schemaVersion: "ko-kr-launch-generation-report/8",
     artifactStatus: ARTIFACT_STATUS,
     activationApproved: false,
     generatedAt: GENERATED_AT,

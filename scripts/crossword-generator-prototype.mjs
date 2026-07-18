@@ -2,6 +2,41 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+export const BATCH_LEGACY_SCORING_POLICY = Object.freeze({
+  policyId: "batch-legacy-span-v1",
+  denseConnectivityAdmission: "legacy-final-board-only",
+  placementIntersectionScoreBasis: "legacy-allow-adjacent-span",
+  qualityBeforeBranchLimit: false,
+  qualityBeamRanking: "priority-quality-score",
+  weights: Object.freeze({
+    boardAutoRunCount: 1100,
+    boardMultiIntersection: 1500,
+    denseBridgingAutoRunCount: 3200,
+    directAutoRunCount: 900,
+    autoRunExtraCell: 180,
+  }),
+});
+
+export const LAUNCH_QUALITY_SCORING_POLICY = Object.freeze({
+  policyId: "launch-quality-aligned-v2",
+  denseConnectivityAdmission: "actual-overlap-or-bridging-auto-run",
+  placementIntersectionScoreBasis: "actual-overlap",
+  qualityBeforeBranchLimit: true,
+  qualityBeamRanking: "quality-score",
+  weights: Object.freeze({
+    boardAutoRunCount: 0,
+    boardMultiIntersection: 300,
+    denseBridgingAutoRunCount: 0,
+    directAutoRunCount: 0,
+    autoRunExtraCell: 0,
+  }),
+});
+
+const SCORING_POLICY_BY_ID = Object.freeze({
+  [BATCH_LEGACY_SCORING_POLICY.policyId]: BATCH_LEGACY_SCORING_POLICY,
+  [LAUNCH_QUALITY_SCORING_POLICY.policyId]: LAUNCH_QUALITY_SCORING_POLICY,
+});
+
 export const DEFAULT_OPTIONS = {
   attempts: 80,
   allowAdjacent: true,
@@ -13,6 +48,7 @@ export const DEFAULT_OPTIONS = {
   maxWords: 13,
   minWordLength: 2,
   samples: 5,
+  scoringPolicyId: BATCH_LEGACY_SCORING_POLICY.policyId,
   seed: 20260524,
   topCandidates: 48,
 };
@@ -118,11 +154,22 @@ function parseArgs(argv) {
     if (key === "minLength" && Number.isFinite(value))
       options.minWordLength = value;
     if (key === "samples" && Number.isFinite(value)) options.samples = value;
+    if (key === "scoringPolicy" && rawValue) {
+      options.scoringPolicyId = rawValue;
+    }
     if (key === "seed" && Number.isFinite(value)) options.seed = value;
     if (key === "wordbank" && rawValue) options.wordBankPath = rawValue;
   }
 
   return options;
+}
+
+export function resolveGeneratorScoringPolicy(policyId) {
+  const policy = SCORING_POLICY_BY_ID[policyId];
+  if (policy == null) {
+    throw new TypeError(`Unknown generator scoring policy: ${policyId}`);
+  }
+  return policy;
 }
 
 function createRandom(seed) {
@@ -305,17 +352,19 @@ function validatePlacement(state, word, row, col, direction, options) {
       return null;
     }
 
-    if (existingLetter === null && !options.allowAdjacent) {
-      for (const [neighborRow, neighborCol] of perpendicularNeighbors(
-        currentRow,
-        currentCol,
-        direction,
-      )) {
-        if (
-          inBounds(size, neighborRow, neighborCol) &&
-          state.grid[neighborRow][neighborCol] !== null
-        ) {
-          return null;
+    if (existingLetter === null) {
+      if (!options.allowAdjacent) {
+        for (const [neighborRow, neighborCol] of perpendicularNeighbors(
+          currentRow,
+          currentCol,
+          direction,
+        )) {
+          if (
+            inBounds(size, neighborRow, neighborCol) &&
+            state.grid[neighborRow][neighborCol] !== null
+          ) {
+            return null;
+          }
         }
       }
     } else {
@@ -336,11 +385,22 @@ function validatePlacement(state, word, row, col, direction, options) {
   return { cells, intersections };
 }
 
-function scoreAutoRuns(autoRuns) {
+function scoreAutoRuns(autoRuns, extraCellWeight) {
   return autoRuns.reduce((score, run) => {
     const length = splitWord(run.answer).length;
-    return score + Math.max(0, length - 1) * 180;
+    return score + Math.max(0, length - 1) * extraCellWeight;
   }, 0);
+}
+
+function placementIntersectionScoreCount(validated, options) {
+  if (
+    options.allowAdjacent &&
+    options.scoringPolicy.placementIntersectionScoreBasis ===
+      "legacy-allow-adjacent-span"
+  ) {
+    return validated.cells.length;
+  }
+  return validated.intersections.length;
 }
 
 function hasDuplicateAnswers(runs) {
@@ -456,6 +516,7 @@ function findPlacementCandidates(state, words, random, options) {
             direction,
             validated,
             nextState,
+            runAnalysis,
             preferredRunRatio: getPreferredRunRatio(runAnalysis.runs, options),
             score: letters.length + random(),
           });
@@ -538,7 +599,10 @@ function findPlacementCandidates(state, words, random, options) {
               );
               return sum + Math.max(0, 20 - distanceFromMiddle * 10);
             }, 0);
-          const intersectionCount = validated.intersections.length;
+          const intersectionCount = placementIntersectionScoreCount(
+            validated,
+            options,
+          );
           const multiIntersectionBonus =
             intersectionCount >= 3 ? 4200 : intersectionCount >= 2 ? 1800 : 0;
           const bboxEmptyCells =
@@ -553,11 +617,16 @@ function findPlacementCandidates(state, words, random, options) {
             direction,
             validated,
             nextState,
+            runAnalysis,
             preferredRunRatio: getPreferredRunRatio(runAnalysis.runs, options),
             score:
               intersectionCount ** 2 * 620 +
-              runAnalysis.autoRuns.length * 900 +
-              scoreAutoRuns(runAnalysis.autoRuns) +
+              runAnalysis.autoRuns.length *
+                options.scoringPolicy.weights.directAutoRunCount +
+              scoreAutoRuns(
+                runAnalysis.autoRuns,
+                options.scoringPolicy.weights.autoRunExtraCell,
+              ) +
               multiIntersectionBonus +
               middleIntersectionBonus +
               previewStats.bboxDensity * 1200 -
@@ -648,7 +717,9 @@ function findPlacementCandidates(state, words, random, options) {
             if (
               state.placements.length > 0 &&
               validated.intersections.length === 0 &&
-              bridgingAutoRuns.length === 0
+              bridgingAutoRuns.length === 0 &&
+              options.scoringPolicy.denseConnectivityAdmission !==
+                "legacy-final-board-only"
             ) {
               continue;
             }
@@ -662,7 +733,10 @@ function findPlacementCandidates(state, words, random, options) {
             const centerPenalty =
               Math.abs(row - Math.floor(options.boardSize / 2)) +
               Math.abs(col - Math.floor(options.boardSize / 2));
-            const intersectionCount = validated.intersections.length;
+            const intersectionCount = placementIntersectionScoreCount(
+              validated,
+              options,
+            );
             const multiIntersectionBonus =
               intersectionCount >= 3 ? 4200 : intersectionCount >= 2 ? 1800 : 0;
             const bboxEmptyCells =
@@ -678,14 +752,19 @@ function findPlacementCandidates(state, words, random, options) {
               direction,
               validated,
               nextState,
+              runAnalysis,
               preferredRunRatio: getPreferredRunRatio(
                 runAnalysis.runs,
                 options,
               ),
               score:
                 intersectionCount ** 2 * 620 +
-                bridgingAutoRuns.length * 3200 +
-                scoreAutoRuns(bridgingAutoRuns) +
+                bridgingAutoRuns.length *
+                  options.scoringPolicy.weights.denseBridgingAutoRunCount +
+                scoreAutoRuns(
+                  bridgingAutoRuns,
+                  options.scoringPolicy.weights.autoRunExtraCell,
+                ) +
                 multiIntersectionBonus +
                 previewStats.bboxDensity * 1800 -
                 bboxEmptyCells * 32 -
@@ -704,6 +783,20 @@ function findPlacementCandidates(state, words, random, options) {
           }
         }
       }
+    }
+  }
+
+  if (
+    options.scoringPolicy.qualityBeforeBranchLimit &&
+    options.evaluateBoardQuality != null
+  ) {
+    for (const candidate of candidates) {
+      candidate.scoredBoard = scoreBoard(
+        candidate.nextState,
+        options.wordMap,
+        options.scoringPolicy,
+      );
+      candidate.quality = options.evaluateBoardQuality(candidate.scoredBoard);
     }
   }
 
@@ -781,11 +874,19 @@ export function selectDiverseGenerationCandidates(candidates, limit, options) {
   }
   const selected = [];
   const selectedSet = new Set();
-  const rankedGroups = [
-    ...(priorityRanked == null ? [] : [priorityRanked]),
-    ...(geometryRanked == null ? [] : [geometryRanked]),
-    scoreRanked,
-  ];
+  const qualityBeamRanking =
+    options.scoringPolicy?.qualityBeamRanking ??
+    (options.scoringPolicyId === LAUNCH_QUALITY_SCORING_POLICY.policyId
+      ? LAUNCH_QUALITY_SCORING_POLICY.qualityBeamRanking
+      : null);
+  const rankedGroups =
+    qualityBeamRanking === "quality-score" && geometryRanked != null
+      ? [geometryRanked, scoreRanked]
+      : [
+          ...(priorityRanked == null ? [] : [priorityRanked]),
+          ...(geometryRanked == null ? [] : [geometryRanked]),
+          scoreRanked,
+        ];
   const quotas = rankedGroups.map(
     (_, index) =>
       Math.floor(limit / rankedGroups.length) +
@@ -1016,17 +1117,22 @@ function runAttempt(words, random, options) {
 
       for (const candidate of candidates.slice(0, options.branchLimit)) {
         const nextState = candidate.nextState;
-        const runAnalysis = analyzeRuns(nextState, options.wordMap);
+        const runAnalysis =
+          candidate.runAnalysis ?? analyzeRuns(nextState, options.wordMap);
         const usedAnswers = new Set(runAnalysis.runs.map((run) => run.answer));
-        const scoredBoard = scoreBoard(nextState, options.wordMap);
+        const scoredBoard =
+          candidate.scoredBoard ??
+          scoreBoard(nextState, options.wordMap, options.scoringPolicy);
 
         expanded.push({
+          board: scoredBoard,
           state: nextState,
           remainingWords: item.remainingWords.filter(
             (word) => !usedAnswers.has(word.answer),
           ),
           preferredRunRatio: getPreferredRunRatio(runAnalysis.runs, options),
-          quality: options.evaluateBoardQuality?.(scoredBoard),
+          quality:
+            candidate.quality ?? options.evaluateBoardQuality?.(scoredBoard),
           score: scoredBoard.metrics.score + candidate.score,
         });
       }
@@ -1055,11 +1161,13 @@ function runAttempt(words, random, options) {
 
   return beam
     .map((item) => {
-      const board = scoreBoard(item.state, options.wordMap);
+      const board =
+        item.board ??
+        scoreBoard(item.state, options.wordMap, options.scoringPolicy);
       return {
         board,
         preferredRunRatio: item.preferredRunRatio,
-        quality: options.evaluateBoardQuality?.(board),
+        quality: item.quality ?? options.evaluateBoardQuality?.(board),
       };
     })
     .sort((left, right) => {
@@ -1079,7 +1187,11 @@ function runAttempt(words, random, options) {
     })[0]?.board;
 }
 
-function scoreBoard(state, wordMap = makeWordMap(WORDS)) {
+export function scoreBoard(
+  state,
+  wordMap = makeWordMap(WORDS),
+  scoringPolicy = BATCH_LEGACY_SCORING_POLICY,
+) {
   const occupied = getOccupiedCells(state);
   const runAnalysis = analyzeRuns(state, wordMap);
   const runs = runAnalysis.runs;
@@ -1161,8 +1273,9 @@ function scoreBoard(state, wordMap = makeWordMap(WORDS)) {
         crossRatio * 450 +
         averageCrossesPerWord * 220 +
         bbox.bboxDensity * 1600 +
-        runAnalysis.autoRuns.length * 1100 +
-        multiIntersectionPlacements * 1500 -
+        runAnalysis.autoRuns.length * scoringPolicy.weights.boardAutoRunCount +
+        multiIntersectionPlacements *
+          scoringPolicy.weights.boardMultiIntersection -
         connectedComponents * 100 -
         runAnalysis.invalidRuns.length * 3000 -
         emptyRatio * 90 -
@@ -1208,6 +1321,9 @@ export function generateBoards(inputOptions = {}) {
     ...DEFAULT_OPTIONS,
     ...inputOptions,
   };
+  options.scoringPolicy = resolveGeneratorScoringPolicy(
+    options.scoringPolicyId,
+  );
   const random = createRandom(options.seed);
   const boards = [];
   const seen = new Set();

@@ -87,20 +87,25 @@ const EXPECTED_DAILY_CONNECTOR_RANKING_POLICY = Object.freeze({
   ]),
 });
 const EXPECTED_LAUNCH_ACCEPTED_CANDIDATE_POLICY = Object.freeze({
-  policyId: "ko-kr-launch-future-pool-lookahead-v2",
+  policyId: "ko-kr-launch-future-pool-lookahead-v3",
   defaultRetries: 8,
   acceptedLookaheadRetries: 1,
   edgeDefinition:
     "unique-answer-pairs-sharing-at-least-one-cell-after-next-route-filter-and-rerank",
+  multiPositionDefinition:
+    "maximum-matching-of-distinct-answer-cell-positions-to-clue-compatible-distinct-partner-answers-at-least-two",
   candidateAnswerOrder: "unique-answers-ascending-js-code-unit",
   dailyOrder: Object.freeze([
     "min-isolated-theme-owners",
+    "max-usable-multi-position-theme-owners",
+    "max-usable-multi-position-answers",
     "max-theme-connector-edges",
     "max-total-edges",
     "min-cooldown-answer-count",
     "stable-generation-order",
   ]),
   otherOrder: Object.freeze([
+    "max-usable-multi-position-answers",
     "max-total-edges",
     "min-cooldown-answer-count",
     "stable-generation-order",
@@ -172,9 +177,35 @@ const EXPECTED_LAUNCH_RETRY_PHASE_POLICY = Object.freeze({
   ]),
 });
 export const KO_KR_LAUNCH_SEARCH_QUALITY_POLICY = Object.freeze({
-  policyId: "ko-kr-launch-search-quality-alignment-v1",
+  policyId: "ko-kr-launch-search-quality-alignment-v3",
   evaluator: "route-quality-plus-connected-components",
   maxConnectedComponents: 1,
+  placementIntersectionDefinition: "preexisting-matching-letter-cell-only",
+  scoringPolicy: Object.freeze({
+    policyId: "launch-quality-aligned-v2",
+    denseConnectivityAdmission: "actual-overlap-or-bridging-auto-run",
+    placementIntersectionScoreBasis: "actual-overlap",
+    qualityBeforeBranchLimit: true,
+    qualityBeamRanking: "quality-score",
+    weights: Object.freeze({
+      boardAutoRunCount: 0,
+      boardMultiIntersection: 300,
+      denseBridgingAutoRunCount: 0,
+      directAutoRunCount: 0,
+      autoRunExtraCell: 0,
+    }),
+  }),
+  compactFallback: Object.freeze({
+    policyId: "launch-compact-connected-dfs-v1",
+    activationScope: "launch-builder-only-after-standard-search-has-no-pass",
+    initialSymmetry: "each-word-across-at-origin-then-global-candidate-ranking",
+    connectivity: "every-placement-after-first-overlaps-an-existing-letter",
+    intermediateRunPolicy: "all-maximal-runs-known-unique-and-accepted",
+    bboxAreaLimit: "board-size-times-ceiling-half-board-size",
+    maxNodeCount: 25_000,
+    maxCandidateCount: 1,
+    finalAcceptance: "full-route-quality-pass-only",
+  }),
 });
 const CONTENT_LOCALE = "ko-KR";
 const LICENSE_MANIFEST_ID = "ko-kr-launch-license-manifest-v1";
@@ -185,6 +216,7 @@ const EDITORIAL_CHECK_SET_ID = "ko-kr-launch-editorial-checks-v1";
 const PUBLIC_ARTIFACT_PREFIX = "/game-content/v1/ko-KR";
 const EXPECTED_GENERATOR_DEPENDENCY_PATHS = Object.freeze([
   "scripts/build-ko-kr-launch-content.mjs",
+  "scripts/compact-crossword-generator.mjs",
   "scripts/crossword-generator-prototype.mjs",
   "server/batch/puzzle-board-engine.mjs",
   "packages/crossword-core/src/clueCuration.ts",
@@ -204,7 +236,7 @@ const EXPECTED_GENERATOR_DEPENDENCY_PATHS = Object.freeze([
   "data/game-content/v1/ko-KR/license-manifest.json",
 ]);
 export const KO_KR_LAUNCH_CLUE_QUALITY_POLICY = Object.freeze({
-  schemaVersion: "ko-kr-launch-generator-config/9",
+  schemaVersion: "ko-kr-launch-generator-config/11",
   clueSimilarity: Object.freeze({
     policyId: LAUNCH_CLUE_SIMILARITY_POLICY_ID,
     normalization: "NFKC-lowercase-no-space-punctuation-symbol",
@@ -518,6 +550,13 @@ export function independentlySummarizeFuturePoolConnectivity(words, nextRoute) {
   let themeConnectorSharedCellEdges = 0;
   const connectedThemeOwners = new Set();
   const isDaily = nextRoute?.route.kind === "daily";
+  const clueConflictIndex = new Map(
+    words.map((word) => [word.answer, new Set()]),
+  );
+  for (const conflict of findBoardClueQualityConflicts(words)) {
+    clueConflictIndex.get(conflict.answer)?.add(conflict.otherAnswer);
+    clueConflictIndex.get(conflict.otherAnswer)?.add(conflict.answer);
+  }
 
   for (let leftIndex = 0; leftIndex < words.length; leftIndex += 1) {
     const left = words[leftIndex];
@@ -543,6 +582,46 @@ export function independentlySummarizeFuturePoolConnectivity(words, nextRoute) {
       }
     }
   }
+  function maximumDistinctPartnerPositionMatching(word) {
+    const conflictingAnswers = clueConflictIndex.get(word.answer) ?? new Set();
+    const partnerAnswersByPosition = validatorAnswerCellsOf(word).map((cell) =>
+      words
+        .filter(
+          (partner) =>
+            partner.answer !== word.answer &&
+            !conflictingAnswers.has(partner.answer) &&
+            validatorAnswerCellsOf(partner).includes(cell),
+        )
+        .map((partner) => partner.answer),
+    );
+    const positionByPartnerAnswer = new Map();
+    function augment(positionIndex, visitedPartnerAnswers) {
+      for (const partnerAnswer of partnerAnswersByPosition[positionIndex]) {
+        if (visitedPartnerAnswers.has(partnerAnswer)) continue;
+        visitedPartnerAnswers.add(partnerAnswer);
+        const previousPosition = positionByPartnerAnswer.get(partnerAnswer);
+        if (
+          previousPosition == null ||
+          augment(previousPosition, visitedPartnerAnswers)
+        ) {
+          positionByPartnerAnswer.set(partnerAnswer, positionIndex);
+          return true;
+        }
+      }
+      return false;
+    }
+    let matchingSize = 0;
+    for (const positionIndex of partnerAnswersByPosition.keys()) {
+      if (augment(positionIndex, new Set())) matchingSize += 1;
+    }
+    return matchingSize;
+  }
+  const multiPositionAnswers =
+    nextRoute == null
+      ? []
+      : words.filter(
+          (word) => maximumDistinctPartnerPositionMatching(word) >= 2,
+        );
   return {
     totalSharedCellEdges,
     themeConnectorSharedCellEdges,
@@ -553,6 +632,12 @@ export function independentlySummarizeFuturePoolConnectivity(words, nextRoute) {
             !connectedThemeOwners.has(word.answer),
         ).length
       : 0,
+    usableMultiPositionThemeOwnerCount: isDaily
+      ? multiPositionAnswers.filter(
+          (word) => word.themeOwner === nextRoute.themeId,
+        ).length
+      : 0,
+    usableMultiPositionAnswerCount: multiPositionAnswers.length,
   };
 }
 
@@ -2143,6 +2228,7 @@ export function calculateContentQualityEvidence(content, route, config) {
       wordCount,
       autoRunCount,
       crossRatio,
+      bboxArea,
       bboxDensity,
       multiIntersectionPlacements,
       connectedComponents: countEntryComponents(
@@ -2243,6 +2329,7 @@ const CANDIDATE_METRIC_KEYS = Object.freeze([
   "accidentalRunCount",
   "answerContainmentCount",
   "autoRunCount",
+  "bboxArea",
   "bboxDensity",
   "connectedComponents",
   "crossAnswerClueLeakCount",
@@ -2255,6 +2342,8 @@ const CANDIDATE_SELECTION_SCORE_KEYS = Object.freeze([
   "isolatedThemeOwnerCount",
   "themeConnectorSharedCellEdges",
   "totalSharedCellEdges",
+  "usableMultiPositionAnswerCount",
+  "usableMultiPositionThemeOwnerCount",
 ]);
 const GENERATOR_ATTEMPT_KEYS = Object.freeze([
   "candidateCount",
@@ -2311,6 +2400,89 @@ function validateCandidateSelectionScore(candidate, field) {
   return selectionScore;
 }
 
+const COMPACT_SEARCH_TRACE_KEYS = Object.freeze([
+  "maxBboxArea",
+  "maxNodeCount",
+  "nodeCount",
+  "policyId",
+  "selectedAnswers",
+  "termination",
+  "uniqueStateCount",
+]);
+
+function validateCandidateGenerationTrace(candidate, route, config, field) {
+  requireCondition(
+    candidate.generationMethod === "standard-beam" ||
+      candidate.generationMethod === "compact-fallback",
+    `${field}.generationMethod is invalid`,
+  );
+  if (candidate.generationMethod === "standard-beam") {
+    requireCondition(
+      candidate.compactSearch === null,
+      `${field}.compactSearch must be null for standard-beam`,
+    );
+    return;
+  }
+
+  const trace = candidate.compactSearch;
+  requireCondition(
+    trace != null && typeof trace === "object" && !Array.isArray(trace),
+    `${field}.compactSearch must be an object`,
+  );
+  requireExact(
+    Object.keys(trace).sort(),
+    COMPACT_SEARCH_TRACE_KEYS,
+    `${field}.compactSearch keys`,
+  );
+  const policy = config.searchQuality.compactFallback;
+  requireCondition(
+    trace.policyId === policy.policyId &&
+      trace.termination === "pass" &&
+      trace.maxNodeCount === policy.maxNodeCount,
+    `${field}.compactSearch policy or termination is invalid`,
+  );
+  const nodeCount = requirePositiveSafeInteger(
+    trace.nodeCount,
+    `${field}.compactSearch.nodeCount`,
+  );
+  const uniqueStateCount = requirePositiveSafeInteger(
+    trace.uniqueStateCount,
+    `${field}.compactSearch.uniqueStateCount`,
+    { allowZero: true },
+  );
+  requireCondition(
+    nodeCount <= policy.maxNodeCount && uniqueStateCount <= nodeCount,
+    `${field}.compactSearch exceeds its deterministic node cap`,
+  );
+  const profile = DIFFICULTY_PROFILES[route.difficulty];
+  requireCondition(
+    trace.maxBboxArea === profile.boardSize * Math.ceil(profile.boardSize / 2),
+    `${field}.compactSearch maxBboxArea is invalid`,
+  );
+  requireCondition(
+    candidate.metrics.bboxArea <= trace.maxBboxArea,
+    `${field}.compactSearch candidate exceeds maxBboxArea`,
+  );
+  requireUniqueStrings(
+    trace.selectedAnswers,
+    `${field}.compactSearch.selectedAnswers`,
+  );
+  requireExact(
+    trace.selectedAnswers,
+    [...trace.selectedAnswers].sort(),
+    `${field}.compactSearch.selectedAnswers canonical order`,
+  );
+  requireExact(
+    trace.selectedAnswers,
+    candidate.answers,
+    `${field}.compactSearch selected answer inventory`,
+  );
+  requireCondition(
+    candidate.pass === true,
+    `${field}.compactSearch may be reported only for a passing candidate`,
+  );
+}
+
 function validateCandidateTraceQuality(candidate, route, config, field) {
   requireCondition(
     candidate.metrics != null &&
@@ -2327,6 +2499,7 @@ function validateCandidateTraceQuality(candidate, route, config, field) {
   for (const key of [
     "wordCount",
     "autoRunCount",
+    "bboxArea",
     "multiIntersectionPlacements",
     "connectedComponents",
     "accidentalRunCount",
@@ -2357,6 +2530,7 @@ function validateCandidateTraceQuality(candidate, route, config, field) {
     candidate.answers.length === metrics.wordCount,
     `${field}.answers length must match metrics.wordCount`,
   );
+  validateCandidateGenerationTrace(candidate, route, config, field);
 
   const profile = DIFFICULTY_PROFILES[route.difficulty];
   requireCondition(profile != null, `${field} difficulty is invalid`);
@@ -2444,6 +2618,10 @@ function compareReportedSelectionScores(left, right, nextRoute) {
   if (nextRoute?.route.kind === "daily") {
     return (
       left.isolatedThemeOwnerCount - right.isolatedThemeOwnerCount ||
+      right.usableMultiPositionThemeOwnerCount -
+        left.usableMultiPositionThemeOwnerCount ||
+      right.usableMultiPositionAnswerCount -
+        left.usableMultiPositionAnswerCount ||
       right.themeConnectorSharedCellEdges -
         left.themeConnectorSharedCellEdges ||
       right.totalSharedCellEdges - left.totalSharedCellEdges ||
@@ -2451,6 +2629,8 @@ function compareReportedSelectionScores(left, right, nextRoute) {
     );
   }
   return (
+    right.usableMultiPositionAnswerCount -
+      left.usableMultiPositionAnswerCount ||
     right.totalSharedCellEdges - left.totalSharedCellEdges ||
     left.cooldownAnswerCount - right.cooldownAnswerCount
   );
@@ -2582,8 +2762,8 @@ export function validateGeneratorReportTrace(
     "generator config keys",
   );
   requireCondition(
-    config.schemaVersion === "ko-kr-launch-generator-config/9",
-    "generator report trace config schema must be ko-kr-launch-generator-config/9",
+    config.schemaVersion === "ko-kr-launch-generator-config/11",
+    "generator report trace config schema must be ko-kr-launch-generator-config/11",
   );
   requireExact(
     config.dailyConnectorRanking,
@@ -2857,6 +3037,8 @@ export function validateGeneratorReportTrace(
                   totalSharedCellEdges: 0,
                   themeConnectorSharedCellEdges: 0,
                   isolatedThemeOwnerCount: 0,
+                  usableMultiPositionThemeOwnerCount: 0,
+                  usableMultiPositionAnswerCount: 0,
                 }
               : independentlySummarizeFuturePoolConnectivity(
                   independentlyFilterAvailableWords(
@@ -2892,6 +3074,23 @@ export function validateGeneratorReportTrace(
           };
         }
       }
+      const compactCandidateIndexes = attempt.candidates
+        .map((candidate, candidateIndex) =>
+          candidate.generationMethod === "compact-fallback"
+            ? candidateIndex
+            : null,
+        )
+        .filter((candidateIndex) => candidateIndex != null);
+      requireCondition(
+        compactCandidateIndexes.length <=
+          config.searchQuality.compactFallback.maxCandidateCount &&
+          (compactCandidateIndexes.length === 0 ||
+            (compactCandidateIndexes[0] === attempt.candidates.length - 1 &&
+              attempt.candidates
+                .slice(0, compactCandidateIndexes[0])
+                .every((candidate) => candidate.pass === false))),
+        `${field}.attempts[${attemptIndex}] compact fallback candidate placement is invalid`,
+      );
       if (
         firstPassRetryIndex == null &&
         attempt.candidates.some((candidate) => candidate.pass)
@@ -3000,7 +3199,7 @@ export function validateGeneratorReportTrace(
 function validateReportCatalogJoin(rawCatalog, report) {
   requireCandidateFlags(report, "generation report");
   requireCondition(
-    report.schemaVersion === "ko-kr-launch-generation-report/6" &&
+    report.schemaVersion === "ko-kr-launch-generation-report/8" &&
       report.catalogId === rawCatalog.catalogId &&
       report.generatedAt === rawCatalog.generatedAt &&
       Array.isArray(report.boards) &&
