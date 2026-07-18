@@ -30,7 +30,6 @@ import {
   defaultLaunchConfig,
   type LaunchConfig,
 } from "../../packages/crossword-core/src/launchConfig.ts";
-import { KO_KR_LAUNCH_CONTENT_CONTRACT } from "../../packages/crossword-core/src/launchContentCatalog.ts";
 import { koKrLanguageProfile } from "../../packages/crossword-core/src/languageProfile.ts";
 import {
   getCellKey,
@@ -68,6 +67,7 @@ import {
   persistGameTransition,
   rewardConfigFromLaunchConfig,
   type FirstRunGameModel,
+  type GameJourneyItem,
 } from "./firstRunGameModel.ts";
 import "./GameExperience.css";
 
@@ -77,6 +77,8 @@ export type MountGameExperienceOptions = Readonly<{
   hostKind: GameExperienceHostKind;
   storage: KeyValueStoragePort;
   bridgeReady?: Promise<void>;
+  journeyItems?: readonly GameJourneyItem[];
+  journeyMode?: "launch-preview";
   launchConfig?: LaunchConfig;
   playHaptic?: (semantic: GameFeedbackHaptic) => Promise<void> | void;
 }>;
@@ -155,6 +157,8 @@ function GameExperience({
   callbacks,
   hostKind,
   initialLaunchConfig,
+  journeyItems,
+  journeyMode,
   playHaptic,
   storage,
 }: Readonly<{
@@ -162,12 +166,18 @@ function GameExperience({
   bridgeReady?: Promise<void>;
   hostKind: GameExperienceHostKind;
   initialLaunchConfig: LaunchConfig;
+  journeyItems?: readonly GameJourneyItem[];
+  journeyMode?: "launch-preview";
   playHaptic?: (semantic: GameFeedbackHaptic) => Promise<void> | void;
   storage: KeyValueStoragePort;
 }>) {
   const firstRunContents = useMemo(loadBundledFirstRunGameContents, []);
+  const itineraryContents = useMemo(
+    () => journeyItems?.map((item) => item.content) ?? firstRunContents,
+    [firstRunContents, journeyItems],
+  );
   const [content, setContent] = useState<GameContentV1>(
-    () => firstRunContents[0] ?? loadBundledOnboardingGameContent(),
+    () => itineraryContents[0] ?? loadBundledOnboardingGameContent(),
   );
   const [requestedPuzzleId, setRequestedPuzzleId] = useState<string | null>(
     null,
@@ -267,6 +277,7 @@ function GameExperience({
         storage,
         initialLaunchConfig,
         requestedPuzzleId ?? undefined,
+        journeyItems,
       );
     };
     setModel(null);
@@ -311,6 +322,7 @@ function GameExperience({
     callbacks,
     hostKind,
     initialLaunchConfig,
+    journeyItems,
     requestedPuzzleId,
     storage,
   ]);
@@ -675,17 +687,21 @@ function GameExperience({
     progression?.metaUnlocks.weeklyChallenge ?? false;
   const activeBoardIndex = Math.max(
     0,
-    firstRunContents.findIndex(
+    itineraryContents.findIndex(
       (candidate) => candidate.puzzleId === content.puzzleId,
     ),
   );
-  const completedFirstRunIds = new Set(
+  const completedJourneyIds = new Set(
     progression?.completedPuzzleIds.filter((puzzleId) =>
-      firstRunContents.some((contentItem) => contentItem.puzzleId === puzzleId),
+      itineraryContents.some(
+        (contentItem) => contentItem.puzzleId === puzzleId,
+      ),
     ) ?? [],
   );
-  const completedFirstRunCount = completedFirstRunIds.size;
-  const nextFirstRunContent = firstRunContents[activeBoardIndex + 1] ?? null;
+  const completedJourneyCount = completedJourneyIds.size;
+  const nextJourneyContent = itineraryContents[activeBoardIndex + 1] ?? null;
+  const journeyBoardCount = itineraryContents.length;
+  const launchPreview = journeyMode === "launch-preview";
   const hasOnboardingKnowledgeCard =
     progression?.cardIds.includes(BUNDLED_ONBOARDING_KNOWLEDGE_CARD_ID) ??
     false;
@@ -712,8 +728,20 @@ function GameExperience({
         aria-hidden={settingsOpen || undefined}
       >
         <div>
-          <span>{`기억의 정원 · ${activeBoardIndex + 1}번째 말길`}</span>
+          <span>
+            {launchPreview
+              ? "생성 후보 보드 미리보기"
+              : `기억의 정원 · ${activeBoardIndex + 1}번째 말길`}
+          </span>
           <h1>말길</h1>
+          {launchPreview ? (
+            <span
+              className="gamePreviewBadge"
+              aria-label={`생성 후보 진행 ${activeBoardIndex + 1}/${journeyBoardCount}, 출시 승인 전 검토 후보`}
+            >
+              {`${activeBoardIndex + 1}/${journeyBoardCount} · 검토 후보 · 출시 승인 전`}
+            </span>
+          ) : null}
         </div>
         <div className="gameTopStatus">
           <div
@@ -975,12 +1003,12 @@ function GameExperience({
           aria-labelledby="game-map-title"
         >
           <div className="gameMapPath" aria-hidden="true">
-            {firstRunContents.map((mapContent, index) => (
+            {itineraryContents.map((mapContent, index) => (
               <Fragment key={mapContent.puzzleId}>
                 {index === 0 ? null : <i />}
                 <span
                   className={
-                    completedFirstRunIds.has(mapContent.puzzleId)
+                    completedJourneyIds.has(mapContent.puzzleId)
                       ? "isComplete"
                       : index === activeBoardIndex
                         ? "isCurrent"
@@ -994,9 +1022,9 @@ function GameExperience({
           </div>
           <div>
             <span className="gameEyebrow">
-              입문 여정 ·{" "}
-              {Math.max(completedFirstRunCount, activeBoardIndex + 1)}/
-              {KO_KR_LAUNCH_CONTENT_CONTRACT.routeCounts["first-run"]}
+              {launchPreview ? "생성 후보 보드 미리보기" : "입문 여정"} ·{" "}
+              {Math.max(completedJourneyCount, activeBoardIndex + 1)}/
+              {journeyBoardCount}
             </span>
             <h2 id="game-map-title">
               {`${activeBoardIndex + 1}번째 말길을 복원했어요`}
@@ -1068,18 +1096,24 @@ function GameExperience({
               </footer>
             </article>
           ) : null}
-          {nextFirstRunContent == null ? (
+          {nextJourneyContent == null ? (
             <div className="gameContentGate isComplete" role="status">
-              <strong>입문 말길 3개를 모두 복원했어요</strong>
-              <span>컬렉션과 말길 색 꾸미기가 열렸습니다.</span>
+              <strong>
+                {launchPreview
+                  ? `생성 후보 보드 ${journeyBoardCount}개를 모두 확인했어요`
+                  : `입문 말길 ${journeyBoardCount}개를 모두 복원했어요`}
+              </strong>
+              <span>
+                {launchPreview
+                  ? "출시 승인 전 검토용 후보이며 정식 콘텐츠 확정을 뜻하지 않습니다."
+                  : "컬렉션과 말길 색 꾸미기가 열렸습니다."}
+              </span>
             </div>
           ) : (
             <button
               className="gamePrimaryButton"
               type="button"
-              onClick={() =>
-                activateFirstRunBoard(nextFirstRunContent.puzzleId)
-              }
+              onClick={() => activateFirstRunBoard(nextJourneyContent.puzzleId)}
             >
               다음 보드 시작
             </button>
@@ -1299,6 +1333,8 @@ export function mountGameExperience(
         callbacks={callbacks}
         hostKind={options.hostKind}
         initialLaunchConfig={options.launchConfig ?? defaultLaunchConfig}
+        journeyItems={options.journeyItems}
+        journeyMode={options.journeyMode}
         playHaptic={options.playHaptic}
         storage={options.storage}
       />

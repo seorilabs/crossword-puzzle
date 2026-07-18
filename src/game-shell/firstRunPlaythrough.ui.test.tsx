@@ -63,6 +63,7 @@ import { defaultLaunchConfig } from "../../packages/crossword-core/src/launchCon
 import type { GameContentV1 } from "../../packages/crossword-core/src/gameContent.ts";
 import type { KeyValueStoragePort } from "./gameSaveRepository.ts";
 import { mountGameExperience } from "./GameExperience.tsx";
+import type { GameJourneyItem } from "./firstRunGameModel.ts";
 import { loadBundledFirstRunGameContents } from "./onboardingGameContent.ts";
 
 class MemoryStorage implements KeyValueStoragePort {
@@ -93,15 +94,52 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
-function mount(storage: KeyValueStoragePort) {
+function mount(
+  storage: KeyValueStoragePort,
+  journeyItems?: readonly GameJourneyItem[],
+  journeyMode?: "launch-preview",
+) {
   const container = document.createElement("div");
   document.body.replaceChildren(container);
   activeSession = mountGameExperience(container, {
     hostKind: "web",
     storage,
+    journeyItems,
+    journeyMode,
     launchConfig: defaultLaunchConfig,
   });
   return container;
+}
+
+function createLaunchPreviewJourney(): readonly GameJourneyItem[] {
+  const bundledContents = loadBundledFirstRunGameContents();
+  return Object.freeze(
+    Array.from({ length: 7 }, (_, index) => {
+      const source = bundledContents[index % bundledContents.length]!;
+      const boardNumber = index + 1;
+      const content: GameContentV1 = {
+        ...source,
+        puzzleId: `launch-preview-${boardNumber}`,
+        packId: "launch-preview-pack",
+        slotId: `2026-07-${String(19 + boardNumber).padStart(2, "0")}`,
+        grid: Array.from({ length: 9 }, (_, row) =>
+          Array.from({ length: 9 }, (_, col) => source.grid[row]?.[col] ?? ""),
+        ),
+        entries: source.entries.map((entry) => ({
+          ...entry,
+          answerCells: [...entry.answerCells],
+          domainTags: [...entry.domainTags],
+        })),
+        themeId: `launch-preview-theme-${boardNumber}`,
+        contentChecksum: `preview:launch-candidate-${boardNumber}:v1`,
+      };
+      return Object.freeze({
+        content,
+        mapNodeId: `launch-preview-node-${boardNumber}`,
+        cardIds: Object.freeze([]) as readonly string[],
+      });
+    }),
+  );
 }
 
 async function expectActiveContentIdentity(content: GameContentV1) {
@@ -211,4 +249,35 @@ describe("첫 실행 3보드 화면 플레이스루", () => {
     await within(container).findByText("기억의 정원 · 3번째 말길");
     await expectActiveContentIdentity(contents[2]!);
   });
+
+  test("주입한 9×9 생성 후보 7보드를 지도·다음 보드·마지막 재시작까지 연결한다", async () => {
+    const storage = new MemoryStorage();
+    const journeyItems = createLaunchPreviewJourney();
+    const container = mount(storage, journeyItems, "launch-preview");
+    const view = within(container);
+
+    await view.findByText("생성 후보 보드 미리보기");
+    await view.findByText("1/7 · 검토 후보 · 출시 승인 전");
+    await expectActiveContentIdentity(journeyItems[0]!.content);
+
+    for (const [index, journeyItem] of journeyItems.entries()) {
+      await view.findByText(`${index + 1}/7 · 검토 후보 · 출시 승인 전`);
+      await solveVisibleBoard(container, journeyItem.content);
+      expect(container.querySelectorAll(".gameMapPath span")).toHaveLength(7);
+
+      if (index < journeyItems.length - 1) {
+        fireEvent.click(view.getByRole("button", { name: "다음 보드 시작" }));
+      }
+    }
+
+    await view.findByText("생성 후보 보드 7개를 모두 확인했어요");
+    await view.findByText(
+      "출시 승인 전 검토용 후보이며 정식 콘텐츠 확정을 뜻하지 않습니다.",
+    );
+    fireEvent.click(view.getByRole("button", { name: "7번째 보드 다시 풀기" }));
+    await waitFor(() =>
+      expect(container.querySelector(".gameClueRail")).not.toBeNull(),
+    );
+    expect(view.getByText("7/7 · 검토 후보 · 출시 승인 전")).toBeTruthy();
+  }, 15_000);
 });
