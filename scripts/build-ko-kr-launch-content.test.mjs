@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
 import {
-  DAILY_CONNECTOR_WORD_LIMIT,
+  DAILY_CONNECTOR_WORD_LIMIT_BY_DIFFICULTY,
   LAUNCH_ACCEPTED_CANDIDATE_POLICY,
   LAUNCH_THEME_OWNER_POLICY,
   LAUNCH_THEME_IDS,
@@ -34,8 +34,11 @@ import {
 } from "./crossword-generator-prototype.mjs";
 
 describe("ko-KR launch content builder", () => {
-  test("일일 테마 보드는 비테마 연결어 풀을 제한한다", () => {
-    assert.equal(DAILY_CONNECTOR_WORD_LIMIT, 80);
+  test("일일 테마 보드는 난이도별 비테마 연결어 풀을 제한한다", () => {
+    assert.deepEqual(DAILY_CONNECTOR_WORD_LIMIT_BY_DIFFICULTY, {
+      normal: 80,
+      hard: 120,
+    });
   });
 
   test("launch PASS lookahead와 미래 pool 선택 순서를 generator config 정책으로 고정한다", () => {
@@ -222,6 +225,10 @@ describe("ko-KR launch content builder", () => {
           word.themeOwner == null || word.themeOwner === LAUNCH_THEME_IDS[0],
       ),
     );
+    assert.equal(
+      monday.connectorWordCount,
+      DAILY_CONNECTOR_WORD_LIMIT_BY_DIFFICULTY.normal,
+    );
 
     const friday = filterAvailableWords(
       [...allocated, ...connectors],
@@ -236,7 +243,10 @@ describe("ko-KR launch content builder", () => {
       friday.words.filter((word) => word.themeHardReserve).length,
       16,
     );
-    assert.equal(friday.connectorWordCount, DAILY_CONNECTOR_WORD_LIMIT);
+    assert.equal(
+      friday.connectorWordCount,
+      DAILY_CONNECTOR_WORD_LIMIT_BY_DIFFICULTY.hard,
+    );
   });
 
   test("daily connector를 테마 연결성, 길이, connector 연결성, ledger 순으로 고른다", () => {

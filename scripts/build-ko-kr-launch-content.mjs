@@ -89,7 +89,10 @@ const GENERATOR_DEPENDENCY_PATHS = Object.freeze([
   "data/game-content/v1/ko-KR/license-manifest.json",
 ]);
 const MIN_DAILY_THEME_ENTRY_RATIO = 0.5;
-export const DAILY_CONNECTOR_WORD_LIMIT = 80;
+export const DAILY_CONNECTOR_WORD_LIMIT_BY_DIFFICULTY = Object.freeze({
+  normal: 80,
+  hard: 120,
+});
 export const LAUNCH_THEME_OWNER_POLICY = Object.freeze({
   policyId: "ko-kr-launch-theme-owner-matching-v1",
   productionTargetDistinctOwnerCountPerTheme: 75,
@@ -889,10 +892,16 @@ export function filterAvailableWords(words, route, usedAnswers) {
     available.filter((word) => word.themeOwner == null),
     profile,
   );
+  const connectorWordLimit =
+    DAILY_CONNECTOR_WORD_LIMIT_BY_DIFFICULTY[route.difficulty];
+  requireCondition(
+    Number.isInteger(connectorWordLimit) && connectorWordLimit > 0,
+    `${route.puzzleId} has no daily connector limit for ${route.difficulty}`,
+  );
   const connectorWords = rankDailyConnectorWordsByConnectivity(
     themeSelection.words,
     connectorSelection.words,
-  ).slice(0, DAILY_CONNECTOR_WORD_LIMIT);
+  ).slice(0, connectorWordLimit);
   const selection = {
     words: [...themeSelection.words, ...connectorWords],
     difficulties: [
@@ -1741,7 +1750,7 @@ async function resolveGeneratorIdentity(repositoryRoot, options, wordBank) {
     cwd: repositoryRoot,
   });
   const config = {
-    schemaVersion: "ko-kr-launch-generator-config/4",
+    schemaVersion: "ko-kr-launch-generator-config/5",
     baseSeed: options.baseSeed,
     attempts: options.attempts,
     searchEscalation: Array.from({ length: options.retries }, (_, index) =>
@@ -1757,7 +1766,8 @@ async function resolveGeneratorIdentity(repositoryRoot, options, wordBank) {
     maxAutoRunRatio: MAX_AUTO_RUN_RATIO,
     minMultiCrossRatio: MIN_MULTI_CROSS_RATIO,
     minDailyThemeEntryRatio: MIN_DAILY_THEME_ENTRY_RATIO,
-    dailyConnectorWordLimit: DAILY_CONNECTOR_WORD_LIMIT,
+    dailyConnectorWordLimitByDifficulty:
+      DAILY_CONNECTOR_WORD_LIMIT_BY_DIFFICULTY,
     acceptedCandidateSelection: LAUNCH_ACCEPTED_CANDIDATE_POLICY,
     themeOwnership: LAUNCH_THEME_OWNER_POLICY,
     maxGenerationWordLength: MAX_GENERATION_WORD_LENGTH,

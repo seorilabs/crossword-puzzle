@@ -58,6 +58,10 @@ const EXPECTED_MAX_GENERATION_WORD_LENGTH = Object.freeze({
   normal: 3,
   hard: 3,
 });
+const EXPECTED_DAILY_CONNECTOR_WORD_LIMIT_BY_DIFFICULTY = Object.freeze({
+  normal: 80,
+  hard: 120,
+});
 const CONTENT_LOCALE = "ko-KR";
 const LICENSE_MANIFEST_ID = "ko-kr-launch-license-manifest-v1";
 const FIRST_RUN_SOURCE_ID = "repo-first-run-content-v1";
@@ -86,7 +90,7 @@ const EXPECTED_GENERATOR_DEPENDENCY_PATHS = Object.freeze([
   "data/game-content/v1/ko-KR/license-manifest.json",
 ]);
 export const KO_KR_LAUNCH_CLUE_QUALITY_POLICY = Object.freeze({
-  schemaVersion: "ko-kr-launch-generator-config/4",
+  schemaVersion: "ko-kr-launch-generator-config/5",
   clueSimilarity: Object.freeze({
     policyId: LAUNCH_CLUE_SIMILARITY_POLICY_ID,
     normalization: "NFKC-lowercase-no-space-punctuation-symbol",
@@ -418,6 +422,11 @@ export function validateGeneratorThemeInventoryPolicy(config) {
     config?.themeOwnership,
     LAUNCH_THEME_OWNER_POLICY,
     "generator theme ownership policy",
+  );
+  requireExact(
+    config?.dailyConnectorWordLimitByDifficulty,
+    EXPECTED_DAILY_CONNECTOR_WORD_LIMIT_BY_DIFFICULTY,
+    "generator daily connector word limit policy",
   );
   return true;
 }
@@ -2057,8 +2066,8 @@ export function validateGeneratorReportTrace(
     "generator config is required for report trace validation",
   );
   requireCondition(
-    config.schemaVersion === "ko-kr-launch-generator-config/4",
-    "generator report trace config schema must be ko-kr-launch-generator-config/4",
+    config.schemaVersion === "ko-kr-launch-generator-config/5",
+    "generator report trace config schema must be ko-kr-launch-generator-config/5",
   );
   requireCondition(
     Array.isArray(reportBoards),
@@ -2155,15 +2164,24 @@ export function validateGeneratorReportTrace(
       `${field}.attempts length is invalid`,
     );
 
-    const currentAvailableWordByAnswer = shouldRecalculateSelectionScores
-      ? new Map(
-          filterAvailableWords(
-            reviewedWords,
-            plannedRoute,
-            usedAnswers,
-          ).words.map((word) => [word.answer, word]),
-        )
+    const currentSelection = shouldRecalculateSelectionScores
+      ? filterAvailableWords(reviewedWords, plannedRoute, usedAnswers)
       : null;
+    const currentAvailableWordByAnswer =
+      currentSelection == null
+        ? null
+        : new Map(currentSelection.words.map((word) => [word.answer, word]));
+    if (currentSelection != null) {
+      requireExact(
+        reportBoard.wordPool,
+        {
+          total: currentSelection.words.length,
+          theme: currentSelection.themeWordCount ?? null,
+          connectors: currentSelection.connectorWordCount ?? null,
+        },
+        `${field}.wordPool independently recalculated`,
+      );
+    }
     let firstPassRetryIndex = null;
     let policyWinner = null;
     for (const [retryIndex, attempt] of reportBoard.attempts.entries()) {
@@ -2453,8 +2471,7 @@ async function validateGeneratorIdentity(
   requireCondition(
     generator.config.maxAutoRunRatio === 0.5 &&
       generator.config.minMultiCrossRatio === 0.65 &&
-      generator.config.minDailyThemeEntryRatio === 0.5 &&
-      generator.config.dailyConnectorWordLimit === 80,
+      generator.config.minDailyThemeEntryRatio === 0.5,
     "generator quality threshold policy drifted",
   );
   const dependencies = generator.config.dependencies;

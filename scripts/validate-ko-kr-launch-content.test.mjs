@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
 import {
+  DAILY_CONNECTOR_WORD_LIMIT_BY_DIFFICULTY,
   LAUNCH_ACCEPTED_CANDIDATE_POLICY,
   LAUNCH_THEME_IDS,
   LAUNCH_THEME_OWNER_POLICY,
@@ -133,6 +134,9 @@ test("clue quality v2 config의 threshold나 scope 재봉인을 거부한다", (
 
 test("generator theme inventory의 길이 상한과 owner 정책 재봉인을 거부한다", () => {
   const config = {
+    dailyConnectorWordLimitByDifficulty: structuredClone(
+      DAILY_CONNECTOR_WORD_LIMIT_BY_DIFFICULTY,
+    ),
     maxGenerationWordLength: { easy: 3, normal: 3, hard: 3 },
     themeOwnership: structuredClone(LAUNCH_THEME_OWNER_POLICY),
   };
@@ -150,6 +154,13 @@ test("generator theme inventory의 길이 상한과 owner 정책 재봉인을 �
   assert.throws(
     () => validateGeneratorThemeInventoryPolicy(forgedOwnerPolicy),
     /theme ownership policy does not exactly match/,
+  );
+
+  const forgedConnectorPolicy = structuredClone(config);
+  forgedConnectorPolicy.dailyConnectorWordLimitByDifficulty.hard = 80;
+  assert.throws(
+    () => validateGeneratorThemeInventoryPolicy(forgedConnectorPolicy),
+    /daily connector word limit policy does not exactly match/,
   );
 });
 
@@ -618,7 +629,7 @@ test("저품질 board의 report quality PASS 재봉인을 거부한다", () => {
 function makeGeneratorTraceFixture() {
   const route = buildLaunchRoutePlan()[0];
   const config = {
-    schemaVersion: "ko-kr-launch-generator-config/4",
+    schemaVersion: "ko-kr-launch-generator-config/5",
     acceptedCandidateSelection: structuredClone(
       LAUNCH_ACCEPTED_CANDIDATE_POLICY,
     ),
@@ -786,9 +797,9 @@ test("재봉인한 route/search/attempt 허위 trace를 거부한다", () => {
   const forgeries = [
     {
       mutate: ({ config }) => {
-        config.schemaVersion = "ko-kr-launch-generator-config/3";
+        config.schemaVersion = "ko-kr-launch-generator-config/4";
       },
-      expected: /trace config schema must be ko-kr-launch-generator-config\/4/,
+      expected: /trace config schema must be ko-kr-launch-generator-config\/5/,
     },
     {
       mutate: ({ config }) => {
