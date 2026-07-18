@@ -802,6 +802,7 @@ function makeGeneratorTraceFixture(route = buildLaunchRoutePlan()[0]) {
     (_, index) => `lookahead-${String(index).padStart(2, "0")}`,
   );
   const rejectedFailedChecks = [
+    ...(route.difficulty === "hard" ? ["minWordCount"] : []),
     "minCrossRatio",
     "minBboxDensity",
     "minMultiCrossRatio",
@@ -1486,23 +1487,31 @@ test("재봉인한 route/search/attempt 허위 trace를 거부한다", () => {
 });
 
 test("compact fallback trace의 정책·node cap·정답 inventory를 봉인한다", () => {
-  const fixture = makeGeneratorTraceFixture();
+  const hardRoute = buildLaunchRoutePlan().find(
+    (route) => route.difficulty === "hard" && route.route.kind === "chapter",
+  );
+  assert.ok(hardRoute != null);
+  const fixture = makeGeneratorTraceFixture(hardRoute);
+  const compactTraceFor = (targetFixture, targetCandidate) => ({
+    policyId: targetFixture.config.searchQuality.compactFallback.policyId,
+    termination: "pass",
+    nodeCount: 120,
+    uniqueStateCount: 80,
+    maxNodeCount:
+      targetFixture.config.searchQuality.compactFallback.maxNodeCount,
+    maxBboxArea:
+      DIFFICULTY_PROFILES[targetFixture.board.difficulty].boardSize *
+      Math.ceil(
+        DIFFICULTY_PROFILES[targetFixture.board.difficulty].boardSize / 2,
+      ),
+    selectedAnswers: [...targetCandidate.answers],
+  });
   const rejectedCandidate = structuredClone(
     fixture.board.attempts[0].candidates[0],
   );
   const candidate = structuredClone(fixture.board.attempts[1].candidates[1]);
   candidate.generationMethod = "compact-fallback";
-  candidate.compactSearch = {
-    policyId: fixture.config.searchQuality.compactFallback.policyId,
-    termination: "pass",
-    nodeCount: 120,
-    uniqueStateCount: 80,
-    maxNodeCount: fixture.config.searchQuality.compactFallback.maxNodeCount,
-    maxBboxArea:
-      DIFFICULTY_PROFILES[fixture.board.difficulty].boardSize *
-      Math.ceil(DIFFICULTY_PROFILES[fixture.board.difficulty].boardSize / 2),
-    selectedAnswers: [...candidate.answers],
-  };
+  candidate.compactSearch = compactTraceFor(fixture, candidate);
   fixture.board.attempts = Array.from({ length: 8 }, (_, retryIndex) => ({
     phase: "base",
     phaseIndex: 0,
@@ -1618,6 +1627,17 @@ test("compact fallback trace의 정책·node cap·정답 inventory를 봉인한�
         forgedEarlyActivation.board,
       ]),
     /compact fallback candidate placement is invalid/,
+  );
+
+  const easyFixture = makeGeneratorTraceFixture();
+  const easyCompactCandidate = easyFixture.board.attempts[1].candidates[1];
+  easyCompactCandidate.generationMethod = "compact-fallback";
+  easyCompactCandidate.compactSearch = compactTraceFor(
+    easyFixture,
+    easyCompactCandidate,
+  );
+  assert.doesNotThrow(() =>
+    validateGeneratorReportTrace(easyFixture.config, [easyFixture.board]),
   );
 });
 

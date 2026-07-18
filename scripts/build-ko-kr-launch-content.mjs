@@ -1737,8 +1737,19 @@ export function isLaunchCompactFallbackRetry(
   retryIndex,
   retryCount,
   phaseHasPassingCandidate,
+  difficulty,
 ) {
-  return retryIndex === retryCount - 1 && !phaseHasPassingCandidate;
+  requireCondition(
+    Object.hasOwn(
+      LAUNCH_COMPACT_FALLBACK_POLICY.activationByDifficulty,
+      difficulty,
+    ),
+    `compact fallback difficulty is invalid: ${difficulty}`,
+  );
+  return (
+    difficulty !== "hard" ||
+    (retryIndex === retryCount - 1 && !phaseHasPassingCandidate)
+  );
 }
 
 async function generateRouteContent(
@@ -1866,6 +1877,7 @@ async function generateRouteContent(
               retryIndex,
               phaseSpec.retryCount,
               phaseHasPassingCandidate,
+              route.difficulty,
             ),
             scoringPolicyId: LAUNCH_QUALITY_SCORING_POLICY.policyId,
             seed,

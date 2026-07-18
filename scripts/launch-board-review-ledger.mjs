@@ -69,9 +69,13 @@ const EXPECTED_SEARCH_QUALITY_POLICY = Object.freeze({
     }),
   }),
   compactFallback: Object.freeze({
-    policyId: "launch-compact-connected-dfs-v2",
-    activationScope:
-      "launch-builder-final-retry-of-each-phase-after-all-standard-searches-have-no-pass",
+    policyId: "launch-compact-connected-dfs-v3",
+    activationScope: "launch-builder-difficulty-aware-after-standard-no-pass",
+    activationByDifficulty: Object.freeze({
+      easy: "each-retry-after-current-standard-search-has-no-pass",
+      normal: "each-retry-after-current-standard-search-has-no-pass",
+      hard: "final-retry-of-each-phase-after-all-standard-searches-have-no-pass",
+    }),
     initialSymmetry: "each-word-across-at-origin-then-global-candidate-ranking",
     connectivity: "every-placement-after-first-overlaps-an-existing-letter",
     intermediateRunPolicy: "all-maximal-runs-known-unique-and-accepted",

@@ -189,22 +189,35 @@ describe("ko-KR launch content builder", () => {
     );
   });
 
-  test("compact fallback은 각 retry phase의 마지막 표준 탐색 뒤에만 실행한다", () => {
+  test("compact fallback은 easy·normal은 즉시, hard는 phase 마지막에만 실행한다", () => {
     assert.equal(
       LAUNCH_COMPACT_FALLBACK_POLICY.policyId,
-      "launch-compact-connected-dfs-v2",
+      "launch-compact-connected-dfs-v3",
     );
     assert.equal(
       LAUNCH_COMPACT_FALLBACK_POLICY.activationScope,
-      "launch-builder-final-retry-of-each-phase-after-all-standard-searches-have-no-pass",
+      "launch-builder-difficulty-aware-after-standard-no-pass",
     );
+    assert.deepEqual(LAUNCH_COMPACT_FALLBACK_POLICY.activationByDifficulty, {
+      easy: "each-retry-after-current-standard-search-has-no-pass",
+      normal: "each-retry-after-current-standard-search-has-no-pass",
+      hard: "final-retry-of-each-phase-after-all-standard-searches-have-no-pass",
+    });
+    for (const difficulty of ["easy", "normal"]) {
+      assert.deepEqual(
+        Array.from({ length: 8 }, (_, retryIndex) =>
+          isLaunchCompactFallbackRetry(retryIndex, 8, false, difficulty),
+        ),
+        Array(8).fill(true),
+      );
+    }
     assert.deepEqual(
       Array.from({ length: 8 }, (_, retryIndex) =>
-        isLaunchCompactFallbackRetry(retryIndex, 8, false),
+        isLaunchCompactFallbackRetry(retryIndex, 8, false, "hard"),
       ),
       [false, false, false, false, false, false, false, true],
     );
-    assert.equal(isLaunchCompactFallbackRetry(7, 8, true), false);
+    assert.equal(isLaunchCompactFallbackRetry(7, 8, true, "hard"), false);
   });
 
   test("base PASS는 fallback을 호출하지 않고 기존 선택 결과를 즉시 반환한다", () => {
