@@ -1239,7 +1239,8 @@ export function createGameSaveRepository(
         previous,
         {
           ...input.progress,
-          completedAt: input.progress?.completedAt ?? timestamp,
+          completedAt:
+            previous?.completedAt ?? input.progress?.completedAt ?? timestamp,
           longestIntersectionChain: Math.max(
             input.progress?.longestIntersectionChain ?? 0,
             input.snapshot.lastResolvedEntryIds.length,

@@ -15,6 +15,7 @@ import {
   DEFAULT_GAME_SAVE_V2_KEY,
   type KeyValueStoragePort,
 } from "./gameSaveRepository.ts";
+import { captureLegacyWebSaveSnapshot } from "../adapters/legacyWebSaveInventory.ts";
 import {
   GAME_SAVE_ACTIVE_POINTER_KEY,
   GAME_SAVE_LEGACY_PROJECTION_OUTBOX_KEY,
@@ -219,6 +220,171 @@ describe("Save v2 migration transaction", () => {
     assert.equal(second.save.economyRecords.length, 0);
   });
 
+  test("archive 없는 RuntimeHost 재부팅은 canonical map 완료 상태를 exact 보존한다", async () => {
+    const storage = new MemoryStorage();
+    const puzzleId = "onboarding-easy-01";
+    const legacySnapshot = createLegacyRawSnapshot({
+      market: "web",
+      sourceVersion: "web-main-0.1.0",
+      capturedAt: "2026-07-18T00:00:00.000Z",
+      records: [
+        {
+          key: `crossword-puzzle:progress:${puzzleId}`,
+          rawValue: JSON.stringify({
+            cellValues: { "0:0": "가" },
+            earnedHintCredits: 0,
+            hintCount: 0,
+            revealUsed: false,
+            tentativeCells: [],
+          }),
+        },
+      ],
+    });
+    const activated = await prepareGameSaveMigration({
+      storage,
+      legacySnapshot,
+      knownContentChecksums: BUNDLED_FIRST_RUN_CONTENT_CHECKSUMS,
+      now,
+    });
+    const mapped = structuredClone(activated.save);
+    const content = mapped.content["ko-KR"];
+    const puzzle = content.puzzles[puzzleId];
+    puzzle.phase = "map";
+    puzzle.completedAt = "2026-07-18T00:02:00.000Z";
+    puzzle.commandSequence += 1;
+    puzzle.updatedAt = "2026-07-18T00:02:00.000Z";
+    content.completedPuzzleIds = [puzzleId];
+    content.completionRecords = [
+      {
+        puzzleId,
+        contentLocale: "ko-KR",
+        contentChecksum: puzzle.contentChecksum,
+        completedAt: puzzle.completedAt,
+        hintCount: 0,
+        revealUsed: false,
+        assistanceKnown: true,
+      },
+    ];
+    const sealed = await sealSaveV2(mapped, portableGameSaveChecksumPort);
+    const projection = createGameSaveLegacyProjectionPort(storage);
+    await projection.prepareCanonicalWrite(sealed);
+    await storage.setItem(DEFAULT_GAME_SAVE_V2_KEY, JSON.stringify(sealed));
+    await projection.commitCanonicalWrite(sealed);
+    assert.equal(
+      storage.values.has(`crossword-puzzle:archive:record:${puzzleId}`),
+      false,
+    );
+
+    const keys = [...storage.values.keys()];
+    const captured = captureLegacyWebSaveSnapshot({
+      storage: {
+        length: keys.length,
+        key: (index) => keys[index] ?? null,
+        getItem: (key) => storage.values.get(key) ?? null,
+      },
+      market: "web",
+      sourceVersion: "web-main-0.1.0",
+      capturedAt: "2026-07-18T00:03:00.000Z",
+    });
+    const restarted = await prepareGameSaveMigration({
+      storage,
+      legacySnapshot: captured,
+      knownContentChecksums: BUNDLED_FIRST_RUN_CONTENT_CHECKSUMS,
+      now: () => "2026-07-18T00:04:00.000Z",
+    });
+
+    assert.equal(restarted.status, "already-active");
+    const restartedPuzzle = restarted.save.content["ko-KR"].puzzles[puzzleId];
+    assert.equal(restartedPuzzle.phase, "map");
+    assert.equal(restartedPuzzle.completedAt, puzzle.completedAt);
+    assert.equal(
+      storage.values.get(DEFAULT_GAME_SAVE_V2_KEY),
+      JSON.stringify(sealed),
+    );
+  });
+
+  test("OFF에서 새로 완료한 active 보드는 result와 완료 원장을 한 번만 병합한다", async () => {
+    const fixture = JSON.parse(
+      readFileSync(
+        new URL(
+          "../../test/fixtures/save-migration/ait-v0.3.108.json",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    ) as Fixture;
+    const incomplete = createLegacyRawSnapshot({
+      market: fixture.market,
+      sourceVersion: fixture.sourceVersion,
+      capturedAt: "2026-07-18T00:00:00.000Z",
+      records: fixture.records.map(([key, rawValue]) => {
+        if (
+          !key.startsWith("crossword-puzzle:archive:record:") &&
+          !key.startsWith("crossword-puzzle:mission:")
+        ) {
+          return { key, rawValue };
+        }
+        const value = JSON.parse(rawValue) as Record<string, unknown>;
+        delete value.completedAt;
+        return { key, rawValue: JSON.stringify(value) };
+      }),
+    });
+    const storage = new MemoryStorage();
+    const activated = await prepareGameSaveMigration({
+      storage,
+      legacySnapshot: incomplete,
+      now,
+    });
+    const puzzleId = "2026-05-25-normal-01";
+    assert.equal(
+      activated.save.content["ko-KR"].puzzles[puzzleId].phase,
+      "active",
+    );
+    assert.deepEqual(activated.save.content["ko-KR"].completedPuzzleIds, []);
+
+    const completedSnapshot = fixtureSnapshot(
+      "ait-v0.3.108.json",
+      "2026-07-18T02:00:00.000Z",
+    );
+    const reconciled = await prepareGameSaveMigration({
+      storage,
+      legacySnapshot: completedSnapshot,
+      now: () => "2026-07-18T02:01:00.000Z",
+    });
+    const completed = reconciled.save.content["ko-KR"];
+    assert.equal(reconciled.status, "reconciled-legacy");
+    assert.equal(completed.puzzles[puzzleId].phase, "result");
+    assert.equal(
+      completed.puzzles[puzzleId].completedAt,
+      "2026-05-25T00:03:00.000Z",
+    );
+    assert.deepEqual(completed.completedPuzzleIds, [puzzleId]);
+    assert.equal(
+      completed.completionRecords.filter(
+        (record) => record.puzzleId === puzzleId,
+      ).length,
+      1,
+    );
+    const reconciledRaw = storage.values.get(DEFAULT_GAME_SAVE_V2_KEY);
+
+    const stable = await prepareGameSaveMigration({
+      storage,
+      legacySnapshot: completedSnapshot,
+      now: () => "2026-07-18T02:02:00.000Z",
+    });
+    assert.equal(stable.status, "already-active");
+    assert.equal(
+      stable.save.content["ko-KR"].completionRecords.filter(
+        (record) => record.puzzleId === puzzleId,
+      ).length,
+      1,
+    );
+    assert.equal(
+      storage.values.get(DEFAULT_GAME_SAVE_V2_KEY),
+      reconciledRaw,
+    );
+  });
+
   test("pointer 전환 실패는 legacy preimage를 복구하고 재시도 가능한 outbox 상태를 남기지 않는다", async () => {
     const original = JSON.stringify({
       cellValues: { "0,0": "옛" },
@@ -344,6 +510,26 @@ describe("Save v2 migration transaction", () => {
       legacySnapshot: fixtureSnapshot(),
       now,
     });
+    const puzzleId = "2026-05-25-normal-01";
+    const canonical = structuredClone(first.save);
+    const canonicalPuzzle = canonical.content["ko-KR"].puzzles[puzzleId];
+    canonicalPuzzle.phase = "map";
+    canonicalPuzzle.currentEntryId = "a1";
+    canonicalPuzzle.longestIntersectionChain = 4;
+    canonicalPuzzle.commandSequence += 7;
+    canonicalPuzzle.updatedAt = "2026-07-18T01:00:00.000Z";
+    const canonicalSealed = await sealSaveV2(
+      canonical,
+      portableGameSaveChecksumPort,
+    );
+    const projection = createGameSaveLegacyProjectionPort(storage);
+    await projection.prepareCanonicalWrite(canonicalSealed);
+    await storage.setItem(
+      DEFAULT_GAME_SAVE_V2_KEY,
+      JSON.stringify(canonicalSealed),
+    );
+    await projection.commitCanonicalWrite(canonicalSealed);
+
     const fixture = JSON.parse(
       readFileSync(
         new URL(
@@ -353,7 +539,7 @@ describe("Save v2 migration transaction", () => {
         "utf8",
       ),
     ) as Fixture;
-    const progressKey = "crossword-puzzle:progress:2026-05-25-normal-01";
+    const progressKey = `crossword-puzzle:progress:${puzzleId}`;
     const records = fixture.records.map(([key, rawValue]) => ({
       key,
       rawValue:
@@ -374,22 +560,32 @@ describe("Save v2 migration transaction", () => {
     const reconciled = await prepareGameSaveMigration({
       storage,
       legacySnapshot: changed,
-      now,
+      now: () => "2026-07-18T02:01:00.000Z",
     });
     assert.equal(reconciled.status, "reconciled-legacy");
+    const reconciledPuzzle = reconciled.save.content["ko-KR"].puzzles[puzzleId];
+    assert.equal(reconciledPuzzle.cellValues["1:0"], "후");
+    assert.equal(reconciledPuzzle.phase, "map");
+    assert.equal(reconciledPuzzle.currentEntryId, "a1");
+    assert.equal(reconciledPuzzle.longestIntersectionChain, 4);
     assert.equal(
-      reconciled.save.content["ko-KR"].puzzles["2026-05-25-normal-01"]
-        .cellValues["1:0"],
-      "후",
+      reconciledPuzzle.commandSequence,
+      canonicalPuzzle.commandSequence + 1,
     );
+    assert.equal(reconciledPuzzle.completedAt, canonicalPuzzle.completedAt);
     assert.deepEqual(reconciled.save.economyRecords, first.save.economyRecords);
+    const reconciledRaw = storage.values.get(DEFAULT_GAME_SAVE_V2_KEY);
 
     const stable = await prepareGameSaveMigration({
       storage,
       legacySnapshot: changed,
-      now,
+      now: () => "2026-07-18T02:02:00.000Z",
     });
     assert.equal(stable.status, "already-active");
+    assert.equal(
+      storage.values.get(DEFAULT_GAME_SAVE_V2_KEY),
+      reconciledRaw,
+    );
   });
 
   test("ongoing projection은 progress 전체와 기존 archive 완료 메타를 read-back한다", async () => {

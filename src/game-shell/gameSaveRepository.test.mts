@@ -488,6 +488,56 @@ describe("game progression ledger repository", () => {
     assert.deepEqual(replay.progression.completedPuzzleIds, ["puzzle-1"]);
   });
 
+  test("새 document의 map 완료 재확인은 최초 completedAt과 보상 원장을 보존한다", async () => {
+    const storage = new MemoryStorage();
+    const completedSnapshot = gameSnapshot({
+      phase: "result",
+      commandSequence: 4,
+      completedEntryIds: ["entry-1", "entry-2"],
+      lastResolvedEntryIds: ["entry-2"],
+    });
+    const first = await repository(
+      storage,
+      "2026-07-17T03:00:00.000Z",
+    ).recordPuzzleCompletion({
+      snapshot: completedSnapshot,
+      entryCount: 2,
+      mapNodeId: "chapter-1/node-1",
+      cardIds: ["card-1"],
+    });
+    assert.equal(first.status, "granted");
+    const firstRaw = storage.values.get(DEFAULT_GAME_SAVE_V2_KEY);
+    assert.ok(firstRaw);
+    const firstSave = JSON.parse(firstRaw);
+
+    const restarted = repository(storage, "2026-07-17T03:01:00.000Z");
+    const replay = await restarted.recordPuzzleCompletion({
+      snapshot: gameSnapshot({
+        ...completedSnapshot,
+        phase: "map",
+        commandSequence: 5,
+      }),
+      entryCount: 2,
+      mapNodeId: "chapter-1/node-1",
+      cardIds: ["card-1"],
+    });
+    assert.equal(replay.status, "already-granted");
+    assert.equal(replay.memoryInkAwarded, 0);
+    assert.equal(replay.mapFragmentAwarded, false);
+
+    const replayRaw = storage.values.get(DEFAULT_GAME_SAVE_V2_KEY);
+    assert.ok(replayRaw);
+    const replaySave = JSON.parse(replayRaw);
+    const replayPuzzle = replaySave.content["ko-KR"].puzzles["puzzle-1"];
+    assert.equal(replayPuzzle.phase, "map");
+    assert.equal(replayPuzzle.completedAt, "2026-07-17T03:00:00.000Z");
+    assert.deepEqual(
+      replaySave.content["ko-KR"].completionRecords,
+      firstSave.content["ko-KR"].completionRecords,
+    );
+    assert.deepEqual(replaySave.economyRecords, firstSave.economyRecords);
+  });
+
   test("꾸미기 구매를 같은 sealed 원장에 저장하고 locale별 projection으로 읽는다", async () => {
     const storage = new MemoryStorage();
     const repo = repository(storage, "2026-07-17T04:00:00.000Z");

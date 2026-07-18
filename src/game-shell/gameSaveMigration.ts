@@ -389,14 +389,23 @@ function mergePuzzleSnapshots(
     ) {
       throw new GameSaveMigrationError("migration-transform-failed");
     }
+    // Completion is monotonic in Save v2. A legacy client can add the first
+    // completion marker while the new runtime is OFF, but a missing or stale
+    // legacy archive must never erase the canonical completion timestamp.
+    const completedAt = current.completedAt ?? incoming.completedAt;
+    const completedWhileOff =
+      current.completedAt == null && incoming.completedAt != null;
+    const phase =
+      completedWhileOff && current.phase !== "result" && current.phase !== "map"
+        ? "result"
+        : current.phase;
     const representable = {
       cellValues: incoming.cellValues,
       earnedHintCredits: incoming.earnedHintCredits,
       hintCount: incoming.hintCount,
       revealUsed: incoming.revealUsed,
       tentativeCells: incoming.tentativeCells,
-      completedAt: incoming.completedAt,
-      phase: incoming.phase,
+      completedAt,
     };
     const currentRepresentable = {
       cellValues: current.cellValues,
@@ -405,13 +414,16 @@ function mergePuzzleSnapshots(
       revealUsed: current.revealUsed,
       tentativeCells: current.tentativeCells,
       completedAt: current.completedAt,
-      phase: current.phase,
     };
+    // Legacy progress has no phase field. Its migrated `result` value is only
+    // a lossy projection of completedAt, so it must not regress canonical-only
+    // states such as `map` during every RuntimeHost boot reconciliation.
     if (canonicalValueEquals(representable, currentRepresentable)) continue;
     puzzles[puzzleId] = {
       ...current,
       ...representable,
       currentEntryId: current.currentEntryId,
+      phase,
       commandSequence: current.commandSequence + 1,
       updatedAt: mergedAt,
     };
