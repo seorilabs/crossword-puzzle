@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import {
   Component,
+  Fragment,
   useCallback,
   useEffect,
   useMemo,
@@ -12,11 +13,8 @@ import {
 } from "react";
 import { createRoot, type Root } from "react-dom/client";
 
-import {
-  createInitialGameSnapshot,
-  GameController,
-  type GameSnapshot,
-} from "../../packages/crossword-core/src/gameController.ts";
+import type { GameSnapshot } from "../../packages/crossword-core/src/gameController.ts";
+import type { GameContentV1 } from "../../packages/crossword-core/src/gameContent.ts";
 import {
   projectGameFeedbackActions,
   type GameFeedbackHaptic,
@@ -48,26 +46,14 @@ import type {
   GameRuntimeSession,
 } from "./runtimeSelection.ts";
 import {
-  createGameSaveRepository,
-  DEFAULT_GAME_CELL_JOURNAL_KEY,
-  DEFAULT_GAME_SAVE_V2_KEY,
-  GameSaveRepositoryError,
-  type GameSaveRepository,
   type GameProgressionSnapshot,
   type KeyValueStoragePort,
   type RecordGameCompletionResult,
 } from "./gameSaveRepository.ts";
-import {
-  GAME_SAVE_ACTIVE_POINTER_KEY,
-  GAME_SAVE_LEGACY_PROJECTION_OUTBOX_KEY,
-  GAME_SAVE_MIGRATION_STAGING_KEY,
-  createGameSaveLegacyProjectionPort,
-  portableGameSaveChecksumPort,
-} from "./gameSaveMigration.ts";
-import { createRestoredGameSnapshot } from "./gameRestore.ts";
 import { NATIVE_GAME_EVENT } from "./nativeGameEvents.ts";
 import {
   BUNDLED_ONBOARDING_KNOWLEDGE_CARD_ID,
+  loadBundledFirstRunGameContents,
   loadBundledOnboardingGameContent,
   loadBundledOnboardingKnowledgeCard,
 } from "./onboardingGameContent.ts";
@@ -76,6 +62,12 @@ import {
   createGameFeedbackRuntime,
   type GameFeedbackRuntime,
 } from "./gameFeedbackRuntime.ts";
+import {
+  createGameModel,
+  persistGameTransition,
+  rewardConfigFromLaunchConfig,
+  type FirstRunGameModel,
+} from "./firstRunGameModel.ts";
 import "./GameExperience.css";
 
 export type GameExperienceHostKind = GameRuntimeHostKind;
@@ -93,27 +85,6 @@ type HostCallbacks = Readonly<{
   onFatal(error: Error): void;
   onInteractive(ack: CrosswordGameInteractiveAck): void;
 }>;
-
-type GameModel = Readonly<{
-  completionReward: RecordGameCompletionResult | null;
-  controller: GameController;
-  progression: GameProgressionSnapshot;
-  preferences: GameExperiencePreferences;
-  repository: GameSaveRepository;
-  restoreNotice: string | null;
-  snapshot: GameSnapshot;
-}>;
-
-const ONBOARDING_MAP_NODE_ID =
-  "chapter-01-forgotten-path:node:onboarding-easy-01";
-
-function rewardConfigFromLaunchConfig(config: LaunchConfig) {
-  return {
-    base: config.memoryInkBase,
-    perEntry: config.memoryInkPerEntry,
-    chainCap: config.memoryInkChainCap,
-  };
-}
 
 type Deferred<T> = Readonly<{
   promise: Promise<T>;
@@ -146,181 +117,6 @@ function createDeferred<T>(): Deferred<T> {
   };
 }
 
-function changedCellKeys(previous: GameSnapshot, next: GameSnapshot): string[] {
-  const keys = new Set([
-    ...Object.keys(previous.cellValues),
-    ...Object.keys(next.cellValues),
-  ]);
-  return [...keys].filter(
-    (key) =>
-      (previous.cellValues[key] ?? null) !== (next.cellValues[key] ?? null),
-  );
-}
-
-async function persistGameTransition(
-  repository: GameSaveRepository,
-  previous: GameSnapshot,
-  next: GameSnapshot,
-  boardResolved: boolean,
-  entryCount: number,
-  launchConfig: LaunchConfig,
-): Promise<RecordGameCompletionResult | null> {
-  const progress = {
-    longestIntersectionChain: next.lastResolvedEntryIds.length,
-  };
-  if (boardResolved) {
-    return repository.recordPuzzleCompletion({
-      snapshot: next,
-      entryCount,
-      mapNodeId: ONBOARDING_MAP_NODE_ID,
-      cardIds: [BUNDLED_ONBOARDING_KNOWLEDGE_CARD_ID],
-      progress,
-      rewardConfig: rewardConfigFromLaunchConfig(launchConfig),
-    });
-  }
-
-  const changed = changedCellKeys(previous, next);
-  if (
-    changed.length === 1 &&
-    next.commandSequence === previous.commandSequence + 1
-  ) {
-    const cellKey = changed[0];
-    try {
-      await repository.commitCell({
-        snapshot: next,
-        cellKey,
-        cellValue: next.cellValues[cellKey] ?? null,
-        progress,
-      });
-      return null;
-    } catch (error) {
-      if (!(error instanceof GameSaveRepositoryError)) throw error;
-      // Paste/migration or a non-cell save may legitimately bypass the compact
-      // journal; the full sealed snapshot remains the recovery fallback.
-    }
-  }
-  await repository.persistSnapshot(next, progress);
-  return null;
-}
-
-async function createGameModel(
-  storage: KeyValueStoragePort,
-  launchConfig: LaunchConfig,
-): Promise<GameModel> {
-  const content = loadBundledOnboardingGameContent();
-  const repository = createGameSaveRepository({
-    storage,
-    checksumPort: portableGameSaveChecksumPort,
-    uiLocale: "ko-KR",
-    inputMode: "word-strip",
-    legacyProjection: createGameSaveLegacyProjectionPort(storage),
-  });
-  const initial = createInitialGameSnapshot(content);
-  const loadResult = await repository.loadPuzzleSnapshot({
-    contentLocale: content.contentLocale,
-    puzzleId: content.puzzleId,
-    contentChecksum: content.contentChecksum,
-  });
-
-  let restoreNotice: string | null = null;
-  let controller: GameController;
-  if (loadResult.snapshot != null) {
-    controller = new GameController({
-      content,
-      profile: koKrLanguageProfile,
-      initialSnapshot: createRestoredGameSnapshot(
-        content,
-        koKrLanguageProfile,
-        initial,
-        loadResult.snapshot,
-      ),
-    });
-    restoreNotice =
-      loadResult.status === "migrated"
-        ? "기존 진행을 새 게임 저장으로 옮겼어요."
-        : "이어서 복원할 위치를 불러왔어요.";
-  } else if (loadResult.status === "invalid-save") {
-    const quarantineSuffix = Date.now().toString(36);
-    for (const key of [
-      DEFAULT_GAME_SAVE_V2_KEY,
-      DEFAULT_GAME_CELL_JOURNAL_KEY,
-      GAME_SAVE_ACTIVE_POINTER_KEY,
-      GAME_SAVE_MIGRATION_STAGING_KEY,
-      GAME_SAVE_LEGACY_PROJECTION_OUTBOX_KEY,
-    ]) {
-      const raw = await storage.getItem(key);
-      if (raw != null) {
-        await storage.setItem(`${key}:quarantine:${quarantineSuffix}`, raw);
-        await storage.removeItem(key);
-      }
-    }
-    controller = new GameController({
-      content,
-      profile: koKrLanguageProfile,
-      initialSnapshot: { ...initial, phase: "recovery" },
-    });
-    controller.dispatch({ type: "recovery.fail" });
-    restoreNotice = "손상된 진행 대신 안전한 새 보드로 시작해요.";
-  } else if (
-    loadResult.status === "invalid-journal" ||
-    loadResult.status === "journal-rejected"
-  ) {
-    const rawJournal = await storage.getItem(DEFAULT_GAME_CELL_JOURNAL_KEY);
-    if (rawJournal != null) {
-      const quarantineSuffix = Date.now().toString(36);
-      await storage.setItem(
-        `${DEFAULT_GAME_CELL_JOURNAL_KEY}:quarantine:${quarantineSuffix}`,
-        rawJournal,
-      );
-      await storage.removeItem(DEFAULT_GAME_CELL_JOURNAL_KEY);
-    }
-    controller = new GameController({
-      content,
-      profile: koKrLanguageProfile,
-      initialSnapshot: { ...initial, phase: "recovery" },
-    });
-    controller.dispatch({ type: "recovery.fail" });
-    restoreNotice = "손상된 복구 기록을 격리하고 마지막 저장을 보호했어요.";
-  } else {
-    controller = new GameController({
-      content,
-      profile: koKrLanguageProfile,
-    });
-  }
-
-  if (controller.getSnapshot().phase === "intro") {
-    controller.dispatch({ type: "intro.complete" });
-  }
-  const snapshot = controller.getSnapshot();
-  await repository.persistSnapshot(snapshot, {
-    longestIntersectionChain: snapshot.lastResolvedEntryIds.length,
-  });
-  const completionReward =
-    (snapshot.phase === "result" || snapshot.phase === "map") &&
-    snapshot.completedEntryIds.length === content.entries.length
-      ? await repository.recordPuzzleCompletion({
-          snapshot,
-          entryCount: content.entries.length,
-          mapNodeId: ONBOARDING_MAP_NODE_ID,
-          cardIds: [BUNDLED_ONBOARDING_KNOWLEDGE_CARD_ID],
-          rewardConfig: rewardConfigFromLaunchConfig(launchConfig),
-        })
-      : null;
-  const progression =
-    completionReward?.progression ??
-    (await repository.readProgression(content.contentLocale));
-  const preferences = await repository.readExperiencePreferences();
-  return {
-    completionReward,
-    controller,
-    progression,
-    preferences,
-    repository,
-    restoreNotice,
-    snapshot,
-  };
-}
-
 function useMediaPreference(query: string): boolean {
   const [matches, setMatches] = useState(() =>
     typeof window === "undefined" || typeof window.matchMedia !== "function"
@@ -341,10 +137,10 @@ function useMediaPreference(query: string): boolean {
 }
 
 function getDraftForEntry(
+  content: GameContentV1,
   entryId: string | null,
   snapshot: GameSnapshot,
 ): string {
-  const content = loadBundledOnboardingGameContent();
   const entry = content.entries.find((candidate) => candidate.id === entryId);
   if (entry == null) return "";
   return getEntryCells(entry)
@@ -367,12 +163,18 @@ function GameExperience({
   playHaptic?: (semantic: GameFeedbackHaptic) => Promise<void> | void;
   storage: KeyValueStoragePort;
 }>) {
-  const content = useMemo(loadBundledOnboardingGameContent, []);
+  const firstRunContents = useMemo(loadBundledFirstRunGameContents, []);
+  const [content, setContent] = useState<GameContentV1>(
+    () => firstRunContents[0] ?? loadBundledOnboardingGameContent(),
+  );
+  const [requestedPuzzleId, setRequestedPuzzleId] = useState<string | null>(
+    null,
+  );
   const onboardingKnowledgeCard = useMemo(
     loadBundledOnboardingKnowledgeCard,
     [],
   );
-  const [model, setModel] = useState<GameModel | null>(null);
+  const [model, setModel] = useState<FirstRunGameModel | null>(null);
   const [snapshot, setSnapshot] = useState<GameSnapshot | null>(null);
   const [progression, setProgression] =
     useState<GameProgressionSnapshot | null>(null);
@@ -459,12 +261,22 @@ function GameExperience({
         await bridgeReady;
       }
       callbacks.onBridgeReady();
-      return createGameModel(storage, initialLaunchConfig);
+      return createGameModel(
+        storage,
+        initialLaunchConfig,
+        requestedPuzzleId ?? undefined,
+      );
     };
+    setModel(null);
+    setSnapshot(null);
+    setCompletionReward(null);
+    setSaveWarning(null);
+    setFatalError(false);
     void initialize().then(
       (nextModel) => {
         if (cancelled) return;
         previousSnapshotRef.current = nextModel.snapshot;
+        setContent(nextModel.content);
         setModel(nextModel);
         setSnapshot(nextModel.snapshot);
         setProgression(nextModel.progression);
@@ -487,7 +299,14 @@ function GameExperience({
     return () => {
       cancelled = true;
     };
-  }, [bridgeReady, callbacks, hostKind, initialLaunchConfig, storage]);
+  }, [
+    bridgeReady,
+    callbacks,
+    hostKind,
+    initialLaunchConfig,
+    requestedPuzzleId,
+    storage,
+  ]);
 
   useEffect(() => {
     if (model == null) return;
@@ -544,6 +363,8 @@ function GameExperience({
         boardResolved,
         content.entries.length,
         initialLaunchConfig,
+        model.identity,
+        model.cardIds,
       ).then(
         (reward) => {
           if (reward != null) {
@@ -561,7 +382,7 @@ function GameExperience({
         },
       );
     });
-  }, [content.entries.length, initialLaunchConfig, model]);
+  }, [content, initialLaunchConfig, model]);
 
   useEffect(() => {
     if (model == null || canvasParentRef.current == null) {
@@ -613,7 +434,7 @@ function GameExperience({
 
   useEffect(() => {
     if (snapshot == null) return;
-    setDraft(getDraftForEntry(snapshot.selectedEntryId, snapshot));
+    setDraft(getDraftForEntry(content, snapshot.selectedEntryId, snapshot));
     if (
       snapshot.phase === "active" &&
       !settingsOpen &&
@@ -621,7 +442,7 @@ function GameExperience({
     ) {
       window.setTimeout(() => inputRef.current?.focus(), 0);
     }
-  }, [settingsOpen, snapshot]);
+  }, [content, settingsOpen, snapshot]);
 
   useEffect(() => {
     if (model == null) return;
@@ -719,8 +540,8 @@ function GameExperience({
       const reward = await model.repository.recordPuzzleCompletion({
         snapshot,
         entryCount: content.entries.length,
-        mapNodeId: ONBOARDING_MAP_NODE_ID,
-        cardIds: [BUNDLED_ONBOARDING_KNOWLEDGE_CARD_ID],
+        mapNodeId: model.identity.mapNodeId,
+        cardIds: model.cardIds,
         progress: {
           longestIntersectionChain: snapshot.lastResolvedEntryIds.length,
         },
@@ -741,6 +562,16 @@ function GameExperience({
     saveRetrying,
     snapshot,
   ]);
+  const activateFirstRunBoard = useCallback((puzzleId: string) => {
+    previousSnapshotRef.current = null;
+    setModel(null);
+    setSnapshot(null);
+    setCompletionReward(null);
+    setSaveWarning(null);
+    setDraft("");
+    setLiveMessage("다음 말길을 준비하고 있어요.");
+    setRequestedPuzzleId(puzzleId);
+  }, []);
   const updatePreference = useCallback(
     (patch: Partial<GameExperiencePreferences>) => {
       if (model == null) return;
@@ -835,6 +666,19 @@ function GameExperience({
     progression?.metaUnlocks.pathColorCosmetics ?? false;
   const weeklyChallengeUnlocked =
     progression?.metaUnlocks.weeklyChallenge ?? false;
+  const activeBoardIndex = Math.max(
+    0,
+    firstRunContents.findIndex(
+      (candidate) => candidate.puzzleId === content.puzzleId,
+    ),
+  );
+  const completedFirstRunIds = new Set(
+    progression?.completedPuzzleIds.filter((puzzleId) =>
+      firstRunContents.some((contentItem) => contentItem.puzzleId === puzzleId),
+    ) ?? [],
+  );
+  const completedFirstRunCount = completedFirstRunIds.size;
+  const nextFirstRunContent = firstRunContents[activeBoardIndex + 1] ?? null;
   const hasOnboardingKnowledgeCard =
     progression?.cardIds.includes(BUNDLED_ONBOARDING_KNOWLEDGE_CARD_ID) ??
     false;
@@ -861,7 +705,7 @@ function GameExperience({
         aria-hidden={settingsOpen || undefined}
       >
         <div>
-          <span>기억의 정원 · 첫 번째 말길</span>
+          <span>{`기억의 정원 · ${activeBoardIndex + 1}번째 말길`}</span>
           <h1>말길</h1>
         </div>
         <div className="gameTopStatus">
@@ -1061,8 +905,8 @@ function GameExperience({
             ✦
           </span>
           <div>
-            <span className="gameEyebrow">장소 복원 완료</span>
-            <h2 id="game-result-title">기억의 정원이 깨어났어요</h2>
+            <span className="gameEyebrow">{`${activeBoardIndex + 1}번째 장소 복원 완료`}</span>
+            <h2 id="game-result-title">기억의 정원이 더 밝아졌어요</h2>
             <p>
               {completionReward == null
                 ? saveWarning == null
@@ -1124,19 +968,33 @@ function GameExperience({
           aria-labelledby="game-map-title"
         >
           <div className="gameMapPath" aria-hidden="true">
-            <span className="isComplete">1</span>
-            <i />
-            <span>2</span>
-            <i />
-            <span>3</span>
+            {firstRunContents.map((mapContent, index) => (
+              <Fragment key={mapContent.puzzleId}>
+                {index === 0 ? null : <i />}
+                <span
+                  className={
+                    completedFirstRunIds.has(mapContent.puzzleId)
+                      ? "isComplete"
+                      : index === activeBoardIndex
+                        ? "isCurrent"
+                        : undefined
+                  }
+                >
+                  {index + 1}
+                </span>
+              </Fragment>
+            ))}
           </div>
           <div>
             <span className="gameEyebrow">
-              입문 여정 · 1/
+              입문 여정 ·{" "}
+              {Math.max(completedFirstRunCount, activeBoardIndex + 1)}/
               {KO_KR_LAUNCH_CONTENT_CONTRACT.routeCounts["first-run"]}
             </span>
-            <h2 id="game-map-title">첫 말길을 복원했어요</h2>
-            <p>완료한 말길이 기억의 정원으로 이어지는 첫 지도 조각이 됐어요.</p>
+            <h2 id="game-map-title">
+              {`${activeBoardIndex + 1}번째 말길을 복원했어요`}
+            </h2>
+            <p>완료한 말길이 기억의 정원으로 이어지는 지도 조각이 됐어요.</p>
           </div>
           <dl className="gameMapInventory" aria-label="탐험 보관함">
             <div>
@@ -1188,7 +1046,7 @@ function GameExperience({
               ) : null}
             </div>
           ) : null}
-          {hasOnboardingKnowledgeCard ? (
+          {hasOnboardingKnowledgeCard && activeBoardIndex === 0 ? (
             <article
               className="gameKnowledgeCard"
               aria-labelledby="game-knowledge-card-title"
@@ -1203,16 +1061,28 @@ function GameExperience({
               </footer>
             </article>
           ) : null}
-          <div className="gameContentGate" role="status">
-            <strong>다음 말길은 출시 콘텐츠 검수 후 열립니다</strong>
-            <span>검증되지 않은 임시 보드는 플레이 경로에 넣지 않습니다.</span>
-          </div>
+          {nextFirstRunContent == null ? (
+            <div className="gameContentGate isComplete" role="status">
+              <strong>입문 말길 3개를 모두 복원했어요</strong>
+              <span>컬렉션과 말길 색 꾸미기가 열렸습니다.</span>
+            </div>
+          ) : (
+            <button
+              className="gamePrimaryButton"
+              type="button"
+              onClick={() =>
+                activateFirstRunBoard(nextFirstRunContent.puzzleId)
+              }
+            >
+              다음 보드 시작
+            </button>
+          )}
           <button
             className="gameSecondaryButton"
             type="button"
             onClick={() => model.controller.dispatch({ type: "map.replay" })}
           >
-            첫 보드 다시 풀기
+            {`${activeBoardIndex + 1}번째 보드 다시 풀기`}
           </button>
         </section>
       ) : (

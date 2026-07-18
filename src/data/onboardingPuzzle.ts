@@ -87,3 +87,141 @@ export const onboardingPuzzle: Puzzle = {
     wordCount: 6,
   },
 };
+
+/**
+ * 첫 보드에서 교차 입력을 배운 뒤, 같은 5x5 규칙으로 답 길이와 교차 수를
+ * 조금씩 바꾸는 실제 ko-KR 두 번째 보드다. 모든 단서와 답은 저장소가 직접
+ * 소유하는 손작성 콘텐츠다.
+ */
+export const onboardingPuzzleTwo: Puzzle = {
+  alias: "입문 2",
+  puzzleId: "onboarding-easy-02",
+  date: "2026-01-02",
+  difficulty: "easy",
+  gridSize: 5,
+  grid: [
+    ["운", "동", "화", "", ""],
+    ["전", "화", "", "", ""],
+    ["", "", "", "", ""],
+    ["", "", "", "", ""],
+    ["", "", "", "", ""],
+  ],
+  entries: [
+    {
+      id: "a1",
+      answer: "운동화",
+      clue: "걷거나 달릴 때 편하게 신는 신발",
+      direction: "across",
+      row: 0,
+      col: 0,
+      generatedBy: "placed",
+    },
+    {
+      id: "d1",
+      answer: "운전",
+      clue: "자동차를 움직여 길을 가는 일",
+      direction: "down",
+      row: 0,
+      col: 0,
+      generatedBy: "placed",
+    },
+    {
+      id: "a2",
+      answer: "전화",
+      clue: "멀리 있는 사람과 목소리로 연락하는 일",
+      direction: "across",
+      row: 1,
+      col: 0,
+      generatedBy: "placed",
+    },
+    {
+      id: "d2",
+      answer: "동화",
+      clue: "어린이를 위해 재미있는 이야기를 쓴 글",
+      direction: "down",
+      row: 0,
+      col: 1,
+      generatedBy: "placed",
+    },
+  ],
+  metrics: {
+    autoRunCount: 0,
+    bboxDensity: 0.83,
+    crossCells: 2,
+    crossRatio: 0.5,
+    filledCells: 5,
+    multiCrossEntries: 2,
+    placedWordCount: 4,
+    wordCount: 4,
+  },
+};
+
+/** 세 번째 보드는 일상 이동 어휘로 첫 실행 3보드 여정을 마무리한다. */
+export const onboardingPuzzleThree: Puzzle = {
+  alias: "입문 3",
+  puzzleId: "onboarding-easy-03",
+  date: "2026-01-03",
+  difficulty: "easy",
+  gridSize: 5,
+  grid: [
+    ["아", "주", "머", "니", ""],
+    ["기", "차", "", "", ""],
+    ["", "", "", "", ""],
+    ["", "", "", "", ""],
+    ["", "", "", "", ""],
+  ],
+  entries: [
+    {
+      id: "a1",
+      answer: "아주머니",
+      clue: "어른 여성을 친근하고 예의 있게 부르는 말",
+      direction: "across",
+      row: 0,
+      col: 0,
+      generatedBy: "placed",
+    },
+    {
+      id: "d1",
+      answer: "아기",
+      clue: "태어난 지 얼마 되지 않은 어린아이",
+      direction: "down",
+      row: 0,
+      col: 0,
+      generatedBy: "placed",
+    },
+    {
+      id: "a2",
+      answer: "기차",
+      clue: "철길 위를 달리는 여러 칸의 탈것",
+      direction: "across",
+      row: 1,
+      col: 0,
+      generatedBy: "placed",
+    },
+    {
+      id: "d2",
+      answer: "주차",
+      clue: "자동차를 정해진 곳에 세워 두는 일",
+      direction: "down",
+      row: 0,
+      col: 1,
+      generatedBy: "placed",
+    },
+  ],
+  metrics: {
+    autoRunCount: 0,
+    bboxDensity: 0.75,
+    crossCells: 2,
+    crossRatio: 0.5,
+    filledCells: 6,
+    multiCrossEntries: 2,
+    placedWordCount: 4,
+    wordCount: 4,
+  },
+};
+
+export const firstRunPuzzles = Object.freeze([
+  onboardingPuzzle,
+  onboardingPuzzleTwo,
+  onboardingPuzzleThree,
+]);

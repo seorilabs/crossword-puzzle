@@ -7,16 +7,24 @@ import {
   type KnowledgeCardCatalogItem,
 } from "../../packages/crossword-core/src/gameMetaProgression.ts";
 import {
+  BUNDLED_FIRST_RUN_CONTENT_IDENTITIES,
+  BUNDLED_FIRST_RUN_MAP_NODE_IDS,
   BUNDLED_ONBOARDING_CONTENT_IDENTITY,
   KO_KR_LAUNCH_CONTENT_CONTRACT,
 } from "../../packages/crossword-core/src/launchContentCatalog.ts";
 import { koKrLanguageProfile } from "../../packages/crossword-core/src/languageProfile.ts";
-import { onboardingPuzzle } from "../data/onboardingPuzzle.ts";
+import type { Puzzle } from "../../packages/crossword-core/src/types.ts";
+import { firstRunPuzzles } from "../data/onboardingPuzzle.ts";
 
 export const BUNDLED_ONBOARDING_CONTENT_CHECKSUM =
   BUNDLED_ONBOARDING_CONTENT_IDENTITY.contentChecksum;
 export const BUNDLED_ONBOARDING_KNOWLEDGE_CARD_ID =
   "chapter-01-forgotten-path:card:onboarding-easy-01";
+
+type BundledFirstRunCatalogIdentity =
+  (typeof BUNDLED_FIRST_RUN_CONTENT_IDENTITIES)[number];
+export type BundledFirstRunContentIdentity = BundledFirstRunCatalogIdentity &
+  Readonly<{ mapNodeId: string }>;
 
 const bundledOnboardingKnowledgeCard = Object.freeze({
   cardId: BUNDLED_ONBOARDING_KNOWLEDGE_CARD_ID,
@@ -34,73 +42,133 @@ const bundledOnboardingKnowledgeCard = Object.freeze({
   cardChecksum: "bundled:knowledge-card:onboarding-easy-01:토끼:v1",
 }) satisfies KnowledgeCardCatalogItem;
 
-const bundledOnboardingCandidate = {
-  schemaVersion: "game-content/1",
-  contentLocale: "ko-KR",
-  releaseTimeZone: "Asia/Seoul",
-  languageProfile: { id: "ko-KR", version: 1 },
-  puzzleId: BUNDLED_ONBOARDING_CONTENT_IDENTITY.puzzleId,
-  packId: BUNDLED_ONBOARDING_CONTENT_IDENTITY.packId,
-  slotId: BUNDLED_ONBOARDING_CONTENT_IDENTITY.slotId,
-  grid: onboardingPuzzle.grid,
-  entries: onboardingPuzzle.entries.map((entry) => ({
-    ...entry,
-    answerCells: koKrLanguageProfile.segmentAnswer(entry.answer),
-    clueSource: "manual",
-    needsManualClue: false as const,
-  })),
-  difficulty: onboardingPuzzle.difficulty,
-  themeId: BUNDLED_ONBOARDING_CONTENT_IDENTITY.themeId,
-  chapterId: BUNDLED_ONBOARDING_CONTENT_IDENTITY.chapterId,
-  worldTriggerSet: onboardingPuzzle.entries.map((entry, index) => ({
-    triggerId: `restore-path-${entry.id}`,
-    entryId: entry.id,
-    pathOrder: index,
-  })),
-  generatorCommit: "bundled-hand-authored",
-  generatorConfigHash: "onboarding-easy-01-v1",
-  contentChecksum: BUNDLED_ONBOARDING_CONTENT_CHECKSUM,
-  licenseManifestId: BUNDLED_ONBOARDING_CONTENT_IDENTITY.licenseManifestId,
-  review: {
-    reviewerId: "migration/legacy-bundled",
-    reviewedAt: "2026-07-17T00:00:00.000Z",
-    manualCoverage: 1,
-  },
-  minClientVersion: "0.1.0",
-} satisfies GameContentV1;
+function createBundledFirstRunCandidate(
+  puzzle: Puzzle,
+  identity: BundledFirstRunCatalogIdentity,
+): GameContentV1 {
+  return {
+    schemaVersion: "game-content/1",
+    contentLocale: KO_KR_LAUNCH_CONTENT_CONTRACT.contentLocale,
+    releaseTimeZone: KO_KR_LAUNCH_CONTENT_CONTRACT.releaseTimeZone,
+    languageProfile: KO_KR_LAUNCH_CONTENT_CONTRACT.languageProfile,
+    puzzleId: identity.puzzleId,
+    packId: identity.packId,
+    slotId: identity.slotId,
+    grid: puzzle.grid.map((row) => [...row]),
+    entries: puzzle.entries.map((entry) => ({
+      ...entry,
+      answerCells: koKrLanguageProfile.segmentAnswer(entry.answer),
+      clueSource: "manual",
+      needsManualClue: false as const,
+    })),
+    difficulty: puzzle.difficulty,
+    themeId: identity.themeId,
+    chapterId: identity.chapterId,
+    worldTriggerSet: puzzle.entries.map((entry, index) => ({
+      triggerId: `restore-path-${entry.id}`,
+      entryId: entry.id,
+      pathOrder: index,
+    })),
+    generatorCommit: "bundled-hand-authored",
+    generatorConfigHash: `${identity.puzzleId}-v1`,
+    contentChecksum: identity.contentChecksum,
+    licenseManifestId: identity.licenseManifestId,
+    review: {
+      reviewerId: "repo-hand-authored",
+      reviewedAt: "2026-07-18T00:00:00.000Z",
+      manualCoverage: 1,
+    },
+    minClientVersion: "0.1.0",
+  };
+}
+
+let bundledFirstRunContentCache: readonly GameContentV1[] | null = null;
 
 /**
- * The candidate still goes through the same fail-closed validator as remote
- * packs. Its expected checksum lives in the signed application bundle rather
- * than in the content payload itself.
+ * 실제 앱에 포함되는 ko-KR 첫 실행 3보드를 모두 동일한 fail-closed 경로로
+ * 검증한다. 순서는 지도와 자동 이어하기의 안정 계약이므로 identity 배열과 같다.
  */
-export function loadBundledOnboardingGameContent(): GameContentV1 {
+export function loadBundledFirstRunGameContents(): readonly GameContentV1[] {
+  if (bundledFirstRunContentCache != null) {
+    return bundledFirstRunContentCache;
+  }
   if (
-    onboardingPuzzle.puzzleId !==
-      BUNDLED_ONBOARDING_CONTENT_IDENTITY.puzzleId ||
-    onboardingPuzzle.date !== BUNDLED_ONBOARDING_CONTENT_IDENTITY.slotId
+    firstRunPuzzles.length !==
+    KO_KR_LAUNCH_CONTENT_CONTRACT.routeCounts["first-run"]
   ) {
-    throw new Error("Bundled onboarding source identity drifted");
-  }
-  const result = validateGameContentV1(bundledOnboardingCandidate, {
-    requestedContentLocale: "ko-KR",
-    verifyChecksum: (content) =>
-      content.contentChecksum === BUNDLED_ONBOARDING_CONTENT_CHECKSUM,
-  });
-
-  if (!result.pass || result.content == null) {
-    const issueSummary = result.issues
-      .map((issue) => `${issue.code}:${issue.path}`)
-      .join(",");
-    throw new Error(`Bundled onboarding content rejected: ${issueSummary}`);
+    throw new Error("Bundled first-run content count drifted");
   }
 
-  return result.content;
+  const contents = BUNDLED_FIRST_RUN_CONTENT_IDENTITIES.map(
+    (identity, index) => {
+      const puzzle = firstRunPuzzles[index];
+      if (
+        puzzle == null ||
+        puzzle.puzzleId !== identity.puzzleId ||
+        puzzle.date !== identity.slotId
+      ) {
+        throw new Error(`Bundled first-run identity drifted at index ${index}`);
+      }
+      const candidate = createBundledFirstRunCandidate(puzzle, identity);
+      const result = validateGameContentV1(candidate, {
+        requestedContentLocale: KO_KR_LAUNCH_CONTENT_CONTRACT.contentLocale,
+        verifyChecksum: (content) =>
+          content.contentChecksum === identity.contentChecksum,
+      });
+      if (!result.pass || result.content == null) {
+        const issueSummary = result.issues
+          .map((issue) => `${issue.code}:${issue.path}`)
+          .join(",");
+        throw new Error(
+          `Bundled first-run content rejected (${identity.puzzleId}): ${issueSummary}`,
+        );
+      }
+      return result.content;
+    },
+  );
+  bundledFirstRunContentCache = Object.freeze(contents);
+  return bundledFirstRunContentCache;
+}
+
+export function loadBundledFirstRunGameContent(
+  puzzleId: string,
+): GameContentV1 {
+  const content = loadBundledFirstRunGameContents().find(
+    (candidate) => candidate.puzzleId === puzzleId,
+  );
+  if (content == null) {
+    throw new Error(`Unknown bundled first-run puzzle: ${puzzleId}`);
+  }
+  return content;
+}
+
+export function getBundledFirstRunContentIdentity(
+  puzzleId: string,
+): BundledFirstRunContentIdentity {
+  const index = BUNDLED_FIRST_RUN_CONTENT_IDENTITIES.findIndex(
+    (candidate) => candidate.puzzleId === puzzleId,
+  );
+  const identity = BUNDLED_FIRST_RUN_CONTENT_IDENTITIES[index];
+  const mapNodeId = BUNDLED_FIRST_RUN_MAP_NODE_IDS[index];
+  if (identity == null || mapNodeId == null) {
+    throw new Error(`Unknown bundled first-run identity: ${puzzleId}`);
+  }
+  return Object.freeze({ ...identity, mapNodeId });
+}
+
+/** 기존 호출부와 첫 보드 저장 식별자를 보존하는 호환 export다. */
+export function loadBundledOnboardingGameContent(): GameContentV1 {
+  return loadBundledFirstRunGameContent(
+    BUNDLED_ONBOARDING_CONTENT_IDENTITY.puzzleId,
+  );
 }
 
 export function loadBundledOnboardingKnowledgeCard(): KnowledgeCardCatalogItem {
   const card = validateKnowledgeCardCatalogItem(bundledOnboardingKnowledgeCard);
-  if (!onboardingPuzzle.entries.some((entry) => entry.answer === card.answer)) {
+  const onboardingContent = loadBundledOnboardingGameContent();
+  if (
+    !onboardingContent.entries.some((entry) => entry.answer === card.answer)
+  ) {
     throw new Error("Bundled onboarding knowledge card answer drifted");
   }
   return card;

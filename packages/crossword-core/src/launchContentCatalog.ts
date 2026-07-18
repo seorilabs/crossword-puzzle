@@ -28,18 +28,48 @@ export const KO_KR_LAUNCH_CONTENT_CONTRACT = Object.freeze({
 });
 
 /**
- * 현재 번들에 실제로 들어 있는 첫 보드의 안정 식별자다. 나머지 92개 생산 ID는
- * 기획 문서에 없으므로 이 파일에서 만들어 내지 않는다.
+ * 최우선 출시 Gate에서 실제로 연속 플레이하는 첫 실행 3개 보드의 안정 식별자다.
+ * 첫 보드 식별자는 기존 저장과의 호환을 위해 바꾸지 않는다. 나머지 90개 생산
+ * ID는 승인된 콘텐츠가 생기기 전까지 이 파일에서 만들어 내지 않는다.
  */
-export const BUNDLED_ONBOARDING_CONTENT_IDENTITY = Object.freeze({
-  puzzleId: "onboarding-easy-01",
-  packId: "bundled-game-onboarding-v1",
-  slotId: "2026-01-01",
-  themeId: "memory-garden",
-  chapterId: "chapter-01-forgotten-path",
-  contentChecksum: "bundled:onboarding-easy-01:ko-KR:v1",
-  licenseManifestId: "repo-owned-bundled-content-v1",
-});
+export const BUNDLED_FIRST_RUN_CONTENT_IDENTITIES = Object.freeze([
+  Object.freeze({
+    puzzleId: "onboarding-easy-01",
+    packId: "bundled-game-onboarding-v1",
+    slotId: "2026-01-01",
+    themeId: "memory-garden",
+    chapterId: "chapter-01-forgotten-path",
+    contentChecksum: "bundled:onboarding-easy-01:ko-KR:v1",
+    licenseManifestId: "repo-owned-bundled-content-v1",
+  }),
+  Object.freeze({
+    puzzleId: "onboarding-easy-02",
+    packId: "bundled-game-onboarding-v1",
+    slotId: "2026-01-02",
+    themeId: "friendly-animals",
+    chapterId: "chapter-01-forgotten-path",
+    contentChecksum: "bundled:onboarding-easy-02:ko-KR:v1",
+    licenseManifestId: "repo-owned-bundled-content-v1",
+  }),
+  Object.freeze({
+    puzzleId: "onboarding-easy-03",
+    packId: "bundled-game-onboarding-v1",
+    slotId: "2026-01-03",
+    themeId: "everyday-journey",
+    chapterId: "chapter-01-forgotten-path",
+    contentChecksum: "bundled:onboarding-easy-03:ko-KR:v1",
+    licenseManifestId: "repo-owned-bundled-content-v1",
+  }),
+] as const);
+
+export const BUNDLED_FIRST_RUN_MAP_NODE_IDS = Object.freeze([
+  "chapter-01-forgotten-path:node:onboarding-easy-01",
+  "chapter-01-forgotten-path:node:onboarding-easy-02",
+  "chapter-01-forgotten-path:node:onboarding-easy-03",
+] as const);
+
+export const BUNDLED_ONBOARDING_CONTENT_IDENTITY =
+  BUNDLED_FIRST_RUN_CONTENT_IDENTITIES[0];
 
 export const DAILY_WEEKDAYS = Object.freeze([
   "monday",
