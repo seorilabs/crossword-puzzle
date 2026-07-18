@@ -6,7 +6,6 @@ import {
 import type { GameContentV1 } from "../../packages/crossword-core/src/gameContent.ts";
 import type { GameExperiencePreferences } from "../../packages/crossword-core/src/gamePreferences.ts";
 import type { LaunchConfig } from "../../packages/crossword-core/src/launchConfig.ts";
-import { KO_KR_LAUNCH_CONTENT_CONTRACT } from "../../packages/crossword-core/src/launchContentCatalog.ts";
 import { koKrLanguageProfile } from "../../packages/crossword-core/src/languageProfile.ts";
 import {
   createGameSaveRepository,
@@ -31,21 +30,51 @@ import {
   getBundledFirstRunContentIdentity,
   loadBundledFirstRunGameContents,
   loadBundledOnboardingGameContent,
-  type BundledFirstRunContentIdentity,
 } from "./onboardingGameContent.ts";
+
+export type GameJourneyItem = Readonly<{
+  content: GameContentV1;
+  mapNodeId: string;
+  cardIds: readonly string[];
+}>;
+
+export type GameJourneyIdentity = Readonly<{
+  puzzleId: string;
+  contentChecksum: string;
+  mapNodeId: string;
+}>;
 
 export type FirstRunGameModel = Readonly<{
   cardIds: readonly string[];
   completionReward: RecordGameCompletionResult | null;
   content: GameContentV1;
   controller: GameController;
-  identity: BundledFirstRunContentIdentity;
+  identity: GameJourneyIdentity;
   progression: GameProgressionSnapshot;
   preferences: GameExperiencePreferences;
   repository: GameSaveRepository;
   restoreNotice: string | null;
   snapshot: GameSnapshot;
 }>;
+
+const EMPTY_CARD_IDS = Object.freeze([]) as readonly string[];
+
+function createBundledFirstRunJourneyItems(): readonly GameJourneyItem[] {
+  const onboardingPuzzleId = loadBundledOnboardingGameContent().puzzleId;
+  return Object.freeze(
+    loadBundledFirstRunGameContents().map((content) => {
+      const identity = getBundledFirstRunContentIdentity(content.puzzleId);
+      return Object.freeze({
+        content,
+        mapNodeId: identity.mapNodeId,
+        cardIds:
+          content.puzzleId === onboardingPuzzleId
+            ? Object.freeze([BUNDLED_ONBOARDING_KNOWLEDGE_CARD_ID])
+            : EMPTY_CARD_IDS,
+      });
+    }),
+  );
+}
 
 export function rewardConfigFromLaunchConfig(config: LaunchConfig) {
   return {
@@ -73,7 +102,7 @@ export async function persistGameTransition(
   boardResolved: boolean,
   entryCount: number,
   launchConfig: LaunchConfig,
-  identity: BundledFirstRunContentIdentity,
+  identity: GameJourneyIdentity,
   cardIds: readonly string[],
 ): Promise<RecordGameCompletionResult | null> {
   const progress = {
@@ -118,8 +147,9 @@ export async function createGameModel(
   storage: KeyValueStoragePort,
   launchConfig: LaunchConfig,
   requestedPuzzleId?: string,
+  journeyItems?: readonly GameJourneyItem[],
 ): Promise<FirstRunGameModel> {
-  const contents = loadBundledFirstRunGameContents();
+  const itinerary = journeyItems ?? createBundledFirstRunJourneyItems();
   const repository = createGameSaveRepository({
     storage,
     checksumPort: portableGameSaveChecksumPort,
@@ -127,39 +157,46 @@ export async function createGameModel(
     inputMode: "word-strip",
     legacyProjection: createGameSaveLegacyProjectionPort(storage),
   });
-  const defaultContent = contents[0];
-  if (defaultContent == null) {
-    throw new Error("Bundled first-run content is empty");
+  const defaultItem = itinerary[0];
+  if (defaultItem == null) {
+    throw new Error("Game journey itinerary is empty");
   }
-  let content: GameContentV1 =
+  let journeyItem: GameJourneyItem =
     requestedPuzzleId == null
-      ? defaultContent
-      : (contents.find(
-          (candidate) => candidate.puzzleId === requestedPuzzleId,
-        ) ?? defaultContent);
-  if (requestedPuzzleId != null && content.puzzleId !== requestedPuzzleId) {
+      ? defaultItem
+      : (itinerary.find(
+          (candidate) => candidate.content.puzzleId === requestedPuzzleId,
+        ) ?? defaultItem);
+  if (
+    requestedPuzzleId != null &&
+    journeyItem.content.puzzleId !== requestedPuzzleId
+  ) {
     throw new Error(`Unknown requested first-run puzzle: ${requestedPuzzleId}`);
   }
   if (requestedPuzzleId == null) {
     try {
       const savedProgression = await repository.readProgression(
-        KO_KR_LAUNCH_CONTENT_CONTRACT.contentLocale,
+        defaultItem.content.contentLocale,
       );
       const completed = new Set(savedProgression.completedPuzzleIds);
-      content =
-        contents.find((candidate) => !completed.has(candidate.puzzleId)) ??
-        contents[contents.length - 1] ??
-        defaultContent;
+      journeyItem =
+        itinerary.find(
+          (candidate) => !completed.has(candidate.content.puzzleId),
+        ) ??
+        itinerary[itinerary.length - 1] ??
+        defaultItem;
     } catch {
       // loadPuzzleSnapshot below owns invalid-save quarantine. Selection fails
       // closed to the stable first board until that recovery finishes.
     }
   }
-  const identity = getBundledFirstRunContentIdentity(content.puzzleId);
-  const cardIds =
-    content.puzzleId === loadBundledOnboardingGameContent().puzzleId
-      ? Object.freeze([BUNDLED_ONBOARDING_KNOWLEDGE_CARD_ID])
-      : Object.freeze([]);
+  const { content, mapNodeId } = journeyItem;
+  const identity: GameJourneyIdentity = Object.freeze({
+    puzzleId: content.puzzleId,
+    contentChecksum: content.contentChecksum,
+    mapNodeId,
+  });
+  const cardIds = Object.freeze([...journeyItem.cardIds]);
   const initial = createInitialGameSnapshot(content);
   const loadResult = await repository.loadPuzzleSnapshot({
     contentLocale: content.contentLocale,

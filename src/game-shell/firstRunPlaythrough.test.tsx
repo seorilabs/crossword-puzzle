@@ -1,10 +1,19 @@
 import { describe, expect, test } from "vitest";
 
+import {
+  calculateGameContentChecksum,
+  type GameContentV1,
+} from "../../packages/crossword-core/src/gameContent.ts";
 import type { GameCommand } from "../../packages/crossword-core/src/gameController.ts";
 import { defaultLaunchConfig } from "../../packages/crossword-core/src/launchConfig.ts";
 import { BUNDLED_FIRST_RUN_CONTENT_IDENTITIES } from "../../packages/crossword-core/src/launchContentCatalog.ts";
 import type { KeyValueStoragePort } from "./gameSaveRepository.ts";
-import { createGameModel, persistGameTransition } from "./firstRunGameModel.ts";
+import {
+  createGameModel,
+  persistGameTransition,
+  type GameJourneyItem,
+} from "./firstRunGameModel.ts";
+import { loadBundledFirstRunGameContents } from "./onboardingGameContent.ts";
 
 class MemoryStorage implements KeyValueStoragePort {
   readonly values = new Map<string, string>();
@@ -23,6 +32,34 @@ class MemoryStorage implements KeyValueStoragePort {
 }
 
 type PlaythroughModel = Awaited<ReturnType<typeof createGameModel>>;
+
+function createPreviewJourney(): readonly GameJourneyItem[] {
+  const templates = loadBundledFirstRunGameContents();
+  return Object.freeze(
+    Array.from({ length: 7 }, (_, index) => {
+      const template = templates[index % templates.length];
+      if (template == null) {
+        throw new Error("Bundled first-run template is missing");
+      }
+      const ordinal = String(index + 1).padStart(2, "0");
+      const unsealed: GameContentV1 = {
+        ...template,
+        puzzleId: `preview-journey-${ordinal}`,
+        slotId: `2026-07-${ordinal}`,
+        contentChecksum: "sha256:unsealed",
+      };
+      const content = Object.freeze({
+        ...unsealed,
+        contentChecksum: calculateGameContentChecksum(unsealed),
+      });
+      return Object.freeze({
+        content,
+        mapNodeId: `preview-journey:node:${ordinal}`,
+        cardIds: Object.freeze([]),
+      });
+    }),
+  );
+}
 
 async function dispatchAndPersist(
   model: PlaythroughModel,
@@ -162,6 +199,96 @@ describe("실제 ko-KR 첫 실행 3보드 플레이스루", () => {
     );
     expect(completedJourney.progression.metaUnlocks.pathColorCosmetics).toBe(
       true,
+    );
+  });
+
+  test("주입한 7보드 여정에서도 첫 미완료·요청 보드·재실행·완료 후 마지막 보드를 선택한다", async () => {
+    const storage = new MemoryStorage();
+    const journey = createPreviewJourney();
+    const expectedIds = journey.map((item) => item.content.puzzleId);
+
+    const boardOne = await createGameModel(
+      storage,
+      defaultLaunchConfig,
+      undefined,
+      journey,
+    );
+    expect(boardOne.content.puzzleId).toBe(expectedIds[0]);
+    expect(boardOne.identity).toEqual({
+      puzzleId: expectedIds[0],
+      contentChecksum: journey[0]?.content.contentChecksum,
+      mapNodeId: journey[0]?.mapNodeId,
+    });
+    await solveCurrentBoardToMap(boardOne);
+
+    const firstIncomplete = await createGameModel(
+      storage,
+      defaultLaunchConfig,
+      undefined,
+      journey,
+    );
+    expect(firstIncomplete.content.puzzleId).toBe(expectedIds[1]);
+
+    const requestedBoardTwo = await createGameModel(
+      storage,
+      defaultLaunchConfig,
+      expectedIds[1],
+      journey,
+    );
+    expect(requestedBoardTwo.content.puzzleId).toBe(expectedIds[1]);
+    const boardTwoFirstEntry = requestedBoardTwo.content.entries[0];
+    expect(boardTwoFirstEntry).toBeDefined();
+    await dispatchAndPersist(requestedBoardTwo, {
+      type: "input.commit",
+      entryId: boardTwoFirstEntry!.id,
+      cells: boardTwoFirstEntry!.answerCells,
+    });
+    await dispatchAndPersist(requestedBoardTwo, {
+      type: "resolution.complete",
+    });
+    const boardTwoBeforeReload = requestedBoardTwo.controller.getSnapshot();
+
+    const boardTwoReloaded = await createGameModel(
+      storage,
+      defaultLaunchConfig,
+      undefined,
+      journey,
+    );
+    expect(boardTwoReloaded.content.puzzleId).toBe(expectedIds[1]);
+    expect(boardTwoReloaded.snapshot.cellValues).toEqual(
+      boardTwoBeforeReload.cellValues,
+    );
+    await solveCurrentBoardToMap(boardTwoReloaded);
+
+    const requestedBoardSeven = await createGameModel(
+      storage,
+      defaultLaunchConfig,
+      expectedIds[6],
+      journey,
+    );
+    expect(requestedBoardSeven.content.puzzleId).toBe(expectedIds[6]);
+
+    for (let index = 2; index < journey.length; index += 1) {
+      const nextBoard = await createGameModel(
+        storage,
+        defaultLaunchConfig,
+        undefined,
+        journey,
+      );
+      expect(nextBoard.content.puzzleId).toBe(expectedIds[index]);
+      await solveCurrentBoardToMap(nextBoard);
+    }
+
+    const completedJourney = await createGameModel(
+      storage,
+      defaultLaunchConfig,
+      undefined,
+      journey,
+    );
+    expect(completedJourney.content.puzzleId).toBe(expectedIds[6]);
+    expect(completedJourney.snapshot.phase).toBe("map");
+    expect(completedJourney.progression.completedPuzzleIds).toEqual(
+      expectedIds,
     );
   });
 });
