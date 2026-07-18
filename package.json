@@ -53,8 +53,10 @@
     "content:theme-review": "node --experimental-strip-types scripts/build-launch-theme-wordbank.mjs",
     "check:theme-review": "node --experimental-strip-types scripts/build-launch-theme-wordbank.mjs --check",
     "check:krdict-provenance": "node --experimental-strip-types scripts/verify-krdict-launch-provenance.mjs",
-    "test:launch-content-builder": "node --experimental-strip-types --test server/batch/puzzle-board-engine.test.mjs scripts/build-launch-theme-wordbank.test.mjs scripts/build-ko-kr-launch-content.test.mjs scripts/launch-board-review-ledger.test.mjs scripts/validate-ko-kr-launch-content.test.mjs",
+    "test:launch-content-builder": "node --experimental-strip-types --test server/batch/puzzle-board-engine.test.mjs scripts/build-launch-theme-wordbank.test.mjs scripts/build-ko-kr-launch-content.test.mjs scripts/launch-board-review-ledger.test.mjs scripts/launch-board-review-workbook.test.mjs scripts/validate-ko-kr-launch-content.test.mjs",
     "build:launch-content": "node --experimental-strip-types scripts/build-ko-kr-launch-content.mjs",
+    "content:board-review:prepare": "node --experimental-strip-types scripts/launch-board-review-workbook.mjs prepare",
+    "content:board-review:assemble": "node --experimental-strip-types scripts/launch-board-review-workbook.mjs assemble",
     "check:launch-content": "npm run check:krdict-provenance && node --experimental-strip-types scripts/validate-ko-kr-launch-content.mjs"
   },
   "dependencies": {

@@ -49,6 +49,23 @@ const REVIEW_ROW_KEYS = Object.freeze([
   "checks",
 ]);
 
+export const LAUNCH_BOARD_REVIEW_IDENTITY_KEYS = Object.freeze([
+  "puzzleId",
+  "contentChecksum",
+  "artifactPath",
+  "themeId",
+  "difficulty",
+  "sourceEntryIds",
+]);
+
+export const LAUNCH_BOARD_REVIEW_MANUAL_KEYS = Object.freeze([
+  "reviewerId",
+  "reviewedAt",
+  "note",
+  "decision",
+  "checks",
+]);
+
 function requireCondition(condition, message) {
   if (!condition) throw new Error(message);
 }
@@ -220,35 +237,17 @@ export function calculateCanonicalDocumentChecksum(value) {
     .digest("hex")}`;
 }
 
-export function validateLaunchBoardReviewLedger(
-  catalog,
-  generationReport,
-  ledger,
-) {
+export function deriveLaunchBoardReviewSource(catalog, generationReport) {
   requireCandidateArtifact(catalog, "catalog", CATALOG_SCHEMA_VERSION);
   requireCandidateArtifact(
     generationReport,
     "generation report",
     GENERATION_REPORT_SCHEMA_VERSION,
   );
-  requireCandidateArtifact(
-    ledger,
-    "review ledger",
-    LAUNCH_BOARD_REVIEW_LEDGER_SCHEMA_VERSION,
-  );
-  requireExactKeys(ledger, LEDGER_KEYS, "review ledger");
 
   const catalogChecksum = calculateCanonicalDocumentChecksum(catalog);
   const generationReportChecksum =
     calculateCanonicalDocumentChecksum(generationReport);
-  requireCondition(
-    ledger.catalogChecksum === catalogChecksum,
-    "review ledger catalogChecksum is missing or stale",
-  );
-  requireCondition(
-    ledger.generationReportChecksum === generationReportChecksum,
-    "review ledger generationReportChecksum is missing or stale",
-  );
 
   const generator = requirePlainObject(
     generationReport.generator,
@@ -269,12 +268,6 @@ export function validateLaunchBoardReviewLedger(
       calculateCanonicalDocumentChecksum(generatorConfig),
     "generation report generator configHash does not match generator.config",
   );
-  requireCondition(
-    ledger.generatorCommit === generator.commit &&
-      ledger.generatorConfigHash === generator.configHash,
-    "review ledger generator identity is missing or stale",
-  );
-
   requireCondition(
     Array.isArray(catalog.boards),
     "catalog.boards must be an array",
@@ -307,12 +300,6 @@ export function validateLaunchBoardReviewLedger(
       generationReport.boards.length === EXPECTED_GENERATED_BOARD_COUNT,
     "generation report must contain exactly 90 generated boards",
   );
-  requireCondition(
-    Array.isArray(ledger.boards) &&
-      ledger.boards.length === EXPECTED_GENERATED_BOARD_COUNT,
-    "review ledger must contain exactly 90 generated board reviews",
-  );
-
   const allCatalogPuzzleIds = catalog.boards.map(
     (board, index) =>
       requirePlainObject(board?.content, `catalog.boards[${index}].content`)
@@ -328,11 +315,9 @@ export function validateLaunchBoardReviewLedger(
   const reportPuzzleIds = generationReport.boards.map(
     (board) => board?.puzzleId,
   );
-  const ledgerPuzzleIds = ledger.boards.map((board) => board?.puzzleId);
   for (const [field, puzzleIds] of [
     ["catalog generated puzzleId", generatedCatalogPuzzleIds],
     ["generation report puzzleId", reportPuzzleIds],
-    ["review ledger puzzleId", ledgerPuzzleIds],
   ]) {
     for (const [index, puzzleId] of puzzleIds.entries()) {
       requireNonEmptyString(puzzleId, `${field}[${index}]`);
@@ -344,14 +329,11 @@ export function validateLaunchBoardReviewLedger(
   const reportByPuzzleId = new Map(
     generationReport.boards.map((board) => [board.puzzleId, board]),
   );
+  const boards = [];
 
   for (let index = 0; index < EXPECTED_GENERATED_BOARD_COUNT; index += 1) {
     const catalogIndex = index + EXPECTED_FIRST_RUN_BOARD_COUNT;
     const catalogBoard = generatedCatalogBoards[index];
-    const reviewRow = requirePlainObject(
-      ledger.boards[index],
-      `review ledger.boards[${index}]`,
-    );
     const expected = expectedReviewIdentity(
       catalogBoard,
       `catalog.boards[${catalogIndex}]`,
@@ -384,7 +366,61 @@ export function validateLaunchBoardReviewLedger(
         catalogBoard.content.generatorConfigHash === generator.configHash,
       `generator identity mismatch at generated board ${index}`,
     );
+    boards.push(expected);
+  }
 
+  return {
+    catalogChecksum,
+    generationReportChecksum,
+    generatorCommit: generator.commit,
+    generatorConfigHash: generator.configHash,
+    boards,
+  };
+}
+
+export function validateLaunchBoardReviewLedger(
+  catalog,
+  generationReport,
+  ledger,
+) {
+  requireCandidateArtifact(
+    ledger,
+    "review ledger",
+    LAUNCH_BOARD_REVIEW_LEDGER_SCHEMA_VERSION,
+  );
+  requireExactKeys(ledger, LEDGER_KEYS, "review ledger");
+
+  const source = deriveLaunchBoardReviewSource(catalog, generationReport);
+  requireCondition(
+    ledger.catalogChecksum === source.catalogChecksum,
+    "review ledger catalogChecksum is missing or stale",
+  );
+  requireCondition(
+    ledger.generationReportChecksum === source.generationReportChecksum,
+    "review ledger generationReportChecksum is missing or stale",
+  );
+  requireCondition(
+    ledger.generatorCommit === source.generatorCommit &&
+      ledger.generatorConfigHash === source.generatorConfigHash,
+    "review ledger generator identity is missing or stale",
+  );
+  requireCondition(
+    Array.isArray(ledger.boards) &&
+      ledger.boards.length === EXPECTED_GENERATED_BOARD_COUNT,
+    "review ledger must contain exactly 90 generated board reviews",
+  );
+
+  const ledgerPuzzleIds = ledger.boards.map((board) => board?.puzzleId);
+  for (const [index, puzzleId] of ledgerPuzzleIds.entries()) {
+    requireNonEmptyString(puzzleId, `review ledger puzzleId[${index}]`);
+  }
+  requireUniqueStrings(ledgerPuzzleIds, "review ledger puzzleId");
+
+  for (const [index, expected] of source.boards.entries()) {
+    const reviewRow = requirePlainObject(
+      ledger.boards[index],
+      `review ledger.boards[${index}]`,
+    );
     validateReviewMetadata(reviewRow, `review ledger.boards[${index}]`);
     requireExact(
       {
