@@ -3,12 +3,17 @@ import { describe, test } from "node:test";
 
 import {
   DAILY_CONNECTOR_WORD_LIMIT,
+  LAUNCH_THEME_OWNER_POLICY,
   LAUNCH_THEME_IDS,
+  allocateLaunchThemeOwners,
   areCluesSimilar,
   attemptsForRetry,
   buildLaunchRoutePlan,
   buildWorldMap,
+  deduplicateReviewedWords,
+  evaluateBoardClueQualityEntries,
   evaluateGeneratedBoardQuality,
+  filterAvailableWords,
   isGenerationWordLengthEligible,
   normalizeClueForCooldown,
   orderRoutesForGeneration,
@@ -18,6 +23,121 @@ import {
 describe("ko-KR launch content builder", () => {
   test("일일 테마 보드는 비테마 연결어 풀을 제한한다", () => {
     assert.equal(DAILY_CONNECTOR_WORD_LIMIT, 80);
+  });
+
+  test("sense 테마를 75개 owner와 16개 hard 예약분으로 서로 겹치지 않게 배정한다", () => {
+    const words = LAUNCH_THEME_IDS.flatMap((themeId, themeIndex) =>
+      Array.from({ length: 75 }, (_, wordIndex) => ({
+        answerCells: ["가", "나"],
+        difficulty: wordIndex < 16 ? "normal" : "easy",
+        sourceEntryId: `${themeIndex}-${wordIndex}`,
+        themeTags: [themeId],
+      })),
+    );
+    words.push({
+      answerCells: ["다", "라"],
+      difficulty: "easy",
+      sourceEntryId: "multi-extra",
+      themeTags: [LAUNCH_THEME_IDS[0], LAUNCH_THEME_IDS[1]],
+    });
+
+    const result = allocateLaunchThemeOwners(words);
+    assert.equal(
+      result.inventory[LAUNCH_THEME_IDS[0]].owned,
+      LAUNCH_THEME_OWNER_POLICY.productionTargetDistinctOwnerCountPerTheme + 1,
+    );
+    assert.equal(result.inventory[LAUNCH_THEME_IDS[1]].owned, 75);
+    assert.ok(
+      Object.values(result.inventory).every(
+        (inventory) => inventory.hardReserve === 16,
+      ),
+    );
+    assert.equal(
+      result.words.find((word) => word.sourceEntryId === "multi-extra")
+        .themeOwner,
+      LAUNCH_THEME_IDS[0],
+    );
+    assert.equal(
+      new Set(result.words.map((word) => word.sourceEntryId)).size,
+      451,
+    );
+  });
+
+  test("한 테마라도 disjoint production owner 75개를 확보하지 못하면 fail closed한다", () => {
+    const words = LAUNCH_THEME_IDS.flatMap((themeId, themeIndex) =>
+      Array.from({ length: themeIndex === 0 ? 74 : 75 }, (_, wordIndex) => ({
+        answerCells: ["가", "나"],
+        difficulty: wordIndex < 16 ? "normal" : "easy",
+        sourceEntryId: `${themeIndex}-${wordIndex}`,
+        themeTags: [themeId],
+      })),
+    );
+    assert.throws(
+      () => allocateLaunchThemeOwners(words),
+      /theme owner production matching failed/,
+    );
+  });
+
+  test("월~목은 금요일 hard 예약어를 보호하고 daily connector는 owner 없는 단어만 쓴다", () => {
+    const themed = LAUNCH_THEME_IDS.flatMap((themeId, themeIndex) =>
+      Array.from({ length: 75 }, (_, wordIndex) => ({
+        answer: `테마-${themeIndex}-${wordIndex}`,
+        answerCells: ["가", "나"],
+        clue: `단서-${themeIndex}-${wordIndex}`,
+        difficulty: wordIndex < 16 ? "normal" : "easy",
+        sourceEntryId: `theme-${themeIndex}-${wordIndex}`,
+        themeTags: [themeId],
+      })),
+    );
+    const allocated = allocateLaunchThemeOwners(themed).words;
+    const connectors = Array.from({ length: 160 }, (_, index) => ({
+      answer: `연결-${index}`,
+      answerCells: ["다", "라"],
+      clue: `연결 단서-${index}`,
+      difficulty: "normal",
+      sourceEntryId: `connector-${index}`,
+      themeTags: [],
+      themeOwner: null,
+      themeHardReserve: false,
+    }));
+    const baseRoute = {
+      puzzleId: "daily-fixture",
+      themeId: LAUNCH_THEME_IDS[0],
+    };
+    const monday = filterAvailableWords(
+      [...allocated, ...connectors],
+      {
+        ...baseRoute,
+        difficulty: "normal",
+        route: { kind: "daily", weekday: "monday" },
+      },
+      new Set(),
+    );
+    assert.equal(
+      monday.words.some((word) => word.themeHardReserve),
+      false,
+    );
+    assert.ok(
+      monday.words.every(
+        (word) =>
+          word.themeOwner == null || word.themeOwner === LAUNCH_THEME_IDS[0],
+      ),
+    );
+
+    const friday = filterAvailableWords(
+      [...allocated, ...connectors],
+      {
+        ...baseRoute,
+        difficulty: "hard",
+        route: { kind: "daily", weekday: "friday" },
+      },
+      new Set(),
+    );
+    assert.equal(
+      friday.words.filter((word) => word.themeHardReserve).length,
+      16,
+    );
+    assert.equal(friday.connectorWordCount, DAILY_CONNECTOR_WORD_LIMIT);
   });
   test("90개 생성 경로와 6주 일일 일정을 결정론적으로 고정한다", () => {
     const routes = buildLaunchRoutePlan();
@@ -93,6 +213,62 @@ describe("ko-KR launch content builder", () => {
         "철로 위를 빠르게 달리는 여러 칸의 탈것",
       ),
       false,
+    );
+  });
+
+  test("출시 선택에서 정답 조각 노출을 제외하고 0.88 단서 계열을 안정적으로 dedup한다", () => {
+    const result = deduplicateReviewedWords(
+      [
+        {
+          answer: "주재료",
+          clue: "어떤 것을 만드는 데 가장 중심이 되는 재료",
+        },
+        {
+          answer: "농작물",
+          clue: "논밭에 심어 가꾸는 곡식이나 채소",
+        },
+        {
+          answer: "작물",
+          clue: "논밭에서 심어 가꾸는 곡식이나 채소",
+        },
+      ],
+      [{ entries: [] }],
+    );
+    assert.deepEqual(
+      result.words.map((word) => word.answer),
+      ["농작물"],
+    );
+    assert.deepEqual(result.exclusions, {
+      answerDuplicates: 0,
+      answerFragmentExposure: 1,
+      onboardingAnswerConflicts: 0,
+      clueConflicts: 1,
+    });
+  });
+
+  test("같은 보드의 다른 정답 노출과 정답 포함관계는 geometry PASS와 별개로 차단한다", () => {
+    const result = evaluateBoardClueQualityEntries([
+      { answer: "방앗간", clue: "곡식을 찧거나 빻는 가게" },
+      { answer: "가게", clue: "물건을 파는 작은 상점" },
+      { answer: "주원료", clue: "가장 중심이 되는 기본 재료" },
+      { answer: "원료", clue: "물건을 만드는 데 들어가는 재료" },
+    ]);
+    assert.equal(result.pass, false);
+    assert.deepEqual(result.counts, {
+      crossAnswerClueLeakCount: 1,
+      answerContainmentCount: 1,
+    });
+    assert.deepEqual(
+      result.checks.filter((check) => !check.pass).map((check) => check.key),
+      ["maxCrossAnswerClueLeakCount", "maxAnswerContainmentCount"],
+    );
+
+    assert.equal(
+      evaluateBoardClueQualityEntries([
+        { answer: "토끼", clue: "귀가 길고 깡충깡충 뛰는 동물" },
+        { answer: "기차", clue: "철길 위를 달리는 긴 탈것" },
+      ]).pass,
+      true,
     );
   });
 

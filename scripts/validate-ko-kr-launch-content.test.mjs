@@ -9,26 +9,47 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
 import {
+  LAUNCH_THEME_IDS,
+  LAUNCH_THEME_OWNER_POLICY,
+  allocateLaunchThemeOwners,
   buildLaunchRoutePlan,
   searchOptionsForRetry,
 } from "./build-ko-kr-launch-content.mjs";
 import {
+  KO_KR_LAUNCH_CLUE_QUALITY_POLICY,
   calculateCanonicalDocumentChecksum,
   calculateContentQualityEvidence,
   calculateLaunchRetrySeed,
+  deriveLaunchWordBankReport,
+  independentlyAllocateLaunchThemeOwners,
   resolvePublicArtifactPath,
   snapshotCommittedCurrentPointer,
   validateBundledFirstRunCatalog,
+  validateCatalogLaunchSelection,
   validateCurrentPointer,
   validateFirstRunSourceLock,
   validateGeneratedEntryAgainstReviewedWord,
+  validateGeneratorClueQualityPolicy,
   validateGeneratorReportTrace,
+  validateGeneratorThemeInventoryPolicy,
+  validateGlobalInventory,
+  validateLaunchWordBankReport,
   validateLicensePolicyAnchors,
   validateReportedQualityEvidence,
 } from "./validate-ko-kr-launch-content.mjs";
 
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 const execFileAsync = promisify(execFile);
+
+function clueQualityConfig() {
+  return {
+    schemaVersion: KO_KR_LAUNCH_CLUE_QUALITY_POLICY.schemaVersion,
+    clueSimilarity: structuredClone(
+      KO_KR_LAUNCH_CLUE_QUALITY_POLICY.clueSimilarity,
+    ),
+    clueQuality: structuredClone(KO_KR_LAUNCH_CLUE_QUALITY_POLICY.clueQuality),
+  };
+}
 
 function sha256(value) {
   return `sha256:${createHash("sha256").update(value).digest("hex")}`;
@@ -87,6 +108,302 @@ test("reviewed sourceEntryId로 변조 단서를 끼워 넣을 수 없다", () =
         "fixture",
       ),
     /does not exactly match/,
+  );
+});
+
+test("clue quality v2 config의 threshold나 scope 재봉인을 거부한다", () => {
+  const config = clueQualityConfig();
+  assert.equal(validateGeneratorClueQualityPolicy(config), true);
+
+  const forgedThreshold = structuredClone(config);
+  forgedThreshold.clueSimilarity.bigramDiceThreshold = 0.9;
+  assert.throws(
+    () => validateGeneratorClueQualityPolicy(forgedThreshold),
+    /clue similarity policy does not exactly match/,
+  );
+
+  const forgedScope = structuredClone(config);
+  forgedScope.clueQuality.answerFragmentExposure.scope = "wordbank-only";
+  assert.throws(
+    () => validateGeneratorClueQualityPolicy(forgedScope),
+    /clue quality policy does not exactly match/,
+  );
+});
+
+test("generator theme inventory의 길이 상한과 owner 정책 재봉인을 거부한다", () => {
+  const config = {
+    maxGenerationWordLength: { easy: 3, normal: 3, hard: 3 },
+    themeOwnership: structuredClone(LAUNCH_THEME_OWNER_POLICY),
+  };
+  assert.equal(validateGeneratorThemeInventoryPolicy(config), true);
+
+  const forgedMaximum = structuredClone(config);
+  forgedMaximum.maxGenerationWordLength.hard = 4;
+  assert.throws(
+    () => validateGeneratorThemeInventoryPolicy(forgedMaximum),
+    /maximum word length policy does not exactly match/,
+  );
+
+  const forgedOwnerPolicy = structuredClone(config);
+  forgedOwnerPolicy.themeOwnership.productionTargetDistinctOwnerCountPerTheme = 74;
+  assert.throws(
+    () => validateGeneratorThemeInventoryPolicy(forgedOwnerPolicy),
+    /theme ownership policy does not exactly match/,
+  );
+});
+
+test("wordbank launch-selection exclusion count 변조를 독립 재계산으로 거부한다", () => {
+  const word = (answer, clue) => ({
+    answer,
+    answerCells: [...answer],
+    clue,
+    sourceEntryId: `fixture-${answer}`,
+    difficulty: "normal",
+    domainTags: ["table-kitchen"],
+    themeTags: ["table-kitchen"],
+  });
+  const wordbank = {
+    metadata: {
+      themeReviewCoverage: [{ startIndex: 0, endIndexInclusive: 2 }],
+    },
+    words: [
+      ...LAUNCH_THEME_IDS.flatMap((themeId, themeIndex) =>
+        Array.from({ length: 75 }, (_, wordIndex) => {
+          const marker = String.fromCodePoint(
+            0x4e00 + themeIndex * 75 + wordIndex,
+          );
+          const sourceEntryId = `inventory-${themeIndex}-${wordIndex}`;
+          return {
+            answer: `답${marker}`,
+            answerCells: ["답", marker],
+            clue: sha256(sourceEntryId),
+            sourceEntryId,
+            difficulty: "normal",
+            domainTags: ["general"],
+            themeTags: [themeId],
+          };
+        }),
+      ),
+      word("주재료", "어떤 것을 만드는 데 가장 중심이 되는 재료"),
+      word("농작물", "논밭에 심어 가꾸는 곡식이나 채소"),
+      word("작물", "논밭에서 심어 가꾸는 곡식이나 채소"),
+    ],
+  };
+  const derived = deriveLaunchWordBankReport(wordbank, [{ entries: [] }]);
+  const report = {
+    path: "data/game-content/v1/ko-KR/reviewed-launch-wordbank-v2.json",
+    checksum: `sha256:${"1".repeat(64)}`,
+    ...derived,
+    reviewCoverage: wordbank.metadata.themeReviewCoverage,
+  };
+  const validated = validateLaunchWordBankReport(
+    report,
+    wordbank,
+    [{ entries: [] }],
+    report.checksum,
+  );
+  assert.equal(
+    validated.selectedWords.some((word) => word.answer === "농작물"),
+    true,
+  );
+  assert.equal(
+    validated.selectedWords.some((word) => word.answer === "주재료"),
+    false,
+  );
+  assert.equal(
+    validated.selectedWords.some((word) => word.answer === "작물"),
+    false,
+  );
+  assert.equal(
+    validateCatalogLaunchSelection(
+      {
+        boards: [
+          {
+            route: { kind: "chapter" },
+            content: {
+              puzzleId: "fixture-selected",
+              entries: [{ id: "a1", sourceEntryId: "fixture-농작물" }],
+            },
+          },
+        ],
+      },
+      validated.selectedWords,
+    ),
+    true,
+  );
+  assert.throws(
+    () =>
+      validateCatalogLaunchSelection(
+        {
+          boards: [
+            {
+              route: { kind: "chapter" },
+              content: {
+                puzzleId: "fixture-excluded",
+                entries: [{ id: "a1", sourceEntryId: "fixture-작물" }],
+              },
+            },
+          ],
+        },
+        validated.selectedWords,
+      ),
+    /outside the independently derived launch selection/,
+  );
+  const forged = structuredClone(report);
+  forged.exclusions.answerFragmentExposure = 0;
+  forged.cooldownSafeWordCount += 1;
+  assert.throws(
+    () =>
+      validateLaunchWordBankReport(
+        forged,
+        wordbank,
+        [{ entries: [] }],
+        report.checksum,
+      ),
+    /launch wordbank audit does not exactly match/,
+  );
+});
+
+test("generator와 validator가 theme owner와 금요일 reserve를 독립적으로 같은 값으로 계산한다", () => {
+  const words = LAUNCH_THEME_IDS.flatMap((themeId, themeIndex) =>
+    Array.from({ length: 76 }, (_, wordIndex) => ({
+      answerCells: ["가", "나"],
+      difficulty: wordIndex < 20 ? "normal" : "easy",
+      sourceEntryId: `owner-${themeIndex}-${wordIndex}`,
+      themeTags:
+        wordIndex === 75
+          ? [
+              themeId,
+              LAUNCH_THEME_IDS[(themeIndex + 1) % LAUNCH_THEME_IDS.length],
+            ].sort(
+              (left, right) =>
+                LAUNCH_THEME_IDS.indexOf(left) -
+                LAUNCH_THEME_IDS.indexOf(right),
+            )
+          : [themeId],
+    })),
+  );
+  const generator = allocateLaunchThemeOwners(words);
+  const validator = independentlyAllocateLaunchThemeOwners(words);
+  assert.equal(
+    generator.assignmentSha256,
+    validator.themeOwnership.assignmentSha256,
+  );
+  assert.deepEqual(generator.inventory, validator.themeInventory);
+  assert.deepEqual(
+    generator.words.map(({ sourceEntryId, themeOwner, themeHardReserve }) => ({
+      sourceEntryId,
+      themeOwner,
+      themeHardReserve,
+    })),
+    validator.selectedWords.map(
+      ({ sourceEntryId, themeOwner, themeHardReserve }) => ({
+        sourceEntryId,
+        themeOwner,
+        themeHardReserve,
+      }),
+    ),
+  );
+});
+
+test("maximum matching은 공유 후보를 밀어내 각 테마의 disjoint owner를 완성한다", () => {
+  const [firstTheme, secondTheme, ...remainingThemes] = LAUNCH_THEME_IDS;
+  const makeWords = (prefix, themeTags) =>
+    Array.from({ length: 75 }, (_, wordIndex) => ({
+      answerCells: ["가", "나"],
+      difficulty: wordIndex < 16 ? "normal" : "easy",
+      sourceEntryId: `${prefix}-${wordIndex}`,
+      themeTags,
+    }));
+  const words = [
+    ...makeWords("shared", [firstTheme, secondTheme]),
+    ...makeWords("first-only", [firstTheme]),
+    ...remainingThemes.flatMap((themeId, themeIndex) =>
+      makeWords(`exclusive-${themeIndex}`, [themeId]),
+    ),
+  ];
+
+  const generator = allocateLaunchThemeOwners(words);
+  const validator = independentlyAllocateLaunchThemeOwners(words);
+  const generatorOwners = new Map(
+    generator.words.map((word) => [word.sourceEntryId, word.themeOwner]),
+  );
+
+  assert.ok(
+    makeWords("shared", [firstTheme, secondTheme]).every(
+      (word) => generatorOwners.get(word.sourceEntryId) === secondTheme,
+    ),
+  );
+  assert.ok(
+    makeWords("first-only", [firstTheme]).every(
+      (word) => generatorOwners.get(word.sourceEntryId) === firstTheme,
+    ),
+  );
+  assert.deepEqual(
+    [firstTheme, secondTheme].map((themeId) => generator.inventory[themeId]),
+    [
+      {
+        owned: 75,
+        hardReserve: 16,
+        eligible: 150,
+        normalOrHardEligible: 32,
+      },
+      {
+        owned: 75,
+        hardReserve: 16,
+        eligible: 75,
+        normalOrHardEligible: 16,
+      },
+    ],
+  );
+  assert.equal(
+    generator.assignmentSha256,
+    validator.themeOwnership.assignmentSha256,
+  );
+  assert.deepEqual(generator.inventory, validator.themeInventory);
+});
+
+test("최종 inventory에서 0.882 clue family 재봉인을 거부한다", () => {
+  const rawCatalog = {
+    boards: [
+      {
+        content: {
+          puzzleId: "fixture-one",
+          entries: [
+            {
+              id: "a1",
+              answer: "하늘",
+              clue: "어떤 것을 만드는 데 가장 중심이 되는 재료",
+            },
+          ],
+        },
+      },
+      {
+        content: {
+          puzzleId: "fixture-two",
+          entries: [
+            {
+              id: "a1",
+              answer: "바다",
+              clue: "어떤 것을 만드는 데 쓰는 가장 중심이 되는 재료",
+            },
+          ],
+        },
+      },
+    ],
+  };
+  assert.throws(
+    () =>
+      validateGlobalInventory(rawCatalog, {
+        cooldownAudit: {
+          policyId: "launch-global-unique-answer-and-clue-family-v2",
+          enforcedScope: "all-93-launch-boards-global",
+          uniqueAnswerCount: 2,
+          uniqueNormalizedClueFamilyCount: 2,
+          pass: true,
+        },
+      }),
+    /launch clue family collision/,
   );
 });
 
@@ -217,7 +534,9 @@ test("저품질 board의 report quality PASS 재봉인을 거부한다", () => {
     ],
     entries: [
       {
+        answer: "가게",
         answerCells: ["가", "게"],
+        clue: "동네에서 물건을 파는 작은 상점",
         direction: "across",
         row: 0,
         col: 0,
@@ -225,7 +544,9 @@ test("저품질 board의 report quality PASS 재봉인을 거부한다", () => {
         domainTags: ["general"],
       },
       {
+        answer: "가나",
         answerCells: ["가", "나"],
+        clue: "두 글자로 된 fixture 답",
         direction: "down",
         row: 0,
         col: 0,
@@ -238,6 +559,7 @@ test("저품질 board의 report quality PASS 재봉인을 거부한다", () => {
     minMultiCrossRatio: 0.65,
     maxAutoRunRatio: 0.5,
     minDailyThemeEntryRatio: 0.5,
+    clueQuality: clueQualityConfig().clueQuality,
   };
   const evidence = calculateContentQualityEvidence(
     content,
@@ -257,6 +579,38 @@ test("저품질 board의 report quality PASS 재봉인을 거부한다", () => {
         config,
       ),
     /independently derived quality checks.*does not exactly match/,
+  );
+
+  const leakedContent = structuredClone(content);
+  leakedContent.entries[0].clue = "다른 정답 가나를 그대로 알려 주는 단서";
+  const leakedEvidence = calculateContentQualityEvidence(
+    leakedContent,
+    { kind: "chapter" },
+    config,
+  );
+  assert.equal(leakedEvidence.metrics.crossAnswerClueLeakCount, 1);
+  assert.equal(
+    leakedEvidence.quality.checks.find(
+      (check) => check.key === "maxCrossAnswerClueLeakCount",
+    )?.pass,
+    false,
+  );
+  const forgedLeakMetrics = {
+    ...leakedEvidence.metrics,
+    crossAnswerClueLeakCount: 0,
+  };
+  assert.throws(
+    () =>
+      validateReportedQualityEvidence(
+        leakedContent,
+        { kind: "chapter" },
+        {
+          metrics: forgedLeakMetrics,
+          quality: leakedEvidence.quality,
+        },
+        config,
+      ),
+    /independently derived metrics does not exactly match/,
   );
 });
 
@@ -285,6 +639,8 @@ function makeGeneratorTraceFixture() {
     multiIntersectionPlacements: 2,
     connectedComponents: 1,
     accidentalRunCount: 0,
+    crossAnswerClueLeakCount: 0,
+    answerContainmentCount: 0,
   };
   const rejectedRatios = { autoRunRatio: 0.6, multiCrossRatio: 0.2 };
   const selectedMetrics = {
@@ -295,6 +651,8 @@ function makeGeneratorTraceFixture() {
     multiIntersectionPlacements: 12,
     connectedComponents: 1,
     accidentalRunCount: 0,
+    crossAnswerClueLeakCount: 0,
+    answerContainmentCount: 0,
   };
   const selectedRatios = { autoRunRatio: 0.25, multiCrossRatio: 0.75 };
   const attempts = [

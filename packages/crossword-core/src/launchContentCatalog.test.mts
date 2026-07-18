@@ -58,7 +58,7 @@ function onboardingGridAndEntries(): Pick<GameContentV1, "grid" | "entries"> {
       id: "a2",
       answer: "토요일",
       answerCells: ["토", "요", "일"],
-      clue: "일요일 바로 전날, 주말의 시작",
+      clue: "한 주의 여섯째 날로, 주말이 시작되는 날",
       ...fixtureAttribution("fixture-onboarding-a2", "토요일 설명"),
       clueSource: "manual",
       direction: "across",
@@ -110,7 +110,7 @@ function onboardingGridAndEntries(): Pick<GameContentV1, "grid" | "entries"> {
       id: "d3",
       answer: "차표",
       answerCells: ["차", "표"],
-      clue: "버스나 기차를 탈 때 내는 표",
+      clue: "대중교통을 탈 때 돈을 내고 받는 표",
       ...fixtureAttribution("fixture-onboarding-d3", "차표 설명"),
       clueSource: "manual",
       direction: "down",
@@ -680,6 +680,52 @@ describe("ko-KR launch content catalog contract", () => {
     assert.ok(
       clueResult.issues.some(
         (issue) => issue.code === "content_quality_mismatch",
+      ),
+    );
+
+    const fragmentExposure = createLaunchCatalogCandidate();
+    fragmentExposure.boards[0].content.entries[1].clue =
+      "일주일에서 주말에 해당하는 요일";
+    const fragmentResult = validateCatalog(fragmentExposure);
+    assert.equal(fragmentResult.pass, false);
+    assert.ok(
+      fragmentResult.issues.some(
+        (issue) =>
+          issue.code === "content_quality_mismatch" &&
+          issue.message.includes("fragment"),
+      ),
+    );
+
+    const otherAnswerLeak = createLaunchCatalogCandidate();
+    otherAnswerLeak.boards[3].content.entries[0].clue =
+      "두 번째 답 다라를 그대로 알려 주는 단서";
+    const otherAnswerResult = validateCatalog(otherAnswerLeak);
+    assert.equal(otherAnswerResult.pass, false);
+    assert.ok(
+      otherAnswerResult.issues.some(
+        (issue) =>
+          issue.code === "content_quality_mismatch" &&
+          issue.message.includes("another board answer"),
+      ),
+    );
+
+    const answerContainment = createLaunchCatalogCandidate();
+    answerContainment.boards[3].content.entries[0].answer = "가나다라";
+    answerContainment.boards[3].content.entries[0].answerCells = [
+      "가",
+      "나",
+      "다",
+      "라",
+    ];
+    answerContainment.boards[3].content.grid[0][2] = "다";
+    answerContainment.boards[3].content.grid[0][3] = "라";
+    const containmentResult = validateCatalog(answerContainment);
+    assert.equal(containmentResult.pass, false);
+    assert.ok(
+      containmentResult.issues.some(
+        (issue) =>
+          issue.code === "content_quality_mismatch" &&
+          issue.message.includes("contain one another"),
       ),
     );
   });

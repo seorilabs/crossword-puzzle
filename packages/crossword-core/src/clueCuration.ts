@@ -20,6 +20,177 @@ function normalizeForAnswerLeakCheck(value: string): string {
     .replace(/[\s\p{P}\p{S}]+/gu, "");
 }
 
+export const KO_KR_MIN_EXPOSED_ANSWER_FRAGMENT_LENGTH = 2;
+
+type NormalizedTokenSpan = {
+  end: number;
+  start: number;
+};
+
+function normalizedClueTokenSpans(value: string): {
+  characters: string[];
+  spans: NormalizedTokenSpan[];
+} {
+  const tokens =
+    value
+      .normalize("NFKC")
+      .toLocaleLowerCase("ko-KR")
+      .match(/[\p{L}\p{N}]+/gu) ?? [];
+  const characters: string[] = [];
+  const spans: NormalizedTokenSpan[] = [];
+  for (const token of tokens) {
+    const tokenCharacters = [...token];
+    const start = characters.length;
+    characters.push(...tokenCharacters);
+    spans.push({ start, end: characters.length });
+  }
+  return { characters, spans };
+}
+
+function charactersEqualAt(
+  source: readonly string[],
+  candidate: readonly string[],
+  offset: number,
+): boolean {
+  return candidate.every(
+    (character, index) => source[offset + index] === character,
+  );
+}
+
+/**
+ * ko-KR 출시 단서에서 정답 전체가 아닌 2글자 이상 연속 조각이 노출됐는지 찾는다.
+ *
+ * 사전식 정의는 복합어 일부를 자연스럽게 반복할 수 있으므로 reviewed wordbank
+ * 자체를 무효화하는 규칙이 아니라 실제 출시 보드 선택에 쓰는 난이도/품질 규칙이다.
+ * 한 token 안의 노출은 모두 잡고, 공백을 가로지르는 경우에는 조각이 token 시작에서
+ * 시작할 때만 잡아 `집안일`/`집 안`은 차단하되 `북반부`/`절반 부분`처럼 서로 다른
+ * 단어의 끝과 시작이 우연히 붙는 경우는 제외한다.
+ */
+export function findKoKrAnswerFragmentExposure(
+  answer: string,
+  clue: string | undefined | null,
+): string | null {
+  if (clue == null || clue.length === 0) return null;
+
+  const answerCharacters = [...normalizeForAnswerLeakCheck(answer)];
+  if (answerCharacters.length <= KO_KR_MIN_EXPOSED_ANSWER_FRAGMENT_LENGTH) {
+    return null;
+  }
+  const clueTokens = normalizedClueTokenSpans(clue);
+
+  // 가장 긴 조각, 정답에서 더 앞선 조각 순으로 반환해 진단 메시지가 결정적이다.
+  for (
+    let length = answerCharacters.length - 1;
+    length >= KO_KR_MIN_EXPOSED_ANSWER_FRAGMENT_LENGTH;
+    length -= 1
+  ) {
+    for (
+      let answerStart = 0;
+      answerStart + length <= answerCharacters.length;
+      answerStart += 1
+    ) {
+      const fragment = answerCharacters.slice(
+        answerStart,
+        answerStart + length,
+      );
+      for (
+        let clueStart = 0;
+        clueStart + fragment.length <= clueTokens.characters.length;
+        clueStart += 1
+      ) {
+        if (!charactersEqualAt(clueTokens.characters, fragment, clueStart)) {
+          continue;
+        }
+        const clueEnd = clueStart + fragment.length;
+        const startSpan = clueTokens.spans.find(
+          (span) => clueStart >= span.start && clueStart < span.end,
+        );
+        const endSpan = clueTokens.spans.find(
+          (span) => clueEnd - 1 >= span.start && clueEnd - 1 < span.end,
+        );
+        if (
+          startSpan != null &&
+          endSpan != null &&
+          (startSpan === endSpan || clueStart === startSpan.start)
+        ) {
+          return fragment.join("");
+        }
+      }
+    }
+  }
+  return null;
+}
+
+export type BoardClueQualityEntry = {
+  answer: string;
+  clue: string;
+};
+
+export type BoardClueQualityConflict = {
+  answer: string;
+  entryIndex: number;
+  otherAnswer: string;
+  otherEntryIndex: number;
+  type: "answer_contains_answer" | "clue_contains_other_answer";
+};
+
+/** 같은 보드에서만 금지하는 정답 계열/교차 단서 노출을 결정적으로 열거한다. */
+export function findBoardClueQualityConflicts(
+  entries: readonly BoardClueQualityEntry[],
+): BoardClueQualityConflict[] {
+  const normalized = entries.map((entry) => ({
+    answer: normalizeForAnswerLeakCheck(entry.answer),
+    clue: normalizeForAnswerLeakCheck(entry.clue),
+  }));
+  const conflicts: BoardClueQualityConflict[] = [];
+
+  for (const [entryIndex, entry] of normalized.entries()) {
+    for (const [otherEntryIndex, other] of normalized.entries()) {
+      if (
+        entryIndex === otherEntryIndex ||
+        [...other.answer].length < 2 ||
+        !entry.clue.includes(other.answer)
+      ) {
+        continue;
+      }
+      conflicts.push({
+        type: "clue_contains_other_answer",
+        entryIndex,
+        otherEntryIndex,
+        answer: entries[entryIndex].answer,
+        otherAnswer: entries[otherEntryIndex].answer,
+      });
+    }
+  }
+
+  for (let entryIndex = 0; entryIndex < normalized.length; entryIndex += 1) {
+    for (
+      let otherEntryIndex = entryIndex + 1;
+      otherEntryIndex < normalized.length;
+      otherEntryIndex += 1
+    ) {
+      const answer = normalized[entryIndex].answer;
+      const otherAnswer = normalized[otherEntryIndex].answer;
+      if (
+        answer === otherAnswer ||
+        [...answer].length < 2 ||
+        [...otherAnswer].length < 2 ||
+        (!answer.includes(otherAnswer) && !otherAnswer.includes(answer))
+      ) {
+        continue;
+      }
+      conflicts.push({
+        type: "answer_contains_answer",
+        entryIndex,
+        otherEntryIndex,
+        answer: entries[entryIndex].answer,
+        otherAnswer: entries[otherEntryIndex].answer,
+      });
+    }
+  }
+  return conflicts;
+}
+
 // 띄어쓰기나 문장부호를 제거한 뒤에도 단서가 정답을 부분 문자열로 포함하면
 // 자기참조로 본다. `지하철`/`지하 철도`, `글자`/`한글 자모`처럼 경계만
 // 갈라 답이 드러나는 경우도 같은 출시 게이트로 차단한다.

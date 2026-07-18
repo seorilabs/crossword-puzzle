@@ -3,7 +3,11 @@ import {
   type GameContentV1,
   type GameContentValidationOptions,
 } from "./gameContent.ts";
-import { isSelfReferentialClue } from "./clueCuration.ts";
+import {
+  findBoardClueQualityConflicts,
+  findKoKrAnswerFragmentExposure,
+  isSelfReferentialClue,
+} from "./clueCuration.ts";
 
 export const LAUNCH_CONTENT_CATALOG_SCHEMA_VERSION =
   "launch-content-catalog/1" as const;
@@ -41,7 +45,7 @@ export const BUNDLED_FIRST_RUN_CONTENT_IDENTITIES = Object.freeze([
     themeId: "memory-garden",
     chapterId: "chapter-01-forgotten-path",
     contentChecksum:
-      "sha256:1afa959d665f9ddc6ec4c0333f71bb43cfc31aae693e5b907344deef09cb7737",
+      "sha256:aa76d2b541ce13b72e32ac10613f6b7bdafaf83eec6b89ff32b1286ccfa44ae5",
     licenseManifestId: "ko-kr-launch-license-manifest-v1",
     licenseManifestChecksum:
       "sha256:abaccaa41f73f4c5428f4d158c4626897d145a91a2d0cc8dd14299a2e8942d0c",
@@ -53,7 +57,7 @@ export const BUNDLED_FIRST_RUN_CONTENT_IDENTITIES = Object.freeze([
     themeId: "friendly-animals",
     chapterId: "chapter-01-forgotten-path",
     contentChecksum:
-      "sha256:038d359dba08bca12d7e609629d41282e4b285455fec9c91ccb85fd915e70268",
+      "sha256:8d0372b07f5b2eb7eacc041186f3070274ef5e08360784da206e4c99d4024541",
     licenseManifestId: "ko-kr-launch-license-manifest-v1",
     licenseManifestChecksum:
       "sha256:abaccaa41f73f4c5428f4d158c4626897d145a91a2d0cc8dd14299a2e8942d0c",
@@ -571,6 +575,28 @@ export function validateKoKrLaunchContentCatalogStructureV1(
           "launch clues must not contain their answer",
         );
       }
+      const exposedFragment = findKoKrAnswerFragmentExposure(
+        entry.answer,
+        entry.clue,
+      );
+      if (exposedFragment != null) {
+        addIssue(
+          issues,
+          "content_quality_mismatch",
+          `${path}.content.entries[${entryIndex}].clue`,
+          `launch clue exposes answer fragment ${exposedFragment}`,
+        );
+      }
+    }
+    for (const conflict of findBoardClueQualityConflicts(content.entries)) {
+      addIssue(
+        issues,
+        "content_quality_mismatch",
+        `${path}.content.entries[${conflict.entryIndex}]`,
+        conflict.type === "clue_contains_other_answer"
+          ? `clue exposes another board answer ${conflict.otherAnswer}`
+          : `board answers contain one another: ${conflict.answer}/${conflict.otherAnswer}`,
+      );
     }
     boards.push(board);
   }

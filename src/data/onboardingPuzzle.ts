@@ -33,7 +33,7 @@ export const onboardingPuzzle: Puzzle = {
     {
       id: "a2",
       answer: "토요일",
-      clue: "일요일 바로 전날, 주말의 시작",
+      clue: "한 주의 여섯째 날로, 주말이 시작되는 날",
       direction: "across",
       row: 2,
       col: 0,
@@ -69,7 +69,7 @@ export const onboardingPuzzle: Puzzle = {
     {
       id: "d3",
       answer: "차표",
-      clue: "버스나 기차를 탈 때 내는 표",
+      clue: "대중교통을 탈 때 돈을 내고 받는 표",
       direction: "down",
       row: 3,
       col: 3,
@@ -101,7 +101,7 @@ export const onboardingPuzzleTwo: Puzzle = {
   gridSize: 5,
   grid: [
     ["운", "동", "화", "", ""],
-    ["전", "화", "", "", ""],
+    ["전", "시", "", "", ""],
     ["", "", "", "", ""],
     ["", "", "", "", ""],
     ["", "", "", "", ""],
@@ -127,8 +127,8 @@ export const onboardingPuzzleTwo: Puzzle = {
     },
     {
       id: "a2",
-      answer: "전화",
-      clue: "멀리 있는 사람과 목소리로 연락하는 일",
+      answer: "전시",
+      clue: "그림이나 물건을 한곳에 펼쳐 보여 주는 일",
       direction: "across",
       row: 1,
       col: 0,
@@ -136,8 +136,8 @@ export const onboardingPuzzleTwo: Puzzle = {
     },
     {
       id: "d2",
-      answer: "동화",
-      clue: "어린이를 위해 재미있는 이야기를 쓴 글",
+      answer: "동시",
+      clue: "두 가지 일이 같은 순간에 함께 일어남",
       direction: "down",
       row: 0,
       col: 1,

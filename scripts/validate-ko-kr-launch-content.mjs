@@ -12,10 +12,16 @@ import {
   validateWorldMapGraphV1,
 } from "../packages/crossword-core/src/launchContentCatalog.ts";
 import {
+  LAUNCH_CLUE_SIMILARITY_POLICY_ID,
+  LAUNCH_CLUE_SIMILARITY_THRESHOLD,
   areCluesSimilar,
   normalizeClueForSimilarity,
 } from "../packages/crossword-core/src/clueSimilarity.ts";
-import { isSelfReferentialClue } from "../packages/crossword-core/src/clueCuration.ts";
+import {
+  findBoardClueQualityConflicts,
+  findKoKrAnswerFragmentExposure,
+  isSelfReferentialClue,
+} from "../packages/crossword-core/src/clueCuration.ts";
 import { DIFFICULTY_PROFILES } from "../packages/crossword-core/src/difficultyProfiles.ts";
 import { verifyGameContentChecksum } from "../packages/crossword-core/src/gameContent.ts";
 import { canonicalizeForChecksum } from "../packages/crossword-core/src/saveV2.ts";
@@ -26,6 +32,13 @@ import {
   KRDIC_SOURCE_MIRROR,
 } from "./krdict-source-lock.mjs";
 import {
+  LAUNCH_THEME_SHARD_SPECS,
+  deriveLaunchThemeArtifacts,
+} from "./build-launch-theme-wordbank.mjs";
+import { validateLaunchBoardReviewLedger } from "./launch-board-review-ledger.mjs";
+import {
+  LAUNCH_THEME_IDS,
+  LAUNCH_THEME_OWNER_POLICY,
   buildLaunchRoutePlan,
   searchOptionsForRetry,
 } from "./build-ko-kr-launch-content.mjs";
@@ -36,6 +49,11 @@ const EXPECTED_REVIEWED_CANDIDATES = 2_400;
 const MIN_APPROVED_WORDS = 1_100;
 const EXPECTED_GENERATED_BOARDS = 90;
 const EXPECTED_TOTAL_BOARDS = 93;
+const EXPECTED_MAX_GENERATION_WORD_LENGTH = Object.freeze({
+  easy: 3,
+  normal: 3,
+  hard: 3,
+});
 const CONTENT_LOCALE = "ko-KR";
 const LICENSE_MANIFEST_ID = "ko-kr-launch-license-manifest-v1";
 const FIRST_RUN_SOURCE_ID = "repo-first-run-content-v1";
@@ -60,9 +78,30 @@ const EXPECTED_GENERATOR_DEPENDENCY_PATHS = Object.freeze([
   "packages/crossword-core/src/types.ts",
   "src/data/onboardingPuzzle.ts",
   "src/game-shell/onboardingGameContent.ts",
-  "data/game-content/v1/ko-KR/reviewed-launch-wordbank.json",
+  "data/game-content/v1/ko-KR/reviewed-launch-wordbank-v2.json",
   "data/game-content/v1/ko-KR/license-manifest.json",
 ]);
+export const KO_KR_LAUNCH_CLUE_QUALITY_POLICY = Object.freeze({
+  schemaVersion: "ko-kr-launch-generator-config/3",
+  clueSimilarity: Object.freeze({
+    policyId: LAUNCH_CLUE_SIMILARITY_POLICY_ID,
+    normalization: "NFKC-lowercase-no-space-punctuation-symbol",
+    bigramDiceThreshold: LAUNCH_CLUE_SIMILARITY_THRESHOLD,
+  }),
+  clueQuality: Object.freeze({
+    policyId: "ko-kr-launch-clue-quality-v2",
+    answerFragmentExposure: Object.freeze({
+      minimumLength: 2,
+      scope: "launch-selection-and-all-93-board-entries",
+      tokenBoundaryPolicy:
+        "within-token-or-cross-token-starting-at-token-boundary",
+    }),
+    sameBoardConflicts: Object.freeze({
+      maxAnswerContainmentCount: 0,
+      maxCrossAnswerClueLeakCount: 0,
+    }),
+  }),
+});
 const DECISION_FILES = Object.freeze([
   Object.freeze({
     path: "data/game-content/v1/ko-KR/reviews/editorial-decisions-0000-0799.json",
@@ -110,6 +149,273 @@ function requireExact(actual, expected, field) {
     canonicalJson(actual) === canonicalJson(expected),
     `${field} does not exactly match its derived source`,
   );
+}
+
+export function deriveLaunchWordBankAudit(words, firstRunContents) {
+  const reservedAnswers = new Set(
+    firstRunContents.flatMap((content) =>
+      content.entries.map((entry) => entry.answer),
+    ),
+  );
+  const acceptedClues = firstRunContents.flatMap((content) =>
+    content.entries.map((entry) => entry.clue),
+  );
+  const uniqueByAnswer = new Map();
+  const exclusions = {
+    answerDuplicates: 0,
+    answerFragmentExposure: 0,
+    onboardingAnswerConflicts: 0,
+    clueConflicts: 0,
+  };
+
+  for (const word of words) {
+    if (reservedAnswers.has(word.answer)) {
+      exclusions.onboardingAnswerConflicts += 1;
+      continue;
+    }
+    if (uniqueByAnswer.has(word.answer)) {
+      exclusions.answerDuplicates += 1;
+      continue;
+    }
+    if (findKoKrAnswerFragmentExposure(word.answer, word.clue) != null) {
+      exclusions.answerFragmentExposure += 1;
+      continue;
+    }
+    if (acceptedClues.some((clue) => areCluesSimilar(clue, word.clue))) {
+      exclusions.clueConflicts += 1;
+      continue;
+    }
+    uniqueByAnswer.set(word.answer, word);
+    acceptedClues.push(word.clue);
+  }
+  return { words: [...uniqueByAnswer.values()], exclusions };
+}
+
+function validatorThemeInventoryEligible(word) {
+  return ["normal", "hard"].some((difficulty) =>
+    validatorGenerationWordLengthEligible(word, difficulty),
+  );
+}
+
+function validatorThemeHardReserveEligible(word) {
+  return (
+    ["normal", "hard"].includes(word.difficulty) &&
+    validatorGenerationWordLengthEligible(word, "hard")
+  );
+}
+
+function validatorGenerationWordLengthEligible(word, difficulty) {
+  const maximum = EXPECTED_MAX_GENERATION_WORD_LENGTH[difficulty];
+  requireCondition(
+    Number.isInteger(maximum) && maximum > 0,
+    `validator does not support generation difficulty ${difficulty}`,
+  );
+  return Array.isArray(word.answerCells) && word.answerCells.length <= maximum;
+}
+
+/** Generator와 코드를 공유하지 않고 같은 명세에서 owner map을 재계산한다. */
+export function independentlyAllocateLaunchThemeOwners(words) {
+  const ownerTarget =
+    LAUNCH_THEME_OWNER_POLICY.productionTargetDistinctOwnerCountPerTheme;
+  const reserveTarget =
+    LAUNCH_THEME_OWNER_POLICY.productionTargetNormalOrHardReservePerTheme;
+  const slots = [];
+  for (const themeId of LAUNCH_THEME_IDS) {
+    for (let index = 0; index < reserveTarget; index += 1) {
+      slots.push({ themeId, kind: "hard-reserve", index });
+    }
+    for (let index = 0; index < ownerTarget - reserveTarget; index += 1) {
+      slots.push({ themeId, kind: "any", index });
+    }
+  }
+  const candidates = slots.map((slot) => {
+    const indexes = [];
+    for (const [wordIndex, word] of words.entries()) {
+      if (
+        validatorThemeInventoryEligible(word) &&
+        word.themeTags.includes(slot.themeId) &&
+        (slot.kind === "any" || validatorThemeHardReserveEligible(word))
+      ) {
+        indexes.push(wordIndex);
+      }
+    }
+    return indexes;
+  });
+  const matchedSlotByWord = new Map();
+  const matchedWordBySlot = new Map();
+  const tryMatch = (slotIndex, seenWords) => {
+    for (const wordIndex of candidates[slotIndex]) {
+      if (seenWords.has(wordIndex)) continue;
+      seenWords.add(wordIndex);
+      const displacedSlot = matchedSlotByWord.get(wordIndex);
+      if (displacedSlot == null || tryMatch(displacedSlot, seenWords)) {
+        matchedSlotByWord.set(wordIndex, slotIndex);
+        matchedWordBySlot.set(slotIndex, wordIndex);
+        return true;
+      }
+    }
+    return false;
+  };
+  for (const slotIndex of slots.keys()) {
+    requireCondition(
+      tryMatch(slotIndex, new Set()),
+      `independent theme owner matching failed at ${slots[slotIndex].themeId}/${slots[slotIndex].kind}/${slots[slotIndex].index}`,
+    );
+  }
+
+  const ownerByWord = new Map();
+  const reservedWords = new Set();
+  const loads = Object.fromEntries(
+    LAUNCH_THEME_IDS.map((themeId) => [themeId, 0]),
+  );
+  for (const [slotIndex, wordIndex] of matchedWordBySlot.entries()) {
+    const slot = slots[slotIndex];
+    ownerByWord.set(wordIndex, slot.themeId);
+    loads[slot.themeId] += 1;
+    if (slot.kind === "hard-reserve") reservedWords.add(wordIndex);
+  }
+  for (const [wordIndex, word] of words.entries()) {
+    if (
+      ownerByWord.has(wordIndex) ||
+      !validatorThemeInventoryEligible(word) ||
+      word.themeTags.length === 0
+    ) {
+      continue;
+    }
+    let owner = word.themeTags[0];
+    for (const themeId of word.themeTags.slice(1)) {
+      if (
+        loads[themeId] < loads[owner] ||
+        (loads[themeId] === loads[owner] &&
+          LAUNCH_THEME_IDS.indexOf(themeId) < LAUNCH_THEME_IDS.indexOf(owner))
+      ) {
+        owner = themeId;
+      }
+    }
+    ownerByWord.set(wordIndex, owner);
+    loads[owner] += 1;
+  }
+  const selectedWords = words.map((word, wordIndex) => {
+    const themeOwner = ownerByWord.get(wordIndex) ?? null;
+    return {
+      ...word,
+      domainTags: [themeOwner ?? "general"],
+      themeOwner,
+      themeHardReserve: reservedWords.has(wordIndex),
+    };
+  });
+  const themeInventory = Object.fromEntries(
+    LAUNCH_THEME_IDS.map((themeId) => [
+      themeId,
+      {
+        owned: selectedWords.filter((word) => word.themeOwner === themeId)
+          .length,
+        hardReserve: selectedWords.filter(
+          (word) => word.themeOwner === themeId && word.themeHardReserve,
+        ).length,
+        eligible: words.filter(
+          (word) =>
+            validatorThemeInventoryEligible(word) &&
+            word.themeTags.includes(themeId),
+        ).length,
+        normalOrHardEligible: words.filter(
+          (word) =>
+            word.themeTags.includes(themeId) &&
+            validatorThemeHardReserveEligible(word),
+        ).length,
+      },
+    ]),
+  );
+  const assignment = selectedWords.map((word) => ({
+    sourceEntryId: word.sourceEntryId,
+    themeOwner: word.themeOwner,
+    themeHardReserve: word.themeHardReserve,
+  }));
+  return {
+    selectedWords,
+    themeInventory,
+    themeOwnership: {
+      policy: LAUNCH_THEME_OWNER_POLICY,
+      assignmentSha256: sha256(canonicalJson(assignment)),
+      assignedWordCount: ownerByWord.size,
+      unownedWordCount: words.length - ownerByWord.size,
+    },
+  };
+}
+
+function deriveLaunchWordBankReportFromAudit(wordbank, audit) {
+  const allocation = independentlyAllocateLaunchThemeOwners(audit.words);
+  return {
+    originalWordCount: wordbank.words.length,
+    cooldownSafeWordCount: audit.words.length,
+    exclusions: audit.exclusions,
+    themeInventory: allocation.themeInventory,
+    themeOwnership: allocation.themeOwnership,
+    selectedWords: allocation.selectedWords,
+  };
+}
+
+export function deriveLaunchWordBankReport(wordbank, firstRunContents) {
+  const { selectedWords: _selectedWords, ...report } =
+    deriveLaunchWordBankReportFromAudit(
+      wordbank,
+      deriveLaunchWordBankAudit(wordbank.words, firstRunContents),
+    );
+  return report;
+}
+
+export function validateLaunchWordBankReport(
+  reportWordBank,
+  wordbank,
+  firstRunContents,
+  rawSha256,
+) {
+  const audit = deriveLaunchWordBankAudit(wordbank.words, firstRunContents);
+  const derived = deriveLaunchWordBankReportFromAudit(wordbank, audit);
+  const { selectedWords, ...reportFields } = derived;
+  requireExact(
+    reportWordBank,
+    {
+      path: "data/game-content/v1/ko-KR/reviewed-launch-wordbank-v2.json",
+      checksum: rawSha256,
+      ...reportFields,
+      reviewCoverage: wordbank.metadata.themeReviewCoverage,
+    },
+    "generation report launch wordbank audit",
+  );
+  return { ...reportFields, selectedWords };
+}
+
+export function validateGeneratorClueQualityPolicy(config) {
+  requireCondition(
+    config?.schemaVersion === KO_KR_LAUNCH_CLUE_QUALITY_POLICY.schemaVersion,
+    "generator clue quality config schema drifted",
+  );
+  requireExact(
+    config.clueSimilarity,
+    KO_KR_LAUNCH_CLUE_QUALITY_POLICY.clueSimilarity,
+    "generator clue similarity policy",
+  );
+  requireExact(
+    config.clueQuality,
+    KO_KR_LAUNCH_CLUE_QUALITY_POLICY.clueQuality,
+    "generator clue quality policy",
+  );
+  return true;
+}
+
+export function validateGeneratorThemeInventoryPolicy(config) {
+  requireExact(
+    config?.maxGenerationWordLength,
+    EXPECTED_MAX_GENERATION_WORD_LENGTH,
+    "generator maximum word length policy",
+  );
+  requireExact(
+    config?.themeOwnership,
+    LAUNCH_THEME_OWNER_POLICY,
+    "generator theme ownership policy",
+  );
+  return true;
 }
 
 function requireUniqueStrings(values, field) {
@@ -506,18 +812,10 @@ function deriveEditorialArtifacts(
       `approved wordbank answer leak at index ${index}/${word.answer}`,
     );
   }
-  for (let leftIndex = 0; leftIndex < words.length; leftIndex += 1) {
-    for (
-      let rightIndex = leftIndex + 1;
-      rightIndex < words.length;
-      rightIndex += 1
-    ) {
-      requireCondition(
-        !areCluesSimilar(words[leftIndex].clue, words[rightIndex].clue),
-        `approved wordbank clue family collision: ${words[leftIndex].answer}/${words[rightIndex].answer}`,
-      );
-    }
-  }
+  // reviewed wordbank는 출처/편집 증거 풀이다. 서로 가까운 단서 계열과 복합어
+  // 조각 노출은 이 원장을 훼손하지 않고 launch selection에서 결정적으로 제외한다.
+  // 최종 93보드에는 아래 generator/report audit와 global inventory gate가 같은
+  // v2 정책을 다시 적용한다.
   const summary = summarizeReviewedWords(words, rejectedCount, rewrittenCount);
   const expectedWordbank = {
     metadata: {
@@ -813,24 +1111,56 @@ async function validateInputAndReviewLocks(
   repositoryRoot,
   candidateArtifact,
   decisionArtifacts,
+  baseWordbankArtifact,
+  baseLedgerArtifact,
+  taxonomyArtifact,
+  themeDecisionArtifacts,
   wordbankArtifact,
-  ledgerArtifact,
+  themeLedgerArtifact,
   licenseManifestArtifact,
   provenanceArtifact,
 ) {
   const candidateDocument = candidateArtifact.document;
   const wordbank = wordbankArtifact.document;
-  const ledger = ledgerArtifact.document;
+  const baseWordbank = baseWordbankArtifact.document;
+  const baseLedger = baseLedgerArtifact.document;
   const licenseManifest = licenseManifestArtifact.document;
   const provenanceIndex = provenanceArtifact.document;
   const derived = deriveEditorialArtifacts(
     candidateDocument,
     candidateArtifact.rawSha256,
     decisionArtifacts,
-    wordbankArtifact.rawSha256,
+    baseWordbankArtifact.rawSha256,
   );
-  requireExact(wordbank, derived.expectedWordbank, "reviewed wordbank");
-  requireExact(ledger, derived.expectedLedger, "editorial ledger");
+  requireExact(
+    baseWordbank,
+    derived.expectedWordbank,
+    "base reviewed wordbank",
+  );
+  requireExact(baseLedger, derived.expectedLedger, "base editorial ledger");
+  const themeDerived = deriveLaunchThemeArtifacts({
+    baseWordBankText: baseWordbankArtifact.text,
+    baseEditorialLedgerText: baseLedgerArtifact.text,
+    taxonomyText: taxonomyArtifact.text,
+    themeShardInputs: themeDecisionArtifacts.map((artifact) => ({
+      relativePath: artifact.relativePath,
+      text: artifact.text,
+    })),
+  });
+  requireExact(
+    wordbank,
+    themeDerived.wordBankDocument,
+    "theme reviewed wordbank v2",
+  );
+  requireExact(
+    themeLedgerArtifact.document,
+    themeDerived.themeLedgerDocument,
+    "theme editorial ledger",
+  );
+  requireCondition(
+    wordbankArtifact.rawSha256 === themeDerived.wordBankSha256,
+    "theme reviewed wordbank raw checksum mismatch",
+  );
 
   requireCondition(
     licenseManifest.schemaVersion === "game-content-license-manifest/1" &&
@@ -856,10 +1186,26 @@ async function validateInputAndReviewLocks(
       candidateFileSha256: candidateArtifact.rawSha256,
       decisionFiles: expectedDecisionPaths,
       decisionFileSha256: expectedDecisionHashes,
-      wordbankFile: "data/game-content/v1/ko-KR/reviewed-launch-wordbank.json",
+      baseWordbankFile:
+        "data/game-content/v1/ko-KR/reviewed-launch-wordbank.json",
+      baseWordbankFileSha256: baseWordbankArtifact.rawSha256,
+      baseLedgerFile:
+        "data/game-content/v1/ko-KR/reviews/editorial-ledger.json",
+      baseLedgerFileSha256: baseLedgerArtifact.rawSha256,
+      themeTaxonomyFile:
+        "data/game-content/v1/ko-KR/reviews/launch-theme-taxonomy.json",
+      themeTaxonomyFileSha256: taxonomyArtifact.rawSha256,
+      themeDecisionFiles: themeDecisionArtifacts.map(
+        (artifact) => artifact.relativePath,
+      ),
+      themeDecisionFileSha256: themeDecisionArtifacts.map(
+        (artifact) => artifact.rawSha256,
+      ),
+      wordbankFile:
+        "data/game-content/v1/ko-KR/reviewed-launch-wordbank-v2.json",
       wordbankFileSha256: wordbankArtifact.rawSha256,
-      ledgerFile: "data/game-content/v1/ko-KR/reviews/editorial-ledger.json",
-      ledgerFileSha256: ledgerArtifact.rawSha256,
+      ledgerFile: "data/game-content/v1/ko-KR/reviews/launch-theme-ledger.json",
+      ledgerFileSha256: themeLedgerArtifact.rawSha256,
     },
     "license manifest review evidence",
   );
@@ -1088,6 +1434,23 @@ function validateCatalogEntryProvenance(
           reviewedWord,
           `${content.puzzleId}.entries[${entryIndex}]`,
         );
+        if (board.route.kind === "daily") {
+          requireCondition(
+            reviewedWord.themeOwner == null ||
+              reviewedWord.themeOwner === content.themeId,
+            `${content.puzzleId}/${entry.id} consumes another theme owner`,
+          );
+          if (
+            ["monday", "tuesday", "wednesday", "thursday"].includes(
+              board.route.weekday,
+            )
+          ) {
+            requireCondition(
+              reviewedWord.themeHardReserve !== true,
+              `${content.puzzleId}/${entry.id} consumes the Friday hard reserve early`,
+            );
+          }
+        }
         const provenance = provenanceByEntryId.get(entry.id);
         requireCondition(
           provenance != null,
@@ -1122,6 +1485,26 @@ function validateCatalogEntryProvenance(
     }
   }
   requireUniqueStrings(catalogSourceEntryIds, "catalog sourceEntryId");
+}
+
+export function validateCatalogLaunchSelection(rawCatalog, selectedWords) {
+  const selectedSourceEntryIds = new Set(
+    selectedWords.map((word) => word.sourceEntryId),
+  );
+  requireCondition(
+    selectedSourceEntryIds.size === selectedWords.length,
+    "derived launch selection sourceEntryId values are not unique",
+  );
+  for (const board of rawCatalog.boards) {
+    if (board.route.kind === "first-run") continue;
+    for (const entry of board.content.entries) {
+      requireCondition(
+        selectedSourceEntryIds.has(entry.sourceEntryId),
+        `${board.content.puzzleId}/${entry.id} is outside the independently derived launch selection`,
+      );
+    }
+  }
+  return true;
 }
 
 function entryCellKeys(entry) {
@@ -1277,12 +1660,23 @@ export function calculateContentQualityEvidence(content, route, config) {
     wordCount === 0
       ? 0
       : Number((multiIntersectionPlacements / wordCount).toFixed(3));
+  const clueConflicts = findBoardClueQualityConflicts(content.entries);
+  const crossAnswerClueLeakCount = clueConflicts.filter(
+    (conflict) => conflict.type === "clue_contains_other_answer",
+  ).length;
+  const answerContainmentCount = clueConflicts.filter(
+    (conflict) => conflict.type === "answer_contains_answer",
+  ).length;
   const thresholds = {
     minWordCount: profile.minWordCount,
     minCrossRatio: profile.minCrossRatio,
     minBboxDensity: profile.minBboxDensity,
     minMultiCrossRatio: config.minMultiCrossRatio,
     maxAutoRunRatio: config.maxAutoRunRatio,
+    maxCrossAnswerClueLeakCount:
+      config.clueQuality.sameBoardConflicts.maxCrossAnswerClueLeakCount,
+    maxAnswerContainmentCount:
+      config.clueQuality.sameBoardConflicts.maxAnswerContainmentCount,
   };
   const checks = [
     ["minWordCount", wordCount, thresholds.minWordCount, ">="],
@@ -1295,6 +1689,18 @@ export function calculateContentQualityEvidence(content, route, config) {
       ">=",
     ],
     ["maxAutoRunRatio", autoRunRatio, thresholds.maxAutoRunRatio, "<="],
+    [
+      "maxCrossAnswerClueLeakCount",
+      crossAnswerClueLeakCount,
+      thresholds.maxCrossAnswerClueLeakCount,
+      "<=",
+    ],
+    [
+      "maxAnswerContainmentCount",
+      answerContainmentCount,
+      thresholds.maxAnswerContainmentCount,
+      "<=",
+    ],
   ].map(([key, actual, expected, operator]) => ({
     key,
     actual,
@@ -1307,6 +1713,10 @@ export function calculateContentQualityEvidence(content, route, config) {
     checks,
     ratios: { autoRunRatio, multiCrossRatio },
     thresholds,
+    clueConflicts: {
+      crossAnswerClueLeakCount,
+      answerContainmentCount,
+    },
   };
   if (route.kind === "daily") {
     const themedEntryCount = content.entries.filter((entry) =>
@@ -1344,6 +1754,8 @@ export function calculateContentQualityEvidence(content, route, config) {
         cellToEntryIndexes,
       ),
       accidentalRunCount: 0,
+      crossAnswerClueLeakCount,
+      answerContainmentCount,
     },
     quality,
   };
@@ -1559,7 +1971,7 @@ export function validateGeneratorReportTrace(config, reportBoards) {
 function validateReportCatalogJoin(rawCatalog, report) {
   requireCandidateFlags(report, "generation report");
   requireCondition(
-    report.schemaVersion === "ko-kr-launch-generation-report/1" &&
+    report.schemaVersion === "ko-kr-launch-generation-report/3" &&
       report.catalogId === rawCatalog.catalogId &&
       report.generatedAt === rawCatalog.generatedAt &&
       Array.isArray(report.boards) &&
@@ -1643,6 +2055,8 @@ async function validateGeneratorIdentity(
     DIFFICULTY_PROFILES,
     "generator difficulty profiles",
   );
+  validateGeneratorThemeInventoryPolicy(generator.config);
+  validateGeneratorClueQualityPolicy(generator.config);
   requireCondition(
     generator.config.maxAutoRunRatio === 0.5 &&
       generator.config.minMultiCrossRatio === 0.65 &&
@@ -1710,11 +2124,24 @@ async function validateGeneratorIdentity(
     "generator script hash does not match dependency lock",
   );
   requireCondition(
-    generator.config.wordBankSha256 === wordbankArtifact.rawSha256 &&
-      report.wordBank?.path ===
-        "data/game-content/v1/ko-KR/reviewed-launch-wordbank.json" &&
-      report.wordBank?.checksum === wordbankArtifact.rawSha256,
+    generator.config.wordBankSha256 === wordbankArtifact.rawSha256,
     "generator wordbank lock mismatch",
+  );
+  const derivedWordBank = validateLaunchWordBankReport(
+    report.wordBank,
+    wordbankArtifact.document,
+    [...loadBundledFirstRunGameContents()],
+    wordbankArtifact.rawSha256,
+  );
+  requireCondition(
+    Object.values(derivedWordBank.themeInventory).every(
+      (inventory) =>
+        inventory.owned >=
+          LAUNCH_THEME_OWNER_POLICY.productionTargetDistinctOwnerCountPerTheme &&
+        inventory.hardReserve ===
+          LAUNCH_THEME_OWNER_POLICY.productionTargetNormalOrHardReservePerTheme,
+    ),
+    "derived launch wordbank theme inventory is insufficient",
   );
   validateGeneratorReportTrace(generator.config, report.boards);
   requireExact(
@@ -1722,6 +2149,7 @@ async function validateGeneratorIdentity(
     [...report.boards.map((board) => board.puzzleId)].sort(),
     "generator route plan/report board set",
   );
+  return derivedWordBank.selectedWords;
 }
 
 function validateLicensePublication(
@@ -1851,7 +2279,7 @@ async function validateImmutablePacks(publicRoot, rawCatalog, packIndex) {
   }
 }
 
-function validateGlobalInventory(rawCatalog, report) {
+export function validateGlobalInventory(rawCatalog, report) {
   const answerOwner = new Map();
   const entries = [];
   for (const board of rawCatalog.boards) {
@@ -1866,8 +2294,26 @@ function validateGlobalInventory(rawCatalog, report) {
         normalizeClueForSimilarity(entry.clue) !== "",
         `${board.content.puzzleId}/${entry.id} has an empty clue family`,
       );
+      const exposedFragment = findKoKrAnswerFragmentExposure(
+        entry.answer,
+        entry.clue,
+      );
+      requireCondition(
+        exposedFragment == null,
+        `${board.content.puzzleId}/${entry.answer} exposes answer fragment ${exposedFragment}`,
+      );
       entries.push({ puzzleId: board.content.puzzleId, entry });
     }
+    const boardConflicts = findBoardClueQualityConflicts(board.content.entries);
+    requireCondition(
+      boardConflicts.length === 0,
+      `${board.content.puzzleId} has same-board clue conflicts: ${boardConflicts
+        .map(
+          (conflict) =>
+            `${conflict.type}:${conflict.answer}/${conflict.otherAnswer}`,
+        )
+        .join(",")}`,
+    );
   }
   for (let leftIndex = 0; leftIndex < entries.length; leftIndex += 1) {
     for (
@@ -1889,7 +2335,7 @@ function validateGlobalInventory(rawCatalog, report) {
   };
   requireCondition(
     report.cooldownAudit?.policyId ===
-      "launch-global-unique-answer-and-clue-family-v1" &&
+      "launch-global-unique-answer-and-clue-family-v2" &&
       report.cooldownAudit?.enforcedScope === "all-93-launch-boards-global" &&
       report.cooldownAudit?.uniqueAnswerCount === inventory.uniqueAnswerCount &&
       report.cooldownAudit?.uniqueNormalizedClueFamilyCount ===
@@ -2010,8 +2456,21 @@ async function main() {
     dataRoot,
     "reviews/editorial-candidates.json",
   );
-  const wordbankPath = path.join(dataRoot, "reviewed-launch-wordbank.json");
-  const ledgerPath = path.join(dataRoot, "reviews/editorial-ledger.json");
+  const baseWordbankPath = path.join(dataRoot, "reviewed-launch-wordbank.json");
+  const baseLedgerPath = path.join(dataRoot, "reviews/editorial-ledger.json");
+  const taxonomyPath = path.join(
+    dataRoot,
+    "reviews/launch-theme-taxonomy.json",
+  );
+  const wordbankPath = path.join(dataRoot, "reviewed-launch-wordbank-v2.json");
+  const themeLedgerPath = path.join(
+    dataRoot,
+    "reviews/launch-theme-ledger.json",
+  );
+  const boardReviewLedgerPath = path.join(
+    dataRoot,
+    "reviews/launch-board-review-ledger.json",
+  );
   const manifestPath = path.join(dataRoot, "license-manifest.json");
   const provenancePath = path.join(dataRoot, "source-provenance-index.json");
 
@@ -2023,10 +2482,26 @@ async function main() {
       )),
     })),
   );
+  const themeDecisionArtifacts = await Promise.all(
+    LAUNCH_THEME_SHARD_SPECS.map(async (item) => ({
+      relativePath: item.relativePath,
+      ...(await readArtifact(
+        resolveRepositoryPath(
+          repositoryRoot,
+          item.relativePath,
+          "theme decision path",
+        ),
+      )),
+    })),
+  );
   const [
     candidateArtifact,
+    baseWordbankArtifact,
+    baseLedgerArtifact,
+    taxonomyArtifact,
     wordbankArtifact,
-    ledgerArtifact,
+    themeLedgerArtifact,
+    boardReviewLedgerArtifact,
     licenseManifestArtifact,
     provenanceArtifact,
     publicManifestArtifact,
@@ -2036,8 +2511,12 @@ async function main() {
     packIndexArtifact,
   ] = await Promise.all([
     readArtifact(candidatePath),
+    readArtifact(baseWordbankPath),
+    readArtifact(baseLedgerPath),
+    readArtifact(taxonomyPath),
     readArtifact(wordbankPath),
-    readArtifact(ledgerPath),
+    readArtifact(themeLedgerPath),
+    readArtifact(boardReviewLedgerPath),
     readArtifact(manifestPath),
     readArtifact(provenancePath),
     readArtifact(path.join(publicRoot, "license-manifest.json")),
@@ -2055,8 +2534,12 @@ async function main() {
     repositoryRoot,
     candidateArtifact,
     decisionArtifacts,
+    baseWordbankArtifact,
+    baseLedgerArtifact,
+    taxonomyArtifact,
+    themeDecisionArtifacts,
     wordbankArtifact,
-    ledgerArtifact,
+    themeLedgerArtifact,
     licenseManifestArtifact,
     provenanceArtifact,
   );
@@ -2096,19 +2579,29 @@ async function main() {
   validateBundledFirstRunCatalog(rawCatalog, loadBundledFirstRunGameContents());
 
   validateReportCatalogJoin(rawCatalog, report);
+  validateLaunchBoardReviewLedger(
+    rawCatalog,
+    report,
+    boardReviewLedgerArtifact.document,
+  );
   requireExact(
     report.routeCounts,
     routeCounts(rawCatalog),
     "report routeCounts",
   );
+  const selectedWords = await validateGeneratorIdentity(
+    repositoryRoot,
+    report,
+    wordbankArtifact,
+  );
   validateCatalogEntryProvenance(
     rawCatalog,
     report,
-    reviewContext.wordbank,
+    { words: selectedWords },
     reviewContext.licenseManifest,
     reviewContext.licenseIds,
   );
-  await validateGeneratorIdentity(repositoryRoot, report, wordbankArtifact);
+  validateCatalogLaunchSelection(rawCatalog, selectedWords);
   validateLicensePublication(
     reviewContext.licenseManifest,
     publicManifestArtifact.document,
