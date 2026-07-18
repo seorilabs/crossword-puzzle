@@ -95,7 +95,7 @@ function createFixture() {
     ],
   };
   const generationReport = {
-    schemaVersion: "ko-kr-launch-generation-report/3",
+    schemaVersion: "ko-kr-launch-generation-report/4",
     artifactStatus: "candidate",
     activationApproved: false,
     generatedAt: "2026-07-18T14:00:00.000Z",

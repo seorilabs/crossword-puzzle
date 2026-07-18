@@ -97,6 +97,26 @@ export const LAUNCH_THEME_OWNER_POLICY = Object.freeze({
   reserveProtection: "before-friday-daily-board",
   connectorPolicy: "unowned-only-during-daily-generation",
 });
+export const LAUNCH_ACCEPTED_CANDIDATE_POLICY = Object.freeze({
+  policyId: "ko-kr-launch-future-pool-lookahead-v1",
+  defaultRetries: 8,
+  acceptedLookaheadRetries: 1,
+  edgeDefinition:
+    "unique-answer-pairs-sharing-at-least-one-cell-after-next-route-filter-and-rerank",
+  candidateAnswerOrder: "unique-answers-ascending-js-code-unit",
+  dailyOrder: [
+    "max-theme-connector-edges",
+    "min-isolated-theme-owners",
+    "max-total-edges",
+    "min-cooldown-answer-count",
+    "stable-generation-order",
+  ],
+  otherOrder: [
+    "max-total-edges",
+    "min-cooldown-answer-count",
+    "stable-generation-order",
+  ],
+});
 const MAX_GENERATION_WORD_LENGTH = Object.freeze({
   easy: 3,
   normal: 3,
@@ -115,7 +135,7 @@ const DEFAULT_OPTIONS = Object.freeze({
   dryRunCount: 0,
   maxNewBoards: 0,
   outputRoot: "public/game-content/v1/ko-KR",
-  retries: 6,
+  retries: LAUNCH_ACCEPTED_CANDIDATE_POLICY.defaultRetries,
   samples: 5,
   startIndex: 0,
   wordBankPath: "data/game-content/v1/ko-KR/reviewed-launch-wordbank-v2.json",
@@ -907,6 +927,136 @@ function sharesAnswerCell(left, right) {
   return answerCellsOf(left).some((cell) => rightCells.has(cell));
 }
 
+export function summarizeFuturePoolConnectivity(words, nextRoute) {
+  let totalSharedCellEdges = 0;
+  let themeConnectorSharedCellEdges = 0;
+  const themeOwnersConnectedToConnector = new Set();
+  const isDaily = nextRoute?.route.kind === "daily";
+
+  for (let leftIndex = 0; leftIndex < words.length; leftIndex += 1) {
+    const left = words[leftIndex];
+    for (
+      let rightIndex = leftIndex + 1;
+      rightIndex < words.length;
+      rightIndex += 1
+    ) {
+      const right = words[rightIndex];
+      if (!sharesAnswerCell(left, right)) continue;
+      totalSharedCellEdges += 1;
+      if (!isDaily) continue;
+
+      const leftIsTheme = left.themeOwner === nextRoute.themeId;
+      const rightIsTheme = right.themeOwner === nextRoute.themeId;
+      const leftIsConnector = left.themeOwner == null;
+      const rightIsConnector = right.themeOwner == null;
+      if (
+        (leftIsTheme && rightIsConnector) ||
+        (rightIsTheme && leftIsConnector)
+      ) {
+        themeConnectorSharedCellEdges += 1;
+        themeOwnersConnectedToConnector.add(
+          leftIsTheme ? left.answer : right.answer,
+        );
+      }
+    }
+  }
+
+  const isolatedThemeOwnerCount = isDaily
+    ? words.filter(
+        (word) =>
+          word.themeOwner === nextRoute.themeId &&
+          !themeOwnersConnectedToConnector.has(word.answer),
+      ).length
+    : 0;
+  return {
+    totalSharedCellEdges,
+    themeConnectorSharedCellEdges,
+    isolatedThemeOwnerCount,
+  };
+}
+
+export function compareLaunchAcceptedCandidateScores(left, right, nextRoute) {
+  if (nextRoute?.route.kind === "daily") {
+    return (
+      right.themeConnectorSharedCellEdges -
+        left.themeConnectorSharedCellEdges ||
+      left.isolatedThemeOwnerCount - right.isolatedThemeOwnerCount ||
+      right.totalSharedCellEdges - left.totalSharedCellEdges ||
+      left.cooldownAnswerCount - right.cooldownAnswerCount
+    );
+  }
+  return (
+    right.totalSharedCellEdges - left.totalSharedCellEdges ||
+    left.cooldownAnswerCount - right.cooldownAnswerCount
+  );
+}
+
+export function makeLaunchAcceptedCandidateSelection({
+  currentWordPool,
+  nextRoute,
+  reviewedWords,
+  usedAnswers,
+}) {
+  const currentWordMap = makeWordMap(currentWordPool);
+  const usedAnswersAtStart = new Set(usedAnswers);
+  const answerCache = new WeakMap();
+  const scoreCache = new WeakMap();
+
+  function answersForBoard(board) {
+    const cached = answerCache.get(board);
+    if (cached != null) return cached;
+    const answers = [
+      ...new Set(
+        analyzeRuns(board, currentWordMap).runs.map((run) => run.answer),
+      ),
+    ].sort();
+    answerCache.set(board, answers);
+    return answers;
+  }
+
+  function selectionScoreForBoard(board) {
+    const cached = scoreCache.get(board);
+    if (cached != null) return cached;
+    const answers = answersForBoard(board);
+    const futureUsedAnswers = new Set(usedAnswersAtStart);
+    for (const answer of answers) futureUsedAnswers.add(answer);
+    const connectivity =
+      nextRoute == null
+        ? {
+            totalSharedCellEdges: 0,
+            themeConnectorSharedCellEdges: 0,
+            isolatedThemeOwnerCount: 0,
+          }
+        : summarizeFuturePoolConnectivity(
+            filterAvailableWords(reviewedWords, nextRoute, futureUsedAnswers)
+              .words,
+            nextRoute,
+          );
+    const result = {
+      ...connectivity,
+      cooldownAnswerCount: answers.length,
+    };
+    scoreCache.set(board, result);
+    return result;
+  }
+
+  return {
+    compareAcceptedCandidates: (left, right) =>
+      compareLaunchAcceptedCandidateScores(
+        selectionScoreForBoard(left.board),
+        selectionScoreForBoard(right.board),
+        nextRoute,
+      ),
+    answersForBoard,
+    selectionScoreForBoard,
+  };
+}
+
+export function makeLaunchAcceptedCandidateComparator(options) {
+  return makeLaunchAcceptedCandidateSelection(options)
+    .compareAcceptedCandidates;
+}
+
 /**
  * 일일 테마 단어와 실제로 교차 가능한 연결어를 먼저 공급한다. 동일 연결성에서는
  * 긴 단어, 남은 연결어 풀과의 연결성, 검수 ledger 순으로 결정적으로 정렬한다.
@@ -1152,6 +1302,7 @@ function serializeGeneratedContent(
 
 async function generateRouteContent(
   route,
+  nextRoute,
   reviewedWords,
   usedAnswers,
   options,
@@ -1163,7 +1314,17 @@ async function generateRouteContent(
   const profile = DIFFICULTY_PROFILES[route.difficulty];
   const selectedWordMap = makeWordMap(selection.words);
   const clueConflictIndex = buildBoardClueConflictIndex(selection.words);
+  const acceptedCandidateSelection = makeLaunchAcceptedCandidateSelection({
+    currentWordPool: selection.words,
+    nextRoute,
+    reviewedWords,
+    usedAnswers,
+  });
   const generation = generateBoardWithRetries({
+    acceptedLookaheadRetries:
+      LAUNCH_ACCEPTED_CANDIDATE_POLICY.acceptedLookaheadRetries,
+    compareAcceptedCandidates:
+      acceptedCandidateSelection.compareAcceptedCandidates,
     retries: options.retries,
     seedForRetry: (retryIndex) =>
       retrySeed(options.baseSeed, route, retryIndex),
@@ -1191,7 +1352,27 @@ async function generateRouteContent(
     }),
     evaluateCandidate: (board) =>
       evaluateRouteBoardQuality(board, route, selection.words),
-    summarizeCandidate: summarizeCandidateBoard,
+    summarizeCandidate: (board, quality, candidateIndex) => {
+      const summary = summarizeCandidateBoard(board, quality, candidateIndex);
+      const answers = acceptedCandidateSelection.answersForBoard(board);
+      requireCondition(
+        answers.length === summary.metrics.wordCount,
+        `${route.puzzleId} candidate ${candidateIndex} answer trace does not match wordCount`,
+      );
+      return {
+        ...summary,
+        themeEntryCount:
+          route.route.kind === "daily"
+            ? answers.filter(
+                (answer) =>
+                  selectedWordMap.get(answer)?.themeOwner === route.themeId,
+              ).length
+            : null,
+        answers,
+        selectionScore:
+          acceptedCandidateSelection.selectionScoreForBoard(board),
+      };
+    },
   });
 
   if (generation.accepted) {
@@ -1226,6 +1407,7 @@ async function generateRouteContent(
         difficulty: route.difficulty,
         themeId: route.themeId,
         accepted: true,
+        selectedCandidateIndex: generation.selectedCandidateIndex,
         selectedRetryIndex: generation.selectedRetryIndex,
         selectedSeed: generation.selectedSeed,
         effectiveWordDifficulties: selection.difficulties,
@@ -1559,7 +1741,7 @@ async function resolveGeneratorIdentity(repositoryRoot, options, wordBank) {
     cwd: repositoryRoot,
   });
   const config = {
-    schemaVersion: "ko-kr-launch-generator-config/3",
+    schemaVersion: "ko-kr-launch-generator-config/4",
     baseSeed: options.baseSeed,
     attempts: options.attempts,
     searchEscalation: Array.from({ length: options.retries }, (_, index) =>
@@ -1576,6 +1758,7 @@ async function resolveGeneratorIdentity(repositoryRoot, options, wordBank) {
     minMultiCrossRatio: MIN_MULTI_CROSS_RATIO,
     minDailyThemeEntryRatio: MIN_DAILY_THEME_ENTRY_RATIO,
     dailyConnectorWordLimit: DAILY_CONNECTOR_WORD_LIMIT,
+    acceptedCandidateSelection: LAUNCH_ACCEPTED_CANDIDATE_POLICY,
     themeOwnership: LAUNCH_THEME_OWNER_POLICY,
     maxGenerationWordLength: MAX_GENERATION_WORD_LENGTH,
     clueSimilarity: {
@@ -1787,6 +1970,9 @@ async function main() {
     options.maxNewBoards > 0
       ? remainingRoutes.slice(0, options.maxNewBoards)
       : remainingRoutes;
+  const generationQueueIndexByPuzzleId = new Map(
+    generationQueue.map((route, index) => [route.puzzleId, index]),
+  );
 
   const usedAnswers = new Set(
     firstRunContents.flatMap((content) =>
@@ -1814,11 +2000,20 @@ async function main() {
 
   for (const [localIndex, route] of routesToGenerate.entries()) {
     const position = generationProgressPosition(completedAtStart, localIndex);
+    const generationQueueIndex = generationQueueIndexByPuzzleId.get(
+      route.puzzleId,
+    );
+    requireCondition(
+      generationQueueIndex != null,
+      `${route.puzzleId} is missing from the generation queue`,
+    );
+    const nextRoute = generationQueue[generationQueueIndex + 1] ?? null;
     console.log(
       `[${position}/${selectedRoutes.length}] ${route.puzzleId} ${route.difficulty} ${route.themeId}`,
     );
     const generated = await generateRouteContent(
       route,
+      nextRoute,
       wordBank.words,
       usedAnswers,
       options,
@@ -1925,7 +2120,7 @@ async function main() {
       .join(",")}`,
   );
   const report = {
-    schemaVersion: "ko-kr-launch-generation-report/3",
+    schemaVersion: "ko-kr-launch-generation-report/4",
     artifactStatus: ARTIFACT_STATUS,
     activationApproved: false,
     generatedAt: GENERATED_AT,

@@ -12,12 +12,42 @@ function requirePositiveInteger(value, field) {
   }
 }
 
+function requireNonNegativeInteger(value, field) {
+  if (!Number.isInteger(value) || value < 0) {
+    throw new TypeError(`${field} must be a non-negative integer`);
+  }
+}
+
+function selectAcceptedCandidate(candidates, compareAcceptedCandidates) {
+  return candidates.reduce((selected, candidate) => {
+    if (selected == null) return candidate;
+    if (compareAcceptedCandidates == null) return selected;
+    return compareAcceptedCandidates(candidate, selected) < 0
+      ? candidate
+      : selected;
+  }, null);
+}
+
+function acceptedResult(candidate, attempts) {
+  return {
+    accepted: true,
+    attempts,
+    board: candidate.board,
+    quality: candidate.quality,
+    selectedCandidateIndex: candidate.candidateIndex,
+    selectedRetryIndex: candidate.retryIndex,
+    selectedSeed: candidate.seed,
+  };
+}
+
 /**
  * 기존 2시간 배치와 출시 snapshot builder가 공유하는 순수 보드 생성 반복부다.
  * slot/route, wordbank 검수, DTO 직렬화와 파일 발행은 각 caller가 소유한다.
  */
 export function generateBoardWithRetries({
+  acceptedLookaheadRetries = 0,
   buildGeneratorOptions,
+  compareAcceptedCandidates,
   evaluateCandidate,
   generateCandidates = generateBoards,
   onRetryComplete,
@@ -27,6 +57,10 @@ export function generateBoardWithRetries({
   summarizeCandidate,
 }) {
   requirePositiveInteger(retries, "retries");
+  requireNonNegativeInteger(
+    acceptedLookaheadRetries,
+    "acceptedLookaheadRetries",
+  );
   requireFunction(buildGeneratorOptions, "buildGeneratorOptions");
   requireFunction(evaluateCandidate, "evaluateCandidate");
   requireFunction(generateCandidates, "generateCandidates");
@@ -36,8 +70,13 @@ export function generateBoardWithRetries({
   if (onRetryComplete != null) {
     requireFunction(onRetryComplete, "onRetryComplete");
   }
+  if (compareAcceptedCandidates != null) {
+    requireFunction(compareAcceptedCandidates, "compareAcceptedCandidates");
+  }
 
   const attempts = [];
+  const acceptedCandidates = [];
+  let firstAcceptedRetryIndex = null;
   for (let retryIndex = 0; retryIndex < retries; retryIndex += 1) {
     const seed = seedForRetry(retryIndex);
     const searchOptions = searchOptionsForRetry(retryIndex);
@@ -72,17 +111,30 @@ export function generateBoardWithRetries({
     });
 
     if (acceptedCandidateIndex !== -1) {
-      const accepted = candidates[acceptedCandidateIndex];
-      return {
-        accepted: true,
-        attempts,
-        board: accepted.board,
-        quality: accepted.quality,
-        selectedCandidateIndex: accepted.candidateIndex,
-        selectedRetryIndex: retryIndex,
-        selectedSeed: seed,
-      };
+      firstAcceptedRetryIndex ??= retryIndex;
+      acceptedCandidates.push(
+        ...candidates
+          .filter((candidate) => candidate.quality.pass)
+          .map((candidate) => ({ ...candidate, retryIndex, seed })),
+      );
     }
+
+    if (
+      firstAcceptedRetryIndex != null &&
+      retryIndex - firstAcceptedRetryIndex >= acceptedLookaheadRetries
+    ) {
+      return acceptedResult(
+        selectAcceptedCandidate(acceptedCandidates, compareAcceptedCandidates),
+        attempts,
+      );
+    }
+  }
+
+  if (acceptedCandidates.length > 0) {
+    return acceptedResult(
+      selectAcceptedCandidate(acceptedCandidates, compareAcceptedCandidates),
+      attempts,
+    );
   }
 
   return { accepted: false, attempts };

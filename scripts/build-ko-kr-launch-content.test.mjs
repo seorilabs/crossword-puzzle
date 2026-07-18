@@ -3,6 +3,7 @@ import { describe, test } from "node:test";
 
 import {
   DAILY_CONNECTOR_WORD_LIMIT,
+  LAUNCH_ACCEPTED_CANDIDATE_POLICY,
   LAUNCH_THEME_OWNER_POLICY,
   LAUNCH_THEME_IDS,
   allocateLaunchThemeOwners,
@@ -11,6 +12,7 @@ import {
   buildBoardClueConflictIndex,
   buildLaunchRoutePlan,
   buildWorldMap,
+  compareLaunchAcceptedCandidateScores,
   deduplicateReviewedWords,
   evaluateBoardClueQualityEntries,
   evaluateGeneratedBoardQuality,
@@ -22,6 +24,7 @@ import {
   orderRoutesForGeneration,
   rankDailyConnectorWordsByConnectivity,
   searchOptionsForRetry,
+  summarizeFuturePoolConnectivity,
 } from "./build-ko-kr-launch-content.mjs";
 import {
   compareGenerationCandidatesByGeometryQuality,
@@ -33,6 +36,92 @@ import {
 describe("ko-KR launch content builder", () => {
   test("일일 테마 보드는 비테마 연결어 풀을 제한한다", () => {
     assert.equal(DAILY_CONNECTOR_WORD_LIMIT, 80);
+  });
+
+  test("launch PASS lookahead와 미래 pool 선택 순서를 generator config 정책으로 고정한다", () => {
+    assert.equal(LAUNCH_ACCEPTED_CANDIDATE_POLICY.defaultRetries, 8);
+    assert.equal(LAUNCH_ACCEPTED_CANDIDATE_POLICY.acceptedLookaheadRetries, 1);
+    assert.equal(
+      LAUNCH_ACCEPTED_CANDIDATE_POLICY.candidateAnswerOrder,
+      "unique-answers-ascending-js-code-unit",
+    );
+    assert.deepEqual(LAUNCH_ACCEPTED_CANDIDATE_POLICY.dailyOrder, [
+      "max-theme-connector-edges",
+      "min-isolated-theme-owners",
+      "max-total-edges",
+      "min-cooldown-answer-count",
+      "stable-generation-order",
+    ]);
+    assert.deepEqual(LAUNCH_ACCEPTED_CANDIDATE_POLICY.otherOrder, [
+      "max-total-edges",
+      "min-cooldown-answer-count",
+      "stable-generation-order",
+    ]);
+  });
+
+  test("next daily rerank pool의 unique edge를 세고 정책 순서로 비교한다", () => {
+    const nextDaily = {
+      themeId: "table-kitchen",
+      route: { kind: "daily" },
+    };
+    const connectivity = summarizeFuturePoolConnectivity(
+      [
+        {
+          answer: "테마가",
+          answerCells: ["가", "나"],
+          themeOwner: "table-kitchen",
+        },
+        {
+          answer: "테마다",
+          answerCells: ["다"],
+          themeOwner: "table-kitchen",
+        },
+        { answer: "연결가", answerCells: ["가", "라"], themeOwner: null },
+        { answer: "연결라", answerCells: ["라"], themeOwner: null },
+      ],
+      nextDaily,
+    );
+    assert.deepEqual(connectivity, {
+      totalSharedCellEdges: 2,
+      themeConnectorSharedCellEdges: 1,
+      isolatedThemeOwnerCount: 1,
+    });
+
+    const score = (overrides) => ({
+      totalSharedCellEdges: 10,
+      themeConnectorSharedCellEdges: 5,
+      isolatedThemeOwnerCount: 1,
+      cooldownAnswerCount: 12,
+      ...overrides,
+    });
+    assert.ok(
+      compareLaunchAcceptedCandidateScores(
+        score({ themeConnectorSharedCellEdges: 6 }),
+        score({ isolatedThemeOwnerCount: 0, totalSharedCellEdges: 100 }),
+        nextDaily,
+      ) < 0,
+    );
+    assert.ok(
+      compareLaunchAcceptedCandidateScores(
+        score({ isolatedThemeOwnerCount: 0 }),
+        score({ totalSharedCellEdges: 100 }),
+        nextDaily,
+      ) < 0,
+    );
+    assert.ok(
+      compareLaunchAcceptedCandidateScores(
+        score({ totalSharedCellEdges: 11 }),
+        score({ cooldownAnswerCount: 1 }),
+        nextDaily,
+      ) < 0,
+    );
+    assert.ok(
+      compareLaunchAcceptedCandidateScores(
+        score({ cooldownAnswerCount: 11 }),
+        score({ cooldownAnswerCount: 12 }),
+        { route: { kind: "chapter" } },
+      ) < 0,
+    );
   });
 
   test("sense 테마를 75개 owner와 16개 hard 예약분으로 서로 겹치지 않게 배정한다", () => {

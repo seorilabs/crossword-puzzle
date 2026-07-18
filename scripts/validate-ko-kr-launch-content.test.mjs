@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
 import {
+  LAUNCH_ACCEPTED_CANDIDATE_POLICY,
   LAUNCH_THEME_IDS,
   LAUNCH_THEME_OWNER_POLICY,
   allocateLaunchThemeOwners,
@@ -617,14 +618,22 @@ test("저품질 board의 report quality PASS 재봉인을 거부한다", () => {
 function makeGeneratorTraceFixture() {
   const route = buildLaunchRoutePlan()[0];
   const config = {
+    schemaVersion: "ko-kr-launch-generator-config/4",
+    acceptedCandidateSelection: structuredClone(
+      LAUNCH_ACCEPTED_CANDIDATE_POLICY,
+    ),
     baseSeed: 20260718,
     attempts: 30,
-    retries: 6,
+    retries: LAUNCH_ACCEPTED_CANDIDATE_POLICY.defaultRetries,
     samples: 5,
     beamWidth: 16,
     branchLimit: 14,
     candidateWordLimit: 600,
     denseCandidateLimit: 96,
+    minMultiCrossRatio: 0.65,
+    maxAutoRunRatio: 0.5,
+    minDailyThemeEntryRatio: 0.5,
+    clueQuality: clueQualityConfig().clueQuality,
     routePlan: buildLaunchRoutePlan(),
   };
   config.searchEscalation = Array.from(
@@ -643,6 +652,10 @@ function makeGeneratorTraceFixture() {
     answerContainmentCount: 0,
   };
   const rejectedRatios = { autoRunRatio: 0.6, multiCrossRatio: 0.2 };
+  const rejectedAnswers = Array.from(
+    { length: 10 },
+    (_, index) => `rejected-${String(index).padStart(2, "0")}`,
+  );
   const selectedMetrics = {
     wordCount: 16,
     autoRunCount: 4,
@@ -655,6 +668,32 @@ function makeGeneratorTraceFixture() {
     answerContainmentCount: 0,
   };
   const selectedRatios = { autoRunRatio: 0.25, multiCrossRatio: 0.75 };
+  const selectedAnswers = Array.from(
+    { length: 16 },
+    (_, index) => `selected-${String(index).padStart(2, "0")}`,
+  );
+  const lookaheadAnswers = Array.from(
+    { length: 16 },
+    (_, index) => `lookahead-${String(index).padStart(2, "0")}`,
+  );
+  const rejectedFailedChecks = [
+    "minCrossRatio",
+    "minBboxDensity",
+    "minMultiCrossRatio",
+    "maxAutoRunRatio",
+  ];
+  const rejectedSelectionScore = {
+    totalSharedCellEdges: 10,
+    themeConnectorSharedCellEdges: 0,
+    isolatedThemeOwnerCount: 0,
+    cooldownAnswerCount: rejectedAnswers.length,
+  };
+  const selectedSelectionScore = {
+    totalSharedCellEdges: 100,
+    themeConnectorSharedCellEdges: 0,
+    isolatedThemeOwnerCount: 0,
+    cooldownAnswerCount: selectedAnswers.length,
+  };
   const attempts = [
     {
       retryIndex: 0,
@@ -665,9 +704,12 @@ function makeGeneratorTraceFixture() {
         {
           candidateIndex: 0,
           pass: false,
-          failedChecks: ["minCrossRatio"],
+          failedChecks: [...rejectedFailedChecks],
           metrics: rejectedMetrics,
           ratios: rejectedRatios,
+          themeEntryCount: null,
+          answers: [...rejectedAnswers],
+          selectionScore: { ...rejectedSelectionScore },
         },
       ],
     },
@@ -680,9 +722,12 @@ function makeGeneratorTraceFixture() {
         {
           candidateIndex: 0,
           pass: false,
-          failedChecks: ["minBboxDensity"],
+          failedChecks: [...rejectedFailedChecks],
           metrics: rejectedMetrics,
           ratios: rejectedRatios,
+          themeEntryCount: null,
+          answers: [...rejectedAnswers],
+          selectionScore: { ...rejectedSelectionScore },
         },
         {
           candidateIndex: 1,
@@ -690,6 +735,27 @@ function makeGeneratorTraceFixture() {
           failedChecks: [],
           metrics: { ...selectedMetrics },
           ratios: { ...selectedRatios },
+          themeEntryCount: null,
+          answers: [...selectedAnswers],
+          selectionScore: { ...selectedSelectionScore },
+        },
+      ],
+    },
+    {
+      retryIndex: 2,
+      seed: calculateLaunchRetrySeed(config.baseSeed, route.puzzleId, 2),
+      searchOptions: searchOptionsForRetry(config, 2),
+      candidateCount: 1,
+      candidates: [
+        {
+          candidateIndex: 0,
+          pass: true,
+          failedChecks: [],
+          metrics: { ...selectedMetrics },
+          ratios: { ...selectedRatios },
+          themeEntryCount: null,
+          answers: [...lookaheadAnswers],
+          selectionScore: { ...selectedSelectionScore },
         },
       ],
     },
@@ -701,6 +767,7 @@ function makeGeneratorTraceFixture() {
       route: route.route,
       difficulty: route.difficulty,
       themeId: route.themeId,
+      selectedCandidateIndex: 1,
       selectedRetryIndex: 1,
       selectedSeed: attempts[1].seed,
       metrics: { ...selectedMetrics },
@@ -717,6 +784,25 @@ test("재봉인한 route/search/attempt 허위 trace를 거부한다", () => {
   );
 
   const forgeries = [
+    {
+      mutate: ({ config }) => {
+        config.schemaVersion = "ko-kr-launch-generator-config/3";
+      },
+      expected: /trace config schema must be ko-kr-launch-generator-config\/4/,
+    },
+    {
+      mutate: ({ config }) => {
+        config.acceptedCandidateSelection.acceptedLookaheadRetries = 0;
+      },
+      expected: /acceptedCandidateSelection does not exactly match/,
+    },
+    {
+      mutate: ({ config }) => {
+        config.retries -= 1;
+        config.searchEscalation.pop();
+      },
+      expected: /retries must match the launch candidate policy default/,
+    },
     {
       mutate: ({ config }) => {
         config.routePlan[0].themeId = "forged-theme";
@@ -751,13 +837,62 @@ test("재봉인한 route/search/attempt 허위 trace를 거부한다", () => {
       mutate: ({ board }) => {
         board.attempts[0].candidates[0].pass = true;
       },
-      expected: /contains a pass before the selected retry/,
+      expected: /pass does not match independently derived quality/,
     },
     {
       mutate: ({ board }) => {
-        board.attempts[1].candidates[1].metrics.wordCount += 1;
+        board.attempts[1].candidates[1].pass = false;
       },
-      expected: /selected first-pass candidate metrics does not exactly match/,
+      expected: /pass does not match independently derived quality/,
+    },
+    {
+      mutate: ({ board }) => {
+        board.attempts[1].candidates[1].metrics.connectedComponents = 2;
+      },
+      expected: /does not satisfy generator candidate admission/,
+    },
+    {
+      mutate: ({ board }) => {
+        board.attempts[1].candidates[1].metrics.accidentalRunCount = 1;
+      },
+      expected: /does not satisfy generator candidate admission/,
+    },
+    {
+      mutate: ({ board }) => {
+        board.attempts[2].candidates[0].selectionScore.totalSharedCellEdges += 1;
+      },
+      expected: /selected candidate is not the policy winner/,
+    },
+    {
+      mutate: ({ board }) => {
+        board.attempts[2].candidates[0].selectionScore.cooldownAnswerCount = -1;
+      },
+      expected: /must be a non-negative safe integer/,
+    },
+    {
+      mutate: ({ board }) => {
+        board.attempts[2].candidates[0].answers.reverse();
+      },
+      expected: /answers canonical order does not exactly match/,
+    },
+    {
+      mutate: ({ board }) => {
+        board.attempts[2].candidates[0].answers.pop();
+        board.attempts[2].candidates[0].selectionScore.cooldownAnswerCount -= 1;
+      },
+      expected: /answers length must match metrics.wordCount/,
+    },
+    {
+      mutate: ({ board }) => {
+        board.metrics.wordCount += 1;
+      },
+      expected: /selected candidate metrics does not exactly match/,
+    },
+    {
+      mutate: ({ board }) => {
+        board.selectedCandidateIndex = 0;
+      },
+      expected: /selected candidate is not a passing trace candidate/,
     },
     {
       mutate: ({ board }) => {

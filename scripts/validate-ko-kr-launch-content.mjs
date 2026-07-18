@@ -37,10 +37,14 @@ import {
 } from "./build-launch-theme-wordbank.mjs";
 import { validateLaunchBoardReviewLedger } from "./launch-board-review-ledger.mjs";
 import {
+  LAUNCH_ACCEPTED_CANDIDATE_POLICY,
   LAUNCH_THEME_IDS,
   LAUNCH_THEME_OWNER_POLICY,
   buildLaunchRoutePlan,
+  filterAvailableWords,
+  orderRoutesForGeneration,
   searchOptionsForRetry,
+  summarizeFuturePoolConnectivity,
 } from "./build-ko-kr-launch-content.mjs";
 
 const execFileAsync = promisify(execFile);
@@ -82,7 +86,7 @@ const EXPECTED_GENERATOR_DEPENDENCY_PATHS = Object.freeze([
   "data/game-content/v1/ko-KR/license-manifest.json",
 ]);
 export const KO_KR_LAUNCH_CLUE_QUALITY_POLICY = Object.freeze({
-  schemaVersion: "ko-kr-launch-generator-config/3",
+  schemaVersion: "ko-kr-launch-generator-config/4",
   clueSimilarity: Object.freeze({
     policyId: LAUNCH_CLUE_SIMILARITY_POLICY_ID,
     normalization: "NFKC-lowercase-no-space-punctuation-symbol",
@@ -1839,22 +1843,270 @@ function generatorSearchOptions(config) {
   };
 }
 
-export function validateGeneratorReportTrace(config, reportBoards) {
+const CANDIDATE_METRIC_KEYS = Object.freeze([
+  "accidentalRunCount",
+  "answerContainmentCount",
+  "autoRunCount",
+  "bboxDensity",
+  "connectedComponents",
+  "crossAnswerClueLeakCount",
+  "crossRatio",
+  "multiIntersectionPlacements",
+  "wordCount",
+]);
+const CANDIDATE_SELECTION_SCORE_KEYS = Object.freeze([
+  "cooldownAnswerCount",
+  "isolatedThemeOwnerCount",
+  "themeConnectorSharedCellEdges",
+  "totalSharedCellEdges",
+]);
+
+function roundedRatio(numerator, denominator) {
+  return denominator === 0 ? 0 : Number((numerator / denominator).toFixed(3));
+}
+
+function requireUnitRatio(value, field) {
+  requireCondition(
+    Number.isFinite(value) && value >= 0 && value <= 1,
+    `${field} must be a finite ratio`,
+  );
+  return value;
+}
+
+function validateCandidateSelectionScore(candidate, field) {
+  requireCondition(
+    candidate.selectionScore != null &&
+      typeof candidate.selectionScore === "object" &&
+      !Array.isArray(candidate.selectionScore),
+    `${field}.selectionScore must be an object`,
+  );
+  requireExact(
+    Object.keys(candidate.selectionScore).sort(),
+    CANDIDATE_SELECTION_SCORE_KEYS,
+    `${field}.selectionScore keys`,
+  );
+  const selectionScore = Object.fromEntries(
+    CANDIDATE_SELECTION_SCORE_KEYS.map((key) => [
+      key,
+      requirePositiveSafeInteger(
+        candidate.selectionScore[key],
+        `${field}.selectionScore.${key}`,
+        { allowZero: true },
+      ),
+    ]),
+  );
+  requireCondition(
+    selectionScore.cooldownAnswerCount === candidate.answers.length,
+    `${field}.selectionScore.cooldownAnswerCount must match candidate answers`,
+  );
+  return selectionScore;
+}
+
+function validateCandidateTraceQuality(candidate, route, config, field) {
+  requireCondition(
+    candidate.metrics != null &&
+      typeof candidate.metrics === "object" &&
+      !Array.isArray(candidate.metrics),
+    `${field}.metrics must be an object`,
+  );
+  requireExact(
+    Object.keys(candidate.metrics).sort(),
+    CANDIDATE_METRIC_KEYS,
+    `${field}.metrics keys`,
+  );
+  const metrics = candidate.metrics;
+  for (const key of [
+    "wordCount",
+    "autoRunCount",
+    "multiIntersectionPlacements",
+    "connectedComponents",
+    "accidentalRunCount",
+    "crossAnswerClueLeakCount",
+    "answerContainmentCount",
+  ]) {
+    requirePositiveSafeInteger(metrics[key], `${field}.metrics.${key}`, {
+      allowZero: true,
+    });
+  }
+  requireUnitRatio(metrics.crossRatio, `${field}.metrics.crossRatio`);
+  requireUnitRatio(metrics.bboxDensity, `${field}.metrics.bboxDensity`);
+  requireCondition(
+    metrics.connectedComponents === 1 && metrics.accidentalRunCount === 0,
+    `${field}.metrics does not satisfy generator candidate admission`,
+  );
+  requireCondition(
+    Array.isArray(candidate.answers),
+    `${field}.answers must be an array`,
+  );
+  requireUniqueStrings(candidate.answers, `${field}.answers`);
+  requireExact(
+    candidate.answers,
+    [...candidate.answers].sort(),
+    `${field}.answers canonical order`,
+  );
+  requireCondition(
+    candidate.answers.length === metrics.wordCount,
+    `${field}.answers length must match metrics.wordCount`,
+  );
+
+  const profile = DIFFICULTY_PROFILES[route.difficulty];
+  requireCondition(profile != null, `${field} difficulty is invalid`);
+  const expectedRatios = {
+    autoRunRatio: roundedRatio(metrics.autoRunCount, metrics.wordCount),
+    multiCrossRatio: roundedRatio(
+      metrics.multiIntersectionPlacements,
+      metrics.wordCount,
+    ),
+  };
+  const checks = [
+    ["minWordCount", metrics.wordCount, profile.minWordCount, ">="],
+    ["minCrossRatio", metrics.crossRatio, profile.minCrossRatio, ">="],
+    ["minBboxDensity", metrics.bboxDensity, profile.minBboxDensity, ">="],
+    [
+      "minMultiCrossRatio",
+      expectedRatios.multiCrossRatio,
+      config.minMultiCrossRatio,
+      ">=",
+    ],
+    [
+      "maxAutoRunRatio",
+      expectedRatios.autoRunRatio,
+      config.maxAutoRunRatio,
+      "<=",
+    ],
+    [
+      "maxCrossAnswerClueLeakCount",
+      metrics.crossAnswerClueLeakCount,
+      config.clueQuality.sameBoardConflicts.maxCrossAnswerClueLeakCount,
+      "<=",
+    ],
+    [
+      "maxAnswerContainmentCount",
+      metrics.answerContainmentCount,
+      config.clueQuality.sameBoardConflicts.maxAnswerContainmentCount,
+      "<=",
+    ],
+  ];
+  if (route.route.kind === "daily") {
+    const themeEntryCount = requirePositiveSafeInteger(
+      candidate.themeEntryCount,
+      `${field}.themeEntryCount`,
+      { allowZero: true },
+    );
+    requireCondition(
+      themeEntryCount <= candidate.answers.length,
+      `${field}.themeEntryCount exceeds candidate answers`,
+    );
+    expectedRatios.themeEntryRatio = roundedRatio(
+      themeEntryCount,
+      candidate.answers.length,
+    );
+    checks.push([
+      "minDailyThemeEntryRatio",
+      expectedRatios.themeEntryRatio,
+      config.minDailyThemeEntryRatio,
+      ">=",
+    ]);
+  } else {
+    requireCondition(
+      candidate.themeEntryCount === null,
+      `${field}.themeEntryCount must be null outside daily routes`,
+    );
+  }
+  requireExact(candidate.ratios, expectedRatios, `${field}.ratios`);
+  const expectedFailedChecks = checks
+    .filter(([, actual, expected, operator]) =>
+      operator === ">=" ? actual < expected : actual > expected,
+    )
+    .map(([key]) => key);
+  requireExact(
+    candidate.failedChecks,
+    expectedFailedChecks,
+    `${field}.failedChecks`,
+  );
+  requireCondition(
+    candidate.pass === (expectedFailedChecks.length === 0),
+    `${field}.pass does not match independently derived quality`,
+  );
+  return validateCandidateSelectionScore(candidate, field);
+}
+
+function compareReportedSelectionScores(left, right, nextRoute) {
+  if (nextRoute?.route.kind === "daily") {
+    return (
+      right.themeConnectorSharedCellEdges -
+        left.themeConnectorSharedCellEdges ||
+      left.isolatedThemeOwnerCount - right.isolatedThemeOwnerCount ||
+      right.totalSharedCellEdges - left.totalSharedCellEdges ||
+      left.cooldownAnswerCount - right.cooldownAnswerCount
+    );
+  }
+  return (
+    right.totalSharedCellEdges - left.totalSharedCellEdges ||
+    left.cooldownAnswerCount - right.cooldownAnswerCount
+  );
+}
+
+export function validateGeneratorReportTrace(
+  config,
+  reportBoards,
+  { reviewedWords = null, initialUsedAnswers = [] } = {},
+) {
   requireCondition(
     config != null && typeof config === "object" && !Array.isArray(config),
     "generator config is required for report trace validation",
+  );
+  requireCondition(
+    config.schemaVersion === "ko-kr-launch-generator-config/4",
+    "generator report trace config schema must be ko-kr-launch-generator-config/4",
   );
   requireCondition(
     Array.isArray(reportBoards),
     "generator report boards must be an array",
   );
   const expectedRoutePlan = buildLaunchRoutePlan();
+  const generationQueue = orderRoutesForGeneration(expectedRoutePlan);
+  const generationIndexByPuzzleId = new Map(
+    generationQueue.map((route, index) => [route.puzzleId, index]),
+  );
+  const shouldRecalculateSelectionScores = reviewedWords != null;
+  if (shouldRecalculateSelectionScores) {
+    requireCondition(
+      Array.isArray(reviewedWords),
+      "reviewedWords must be an array for candidate score validation",
+    );
+    requireCondition(
+      Array.isArray(initialUsedAnswers),
+      "initialUsedAnswers must be an array for candidate score validation",
+    );
+    requireUniqueStrings(initialUsedAnswers, "initialUsedAnswers");
+    requireExact(
+      reportBoards.map((board) => board.puzzleId),
+      generationQueue.map((route) => route.puzzleId),
+      "generator report board generation order",
+    );
+  }
+  const usedAnswers = new Set(initialUsedAnswers);
+  requireExact(
+    config.acceptedCandidateSelection,
+    LAUNCH_ACCEPTED_CANDIDATE_POLICY,
+    "generator config acceptedCandidateSelection",
+  );
+  const acceptedLookaheadRetries = requirePositiveSafeInteger(
+    config.acceptedCandidateSelection.acceptedLookaheadRetries,
+    "generator config acceptedLookaheadRetries",
+    { allowZero: true },
+  );
   requireExact(
     config.routePlan,
     expectedRoutePlan,
     "generator config routePlan",
   );
   const { options, retries, escalation } = generatorSearchOptions(config);
+  requireCondition(
+    retries === LAUNCH_ACCEPTED_CANDIDATE_POLICY.defaultRetries,
+    "generator config retries must match the launch candidate policy default",
+  );
   requireExact(
     config.searchEscalation,
     escalation,
@@ -1873,6 +2125,14 @@ export function validateGeneratorReportTrace(config, reportBoards) {
     const field = `generator report board ${boardIndex}/${reportBoard?.puzzleId ?? "unknown"}`;
     const plannedRoute = routeByPuzzleId.get(reportBoard?.puzzleId);
     requireCondition(plannedRoute != null, `${field} is not in routePlan`);
+    const generationIndex = generationIndexByPuzzleId.get(
+      plannedRoute.puzzleId,
+    );
+    requireCondition(
+      generationIndex != null,
+      `${field} is not in the generation queue`,
+    );
+    const nextRoute = generationQueue[generationIndex + 1] ?? null;
     requireCondition(
       canonicalJson(reportBoard.route) === canonicalJson(plannedRoute.route) &&
         reportBoard.difficulty === plannedRoute.difficulty &&
@@ -1890,10 +2150,22 @@ export function validateGeneratorReportTrace(config, reportBoards) {
     );
     requireCondition(
       Array.isArray(reportBoard.attempts) &&
-        reportBoard.attempts.length === selectedRetryIndex + 1,
-      `${field}.attempts must end at the selected retry`,
+        reportBoard.attempts.length > 0 &&
+        reportBoard.attempts.length <= retries,
+      `${field}.attempts length is invalid`,
     );
 
+    const currentAvailableWordByAnswer = shouldRecalculateSelectionScores
+      ? new Map(
+          filterAvailableWords(
+            reviewedWords,
+            plannedRoute,
+            usedAnswers,
+          ).words.map((word) => [word.answer, word]),
+        )
+      : null;
+    let firstPassRetryIndex = null;
+    let policyWinner = null;
     for (const [retryIndex, attempt] of reportBoard.attempts.entries()) {
       requireCondition(
         attempt?.retryIndex === retryIndex,
@@ -1927,31 +2199,136 @@ export function validateGeneratorReportTrace(config, reportBoards) {
         ),
         `${field}.attempts[${retryIndex}] candidate indexes/pass flags are invalid`,
       );
-      if (retryIndex < selectedRetryIndex) {
-        requireCondition(
-          attempt.candidates.every((candidate) => candidate.pass === false),
-          `${field}.attempts[${retryIndex}] contains a pass before the selected retry`,
+      for (const [candidateIndex, candidate] of attempt.candidates.entries()) {
+        const candidateField = `${field}.attempts[${retryIndex}].candidates[${candidateIndex}]`;
+        const selectionScore = validateCandidateTraceQuality(
+          candidate,
+          plannedRoute,
+          config,
+          candidateField,
         );
+        if (shouldRecalculateSelectionScores) {
+          requireCondition(
+            candidate.answers.every((answer) =>
+              currentAvailableWordByAnswer.has(answer),
+            ),
+            `${candidateField}.answers contain a word outside the current route pool`,
+          );
+          if (plannedRoute.route.kind === "daily") {
+            const expectedThemeEntryCount = candidate.answers.filter(
+              (answer) =>
+                currentAvailableWordByAnswer.get(answer)?.themeOwner ===
+                plannedRoute.themeId,
+            ).length;
+            requireCondition(
+              candidate.themeEntryCount === expectedThemeEntryCount,
+              `${candidateField}.themeEntryCount does not match current route ownership`,
+            );
+          }
+        }
+        if (shouldRecalculateSelectionScores && candidate.pass) {
+          const futureUsedAnswers = new Set(usedAnswers);
+          for (const answer of candidate.answers) {
+            futureUsedAnswers.add(answer);
+          }
+          const connectivity =
+            nextRoute == null
+              ? {
+                  totalSharedCellEdges: 0,
+                  themeConnectorSharedCellEdges: 0,
+                  isolatedThemeOwnerCount: 0,
+                }
+              : summarizeFuturePoolConnectivity(
+                  filterAvailableWords(
+                    reviewedWords,
+                    nextRoute,
+                    futureUsedAnswers,
+                  ).words,
+                  nextRoute,
+                );
+          requireExact(
+            candidate.selectionScore,
+            {
+              ...connectivity,
+              cooldownAnswerCount: candidate.answers.length,
+            },
+            `${candidateField}.selectionScore independently recalculated`,
+          );
+        }
+        if (
+          candidate.pass &&
+          (policyWinner == null ||
+            compareReportedSelectionScores(
+              selectionScore,
+              policyWinner.selectionScore,
+              nextRoute,
+            ) < 0)
+        ) {
+          policyWinner = {
+            retryIndex,
+            candidateIndex,
+            candidate,
+            selectionScore,
+          };
+        }
+      }
+      if (
+        firstPassRetryIndex == null &&
+        attempt.candidates.some((candidate) => candidate.pass)
+      ) {
+        firstPassRetryIndex = retryIndex;
       }
     }
 
-    const selectedAttempt = reportBoard.attempts[selectedRetryIndex];
-    const selectedCandidate = selectedAttempt.candidates.find(
-      (candidate) => candidate.pass,
+    requireCondition(
+      firstPassRetryIndex != null,
+      `${field}.attempts contain no passing candidate`,
     );
     requireCondition(
-      selectedCandidate != null,
-      `${field} selected retry contains no passing candidate`,
+      policyWinner != null,
+      `${field}.attempts contain no policy candidate`,
+    );
+    const expectedAttemptCount = Math.min(
+      firstPassRetryIndex + acceptedLookaheadRetries + 1,
+      retries,
+    );
+    requireCondition(
+      reportBoard.attempts.length === expectedAttemptCount,
+      `${field}.attempts must end after the configured PASS lookahead`,
+    );
+    requireCondition(
+      selectedRetryIndex >= firstPassRetryIndex &&
+        selectedRetryIndex < reportBoard.attempts.length,
+      `${field}.selectedRetryIndex is outside the accepted candidate window`,
+    );
+
+    const selectedAttempt = reportBoard.attempts[selectedRetryIndex];
+    const selectedCandidateIndex = requirePositiveSafeInteger(
+      reportBoard.selectedCandidateIndex,
+      `${field}.selectedCandidateIndex`,
+      { allowZero: true },
+    );
+    const selectedCandidate =
+      selectedAttempt.candidates[selectedCandidateIndex];
+    requireCondition(
+      selectedCandidate?.candidateIndex === selectedCandidateIndex &&
+        selectedCandidate.pass === true,
+      `${field} selected candidate is not a passing trace candidate`,
+    );
+    requireCondition(
+      policyWinner.retryIndex === selectedRetryIndex &&
+        policyWinner.candidateIndex === selectedCandidateIndex,
+      `${field} selected candidate is not the policy winner`,
     );
     requireExact(
       selectedCandidate.metrics,
       reportBoard.metrics,
-      `${field} selected first-pass candidate metrics`,
+      `${field} selected candidate metrics`,
     );
     requireExact(
       selectedCandidate.ratios,
       reportBoard.quality?.ratios,
-      `${field} selected first-pass candidate ratios`,
+      `${field} selected candidate ratios`,
     );
     const expectedSelectedSeed = calculateLaunchRetrySeed(
       baseSeed,
@@ -1963,6 +2340,9 @@ export function validateGeneratorReportTrace(config, reportBoards) {
         reportBoard.selectedSeed === selectedAttempt.seed,
       `${field}.selectedSeed mismatch`,
     );
+    if (shouldRecalculateSelectionScores) {
+      for (const answer of selectedCandidate.answers) usedAnswers.add(answer);
+    }
   }
 
   return { routePlan: expectedRoutePlan, searchEscalation: escalation };
@@ -1971,7 +2351,7 @@ export function validateGeneratorReportTrace(config, reportBoards) {
 function validateReportCatalogJoin(rawCatalog, report) {
   requireCandidateFlags(report, "generation report");
   requireCondition(
-    report.schemaVersion === "ko-kr-launch-generation-report/3" &&
+    report.schemaVersion === "ko-kr-launch-generation-report/4" &&
       report.catalogId === rawCatalog.catalogId &&
       report.generatedAt === rawCatalog.generatedAt &&
       Array.isArray(report.boards) &&
@@ -2000,6 +2380,19 @@ function validateReportCatalogJoin(rawCatalog, report) {
       `report board ${reportBoard.puzzleId} is not in the catalog`,
     );
     const content = catalogBoard.content;
+    const selectedCandidate =
+      reportBoard.attempts?.[reportBoard.selectedRetryIndex]?.candidates?.[
+        reportBoard.selectedCandidateIndex
+      ];
+    requireCondition(
+      selectedCandidate != null,
+      `report selected candidate is missing for board ${index}/${content.puzzleId}`,
+    );
+    requireExact(
+      selectedCandidate.answers,
+      content.entries.map((entry) => entry.answer).sort(),
+      `${content.puzzleId} selected candidate/content answers`,
+    );
     const artifactPath = expectedArtifactPath(content);
     requireCondition(
       reportBoard.packId === content.packId &&
@@ -2143,7 +2536,12 @@ async function validateGeneratorIdentity(
     ),
     "derived launch wordbank theme inventory is insufficient",
   );
-  validateGeneratorReportTrace(generator.config, report.boards);
+  validateGeneratorReportTrace(generator.config, report.boards, {
+    reviewedWords: derivedWordBank.selectedWords,
+    initialUsedAnswers: loadBundledFirstRunGameContents().flatMap((content) =>
+      content.entries.map((entry) => entry.answer),
+    ),
+  });
   requireExact(
     [...generator.config.routePlan.map((route) => route.puzzleId)].sort(),
     [...report.boards.map((board) => board.puzzleId)].sort(),

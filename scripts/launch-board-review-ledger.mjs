@@ -6,7 +6,7 @@ export const LAUNCH_BOARD_REVIEW_LEDGER_SCHEMA_VERSION =
   "game-content-launch-board-review-ledger/1";
 
 const CATALOG_SCHEMA_VERSION = "launch-content-catalog/1";
-const GENERATION_REPORT_SCHEMA_VERSION = "ko-kr-launch-generation-report/3";
+const GENERATION_REPORT_SCHEMA_VERSION = "ko-kr-launch-generation-report/4";
 const EXPECTED_FIRST_RUN_BOARD_COUNT = 3;
 const EXPECTED_GENERATED_BOARD_COUNT = 90;
 const GENERATED_ROUTE_KINDS = Object.freeze([
