@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import {
@@ -9,6 +10,7 @@ import {
 import { createGameRuntimeHostStorage } from "../adapters/gameRuntimeHost.ts";
 import { captureLegacyWebSaveSnapshot } from "../adapters/legacyWebSaveInventory.ts";
 import { BUNDLED_FIRST_RUN_CONTENT_CHECKSUMS } from "../../packages/crossword-core/src/launchContentCatalog.ts";
+import { createLaunchPreviewGameRuntimeStorage } from "./gameRuntimeStorage.ts";
 import {
   prepareGameSaveMigration,
   recoverLegacyProjectionOutbox,
@@ -38,6 +40,18 @@ type RuntimeHostState =
 type RuntimeHostProps = Readonly<{
   legacy: ReactNode;
 }>;
+
+export type DevelopmentLaunchPreviewRequest = Readonly<{
+  checkpointHash: string;
+}>;
+
+export type ParseDevelopmentLaunchPreviewRequestOptions = Readonly<{
+  development: boolean;
+  hostKind: GameExperienceHostKind;
+  search: string;
+}>;
+
+const LOWER_SHA256_HEX_PATTERN = /^[0-9a-f]{64}$/;
 
 const scheduler: RuntimeSchedulerPort = {
   schedule(delayMs, onElapsed) {
@@ -117,6 +131,35 @@ function shouldUseDevelopmentOverride(): boolean {
   );
 }
 
+/**
+ * 개발 web host에서 명시적으로 game runtime을 켠 URL만 checkpoint preview로
+ * 해석한다. 다른 host와 production에서는 query를 무시해 기존 경로를 보존한다.
+ */
+export function parseDevelopmentLaunchPreviewRequest({
+  development,
+  hostKind,
+  search,
+}: ParseDevelopmentLaunchPreviewRequestOptions): DevelopmentLaunchPreviewRequest | null {
+  if (!development || hostKind !== "web") return null;
+
+  const params = new URLSearchParams(search);
+  const previewValues = params.getAll("launchPreview");
+  if (previewValues.length === 0) return null;
+
+  const runtimeValues = params.getAll("gameRuntime");
+  const checkpointHash = previewValues[0] ?? "";
+  if (
+    runtimeValues.length !== 1 ||
+    runtimeValues[0] !== "1" ||
+    previewValues.length !== 1 ||
+    !LOWER_SHA256_HEX_PATTERN.test(checkpointHash)
+  ) {
+    throw new Error("development launch preview query rejected");
+  }
+
+  return Object.freeze({ checkpointHash });
+}
+
 export function RuntimeHost({ legacy }: RuntimeHostProps) {
   const [state, setState] = useState<RuntimeHostState>({ status: "resolving" });
   const gameContainerRef = useRef<HTMLDivElement>(null);
@@ -131,8 +174,22 @@ export function RuntimeHost({ legacy }: RuntimeHostProps) {
         setState({ status: "legacy", reason: "host-adapter-unavailable" });
         return;
       }
-      const runtimeStorage = createGameRuntimeHostStorage(hostKind);
-      await recoverLegacyProjectionOutbox(runtimeStorage);
+      const launchPreviewRequest = parseDevelopmentLaunchPreviewRequest({
+        development: import.meta.env.DEV,
+        hostKind,
+        search: window.location.search,
+      });
+      const hostStorage = createGameRuntimeHostStorage(hostKind);
+      const runtimeStorage =
+        launchPreviewRequest == null
+          ? hostStorage
+          : createLaunchPreviewGameRuntimeStorage(
+              hostStorage,
+              launchPreviewRequest.checkpointHash,
+            );
+      if (launchPreviewRequest == null) {
+        await recoverLegacyProjectionOutbox(runtimeStorage);
+      }
 
       const selection = await resolveRuntimeSelection({
         scheduler,
@@ -158,18 +215,28 @@ export function RuntimeHost({ legacy }: RuntimeHostProps) {
         setState({ status: "legacy", reason: selection.reason });
         return;
       }
-      const legacySnapshot = captureLegacyWebSaveSnapshot({
-        storage: window.localStorage,
-        market: hostKind === "apps-in-toss" ? "apps-in-toss" : "web",
-        sourceVersion: `${hostKind}-main-${APP_RUNTIME_VERSION}`,
-        capturedAt: new Date().toISOString(),
-      });
-      await prepareGameSaveMigration({
-        storage: runtimeStorage,
-        legacySnapshot,
-        knownContentChecksums: BUNDLED_FIRST_RUN_CONTENT_CHECKSUMS,
-      });
+      if (launchPreviewRequest == null) {
+        const legacySnapshot = captureLegacyWebSaveSnapshot({
+          storage: window.localStorage,
+          market: hostKind === "apps-in-toss" ? "apps-in-toss" : "web",
+          sourceVersion: `${hostKind}-main-${APP_RUNTIME_VERSION}`,
+          capturedAt: new Date().toISOString(),
+        });
+        await prepareGameSaveMigration({
+          storage: runtimeStorage,
+          legacySnapshot,
+          knownContentChecksums: BUNDLED_FIRST_RUN_CONTENT_CHECKSUMS,
+        });
+      }
       const launchConfig = await readActivatedFirebaseLaunchConfig();
+      const launchPreviewContent =
+        import.meta.env.DEV && launchPreviewRequest != null
+          ? await import("./launchPreviewContent.ts").then((module) =>
+              module.loadLaunchPreviewContent({
+                checkpointHash: launchPreviewRequest.checkpointHash,
+              }),
+            )
+          : null;
 
       setState({ status: "booting" });
       const container = await waitForGameContainer(gameContainerRef);
@@ -200,6 +267,12 @@ export function RuntimeHost({ legacy }: RuntimeHostProps) {
             hostKind,
             launchConfig,
             storage: runtimeStorage,
+            ...(launchPreviewContent == null
+              ? {}
+              : {
+                  journeyItems: launchPreviewContent.items,
+                  journeyMode: "launch-preview" as const,
+                }),
           });
         },
       });

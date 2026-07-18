@@ -161,6 +161,26 @@ test("rejects eval and new Function in executable assets", async (context) => {
   }
 });
 
+test("rejects development checkpoint preview code in native assets", async (context) => {
+  for (const signature of [
+    "/tmp/launch-content-checkpoints/",
+    "Launch preview checkpoint rejected:",
+  ]) {
+    await context.test(signature, async () => {
+      await withBundle(async (directory) => {
+        await writeFile(
+          join(directory, "assets/game.js"),
+          `export const developmentOnly = ${JSON.stringify(signature)};\n`,
+        );
+        await assert.rejects(
+          createNativeGameAssetManifest(directory),
+          /development launch preview content is forbidden/,
+        );
+      });
+    });
+  }
+});
+
 test("rejects HTTP, HTTPS, and protocol-relative script sources", async (context) => {
   for (const source of [
     "http://example.com/game.js",

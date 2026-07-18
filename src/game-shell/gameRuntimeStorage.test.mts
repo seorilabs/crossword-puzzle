@@ -5,6 +5,8 @@ import type { KeyValueStoragePort } from "./gameSaveRepository.ts";
 import {
   createBrowserGameRuntimeStorage,
   createCanonicalGameRuntimeStorage,
+  createLaunchPreviewGameRuntimeStorage,
+  getLaunchPreviewStoragePrefix,
 } from "./gameRuntimeStorage.ts";
 
 function memoryStorage(initial: Record<string, string> = {}): {
@@ -29,6 +31,58 @@ function memoryStorage(initial: Record<string, string> = {}): {
 }
 
 describe("game runtime durable storage", () => {
+  test("launch preview save와 boot marker는 hash별 7판 namespace에만 접근한다", async () => {
+    const checkpointHash = "a".repeat(64);
+    const prefix = `crossword:dev-launch-preview:${checkpointHash}:7:`;
+    const base = memoryStorage({
+      "crossword:game-save:v2": "production-save",
+      game_boot_pending: "production-marker",
+    });
+    const storage = createLaunchPreviewGameRuntimeStorage(
+      base.port,
+      checkpointHash,
+    );
+
+    assert.equal(getLaunchPreviewStoragePrefix(checkpointHash), prefix);
+    assert.equal(await storage.getItem("crossword:game-save:v2"), null);
+    assert.equal(await storage.getItem("game_boot_pending"), null);
+
+    await storage.setItem("crossword:game-save:v2", "preview-save");
+    await storage.setItem("game_boot_pending", "preview-marker");
+    assert.equal(
+      base.values.get(`${prefix}crossword:game-save:v2`),
+      "preview-save",
+    );
+    assert.equal(
+      base.values.get(`${prefix}game_boot_pending`),
+      "preview-marker",
+    );
+    assert.equal(base.values.get("crossword:game-save:v2"), "production-save");
+    assert.equal(base.values.get("game_boot_pending"), "production-marker");
+
+    await storage.removeItem("crossword:game-save:v2");
+    await storage.removeItem("game_boot_pending");
+    assert.equal(base.values.has(`${prefix}crossword:game-save:v2`), false);
+    assert.equal(base.values.has(`${prefix}game_boot_pending`), false);
+    assert.equal(base.values.get("crossword:game-save:v2"), "production-save");
+    assert.equal(base.values.get("game_boot_pending"), "production-marker");
+  });
+
+  test("launch preview storage는 lowercase 64 hex 밖의 namespace를 거부한다", () => {
+    const base = memoryStorage();
+    for (const invalidHash of [
+      "A".repeat(64),
+      "a".repeat(63),
+      `sha256:${"a".repeat(64)}`,
+      `${"a".repeat(62)}/.`,
+    ]) {
+      assert.throws(
+        () => createLaunchPreviewGameRuntimeStorage(base.port, invalidHash),
+        /exactly 64 lowercase hexadecimal/,
+      );
+    }
+  });
+
   test("browser mutation은 read-back 뒤에만 ack한다", async () => {
     const values = new Map<string, string>();
     const storage = createBrowserGameRuntimeStorage({

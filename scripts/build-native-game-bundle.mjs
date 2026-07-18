@@ -28,6 +28,10 @@ const executableTextExtensions = new Set([
   ".mjs",
 ]);
 const htmlExtensions = new Set([".htm", ".html"]);
+const developmentLaunchPreviewSignatures = Object.freeze([
+  "/tmp/launch-content-checkpoints/",
+  "Launch preview checkpoint rejected:",
+]);
 const phaserDynamicGlobalFallback =
   /return this \|\| new Function\((["'])return this\1\)\(\);/gu;
 
@@ -135,6 +139,16 @@ function assertNoDynamicCode(assetPath, content) {
   }
 }
 
+function assertNoDevelopmentLaunchPreview(assetPath, content) {
+  for (const signature of developmentLaunchPreviewSignatures) {
+    if (content.includes(signature)) {
+      throw new Error(
+        `${assetPath}: development launch preview content is forbidden`,
+      );
+    }
+  }
+}
+
 function assertNoRemoteScripts(assetPath, content) {
   const scriptTagPattern = /<script\b[^>]*>/giu;
   const sourceAttributePattern =
@@ -159,7 +173,9 @@ function assertNoRemoteScripts(assetPath, content) {
 function assertAssetSecurity(assetPath, content) {
   const extension = extensionOf(assetPath);
   if (executableTextExtensions.has(extension)) {
-    assertNoDynamicCode(assetPath, content.toString("utf8"));
+    const executableContent = content.toString("utf8");
+    assertNoDynamicCode(assetPath, executableContent);
+    assertNoDevelopmentLaunchPreview(assetPath, executableContent);
   }
   if (htmlExtensions.has(extension)) {
     assertNoRemoteScripts(assetPath, content.toString("utf8"));

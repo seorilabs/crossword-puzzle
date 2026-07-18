@@ -1,5 +1,9 @@
 import type { KeyValueStoragePort } from "./gameSaveRepository.ts";
 
+const LOWER_SHA256_HEX_PATTERN = /^[0-9a-f]{64}$/;
+
+export const LAUNCH_PREVIEW_BOARD_COUNT = 7;
+
 export type BrowserStorageLike = Readonly<{
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
@@ -12,6 +16,33 @@ export type CreateCanonicalStorageOptions = Readonly<{
   /** Keys that must remain readable by the legacy rollback runtime. */
   shouldMirrorMigrationSource?: (key: string) => boolean;
 }>;
+
+export function getLaunchPreviewStoragePrefix(checkpointHash: string): string {
+  if (!LOWER_SHA256_HEX_PATTERN.test(checkpointHash)) {
+    throw new Error(
+      "launch preview storage hash must be exactly 64 lowercase hexadecimal characters",
+    );
+  }
+  return `crossword:dev-launch-preview:${checkpointHash}:${LAUNCH_PREVIEW_BOARD_COUNT}:`;
+}
+
+/**
+ * 개발 checkpoint 미리보기는 일반 save, migration, boot marker와 같은 key를
+ * 사용하더라도 물리적으로 분리된 browser-storage namespace에만 접근한다.
+ */
+export function createLaunchPreviewGameRuntimeStorage(
+  browserStorage: KeyValueStoragePort,
+  checkpointHash: string,
+): KeyValueStoragePort {
+  const prefix = getLaunchPreviewStoragePrefix(checkpointHash);
+  const namespacedKey = (key: string) => `${prefix}${key}`;
+
+  return {
+    getItem: (key) => browserStorage.getItem(namespacedKey(key)),
+    setItem: (key, value) => browserStorage.setItem(namespacedKey(key), value),
+    removeItem: (key) => browserStorage.removeItem(namespacedKey(key)),
+  };
+}
 
 function durableAckError(operation: "set" | "remove"): Error {
   return new Error(`game runtime storage ${operation} acknowledgement failed`);
