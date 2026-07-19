@@ -7,6 +7,7 @@ import {
 } from '../../../packages/crossword-core/src';
 import {
   createMobileGameBridgeHost,
+  isAllowedMobileGameMessageSource,
   isAllowedMobileGameNavigation,
   type MobileGameRuntimeReadyExpectation,
 } from '../gameBridgeHost';
@@ -33,6 +34,7 @@ const runtimeReadyExpectation = runtimeReadyExpectations[1]!;
 
 function createFixture(
   expectedRuntimeReady: readonly MobileGameRuntimeReadyExpectation[] = runtimeReadyExpectations,
+  messageSourceUrl: string = indexUrl,
 ) {
   const storage = new Map<string, string>();
   const analytics: GameRuntimeAnalyticsEvent[] = [];
@@ -87,7 +89,7 @@ function createFixture(
     ],
     transport: {
       async send(message) {
-        await host.receiveSerialized(JSON.stringify(message), indexUrl);
+        await host.receiveSerialized(JSON.stringify(message), messageSourceUrl);
       },
     },
     handlers: {
@@ -147,6 +149,32 @@ describe('mobile game bridge host', () => {
       isAllowedMobileGameNavigation('https://example.com/index.html', indexUrl),
     ).toBe(false);
     expect(isAllowedMobileGameNavigation('not-a-url', indexUrl)).toBe(false);
+  });
+
+  test('Android WebMessage의 exact trusted origin만 bridge source로 허용한다', async () => {
+    const origin = 'https://appassets.androidplatform.net';
+    expect(isAllowedMobileGameMessageSource(indexUrl, indexUrl)).toBe(true);
+    expect(isAllowedMobileGameMessageSource(origin, indexUrl)).toBe(true);
+    expect(isAllowedMobileGameMessageSource(`${origin}/`, indexUrl)).toBe(true);
+    expect(isAllowedMobileGameNavigation(origin, indexUrl)).toBe(false);
+    expect(
+      isAllowedMobileGameMessageSource(`${origin}/other.html`, indexUrl),
+    ).toBe(false);
+    expect(
+      isAllowedMobileGameMessageSource(`${origin}?escape=1`, indexUrl),
+    ).toBe(false);
+    expect(
+      isAllowedMobileGameMessageSource('https://example.com', indexUrl),
+    ).toBe(false);
+
+    const fixture = createFixture(runtimeReadyExpectations, origin);
+    await fixture.host.startSession('android-origin-session');
+    await fixture.host.waitUntilHandshakeReady();
+    expect(
+      (await fixture.game.request('runtime.ready', runtimeReadyExpectation))
+        .status,
+    ).toBe('result');
+    await fixture.host.waitUntilRuntimeReady();
   });
 
   test('handshake 후 durable storage, host command, SDK port와 runtime proof를 왕복한다', async () => {

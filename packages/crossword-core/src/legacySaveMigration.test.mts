@@ -4,6 +4,7 @@ import { describe, test } from "node:test";
 
 import {
   createLegacyRawSnapshot,
+  LEGACY_PROGRESS_KEY_PREFIX,
   LegacySaveMigrationError,
   migrateLegacyRawSnapshotToSaveV2,
   projectSaveV2ToLegacyWrites,
@@ -192,6 +193,39 @@ describe("tag 기반 legacy raw snapshot", () => {
       (error: unknown) =>
         error instanceof LegacySaveMigrationError &&
         error.code === "unresolved-content-checksum",
+    );
+  });
+
+  test("content checksum 없는 빈 placeholder progress는 사용자 진행으로 승격하지 않는다", () => {
+    const puzzleId = "untouched-remote-placeholder";
+    const rawValue = JSON.stringify({
+      cellValues: {},
+      earnedHintCredits: 0,
+      hintCount: 0,
+      revealUsed: false,
+      tentativeCells: [],
+    });
+    const raw = createLegacyRawSnapshot({
+      market: "google-play",
+      sourceVersion: "android-main-0.1.0",
+      capturedAt: migratedAt,
+      records: [
+        {
+          key: `${LEGACY_PROGRESS_KEY_PREFIX}${puzzleId}`,
+          rawValue,
+        },
+      ],
+    });
+
+    const result = migrateLegacyRawSnapshotToSaveV2(raw, { migratedAt });
+
+    assert.deepEqual(result.migratedPuzzleIds, []);
+    assert.equal(result.save.content["ko-KR"].puzzles[puzzleId], undefined);
+    assert.equal(
+      new Map(
+        result.projectionWrites.map(({ key, value }) => [key, value]),
+      ).get(`${LEGACY_PROGRESS_KEY_PREFIX}${puzzleId}`),
+      rawValue,
     );
   });
 

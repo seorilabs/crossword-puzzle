@@ -170,6 +170,26 @@ export function isAllowedMobileGameNavigation(
   }
 }
 
+export function isAllowedMobileGameMessageSource(
+  candidateUrl: string,
+  expectedIndexUrl: string,
+): boolean {
+  if (isAllowedMobileGameNavigation(candidateUrl, expectedIndexUrl)) {
+    return true;
+  }
+  try {
+    const expected = new URL(expectedIndexUrl);
+    if (expected.protocol !== 'https:' || expected.origin === 'null') {
+      return false;
+    }
+    return (
+      candidateUrl === expected.origin || candidateUrl === `${expected.origin}/`
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function createMobileGameBridgeHost(
   options: MobileGameBridgeHostOptions,
 ): MobileGameBridgeHost {
@@ -312,7 +332,7 @@ export function createMobileGameBridgeHost(
     },
     async receiveSerialized(serialized, sourceUrl) {
       if (
-        !isAllowedMobileGameNavigation(sourceUrl, options.allowedMessageUrl)
+        !isAllowedMobileGameMessageSource(sourceUrl, options.allowedMessageUrl)
       ) {
         throw new MobileGameBridgeError('unexpected-message-origin');
       }

@@ -14,6 +14,7 @@ const config = {
   watchFolders: [
     path.resolve(repoRoot, 'packages'),
     path.resolve(repoRoot, 'public'),
+    path.resolve(repoRoot, 'src'),
   ],
   resolver: {
     disableHierarchicalLookup: true,

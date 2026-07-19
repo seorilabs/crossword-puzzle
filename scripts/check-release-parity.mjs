@@ -609,6 +609,11 @@ assertIncludes(
 );
 assertIncludes(
   androidManifest,
+  'android:name="android.permission.VIBRATE"',
+  androidManifestPath,
+);
+assertIncludes(
+  androidManifest,
   'android:name="com.google.android.gms.permission.AD_ID"',
   androidManifestPath,
 );

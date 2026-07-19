@@ -62,6 +62,7 @@ declare const __DEV__: boolean;
 
 const APP_RUNTIME_VERSION = '0.1.0';
 const PENDING_MARKER_KEY = `${GAME_BOOT_PENDING_KEY}:${APP_RUNTIME_VERSION}`;
+const NATIVE_DEVELOPMENT_GAME_BOOT_WATCHDOG_MS = 30_000;
 const ANDROID_GAME_INDEX_URL =
   'https://appassets.androidplatform.net/assets/crossword-game/index.html';
 
@@ -85,6 +86,14 @@ export function createMobileRuntimeReadyExpectations(
       }),
     ),
   );
+}
+
+export function resolveMobileGameBootOptions(
+  developmentOverrideEnabled: boolean,
+): Readonly<{ watchdogMs: number }> | undefined {
+  return developmentOverrideEnabled
+    ? { watchdogMs: NATIVE_DEVELOPMENT_GAME_BOOT_WATCHDOG_MS }
+    : undefined;
 }
 
 export type NativeGameBundleInitialProps = Readonly<{
@@ -227,15 +236,17 @@ export function validateNativeGameBundle(
 
   const indexUrl = parseUrl(candidate.indexUrl);
   const manifestUrl = parseUrl(candidate.assetManifestUrl);
+  const lastSlash = candidate.indexUrl.lastIndexOf('/');
+  const directoryUrl = candidate.indexUrl.slice(0, lastSlash + 1);
   if (
     indexUrl == null ||
     manifestUrl == null ||
+    lastSlash < 0 ||
     indexUrl.username !== '' ||
     indexUrl.password !== '' ||
     indexUrl.search !== '' ||
     indexUrl.hash !== '' ||
-    candidate.assetManifestUrl !==
-      new URL('asset-manifest.json', indexUrl).toString()
+    candidate.assetManifestUrl !== `${directoryUrl}asset-manifest.json`
   ) {
     return null;
   }
@@ -249,11 +260,10 @@ export function validateNativeGameBundle(
       return null;
     }
   } else {
-    const expectedReadAccessUrl = new URL('.', indexUrl).toString();
     if (
       indexUrl.protocol !== 'file:' ||
       !indexUrl.pathname.endsWith('/CrosswordGame/index.html') ||
-      candidate.readAccessUrl !== expectedReadAccessUrl
+      candidate.readAccessUrl !== directoryUrl
     ) {
       return null;
     }
@@ -477,74 +487,80 @@ export function MobileRuntimeHost({
         knownContentChecksums: MOBILE_FIRST_RUN_KNOWN_CONTENT_CHECKSUMS,
       });
 
-      const result = await bootSelectedRuntime(selection, {
-        scheduler,
-        createBootId: () => bundle.bridgeSessionId,
-        nowEpochMs: Date.now,
-        async writePendingBootMarker(marker) {
-          const serialized = JSON.stringify(marker);
-          await AsyncStorage.setItem(PENDING_MARKER_KEY, serialized);
-          if ((await AsyncStorage.getItem(PENDING_MARKER_KEY)) !== serialized) {
-            throw new Error('pending marker durable write failed');
-          }
-        },
-        async clearPendingBootMarker() {
-          await AsyncStorage.removeItem(PENDING_MARKER_KEY);
-          if ((await AsyncStorage.getItem(PENDING_MARKER_KEY)) != null) {
-            throw new Error('pending marker durable clear failed');
-          }
-        },
-        async importGameRuntime() {
-          const bridge = createMobileGameBridgeHost({
-            allowedMessageUrl: bundle.indexUrl,
-            runtimeReadyExpectations: createMobileRuntimeReadyExpectations(
-              bundle.assetManifestChecksum,
-            ),
-            sendSerialized(serialized) {
-              const webView = webViewRef.current;
-              if (webView == null) {
-                throw new Error('native game WebView transport unavailable');
-              }
-              webView.postMessage(serialized);
-            },
-            storage: AsyncStorage,
-            analytics: gameRuntimeAnalyticsPort,
-            showAd: async placement => showBridgeAd(placement),
-            playHaptic: playBridgeHaptic,
-            onRuntimeReady() {
-              visibleProofRef.current = true;
-            },
-          });
-          const control = createBootControl(
-            bridge,
-            () => visibleProofRef.current,
-          );
-          bootControlRef.current = control;
-          bridgeSessionStartedRef.current = false;
-          setState({ status: 'booting', bridge });
-          bridge
-            .waitUntilHandshakeReady()
-            .then(() => {
-              if (launchConfigSnapshot == null) {
-                throw new Error('native game launch config unavailable');
-              }
-              return bridge.sendConfigSnapshot('launch-config/v1', {
-                ...toBridgeConfigValues(launchConfigSnapshot),
-                [GAME_RUNTIME_ANALYTICS_MARKET_CONFIG_KEY]:
-                  Platform.OS === 'ios' ? 'app-store' : 'google-play',
-                [GAME_RUNTIME_ANALYTICS_UI_LOCALE_CONFIG_KEY]: 'ko-KR',
-              });
-            })
-            .catch(error => {
-              control.fail(
-                error instanceof Error
-                  ? error
-                  : new Error('native game config bridge failed'),
-              );
+      const result = await bootSelectedRuntime(
+        selection,
+        {
+          scheduler,
+          createBootId: () => bundle.bridgeSessionId,
+          nowEpochMs: Date.now,
+          async writePendingBootMarker(marker) {
+            const serialized = JSON.stringify(marker);
+            await AsyncStorage.setItem(PENDING_MARKER_KEY, serialized);
+            if (
+              (await AsyncStorage.getItem(PENDING_MARKER_KEY)) !== serialized
+            ) {
+              throw new Error('pending marker durable write failed');
+            }
+          },
+          async clearPendingBootMarker() {
+            await AsyncStorage.removeItem(PENDING_MARKER_KEY);
+            if ((await AsyncStorage.getItem(PENDING_MARKER_KEY)) != null) {
+              throw new Error('pending marker durable clear failed');
+            }
+          },
+          async importGameRuntime() {
+            const bridge = createMobileGameBridgeHost({
+              allowedMessageUrl: bundle.indexUrl,
+              runtimeReadyExpectations: createMobileRuntimeReadyExpectations(
+                bundle.assetManifestChecksum,
+              ),
+              sendSerialized(serialized) {
+                const webView = webViewRef.current;
+                if (webView == null) {
+                  throw new Error('native game WebView transport unavailable');
+                }
+                webView.postMessage(serialized);
+              },
+              storage: AsyncStorage,
+              analytics: gameRuntimeAnalyticsPort,
+              showAd: async placement => showBridgeAd(placement),
+              playHaptic: playBridgeHaptic,
+              onRuntimeReady() {
+                visibleProofRef.current = true;
+              },
             });
-          return control.session;
+            const control = createBootControl(
+              bridge,
+              () => visibleProofRef.current,
+            );
+            bootControlRef.current = control;
+            bridgeSessionStartedRef.current = false;
+            setState({ status: 'booting', bridge });
+            bridge
+              .waitUntilHandshakeReady()
+              .then(() => {
+                if (launchConfigSnapshot == null) {
+                  throw new Error('native game launch config unavailable');
+                }
+                return bridge.sendConfigSnapshot('launch-config/v1', {
+                  ...toBridgeConfigValues(launchConfigSnapshot),
+                  [GAME_RUNTIME_ANALYTICS_MARKET_CONFIG_KEY]:
+                    Platform.OS === 'ios' ? 'app-store' : 'google-play',
+                  [GAME_RUNTIME_ANALYTICS_UI_LOCALE_CONFIG_KEY]: 'ko-KR',
+                });
+              })
+              .catch(error => {
+                control.fail(
+                  error instanceof Error
+                    ? error
+                    : new Error('native game config bridge failed'),
+                );
+              });
+            return control.session;
+          },
         },
-      });
+        resolveMobileGameBootOptions(developmentOverride != null),
+      );
 
       if (cancelled) {
         if (result.target === 'game') await result.session.dispose();

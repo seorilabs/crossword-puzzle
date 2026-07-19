@@ -268,6 +268,16 @@ function parseProgress(
   };
 }
 
+function isPristineProgress(progress: SavedProgress): boolean {
+  return (
+    Object.keys(progress.cellValues).length === 0 &&
+    progress.earnedHintCredits === 0 &&
+    progress.hintCount === 0 &&
+    progress.revealUsed !== true &&
+    (progress.tentativeCells?.length ?? 0) === 0
+  );
+}
+
 function parseMission(rawValue: string, key: string): SaveV2MissionState {
   const value = parseJson(rawValue, "malformed-mission", key);
   if (!isRecord(value)) {
@@ -678,6 +688,15 @@ export function migrateLegacyRawSnapshotToSaveV2(
       knownChecksums,
     );
     if (checksum == null) {
+      const progress = progressByPuzzleId.get(puzzleId)?.progress;
+      if (
+        progress != null &&
+        !completedPuzzleIds.has(puzzleId) &&
+        isPristineProgress(progress)
+      ) {
+        progressByPuzzleId.delete(puzzleId);
+        continue;
+      }
       throw new LegacySaveMigrationError(
         "unresolved-content-checksum",
         puzzleId,
