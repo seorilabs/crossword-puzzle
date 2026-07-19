@@ -2,6 +2,8 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 
+import { validateNativeStartupSurfaces } from "./release-checker-utils.mjs";
+
 const sharedPolicyPath = "packages/crossword-core/src/uiPolicy.ts";
 const sharedLaunchConfigPath = "packages/crossword-core/src/launchConfig.ts";
 const sharedPlatformContractsPath =
@@ -25,6 +27,16 @@ const androidBuildGradlePath = "apps/mobile/android/build.gradle";
 const androidAppBuildGradlePath = "apps/mobile/android/app/build.gradle";
 const androidManifestPath =
   "apps/mobile/android/app/src/main/AndroidManifest.xml";
+const androidStringsPath =
+  "apps/mobile/android/app/src/main/res/values/strings.xml";
+const androidColorsPath =
+  "apps/mobile/android/app/src/main/res/values/colors.xml";
+const androidLaunchDrawablePath =
+  "apps/mobile/android/app/src/main/res/drawable/crossword_launch_background.xml";
+const androidStylesPath =
+  "apps/mobile/android/app/src/main/res/values/styles.xml";
+const androidStylesV31Path =
+  "apps/mobile/android/app/src/main/res/values-v31/styles.xml";
 const androidMainActivityPath =
   "apps/mobile/android/app/src/main/java/com/seorilabs/crosswordpuzzle/MainActivity.kt";
 const androidMainApplicationPath =
@@ -37,6 +49,9 @@ const androidGameManifestValidatorPath =
   "apps/mobile/android/app/src/main/java/com/seorilabs/crosswordpuzzle/NativeGameBundleManifestValidator.kt";
 const appDelegatePath =
   "apps/mobile/ios/CrosswordPuzzleMobile/AppDelegate.swift";
+const iosInfoPlistPath = "apps/mobile/ios/CrosswordPuzzleMobile/Info.plist";
+const iosLaunchStoryboardPath =
+  "apps/mobile/ios/CrosswordPuzzleMobile/LaunchScreen.storyboard";
 const iosProjectPath =
   "apps/mobile/ios/CrosswordPuzzleMobile.xcodeproj/project.pbxproj";
 const iosGamePackageScriptPath =
@@ -58,6 +73,7 @@ const agentsPath = "AGENTS.md";
 const marketParityDocPath = "docs/market-parity.md";
 const playStoreConfigPath = "play-store/google-play.config.json";
 const appStoreConfigPath = "app-store/app-store.config.json";
+const aitIndexHtmlPath = "index.html";
 
 const sharedPolicyExports = [
   "DAILY_ATTEMPT_LIMIT",
@@ -287,12 +303,19 @@ const mobileAppJson = read(mobileAppJsonPath);
 const androidBuildGradle = read(androidBuildGradlePath);
 const androidAppBuildGradle = read(androidAppBuildGradlePath);
 const androidManifest = read(androidManifestPath);
+const androidColors = read(androidColorsPath);
+const androidLaunchDrawable = read(androidLaunchDrawablePath);
+const androidStrings = read(androidStringsPath);
+const androidStyles = read(androidStylesPath);
+const androidStylesV31 = read(androidStylesV31Path);
 const androidMainActivity = read(androidMainActivityPath);
 const androidMainApplication = read(androidMainApplicationPath);
 const androidGameUrls = read(androidGameUrlsPath);
 const androidGameWebViewManager = read(androidGameWebViewManagerPath);
 const androidGameManifestValidator = read(androidGameManifestValidatorPath);
 const appDelegate = read(appDelegatePath);
+const iosInfoPlist = read(iosInfoPlistPath);
+const iosLaunchStoryboard = read(iosLaunchStoryboardPath);
 const iosProject = read(iosProjectPath);
 const iosGamePackageScript = read(iosGamePackageScriptPath);
 const mobilePodfile = read(mobilePodfilePath);
@@ -308,6 +331,21 @@ const agents = read(agentsPath);
 const marketParityDoc = read(marketParityDocPath);
 const playStoreConfig = read(playStoreConfigPath);
 const appStoreConfig = read(appStoreConfigPath);
+const aitIndexHtml = read(aitIndexHtmlPath);
+
+for (const startupSurfaceFailure of validateNativeStartupSurfaces({
+  aitIndexHtml,
+  androidColors,
+  androidLaunchDrawable,
+  androidManifest,
+  androidStrings,
+  androidStyles,
+  androidStylesV31,
+  iosInfoPlist,
+  iosLaunchStoryboard,
+})) {
+  fail(startupSurfaceFailure);
+}
 
 for (const name of sharedPolicyExports) {
   assertNamedPolicyExport(sharedPolicy, name, sharedPolicyPath);
