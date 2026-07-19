@@ -11,7 +11,11 @@ import { createGameRuntimeHostStorage } from "../adapters/gameRuntimeHost.ts";
 import { gameRuntimeAnalyticsPort } from "../adapters/gameAnalytics.ts";
 import { captureLegacyWebSaveSnapshot } from "../adapters/legacyWebSaveInventory.ts";
 import { BUNDLED_FIRST_RUN_CONTENT_CHECKSUMS } from "../../packages/crossword-core/src/launchContentCatalog.ts";
-import { createLaunchPreviewGameRuntimeStorage } from "./gameRuntimeStorage.ts";
+import {
+  createLaunchPreviewGameRuntimeStorage,
+  createLaunchReviewGameRuntimeStorage,
+} from "./gameRuntimeStorage.ts";
+import type { LaunchReviewSelection } from "./launchReviewContent.ts";
 import {
   prepareGameSaveMigration,
   recoverLegacyProjectionOutbox,
@@ -46,11 +50,19 @@ export type DevelopmentLaunchPreviewRequest = Readonly<{
   checkpointHash: string;
 }>;
 
+export type DevelopmentLaunchReviewRequest = Readonly<{
+  catalogHash: string;
+  selection: LaunchReviewSelection;
+}>;
+
 export type ParseDevelopmentLaunchPreviewRequestOptions = Readonly<{
   development: boolean;
   hostKind: GameExperienceHostKind;
   search: string;
 }>;
+
+export type ParseDevelopmentLaunchReviewRequestOptions =
+  ParseDevelopmentLaunchPreviewRequestOptions;
 
 const LOWER_SHA256_HEX_PATTERN = /^[0-9a-f]{64}$/;
 
@@ -161,6 +173,55 @@ export function parseDevelopmentLaunchPreviewRequest({
   return Object.freeze({ checkpointHash });
 }
 
+/** DEV web에서만 고정 candidate catalog의 10판 page 또는 단일 보드를 연다. */
+export function parseDevelopmentLaunchReviewRequest({
+  development,
+  hostKind,
+  search,
+}: ParseDevelopmentLaunchReviewRequestOptions): DevelopmentLaunchReviewRequest | null {
+  if (!development || hostKind !== "web") return null;
+
+  const params = new URLSearchParams(search);
+  const reviewValues = params.getAll("launchReview");
+  const pageValues = params.getAll("reviewPage");
+  const puzzleValues = params.getAll("reviewPuzzleId");
+  if (reviewValues.length === 0) {
+    if (pageValues.length > 0 || puzzleValues.length > 0) {
+      throw new Error("development launch review query rejected");
+    }
+    return null;
+  }
+
+  const runtimeValues = params.getAll("gameRuntime");
+  const catalogHash = reviewValues[0] ?? "";
+  const page = pageValues[0] ?? "";
+  const puzzleId = puzzleValues[0] ?? "";
+  const hasPage = pageValues.length === 1 && /^[1-9]$/.test(page);
+  const hasPuzzle =
+    puzzleValues.length === 1 &&
+    /^[a-z0-9](?:[a-z0-9-]{0,126}[a-z0-9])?$/.test(puzzleId);
+  if (
+    runtimeValues.length !== 1 ||
+    runtimeValues[0] !== "1" ||
+    reviewValues.length !== 1 ||
+    !LOWER_SHA256_HEX_PATTERN.test(catalogHash) ||
+    pageValues.length > 1 ||
+    puzzleValues.length > 1 ||
+    hasPage === hasPuzzle
+  ) {
+    throw new Error("development launch review query rejected");
+  }
+
+  return Object.freeze({
+    catalogHash,
+    selection: Object.freeze(
+      hasPage
+        ? { kind: "page" as const, page: Number(page) }
+        : { kind: "puzzle" as const, puzzleId },
+    ),
+  });
+}
+
 export function RuntimeHost({ legacy }: RuntimeHostProps) {
   const [state, setState] = useState<RuntimeHostState>({ status: "resolving" });
   const gameContainerRef = useRef<HTMLDivElement>(null);
@@ -180,15 +241,31 @@ export function RuntimeHost({ legacy }: RuntimeHostProps) {
         hostKind,
         search: window.location.search,
       });
+      const launchReviewRequest = parseDevelopmentLaunchReviewRequest({
+        development: import.meta.env.DEV,
+        hostKind,
+        search: window.location.search,
+      });
+      if (launchPreviewRequest != null && launchReviewRequest != null) {
+        throw new Error("development candidate preview query is ambiguous");
+      }
       const hostStorage = createGameRuntimeHostStorage(hostKind);
       const runtimeStorage =
-        launchPreviewRequest == null
-          ? hostStorage
-          : createLaunchPreviewGameRuntimeStorage(
+        launchPreviewRequest != null
+          ? createLaunchPreviewGameRuntimeStorage(
               hostStorage,
               launchPreviewRequest.checkpointHash,
-            );
-      if (launchPreviewRequest == null) {
+            )
+          : launchReviewRequest != null
+            ? createLaunchReviewGameRuntimeStorage(
+                hostStorage,
+                launchReviewRequest.catalogHash,
+                launchReviewRequest.selection,
+              )
+            : hostStorage;
+      const candidatePreviewRequested =
+        launchPreviewRequest != null || launchReviewRequest != null;
+      if (!candidatePreviewRequested) {
         await recoverLegacyProjectionOutbox(runtimeStorage);
       }
 
@@ -216,7 +293,7 @@ export function RuntimeHost({ legacy }: RuntimeHostProps) {
         setState({ status: "legacy", reason: selection.reason });
         return;
       }
-      if (launchPreviewRequest == null) {
+      if (!candidatePreviewRequested) {
         const legacySnapshot = captureLegacyWebSaveSnapshot({
           storage: window.localStorage,
           market: hostKind === "apps-in-toss" ? "apps-in-toss" : "web",
@@ -238,6 +315,16 @@ export function RuntimeHost({ legacy }: RuntimeHostProps) {
               }),
             )
           : null;
+      const launchReviewContent =
+        import.meta.env.DEV && launchReviewRequest != null
+          ? await import("./launchReviewContent.ts").then((module) =>
+              module.loadLaunchReviewContent({
+                catalogHash: launchReviewRequest.catalogHash,
+                selection: launchReviewRequest.selection,
+              }),
+            )
+          : null;
+      const candidateJourney = launchPreviewContent ?? launchReviewContent;
 
       setState({ status: "booting" });
       const container = await waitForGameContainer(gameContainerRef);
@@ -271,10 +358,10 @@ export function RuntimeHost({ legacy }: RuntimeHostProps) {
             launchConfig,
             storage: runtimeStorage,
             uiLocale: "ko-KR",
-            ...(launchPreviewContent == null
+            ...(candidateJourney == null
               ? {}
               : {
-                  journeyItems: launchPreviewContent.items,
+                  journeyItems: candidateJourney.items,
                   journeyMode: "launch-preview" as const,
                 }),
           });

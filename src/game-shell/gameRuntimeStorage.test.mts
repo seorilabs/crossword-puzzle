@@ -6,7 +6,9 @@ import {
   createBrowserGameRuntimeStorage,
   createCanonicalGameRuntimeStorage,
   createLaunchPreviewGameRuntimeStorage,
+  createLaunchReviewGameRuntimeStorage,
   getLaunchPreviewStoragePrefix,
+  getLaunchReviewStoragePrefix,
 } from "./gameRuntimeStorage.ts";
 
 function memoryStorage(initial: Record<string, string> = {}): {
@@ -79,6 +81,85 @@ describe("game runtime durable storage", () => {
       assert.throws(
         () => createLaunchPreviewGameRuntimeStorage(base.port, invalidHash),
         /exactly 64 lowercase hexadecimal/,
+      );
+    }
+  });
+
+  test("launch review save와 boot marker는 catalog 및 page/puzzle 선택별로 격리한다", async () => {
+    const catalogHash = "b".repeat(64);
+    const pageSelection = { kind: "page", page: 2 } as const;
+    const puzzleSelection = {
+      kind: "puzzle",
+      puzzleId: "ko-kr-bonus-01",
+    } as const;
+    const pagePrefix = `crossword:dev-launch-review:${catalogHash}:page-02:`;
+    const puzzlePrefix = `crossword:dev-launch-review:${catalogHash}:puzzle-ko-kr-bonus-01:`;
+    const base = memoryStorage({
+      "crossword:game-save:v2": "production-save",
+      game_boot_pending: "production-marker",
+    });
+    const pageStorage = createLaunchReviewGameRuntimeStorage(
+      base.port,
+      catalogHash,
+      pageSelection,
+    );
+    const puzzleStorage = createLaunchReviewGameRuntimeStorage(
+      base.port,
+      catalogHash,
+      puzzleSelection,
+    );
+
+    assert.equal(
+      getLaunchReviewStoragePrefix(catalogHash, pageSelection),
+      pagePrefix,
+    );
+    assert.equal(
+      getLaunchReviewStoragePrefix(catalogHash, puzzleSelection),
+      puzzlePrefix,
+    );
+    await pageStorage.setItem("crossword:game-save:v2", "page-save");
+    await puzzleStorage.setItem("crossword:game-save:v2", "puzzle-save");
+    await pageStorage.setItem("game_boot_pending", "page-marker");
+
+    assert.equal(
+      base.values.get(`${pagePrefix}crossword:game-save:v2`),
+      "page-save",
+    );
+    assert.equal(
+      base.values.get(`${puzzlePrefix}crossword:game-save:v2`),
+      "puzzle-save",
+    );
+    assert.equal(
+      base.values.get(`${pagePrefix}game_boot_pending`),
+      "page-marker",
+    );
+    assert.equal(base.values.get("crossword:game-save:v2"), "production-save");
+    assert.equal(base.values.get("game_boot_pending"), "production-marker");
+  });
+
+  test("launch review storage는 잘못된 hash와 selection을 거부한다", () => {
+    const base = memoryStorage();
+    assert.throws(
+      () =>
+        createLaunchReviewGameRuntimeStorage(base.port, "B".repeat(64), {
+          kind: "page",
+          page: 1,
+        }),
+      /exactly 64 lowercase hexadecimal/,
+    );
+    for (const selection of [
+      { kind: "page", page: 0 } as const,
+      { kind: "page", page: 10 } as const,
+      { kind: "puzzle", puzzleId: "../catalog" } as const,
+    ]) {
+      assert.throws(
+        () =>
+          createLaunchReviewGameRuntimeStorage(
+            base.port,
+            "b".repeat(64),
+            selection,
+          ),
+        /selection is invalid/,
       );
     }
   });

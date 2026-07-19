@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 const CHECKPOINT_HASH = "a".repeat(64);
 const PREVIEW_PREFIX = `crossword:dev-launch-preview:${CHECKPOINT_HASH}:7:`;
+const CATALOG_HASH = "c".repeat(64);
+const REVIEW_PREFIX = `crossword:dev-launch-review:${CATALOG_HASH}:page-03:`;
 
 const mocks = vi.hoisted(() => {
   const storageValues = new Map<string, string>();
@@ -45,6 +47,7 @@ const mocks = vi.hoisted(() => {
     hostStorage,
     launchConfig: { gameRuntimeEnabled: false },
     loadLaunchPreviewContent: vi.fn(),
+    loadLaunchReviewContent: vi.fn(),
     mountGameExperience: vi.fn(() => session),
     prepareGameSaveMigration: vi.fn(async () => undefined),
     previewItems,
@@ -82,6 +85,10 @@ vi.mock("./launchPreviewContent.ts", () => ({
   loadLaunchPreviewContent: mocks.loadLaunchPreviewContent,
 }));
 
+vi.mock("./launchReviewContent.ts", () => ({
+  loadLaunchReviewContent: mocks.loadLaunchReviewContent,
+}));
+
 vi.mock("./GameExperience.tsx", () => ({
   mountGameExperience: mocks.mountGameExperience,
 }));
@@ -95,6 +102,7 @@ vi.mock("./runtimeSelection.ts", () => ({
 
 import {
   parseDevelopmentLaunchPreviewRequest,
+  parseDevelopmentLaunchReviewRequest,
   RuntimeHost,
 } from "./RuntimeHost.tsx";
 
@@ -124,6 +132,15 @@ beforeEach(() => {
     generatorCommit: "b".repeat(40),
     candidate: true,
     activationApproved: false,
+    items: mocks.previewItems,
+  });
+  mocks.loadLaunchReviewContent.mockResolvedValue({
+    catalogHash: CATALOG_HASH,
+    generatorCommit: "b".repeat(40),
+    candidate: true,
+    activationApproved: false,
+    selection: { kind: "page", page: 3 },
+    totalGeneratedBoardCount: 90,
     items: mocks.previewItems,
   });
   mocks.resolveRuntimeSelection.mockImplementation(async (ports) => {
@@ -210,6 +227,65 @@ describe("development launch preview query", () => {
   });
 });
 
+describe("development launch review query", () => {
+  test("DEV web에서 page 또는 단일 puzzleId를 정확히 하나만 선택한다", () => {
+    expect(
+      parseDevelopmentLaunchReviewRequest({
+        development: true,
+        hostKind: "web",
+        search: `?gameRuntime=1&launchReview=${CATALOG_HASH}&reviewPage=3`,
+      }),
+    ).toEqual({
+      catalogHash: CATALOG_HASH,
+      selection: { kind: "page", page: 3 },
+    });
+    expect(
+      parseDevelopmentLaunchReviewRequest({
+        development: true,
+        hostKind: "web",
+        search: `?gameRuntime=1&launchReview=${CATALOG_HASH}&reviewPuzzleId=ko-kr-bonus-01`,
+      }),
+    ).toEqual({
+      catalogHash: CATALOG_HASH,
+      selection: { kind: "puzzle", puzzleId: "ko-kr-bonus-01" },
+    });
+
+    for (const options of [
+      { development: false, hostKind: "web" as const },
+      { development: true, hostKind: "apps-in-toss" as const },
+      { development: true, hostKind: "native-webview" as const },
+    ]) {
+      expect(
+        parseDevelopmentLaunchReviewRequest({
+          ...options,
+          search: `?gameRuntime=1&launchReview=${CATALOG_HASH}&reviewPage=3`,
+        }),
+      ).toBeNull();
+    }
+  });
+
+  test("hash, selector, 중복, runtime gate 오류를 fail-closed한다", () => {
+    for (const search of [
+      `?gameRuntime=1&launchReview=${"C".repeat(64)}&reviewPage=1`,
+      `?gameRuntime=1&launchReview=${CATALOG_HASH}`,
+      `?gameRuntime=1&launchReview=${CATALOG_HASH}&reviewPage=0`,
+      `?gameRuntime=1&launchReview=${CATALOG_HASH}&reviewPage=1&reviewPuzzleId=ko-kr-bonus-01`,
+      `?gameRuntime=1&launchReview=${CATALOG_HASH}&reviewPage=1&reviewPage=2`,
+      `?gameRuntime=1&launchReview=${CATALOG_HASH}&reviewPuzzleId=../catalog`,
+      `?reviewPage=1`,
+      `?gameRuntime=0&launchReview=${CATALOG_HASH}&reviewPage=1`,
+    ]) {
+      expect(() =>
+        parseDevelopmentLaunchReviewRequest({
+          development: true,
+          hostKind: "web",
+          search,
+        }),
+      ).toThrow(/query rejected/);
+    }
+  });
+});
+
 describe("RuntimeHost launch preview integration", () => {
   test("7판 preview를 격리 storage와 함께 mount하고 legacy migration을 생략한다", async () => {
     setLocation(`?gameRuntime=1&launchPreview=${CHECKPOINT_HASH}`);
@@ -253,6 +329,44 @@ describe("RuntimeHost launch preview integration", () => {
       mocks.storageOperations.every(({ key }) =>
         key.startsWith(PREVIEW_PREFIX),
       ),
+    ).toBe(true);
+  });
+
+  test("90판 review page를 선택별 격리 storage와 함께 mount한다", async () => {
+    setLocation(`?gameRuntime=1&launchReview=${CATALOG_HASH}&reviewPage=3`);
+    render(<RuntimeHost legacy={<span>legacy</span>} />);
+
+    await waitFor(() => expect(mocks.mountGameExperience).toHaveBeenCalled());
+
+    expect(mocks.loadLaunchReviewContent).toHaveBeenCalledWith({
+      catalogHash: CATALOG_HASH,
+      selection: { kind: "page", page: 3 },
+    });
+    expect(mocks.loadLaunchPreviewContent).not.toHaveBeenCalled();
+    expect(mocks.recoverLegacyProjectionOutbox).not.toHaveBeenCalled();
+    expect(mocks.captureLegacyWebSaveSnapshot).not.toHaveBeenCalled();
+    expect(mocks.prepareGameSaveMigration).not.toHaveBeenCalled();
+
+    const options = (
+      mocks.mountGameExperience.mock.calls as unknown as Array<
+        [HTMLElement, MountedGameOptions]
+      >
+    )[0]?.[1];
+    expect(options).toMatchObject({
+      hostKind: "web",
+      journeyMode: "launch-preview",
+      journeyItems: mocks.previewItems,
+    });
+    if (options == null) throw new Error("game mount options unavailable");
+    await options.storage.setItem("crossword:game-save:v2", "review-save");
+    expect(
+      mocks.storageValues.get(`${REVIEW_PREFIX}crossword:game-save:v2`),
+    ).toBe("review-save");
+    expect(mocks.storageValues.get("crossword:game-save:v2")).toBe(
+      "production-save",
+    );
+    expect(
+      mocks.storageOperations.every(({ key }) => key.startsWith(REVIEW_PREFIX)),
     ).toBe(true);
   });
 

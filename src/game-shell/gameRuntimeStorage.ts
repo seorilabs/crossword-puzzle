@@ -1,6 +1,8 @@
 import type { KeyValueStoragePort } from "./gameSaveRepository.ts";
+import type { LaunchReviewSelection } from "./launchReviewContent.ts";
 
 const LOWER_SHA256_HEX_PATTERN = /^[0-9a-f]{64}$/;
+const SAFE_PUZZLE_ID_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,126}[a-z0-9])?$/;
 
 export const LAUNCH_PREVIEW_BOARD_COUNT = 7;
 
@@ -37,6 +39,46 @@ export function createLaunchPreviewGameRuntimeStorage(
   const prefix = getLaunchPreviewStoragePrefix(checkpointHash);
   const namespacedKey = (key: string) => `${prefix}${key}`;
 
+  return {
+    getItem: (key) => browserStorage.getItem(namespacedKey(key)),
+    setItem: (key, value) => browserStorage.setItem(namespacedKey(key), value),
+    removeItem: (key) => browserStorage.removeItem(namespacedKey(key)),
+  };
+}
+
+export function getLaunchReviewStoragePrefix(
+  catalogHash: string,
+  selection: LaunchReviewSelection,
+): string {
+  if (!LOWER_SHA256_HEX_PATTERN.test(catalogHash)) {
+    throw new Error(
+      "launch review storage hash must be exactly 64 lowercase hexadecimal characters",
+    );
+  }
+  const selectionKey =
+    selection.kind === "page"
+      ? Number.isSafeInteger(selection.page) &&
+        selection.page >= 1 &&
+        selection.page <= 9
+        ? `page-${String(selection.page).padStart(2, "0")}`
+        : null
+      : SAFE_PUZZLE_ID_PATTERN.test(selection.puzzleId)
+        ? `puzzle-${selection.puzzleId}`
+        : null;
+  if (selectionKey == null) {
+    throw new Error("launch review storage selection is invalid");
+  }
+  return `crossword:dev-launch-review:${catalogHash}:${selectionKey}:`;
+}
+
+/** 90판 검수 save와 boot marker를 catalog 및 page/puzzle 선택별로 격리한다. */
+export function createLaunchReviewGameRuntimeStorage(
+  browserStorage: KeyValueStoragePort,
+  catalogHash: string,
+  selection: LaunchReviewSelection,
+): KeyValueStoragePort {
+  const prefix = getLaunchReviewStoragePrefix(catalogHash, selection);
+  const namespacedKey = (key: string) => `${prefix}${key}`;
   return {
     getItem: (key) => browserStorage.getItem(namespacedKey(key)),
     setItem: (key, value) => browserStorage.setItem(namespacedKey(key), value),
