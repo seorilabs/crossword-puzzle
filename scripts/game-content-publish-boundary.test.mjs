@@ -4,6 +4,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 
+import { collectPuzzleHostingFiles } from "../server/batch/publish-puzzle-pack.mjs";
+import { createNativeGameAssetManifest } from "./build-native-game-bundle.mjs";
 import {
   assertNoGameContentInAitArtifact,
   assertNoGameContentInDirectory,
@@ -137,6 +139,48 @@ test("AIT checker reads the embedded ZIP index and rejects every game-content cl
     await assert.rejects(
       assertNoGameContentInAitArtifact(unsafeArtifact),
       /web\/game-content\/v1\/ko-KR\/candidates\/catalog\.json/,
+    );
+  });
+});
+
+test("one temporary public/game-content fixture is blocked by AIT, native, and publisher boundaries", async () => {
+  await withTemporaryDirectory(async (root) => {
+    const publicDirectory = path.join(root, "public");
+    const fixtureRelativePath =
+      "game-content/v1/ko-KR/candidates/catalog.json";
+    const fixturePath = path.join(publicDirectory, fixtureRelativePath);
+    const fixture = JSON.stringify({ artifactStatus: "candidate" });
+    await mkdir(path.dirname(fixturePath), { recursive: true });
+    await writeFile(path.join(publicDirectory, "index.html"), "<!doctype html>");
+    await writeFile(fixturePath, fixture);
+
+    const hostingPlan = await collectPuzzleHostingFiles(publicDirectory);
+    assert.equal(hostingPlan.excludedFileCount, 1);
+    assert.equal(
+      hostingPlan.files.some((file) =>
+        hasGameContentPathSegment(file.path),
+      ),
+      false,
+    );
+
+    const nativeDirectory = path.join(root, "native");
+    const nativeFixturePath = path.join(nativeDirectory, fixtureRelativePath);
+    await mkdir(path.dirname(nativeFixturePath), { recursive: true });
+    await writeFile(path.join(nativeDirectory, "index.html"), "<!doctype html>");
+    await writeFile(nativeFixturePath, await readFile(fixturePath));
+    await assert.rejects(
+      createNativeGameAssetManifest(nativeDirectory),
+      /published game-content is forbidden in native assets/,
+    );
+
+    const aitArtifact = path.join(root, "unsafe.ait");
+    await writeFile(
+      aitArtifact,
+      createStoredZip(["web/index.html", `web/${fixtureRelativePath}`]),
+    );
+    await assert.rejects(
+      assertNoGameContentInAitArtifact(aitArtifact),
+      /game-content\/v1\/ko-KR\/candidates\/catalog\.json/,
     );
   });
 });
