@@ -315,13 +315,66 @@ function assertNoDuplicateJsonKeys(text: string) {
   if (index !== text.length) fail("invalid_json", "trailing JSON content");
 }
 
-function decodeArtifact(value: string | Uint8Array): string {
-  if (typeof value === "string") return value;
-  try {
-    return new TextDecoder("utf-8", { fatal: true }).decode(value);
-  } catch {
-    fail("invalid_json", "artifact is not valid UTF-8");
+function decodeUtf8Bytes(value: Uint8Array): string {
+  let output = "";
+  let index = 0;
+  while (index < value.length) {
+    const first = value[index++];
+    if (first <= 0x7f) {
+      output += String.fromCharCode(first);
+      continue;
+    }
+
+    let codePoint: number;
+    let continuationCount: number;
+    let secondMin = 0x80;
+    let secondMax = 0xbf;
+    if (first >= 0xc2 && first <= 0xdf) {
+      codePoint = first & 0x1f;
+      continuationCount = 1;
+    } else if (first >= 0xe0 && first <= 0xef) {
+      codePoint = first & 0x0f;
+      continuationCount = 2;
+      if (first === 0xe0) secondMin = 0xa0;
+      if (first === 0xed) secondMax = 0x9f;
+    } else if (first >= 0xf0 && first <= 0xf4) {
+      codePoint = first & 0x07;
+      continuationCount = 3;
+      if (first === 0xf0) secondMin = 0x90;
+      if (first === 0xf4) secondMax = 0x8f;
+    } else {
+      fail("invalid_json", "artifact is not valid UTF-8");
+    }
+
+    if (index + continuationCount > value.length) {
+      fail("invalid_json", "artifact is not valid UTF-8");
+    }
+    for (let offset = 0; offset < continuationCount; offset += 1) {
+      const next = value[index + offset];
+      const minimum = offset === 0 ? secondMin : 0x80;
+      const maximum = offset === 0 ? secondMax : 0xbf;
+      if (next < minimum || next > maximum) {
+        fail("invalid_json", "artifact is not valid UTF-8");
+      }
+      codePoint = (codePoint << 6) | (next & 0x3f);
+    }
+    index += continuationCount;
+
+    if (codePoint <= 0xffff) {
+      output += String.fromCharCode(codePoint);
+    } else {
+      const surrogate = codePoint - 0x10000;
+      output += String.fromCharCode(
+        0xd800 + (surrogate >> 10),
+        0xdc00 + (surrogate & 0x3ff),
+      );
+    }
   }
+  return output;
+}
+
+function decodeArtifact(value: string | Uint8Array): string {
+  return typeof value === "string" ? value : decodeUtf8Bytes(value);
 }
 
 function parseArtifact(value: string | Uint8Array, path: string): unknown {

@@ -623,4 +623,22 @@ describe("approved production content repository", () => {
     assert.equal(metadata.pointer.contentLocale, "ko-KR");
     assert.equal(calls.length, 5);
   });
+
+  test("fetch port의 잘못된 UTF-8 byte payload를 fail-closed한다", async () => {
+    for (const bytes of [
+      new Uint8Array([0xc0, 0xaf]),
+      new Uint8Array([0xed, 0xa0, 0x80]),
+      new Uint8Array([0xf4, 0x90, 0x80, 0x80]),
+      new Uint8Array([0xe1, 0x80]),
+    ]) {
+      await expectCode(
+        createProductionGameContentRepository({
+          async fetch() {
+            return bytes;
+          },
+        }).loadMetadata(),
+        "invalid_json",
+      );
+    }
+  });
 });
