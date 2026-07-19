@@ -20,6 +20,7 @@ export * from "./legacySaveMigration";
 export * from "./mission";
 export * from "./personalStats";
 export * from "./platformContracts";
+export * from "./productionContentRepository";
 export * from "./puzzle";
 export * from "./puzzleLabels";
 export * from "./recommendation";
