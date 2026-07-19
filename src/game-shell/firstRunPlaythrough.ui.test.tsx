@@ -104,11 +104,14 @@ function mount(
   const container = document.createElement("div");
   document.body.replaceChildren(container);
   activeSession = mountGameExperience(container, {
+    analytics: { log: () => undefined },
+    analyticsMarket: "apps-in-toss",
     hostKind: "web",
     storage,
     journeyItems,
     journeyMode,
     launchConfig: defaultLaunchConfig,
+    uiLocale: "ko-KR",
   });
   return container;
 }

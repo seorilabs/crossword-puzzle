@@ -8,6 +8,7 @@ import {
   type FirebaseRuntimeGateSnapshot,
 } from "../adapters/firebaseClient.ts";
 import { createGameRuntimeHostStorage } from "../adapters/gameRuntimeHost.ts";
+import { gameRuntimeAnalyticsPort } from "../adapters/gameAnalytics.ts";
 import { captureLegacyWebSaveSnapshot } from "../adapters/legacyWebSaveInventory.ts";
 import { BUNDLED_FIRST_RUN_CONTENT_CHECKSUMS } from "../../packages/crossword-core/src/launchContentCatalog.ts";
 import { createLaunchPreviewGameRuntimeStorage } from "./gameRuntimeStorage.ts";
@@ -264,9 +265,12 @@ export function RuntimeHost({ legacy }: RuntimeHostProps) {
         async importGameRuntime() {
           const module = await import("./GameExperience.tsx");
           return module.mountGameExperience(container, {
+            analytics: gameRuntimeAnalyticsPort,
+            analyticsMarket: "apps-in-toss",
             hostKind,
             launchConfig,
             storage: runtimeStorage,
+            uiLocale: "ko-KR",
             ...(launchPreviewContent == null
               ? {}
               : {

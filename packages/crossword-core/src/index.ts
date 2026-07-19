@@ -9,6 +9,7 @@ export * from "./gameEconomy";
 export * from "./gameFeedback";
 export * from "./gameMetaProgression";
 export * from "./gamePreferences";
+export * from "./gameRuntimeAnalytics";
 export * from "./gameBridge";
 export * from "./gameController";
 export * from "./launchContentCatalog";

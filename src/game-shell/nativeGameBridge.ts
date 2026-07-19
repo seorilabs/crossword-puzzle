@@ -8,6 +8,7 @@ import {
   type GameBridgeMethodResults,
   type GameBridgeResponse,
 } from "../../packages/crossword-core/src/gameBridge.ts";
+import type { GameRuntimeAnalyticsPort } from "../../packages/crossword-core/src/gameRuntimeAnalytics.ts";
 import type { KeyValueStoragePort } from "./gameSaveRepository.ts";
 import { NATIVE_GAME_EVENT } from "./nativeGameEvents.ts";
 
@@ -29,6 +30,7 @@ export type NativeRuntimeReadyPayload =
   GameBridgeMethodPayloads["runtime.ready"];
 
 export type NativeGameBridgeClient = Readonly<{
+  analytics: GameRuntimeAnalyticsPort;
   storage: KeyValueStoragePort;
   waitUntilReady(): Promise<void>;
   waitForConfigSnapshot(): Promise<NativeHostConfigSnapshot>;
@@ -226,6 +228,17 @@ export function createNativeGameBridgeClient(
   };
 
   return {
+    analytics: Object.freeze({
+      async log(event) {
+        unwrapResult(
+          await coordinator.request("analytics.log", {
+            event: event.name,
+            params: event.params,
+            eventId: event.eventId,
+          }),
+        );
+      },
+    }),
     storage,
     waitUntilReady: () => ready.promise,
     waitForConfigSnapshot: () => configSnapshot.promise,

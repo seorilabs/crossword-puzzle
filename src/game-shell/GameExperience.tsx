@@ -30,6 +30,13 @@ import {
   defaultLaunchConfig,
   type LaunchConfig,
 } from "../../packages/crossword-core/src/launchConfig.ts";
+import type { GameMarket } from "../../packages/crossword-core/src/gameAnalytics.ts";
+import {
+  createGameRuntimeAnalyticsSession,
+  type GameRuntimeAnalyticsLocale,
+  type GameRuntimeAnalyticsPort,
+  type GameRuntimeAnalyticsSession,
+} from "../../packages/crossword-core/src/gameRuntimeAnalytics.ts";
 import { koKrLanguageProfile } from "../../packages/crossword-core/src/languageProfile.ts";
 import {
   getCellKey,
@@ -74,8 +81,11 @@ import "./GameExperience.css";
 export type GameExperienceHostKind = GameRuntimeHostKind;
 
 export type MountGameExperienceOptions = Readonly<{
+  analytics: GameRuntimeAnalyticsPort;
+  analyticsMarket: GameMarket;
   hostKind: GameExperienceHostKind;
   storage: KeyValueStoragePort;
+  uiLocale: GameRuntimeAnalyticsLocale;
   bridgeReady?: Promise<void>;
   journeyItems?: readonly GameJourneyItem[];
   journeyMode?: "launch-preview";
@@ -153,6 +163,8 @@ function getDraftForEntry(
 }
 
 function GameExperience({
+  analytics,
+  analyticsMarket,
   bridgeReady,
   callbacks,
   hostKind,
@@ -161,7 +173,10 @@ function GameExperience({
   journeyMode,
   playHaptic,
   storage,
+  uiLocale,
 }: Readonly<{
+  analytics: GameRuntimeAnalyticsPort;
+  analyticsMarket: GameMarket;
   callbacks: HostCallbacks;
   bridgeReady?: Promise<void>;
   hostKind: GameExperienceHostKind;
@@ -170,6 +185,7 @@ function GameExperience({
   journeyMode?: "launch-preview";
   playHaptic?: (semantic: GameFeedbackHaptic) => Promise<void> | void;
   storage: KeyValueStoragePort;
+  uiLocale: GameRuntimeAnalyticsLocale;
 }>) {
   const firstRunContents = useMemo(loadBundledFirstRunGameContents, []);
   const itineraryContents = useMemo(
@@ -208,6 +224,7 @@ function GameExperience({
   const canvasParentRef = useRef<HTMLDivElement>(null);
   const runtimeRef = useRef<CrosswordGameRuntime | null>(null);
   const feedbackRuntimeRef = useRef<GameFeedbackRuntime | null>(null);
+  const analyticsSessionRef = useRef<GameRuntimeAnalyticsSession | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
   const settingsCloseButtonRef = useRef<HTMLButtonElement>(null);
@@ -329,9 +346,18 @@ function GameExperience({
 
   useEffect(() => {
     if (model == null) return;
-    return model.controller.subscribe((nextSnapshot, events) => {
+    const analyticsSession = createGameRuntimeAnalyticsSession({
+      content,
+      initialSnapshot: model.snapshot,
+      market: analyticsMarket,
+      uiLocale,
+      port: analytics,
+    });
+    analyticsSessionRef.current = analyticsSession;
+    const unsubscribe = model.controller.subscribe((nextSnapshot, events) => {
       const previous = previousSnapshotRef.current ?? nextSnapshot;
       previousSnapshotRef.current = nextSnapshot;
+      analyticsSession.recordTransition(previous, nextSnapshot, events);
       setSnapshot(nextSnapshot);
       runtimeRef.current?.update(nextSnapshot, events);
       for (const action of projectGameFeedbackActions(events, {
@@ -401,7 +427,21 @@ function GameExperience({
         },
       );
     });
-  }, [content, initialLaunchConfig, model]);
+    return () => {
+      analyticsSession.abandon(model.controller.getSnapshot());
+      if (analyticsSessionRef.current === analyticsSession) {
+        analyticsSessionRef.current = null;
+      }
+      unsubscribe();
+    };
+  }, [
+    analytics,
+    analyticsMarket,
+    content,
+    initialLaunchConfig,
+    model,
+    uiLocale,
+  ]);
 
   useEffect(() => {
     if (model == null || canvasParentRef.current == null) {
@@ -467,6 +507,7 @@ function GameExperience({
     if (model == null) return;
     const suspend = () => {
       const current = model.controller.getSnapshot();
+      analyticsSessionRef.current?.abandon(current);
       if (
         current.phase !== "suspended" &&
         current.phase !== "loading" &&
@@ -1329,6 +1370,8 @@ export function mountGameExperience(
   root.render(
     <GameExperienceErrorBoundary onError={rejectBoot}>
       <GameExperience
+        analytics={options.analytics}
+        analyticsMarket={options.analyticsMarket}
         bridgeReady={options.bridgeReady}
         callbacks={callbacks}
         hostKind={options.hostKind}
@@ -1337,6 +1380,7 @@ export function mountGameExperience(
         journeyMode={options.journeyMode}
         playHaptic={options.playHaptic}
         storage={options.storage}
+        uiLocale={options.uiLocale}
       />
     </GameExperienceErrorBoundary>,
   );

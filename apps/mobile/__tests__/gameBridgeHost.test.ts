@@ -1,7 +1,9 @@
 import {
+  buildGameRuntimeAnalyticsEvent,
   GameBridgeCoordinator,
   type GameBridgeMessage,
   type GameBridgeMethodPayloads,
+  type GameRuntimeAnalyticsEvent,
 } from '../../../packages/crossword-core/src';
 import {
   createMobileGameBridgeHost,
@@ -33,10 +35,7 @@ function createFixture(
   expectedRuntimeReady: readonly MobileGameRuntimeReadyExpectation[] = runtimeReadyExpectations,
 ) {
   const storage = new Map<string, string>();
-  const analytics: Array<{
-    event: string;
-    params: Readonly<Record<string, string | number | boolean>>;
-  }> = [];
+  const analytics: GameRuntimeAnalyticsEvent[] = [];
   const haptics: string[] = [];
   const lifecycle: string[] = [];
   let runtimeReadyCount = 0;
@@ -57,8 +56,10 @@ function createFixture(
     async sendSerialized(serialized) {
       await game.receive(JSON.parse(serialized) as GameBridgeMessage);
     },
-    logAnalytics: async (event, params) => {
-      analytics.push({ event, params });
+    analytics: {
+      log: async event => {
+        analytics.push(event);
+      },
     },
     playHaptic: async semanticType => {
       haptics.push(semanticType);
@@ -178,18 +179,31 @@ describe('mobile game bridge host', () => {
       },
     });
 
-    await fixture.game.request('analytics.log', {
-      event: 'game_started',
-      params: { puzzle_id: 'onboarding-easy-01' },
+    const analyticsEvent = buildGameRuntimeAnalyticsEvent('game_puzzle_start', {
       eventId: 'analytics-1',
+      market: 'google-play',
+      uiLocale: 'ko-KR',
+      contentLocale: 'ko-KR',
+      languageProfileId: 'ko-KR',
+      languageProfileVersion: 1,
+      context: {
+        puzzleId: 'onboarding-easy-01',
+        difficulty: 'easy',
+        gridSize: 5,
+        wordCount: 4,
+        packId: 'first-run-pack',
+        slotId: '2026-07-19T00',
+        themeTag: 'onboarding',
+      },
+      payload: { attemptKind: 'first', attemptNumber: 1 },
+    });
+    await fixture.game.request('analytics.log', {
+      event: analyticsEvent.name,
+      params: analyticsEvent.params,
+      eventId: analyticsEvent.eventId,
     });
     await fixture.game.request('haptic.play', { semanticType: 'success' });
-    expect(fixture.analytics).toEqual([
-      {
-        event: 'game_started',
-        params: { puzzle_id: 'onboarding-easy-01' },
-      },
-    ]);
+    expect(fixture.analytics).toEqual([analyticsEvent]);
     expect(fixture.haptics).toEqual(['success']);
 
     await fixture.host.pause(1);

@@ -21,6 +21,10 @@ import type {
   LaunchConfig,
 } from '../../packages/crossword-core/src';
 import {
+  GAME_RUNTIME_ANALYTICS_MARKET_CONFIG_KEY,
+  GAME_RUNTIME_ANALYTICS_UI_LOCALE_CONFIG_KEY,
+} from '../../packages/crossword-core/src/gameRuntimeAnalytics';
+import {
   BUNDLED_FIRST_RUN_CONTENT_CHECKSUMS,
   BUNDLED_FIRST_RUN_CONTENT_IDENTITIES,
   KO_KR_LAUNCH_CONTENT_CONTRACT,
@@ -40,10 +44,10 @@ import {
 } from '../../src/game-shell/runtimeSelection';
 import {
   fetchMobileFirebaseRuntimeConfigSnapshot,
-  logFirebaseAnalyticsEvent,
   readCachedMobileFirebaseRuntimeConfigSnapshot,
   validateMobileFirebaseRuntimeConfigSnapshot,
 } from './firebaseClient';
+import { gameRuntimeAnalyticsPort } from './gameAnalytics';
 import {
   createMobileGameBridgeHost,
   isAllowedMobileGameNavigation,
@@ -483,7 +487,7 @@ export function MobileRuntimeHost({
               webView.postMessage(serialized);
             },
             storage: AsyncStorage,
-            logAnalytics: logFirebaseAnalyticsEvent,
+            analytics: gameRuntimeAnalyticsPort,
             showAd: async placement => showBridgeAd(placement),
             playHaptic: playBridgeHaptic,
             onRuntimeReady() {
@@ -503,10 +507,12 @@ export function MobileRuntimeHost({
               if (launchConfigSnapshot == null) {
                 throw new Error('native game launch config unavailable');
               }
-              return bridge.sendConfigSnapshot(
-                'launch-config/v1',
-                toBridgeConfigValues(launchConfigSnapshot),
-              );
+              return bridge.sendConfigSnapshot('launch-config/v1', {
+                ...toBridgeConfigValues(launchConfigSnapshot),
+                [GAME_RUNTIME_ANALYTICS_MARKET_CONFIG_KEY]:
+                  Platform.OS === 'ios' ? 'app-store' : 'google-play',
+                [GAME_RUNTIME_ANALYTICS_UI_LOCALE_CONFIG_KEY]: 'ko-KR',
+              });
             })
             .catch(error => {
               control.fail(

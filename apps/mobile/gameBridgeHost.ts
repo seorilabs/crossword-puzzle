@@ -11,7 +11,11 @@ import {
   type GameBridgeReceiveResult,
   type GameBridgeResponse,
   type GameBridgeSnapshot,
-} from '../../packages/crossword-core/src';
+} from '../../packages/crossword-core/src/gameBridge.ts';
+import {
+  isGameRuntimeAnalyticsEvent,
+  type GameRuntimeAnalyticsPort,
+} from '../../packages/crossword-core/src/gameRuntimeAnalytics.ts';
 
 const MAX_SERIALIZED_MESSAGE_LENGTH = 64 * 1024;
 
@@ -30,10 +34,7 @@ export type MobileGameBridgeHostOptions = Readonly<{
   runtimeReadyExpectations: readonly MobileGameRuntimeReadyExpectation[];
   sendSerialized(message: string): void | Promise<void>;
   storage: MobileGameBridgeStorage;
-  logAnalytics(
-    event: string,
-    params: Readonly<Record<string, string | number | boolean>>,
-  ): void | Promise<void>;
+  analytics: GameRuntimeAnalyticsPort;
   loadAd?(
     placement: string,
     transactionId: string,
@@ -228,8 +229,12 @@ export function createMobileGameBridgeHost(
         }
         return { removed: true, transactionId };
       },
-      'analytics.log': async ({ event, params }) => {
-        await options.logAnalytics(event, params);
+      'analytics.log': async ({ event, params, eventId }) => {
+        const canonicalEvent = { name: event, params, eventId };
+        if (!isGameRuntimeAnalyticsEvent(canonicalEvent)) {
+          throw new MobileGameBridgeError('invalid-analytics-event');
+        }
+        await options.analytics.log(canonicalEvent);
         return { ack: true };
       },
       'ad.load': async ({ placement, transactionId }) => ({

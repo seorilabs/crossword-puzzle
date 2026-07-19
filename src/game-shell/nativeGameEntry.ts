@@ -2,6 +2,12 @@ import {
   normalizeLaunchConfig,
   type LaunchConfig,
 } from "../../packages/crossword-core/src/launchConfig.ts";
+import {
+  GAME_RUNTIME_ANALYTICS_MARKET_CONFIG_KEY,
+  GAME_RUNTIME_ANALYTICS_UI_LOCALE_CONFIG_KEY,
+  isGameRuntimeAnalyticsLocale,
+  isGameRuntimeAnalyticsMarket,
+} from "../../packages/crossword-core/src/gameRuntimeAnalytics.ts";
 import { mountGameExperience } from "./GameExperience.tsx";
 import { createDefaultNativeGameBridgeClient } from "./nativeGameBridge.ts";
 import "../index.css";
@@ -50,12 +56,25 @@ async function main(): Promise<void> {
   const launchConfig = normalizeLaunchConfig(
     configSnapshot.values as Partial<LaunchConfig>,
   );
+  const analyticsMarket =
+    configSnapshot.values[GAME_RUNTIME_ANALYTICS_MARKET_CONFIG_KEY];
+  const uiLocale =
+    configSnapshot.values[GAME_RUNTIME_ANALYTICS_UI_LOCALE_CONFIG_KEY];
+  if (
+    !isGameRuntimeAnalyticsMarket(analyticsMarket) ||
+    !isGameRuntimeAnalyticsLocale(uiLocale)
+  ) {
+    throw new Error("native game analytics context unavailable");
+  }
   const runtime = mountGameExperience(container, {
+    analytics: bridge.analytics,
+    analyticsMarket,
     hostKind: "native-webview",
     storage: bridge.storage,
     bridgeReady,
     launchConfig,
     playHaptic: (semantic) => bridge.playHaptic(semantic),
+    uiLocale,
   });
 
   const [activeContentIdentity] = await Promise.all([
