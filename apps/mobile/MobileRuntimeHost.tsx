@@ -39,8 +39,10 @@ import {
   type RuntimeSchedulerPort,
 } from '../../src/game-shell/runtimeSelection';
 import {
-  loadFirebaseLaunchConfig,
+  fetchMobileFirebaseRuntimeConfigSnapshot,
   logFirebaseAnalyticsEvent,
+  readCachedMobileFirebaseRuntimeConfigSnapshot,
+  validateMobileFirebaseRuntimeConfigSnapshot,
 } from './firebaseClient';
 import {
   createMobileGameBridgeHost,
@@ -406,6 +408,9 @@ export function MobileRuntimeHost({
     if (!supported || bundle == null) return;
     let cancelled = false;
     let launchConfigSnapshot: LaunchConfig | null = null;
+    const launchConfigsBySource: Partial<
+      Record<'fetched' | 'cache', LaunchConfig>
+    > = {};
 
     const run = async () => {
       await recoverLegacyProjectionOutbox(AsyncStorage);
@@ -413,25 +418,27 @@ export function MobileRuntimeHost({
         scheduler,
         readPendingBootMarker: async () =>
           parsePendingMarker(await AsyncStorage.getItem(PENDING_MARKER_KEY)),
-        fetchRuntimeConfig: async () => {
-          const config = await loadFirebaseLaunchConfig();
-          launchConfigSnapshot = config;
-          return { gameRuntimeEnabled: config.gameRuntimeEnabled };
-        },
-        readCachedRuntimeConfig: async () => null,
-        validateRuntimeConfig: candidate => {
-          if (
-            !isRecord(candidate) ||
-            typeof candidate.gameRuntimeEnabled !== 'boolean'
-          ) {
-            return null;
-          }
-          return { gameRuntimeEnabled: candidate.gameRuntimeEnabled };
+        fetchRuntimeConfig: () =>
+          fetchMobileFirebaseRuntimeConfigSnapshot(AsyncStorage),
+        readCachedRuntimeConfig: () =>
+          readCachedMobileFirebaseRuntimeConfigSnapshot(AsyncStorage),
+        validateRuntimeConfig: (candidate, source) => {
+          const snapshot =
+            validateMobileFirebaseRuntimeConfigSnapshot(candidate);
+          if (snapshot == null) return null;
+          launchConfigsBySource[source] = snapshot.launchConfig;
+          return { gameRuntimeEnabled: snapshot.gameRuntimeEnabled };
         },
       });
       if (cancelled) return;
       if (selection.target === 'legacy') {
         setState({ status: 'legacy', reason: selection.reason });
+        return;
+      }
+      launchConfigSnapshot =
+        launchConfigsBySource[selection.configSource] ?? null;
+      if (launchConfigSnapshot == null) {
+        setState({ status: 'legacy', reason: 'bundled-disabled' });
         return;
       }
       const legacySnapshot = await captureMobileLegacySaveSnapshot({
