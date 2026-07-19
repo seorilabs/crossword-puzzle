@@ -181,6 +181,28 @@ test("rejects development checkpoint preview code in native assets", async (cont
   }
 });
 
+test("keeps public game-content out of native assets", async () => {
+  const nativeViteConfig = await readFile(
+    resolve("vite.native-game.config.ts"),
+    "utf8",
+  );
+  assert.match(nativeViteConfig, /publicDir:\s*false/);
+
+  await withBundle(async (directory) => {
+    await mkdir(join(directory, "game-content/candidates"), {
+      recursive: true,
+    });
+    await writeFile(
+      join(directory, "game-content/candidates/catalog.json"),
+      "{}\n",
+    );
+    await assert.rejects(
+      createNativeGameAssetManifest(directory),
+      /published game-content is forbidden in native assets/,
+    );
+  });
+});
+
 test("rejects HTTP, HTTPS, and protocol-relative script sources", async (context) => {
   for (const source of [
     "http://example.com/game.js",

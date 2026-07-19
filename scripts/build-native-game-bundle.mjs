@@ -8,6 +8,8 @@ import { fileURLToPath } from "node:url";
 
 import { build as viteBuild } from "vite";
 
+import { hasGameContentPathSegment } from "./game-content-publish-boundary.mjs";
+
 export const NATIVE_GAME_ASSET_MANIFEST = "asset-manifest.json";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -171,6 +173,11 @@ function assertNoRemoteScripts(assetPath, content) {
 }
 
 function assertAssetSecurity(assetPath, content) {
+  if (hasGameContentPathSegment(assetPath)) {
+    throw new Error(
+      `${assetPath}: published game-content is forbidden in native assets`,
+    );
+  }
   const extension = extensionOf(assetPath);
   if (executableTextExtensions.has(extension)) {
     const executableContent = content.toString("utf8");
