@@ -56,6 +56,7 @@ import {
 } from './gameBridgeHost';
 import { captureMobileLegacySaveSnapshot } from './legacyMobileSaveInventory';
 import { showInterstitialAd, showRewardedAd } from './mobileAds';
+import { resolveNativeDevelopmentGameRuntimeOverride } from './nativeDevelopmentGameRuntimeOverride';
 
 declare const __DEV__: boolean;
 
@@ -97,6 +98,7 @@ export type NativeGameBundleInitialProps = Readonly<{
 export type MobileRuntimeHostProps = Readonly<{
   legacy: React.ReactNode;
   nativeGameBundle?: unknown;
+  nativeDevelopmentGameRuntimeOverride?: unknown;
 }>;
 
 type ValidNativeGameBundle = NativeGameBundleInitialProps;
@@ -392,6 +394,7 @@ function playBridgeHaptic(
 export function MobileRuntimeHost({
   legacy,
   nativeGameBundle,
+  nativeDevelopmentGameRuntimeOverride,
 }: MobileRuntimeHostProps) {
   const supported = isGameRuntimeHostSupported('native-webview');
   const bundle = useMemo(
@@ -418,15 +421,33 @@ export function MobileRuntimeHost({
 
     const run = async () => {
       await recoverLegacyProjectionOutbox(AsyncStorage);
+      const developmentOverride = resolveNativeDevelopmentGameRuntimeOverride(
+        __DEV__,
+        nativeDevelopmentGameRuntimeOverride,
+      );
       const selection = await resolveRuntimeSelection({
         scheduler,
         readPendingBootMarker: async () =>
           parsePendingMarker(await AsyncStorage.getItem(PENDING_MARKER_KEY)),
         fetchRuntimeConfig: () =>
-          fetchMobileFirebaseRuntimeConfigSnapshot(AsyncStorage),
+          developmentOverride == null
+            ? fetchMobileFirebaseRuntimeConfigSnapshot(AsyncStorage)
+            : Promise.resolve(developmentOverride.runtimeConfigCandidate),
         readCachedRuntimeConfig: () =>
-          readCachedMobileFirebaseRuntimeConfigSnapshot(AsyncStorage),
+          developmentOverride == null
+            ? readCachedMobileFirebaseRuntimeConfigSnapshot(AsyncStorage)
+            : Promise.resolve(null),
         validateRuntimeConfig: (candidate, source) => {
+          if (developmentOverride != null) {
+            if (
+              source !== 'fetched' ||
+              candidate !== developmentOverride.runtimeConfigCandidate
+            ) {
+              return null;
+            }
+            launchConfigsBySource.fetched = developmentOverride.launchConfig;
+            return developmentOverride.runtimeConfigCandidate;
+          }
           const snapshot =
             validateMobileFirebaseRuntimeConfigSnapshot(candidate);
           if (snapshot == null) return null;
@@ -551,7 +572,7 @@ export function MobileRuntimeHost({
       bootControlRef.current?.session.dispose();
       bootControlRef.current = null;
     };
-  }, [bundle, supported]);
+  }, [bundle, nativeDevelopmentGameRuntimeOverride, supported]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener(

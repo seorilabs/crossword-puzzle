@@ -38,6 +38,17 @@ class MainActivity : ReactActivity() {
                 putString("bridgeSessionId", UUID.randomUUID().toString())
               },
           )
+          NativeDevelopmentGameRuntimeOverride.resolveInitialProperty(
+                  isDebugBuild = BuildConfig.DEBUG,
+                  explicitlyRequested =
+                      intent.getBooleanExtra(
+                          NativeDevelopmentGameRuntimeOverride.INTENT_EXTRA,
+                          false,
+                      ),
+              )
+              ?.let { value ->
+                putString(NativeDevelopmentGameRuntimeOverride.INITIAL_PROPERTY_NAME, value)
+              }
         }
       } catch (error: Exception) {
         Log.e(TAG, "Native game bundle validation failed; game runtime disabled.", error)

@@ -92,6 +92,24 @@ private enum NativeGameBundleLaunchProperties {
   }
 }
 
+private enum NativeDevelopmentGameRuntimeOverride {
+  static let initialPropertyName = "nativeDevelopmentGameRuntimeOverride"
+  static let initialPropertyToken = "crossword-native-game-runtime-debug-v1"
+  static let launchArgument = "--crossword-dev-game-runtime"
+
+  static func make(arguments: [String]) -> String? {
+#if DEBUG
+#if targetEnvironment(simulator)
+    return arguments.contains(launchArgument) ? initialPropertyToken : nil
+#else
+    return nil
+#endif
+#else
+    return nil
+#endif
+  }
+}
+
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
   var window: UIWindow?
@@ -117,6 +135,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var initialProperties: [String: Any] = [:]
     if let nativeGameBundle = NativeGameBundleLaunchProperties.make(from: .main) {
       initialProperties["nativeGameBundle"] = nativeGameBundle
+    }
+    if let developmentOverride = NativeDevelopmentGameRuntimeOverride.make(
+      arguments: ProcessInfo.processInfo.arguments
+    ) {
+      initialProperties[NativeDevelopmentGameRuntimeOverride.initialPropertyName] =
+        developmentOverride
     }
 
     factory.startReactNative(

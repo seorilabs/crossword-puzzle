@@ -62,6 +62,36 @@ If everything is set up correctly, you should see your new app running in the An
 
 This is one way to run your app — you can also build it directly from Android Studio or Xcode.
 
+### Opt in to the packaged game runtime in local debug builds
+
+Normal debug and every release build keep the Remote Config gate. To inspect the
+packaged game without changing production Remote Config, explicitly relaunch an
+already installed debug app with the platform-specific opt-in below. The override
+does not read or write the Remote Config runtime cache.
+
+Android debug build or emulator:
+
+```sh
+adb shell am force-stop com.seorilabs.crosswordpuzzle
+adb shell am start \
+  -n com.seorilabs.crosswordpuzzle/.MainActivity \
+  --ez com.seorilabs.crosswordpuzzle.DEV_GAME_RUNTIME true
+```
+
+iOS debug build on Simulator only:
+
+```sh
+xcrun simctl launch --terminate-running-process \
+  booted com.seorilabs.crosswordpuzzle \
+  --crossword-dev-game-runtime
+```
+
+Android release builds ignore the intent extra. iOS release builds, physical
+devices, and Simulator launches without the exact argument do not inject the
+native opt-in property. JavaScript additionally requires `__DEV__ === true` and
+the exact native token, so either side missing fails closed to the existing
+Remote Config selection.
+
 ## Step 3: Modify your app
 
 Now that you have successfully run the app, let's make changes!
