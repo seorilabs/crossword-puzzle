@@ -62,6 +62,7 @@ import {
   isCellLocked,
   isHangulJamoInput,
   getNewlyReachedProgressMilestones,
+  buildNextPuzzleCtaEvent,
   getNextRecommendedPuzzleSummary,
   getOpenPuzzleSummariesForDate,
   getProgressMilestoneRewardMessage,
@@ -124,12 +125,9 @@ import { StreakHeatmap } from "./components/StreakHeatmap";
 import { PuzzleBoard } from "./components/PuzzleBoard";
 import { HowToPlayDialog } from "./components/HowToPlayDialog";
 import { SettingsSheet } from "./components/SettingsSheet";
-import { ShareGridPreview } from "./components/ShareGridPreview";
+import { CompletionCelebrationDialog } from "./components/CompletionCelebrationDialog";
 import { PuzzleMetaChips } from "./components/PuzzleMetaChips";
-import {
-  formatDifficultyLabel,
-  formatThemeHeadline,
-} from "./puzzleLabels";
+import { formatDifficultyLabel } from "./puzzleLabels";
 import { useShareResult } from "./useShareResult";
 import {
   useFirstRunAutoStart,
@@ -532,7 +530,7 @@ function getInitialPuzzleId(
 }
 
 // 완료 직후 "다음 퍼즐"로 이어줄 추천 퍼즐. 추천 규칙(난이도 상승 → 동일 티어 →
-// 그 외 미완료 → 끊김 방지 폴백)은 코어 정책(getNextRecommendedPuzzleSummary)에
+// 그 외 미완료 → 후보 없음)은 코어 정책(getNextRecommendedPuzzleSummary)에
 // 두어 3마켓이 공유한다. 여기서는 완료 집합만 만들어 위임한다.
 function getNextRecommendedSummary(
   puzzleSummaries: PuzzleManifestItem[],
@@ -4595,6 +4593,39 @@ function TodayScreen({
         shareLandingUrl,
       })
     : "";
+  const completionNextRecommendedSummary = showCompletionCelebration
+    ? getNextRecommendedSummary(puzzleSummaries, dateCardStates, {
+        puzzleId: puzzle.puzzleId,
+        difficulty: puzzle.difficulty,
+      })
+    : undefined;
+  const completionNextRecommendedLabel =
+    completionNextRecommendedSummary == null
+      ? undefined
+      : [
+          formatPuzzleAliasLabel(completionNextRecommendedSummary),
+          formatDifficultyLabel(completionNextRecommendedSummary.difficulty),
+        ]
+          .filter(Boolean)
+          .join(" · ");
+
+  function startNextPuzzleFromCompletion() {
+    if (completionNextRecommendedSummary == null) {
+      return;
+    }
+
+    const nextPuzzleCtaEvent = buildNextPuzzleCtaEvent(
+      completionNextRecommendedSummary,
+      "result_overlay",
+    );
+    telemetry.click(nextPuzzleCtaEvent.name, {
+      ...getPuzzleTelemetryParams(puzzle),
+      ...nextPuzzleCtaEvent.params,
+    });
+    dismissCompletionCelebration();
+    selectPuzzle(completionNextRecommendedSummary.puzzleId);
+    navigate("today");
+  }
   const selectedEntryCells = useMemo(
     () => (selectedEntry == null ? [] : getEntryCells(selectedEntry)),
     [selectedEntry],
@@ -5721,6 +5752,7 @@ function TodayScreen({
           elapsedLabel={celebrationElapsedLabel}
           hintCount={hintCount}
           isNewBestTime={isNewBestTime}
+          nextPuzzleLabel={completionNextRecommendedLabel}
           revealUsed={revealUsed}
           shareGrid={celebrationShareGrid}
           shareText={celebrationShareText}
@@ -5735,159 +5767,14 @@ function TodayScreen({
             dismissCompletionCelebration();
             navigate("result");
           }}
+          onStartNextPuzzle={
+            completionNextRecommendedSummary == null
+              ? undefined
+              : startNextPuzzleFromCompletion
+          }
         />
       ) : null}
     </>
-  );
-}
-
-type CompletionCelebrationDialogProps = {
-  attemptsUsed: number;
-  completedCount: number;
-  consecutiveStreak: number;
-  elapsedLabel: string | null;
-  hintCount: number;
-  isNewBestTime: boolean;
-  revealUsed: boolean;
-  shareGrid: string;
-  shareText: string;
-  themeLabel?: string;
-  totalCount: number;
-  onClose: () => void;
-  onGoHome: () => void;
-  onSeeResult: () => void;
-};
-
-function CompletionCelebrationDialog({
-  attemptsUsed,
-  completedCount,
-  consecutiveStreak,
-  elapsedLabel,
-  hintCount,
-  isNewBestTime,
-  revealUsed,
-  shareGrid,
-  shareText,
-  themeLabel,
-  totalCount,
-  onClose,
-  onGoHome,
-  onSeeResult,
-}: CompletionCelebrationDialogProps) {
-  const { shareCopied, shareFailed, share } = useShareResult();
-  const themeHeadline = formatThemeHeadline(themeLabel);
-  const streakBadge = getStreakBadgeLabel(consecutiveStreak);
-  const nextStreakHint = getNextStreakMilestoneHint(consecutiveStreak);
-  const achievements = getCompletionAchievements({
-    hintCount,
-    attemptsUsed,
-    revealUsed,
-  });
-
-  const hasAchievements =
-    isNewBestTime ||
-    achievements.noHint ||
-    achievements.firstTry ||
-    streakBadge != null;
-
-  return (
-    <div className="rewardDialogScrim" onClick={onClose}>
-      <section
-        className="rewardDialog completionDialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="completionDialogTitle"
-        aria-describedby="completionDialogDescription"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="confettiContainer" aria-hidden="true">
-          {Array.from({ length: 12 }, (_, i) => (
-            <div key={i} className={`confettiPiece confettiPiece--${i + 1}`} />
-          ))}
-        </div>
-        <div className="completionDialogBadge" aria-hidden="true">
-          🎉
-        </div>
-        <div className="rewardDialogText">
-          <h2 id="completionDialogTitle">퍼즐을 완성했어요!</h2>
-          <p id="completionDialogDescription">
-            낱말 {completedCount}/{totalCount}개를 모두 맞췄어요
-            {hintCount > 0 ? ` · 힌트 ${hintCount}회 사용` : ""}.
-          </p>
-          {themeHeadline != null && (
-            <p className="completionThemeLine">{themeHeadline}</p>
-          )}
-          {elapsedLabel != null && (
-            <p className="celebrationStat">⏱ {elapsedLabel}</p>
-          )}
-          <ShareGridPreview shareGrid={shareGrid} />
-          {hasAchievements && (
-            <div className="resultAchievements">
-              {isNewBestTime && (
-                <span className="resultAchievement resultAchievementBest">
-                  🏆 최고 기록 갱신!
-                </span>
-              )}
-              {achievements.noHint && (
-                <span className="resultAchievement">🎯 노힌트 클리어</span>
-              )}
-              {achievements.firstTry && (
-                <span className="resultAchievement">💎 첫 도전 성공</span>
-              )}
-              {streakBadge != null && (
-                <span className="resultAchievement">{streakBadge}</span>
-              )}
-            </div>
-          )}
-          {nextStreakHint != null && (
-            <p className="streakNudge">{nextStreakHint}</p>
-          )}
-        </div>
-        <div className="shareContainer">
-          <button
-            className="shareButton"
-            type="button"
-            onClick={() => share(shareText)}
-          >
-            결과 공유하기
-          </button>
-          {shareCopied && (
-            <p className="shareToast" role="status" aria-live="polite">
-              클립보드에 복사됐어요!
-            </p>
-          )}
-          {shareFailed && (
-            <p
-              className="shareToast shareToastError"
-              role="alert"
-              aria-live="assertive"
-            >
-              클립보드 복사에 실패했어요.
-            </p>
-          )}
-        </div>
-        <div className="rewardDialogActions">
-          <button className="secondaryButton" type="button" onClick={onGoHome}>
-            홈으로
-          </button>
-          <button
-            className="primaryButton"
-            type="button"
-            onClick={onSeeResult}
-            autoFocus
-          >
-            결과 보기
-          </button>
-        </div>
-        <button
-          className="completionDialogReview"
-          type="button"
-          onClick={onClose}
-        >
-          퍼즐 다시 보기
-        </button>
-      </section>
-    </div>
   );
 }
 
@@ -6153,10 +6040,13 @@ function ResultScreen({
       return;
     }
 
-    telemetry.click("next_puzzle_cta", {
+    const nextPuzzleCtaEvent = buildNextPuzzleCtaEvent(
+      nextRecommendedSummary,
+      "result_screen",
+    );
+    telemetry.click(nextPuzzleCtaEvent.name, {
       ...getPuzzleTelemetryParams(puzzle),
-      next_difficulty: nextRecommendedSummary.difficulty,
-      next_puzzle_id: nextRecommendedSummary.puzzleId,
+      ...nextPuzzleCtaEvent.params,
     });
     selectPuzzle(nextRecommendedSummary.puzzleId);
     navigate("today");

@@ -2,7 +2,9 @@
 import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
 
-import { getNextRecommendedPuzzleSummary } from "./recommendation.ts";
+import {
+  getNextRecommendedPuzzleSummary,
+} from "./recommendation.ts";
 import type { PuzzleManifestItem } from "./types.ts";
 
 function summary(
@@ -72,13 +74,13 @@ describe("getNextRecommendedPuzzleSummary", () => {
     assert.equal(next?.puzzleId, "easy2", "하위 난이도라도 미완료를 잇는다");
   });
 
-  it("모두 완료면 현재 제외 첫 후보를 추천한다(끊김 방지)", () => {
+  it("모든 후보를 완료했으면 undefined를 반환해 홈·보너스 fallback을 허용한다(#274)", () => {
     const summaries = [summary("p1", "easy"), summary("p2", "normal")];
     const next = getNextRecommendedPuzzleSummary(summaries, SET("p1", "p2"), {
       puzzleId: "p1",
       difficulty: "easy",
     });
-    assert.equal(next?.puzzleId, "p2");
+    assert.equal(next, undefined);
   });
 
   it("난이도 불명이면 기존 동작(미완료 우선)을 유지한다", () => {

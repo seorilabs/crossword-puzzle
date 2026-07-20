@@ -225,7 +225,13 @@ const mobileAppTest = read(mobileAppTestPath);
 // App.tsx, not just in shared logic. These markers guard against regressions
 // like v0.3.63, where the answer input toggle shipped to web (src/App.tsx) but
 // was missing from mobile (apps/mobile/App.tsx).
-const featureParityMarkers = ["answerInputMode", "selectAnswerInputMode"];
+const featureParityMarkers = [
+  "answerInputMode",
+  "selectAnswerInputMode",
+  "getNextRecommendedPuzzleSummary",
+  "buildNextPuzzleCtaEvent",
+  "result_overlay",
+];
 for (const marker of featureParityMarkers) {
   assertIncludes(webApp, marker, webAppPath);
   assertIncludes(mobileApp, marker, mobileAppPath);
