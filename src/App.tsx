@@ -82,6 +82,9 @@ import {
   pickHintCellIndex,
   resolveInitialActivePuzzleId,
   resolveStarterCell,
+  runRewardedHintAdFlow,
+  trackRewardedHintAdRequest,
+  trackRewardedHintAdResult,
   shouldCelebrateOnboardingWordCompletion,
   shouldOfferStuckWordReveal,
   shouldQuickStartActivePuzzle,
@@ -104,6 +107,7 @@ import {
   STUCK_HINT_PROMPT_DISMISS_EVENT,
   STUCK_HINT_PROMPT_EVENT,
   STUCK_HINT_PROMPT_REVEAL_WORD_EVENT,
+  REWARDED_HINT_AD_REWARD_EVENT,
   type CellLetterChange,
   type DailyMissionState,
   type Direction,
@@ -115,6 +119,7 @@ import {
   type PuzzleSlotValidation,
   type PersonalStatsRecord,
   type ReviewEntry,
+  type RewardedAdRetryAttempt,
   type SavedProgress,
   type TextScale,
 } from "../packages/crossword-core/src";
@@ -2301,51 +2306,74 @@ function App() {
       return;
     }
 
-    setRewardedAdStatus("loading");
     setHintNotice("광고를 준비하는 중이에요.");
-    telemetry.click("rewarded_hint_ad_request", {
-      puzzle_id: puzzle.puzzleId,
-      rewarded_hint_credits: launchConfig.rewardedHintCredits,
-    });
     // 게임 세부 지표: 리워드 광고 보조 요청(힌트).
     gameAnalytics.track("game_assist_ad", getGamePuzzleContext(puzzle), {
       assistType: "rewarded_hint",
       result: "request",
     });
 
-    const result = await showRewardedHintAd((event) => {
-      telemetry.impression("rewarded_hint_ad_event", {
-        phase: event.phase,
-        puzzle_id: puzzle.puzzleId,
-        type: event.type,
-      });
+    await runRewardedHintAdFlow({
+      attempt: async (attempt: RewardedAdRetryAttempt) =>
+        showRewardedHintAd((event) => {
+          telemetry.impression("rewarded_hint_ad_event", {
+            phase: event.phase,
+            puzzle_id: puzzle.puzzleId,
+            retry: attempt,
+            type: event.type,
+          });
+        }),
+      getStatus: (result) => result.status,
+      onAttemptResult: (result, retry) => {
+        trackRewardedHintAdResult(
+          telemetry,
+          {
+            ...getFullScreenAdResultParams(result),
+            puzzle_id: puzzle.puzzleId,
+          },
+          retry,
+        );
+      },
+      onAttemptStart: (retry) => {
+        trackRewardedHintAdRequest(
+          telemetry,
+          {
+            puzzle_id: puzzle.puzzleId,
+            rewarded_hint_credits: launchConfig.rewardedHintCredits,
+          },
+          retry,
+        );
+      },
+      onFailure: (result) => {
+        const message = getRewardedHintFailureMessage(result);
+        setHintNotice(message);
+        showHintToast(message);
+      },
+      onLoadingChange: (isLoading) => {
+        setRewardedAdStatus(isLoading ? "loading" : "idle");
+      },
+      onRetry: () => {
+        const message = "광고를 다시 준비하는 중이에요.";
+        setHintNotice(message);
+        showHintToast(message);
+      },
+      onReward: (_result, retry) => {
+        setEarnedHintCredits((prev) => prev + launchConfig.rewardedHintCredits);
+        const message = `힌트 +${launchConfig.rewardedHintCredits}개가 추가됐어요.`;
+        setHintNotice(message);
+        showHintToast(message);
+        telemetry.impression(REWARDED_HINT_AD_REWARD_EVENT, {
+          puzzle_id: puzzle.puzzleId,
+          retry,
+          rewarded_hint_credits: launchConfig.rewardedHintCredits,
+        });
+        // 게임 세부 지표: 리워드 광고 보조 보상 지급(힌트).
+        gameAnalytics.track("game_assist_ad", getGamePuzzleContext(puzzle), {
+          assistType: "rewarded_hint",
+          result: "reward",
+        });
+      },
     });
-    telemetry.impression("rewarded_hint_ad_result", {
-      ...getFullScreenAdResultParams(result),
-      puzzle_id: puzzle.puzzleId,
-    });
-
-    if (result.status === "rewarded") {
-      setEarnedHintCredits((prev) => prev + launchConfig.rewardedHintCredits);
-      const message = `힌트 +${launchConfig.rewardedHintCredits}개가 추가됐어요.`;
-      setHintNotice(message);
-      showHintToast(message);
-      telemetry.impression("rewarded_hint_ad_reward", {
-        puzzle_id: puzzle.puzzleId,
-        rewarded_hint_credits: launchConfig.rewardedHintCredits,
-      });
-      // 게임 세부 지표: 리워드 광고 보조 보상 지급(힌트).
-      gameAnalytics.track("game_assist_ad", getGamePuzzleContext(puzzle), {
-        assistType: "rewarded_hint",
-        result: "reward",
-      });
-    } else {
-      const message = getRewardedHintFailureMessage(result);
-      setHintNotice(message);
-      showHintToast(message);
-    }
-
-    setRewardedAdStatus("idle");
   }
 
   function useHintOrRequestReward() {

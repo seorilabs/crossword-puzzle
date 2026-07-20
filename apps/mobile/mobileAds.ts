@@ -1,5 +1,7 @@
 import { Platform } from 'react-native';
 
+import type { RewardedAdRetryStatus } from '../../packages/crossword-core/src';
+
 declare const __DEV__: boolean;
 declare const process:
   | {
@@ -46,6 +48,30 @@ export type InterstitialAdResult = {
   events: MobileAdEvent[];
   status: 'failed' | 'shown';
 };
+
+const unsupportedRewardedEventTypes = new Set<MobileAdEventType>([
+  'initialize_failed',
+  'module_unavailable',
+  'unavailable',
+]);
+
+export function getMobileRewardedAdRetryStatus(
+  result: RewardedAdResult,
+): RewardedAdRetryStatus {
+  if (result.status === 'rewarded') {
+    return 'rewarded';
+  }
+
+  if (result.status === 'closed') {
+    return 'dismissed';
+  }
+
+  return result.events.some(event =>
+    unsupportedRewardedEventTypes.has(event.type),
+  )
+    ? 'unsupported'
+    : 'failed';
+}
 
 const loadTimeoutMs = 15000;
 

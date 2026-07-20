@@ -1,6 +1,7 @@
 import {
   createMobileAdsRequestConfiguration,
   getMobileAdErrorCode,
+  getMobileRewardedAdRetryStatus,
 } from '../mobileAds';
 
 test('configures mobile ad requests for first-launch non-personalized ads', () => {
@@ -35,4 +36,25 @@ test('falls back to Error names when Google Mobile Ads code is missing', () => {
   error.name = 'TimeoutError';
 
   expect(getMobileAdErrorCode(error)).toBe('TimeoutError');
+});
+
+test('normalizes rewarded mobile ad results for the shared retry policy', () => {
+  expect(
+    getMobileRewardedAdRetryStatus({
+      events: [{ type: 'timeout' }],
+      status: 'failed',
+    }),
+  ).toBe('failed');
+  expect(
+    getMobileRewardedAdRetryStatus({
+      events: [{ type: 'closed' }],
+      status: 'closed',
+    }),
+  ).toBe('dismissed');
+  expect(
+    getMobileRewardedAdRetryStatus({
+      events: [{ type: 'module_unavailable' }],
+      status: 'failed',
+    }),
+  ).toBe('unsupported');
 });
