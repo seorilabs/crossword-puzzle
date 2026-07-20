@@ -1604,22 +1604,24 @@ function App() {
     });
   }, [puzzle.date, puzzle.puzzleId, route]);
 
-  // 퍼즐 완료(고관여 시점)에 1회 "오늘의 퍼즐" 복귀 리마인드 푸시 동의를 유도한다.
+  // 퍼즐 완료(고관여 시점)에 "오늘의 퍼즐" 복귀 리마인드 푸시 동의를 유도한다.
   // 결정 로직은 코어(shouldPromptReturnReminder)에, 실제 동의 요청은 AIT 어댑터
-  // (requestReturnReminderAgreement)에 위임한다. 비활성(기본값)이면 아무것도 하지
-  // 않으며, 동의/거부/미지원으로 종결되면 다시 묻지 않는다.
+  // (requestReturnReminderAgreement)에 위임한다. 동의/거부/미지원은 종결하고,
+  // error/timeout만 익일에 총 3회 상한으로 재유도한다.
   const maybePromptReturnReminder = useCallback(() => {
     const state = loadReturnReminderState();
+    const promptDate = getTodayDateKey();
     if (
       !shouldPromptReturnReminder({
         enabled: launchConfig.returnReminderEnabled,
+        promptDate,
         state,
       })
     ) {
       return;
     }
 
-    const prompted = markReturnReminderPrompted(state, getTodayDateKey());
+    const prompted = markReturnReminderPrompted(state, promptDate);
     saveReturnReminderState(prompted);
     telemetry.impression(RETURN_REMINDER_PROMPT_EVENT, {
       trigger: "mission_complete",
