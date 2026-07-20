@@ -39,7 +39,7 @@ describe("returnReminder 정책", () => {
     );
   });
 
-  it("error 후 익일이면 재유도한다", () => {
+  it("error/timeout 후 익일이면 재유도한다", () => {
     assert.equal(
       shouldPromptReturnReminder({
         enabled: true,
@@ -52,9 +52,6 @@ describe("returnReminder 정책", () => {
       }),
       true,
     );
-  });
-
-  it("timeout 후 익일이면 재유도한다", () => {
     assert.equal(
       shouldPromptReturnReminder({
         enabled: true,
@@ -259,12 +256,11 @@ describe("returnReminder 정책", () => {
     const resolved = applyReturnReminderOutcome(retried, "agreed");
     assert.deepEqual(
       {
-        event_name: RETURN_REMINDER_RESULT_EVENT,
-        params: buildReturnReminderResultParams(resolved),
+        [`${RETURN_REMINDER_RESULT_EVENT}.prompt_count`]:
+          buildReturnReminderResultParams(resolved).prompt_count,
       },
       {
-        event_name: "return_reminder_result",
-        params: { outcome: "agreed", prompt_count: 2 },
+        "return_reminder_result.prompt_count": 2,
       },
     );
   });
