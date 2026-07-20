@@ -3,13 +3,17 @@ import { strict as assert } from "node:assert";
 
 import {
   buildGameAnalyticsEvent,
+  createBonusPuzzlePanelImpressionGuard,
   createGameAnalyticsClient,
   GAME_ANALYTICS_SCHEMA_VERSION,
+  trackBonusPuzzlePanelImpression,
   type GameAnalyticsSink,
   type GamePuzzleContext,
 } from "./gameAnalytics.ts";
 
-function context(overrides: Partial<GamePuzzleContext> = {}): GamePuzzleContext {
+function context(
+  overrides: Partial<GamePuzzleContext> = {},
+): GamePuzzleContext {
   return {
     puzzleId: "puzzle-1",
     difficulty: "normal",
@@ -100,6 +104,82 @@ describe("buildGameAnalyticsEvent", () => {
     assert.ok(!("theme_tag" in params));
     assert.ok(!("hint_remaining_after" in params));
     assert.equal(params.hint_type, "reveal_word");
+  });
+
+  it("AC-1·AC-4: bonus_puzzle_panel_impression 계약에 status와 공통 컨텍스트를 기록한다(#278)", () => {
+    const { name, params } = buildGameAnalyticsEvent(
+      "bonus_puzzle_panel_impression",
+      {
+        market: "apps-in-toss",
+        context: context(),
+        payload: { status: "available" },
+      },
+    );
+
+    assert.equal(name, "bonus_puzzle_panel_impression");
+    assert.equal(params.status, "available");
+    assert.equal(params.market, "apps-in-toss");
+    assert.equal(params.puzzle_id, "puzzle-1");
+    assert.equal(params.schema_version, GAME_ANALYTICS_SCHEMA_VERSION);
+  });
+});
+
+describe("trackBonusPuzzlePanelImpression (#278)", () => {
+  it("AC-2·AC-3: loading은 제외하고 같은 status는 세션 1회, 상태 전이는 새로 1회 기록한다", () => {
+    const seen: Array<{ name: string; params: Record<string, unknown> }> = [];
+    const client = createGameAnalyticsClient({
+      market: "app-store",
+      sinks: [
+        {
+          id: "test",
+          logGameEvent: (name, params) => seen.push({ name, params }),
+        },
+      ],
+    });
+    const guard = createBonusPuzzlePanelImpressionGuard();
+
+    assert.equal(
+      trackBonusPuzzlePanelImpression(client, guard, context(), "loading"),
+      false,
+    );
+    assert.equal(
+      trackBonusPuzzlePanelImpression(client, guard, context(), "available"),
+      true,
+    );
+    assert.equal(
+      trackBonusPuzzlePanelImpression(client, guard, context(), "available"),
+      false,
+    );
+    assert.equal(
+      trackBonusPuzzlePanelImpression(client, guard, context(), "unlocked"),
+      true,
+    );
+    assert.equal(
+      trackBonusPuzzlePanelImpression(client, guard, context(), "unlocked"),
+      false,
+    );
+    assert.equal(
+      trackBonusPuzzlePanelImpression(client, guard, context(), "used"),
+      true,
+    );
+    assert.equal(
+      trackBonusPuzzlePanelImpression(client, guard, context(), "waiting"),
+      true,
+    );
+    assert.equal(
+      trackBonusPuzzlePanelImpression(client, guard, context(), "waiting"),
+      false,
+    );
+
+    assert.deepEqual(
+      seen.map(({ name, params }) => [name, params.status]),
+      [
+        ["bonus_puzzle_panel_impression", "available"],
+        ["bonus_puzzle_panel_impression", "unlocked"],
+        ["bonus_puzzle_panel_impression", "used"],
+        ["bonus_puzzle_panel_impression", "waiting"],
+      ],
+    );
   });
 });
 

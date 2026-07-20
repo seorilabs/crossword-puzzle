@@ -28,8 +28,41 @@ export type GameMarket = MarketTarget;
  */
 export const GAME_ANALYTICS_SCHEMA_VERSION = 1;
 
-/** 게임 이벤트 이름 접두사. 백오피스는 이 접두사로 게임 세부 이벤트를 식별한다. */
+/** 게임 세부 이벤트 이름 접두사. 제품 instrumentation 이벤트는 기존 이름을 유지할 수 있다. */
 export const GAME_ANALYTICS_EVENT_PREFIX = "game_";
+
+export type BonusPuzzlePanelStatus =
+  | "available"
+  | "loading"
+  | "unlocked"
+  | "used"
+  | "waiting";
+
+export type BonusPuzzlePanelImpressionStatus = Exclude<
+  BonusPuzzlePanelStatus,
+  "loading"
+>;
+
+export type BonusPuzzlePanelImpressionGuard = {
+  claim(
+    status: BonusPuzzlePanelStatus,
+  ): BonusPuzzlePanelImpressionStatus | undefined;
+};
+
+export function createBonusPuzzlePanelImpressionGuard(): BonusPuzzlePanelImpressionGuard {
+  const seenStatuses = new Set<BonusPuzzlePanelImpressionStatus>();
+
+  return {
+    claim(status) {
+      if (status === "loading" || seenStatuses.has(status)) {
+        return undefined;
+      }
+
+      seenStatuses.add(status);
+      return status;
+    },
+  };
+}
 
 /**
  * 모든 게임 이벤트에 공통으로 실리는 퍼즐(콘텐츠) 컨텍스트. 난이도/테마/팩 단위
@@ -52,6 +85,10 @@ export type GamePuzzleContext = {
  * 앱이 이미 초 단위로 경과시간을 계산하므로 가짜 정밀도(ms 승산)를 만들지 않는다.
  */
 export type GameAnalyticsEventPayloads = {
+  // 보너스 퍼즐 패널 발견성: loading을 제외한 세션 내 상태별 최초 노출.
+  bonus_puzzle_panel_impression: {
+    status: BonusPuzzlePanelImpressionStatus;
+  };
   // 완료 퍼널: 시도 시작. attemptKind로 첫 도전/재도전을 구분한다.
   game_puzzle_start: {
     attemptKind: "first" | "retry";
@@ -113,6 +150,27 @@ export type GameAnalyticsClient = {
   ): void;
 };
 
+/**
+ * 패널이 실제 표시되는 화면에서 호출하는 공용 계측 헬퍼. loading은 제외하고,
+ * 같은 세션에서 같은 상태는 한 번만 전송한다. 상태 전이는 각각 새 노출로 인정한다.
+ */
+export function trackBonusPuzzlePanelImpression(
+  client: GameAnalyticsClient,
+  guard: BonusPuzzlePanelImpressionGuard,
+  context: GamePuzzleContext,
+  status: BonusPuzzlePanelStatus,
+): boolean {
+  const claimedStatus = guard.claim(status);
+  if (claimedStatus == null) {
+    return false;
+  }
+
+  client.track("bonus_puzzle_panel_impression", context, {
+    status: claimedStatus,
+  });
+  return true;
+}
+
 /** 게임 이벤트를 실제 sink로 보낼 sink 계약. adapter가 마켓별로 구현한다. */
 export type GameAnalyticsSink = {
   readonly id: string;
@@ -134,7 +192,9 @@ function toSnakeCase(key: string): string {
   return key.replace(/[A-Z]/g, (ch) => `_${ch.toLowerCase()}`);
 }
 
-function contextParams(context: GamePuzzleContext): Record<string, TelemetryParam> {
+function contextParams(
+  context: GamePuzzleContext,
+): Record<string, TelemetryParam> {
   const params: Record<string, TelemetryParam> = {};
   for (const [key, paramKey] of CONTEXT_KEYS) {
     params[paramKey] = context[key];

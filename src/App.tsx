@@ -30,6 +30,7 @@ import {
   computePersonalStats,
   computeSolveTimeDistribution,
   getTextScaleFontMultiplier,
+  createBonusPuzzlePanelImpressionGuard,
   createPuzzleSummary,
   createDailyMissionState,
   DAILY_ATTEMPT_LIMIT,
@@ -85,6 +86,7 @@ import {
   runRewardedHintAdFlow,
   trackRewardedHintAdRequest,
   trackRewardedHintAdResult,
+  trackBonusPuzzlePanelImpression,
   shouldCelebrateOnboardingWordCompletion,
   shouldOfferStuckWordReveal,
   shouldQuickStartActivePuzzle,
@@ -109,6 +111,7 @@ import {
   STUCK_HINT_PROMPT_REVEAL_WORD_EVENT,
   REWARDED_HINT_AD_REWARD_EVENT,
   type CellLetterChange,
+  type BonusPuzzlePanelStatus,
   type DailyMissionState,
   type Direction,
   type GamePuzzleContext,
@@ -289,7 +292,7 @@ type BonusPuzzlePanelState = {
   nextBonusPublishedAt?: Date;
   notice: string;
   now: Date;
-  status: "available" | "loading" | "unlocked" | "used" | "waiting";
+  status: BonusPuzzlePanelStatus;
   unlockedSummary?: PuzzleManifestItem;
 };
 
@@ -621,6 +624,9 @@ function App() {
     getRouteFromPathname(window.location.pathname),
   );
   const [puzzle, setPuzzle] = useState<Puzzle>(fallbackPuzzle);
+  const [bonusPuzzlePanelImpressionGuard] = useState(
+    createBonusPuzzlePanelImpressionGuard,
+  );
   const [cellValues, setCellValues] = useState<Record<string, string>>({});
   const [selectedDirection, setSelectedDirection] =
     useState<Direction>("across");
@@ -1521,6 +1527,24 @@ function App() {
     unlockedSummary:
       unlockedPlayableBonusSummary ?? unlockedBonusSummaries[0] ?? undefined,
   };
+
+  useEffect(() => {
+    if (route !== "home" && route !== "result") {
+      return;
+    }
+
+    trackBonusPuzzlePanelImpression(
+      gameAnalytics,
+      bonusPuzzlePanelImpressionGuard,
+      getGamePuzzleContext(puzzle),
+      bonusPuzzlePanelState.status,
+    );
+  }, [
+    bonusPuzzlePanelImpressionGuard,
+    bonusPuzzlePanelState.status,
+    puzzle,
+    route,
+  ]);
 
   useEffect(() => {
     if (hintToast.message === "") {

@@ -31,6 +31,7 @@ import {
   buildStartLabels,
   completeMission,
   computeElapsedSeconds,
+  createBonusPuzzlePanelImpressionGuard,
   createDailyMissionState,
   createEmptyProgress,
   createPuzzleSummary,
@@ -75,12 +76,14 @@ import {
   runRewardedHintAdFlow,
   trackRewardedHintAdRequest,
   trackRewardedHintAdResult,
+  trackBonusPuzzlePanelImpression,
   sortPuzzleSummariesByRecency,
   startMissionAttempt,
   uniquePuzzleSummaries,
   validatePuzzleSlots,
   REWARDED_HINT_AD_REWARD_EVENT,
   type Bounds,
+  type BonusPuzzlePanelStatus,
   type DailyMissionState,
   type Direction,
   type GamePuzzleContext,
@@ -187,7 +190,7 @@ type BonusPuzzlePanelState = {
   unlockedSummary?: PuzzleManifestItem;
   isUnlocking: boolean;
   notice: string;
-  status: 'available' | 'loading' | 'unlocked' | 'used' | 'waiting';
+  status: BonusPuzzlePanelStatus;
 };
 
 type AdDiagnosticState = {
@@ -867,6 +870,9 @@ function AppContent() {
   const [route, setRoute] = useState<AppRoute>('home');
   const [isLoading, setIsLoading] = useState(true);
   const [puzzle, setPuzzle] = useState(initialPuzzle);
+  const [bonusPuzzlePanelImpressionGuard] = useState(
+    createBonusPuzzlePanelImpressionGuard,
+  );
   const [dateCardStates, setDateCardStates] = useState<
     Record<string, DateCardState>
   >({});
@@ -1248,6 +1254,23 @@ function AppContent() {
             ? 'used'
             : 'waiting',
   };
+  useEffect(() => {
+    if (route !== 'home' && route !== 'result') {
+      return;
+    }
+
+    trackBonusPuzzlePanelImpression(
+      gameAnalytics,
+      bonusPuzzlePanelImpressionGuard,
+      getGamePuzzleContext(puzzle),
+      bonusPuzzlePanelState.status,
+    );
+  }, [
+    bonusPuzzlePanelImpressionGuard,
+    bonusPuzzlePanelState.status,
+    puzzle,
+    route,
+  ]);
   const boardCellSize = Math.max(
     32,
     Math.min(
