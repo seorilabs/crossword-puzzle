@@ -18,6 +18,7 @@ import { Button, Paragraph, Top } from "@toss/tds-mobile";
 import "./App.css";
 import {
   buildCellEntries,
+  buildRewardedHintAdAttemptTelemetry,
   buildReviewEntries,
   buildShareGrid,
   buildShareText,
@@ -105,8 +106,6 @@ import {
   STUCK_HINT_PROMPT_DISMISS_EVENT,
   STUCK_HINT_PROMPT_EVENT,
   STUCK_HINT_PROMPT_REVEAL_WORD_EVENT,
-  REWARDED_HINT_AD_REQUEST_EVENT,
-  REWARDED_HINT_AD_RESULT_EVENT,
   REWARDED_HINT_AD_REWARD_EVENT,
   type CellLetterChange,
   type DailyMissionState,
@@ -2325,16 +2324,18 @@ function App() {
         }),
       getStatus: (result) => result.status,
       onAttemptResult: (result, retry) => {
-        telemetry.impression(REWARDED_HINT_AD_RESULT_EVENT, {
+        const attemptTelemetry = buildRewardedHintAdAttemptTelemetry(retry);
+        telemetry.impression(attemptTelemetry.result.name, {
           ...getFullScreenAdResultParams(result),
           puzzle_id: puzzle.puzzleId,
-          retry,
+          ...attemptTelemetry.result.params,
         });
       },
       onAttemptStart: (retry) => {
-        telemetry.click(REWARDED_HINT_AD_REQUEST_EVENT, {
+        const attemptTelemetry = buildRewardedHintAdAttemptTelemetry(retry);
+        telemetry.click(attemptTelemetry.request.name, {
           puzzle_id: puzzle.puzzleId,
-          retry,
+          ...attemptTelemetry.request.params,
           rewarded_hint_credits: launchConfig.rewardedHintCredits,
         });
       },

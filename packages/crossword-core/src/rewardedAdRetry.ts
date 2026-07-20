@@ -16,6 +16,30 @@ export const REWARDED_HINT_AD_REQUEST_EVENT = "rewarded_hint_ad_request";
 export const REWARDED_HINT_AD_RESULT_EVENT = "rewarded_hint_ad_result";
 export const REWARDED_HINT_AD_REWARD_EVENT = "rewarded_hint_ad_reward";
 
+export function buildRewardedHintAdAttemptTelemetry(
+  retry: RewardedAdRetryAttempt,
+): {
+  request: {
+    name: typeof REWARDED_HINT_AD_REQUEST_EVENT;
+    params: { retry: RewardedAdRetryAttempt };
+  };
+  result: {
+    name: typeof REWARDED_HINT_AD_RESULT_EVENT;
+    params: { retry: RewardedAdRetryAttempt };
+  };
+} {
+  return {
+    request: {
+      name: REWARDED_HINT_AD_REQUEST_EVENT,
+      params: { retry },
+    },
+    result: {
+      name: REWARDED_HINT_AD_RESULT_EVENT,
+      params: { retry },
+    },
+  };
+}
+
 export type RewardedHintAdFlowOptions<T> = {
   attempt: (retry: RewardedAdRetryAttempt) => Promise<T>;
   getStatus: (result: T) => RewardedAdRetryStatus;

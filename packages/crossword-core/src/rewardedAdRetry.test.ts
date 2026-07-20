@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
 
 import {
+  buildRewardedHintAdAttemptTelemetry,
   REWARDED_HINT_AD_REQUEST_EVENT,
   REWARDED_HINT_AD_RESULT_EVENT,
   REWARDED_HINT_AD_REWARD_EVENT,
@@ -125,6 +126,29 @@ async function runFlow(statuses: RewardedAdRetryStatus[]) {
 }
 
 describe("runRewardedHintAdFlow lifecycle (#277)", () => {
+  it("AC-3: request·result 이벤트에 최초 0과 재시도 1을 같은 계약으로 기록한다", () => {
+    assert.deepEqual(buildRewardedHintAdAttemptTelemetry(0), {
+      request: {
+        name: "rewarded_hint_ad_request",
+        params: { retry: 0 },
+      },
+      result: {
+        name: "rewarded_hint_ad_result",
+        params: { retry: 0 },
+      },
+    });
+    assert.deepEqual(buildRewardedHintAdAttemptTelemetry(1), {
+      request: {
+        name: "rewarded_hint_ad_request",
+        params: { retry: 1 },
+      },
+      result: {
+        name: "rewarded_hint_ad_result",
+        params: { retry: 1 },
+      },
+    });
+  });
+
   it("timeout 후 재시도 성공까지 loading·retry telemetry·보상 순서를 유지한다", async () => {
     const { events } = await runFlow(["timeout", "rewarded"]);
 

@@ -27,6 +27,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import {
   buildCellEntries,
+  buildRewardedHintAdAttemptTelemetry,
   buildNextPuzzleCtaEvent,
   buildStartLabels,
   completeMission,
@@ -77,8 +78,6 @@ import {
   startMissionAttempt,
   uniquePuzzleSummaries,
   validatePuzzleSlots,
-  REWARDED_HINT_AD_REQUEST_EVENT,
-  REWARDED_HINT_AD_RESULT_EVENT,
   REWARDED_HINT_AD_REWARD_EVENT,
   type Bounds,
   type DailyMissionState,
@@ -1749,16 +1748,18 @@ function AppContent() {
       },
       getStatus: getMobileRewardedAdRetryStatus,
       onAttemptResult: (result, retry) => {
-        telemetry.impression(REWARDED_HINT_AD_RESULT_EVENT, {
+        const attemptTelemetry = buildRewardedHintAdAttemptTelemetry(retry);
+        telemetry.impression(attemptTelemetry.result.name, {
           ...getMobileAdTelemetryParams('rewardedHint'),
           ad_status: result.status,
-          retry,
+          ...attemptTelemetry.result.params,
         });
       },
       onAttemptStart: retry => {
-        telemetry.click(REWARDED_HINT_AD_REQUEST_EVENT, {
+        const attemptTelemetry = buildRewardedHintAdAttemptTelemetry(retry);
+        telemetry.click(attemptTelemetry.request.name, {
           ...getMobileAdTelemetryParams('rewardedHint'),
-          retry,
+          ...attemptTelemetry.request.params,
           rewarded_hint_credits: launchConfig.rewardedHintCredits,
         });
       },
