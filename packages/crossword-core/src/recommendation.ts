@@ -35,6 +35,19 @@ export function buildNextPuzzleCtaParams(
   };
 }
 
+export function buildNextPuzzleCtaEvent(
+  next: PuzzleManifestItem,
+  source: NextPuzzleCtaSource,
+): {
+  name: typeof NEXT_PUZZLE_CTA_EVENT;
+  params: ReturnType<typeof buildNextPuzzleCtaParams>;
+} {
+  return {
+    name: NEXT_PUZZLE_CTA_EVENT,
+    params: buildNextPuzzleCtaParams(next, source),
+  };
+}
+
 // DIFFICULTY_ORDER 내 위치(easy=0, normal=1, hard=2). 불명이면 -1.
 function difficultyRank(difficulty?: Difficulty): number {
   return difficulty == null ? -1 : DIFFICULTY_ORDER.indexOf(difficulty);

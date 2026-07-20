@@ -229,7 +229,7 @@ const featureParityMarkers = [
   "answerInputMode",
   "selectAnswerInputMode",
   "getNextRecommendedPuzzleSummary",
-  "NEXT_PUZZLE_CTA_EVENT",
+  "buildNextPuzzleCtaEvent",
   "result_overlay",
 ];
 for (const marker of featureParityMarkers) {

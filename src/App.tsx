@@ -62,7 +62,7 @@ import {
   isCellLocked,
   isHangulJamoInput,
   getNewlyReachedProgressMilestones,
-  buildNextPuzzleCtaParams,
+  buildNextPuzzleCtaEvent,
   getNextRecommendedPuzzleSummary,
   getOpenPuzzleSummariesForDate,
   getProgressMilestoneRewardMessage,
@@ -104,7 +104,6 @@ import {
   STUCK_HINT_PROMPT_DISMISS_EVENT,
   STUCK_HINT_PROMPT_EVENT,
   STUCK_HINT_PROMPT_REVEAL_WORD_EVENT,
-  NEXT_PUZZLE_CTA_EVENT,
   type CellLetterChange,
   type DailyMissionState,
   type Direction,
@@ -4615,12 +4614,13 @@ function TodayScreen({
       return;
     }
 
-    telemetry.click(NEXT_PUZZLE_CTA_EVENT, {
+    const nextPuzzleCtaEvent = buildNextPuzzleCtaEvent(
+      completionNextRecommendedSummary,
+      "result_overlay",
+    );
+    telemetry.click(nextPuzzleCtaEvent.name, {
       ...getPuzzleTelemetryParams(puzzle),
-      ...buildNextPuzzleCtaParams(
-        completionNextRecommendedSummary,
-        "result_overlay",
-      ),
+      ...nextPuzzleCtaEvent.params,
     });
     dismissCompletionCelebration();
     selectPuzzle(completionNextRecommendedSummary.puzzleId);
@@ -6040,9 +6040,13 @@ function ResultScreen({
       return;
     }
 
-    telemetry.click(NEXT_PUZZLE_CTA_EVENT, {
+    const nextPuzzleCtaEvent = buildNextPuzzleCtaEvent(
+      nextRecommendedSummary,
+      "result_screen",
+    );
+    telemetry.click(nextPuzzleCtaEvent.name, {
       ...getPuzzleTelemetryParams(puzzle),
-      ...buildNextPuzzleCtaParams(nextRecommendedSummary, "result_screen"),
+      ...nextPuzzleCtaEvent.params,
     });
     selectPuzzle(nextRecommendedSummary.puzzleId);
     navigate("today");

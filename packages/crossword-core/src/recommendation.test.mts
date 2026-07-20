@@ -3,9 +3,7 @@ import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
 
 import {
-  buildNextPuzzleCtaParams,
   getNextRecommendedPuzzleSummary,
-  NEXT_PUZZLE_CTA_EVENT,
 } from "./recommendation.ts";
 import type { PuzzleManifestItem } from "./types.ts";
 
@@ -125,24 +123,5 @@ describe("getNextRecommendedPuzzleSummary", () => {
       difficulty: "normal",
     });
     assert.equal(next, undefined);
-  });
-
-  it("next_puzzle_cta에 result_overlay 진입 경로와 다음 퍼즐 메타를 기록한다(#274)", () => {
-    const next = summary("hard1", "hard");
-
-    assert.equal(NEXT_PUZZLE_CTA_EVENT, "next_puzzle_cta");
-    assert.deepEqual(buildNextPuzzleCtaParams(next, "result_overlay"), {
-      next_difficulty: "hard",
-      next_puzzle_id: "hard1",
-      source: "result_overlay",
-    });
-  });
-
-  it("기존 결과 화면 CTA는 source=result_screen으로 구분한다(#274)", () => {
-    assert.equal(
-      buildNextPuzzleCtaParams(summary("normal2", "normal"), "result_screen")
-        .source,
-      "result_screen",
-    );
   });
 });

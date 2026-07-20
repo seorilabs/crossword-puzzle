@@ -27,7 +27,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import {
   buildCellEntries,
-  buildNextPuzzleCtaParams,
+  buildNextPuzzleCtaEvent,
   buildStartLabels,
   completeMission,
   computeElapsedSeconds,
@@ -76,7 +76,6 @@ import {
   startMissionAttempt,
   uniquePuzzleSummaries,
   validatePuzzleSlots,
-  NEXT_PUZZLE_CTA_EVENT,
   type Bounds,
   type DailyMissionState,
   type Direction,
@@ -1922,9 +1921,13 @@ function AppContent() {
       return;
     }
 
-    telemetry.click(NEXT_PUZZLE_CTA_EVENT, {
+    const nextPuzzleCtaEvent = buildNextPuzzleCtaEvent(
+      nextRecommendedSummary,
+      source,
+    );
+    telemetry.click(nextPuzzleCtaEvent.name, {
       ...getPuzzleTelemetryParams(puzzle, selectedPuzzleSummary),
-      ...buildNextPuzzleCtaParams(nextRecommendedSummary, source),
+      ...nextPuzzleCtaEvent.params,
     });
     setCompletionCelebrationPuzzleId(null);
     await selectPuzzle(nextRecommendedSummary.puzzleId, 'today');
