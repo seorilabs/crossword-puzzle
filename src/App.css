@@ -3115,6 +3115,10 @@ button:disabled {
   align-items: center;
 }
 
+.completionNextPuzzleButton {
+  grid-column: 1 / -1;
+}
+
 .celebrationStat {
   color: var(--cw-text);
   font-size: 17px;

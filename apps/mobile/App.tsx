@@ -27,6 +27,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import {
   buildCellEntries,
+  buildNextPuzzleCtaParams,
   buildStartLabels,
   completeMission,
   computeElapsedSeconds,
@@ -59,6 +60,7 @@ import {
   getInitialEntryStartCellKey,
   getNextAnswerSlotCellKey,
   getNextFocusEntryAfterCompletion,
+  getNextRecommendedPuzzleSummary,
   getPendingAnswerCellValues,
   getProgressPercent,
   isCellLocked,
@@ -74,6 +76,7 @@ import {
   startMissionAttempt,
   uniquePuzzleSummaries,
   validatePuzzleSlots,
+  NEXT_PUZZLE_CTA_EVENT,
   type Bounds,
   type DailyMissionState,
   type Direction,
@@ -84,6 +87,7 @@ import {
   type PuzzleManifestItem,
   type SavedProgress,
   type LaunchConfig,
+  type NextPuzzleCtaSource,
 } from '../../packages/crossword-core/src';
 
 import {
@@ -1188,6 +1192,35 @@ function AppContent() {
       unlockedBonusSummaries,
     ],
   );
+  const nextRecommendedSummary = useMemo(
+    () =>
+      isCompleted
+        ? getNextRecommendedPuzzleSummary(
+            visiblePuzzleSummaries,
+            completedPuzzleIds,
+            {
+              puzzleId: puzzle.puzzleId,
+              difficulty: puzzle.difficulty,
+            },
+          )
+        : undefined,
+    [
+      completedPuzzleIds,
+      isCompleted,
+      puzzle.difficulty,
+      puzzle.puzzleId,
+      visiblePuzzleSummaries,
+    ],
+  );
+  const nextRecommendedLabel =
+    nextRecommendedSummary == null
+      ? undefined
+      : [
+          formatPuzzleAliasLabel(nextRecommendedSummary),
+          formatDifficultyLabel(nextRecommendedSummary.difficulty),
+        ]
+          .filter(Boolean)
+          .join(' · ');
 
   const bonusPuzzlePanelState: BonusPuzzlePanelState = {
     candidateSummary: bonusCandidateSummary,
@@ -1853,7 +1886,10 @@ function AppContent() {
     setNotice(`${session.nextPuzzle.date} 퍼즐을 불러왔습니다.`);
   }
 
-  async function selectPuzzle(puzzleId: string) {
+  async function selectPuzzle(
+    puzzleId: string,
+    destination: AppRoute = 'home',
+  ) {
     if (isLoading) {
       return;
     }
@@ -1862,7 +1898,7 @@ function AppContent() {
     const session = await loadPuzzleSession(puzzleId, puzzlePack);
     applyPuzzleSession(session);
     setIsLoading(false);
-    navigateTo('home');
+    navigateTo(destination);
 
     if (session == null) {
       setNotice('퍼즐 데이터를 찾을 수 없습니다.');
@@ -1879,6 +1915,19 @@ function AppContent() {
       ),
       puzzle_pack_source: puzzlePack.source,
     });
+  }
+
+  async function startNextRecommendedPuzzle(source: NextPuzzleCtaSource) {
+    if (nextRecommendedSummary == null) {
+      return;
+    }
+
+    telemetry.click(NEXT_PUZZLE_CTA_EVENT, {
+      ...getPuzzleTelemetryParams(puzzle, selectedPuzzleSummary),
+      ...buildNextPuzzleCtaParams(nextRecommendedSummary, source),
+    });
+    setCompletionCelebrationPuzzleId(null);
+    await selectPuzzle(nextRecommendedSummary.puzzleId, 'today');
   }
 
   function selectEntry(entry: PuzzleEntry, cellKey?: string) {
@@ -3077,6 +3126,29 @@ function AppContent() {
                 </Text>
               )}
             </View>
+            {nextRecommendedSummary != null && (
+              <Pressable
+                accessibilityLabel={`다음 퍼즐 풀기${
+                  nextRecommendedLabel == null
+                    ? ''
+                    : ` · ${nextRecommendedLabel}`
+                }`}
+                accessibilityRole="button"
+                onPress={() => {
+                  startNextRecommendedPuzzle('result_overlay').catch(() =>
+                    undefined,
+                  );
+                }}
+                style={styles.primaryButton}
+              >
+                <Text style={styles.primaryButtonText}>
+                  다음 퍼즐 풀기
+                  {nextRecommendedLabel == null
+                    ? ''
+                    : ` · ${nextRecommendedLabel}`}
+                </Text>
+              </Pressable>
+            )}
             <View style={styles.completionDialogActions}>
               <Pressable
                 onPress={() => setCompletionCelebrationPuzzleId(null)}
@@ -3086,9 +3158,21 @@ function AppContent() {
               </Pressable>
               <Pressable
                 onPress={openCompletedResult}
-                style={styles.primaryButton}
+                style={
+                  nextRecommendedSummary == null
+                    ? styles.primaryButton
+                    : styles.secondaryButton
+                }
               >
-                <Text style={styles.primaryButtonText}>결과 보기</Text>
+                <Text
+                  style={
+                    nextRecommendedSummary == null
+                      ? styles.primaryButtonText
+                      : styles.secondaryButtonText
+                  }
+                >
+                  결과 보기
+                </Text>
               </Pressable>
             </View>
             <Pressable
@@ -3326,11 +3410,43 @@ function AppContent() {
             </Text>
           )}
           <View style={styles.actions}>
+            {isCompleted && nextRecommendedSummary != null && (
+              <Pressable
+                accessibilityLabel={`다음 퍼즐 풀기${
+                  nextRecommendedLabel == null
+                    ? ''
+                    : ` · ${nextRecommendedLabel}`
+                }`}
+                onPress={() => {
+                  startNextRecommendedPuzzle('result_screen').catch(() =>
+                    undefined,
+                  );
+                }}
+                style={styles.primaryButton}
+              >
+                <Text style={styles.primaryButtonText}>
+                  다음 퍼즐 풀기
+                  {nextRecommendedLabel == null
+                    ? ''
+                    : ` · ${nextRecommendedLabel}`}
+                </Text>
+              </Pressable>
+            )}
             <Pressable
               onPress={isCompleted ? openCompletedBoard : startOrResumeMission}
-              style={styles.primaryButton}
+              style={
+                isCompleted && nextRecommendedSummary != null
+                  ? styles.secondaryButton
+                  : styles.primaryButton
+              }
             >
-              <Text style={styles.primaryButtonText}>
+              <Text
+                style={
+                  isCompleted && nextRecommendedSummary != null
+                    ? styles.secondaryButtonText
+                    : styles.primaryButtonText
+                }
+              >
                 {isCompleted
                   ? '퍼즐 다시 보기'
                   : isAttemptExhaustedUncompleted

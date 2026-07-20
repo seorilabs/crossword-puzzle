@@ -8,7 +8,7 @@
 //   1) 한 단계 위 난이도의 미완료 퍼즐(난이도 상승 → 진척감으로 재도전 유도)
 //   2) 같은 난이도의 미완료 퍼즐(완주 흐름 유지)
 //   3) 그 외 미완료 퍼즐(난이도 불명/하위 포함)
-//   4) 미완료가 없으면 현재 퍼즐을 제외한 첫 후보(끊김 방지)
+//   4) 미완료가 없으면 undefined(완료 퍼즐을 다시 시작시키지 않고 홈/보너스 fallback)
 import { DIFFICULTY_ORDER, type Difficulty } from "./difficultyProfiles.ts";
 import type { PuzzleManifestItem } from "./types.ts";
 
@@ -16,6 +16,24 @@ export type NextRecommendationContext = {
   puzzleId: string;
   difficulty?: Difficulty;
 };
+
+export const NEXT_PUZZLE_CTA_EVENT = "next_puzzle_cta";
+export type NextPuzzleCtaSource = "result_overlay" | "result_screen";
+
+export function buildNextPuzzleCtaParams(
+  next: PuzzleManifestItem,
+  source: NextPuzzleCtaSource,
+): {
+  next_difficulty: PuzzleManifestItem["difficulty"];
+  next_puzzle_id: string;
+  source: NextPuzzleCtaSource;
+} {
+  return {
+    next_difficulty: next.difficulty,
+    next_puzzle_id: next.puzzleId,
+    source,
+  };
+}
 
 // DIFFICULTY_ORDER 내 위치(easy=0, normal=1, hard=2). 불명이면 -1.
 function difficultyRank(difficulty?: Difficulty): number {
@@ -59,5 +77,5 @@ export function getNextRecommendedPuzzleSummary(
     }
   }
 
-  return uncompleted[0] ?? candidates[0];
+  return uncompleted[0];
 }
