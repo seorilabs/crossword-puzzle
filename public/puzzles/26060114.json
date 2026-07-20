@@ -1,0 +1,367 @@
+{
+  "alias": "26060114",
+  "puzzleId": "26060114",
+  "date": "2026-06-01",
+  "difficulty": "hard",
+  "gridSize": 9,
+  "grid": [
+    [
+      "",
+      "대",
+      "장",
+      "장",
+      "이",
+      "",
+      "사",
+      "족",
+      ""
+    ],
+    [
+      "",
+      "중",
+      "부",
+      "",
+      "사",
+      "유",
+      "지",
+      "",
+      ""
+    ],
+    [
+      "",
+      "교",
+      "",
+      "",
+      "장",
+      "",
+      "",
+      "",
+      ""
+    ],
+    [
+      "교",
+      "통",
+      "사",
+      "고",
+      "",
+      "아",
+      "",
+      "",
+      ""
+    ],
+    [
+      "표",
+      "",
+      "무",
+      "정",
+      "부",
+      "주",
+      "의",
+      "",
+      ""
+    ],
+    [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "머",
+      "",
+      "된",
+      ""
+    ],
+    [
+      "",
+      "",
+      "",
+      "",
+      "테",
+      "니",
+      "스",
+      "장",
+      ""
+    ],
+    [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "찌",
+      ""
+    ],
+    [
+      "",
+      "",
+      "",
+      "순",
+      "두",
+      "부",
+      "찌",
+      "개",
+      ""
+    ]
+  ],
+  "entries": [
+    {
+      "id": "a1",
+      "answer": "대장장이",
+      "clue": "쇠를 달구어 연장이나 기구를 만드는 사람",
+      "clueSource": "manual",
+      "direction": "across",
+      "row": 0,
+      "col": 1,
+      "generatedBy": "placed",
+      "needsManualClue": false
+    },
+    {
+      "id": "a2",
+      "answer": "사족",
+      "clue": "짐승의 네 발",
+      "clueSource": "manual",
+      "direction": "across",
+      "row": 0,
+      "col": 6,
+      "generatedBy": "placed",
+      "needsManualClue": false
+    },
+    {
+      "id": "a3",
+      "answer": "중부",
+      "clue": "어떤 지역의 가운데 부분",
+      "clueSource": "manual",
+      "direction": "across",
+      "row": 1,
+      "col": 1,
+      "generatedBy": "placed",
+      "needsManualClue": false
+    },
+    {
+      "id": "a4",
+      "answer": "사유지",
+      "clue": "개인이 소유한 땅",
+      "clueSource": "manual",
+      "direction": "across",
+      "row": 1,
+      "col": 4,
+      "generatedBy": "placed",
+      "needsManualClue": false
+    },
+    {
+      "id": "a5",
+      "answer": "교통사고",
+      "clue": "자동차나 기차 등이 다른 교통 기관과 부딪치거나 사람을 치는 사고",
+      "clueSource": "krdict-definition",
+      "direction": "across",
+      "row": 3,
+      "col": 0,
+      "generatedBy": "placed",
+      "needsManualClue": true
+    },
+    {
+      "id": "a6",
+      "answer": "무정부주의",
+      "clue": "아나키즘, 국가 권력을 거부하고 완전한 자유를 꿈꾸는 사상",
+      "clueSource": "manual",
+      "direction": "across",
+      "row": 4,
+      "col": 2,
+      "generatedBy": "placed",
+      "needsManualClue": false
+    },
+    {
+      "id": "a7",
+      "answer": "테니스장",
+      "clue": "테니스 경기를 하는 운동장",
+      "clueSource": "krdict-definition",
+      "direction": "across",
+      "row": 6,
+      "col": 4,
+      "generatedBy": "placed",
+      "needsManualClue": true
+    },
+    {
+      "id": "a8",
+      "answer": "순두부찌개",
+      "clue": "순두부를 넣어 끓인 찌개",
+      "clueSource": "krdict-definition",
+      "direction": "across",
+      "row": 8,
+      "col": 3,
+      "generatedBy": "placed",
+      "needsManualClue": true
+    },
+    {
+      "id": "d9",
+      "answer": "대중교통",
+      "clue": "버스나 지하철처럼 여럿이 함께 이용하는 교통수단",
+      "clueSource": "manual",
+      "direction": "down",
+      "row": 0,
+      "col": 1,
+      "generatedBy": "placed",
+      "needsManualClue": false
+    },
+    {
+      "id": "d10",
+      "answer": "장부",
+      "clue": "기개가 씩씩하고 헌걸찬 다 큰 사내",
+      "clueSource": "manual",
+      "direction": "down",
+      "row": 0,
+      "col": 2,
+      "generatedBy": "auto",
+      "needsManualClue": false
+    },
+    {
+      "id": "d11",
+      "answer": "이사장",
+      "clue": "기관 이사들 중 가장 높은 자리의 사람",
+      "clueSource": "manual",
+      "direction": "down",
+      "row": 0,
+      "col": 4,
+      "generatedBy": "placed",
+      "needsManualClue": false
+    },
+    {
+      "id": "d12",
+      "answer": "사지",
+      "clue": "두 팔과 두 다리",
+      "clueSource": "manual",
+      "direction": "down",
+      "row": 0,
+      "col": 6,
+      "generatedBy": "auto",
+      "needsManualClue": false
+    },
+    {
+      "id": "d13",
+      "answer": "교표",
+      "clue": "학교를 상징해 새긴 배지나 표지",
+      "clueSource": "manual",
+      "direction": "down",
+      "row": 3,
+      "col": 0,
+      "generatedBy": "placed",
+      "needsManualClue": false
+    },
+    {
+      "id": "d14",
+      "answer": "사무",
+      "clue": "책상에 앉아 서류 따위를 다루는 일",
+      "clueSource": "manual",
+      "direction": "down",
+      "row": 3,
+      "col": 2,
+      "generatedBy": "auto",
+      "needsManualClue": false
+    },
+    {
+      "id": "d15",
+      "answer": "고정",
+      "clue": "한번 정한 것을 바꾸지 않음",
+      "clueSource": "manual",
+      "direction": "down",
+      "row": 3,
+      "col": 3,
+      "generatedBy": "auto",
+      "needsManualClue": false
+    },
+    {
+      "id": "d16",
+      "answer": "아주머니",
+      "clue": "남남끼리에서 결혼한 여자를 이르거나 부르는 말",
+      "clueSource": "krdict-definition",
+      "direction": "down",
+      "row": 3,
+      "col": 5,
+      "generatedBy": "placed",
+      "needsManualClue": true
+    },
+    {
+      "id": "d17",
+      "answer": "된장찌개",
+      "clue": "된장을 물에 넣고 파, 호박, 두부 등을 넣고 끓인 찌개",
+      "clueSource": "krdict-definition",
+      "direction": "down",
+      "row": 5,
+      "col": 7,
+      "generatedBy": "placed",
+      "needsManualClue": true
+    }
+  ],
+  "metrics": {
+    "autoRunCount": 4,
+    "bboxDensity": 0.5,
+    "crossCells": 18,
+    "crossRatio": 0.5,
+    "filledCells": 36,
+    "multiCrossEntries": 14,
+    "placedWordCount": 13,
+    "wordCount": 17
+  },
+  "wordBank": {
+    "sourceName": "국립국어원 한국어기초사전 XML",
+    "sourceUrl": "https://github.com/spellcheck-ko/korean-dict-nikl-krdict",
+    "license": {
+      "name": "Creative Commons Attribution-ShareAlike 2.0 Korea",
+      "spdx": "CC-BY-SA-2.0-KR",
+      "url": "https://creativecommons.org/licenses/by-sa/2.0/kr/"
+    },
+    "wordCount": 24056
+  },
+  "packId": "pack-20260601051500-15102",
+  "publishedAt": "2026-06-01T05:15:00.000Z",
+  "quality": {
+    "pass": true,
+    "checks": [
+      {
+        "key": "minWordCount",
+        "pass": true,
+        "actual": 17,
+        "expected": 14
+      },
+      {
+        "key": "minCrossRatio",
+        "pass": true,
+        "actual": 0.5,
+        "expected": 0.5
+      },
+      {
+        "key": "minBboxDensity",
+        "pass": true,
+        "actual": 0.5,
+        "expected": 0.45
+      },
+      {
+        "key": "minMultiCrossRatio",
+        "pass": true,
+        "actual": 0.824,
+        "expected": 0.65
+      },
+      {
+        "key": "maxAutoRunRatio",
+        "pass": true,
+        "actual": 0.235,
+        "expected": 0.5
+      }
+    ],
+    "ratios": {
+      "autoRunRatio": 0.235,
+      "multiCrossRatio": 0.824
+    },
+    "thresholds": {
+      "maxAutoRunRatio": 0.5,
+      "minBboxDensity": 0.45,
+      "minCrossRatio": 0.5,
+      "minMultiCrossRatio": 0.65,
+      "minWordCount": 14
+    }
+  },
+  "slotId": "2026-06-01-h14",
+  "generatedAt": "2026-07-20T15:39:19.381Z"
+}

@@ -8,6 +8,7 @@ import {
   makeWordMap,
 } from "../../scripts/crossword-generator-prototype.mjs";
 import {
+  isDifficulty,
   resolveDifficultyProfile,
   selectWordsForProfile,
   summarizeWordDifficulties,
@@ -19,6 +20,7 @@ import {
 import {
   DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO,
   needsManualClueRatio,
+  selectWordsForManualClueCoverage,
 } from "../../packages/crossword-core/src/clueCuration.ts";
 
 const DEFAULT_BATCH_OPTIONS = {
@@ -660,43 +662,53 @@ function mergeManifestPuzzles(existingPuzzles, newPuzzles, keepPuzzles) {
     .slice(0, keepPuzzles);
 }
 
-async function hydrateExistingPuzzleFiles(
+async function hydrateManifestPuzzles(
   items,
-  generatedPuzzleIds,
   options,
   assetRoot,
   outDir,
 ) {
+  const hydratedItems = [];
+
   for (const item of items) {
-    if (generatedPuzzleIds.has(item.puzzleId)) {
-      continue;
-    }
-
     const outputPath = resolvePuzzleOutputPath(assetRoot, outDir, item.path);
-    const existingFile = await readJsonOptional(outputPath);
-
-    if (existingFile != null) {
-      continue;
-    }
-
-    const remoteUrl = resolveRemotePuzzleUrl(item, options);
-
-    if (remoteUrl == null) {
-      console.warn(`Could not hydrate ${item.puzzleId}: no remote URL`);
-      continue;
-    }
-
-    const puzzle = await fetchJsonOptional(remoteUrl);
+    let puzzle = await readJsonOptional(outputPath);
 
     if (puzzle == null) {
-      console.warn(`Could not hydrate ${item.puzzleId}: ${remoteUrl}`);
-      continue;
+      const remoteUrl = resolveRemotePuzzleUrl(item, options);
+
+      if (remoteUrl == null) {
+        throw new Error(
+          `Could not hydrate ${item.puzzleId}: no local file or remote URL`,
+        );
+      }
+
+      puzzle = await fetchJsonOptional(remoteUrl);
+
+      if (puzzle == null) {
+        throw new Error(`Could not hydrate ${item.puzzleId}: ${remoteUrl}`);
+      }
+
+      await mkdir(path.dirname(outputPath), { recursive: true });
+      await writeFile(outputPath, `${JSON.stringify(puzzle, null, 2)}\n`);
+      console.log(`Hydrated existing puzzle ${item.puzzleId} from ${remoteUrl}`);
     }
 
-    await mkdir(path.dirname(outputPath), { recursive: true });
-    await writeFile(outputPath, `${JSON.stringify(puzzle, null, 2)}\n`);
-    console.log(`Hydrated existing puzzle ${item.puzzleId} from ${remoteUrl}`);
+    if (!isDifficulty(puzzle.difficulty)) {
+      throw new Error(
+        `Puzzle ${item.puzzleId} has invalid difficulty: ${String(puzzle.difficulty)}`,
+      );
+    }
+    if (isDifficulty(item.difficulty) && item.difficulty !== puzzle.difficulty) {
+      throw new Error(
+        `Puzzle ${item.puzzleId} difficulty mismatch: manifest=${item.difficulty} puzzle=${puzzle.difficulty}`,
+      );
+    }
+
+    hydratedItems.push({ ...item, difficulty: puzzle.difficulty });
   }
+
+  return hydratedItems;
 }
 
 async function run() {
@@ -714,6 +726,11 @@ async function run() {
     options.theme == null
       ? wordSelection.words
       : filterWordsByTheme(wordSelection.words, options.theme);
+  const generationWords = selectWordsForManualClueCoverage(
+    difficultyFilteredWords,
+    DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO,
+    options.candidateWordLimit,
+  );
   const wordBankDifficultyCounts = summarizeWordDifficulties(
     difficultyFilteredWords,
   );
@@ -723,6 +740,12 @@ async function run() {
       options.theme == null
         ? `No words match difficulty profile ${profile.difficulty} (allowed=${profile.wordDifficulties.join(",")})`
         : `No words match theme "${options.theme}" within difficulty profile ${profile.difficulty}. Run "npm run wordbank:themes" and check themeCategories.`,
+    );
+  }
+
+  if (generationWords.length < profile.minWordCount) {
+    throw new Error(
+      `Not enough manually reviewed words for ${profile.difficulty}: candidates=${generationWords.length} minEntries=${profile.minWordCount}`,
     );
   }
 
@@ -740,7 +763,17 @@ async function run() {
 
   const qualityThresholds = makeQualityThresholds(options);
   const existingManifest = await loadExistingManifest(options, outDir);
-  const existingPuzzles = existingManifest?.puzzles ?? [];
+  const existingPuzzles = (existingManifest?.puzzles ?? []).filter((puzzle) => {
+    const keep = isDifficulty(puzzle.difficulty);
+
+    if (!keep) {
+      console.warn(
+        `Dropping legacy manifest item without difficulty: ${puzzle.puzzleId}`,
+      );
+    }
+
+    return keep;
+  });
   const basePublishedAt =
     options.publishedAt == null ? new Date() : new Date(options.publishedAt);
 
@@ -756,8 +789,10 @@ async function run() {
     `Generator options append=${options.append} keep=${options.keepPuzzles} intervalHours=${options.intervalHours} attempts=${options.attempts} retries=${options.retries} samples=${options.samples} beam=${options.beamWidth} branch=${options.branchLimit} candidates=${options.candidateWordLimit}`,
   );
   console.log(
-    `Difficulty profile=${profile.difficulty} boardSize=${options.boardSize} maxWords=${options.maxWords} minWordLength=${options.minWordLength} minWordCount=${options.minWordCount} wordBank allowed=[${wordSelection.difficulties.join(",")}] words=${difficultyFilteredWords.length}/${wordBank.words.length} byDifficulty=${JSON.stringify(wordBankDifficultyCounts)}`,
+    `Difficulty profile=${profile.difficulty} boardSize=${options.boardSize} maxWords=${options.maxWords} minWordLength=${options.minWordLength} minWordCount=${options.minWordCount} wordBank allowed=[${wordSelection.difficulties.join(",")}] words=${difficultyFilteredWords.length}/${wordBank.words.length} generationCandidates=${generationWords.length} candidateNeedsManualClueRatio=${needsManualClueRatio(generationWords).toFixed(3)} byDifficulty=${JSON.stringify(wordBankDifficultyCounts)}`,
   );
+
+  const generationWordMap = makeWordMap(generationWords);
 
   for (let dayIndex = 0; dayIndex < options.days; dayIndex += 1) {
     const slotInfo = makeSlotInfo(
@@ -794,7 +829,7 @@ async function run() {
         minWordLength: options.minWordLength,
         samples: options.samples,
         seed,
-        wordBank: difficultyFilteredWords,
+        wordBank: generationWords,
       });
       const retryElapsedSeconds = (
         (Date.now() - retryStartTime) /
@@ -803,17 +838,27 @@ async function run() {
 
       const candidates = boards.map((candidate, candidateIndex) => {
         const quality = evaluateQuality(candidate, qualityThresholds);
+        const candidateEntries = analyzeRuns(candidate, generationWordMap).runs
+          .map((run) => generationWordMap.get(run.answer))
+          .filter((entry) => entry != null);
+        const manualClueRatio = needsManualClueRatio(candidateEntries);
+        const manualClueGatePass =
+          manualClueRatio <= DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO;
         return {
           candidateIndex,
-          failureReasons: summarizeFailureReasons(quality),
+          failureReasons: [
+            ...summarizeFailureReasons(quality),
+            ...(manualClueGatePass ? [] : ["maxNeedsManualClueRatio"]),
+          ],
           metrics: {
             autoRunCount: candidate.metrics.autoRunCount,
             bboxDensity: candidate.metrics.bboxDensity,
             crossRatio: candidate.metrics.crossRatio,
+            manualClueRatio,
             multiCrossEntries: candidate.metrics.multiIntersectionPlacements,
             wordCount: candidate.metrics.wordCount,
           },
-          pass: quality.pass,
+          pass: quality.pass && manualClueGatePass,
           ratios: quality.ratios,
         };
       });
@@ -919,25 +964,27 @@ async function run() {
       attempts,
     });
   }
-  const generatedPuzzleIds = new Set(puzzles.map((puzzle) => puzzle.puzzleId));
-  const manifestPuzzles = options.append
+  const mergedManifestPuzzles = options.append
     ? mergeManifestPuzzles(existingPuzzles, puzzles, options.keepPuzzles)
     : puzzles;
 
-  await hydrateExistingPuzzleFiles(
-    manifestPuzzles,
-    generatedPuzzleIds,
+  const manifestPuzzles = await hydrateManifestPuzzles(
+    mergedManifestPuzzles,
     options,
     assetRoot,
     outDir,
   );
+  const manifestDifficulties = [
+    ...new Set(manifestPuzzles.map((puzzle) => puzzle.difficulty)),
+  ];
 
   const manifest = {
     generatedAt: new Date().toISOString(),
     startDate: options.startDate,
     days: manifestPuzzles.length,
     keep: options.keepPuzzles,
-    difficulty: profile.difficulty,
+    difficulty:
+      manifestDifficulties.length === 1 ? manifestDifficulties[0] : "mixed",
     difficultyProfile: {
       difficulty: profile.difficulty,
       boardSize: options.boardSize,

@@ -6,6 +6,7 @@ import {
   isSelfReferentialClue,
   needsManualClueRatio,
 } from "../packages/crossword-core/src/clueCuration.ts";
+import { isDifficulty } from "../packages/crossword-core/src/difficultyProfiles.ts";
 
 function parseArgs(argv) {
   const options = {
@@ -179,15 +180,48 @@ async function run() {
     const puzzlePath = resolvePuzzlePath(manifestPath, item.path, assetRoot);
     const puzzle = await readJson(puzzlePath);
     const validation = validatePuzzle(puzzle, options.maxNeedsManualClueRatio);
+    const manifestDifficultyValid = isDifficulty(item.difficulty);
+    const puzzleDifficultyValid = isDifficulty(puzzle.difficulty);
+    const difficultyMatches =
+      manifestDifficultyValid &&
+      puzzleDifficultyValid &&
+      item.difficulty === puzzle.difficulty;
 
-    if (!validation.pass) {
-      failures.push({ item, puzzle, validation });
+    if (!validation.pass || !difficultyMatches) {
+      failures.push({
+        item,
+        puzzle,
+        validation,
+        manifestDifficultyValid,
+        puzzleDifficultyValid,
+        difficultyMatches,
+      });
     }
   }
 
   if (failures.length > 0) {
     for (const failure of failures) {
       console.error(`${failure.puzzle.puzzleId} slot validation failed`);
+
+      if (!failure.manifestDifficultyValid) {
+        console.error(
+          `  invalid manifest difficulty: ${String(failure.item.difficulty)}`,
+        );
+      }
+      if (!failure.puzzleDifficultyValid) {
+        console.error(
+          `  invalid puzzle difficulty: ${String(failure.puzzle.difficulty)}`,
+        );
+      }
+      if (
+        failure.manifestDifficultyValid &&
+        failure.puzzleDifficultyValid &&
+        !failure.difficultyMatches
+      ) {
+        console.error(
+          `  difficulty mismatch: manifest=${failure.item.difficulty} puzzle=${failure.puzzle.difficulty}`,
+        );
+      }
 
       for (const slot of failure.validation.missingEntries) {
         console.error(`  missing entry: ${formatSlot(slot)}`);

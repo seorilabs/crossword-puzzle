@@ -115,6 +115,8 @@ Cloud Run Job은 다음 환경 변수를 사용한다.
 | `PUZZLE_APPEND`           |                   `true` | 기존 manifest를 불러와 새 퍼즐을 append할지 여부                                                                          |
 | `PUZZLE_KEEP`             |                     `84` | manifest에 유지할 최근 퍼즐 수. 2시간 주기 기준 7일치                                                                     |
 | `PUZZLE_INTERVAL_HOURS`   |                      `2` | `slotId` 계산에 사용하는 퍼즐 발행 간격                                                                                   |
+| `PUZZLE_DIFFICULTY`       |                     비움 | 지정하면 모든 슬롯을 해당 난이도(`easy`/`normal`/`hard`)로 고정                                                          |
+| `PUZZLE_DIFFICULTY_ROTATION` |                 `true` | 고정 난이도가 없을 때 2시간 슬롯을 `normal/easy/normal/hard` 순서로 반복                                                 |
 | `PUZZLE_CORS_ORIGIN`      |                      `*` | AIT WebView에서 JSON을 fetch할 수 있도록 `/puzzles/**` 응답에 넣을 CORS origin                                            |
 
 생성 옵션은 `PUZZLE_ATTEMPTS`, `PUZZLE_BEAM`, `PUZZLE_BRANCH`, `PUZZLE_CANDIDATES`, `PUZZLE_DENSE`, `PUZZLE_MIN_CROSS`, `PUZZLE_MIN_DENSITY`, `PUZZLE_MIN_ENTRIES`, `PUZZLE_MIN_MULTI`, `PUZZLE_MAX_AUTO`, `PUZZLE_RETRIES`, `PUZZLE_SAMPLES`, `PUZZLE_SIZE`, `PUZZLE_WORDS`, `PUZZLE_WORDBANK`, `PUZZLE_PUBLISHED_AT`, `PUZZLE_EXISTING_MANIFEST_URL`로 override할 수 있다. `PUZZLE_SEED`를 지정하면 같은 입력에서 같은 퍼즐이 다시 생성될 수 있으므로, 운영 스케줄에서는 보통 비워 둔다.
@@ -125,11 +127,13 @@ Cloud Run Job은 다음 환경 변수를 사용한다.
 
 - 기본 스케줄은 `15 */2 * * *`이다.
 - 기본 유지 개수는 `84`개다. 2시간 주기 기준 최근 7일치다.
+- 기본 난이도 로테이션은 하루 12개 슬롯을 normal 6개, easy 3개, hard 3개로 발행한다.
 - 각 생성물은 `packId`, `puzzleId`, `slotId`, `publishedAt`를 가진다.
 - `puzzleId`는 로컬 진행 상태 key로 쓰이므로 같은 날짜에 여러 퍼즐이 있어도 진행 상태가 섞이지 않는다.
 - `PUZZLE_SEED`를 고정하지 않으면 기본 seed가 `publishedAt` 기반으로 바뀌어서 같은 날짜의 2시간 슬롯도 서로 다른 퍼즐로 생성된다.
 - 기존 remote manifest가 있으면 `PUZZLE_HOSTING_BASE_URL/puzzles/manifest.json`을 먼저 읽고, 유지 대상 puzzle JSON도 다시 받아 현재 publish 디렉터리에 채운다.
 - remote manifest가 아직 없으면 로컬 `public/puzzles/manifest.json`을 fallback source로 사용한다.
+- `difficulty`가 없는 구버전 manifest 항목은 다중 난이도 전환 시 제거한다. 새 항목은 검수 단서·난이도 게이트를 통과한 뒤 슬롯마다 다시 누적된다.
 
 ## AIT 앱 연결
 

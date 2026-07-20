@@ -42,6 +42,61 @@ export function needsManualClueRatio(
   return countNeedsManualClue(entries) / entries.length;
 }
 
+// 생성 후보 풀이 발행 게이트를 구조적으로 만족하도록 검수 완료 단어를 우선한다.
+// 검수 완료 단어가 목표 후보 수에 부족하면 미검수 비율 상한을 넘지 않는 크기까지
+// 전체 풀을 줄인다. 부정확한 단서를 자동 생성해 게이트를 우회하지 않는다.
+export function selectWordsForManualClueCoverage<
+  T extends { needsManualClue?: boolean },
+>(
+  words: readonly T[],
+  maxNeedsManualClueRatio: number = DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO,
+  maxWords: number = words.length,
+): T[] {
+  const normalizedMaxRatio = Math.min(
+    1,
+    Math.max(0, Number.isFinite(maxNeedsManualClueRatio) ? maxNeedsManualClueRatio : 0),
+  );
+  const targetSize = Math.min(
+    words.length,
+    Math.max(0, Math.floor(Number.isFinite(maxWords) ? maxWords : words.length)),
+  );
+
+  if (targetSize === 0) {
+    return [];
+  }
+
+  const reviewed = words.filter((word) => word.needsManualClue !== true);
+  const unreviewed = words.filter((word) => word.needsManualClue === true);
+  const requiredReviewedFraction = 1 - normalizedMaxRatio;
+
+  if (requiredReviewedFraction <= 0) {
+    return words.slice(0, targetSize);
+  }
+
+  const requiredReviewed = Math.ceil(targetSize * requiredReviewedFraction);
+
+  if (reviewed.length >= requiredReviewed) {
+    const reviewedCount = Math.min(
+      reviewed.length,
+      Math.max(requiredReviewed, targetSize - unreviewed.length),
+    );
+    return [
+      ...reviewed.slice(0, reviewedCount),
+      ...unreviewed.slice(0, targetSize - reviewedCount),
+    ];
+  }
+
+  const achievableSize = Math.min(
+    targetSize,
+    Math.floor(reviewed.length / requiredReviewedFraction),
+  );
+
+  return [
+    ...reviewed.slice(0, achievableSize),
+    ...unreviewed.slice(0, Math.max(0, achievableSize - reviewed.length)),
+  ];
+}
+
 // 발행 커버리지 리포트용 타입. 생성된 퍼즐(난이도/주제)별로 미검수 비율을
 // 집계해 "로테이션 대상 팩이 발행 게이트를 통과하는지"를 한눈에 드러낸다(#250).
 export type ManualClueCoverageEntry = { needsManualClue?: boolean };
