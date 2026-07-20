@@ -18,7 +18,6 @@ import { Button, Paragraph, Top } from "@toss/tds-mobile";
 import "./App.css";
 import {
   buildCellEntries,
-  buildRewardedHintAdAttemptTelemetry,
   buildReviewEntries,
   buildShareGrid,
   buildShareText,
@@ -84,6 +83,8 @@ import {
   resolveInitialActivePuzzleId,
   resolveStarterCell,
   runRewardedHintAdFlow,
+  trackRewardedHintAdRequest,
+  trackRewardedHintAdResult,
   shouldCelebrateOnboardingWordCompletion,
   shouldOfferStuckWordReveal,
   shouldQuickStartActivePuzzle,
@@ -2324,20 +2325,24 @@ function App() {
         }),
       getStatus: (result) => result.status,
       onAttemptResult: (result, retry) => {
-        const attemptTelemetry = buildRewardedHintAdAttemptTelemetry(retry);
-        telemetry.impression(attemptTelemetry.result.name, {
-          ...getFullScreenAdResultParams(result),
-          puzzle_id: puzzle.puzzleId,
-          ...attemptTelemetry.result.params,
-        });
+        trackRewardedHintAdResult(
+          telemetry,
+          {
+            ...getFullScreenAdResultParams(result),
+            puzzle_id: puzzle.puzzleId,
+          },
+          retry,
+        );
       },
       onAttemptStart: (retry) => {
-        const attemptTelemetry = buildRewardedHintAdAttemptTelemetry(retry);
-        telemetry.click(attemptTelemetry.request.name, {
-          puzzle_id: puzzle.puzzleId,
-          ...attemptTelemetry.request.params,
-          rewarded_hint_credits: launchConfig.rewardedHintCredits,
-        });
+        trackRewardedHintAdRequest(
+          telemetry,
+          {
+            puzzle_id: puzzle.puzzleId,
+            rewarded_hint_credits: launchConfig.rewardedHintCredits,
+          },
+          retry,
+        );
       },
       onFailure: (result) => {
         const message = getRewardedHintFailureMessage(result);

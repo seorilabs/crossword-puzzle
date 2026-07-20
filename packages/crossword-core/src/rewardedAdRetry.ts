@@ -40,6 +40,24 @@ export function buildRewardedHintAdAttemptTelemetry(
   };
 }
 
+export function trackRewardedHintAdRequest(
+  telemetry: Pick<TelemetryClient, "click">,
+  params: TelemetryParams,
+  retry: RewardedAdRetryAttempt,
+): void {
+  const event = buildRewardedHintAdAttemptTelemetry(retry).request;
+  telemetry.click(event.name, { ...params, ...event.params });
+}
+
+export function trackRewardedHintAdResult(
+  telemetry: Pick<TelemetryClient, "impression">,
+  params: TelemetryParams,
+  retry: RewardedAdRetryAttempt,
+): void {
+  const event = buildRewardedHintAdAttemptTelemetry(retry).result;
+  telemetry.impression(event.name, { ...params, ...event.params });
+}
+
 export type RewardedHintAdFlowOptions<T> = {
   attempt: (retry: RewardedAdRetryAttempt) => Promise<T>;
   getStatus: (result: T) => RewardedAdRetryStatus;
@@ -110,3 +128,4 @@ export async function runRewardedHintAdFlow<T>({
     onLoadingChange(false);
   }
 }
+import type { TelemetryClient, TelemetryParams } from "./platformContracts.ts";

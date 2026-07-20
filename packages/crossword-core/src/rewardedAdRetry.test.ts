@@ -8,6 +8,8 @@ import {
   REWARDED_HINT_AD_REWARD_EVENT,
   runRewardedAdWithSingleRetry,
   runRewardedHintAdFlow,
+  trackRewardedHintAdRequest,
+  trackRewardedHintAdResult,
   type RewardedAdRetryAttempt,
   type RewardedAdRetryStatus,
 } from "./rewardedAdRetry.ts";
@@ -147,6 +149,42 @@ describe("runRewardedHintAdFlow lifecycle (#277)", () => {
         params: { retry: 1 },
       },
     });
+
+    const calls: Array<{ kind: string; name: string; params?: object }> = [];
+    const telemetry = {
+      click: (name: string, params?: object) =>
+        calls.push({ kind: "click", name, params }),
+      impression: (name: string, params?: object) =>
+        calls.push({ kind: "impression", name, params }),
+    };
+
+    trackRewardedHintAdRequest(telemetry, { puzzle_id: "p1" }, 0);
+    trackRewardedHintAdResult(telemetry, { status: "timeout" }, 0);
+    trackRewardedHintAdRequest(telemetry, { puzzle_id: "p1" }, 1);
+    trackRewardedHintAdResult(telemetry, { status: "rewarded" }, 1);
+
+    assert.deepEqual(calls, [
+      {
+        kind: "click",
+        name: "rewarded_hint_ad_request",
+        params: { puzzle_id: "p1", retry: 0 },
+      },
+      {
+        kind: "impression",
+        name: "rewarded_hint_ad_result",
+        params: { retry: 0, status: "timeout" },
+      },
+      {
+        kind: "click",
+        name: "rewarded_hint_ad_request",
+        params: { puzzle_id: "p1", retry: 1 },
+      },
+      {
+        kind: "impression",
+        name: "rewarded_hint_ad_result",
+        params: { retry: 1, status: "rewarded" },
+      },
+    ]);
   });
 
   it("timeout 후 재시도 성공까지 loading·retry telemetry·보상 순서를 유지한다", async () => {

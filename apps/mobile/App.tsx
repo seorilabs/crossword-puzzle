@@ -27,7 +27,6 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import {
   buildCellEntries,
-  buildRewardedHintAdAttemptTelemetry,
   buildNextPuzzleCtaEvent,
   buildStartLabels,
   completeMission,
@@ -74,6 +73,8 @@ import {
   getTodayDateKey,
   resolveDefaultHintCredits,
   runRewardedHintAdFlow,
+  trackRewardedHintAdRequest,
+  trackRewardedHintAdResult,
   sortPuzzleSummariesByRecency,
   startMissionAttempt,
   uniquePuzzleSummaries,
@@ -1748,20 +1749,24 @@ function AppContent() {
       },
       getStatus: getMobileRewardedAdRetryStatus,
       onAttemptResult: (result, retry) => {
-        const attemptTelemetry = buildRewardedHintAdAttemptTelemetry(retry);
-        telemetry.impression(attemptTelemetry.result.name, {
-          ...getMobileAdTelemetryParams('rewardedHint'),
-          ad_status: result.status,
-          ...attemptTelemetry.result.params,
-        });
+        trackRewardedHintAdResult(
+          telemetry,
+          {
+            ...getMobileAdTelemetryParams('rewardedHint'),
+            ad_status: result.status,
+          },
+          retry,
+        );
       },
       onAttemptStart: retry => {
-        const attemptTelemetry = buildRewardedHintAdAttemptTelemetry(retry);
-        telemetry.click(attemptTelemetry.request.name, {
-          ...getMobileAdTelemetryParams('rewardedHint'),
-          ...attemptTelemetry.request.params,
-          rewarded_hint_credits: launchConfig.rewardedHintCredits,
-        });
+        trackRewardedHintAdRequest(
+          telemetry,
+          {
+            ...getMobileAdTelemetryParams('rewardedHint'),
+            rewarded_hint_credits: launchConfig.rewardedHintCredits,
+          },
+          retry,
+        );
       },
       onFailure: result => {
         if (result.status === 'closed') {
