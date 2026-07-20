@@ -1,10 +1,10 @@
 import { Paragraph } from "@toss/tds-mobile";
 
 import type { TextScale } from "../../packages/crossword-core/src";
+import type { AnswerInputMode } from "../adapters/answerInputModeRepository";
 
 // 입력 방식 타입은 어댑터(answerInputModeRepository)를 단일 출처로 재노출한다.
-export type { AnswerInputMode } from "../adapters/answerInputModeRepository";
-import type { AnswerInputMode } from "../adapters/answerInputModeRepository";
+export type { AnswerInputMode };
 
 export type SettingsSheetProps = {
   answerInputMode: AnswerInputMode;
