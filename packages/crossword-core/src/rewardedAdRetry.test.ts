@@ -128,7 +128,7 @@ async function runFlow(statuses: RewardedAdRetryStatus[]) {
 }
 
 describe("runRewardedHintAdFlow lifecycle (#277)", () => {
-  it("AC-3: request·result 이벤트에 최초 0과 재시도 1을 같은 계약으로 기록한다", () => {
+  it("AC-3: rewarded_hint_ad_request와 rewarded_hint_ad_result에 retry=0과 retry=1을 기록한다", () => {
     assert.deepEqual(buildRewardedHintAdAttemptTelemetry(0), {
       request: {
         name: "rewarded_hint_ad_request",
