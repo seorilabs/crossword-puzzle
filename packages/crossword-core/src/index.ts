@@ -2,6 +2,7 @@ export * from "./answerInput";
 export * from "./boardNavigation";
 export * from "./clueCuration";
 export * from "./difficultyProfiles";
+export * from "./difficultyRotation";
 export * from "./feedbackPolicy";
 export * from "./gameAnalytics";
 export * from "./launchConfig";

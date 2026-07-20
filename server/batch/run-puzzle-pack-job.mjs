@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
 
+import { resolveScheduledDifficulty } from "../../packages/crossword-core/src/difficultyRotation.ts";
 import { resolveScheduledTheme } from "../../packages/crossword-core/src/themeRotation.ts";
 
 function readEnvBoolean(name) {
@@ -203,6 +204,23 @@ function getGeneratorArgs(options) {
     ["PUZZLE_WORDBANK", "wordbank"],
   ]) {
     args = ensureArg(args, argName, process.env[envName]);
+  }
+
+  // 명시 난이도가 있으면 우선하고, 없으면 2시간 슬롯 시각으로
+  // normal/easy/normal/hard 로테이션을 적용한다(#151).
+  args = ensureArg(args, "difficulty", process.env.PUZZLE_DIFFICULTY);
+  if (
+    getArgValue(args, "difficulty") == null &&
+    readEnvBooleanWithDefault("PUZZLE_DIFFICULTY_ROTATION", true)
+  ) {
+    const intervalHours = Number(getArgValue(args, "intervalHours") ?? "2");
+    const slotHour = getSlotHour(timeZone, seedDate, intervalHours);
+    const difficulty = resolveScheduledDifficulty({ slotHour, intervalHours });
+
+    console.log(
+      `[difficulty-rotation] assigning difficulty=${difficulty} for slot date=${getDateKey(timeZone, seedDate)} hour=${slotHour}`,
+    );
+    args = ensureArg(args, "difficulty", difficulty);
   }
 
   // 주제(테마) 명시 지정: PUZZLE_THEME/PUZZLE_THEME_LABEL 이 있으면 그대로 생성기에

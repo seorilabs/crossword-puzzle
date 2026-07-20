@@ -12,6 +12,7 @@ import {
   countNeedsManualClue,
   isSelfReferentialClue,
   needsManualClueRatio,
+  selectWordsForManualClueCoverage,
   summarizeManualClueCoverage,
 } from "./clueCuration.ts";
 
@@ -63,6 +64,61 @@ describe("needsManualClueRatio", () => {
 
   it("needsManualClue 누락은 검수 완료로 간주", () => {
     assert.equal(needsManualClueRatio([{}, { needsManualClue: true }]), 0.5);
+  });
+});
+
+describe("selectWordsForManualClueCoverage (#151)", () => {
+  const reviewed = (id: number) => ({ id, needsManualClue: false });
+  const unreviewed = (id: number) => ({ id, needsManualClue: true });
+
+  it("후보가 충분하면 40% 발행 상한에 맞춰 검수 단어를 60% 포함한다", () => {
+    const selected = selectWordsForManualClueCoverage(
+      [
+        ...Array.from({ length: 8 }, (_, index) => reviewed(index)),
+        ...Array.from({ length: 8 }, (_, index) => unreviewed(index + 8)),
+      ],
+      0.4,
+      10,
+    );
+
+    assert.equal(selected.length, 10);
+    assert.equal(needsManualClueRatio(selected), 0.4);
+  });
+
+  it("검수 단어가 부족하면 게이트를 지키는 크기까지 후보 풀을 줄인다", () => {
+    const selected = selectWordsForManualClueCoverage(
+      [
+        ...Array.from({ length: 6 }, (_, index) => reviewed(index)),
+        ...Array.from({ length: 20 }, (_, index) => unreviewed(index + 6)),
+      ],
+      0.4,
+      20,
+    );
+
+    assert.equal(selected.length, 10);
+    assert.equal(needsManualClueRatio(selected), 0.4);
+  });
+
+  it("검수 단어가 하나도 없으면 발행 가능한 후보를 만들지 않는다", () => {
+    assert.deepEqual(
+      selectWordsForManualClueCoverage(
+        Array.from({ length: 10 }, (_, index) => unreviewed(index)),
+        0.4,
+        10,
+      ),
+      [],
+    );
+  });
+
+  it("모든 단어가 검수 완료면 목표 후보 수를 줄이지 않는다", () => {
+    const selected = selectWordsForManualClueCoverage(
+      Array.from({ length: 10 }, (_, index) => reviewed(index)),
+      0.4,
+      10,
+    );
+
+    assert.equal(selected.length, 10);
+    assert.equal(needsManualClueRatio(selected), 0);
   });
 });
 

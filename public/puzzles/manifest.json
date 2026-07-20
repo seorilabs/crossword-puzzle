@@ -1,7 +1,25 @@
 {
-  "generatedAt": "2026-05-30T15:16:07.337Z",
-  "startDate": "2026-05-25",
-  "days": 7,
+  "generatedAt": "2026-07-20T15:39:19.396Z",
+  "startDate": "2026-06-01",
+  "days": 9,
+  "keep": 9,
+  "difficulty": "mixed",
+  "difficultyProfile": {
+    "difficulty": "hard",
+    "boardSize": 9,
+    "maxWords": 13,
+    "minWordLength": 2,
+    "minWordCount": 14,
+    "wordDifficulties": [
+      "normal",
+      "hard"
+    ],
+    "effectiveWordDifficulties": [
+      "normal",
+      "hard"
+    ],
+    "broadened": false
+  },
   "wordBank": {
     "path": "data/lexicon/krdict-puzzle-wordbank.json",
     "sourceName": "국립국어원 한국어기초사전 XML",
@@ -12,384 +30,157 @@
       "url": "https://creativecommons.org/licenses/by-sa/2.0/kr/"
     },
     "rawWordCount": 24963,
-    "wordCount": 24963
+    "wordCount": 24963,
+    "difficultyWordCount": 24056,
+    "byDifficulty": {
+      "easy": 0,
+      "normal": 18759,
+      "hard": 5297
+    }
   },
   "qualityThresholds": {
     "maxAutoRunRatio": 0.5,
-    "minBboxDensity": 0.5,
-    "minCrossRatio": 0.55,
+    "minBboxDensity": 0.45,
+    "minCrossRatio": 0.5,
     "minMultiCrossRatio": 0.65,
-    "minWordCount": 12
+    "minWordCount": 14
   },
   "puzzles": [
     {
-      "date": "2026-05-25",
-      "puzzleId": "2026-05-25-normal-01",
-      "path": "/puzzles/2026-05-25-normal-01.json",
+      "alias": "26060114",
+      "date": "2026-06-01",
+      "difficulty": "hard",
+      "packId": "pack-20260601051500-15102",
+      "publishedAt": "2026-06-01T05:15:00.000Z",
+      "puzzleId": "26060114",
+      "path": "/puzzles/26060114.json",
       "quality": {
         "pass": true,
         "checks": [
           {
             "key": "minWordCount",
             "pass": true,
-            "actual": 21,
-            "expected": 12
+            "actual": 17,
+            "expected": 14
           },
           {
             "key": "minCrossRatio",
-            "pass": true,
-            "actual": 0.676,
-            "expected": 0.55
-          },
-          {
-            "key": "minBboxDensity",
-            "pass": true,
-            "actual": 0.531,
-            "expected": 0.5
-          },
-          {
-            "key": "minMultiCrossRatio",
-            "pass": true,
-            "actual": 0.952,
-            "expected": 0.65
-          },
-          {
-            "key": "maxAutoRunRatio",
-            "pass": true,
-            "actual": 0.429,
-            "expected": 0.5
-          }
-        ],
-        "ratios": {
-          "autoRunRatio": 0.429,
-          "multiCrossRatio": 0.952
-        },
-        "thresholds": {
-          "maxAutoRunRatio": 0.5,
-          "minBboxDensity": 0.5,
-          "minCrossRatio": 0.55,
-          "minMultiCrossRatio": 0.65,
-          "minWordCount": 12
-        }
-      },
-      "metrics": {
-        "autoRunCount": 9,
-        "bboxDensity": 0.531,
-        "crossCells": 23,
-        "crossRatio": 0.676,
-        "filledCells": 34,
-        "multiCrossEntries": 20,
-        "placedWordCount": 12,
-        "wordCount": 21
-      }
-    },
-    {
-      "date": "2026-05-26",
-      "puzzleId": "2026-05-26-normal-02",
-      "path": "/puzzles/2026-05-26-normal-02.json",
-      "quality": {
-        "pass": true,
-        "checks": [
-          {
-            "key": "minWordCount",
-            "pass": true,
-            "actual": 22,
-            "expected": 12
-          },
-          {
-            "key": "minCrossRatio",
-            "pass": true,
-            "actual": 0.743,
-            "expected": 0.55
-          },
-          {
-            "key": "minBboxDensity",
-            "pass": true,
-            "actual": 0.547,
-            "expected": 0.5
-          },
-          {
-            "key": "minMultiCrossRatio",
-            "pass": true,
-            "actual": 0.955,
-            "expected": 0.65
-          },
-          {
-            "key": "maxAutoRunRatio",
-            "pass": true,
-            "actual": 0.455,
-            "expected": 0.5
-          }
-        ],
-        "ratios": {
-          "autoRunRatio": 0.455,
-          "multiCrossRatio": 0.955
-        },
-        "thresholds": {
-          "maxAutoRunRatio": 0.5,
-          "minBboxDensity": 0.5,
-          "minCrossRatio": 0.55,
-          "minMultiCrossRatio": 0.65,
-          "minWordCount": 12
-        }
-      },
-      "metrics": {
-        "autoRunCount": 10,
-        "bboxDensity": 0.547,
-        "crossCells": 26,
-        "crossRatio": 0.743,
-        "filledCells": 35,
-        "multiCrossEntries": 21,
-        "placedWordCount": 12,
-        "wordCount": 22
-      }
-    },
-    {
-      "date": "2026-05-27",
-      "puzzleId": "2026-05-27-normal-03",
-      "path": "/puzzles/2026-05-27-normal-03.json",
-      "quality": {
-        "pass": true,
-        "checks": [
-          {
-            "key": "minWordCount",
-            "pass": true,
-            "actual": 21,
-            "expected": 12
-          },
-          {
-            "key": "minCrossRatio",
-            "pass": true,
-            "actual": 0.781,
-            "expected": 0.55
-          },
-          {
-            "key": "minBboxDensity",
             "pass": true,
             "actual": 0.5,
             "expected": 0.5
           },
           {
+            "key": "minBboxDensity",
+            "pass": true,
+            "actual": 0.5,
+            "expected": 0.45
+          },
+          {
             "key": "minMultiCrossRatio",
             "pass": true,
-            "actual": 0.952,
+            "actual": 0.824,
             "expected": 0.65
           },
           {
             "key": "maxAutoRunRatio",
             "pass": true,
-            "actual": 0.429,
+            "actual": 0.235,
             "expected": 0.5
           }
         ],
         "ratios": {
-          "autoRunRatio": 0.429,
-          "multiCrossRatio": 0.952
+          "autoRunRatio": 0.235,
+          "multiCrossRatio": 0.824
         },
         "thresholds": {
           "maxAutoRunRatio": 0.5,
-          "minBboxDensity": 0.5,
-          "minCrossRatio": 0.55,
+          "minBboxDensity": 0.45,
+          "minCrossRatio": 0.5,
           "minMultiCrossRatio": 0.65,
-          "minWordCount": 12
+          "minWordCount": 14
         }
       },
       "metrics": {
-        "autoRunCount": 9,
+        "autoRunCount": 4,
         "bboxDensity": 0.5,
-        "crossCells": 25,
-        "crossRatio": 0.781,
-        "filledCells": 32,
-        "multiCrossEntries": 20,
-        "placedWordCount": 12,
-        "wordCount": 21
-      }
-    },
-    {
-      "date": "2026-05-28",
-      "puzzleId": "2026-05-28-normal-04",
-      "path": "/puzzles/2026-05-28-normal-04.json",
-      "quality": {
-        "pass": true,
-        "checks": [
-          {
-            "key": "minWordCount",
-            "pass": true,
-            "actual": 23,
-            "expected": 12
-          },
-          {
-            "key": "minCrossRatio",
-            "pass": true,
-            "actual": 0.8,
-            "expected": 0.55
-          },
-          {
-            "key": "minBboxDensity",
-            "pass": true,
-            "actual": 0.625,
-            "expected": 0.5
-          },
-          {
-            "key": "minMultiCrossRatio",
-            "pass": true,
-            "actual": 0.957,
-            "expected": 0.65
-          },
-          {
-            "key": "maxAutoRunRatio",
-            "pass": true,
-            "actual": 0.478,
-            "expected": 0.5
-          }
-        ],
-        "ratios": {
-          "autoRunRatio": 0.478,
-          "multiCrossRatio": 0.957
-        },
-        "thresholds": {
-          "maxAutoRunRatio": 0.5,
-          "minBboxDensity": 0.5,
-          "minCrossRatio": 0.55,
-          "minMultiCrossRatio": 0.65,
-          "minWordCount": 12
-        }
-      },
-      "metrics": {
-        "autoRunCount": 11,
-        "bboxDensity": 0.625,
-        "crossCells": 28,
-        "crossRatio": 0.8,
-        "filledCells": 35,
-        "multiCrossEntries": 22,
-        "placedWordCount": 12,
-        "wordCount": 23
-      }
-    },
-    {
-      "date": "2026-05-29",
-      "puzzleId": "2026-05-29-normal-05",
-      "path": "/puzzles/2026-05-29-normal-05.json",
-      "quality": {
-        "pass": true,
-        "checks": [
-          {
-            "key": "minWordCount",
-            "pass": true,
-            "actual": 20,
-            "expected": 12
-          },
-          {
-            "key": "minCrossRatio",
-            "pass": true,
-            "actual": 0.786,
-            "expected": 0.55
-          },
-          {
-            "key": "minBboxDensity",
-            "pass": true,
-            "actual": 0.583,
-            "expected": 0.5
-          },
-          {
-            "key": "minMultiCrossRatio",
-            "pass": true,
-            "actual": 0.9,
-            "expected": 0.65
-          },
-          {
-            "key": "maxAutoRunRatio",
-            "pass": true,
-            "actual": 0.4,
-            "expected": 0.5
-          }
-        ],
-        "ratios": {
-          "autoRunRatio": 0.4,
-          "multiCrossRatio": 0.9
-        },
-        "thresholds": {
-          "maxAutoRunRatio": 0.5,
-          "minBboxDensity": 0.5,
-          "minCrossRatio": 0.55,
-          "minMultiCrossRatio": 0.65,
-          "minWordCount": 12
-        }
-      },
-      "metrics": {
-        "autoRunCount": 8,
-        "bboxDensity": 0.583,
-        "crossCells": 22,
-        "crossRatio": 0.786,
-        "filledCells": 28,
-        "multiCrossEntries": 18,
-        "placedWordCount": 12,
-        "wordCount": 20
-      }
-    },
-    {
-      "date": "2026-05-30",
-      "puzzleId": "2026-05-30-normal-06",
-      "path": "/puzzles/2026-05-30-normal-06.json",
-      "quality": {
-        "pass": true,
-        "checks": [
-          {
-            "key": "minWordCount",
-            "pass": true,
-            "actual": 22,
-            "expected": 12
-          },
-          {
-            "key": "minCrossRatio",
-            "pass": true,
-            "actual": 0.694,
-            "expected": 0.55
-          },
-          {
-            "key": "minBboxDensity",
-            "pass": true,
-            "actual": 0.563,
-            "expected": 0.5
-          },
-          {
-            "key": "minMultiCrossRatio",
-            "pass": true,
-            "actual": 1,
-            "expected": 0.65
-          },
-          {
-            "key": "maxAutoRunRatio",
-            "pass": true,
-            "actual": 0.455,
-            "expected": 0.5
-          }
-        ],
-        "ratios": {
-          "autoRunRatio": 0.455,
-          "multiCrossRatio": 1
-        },
-        "thresholds": {
-          "maxAutoRunRatio": 0.5,
-          "minBboxDensity": 0.5,
-          "minCrossRatio": 0.55,
-          "minMultiCrossRatio": 0.65,
-          "minWordCount": 12
-        }
-      },
-      "metrics": {
-        "autoRunCount": 10,
-        "bboxDensity": 0.563,
-        "crossCells": 25,
-        "crossRatio": 0.694,
+        "crossCells": 18,
+        "crossRatio": 0.5,
         "filledCells": 36,
-        "multiCrossEntries": 22,
-        "placedWordCount": 12,
-        "wordCount": 22
-      }
+        "multiCrossEntries": 14,
+        "placedWordCount": 13,
+        "wordCount": 17
+      },
+      "slotId": "2026-06-01-h14"
+    },
+    {
+      "alias": "26060110",
+      "date": "2026-06-01",
+      "difficulty": "easy",
+      "packId": "pack-20260601011500-15101",
+      "publishedAt": "2026-06-01T01:15:00.000Z",
+      "puzzleId": "26060110",
+      "path": "/puzzles/26060110.json",
+      "quality": {
+        "pass": true,
+        "checks": [
+          {
+            "key": "minWordCount",
+            "pass": true,
+            "actual": 12,
+            "expected": 8
+          },
+          {
+            "key": "minCrossRatio",
+            "pass": true,
+            "actual": 0.813,
+            "expected": 0.6
+          },
+          {
+            "key": "minBboxDensity",
+            "pass": true,
+            "actual": 0.571,
+            "expected": 0.5
+          },
+          {
+            "key": "minMultiCrossRatio",
+            "pass": true,
+            "actual": 0.917,
+            "expected": 0.65
+          },
+          {
+            "key": "maxAutoRunRatio",
+            "pass": true,
+            "actual": 0.25,
+            "expected": 0.5
+          }
+        ],
+        "ratios": {
+          "autoRunRatio": 0.25,
+          "multiCrossRatio": 0.917
+        },
+        "thresholds": {
+          "maxAutoRunRatio": 0.5,
+          "minBboxDensity": 0.5,
+          "minCrossRatio": 0.6,
+          "minMultiCrossRatio": 0.65,
+          "minWordCount": 8
+        }
+      },
+      "metrics": {
+        "autoRunCount": 3,
+        "bboxDensity": 0.571,
+        "crossCells": 13,
+        "crossRatio": 0.813,
+        "filledCells": 16,
+        "multiCrossEntries": 11,
+        "placedWordCount": 9,
+        "wordCount": 12
+      },
+      "slotId": "2026-06-01-h10"
     },
     {
       "date": "2026-05-31",
+      "difficulty": "normal",
       "puzzleId": "2026-05-31-normal-07",
       "path": "/puzzles/2026-05-31-normal-07.json",
       "quality": {
@@ -447,7 +238,386 @@
         "multiCrossEntries": 22,
         "placedWordCount": 12,
         "wordCount": 22
-      }
+      },
+      "alias": "260531"
+    },
+    {
+      "date": "2026-05-30",
+      "difficulty": "normal",
+      "puzzleId": "2026-05-30-normal-06",
+      "path": "/puzzles/2026-05-30-normal-06.json",
+      "quality": {
+        "pass": true,
+        "checks": [
+          {
+            "key": "minWordCount",
+            "pass": true,
+            "actual": 22,
+            "expected": 12
+          },
+          {
+            "key": "minCrossRatio",
+            "pass": true,
+            "actual": 0.694,
+            "expected": 0.55
+          },
+          {
+            "key": "minBboxDensity",
+            "pass": true,
+            "actual": 0.563,
+            "expected": 0.5
+          },
+          {
+            "key": "minMultiCrossRatio",
+            "pass": true,
+            "actual": 1,
+            "expected": 0.65
+          },
+          {
+            "key": "maxAutoRunRatio",
+            "pass": true,
+            "actual": 0.455,
+            "expected": 0.5
+          }
+        ],
+        "ratios": {
+          "autoRunRatio": 0.455,
+          "multiCrossRatio": 1
+        },
+        "thresholds": {
+          "maxAutoRunRatio": 0.5,
+          "minBboxDensity": 0.5,
+          "minCrossRatio": 0.55,
+          "minMultiCrossRatio": 0.65,
+          "minWordCount": 12
+        }
+      },
+      "metrics": {
+        "autoRunCount": 10,
+        "bboxDensity": 0.563,
+        "crossCells": 25,
+        "crossRatio": 0.694,
+        "filledCells": 36,
+        "multiCrossEntries": 22,
+        "placedWordCount": 12,
+        "wordCount": 22
+      },
+      "alias": "260530"
+    },
+    {
+      "date": "2026-05-29",
+      "difficulty": "normal",
+      "puzzleId": "2026-05-29-normal-05",
+      "path": "/puzzles/2026-05-29-normal-05.json",
+      "quality": {
+        "pass": true,
+        "checks": [
+          {
+            "key": "minWordCount",
+            "pass": true,
+            "actual": 20,
+            "expected": 12
+          },
+          {
+            "key": "minCrossRatio",
+            "pass": true,
+            "actual": 0.786,
+            "expected": 0.55
+          },
+          {
+            "key": "minBboxDensity",
+            "pass": true,
+            "actual": 0.583,
+            "expected": 0.5
+          },
+          {
+            "key": "minMultiCrossRatio",
+            "pass": true,
+            "actual": 0.9,
+            "expected": 0.65
+          },
+          {
+            "key": "maxAutoRunRatio",
+            "pass": true,
+            "actual": 0.4,
+            "expected": 0.5
+          }
+        ],
+        "ratios": {
+          "autoRunRatio": 0.4,
+          "multiCrossRatio": 0.9
+        },
+        "thresholds": {
+          "maxAutoRunRatio": 0.5,
+          "minBboxDensity": 0.5,
+          "minCrossRatio": 0.55,
+          "minMultiCrossRatio": 0.65,
+          "minWordCount": 12
+        }
+      },
+      "metrics": {
+        "autoRunCount": 8,
+        "bboxDensity": 0.583,
+        "crossCells": 22,
+        "crossRatio": 0.786,
+        "filledCells": 28,
+        "multiCrossEntries": 18,
+        "placedWordCount": 12,
+        "wordCount": 20
+      },
+      "alias": "260529"
+    },
+    {
+      "date": "2026-05-28",
+      "difficulty": "normal",
+      "puzzleId": "2026-05-28-normal-04",
+      "path": "/puzzles/2026-05-28-normal-04.json",
+      "quality": {
+        "pass": true,
+        "checks": [
+          {
+            "key": "minWordCount",
+            "pass": true,
+            "actual": 23,
+            "expected": 12
+          },
+          {
+            "key": "minCrossRatio",
+            "pass": true,
+            "actual": 0.8,
+            "expected": 0.55
+          },
+          {
+            "key": "minBboxDensity",
+            "pass": true,
+            "actual": 0.625,
+            "expected": 0.5
+          },
+          {
+            "key": "minMultiCrossRatio",
+            "pass": true,
+            "actual": 0.957,
+            "expected": 0.65
+          },
+          {
+            "key": "maxAutoRunRatio",
+            "pass": true,
+            "actual": 0.478,
+            "expected": 0.5
+          }
+        ],
+        "ratios": {
+          "autoRunRatio": 0.478,
+          "multiCrossRatio": 0.957
+        },
+        "thresholds": {
+          "maxAutoRunRatio": 0.5,
+          "minBboxDensity": 0.5,
+          "minCrossRatio": 0.55,
+          "minMultiCrossRatio": 0.65,
+          "minWordCount": 12
+        }
+      },
+      "metrics": {
+        "autoRunCount": 11,
+        "bboxDensity": 0.625,
+        "crossCells": 28,
+        "crossRatio": 0.8,
+        "filledCells": 35,
+        "multiCrossEntries": 22,
+        "placedWordCount": 12,
+        "wordCount": 23
+      },
+      "alias": "260528"
+    },
+    {
+      "date": "2026-05-27",
+      "difficulty": "normal",
+      "puzzleId": "2026-05-27-normal-03",
+      "path": "/puzzles/2026-05-27-normal-03.json",
+      "quality": {
+        "pass": true,
+        "checks": [
+          {
+            "key": "minWordCount",
+            "pass": true,
+            "actual": 21,
+            "expected": 12
+          },
+          {
+            "key": "minCrossRatio",
+            "pass": true,
+            "actual": 0.781,
+            "expected": 0.55
+          },
+          {
+            "key": "minBboxDensity",
+            "pass": true,
+            "actual": 0.5,
+            "expected": 0.5
+          },
+          {
+            "key": "minMultiCrossRatio",
+            "pass": true,
+            "actual": 0.952,
+            "expected": 0.65
+          },
+          {
+            "key": "maxAutoRunRatio",
+            "pass": true,
+            "actual": 0.429,
+            "expected": 0.5
+          }
+        ],
+        "ratios": {
+          "autoRunRatio": 0.429,
+          "multiCrossRatio": 0.952
+        },
+        "thresholds": {
+          "maxAutoRunRatio": 0.5,
+          "minBboxDensity": 0.5,
+          "minCrossRatio": 0.55,
+          "minMultiCrossRatio": 0.65,
+          "minWordCount": 12
+        }
+      },
+      "metrics": {
+        "autoRunCount": 9,
+        "bboxDensity": 0.5,
+        "crossCells": 25,
+        "crossRatio": 0.781,
+        "filledCells": 32,
+        "multiCrossEntries": 20,
+        "placedWordCount": 12,
+        "wordCount": 21
+      },
+      "alias": "260527"
+    },
+    {
+      "date": "2026-05-26",
+      "difficulty": "normal",
+      "puzzleId": "2026-05-26-normal-02",
+      "path": "/puzzles/2026-05-26-normal-02.json",
+      "quality": {
+        "pass": true,
+        "checks": [
+          {
+            "key": "minWordCount",
+            "pass": true,
+            "actual": 22,
+            "expected": 12
+          },
+          {
+            "key": "minCrossRatio",
+            "pass": true,
+            "actual": 0.743,
+            "expected": 0.55
+          },
+          {
+            "key": "minBboxDensity",
+            "pass": true,
+            "actual": 0.547,
+            "expected": 0.5
+          },
+          {
+            "key": "minMultiCrossRatio",
+            "pass": true,
+            "actual": 0.955,
+            "expected": 0.65
+          },
+          {
+            "key": "maxAutoRunRatio",
+            "pass": true,
+            "actual": 0.455,
+            "expected": 0.5
+          }
+        ],
+        "ratios": {
+          "autoRunRatio": 0.455,
+          "multiCrossRatio": 0.955
+        },
+        "thresholds": {
+          "maxAutoRunRatio": 0.5,
+          "minBboxDensity": 0.5,
+          "minCrossRatio": 0.55,
+          "minMultiCrossRatio": 0.65,
+          "minWordCount": 12
+        }
+      },
+      "metrics": {
+        "autoRunCount": 10,
+        "bboxDensity": 0.547,
+        "crossCells": 26,
+        "crossRatio": 0.743,
+        "filledCells": 35,
+        "multiCrossEntries": 21,
+        "placedWordCount": 12,
+        "wordCount": 22
+      },
+      "alias": "260526"
+    },
+    {
+      "date": "2026-05-25",
+      "difficulty": "normal",
+      "puzzleId": "2026-05-25-normal-01",
+      "path": "/puzzles/2026-05-25-normal-01.json",
+      "quality": {
+        "pass": true,
+        "checks": [
+          {
+            "key": "minWordCount",
+            "pass": true,
+            "actual": 21,
+            "expected": 12
+          },
+          {
+            "key": "minCrossRatio",
+            "pass": true,
+            "actual": 0.676,
+            "expected": 0.55
+          },
+          {
+            "key": "minBboxDensity",
+            "pass": true,
+            "actual": 0.531,
+            "expected": 0.5
+          },
+          {
+            "key": "minMultiCrossRatio",
+            "pass": true,
+            "actual": 0.952,
+            "expected": 0.65
+          },
+          {
+            "key": "maxAutoRunRatio",
+            "pass": true,
+            "actual": 0.429,
+            "expected": 0.5
+          }
+        ],
+        "ratios": {
+          "autoRunRatio": 0.429,
+          "multiCrossRatio": 0.952
+        },
+        "thresholds": {
+          "maxAutoRunRatio": 0.5,
+          "minBboxDensity": 0.5,
+          "minCrossRatio": 0.55,
+          "minMultiCrossRatio": 0.65,
+          "minWordCount": 12
+        }
+      },
+      "metrics": {
+        "autoRunCount": 9,
+        "bboxDensity": 0.531,
+        "crossCells": 23,
+        "crossRatio": 0.676,
+        "filledCells": 34,
+        "multiCrossEntries": 20,
+        "placedWordCount": 12,
+        "wordCount": 21
+      },
+      "alias": "260525"
     }
   ]
 }
