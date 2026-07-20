@@ -11,5 +11,9 @@
     "../../packages/**/*.ts",
     "../../public/puzzles/**/*.json"
   ],
-  "exclude": ["**/node_modules", "**/Pods"]
+  "exclude": [
+    "**/node_modules",
+    "**/Pods",
+    "../../packages/**/*.test.ts"
+  ]
 }
