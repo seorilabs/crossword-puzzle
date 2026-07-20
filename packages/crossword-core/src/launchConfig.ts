@@ -1,5 +1,4 @@
 import { LEADERBOARD_SCORE_WEIGHTS } from "./leaderboard.ts";
-import { DEFAULT_MEMORY_INK_REWARD_CONFIG } from "./gameEconomy.ts";
 import {
   DAILY_ATTEMPT_LIMIT,
   DEFAULT_HINT_CREDITS,
@@ -37,20 +36,6 @@ export type LaunchConfig = {
   returnReminderEnabled: boolean;
   // 신규 첫 실행에서 홈을 건너뛰고 온보딩 퍼즐 풀이 화면으로 자동 진입할지(#205).
   firstRunAutoStartEnabled: boolean;
-  // 신규 Phaser runtime 진입 gate. host가 engine chunk import 전에 읽으며 bundled
-  // 기본값은 false다. engine 내부에서 이 값을 읽어 자체 부팅하면 안 된다.
-  gameRuntimeEnabled: boolean;
-  // 신규 게임의 첫 완료 경제. 서버 권위가 없는 local-first 원장에서도 세 시장이
-  // 같은 식을 사용하도록 core Remote Config 계약에 둔다.
-  memoryInkBase: number;
-  memoryInkPerEntry: number;
-  memoryInkChainCap: number;
-  // 첫 실행 입력은 검증된 한 가지 variant만 허용한다. 새 variant는 core enum과
-  // 3마켓 구현을 함께 추가하기 전까지 원격 문자열만으로 활성화하지 않는다.
-  ftueInputVariant: "direct_with_tap_intro";
-  worldRestoreMotionLevel: "full" | "reduced";
-  adFailureFallbackEnabled: boolean;
-  adFailureFallbackDailyCap: number;
   // 막힘 힌트 자동 노출: 입력 정체가 이 시간(ms)을 넘으면 비침습 힌트 CTA를 띄운다.
   stuckHintIdleMs: number;
   // 오답이 쌓여 막힘 신호가 보이면 위 시간 대신 더 짧은 이 지연(ms)으로 띄운다.
@@ -94,14 +79,6 @@ export const launchConfigKeys = {
   leaderboardEnabled: "leaderboard_enabled",
   returnReminderEnabled: "return_reminder_enabled",
   firstRunAutoStartEnabled: "first_run_auto_start_enabled",
-  gameRuntimeEnabled: "game_runtime_enabled",
-  memoryInkBase: "memory_ink_base",
-  memoryInkPerEntry: "memory_ink_per_entry",
-  memoryInkChainCap: "memory_ink_chain_cap",
-  ftueInputVariant: "ftue_input_variant",
-  worldRestoreMotionLevel: "world_restore_motion_level",
-  adFailureFallbackEnabled: "ad_failure_fallback_enabled",
-  adFailureFallbackDailyCap: "ad_failure_fallback_daily_cap",
   stuckHintIdleMs: "stuck_hint_idle_ms",
   stuckHintWrongIdleMs: "stuck_hint_wrong_idle_ms",
   stuckHintWrongCellThreshold: "stuck_hint_wrong_cell_threshold",
@@ -145,14 +122,6 @@ export const defaultLaunchConfig: LaunchConfig = {
   // (62%)·attempt_start 도달률(57%) 개선용. 회귀 시 Remote Config
   // `first_run_auto_start_enabled`로 즉시 끈다.
   firstRunAutoStartEnabled: true,
-  gameRuntimeEnabled: false,
-  memoryInkBase: DEFAULT_MEMORY_INK_REWARD_CONFIG.base,
-  memoryInkPerEntry: DEFAULT_MEMORY_INK_REWARD_CONFIG.perEntry,
-  memoryInkChainCap: DEFAULT_MEMORY_INK_REWARD_CONFIG.chainCap,
-  ftueInputVariant: "direct_with_tap_intro",
-  worldRestoreMotionLevel: "full",
-  adFailureFallbackEnabled: true,
-  adFailureFallbackDailyCap: 2,
   // 막힘 힌트/피드백 튜닝값(원격 조정 가능). 기존 App.tsx 하드코딩 값을 그대로 옮겼다.
   stuckHintIdleMs: 20000,
   stuckHintWrongIdleMs: 5000,
@@ -283,49 +252,11 @@ export function normalizeLaunchConfig(
     leaderboardEnabled:
       value.leaderboardEnabled ?? defaultLaunchConfig.leaderboardEnabled,
     returnReminderEnabled:
-      value.returnReminderEnabled ?? defaultLaunchConfig.returnReminderEnabled,
+      value.returnReminderEnabled ??
+      defaultLaunchConfig.returnReminderEnabled,
     firstRunAutoStartEnabled:
       value.firstRunAutoStartEnabled ??
       defaultLaunchConfig.firstRunAutoStartEnabled,
-    gameRuntimeEnabled:
-      value.gameRuntimeEnabled ?? defaultLaunchConfig.gameRuntimeEnabled,
-    memoryInkBase: clampInteger(
-      value.memoryInkBase ?? defaultLaunchConfig.memoryInkBase,
-      defaultLaunchConfig.memoryInkBase,
-      6,
-      16,
-    ),
-    memoryInkPerEntry: clampInteger(
-      value.memoryInkPerEntry ?? defaultLaunchConfig.memoryInkPerEntry,
-      defaultLaunchConfig.memoryInkPerEntry,
-      1,
-      3,
-    ),
-    memoryInkChainCap: clampInteger(
-      value.memoryInkChainCap ?? defaultLaunchConfig.memoryInkChainCap,
-      defaultLaunchConfig.memoryInkChainCap,
-      6,
-      14,
-    ),
-    ftueInputVariant:
-      value.ftueInputVariant === "direct_with_tap_intro"
-        ? value.ftueInputVariant
-        : defaultLaunchConfig.ftueInputVariant,
-    worldRestoreMotionLevel:
-      value.worldRestoreMotionLevel === "reduced" ||
-      value.worldRestoreMotionLevel === "full"
-        ? value.worldRestoreMotionLevel
-        : defaultLaunchConfig.worldRestoreMotionLevel,
-    adFailureFallbackEnabled:
-      value.adFailureFallbackEnabled ??
-      defaultLaunchConfig.adFailureFallbackEnabled,
-    adFailureFallbackDailyCap: clampInteger(
-      value.adFailureFallbackDailyCap ??
-        defaultLaunchConfig.adFailureFallbackDailyCap,
-      defaultLaunchConfig.adFailureFallbackDailyCap,
-      0,
-      2,
-    ),
     stuckHintIdleMs: clampInteger(
       value.stuckHintIdleMs ?? defaultLaunchConfig.stuckHintIdleMs,
       defaultLaunchConfig.stuckHintIdleMs,
@@ -425,7 +356,8 @@ export function getLaunchConfigDefaultsForRemoteConfig() {
     [launchConfigKeys.puzzleGenerationIntervalHours]:
       defaultLaunchConfig.puzzleGenerationIntervalHours,
     [launchConfigKeys.puzzleKeepCount]: defaultLaunchConfig.puzzleKeepCount,
-    [launchConfigKeys.dailyAttemptLimit]: defaultLaunchConfig.dailyAttemptLimit,
+    [launchConfigKeys.dailyAttemptLimit]:
+      defaultLaunchConfig.dailyAttemptLimit,
     [launchConfigKeys.rewardedBonusPuzzleAdsEnabled]:
       defaultLaunchConfig.rewardedBonusPuzzleAdsEnabled,
     [launchConfigKeys.rewardedHintAdsEnabled]:
@@ -442,18 +374,6 @@ export function getLaunchConfigDefaultsForRemoteConfig() {
       defaultLaunchConfig.returnReminderEnabled,
     [launchConfigKeys.firstRunAutoStartEnabled]:
       defaultLaunchConfig.firstRunAutoStartEnabled,
-    [launchConfigKeys.gameRuntimeEnabled]:
-      defaultLaunchConfig.gameRuntimeEnabled,
-    [launchConfigKeys.memoryInkBase]: defaultLaunchConfig.memoryInkBase,
-    [launchConfigKeys.memoryInkPerEntry]: defaultLaunchConfig.memoryInkPerEntry,
-    [launchConfigKeys.memoryInkChainCap]: defaultLaunchConfig.memoryInkChainCap,
-    [launchConfigKeys.ftueInputVariant]: defaultLaunchConfig.ftueInputVariant,
-    [launchConfigKeys.worldRestoreMotionLevel]:
-      defaultLaunchConfig.worldRestoreMotionLevel,
-    [launchConfigKeys.adFailureFallbackEnabled]:
-      defaultLaunchConfig.adFailureFallbackEnabled,
-    [launchConfigKeys.adFailureFallbackDailyCap]:
-      defaultLaunchConfig.adFailureFallbackDailyCap,
     [launchConfigKeys.stuckHintIdleMs]: defaultLaunchConfig.stuckHintIdleMs,
     [launchConfigKeys.stuckHintWrongIdleMs]:
       defaultLaunchConfig.stuckHintWrongIdleMs,

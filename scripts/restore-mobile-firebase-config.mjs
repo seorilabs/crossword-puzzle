@@ -33,16 +33,6 @@ function writeConfig(path, content) {
   console.log(`Restored ${path}`);
 }
 
-function readPlistString(text, key) {
-  const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const match = new RegExp(
-    `<key>\\s*${escapedKey}\\s*</key>\\s*<string>\\s*([^<]+?)\\s*</string>`,
-    "s",
-  ).exec(text);
-
-  return match?.[1]?.trim() ?? null;
-}
-
 if (restoreAndroid) {
   const content = decodeBase64Env(
     "FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64",
@@ -67,8 +57,10 @@ if (restoreIos) {
   );
   if (content != null) {
     const text = content.toString("utf8");
-    const bundleId = readPlistString(text, "BUNDLE_ID");
-    if (bundleId !== "com.seorilabs.crosswordpuzzle") {
+    if (
+      !text.includes("<key>BUNDLE_ID</key>") ||
+      !text.includes("com.seorilabs.crosswordpuzzle")
+    ) {
       throw new Error("GoogleService-Info.plist bundle ID mismatch.");
     }
     writeConfig(

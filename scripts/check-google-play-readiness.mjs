@@ -2,8 +2,6 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
-import { findPackageImports } from "./release-checker-utils.mjs";
-
 const root = process.cwd();
 const jsonMode = process.argv.includes("--json");
 const placeholders = ["", "확정 필요", "TODO", "TBD", "FIXME"];
@@ -245,11 +243,8 @@ function checkNativeSourceImports(sourceRoots) {
   const appsInTossFiles = sourceFiles.filter((path) => {
     const contents = readFileSync(repoPath(path), "utf8");
     return (
-      findPackageImports(
-        contents,
-        ["@apps-in-toss", "@toss/tds-mobile-ait"],
-        path,
-      ).length > 0
+      contents.includes("@apps-in-toss/") ||
+      contents.includes("@toss/tds-mobile-ait")
     );
   });
 

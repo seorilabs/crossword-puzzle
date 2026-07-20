@@ -96,20 +96,6 @@ Android/iOS는 AIT WebView 코드와 같은 Web SDK를 공유하지 않는다. `
 - iOS Podfile은 RNFirebase와 RN 0.84+ prebuilt RNCore 조합의 compile error를 피하기 위해 `RCT_USE_RN_DEP=0`, `RCT_USE_PREBUILT_RNCORE=0`을 고정한다.
 - `apps/mobile/firebase.json`은 Analytics ad/user data/personalization storage 기본값을 false로 둔다.
 
-### Native runtime 부트 캐시
-
-Android/iOS의 신규 runtime 선택은 RNFirebase에서 `game_runtime_enabled`의
-`getSource()`가 `remote`인 activated snapshot만 fresh 값으로 인정한다. 이때
-같이 읽은 전체 normalized `LaunchConfig`를
-`crossword:firebase-runtime-config:v1` AsyncStorage 키에 저장해, 다음 부트의
-fetch 실패 시 같은 config와 gate를 함께 복구한다.
-
-캐시는 schema version, `remote` source, gate/config 일치, 전체 LaunchConfig의
-정확한 key/type/normalized 값, fetch 시각을 다시 검증한다. 최대 수명은 7일이고
-허용하는 미래 시계 오차는 5분이다. 최초 실행, 손상·오염·만료 캐시, SDK default
-source에서는 캐시를 사용하지 않으며 bundled `game_runtime_enabled=false`로
-내려간다. fresh 원격 OFF는 과거 cached ON보다 우선한다.
-
 ### Native config 복구
 
 ```bash

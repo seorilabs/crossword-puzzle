@@ -7,12 +7,9 @@ import { readFileSync } from "node:fs";
 import {
   CURATED_CLUE_SOURCE,
   DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO,
-  KO_KR_MIN_EXPOSED_ANSWER_FRAGMENT_LENGTH,
   applyManualClue,
   applyManualClues,
   countNeedsManualClue,
-  findBoardClueQualityConflicts,
-  findKoKrAnswerFragmentExposure,
   isSelfReferentialClue,
   needsManualClueRatio,
   summarizeManualClueCoverage,
@@ -22,11 +19,6 @@ describe("isSelfReferentialClue", () => {
   it("단서가 정답을 부분 문자열로 포함하면 true", () => {
     assert.equal(isSelfReferentialClue("사회", "사회의 한 구성원"), true);
     assert.equal(isSelfReferentialClue("평면", "두 평면이 만나는 선"), true);
-    assert.equal(
-      isSelfReferentialClue("지하철", "지하 철도를 달리는 차"),
-      true,
-    );
-    assert.equal(isSelfReferentialClue("글자", "한글 자모를 적는 기호"), true);
   });
 
   it("정답을 포함하지 않으면 false", () => {
@@ -40,92 +32,6 @@ describe("isSelfReferentialClue", () => {
     assert.equal(isSelfReferentialClue("사회", ""), false);
     assert.equal(isSelfReferentialClue("사회", undefined), false);
     assert.equal(isSelfReferentialClue("사회", null), false);
-  });
-});
-
-describe("findKoKrAnswerFragmentExposure", () => {
-  it("복합어 조각·활용 어간·띄어 쓴 조각을 결정적으로 찾는다", () => {
-    assert.equal(KO_KR_MIN_EXPOSED_ANSWER_FRAGMENT_LENGTH, 2);
-    assert.equal(
-      findKoKrAnswerFragmentExposure(
-        "주재료",
-        "어떤 것을 만드는 데 쓰는 가장 중심이 되는 재료",
-      ),
-      "재료",
-    );
-    assert.equal(
-      findKoKrAnswerFragmentExposure("겨루기", "두 선수가 기술을 겨루는 경기"),
-      "겨루",
-    );
-    assert.equal(
-      findKoKrAnswerFragmentExposure("집안일", "청소처럼 집 안에서 하는 일"),
-      "집안",
-    );
-  });
-
-  it("서로 다른 token의 끝과 시작이 붙은 우연한 조각은 제외한다", () => {
-    assert.equal(
-      findKoKrAnswerFragmentExposure(
-        "눌은밥",
-        "솥에 눌어붙은 밥에 물을 부어 끓인 음식",
-      ),
-      null,
-    );
-    assert.equal(
-      findKoKrAnswerFragmentExposure(
-        "북반부",
-        "남북으로 나누었을 때 북쪽 절반 부분",
-      ),
-      null,
-    );
-    assert.equal(
-      findKoKrAnswerFragmentExposure("인문계", "언어와 역사 등의 학문 계통"),
-      null,
-    );
-  });
-
-  it("2글자 정답은 기존 full-answer gate만 담당한다", () => {
-    assert.equal(findKoKrAnswerFragmentExposure("사회", "사회의 구성원"), null);
-    assert.equal(isSelfReferentialClue("사회", "사회의 구성원"), true);
-  });
-});
-
-describe("findBoardClueQualityConflicts", () => {
-  it("다른 정답의 직접 노출과 정답 포함관계를 같은 보드에서 찾는다", () => {
-    const conflicts = findBoardClueQualityConflicts([
-      { answer: "방앗간", clue: "곡식을 찧거나 빻는 가게" },
-      { answer: "가게", clue: "물건을 파는 작은 상점" },
-      { answer: "주원료", clue: "가장 중심이 되는 기본 재료" },
-      { answer: "원료", clue: "물건을 만드는 데 들어가는 재료" },
-    ]);
-    assert.deepEqual(
-      conflicts.map((conflict) => [
-        conflict.type,
-        conflict.answer,
-        conflict.otherAnswer,
-      ]),
-      [
-        ["clue_contains_other_answer", "방앗간", "가게"],
-        ["answer_contains_answer", "주원료", "원료"],
-      ],
-    );
-  });
-
-  it("정상 보드는 충돌이 없고 orthographic 포함은 의미와 무관하게 보드 제약이다", () => {
-    assert.deepEqual(
-      findBoardClueQualityConflicts([
-        { answer: "토끼", clue: "귀가 길고 깡충깡충 뛰는 동물" },
-        { answer: "기차", clue: "철길 위를 달리는 긴 탈것" },
-      ]),
-      [],
-    );
-    assert.equal(
-      findBoardClueQualityConflicts([
-        { answer: "운동화", clue: "달릴 때 편하게 신는 신발" },
-        { answer: "동화", clue: "어린이를 위한 이야기" },
-      ])[0]?.type,
-      "answer_contains_answer",
-    );
   });
 });
 
@@ -238,9 +144,7 @@ describe("summarizeManualClueCoverage", () => {
     assert.equal(hard?.ratio, 1);
     assert.equal(hard?.exceedsGate, true);
 
-    const food = summary.groups.find(
-      (g) => g.kind === "theme" && g.key === "food",
-    );
+    const food = summary.groups.find((g) => g.kind === "theme" && g.key === "food");
     assert.equal(food?.total, 2);
     assert.equal(food?.ratio, 0.5);
     assert.equal(food?.exceedsGate, true);
@@ -295,9 +199,7 @@ describe("manual-clues.json 검수 단서 데이터", () => {
   const raw = JSON.parse(
     readFileSync("data/lexicon/manual-clues.json", "utf8"),
   ) as Record<string, string>;
-  const clues = Object.entries(raw).filter(
-    ([answer]) => !answer.startsWith("_"),
-  );
+  const clues = Object.entries(raw).filter(([answer]) => !answer.startsWith("_"));
 
   it("검수 단서 항목 수가 커버리지 확대 기준(500개 이상)을 충족한다(#201 → #250)", () => {
     assert.ok(

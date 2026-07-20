@@ -2,9 +2,8 @@ import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
 import { gzipSync } from "node:zlib";
 import { promisify } from "node:util";
-import { readFile, readdir, realpath } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 const execFileAsync = promisify(execFile);
 
@@ -14,14 +13,12 @@ const DEFAULT_OPTIONS = {
   publicDir: "public",
 };
 
-export const EXCLUDED_GAME_CONTENT_PATH_CLASS = "/game-content/**";
-
 function readEnvBoolean(name) {
   const value = process.env[name];
   return value === "1" || value === "true";
 }
 
-export function parseArgs(argv) {
+function parseArgs(argv) {
   const options = {
     ...DEFAULT_OPTIONS,
     corsOrigin: process.env.PUZZLE_CORS_ORIGIN ?? DEFAULT_OPTIONS.corsOrigin,
@@ -57,7 +54,7 @@ export function parseArgs(argv) {
   return options;
 }
 
-export function getPuzzleHostingHeaders(options) {
+function getPuzzleHostingHeaders(options) {
   const headers = {
     "Cache-Control": "public, max-age=300, s-maxage=300",
   };
@@ -147,49 +144,9 @@ async function requestJson(url, { method = "GET", token, body } = {}) {
   return text ? JSON.parse(text) : null;
 }
 
-function hasGameContentPathSegment(candidatePath) {
-  return path
-    .resolve(candidatePath)
-    .split(path.sep)
-    .some((segment) => segment === "game-content");
-}
-
-function isExcludedGameContentUploadPath(uploadPath) {
-  return (
-    uploadPath === "/game-content" || uploadPath.startsWith("/game-content/")
-  );
-}
-
-async function countUploadCandidateFiles(directory) {
-  let count = 0;
-  const entries = await readdir(directory, { withFileTypes: true });
-
-  for (const entry of entries) {
-    if (entry.name.startsWith(".")) continue;
-    const entryPath = path.join(directory, entry.name);
-    if (entry.isDirectory()) {
-      count += await countUploadCandidateFiles(entryPath);
-    } else if (entry.isFile()) {
-      count += 1;
-    }
-  }
-
-  return count;
-}
-
-export async function collectPuzzleHostingFiles(rootDir) {
-  const requestedRoot = path.resolve(rootDir);
-  const root = await realpath(requestedRoot);
-  if (
-    hasGameContentPathSegment(requestedRoot) ||
-    hasGameContentPathSegment(root)
-  ) {
-    throw new Error(
-      `Puzzle Hosting publicDir must not be game-content or its descendant: ${requestedRoot}`,
-    );
-  }
+async function collectFiles(rootDir) {
+  const root = path.resolve(rootDir);
   const files = [];
-  let excludedFileCount = 0;
 
   async function walk(currentDir) {
     const entries = await readdir(currentDir, { withFileTypes: true });
@@ -200,16 +157,6 @@ export async function collectPuzzleHostingFiles(rootDir) {
       }
 
       const entryPath = path.join(currentDir, entry.name);
-      const relativePath = `/${path.relative(root, entryPath).split(path.sep).join("/")}`;
-
-      if (isExcludedGameContentUploadPath(relativePath)) {
-        if (entry.isDirectory()) {
-          excludedFileCount += await countUploadCandidateFiles(entryPath);
-        } else if (entry.isFile()) {
-          excludedFileCount += 1;
-        }
-        continue;
-      }
 
       if (entry.isDirectory()) {
         await walk(entryPath);
@@ -223,6 +170,7 @@ export async function collectPuzzleHostingFiles(rootDir) {
       const bytes = await readFile(entryPath);
       const gzipped = gzipSync(bytes);
       const hash = createHash("sha256").update(gzipped).digest("hex");
+      const relativePath = `/${path.relative(root, entryPath).split(path.sep).join("/")}`;
 
       files.push({
         bytes,
@@ -234,11 +182,7 @@ export async function collectPuzzleHostingFiles(rootDir) {
   }
 
   await walk(root);
-  return {
-    excludedFileCount,
-    excludedPathClass: EXCLUDED_GAME_CONTENT_PATH_CLASS,
-    files: files.sort((left, right) => left.path.localeCompare(right.path)),
-  };
+  return files.sort((left, right) => left.path.localeCompare(right.path));
 }
 
 function chunk(items, size) {
@@ -269,7 +213,7 @@ async function uploadHostingFile(uploadUrl, file, token) {
   }
 }
 
-export async function deployHosting({ options, token }) {
+async function deployHosting({ options, token }) {
   if (!options.project) {
     throw new Error("Missing --project or FIREBASE_PROJECT_ID.");
   }
@@ -278,8 +222,7 @@ export async function deployHosting({ options, token }) {
     throw new Error("Missing --site or FIREBASE_HOSTING_SITE.");
   }
 
-  const plan = await collectPuzzleHostingFiles(options.publicDir);
-  const { files } = plan;
+  const files = await collectFiles(options.publicDir);
 
   if (files.length === 0) {
     throw new Error(`No hosting files found in ${options.publicDir}.`);
@@ -350,26 +293,21 @@ export async function deployHosting({ options, token }) {
 
   console.log(`Deployed Firebase Hosting release: ${release.name}`);
   console.log(`Hosting URL: ${options.hostingBaseUrl}`);
-  console.log(
-    `Excluded Hosting files: ${plan.excludedFileCount} (${plan.excludedPathClass})`,
-  );
   return release;
 }
 
-export async function run() {
+async function run() {
   const options = parseArgs(process.argv.slice(2));
   const manifest = await readJson(path.resolve(options.manifest));
 
   if (options.dryRun) {
-    const plan = await collectPuzzleHostingFiles(options.publicDir);
+    const files = await collectFiles(options.publicDir);
     console.log("Dry run: puzzle pack publish plan");
     console.log(`Project: ${options.project ?? "(not set)"}`);
     console.log(`Hosting site: ${options.site ?? "(not set)"}`);
     console.log(
-      `Hosting files: ${plan.files.length} from ${path.resolve(options.publicDir)}`,
+      `Hosting files: ${files.length} from ${path.resolve(options.publicDir)}`,
     );
-    console.log(`Excluded files: ${plan.excludedFileCount}`);
-    console.log(`Excluded path class: ${plan.excludedPathClass}`);
     console.log(`CORS origin: ${options.corsOrigin || "(not set)"}`);
     console.log(`Puzzle count: ${manifest.puzzles?.length ?? 0}`);
     return;
@@ -382,13 +320,7 @@ export async function run() {
   }
 }
 
-const isMain =
-  process.argv[1] != null &&
-  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-
-if (isMain) {
-  run().catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-  });
-}
+run().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

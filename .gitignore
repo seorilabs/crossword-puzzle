@@ -7,7 +7,6 @@ apps/mobile/vendor/bundle/
 dist/
 build/
 .vite/
-apps/mobile/game-bundle/
 
 # Apps in Toss / Granite outputs
 .granite/

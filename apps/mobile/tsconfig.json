@@ -8,7 +8,7 @@
   "include": [
     "**/*.ts",
     "**/*.tsx",
-    "../../packages/crossword-core/src/**/*.ts",
+    "../../packages/**/*.ts",
     "../../public/puzzles/**/*.json"
   ],
   "exclude": ["**/node_modules", "**/Pods"]

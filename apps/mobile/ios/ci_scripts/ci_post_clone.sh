@@ -7,8 +7,8 @@
 # Node/CocoaPods 가 기본 제공되지 않으므로 여기서 설치하고 의존성 + Pods 를 구성한다.
 # 코드 서명은 Xcode Cloud 매니지드 서명이 처리한다.
 #
-# 필수 환경변수: FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64 —
-#   저장소에는 GoogleService-Info.plist 를 커밋하지 않고 이 값에서 복구한다.
+# 필요 환경변수(선택): FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64 —
+#   미설정 시 저장소에 커밋된 GoogleService-Info.plist 를 사용한다.
 
 set -e
 
@@ -26,15 +26,17 @@ echo "▸ JS 의존성 설치 (npm ci — root + apps/mobile)"
 npm --prefix "${REPO}" ci
 npm --prefix "${MOBILE}" ci
 
-echo "▸ iOS 내장 게임 번들 생성·검증"
-npm --prefix "${REPO}" run build:game:mobile
-
 echo "▸ Firebase iOS 설정 확인 (GoogleService-Info.plist)"
 GS_PLIST="${IOS}/CrosswordPuzzleMobile/GoogleService-Info.plist"
-cd "${REPO}"
-node scripts/restore-mobile-firebase-config.mjs --ios --require
-plutil -lint "${GS_PLIST}"
-echo "  시크릿에서 복원·검증 완료"
+if [ -n "${FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64}" ]; then
+  printf '%s' "${FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64}" | base64 --decode > "${GS_PLIST}"
+  plutil -lint "${GS_PLIST}"
+  echo "  시크릿에서 복원"
+elif [ -f "${GS_PLIST}" ]; then
+  echo "  저장소 커밋본 사용"
+else
+  echo "  경고: GoogleService-Info.plist 없음(시크릿 미설정 + 미커밋)" >&2
+fi
 
 echo "▸ CocoaPods 설치"
 cd "${IOS}"

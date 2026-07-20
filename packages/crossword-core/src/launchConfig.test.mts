@@ -60,88 +60,6 @@ describe("launchConfig: firstRunAutoStartEnabled 기본값(#205)", () => {
   });
 });
 
-describe("launchConfig: gameRuntimeEnabled 안전 기본값", () => {
-  it("bundled 기본값과 Remote Config template 기본값이 false다", () => {
-    assert.equal(defaultLaunchConfig.gameRuntimeEnabled, false);
-    assert.equal(
-      getLaunchConfigDefaultsForRemoteConfig()[
-        launchConfigKeys.gameRuntimeEnabled
-      ],
-      false,
-    );
-    assert.equal(launchConfigKeys.gameRuntimeEnabled, "game_runtime_enabled");
-  });
-
-  it("host 검증용 snapshot에서만 명시적으로 켤 수 있다", () => {
-    assert.equal(normalizeLaunchConfig({}).gameRuntimeEnabled, false);
-    assert.equal(
-      normalizeLaunchConfig({ gameRuntimeEnabled: true }).gameRuntimeEnabled,
-      true,
-    );
-  });
-});
-
-describe("launchConfig: 신규 게임 경제·연출·광고 실패 계약", () => {
-  it("문서 기본값과 Remote Config 키를 3마켓 공통 계약으로 제공한다", () => {
-    const defaults = getLaunchConfigDefaultsForRemoteConfig();
-    assert.equal(defaultLaunchConfig.memoryInkBase, 10);
-    assert.equal(defaultLaunchConfig.memoryInkPerEntry, 2);
-    assert.equal(defaultLaunchConfig.memoryInkChainCap, 10);
-    assert.equal(defaultLaunchConfig.ftueInputVariant, "direct_with_tap_intro");
-    assert.equal(defaultLaunchConfig.worldRestoreMotionLevel, "full");
-    assert.equal(defaultLaunchConfig.adFailureFallbackEnabled, true);
-    assert.equal(defaultLaunchConfig.adFailureFallbackDailyCap, 2);
-    assert.equal(defaults[launchConfigKeys.memoryInkBase], 10);
-    assert.equal(defaults[launchConfigKeys.memoryInkPerEntry], 2);
-    assert.equal(defaults[launchConfigKeys.memoryInkChainCap], 10);
-    assert.equal(
-      defaults[launchConfigKeys.ftueInputVariant],
-      "direct_with_tap_intro",
-    );
-    assert.equal(defaults[launchConfigKeys.worldRestoreMotionLevel], "full");
-    assert.equal(defaults[launchConfigKeys.adFailureFallbackEnabled], true);
-    assert.equal(defaults[launchConfigKeys.adFailureFallbackDailyCap], 2);
-  });
-
-  it("경제와 fallback 일일 상한을 문서 안전 범위로 clamp한다", () => {
-    const low = normalizeLaunchConfig({
-      memoryInkBase: 0,
-      memoryInkPerEntry: 0,
-      memoryInkChainCap: 0,
-      adFailureFallbackDailyCap: -1,
-    });
-    assert.equal(low.memoryInkBase, 6);
-    assert.equal(low.memoryInkPerEntry, 1);
-    assert.equal(low.memoryInkChainCap, 6);
-    assert.equal(low.adFailureFallbackDailyCap, 0);
-
-    const high = normalizeLaunchConfig({
-      memoryInkBase: 99,
-      memoryInkPerEntry: 99,
-      memoryInkChainCap: 99,
-      adFailureFallbackDailyCap: 99,
-    });
-    assert.equal(high.memoryInkBase, 16);
-    assert.equal(high.memoryInkPerEntry, 3);
-    assert.equal(high.memoryInkChainCap, 14);
-    assert.equal(high.adFailureFallbackDailyCap, 2);
-  });
-
-  it("알 수 없는 문자열 variant는 번들 기본값으로 fail closed한다", () => {
-    const config = normalizeLaunchConfig({
-      ftueInputVariant: "future" as never,
-      worldRestoreMotionLevel: "future" as never,
-    });
-    assert.equal(config.ftueInputVariant, "direct_with_tap_intro");
-    assert.equal(config.worldRestoreMotionLevel, "full");
-    assert.equal(
-      normalizeLaunchConfig({ worldRestoreMotionLevel: "reduced" })
-        .worldRestoreMotionLevel,
-      "reduced",
-    );
-  });
-});
-
 describe("launchConfig: 막힘 힌트/피드백 튜닝값(#172)", () => {
   it("기본값이 기존 App.tsx 하드코딩 값과 일치한다", () => {
     assert.equal(defaultLaunchConfig.stuckHintIdleMs, 20000);
@@ -303,8 +221,7 @@ describe("launchConfig: dailyAttemptLimit 원격화(#225)", () => {
       1,
     );
     assert.equal(
-      normalizeLaunchConfig({ dailyAttemptLimit: Number.NaN })
-        .dailyAttemptLimit,
+      normalizeLaunchConfig({ dailyAttemptLimit: Number.NaN }).dailyAttemptLimit,
       3,
     );
   });
@@ -405,7 +322,10 @@ describe("launchConfig: 리더보드 점수 가중치(#216)", () => {
       leaderboardScoreHint: Number.NaN,
     });
     // 비유한 값은 기본값으로 폴백.
-    assert.equal(nan.leaderboardScoreHint, LEADERBOARD_SCORE_WEIGHTS.hint);
+    assert.equal(
+      nan.leaderboardScoreHint,
+      LEADERBOARD_SCORE_WEIGHTS.hint,
+    );
   });
 
   it("상한을 넘으면 클램프된다", () => {
@@ -427,7 +347,10 @@ describe("launchConfig: 막힘 힌트 노출 상한·백오프(#254)", () => {
 
   it("Remote Config 기본값 맵과 키 이름이 반영된다", () => {
     const defaults = getLaunchConfigDefaultsForRemoteConfig();
-    assert.equal(defaults[launchConfigKeys.stuckHintMaxPromptsPerAttempt], 3);
+    assert.equal(
+      defaults[launchConfigKeys.stuckHintMaxPromptsPerAttempt],
+      3,
+    );
     assert.equal(defaults[launchConfigKeys.stuckHintMaxDismissals], 2);
     assert.equal(defaults[launchConfigKeys.stuckHintDismissBackoffFactor], 2);
     assert.equal(

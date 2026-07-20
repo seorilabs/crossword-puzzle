@@ -1,9 +1,5 @@
 import { type Difficulty, isDifficulty } from "./difficultyProfiles.ts";
-import {
-  getCellKey,
-  getEntryAnswerLength,
-  getEntryCells,
-} from "./puzzle.ts";
+import { getCellKey, getEntryCells } from "./puzzle.ts";
 import type { Direction, Puzzle, PuzzleEntry, PuzzleManifestItem } from "./types";
 
 export const DAILY_ATTEMPT_LIMIT = 3;
@@ -718,8 +714,8 @@ export function resolveStarterCell(input: {
 
     if (
       best == null ||
-      getEntryAnswerLength(entry) < getEntryAnswerLength(best.entry) ||
-      (getEntryAnswerLength(entry) === getEntryAnswerLength(best.entry) &&
+      entry.answer.length < best.entry.answer.length ||
+      (entry.answer.length === best.entry.answer.length &&
         (entry.row < best.entry.row ||
           (entry.row === best.entry.row && entry.col < best.entry.col)))
     ) {

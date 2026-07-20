@@ -2,9 +2,9 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import {
-  BATCH_LEGACY_SCORING_POLICY,
   WORDS,
   analyzeRuns,
+  generateBoards,
   makeWordMap,
 } from "../../scripts/crossword-generator-prototype.mjs";
 import {
@@ -20,7 +20,6 @@ import {
   DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO,
   needsManualClueRatio,
 } from "../../packages/crossword-core/src/clueCuration.ts";
-import { generateBoardWithRetries } from "./puzzle-board-engine.mjs";
 
 const DEFAULT_BATCH_OPTIONS = {
   append: false,
@@ -232,9 +231,7 @@ function normalizeAlias(value) {
   if (/^\d{8}$/.test(trimmedValue)) {
     const year = trimmedValue.slice(0, 4);
 
-    return isFourDigitGregorianYear(year)
-      ? trimmedValue.slice(2)
-      : trimmedValue;
+    return isFourDigitGregorianYear(year) ? trimmedValue.slice(2) : trimmedValue;
   }
 
   const dateMatch = trimmedValue.match(/^(\d{4})(\d{2})(\d{2})$/);
@@ -769,76 +766,82 @@ async function run() {
       options.intervalHours,
     );
     const packId = makePackId(slotInfo, options.seed + dayIndex);
+    let board = null;
+    let selectedQuality = null;
+    const attempts = [];
     const dayStartTime = Date.now();
 
     console.log(
       `[${slotInfo.slotId}] generation started (${dayIndex + 1}/${options.days}) packId=${packId}`,
     );
 
-    const generation = generateBoardWithRetries({
-      retries: options.retries,
-      seedForRetry: (retryIndex) => options.seed + dayIndex * 100 + retryIndex,
-      searchOptionsForRetry: () => ({
+    for (let retryIndex = 0; retryIndex < options.retries; retryIndex += 1) {
+      const seed = options.seed + dayIndex * 100 + retryIndex;
+      const retryStartTime = Date.now();
+
+      console.log(
+        `[${slotInfo.slotId}] retry ${retryIndex + 1}/${options.retries} seed=${seed}`,
+      );
+      const boards = generateBoards({
+        allowAdjacent: true,
         attempts: options.attempts,
         beamWidth: options.beamWidth,
+        boardSize: options.boardSize,
         branchLimit: options.branchLimit,
         candidateWordLimit: options.candidateWordLimit,
         denseCandidateLimit: options.denseCandidateLimit,
+        maxWords: options.maxWords,
+        minWordLength: options.minWordLength,
         samples: options.samples,
-      }),
-      buildGeneratorOptions: ({ searchOptions, seed }) => {
-        console.log(
-          `[${slotInfo.slotId}] retry seed=${seed} attempts=${searchOptions.attempts}`,
-        );
-        return {
-          allowAdjacent: true,
-          ...searchOptions,
-          boardSize: options.boardSize,
-          maxWords: options.maxWords,
-          minWordLength: options.minWordLength,
-          scoringPolicyId: BATCH_LEGACY_SCORING_POLICY.policyId,
-          seed,
-          wordBank: difficultyFilteredWords,
-        };
-      },
-      evaluateCandidate: (candidate) =>
-        evaluateQuality(candidate, qualityThresholds),
-      summarizeCandidate: (candidate, quality, candidateIndex) => ({
-        candidateIndex,
-        failureReasons: summarizeFailureReasons(quality),
-        metrics: {
-          autoRunCount: candidate.metrics.autoRunCount,
-          bboxDensity: candidate.metrics.bboxDensity,
-          crossRatio: candidate.metrics.crossRatio,
-          multiCrossEntries: candidate.metrics.multiIntersectionPlacements,
-          wordCount: candidate.metrics.wordCount,
-        },
-        pass: quality.pass,
-        ratios: quality.ratios,
-      }),
-      onRetryComplete: ({
-        acceptedCandidateIndex,
-        attempt,
-        elapsedMilliseconds,
-      }) => {
-        const elapsedSeconds = (elapsedMilliseconds / 1000).toFixed(1);
-        if (acceptedCandidateIndex !== -1) {
-          const accepted = attempt.candidates[acceptedCandidateIndex];
-          console.log(
-            `[${slotInfo.slotId}] accepted candidate=${acceptedCandidateIndex} entries=${accepted.metrics.wordCount} cross=${accepted.metrics.crossRatio} bbox=${accepted.metrics.bboxDensity} elapsed=${elapsedSeconds}s`,
-          );
-          return;
-        }
-        console.log(
-          `[${slotInfo.slotId}] retry ${attempt.retryIndex + 1} rejected candidates=${attempt.candidateCount} elapsed=${elapsedSeconds}s reasons=${JSON.stringify(
-            countReasons([attempt]),
-          )}`,
-        );
-      },
-    });
-    const attempts = generation.attempts;
+        seed,
+        wordBank: difficultyFilteredWords,
+      });
+      const retryElapsedSeconds = (
+        (Date.now() - retryStartTime) /
+        1000
+      ).toFixed(1);
 
-    if (!generation.accepted) {
+      const candidates = boards.map((candidate, candidateIndex) => {
+        const quality = evaluateQuality(candidate, qualityThresholds);
+        return {
+          candidateIndex,
+          failureReasons: summarizeFailureReasons(quality),
+          metrics: {
+            autoRunCount: candidate.metrics.autoRunCount,
+            bboxDensity: candidate.metrics.bboxDensity,
+            crossRatio: candidate.metrics.crossRatio,
+            multiCrossEntries: candidate.metrics.multiIntersectionPlacements,
+            wordCount: candidate.metrics.wordCount,
+          },
+          pass: quality.pass,
+          ratios: quality.ratios,
+        };
+      });
+      attempts.push({
+        retryIndex,
+        seed,
+        candidateCount: boards.length,
+        candidates,
+      });
+
+      const acceptedIndex = candidates.findIndex((candidate) => candidate.pass);
+      if (acceptedIndex !== -1) {
+        board = boards[acceptedIndex];
+        selectedQuality = evaluateQuality(board, qualityThresholds);
+        console.log(
+          `[${slotInfo.slotId}] accepted candidate=${acceptedIndex} entries=${board.metrics.wordCount} cross=${board.metrics.crossRatio} bbox=${board.metrics.bboxDensity} elapsed=${retryElapsedSeconds}s`,
+        );
+        break;
+      }
+
+      console.log(
+        `[${slotInfo.slotId}] retry ${retryIndex + 1} rejected candidates=${boards.length} elapsed=${retryElapsedSeconds}s reasons=${JSON.stringify(
+          countReasons([{ candidates }]),
+        )}`,
+      );
+    }
+
+    if (board == null) {
       const failedReport = {
         alias: slotInfo.alias,
         date: slotInfo.date,
@@ -855,9 +858,6 @@ async function run() {
       );
       throw new Error(`No board generated for ${slotInfo.slotId}`);
     }
-
-    const board = generation.board;
-    const selectedQuality = generation.quality;
 
     const puzzle = serializeBoard(
       board,

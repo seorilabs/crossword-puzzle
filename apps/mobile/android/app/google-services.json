@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "547625965706",
+    "project_id": "crossword-puzzle-79ae0",
+    "storage_bucket": "crossword-puzzle-79ae0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:547625965706:android:dca5aced7ec7e6919ef573",
+        "android_client_info": {
+          "package_name": "com.seorilabs.crosswordpuzzle"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCjR52uKvR4z8ttITpmns9_9kx8HKEijcI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

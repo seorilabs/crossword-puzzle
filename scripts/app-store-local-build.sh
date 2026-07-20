@@ -182,9 +182,6 @@ if [[ "$skip_pods" != "true" ]]; then
   )
 fi
 
-echo "Building verified native game bundle for iOS resources"
-npm run build:game:mobile
-
 if [[ "$mode" == "unsigned" ]]; then
   xcodebuild \
     -workspace "$workspace" \

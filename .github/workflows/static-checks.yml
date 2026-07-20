@@ -28,30 +28,10 @@ jobs:
         npm ci
         npm ci --prefix apps/mobile
       check_command: |
-        first_run_source_commit="$(node -e '
-          const { readFileSync } = require("node:fs");
-          const manifest = JSON.parse(
-            readFileSync("data/game-content/v1/ko-KR/license-manifest.json", "utf8"),
-          );
-          const source = manifest.sources?.find(
-            (candidate) => candidate.sourceId === "repo-first-run-content-v1",
-          );
-          process.stdout.write(source?.sourceCommit ?? "");
-        ')"
-        if [[ ! "$first_run_source_commit" =~ ^[0-9a-f]{40}$ ]]; then
-          echo "Invalid first-run sourceCommit in license manifest." >&2
-          exit 1
-        fi
-        if ! git cat-file -e "${first_run_source_commit}^{commit}" 2>/dev/null; then
-          git fetch --no-tags --depth=1 origin "$first_run_source_commit"
-        fi
-        git cat-file -e "${first_run_source_commit}^{commit}"
-
         npm run lint
         npm run validate:puzzles
         npm run test:adapters
         npm run test:core
-        npm run check:game
         npm run build
         npm run check:release-parity
         npm run check:mobile

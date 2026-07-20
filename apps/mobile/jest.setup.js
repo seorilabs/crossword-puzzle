@@ -13,31 +13,13 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
       mockStorage.clear();
       return Promise.resolve();
     }),
-    getAllKeys: jest.fn(() => Promise.resolve([...mockStorage.keys()])),
     getItem: jest.fn(key => Promise.resolve(mockStorage.get(key) ?? null)),
-    getMany: jest.fn(keys =>
-      Promise.resolve(
-        Object.fromEntries(
-          keys.map(key => [key, mockStorage.get(key) ?? null]),
-        ),
-      ),
-    ),
-    removeMany: jest.fn(keys => {
-      keys.forEach(key => mockStorage.delete(key));
-      return Promise.resolve();
-    }),
     removeItem: jest.fn(key => {
       mockStorage.delete(key);
       return Promise.resolve();
     }),
     setItem: jest.fn((key, value) => {
       mockStorage.set(key, value);
-      return Promise.resolve();
-    }),
-    setMany: jest.fn(entries => {
-      Object.entries(entries).forEach(([key, value]) =>
-        mockStorage.set(key, value),
-      );
       return Promise.resolve();
     }),
   },
@@ -81,8 +63,7 @@ jest.mock('react-native-safe-area-context', () => {
   const { View } = require('react-native');
 
   return {
-    SafeAreaProvider: ({ children }) =>
-      React.createElement(View, null, children),
+    SafeAreaProvider: ({ children }) => React.createElement(View, null, children),
     SafeAreaView: ({ children, ...props }) =>
       React.createElement(View, props, children),
     useSafeAreaFrame: () => ({
