@@ -231,6 +231,8 @@ const featureParityMarkers = [
   "getNextRecommendedPuzzleSummary",
   "buildNextPuzzleCtaEvent",
   "result_overlay",
+  "runRewardedAdWithSingleRetry",
+  "retry:",
 ];
 for (const marker of featureParityMarkers) {
   assertIncludes(webApp, marker, webAppPath);

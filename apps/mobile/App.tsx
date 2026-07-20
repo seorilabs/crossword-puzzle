@@ -72,6 +72,7 @@ import {
   getStreakBadgeLabel,
   getTodayDateKey,
   resolveDefaultHintCredits,
+  runRewardedAdWithSingleRetry,
   sortPuzzleSummariesByRecency,
   startMissionAttempt,
   uniquePuzzleSummaries,
@@ -87,6 +88,7 @@ import {
   type SavedProgress,
   type LaunchConfig,
   type NextPuzzleCtaSource,
+  type RewardedAdRetryAttempt,
 } from '../../packages/crossword-core/src';
 
 import {
@@ -104,6 +106,7 @@ import {
 import { loadFirebaseLaunchConfig } from './firebaseClient';
 import {
   initializeMobileAds,
+  getMobileRewardedAdRetryStatus,
   openMobileAdsInspector,
   showRewardedAd,
   type MobileAdUnitMode,
@@ -1723,10 +1726,6 @@ function AppContent() {
     }
 
     setRewardedAdPlacement('rewardedHint');
-    telemetry.click('rewarded_hint_ad_request', {
-      ...getMobileAdTelemetryParams('rewardedHint'),
-      rewarded_hint_credits: launchConfig.rewardedHintCredits,
-    });
     // 게임 세부 지표: 리워드 광고 보조 요청(힌트).
     gameAnalytics.track('game_assist_ad', getGamePuzzleContext(puzzle), {
       assistType: 'rewarded_hint',
@@ -1734,16 +1733,34 @@ function AppContent() {
     });
 
     try {
-      const result = await showRewardedAd('rewardedHint');
-      logMobileAdEvents(
-        'rewarded_hint_ad_event',
-        'rewardedHint',
-        result.events,
+      const { result, retry } = await runRewardedAdWithSingleRetry(
+        async (attempt: RewardedAdRetryAttempt) => {
+          telemetry.click('rewarded_hint_ad_request', {
+            ...getMobileAdTelemetryParams('rewardedHint'),
+            retry: attempt,
+            rewarded_hint_credits: launchConfig.rewardedHintCredits,
+          });
+          const attemptResult = await showRewardedAd('rewardedHint');
+          attemptResult.events.forEach(event => {
+            telemetry.impression('rewarded_hint_ad_event', {
+              ...getMobileAdTelemetryParams('rewardedHint'),
+              ad_error_code: event.errorCode,
+              ad_event: event.type,
+              retry: attempt,
+            });
+          });
+          telemetry.impression('rewarded_hint_ad_result', {
+            ...getMobileAdTelemetryParams('rewardedHint'),
+            ad_status: attemptResult.status,
+            retry: attempt,
+          });
+          return attemptResult;
+        },
+        getMobileRewardedAdRetryStatus,
+        () => {
+          setNotice('광고를 다시 준비하는 중입니다.');
+        },
       );
-      telemetry.impression('rewarded_hint_ad_result', {
-        ...getMobileAdTelemetryParams('rewardedHint'),
-        ad_status: result.status,
-      });
 
       if (result.status === 'rewarded') {
         setEarnedHintCredits(
@@ -1751,6 +1768,7 @@ function AppContent() {
         );
         telemetry.impression('rewarded_hint_ad_reward', {
           ...getMobileAdTelemetryParams('rewardedHint'),
+          retry,
           rewarded_hint_credits: launchConfig.rewardedHintCredits,
         });
         // 게임 세부 지표: 리워드 광고 보조 보상 지급(힌트).
