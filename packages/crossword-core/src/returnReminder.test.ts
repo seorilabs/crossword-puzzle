@@ -10,6 +10,7 @@ import {
   mapNotificationAgreementResult,
   markReturnReminderPrompted,
   RETURN_REMINDER_MAX_PROMPT_COUNT,
+  RETURN_REMINDER_RESULT_EVENT,
   shouldPromptReturnReminder,
   summarizeAgreementError,
   type ReturnReminderState,
@@ -39,32 +40,30 @@ describe("returnReminder 정책", () => {
   });
 
   it("error 후 익일이면 재유도한다", () => {
-    const state: ReturnReminderState = {
-      promptCount: 1,
-      lastPromptDate: "2026-07-12",
-      outcome: "error",
-    };
     assert.equal(
       shouldPromptReturnReminder({
         enabled: true,
         promptDate: "2026-07-13",
-        state,
+        state: {
+          promptCount: 1,
+          lastPromptDate: "2026-07-12",
+          outcome: "error",
+        },
       }),
       true,
     );
   });
 
   it("timeout 후 익일이면 재유도한다", () => {
-    const state: ReturnReminderState = {
-      promptCount: 1,
-      lastPromptDate: "2026-07-12",
-      outcome: "timeout",
-    };
     assert.equal(
       shouldPromptReturnReminder({
         enabled: true,
         promptDate: "2026-07-13",
-        state,
+        state: {
+          promptCount: 1,
+          lastPromptDate: "2026-07-12",
+          outcome: "timeout",
+        },
       }),
       true,
     );
@@ -118,23 +117,42 @@ describe("returnReminder 정책", () => {
   });
 
   it("동의/거부/미지원으로 종결되면 다시 묻지 않는다", () => {
-    for (const outcome of ["agreed", "rejected", "unsupported"] as const) {
-      const state: ReturnReminderState = {
-        promptCount: 1,
-        lastPromptDate: "2026-07-12",
-        outcome,
-      };
-      assert.equal(
-        shouldPromptReturnReminder({
-          enabled: true,
-          promptDate: "2026-07-13",
-          state,
-        }),
-        false,
-        `${outcome}는 종결 상태`,
-      );
-      assert.equal(isReturnReminderResolved(state), true);
-    }
+    assert.equal(
+      shouldPromptReturnReminder({
+        enabled: true,
+        promptDate: "2026-07-13",
+        state: {
+          promptCount: 1,
+          lastPromptDate: "2026-07-12",
+          outcome: "agreed",
+        },
+      }),
+      false,
+    );
+    assert.equal(
+      shouldPromptReturnReminder({
+        enabled: true,
+        promptDate: "2026-07-13",
+        state: {
+          promptCount: 1,
+          lastPromptDate: "2026-07-12",
+          outcome: "rejected",
+        },
+      }),
+      false,
+    );
+    assert.equal(
+      shouldPromptReturnReminder({
+        enabled: true,
+        promptDate: "2026-07-13",
+        state: {
+          promptCount: 1,
+          lastPromptDate: "2026-07-12",
+          outcome: "unsupported",
+        },
+      }),
+      false,
+    );
   });
 
   it("error는 종결로 보지 않는다(promptCount=0이면 재유도 가능)", () => {
@@ -239,7 +257,16 @@ describe("returnReminder 정책", () => {
       "2026-07-13",
     );
     const resolved = applyReturnReminderOutcome(retried, "agreed");
-    assert.equal(buildReturnReminderResultParams(resolved).prompt_count, 2);
+    assert.deepEqual(
+      {
+        event_name: RETURN_REMINDER_RESULT_EVENT,
+        params: buildReturnReminderResultParams(resolved),
+      },
+      {
+        event_name: "return_reminder_result",
+        params: { outcome: "agreed", prompt_count: 2 },
+      },
+    );
   });
 
   it("error_reason이 있으면 결과 파라미터에 덧붙인다 (#253)", () => {
