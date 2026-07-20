@@ -72,11 +72,14 @@ import {
   getStreakBadgeLabel,
   getTodayDateKey,
   resolveDefaultHintCredits,
-  runRewardedAdWithSingleRetry,
+  runRewardedHintAdFlow,
   sortPuzzleSummariesByRecency,
   startMissionAttempt,
   uniquePuzzleSummaries,
   validatePuzzleSlots,
+  REWARDED_HINT_AD_REQUEST_EVENT,
+  REWARDED_HINT_AD_RESULT_EVENT,
+  REWARDED_HINT_AD_REWARD_EVENT,
   type Bounds,
   type DailyMissionState,
   type Direction,
@@ -1725,48 +1728,62 @@ function AppContent() {
       return;
     }
 
-    setRewardedAdPlacement('rewardedHint');
     // 게임 세부 지표: 리워드 광고 보조 요청(힌트).
     gameAnalytics.track('game_assist_ad', getGamePuzzleContext(puzzle), {
       assistType: 'rewarded_hint',
       result: 'request',
     });
 
-    try {
-      const { result, retry } = await runRewardedAdWithSingleRetry(
-        async (attempt: RewardedAdRetryAttempt) => {
-          telemetry.click('rewarded_hint_ad_request', {
+    await runRewardedHintAdFlow({
+      attempt: async (attempt: RewardedAdRetryAttempt) => {
+        const result = await showRewardedAd('rewardedHint');
+        result.events.forEach(event => {
+          telemetry.impression('rewarded_hint_ad_event', {
             ...getMobileAdTelemetryParams('rewardedHint'),
-            retry: attempt,
-            rewarded_hint_credits: launchConfig.rewardedHintCredits,
-          });
-          const attemptResult = await showRewardedAd('rewardedHint');
-          attemptResult.events.forEach(event => {
-            telemetry.impression('rewarded_hint_ad_event', {
-              ...getMobileAdTelemetryParams('rewardedHint'),
-              ad_error_code: event.errorCode,
-              ad_event: event.type,
-              retry: attempt,
-            });
-          });
-          telemetry.impression('rewarded_hint_ad_result', {
-            ...getMobileAdTelemetryParams('rewardedHint'),
-            ad_status: attemptResult.status,
+            ad_error_code: event.errorCode,
+            ad_event: event.type,
             retry: attempt,
           });
-          return attemptResult;
-        },
-        getMobileRewardedAdRetryStatus,
-        () => {
-          setNotice('광고를 다시 준비하는 중입니다.');
-        },
-      );
-
-      if (result.status === 'rewarded') {
+        });
+        return result;
+      },
+      getStatus: getMobileRewardedAdRetryStatus,
+      onAttemptResult: (result, retry) => {
+        telemetry.impression(REWARDED_HINT_AD_RESULT_EVENT, {
+          ...getMobileAdTelemetryParams('rewardedHint'),
+          ad_status: result.status,
+          retry,
+        });
+      },
+      onAttemptStart: retry => {
+        telemetry.click(REWARDED_HINT_AD_REQUEST_EVENT, {
+          ...getMobileAdTelemetryParams('rewardedHint'),
+          retry,
+          rewarded_hint_credits: launchConfig.rewardedHintCredits,
+        });
+      },
+      onFailure: result => {
+        if (result.status === 'closed') {
+          setNotice('광고를 끝까지 보지 않아 힌트가 지급되지 않았습니다.');
+        } else {
+          setNotice(
+            `광고를 불러오지 못했습니다. (${getMobileAdFailureCode(
+              result.events,
+            )})`,
+          );
+        }
+      },
+      onLoadingChange: loading => {
+        setRewardedAdPlacement(loading ? 'rewardedHint' : null);
+      },
+      onRetry: () => {
+        setNotice('광고를 다시 준비하는 중입니다.');
+      },
+      onReward: (_result, retry) => {
         setEarnedHintCredits(
           previous => previous + launchConfig.rewardedHintCredits,
         );
-        telemetry.impression('rewarded_hint_ad_reward', {
+        telemetry.impression(REWARDED_HINT_AD_REWARD_EVENT, {
           ...getMobileAdTelemetryParams('rewardedHint'),
           retry,
           rewarded_hint_credits: launchConfig.rewardedHintCredits,
@@ -1779,18 +1796,8 @@ function AppContent() {
         setNotice(
           `광고 보상으로 힌트 ${launchConfig.rewardedHintCredits}개를 받았습니다.`,
         );
-      } else if (result.status === 'closed') {
-        setNotice('광고를 끝까지 보지 않아 힌트가 지급되지 않았습니다.');
-      } else {
-        setNotice(
-          `광고를 불러오지 못했습니다. (${getMobileAdFailureCode(
-            result.events,
-          )})`,
-        );
-      }
-    } finally {
-      setRewardedAdPlacement(null);
-    }
+      },
+    });
   }
 
   async function unlockBonusPuzzle() {

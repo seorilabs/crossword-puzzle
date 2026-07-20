@@ -82,7 +82,7 @@ import {
   pickHintCellIndex,
   resolveInitialActivePuzzleId,
   resolveStarterCell,
-  runRewardedAdWithSingleRetry,
+  runRewardedHintAdFlow,
   shouldCelebrateOnboardingWordCompletion,
   shouldOfferStuckWordReveal,
   shouldQuickStartActivePuzzle,
@@ -105,6 +105,9 @@ import {
   STUCK_HINT_PROMPT_DISMISS_EVENT,
   STUCK_HINT_PROMPT_EVENT,
   STUCK_HINT_PROMPT_REVEAL_WORD_EVENT,
+  REWARDED_HINT_AD_REQUEST_EVENT,
+  REWARDED_HINT_AD_RESULT_EVENT,
+  REWARDED_HINT_AD_REWARD_EVENT,
   type CellLetterChange,
   type DailyMissionState,
   type Direction,
@@ -2303,7 +2306,6 @@ function App() {
       return;
     }
 
-    setRewardedAdStatus("loading");
     setHintNotice("광고를 준비하는 중이에요.");
     // 게임 세부 지표: 리워드 광고 보조 요청(힌트).
     gameAnalytics.track("game_assist_ad", getGamePuzzleContext(puzzle), {
@@ -2311,43 +2313,50 @@ function App() {
       result: "request",
     });
 
-    try {
-      const { result, retry } = await runRewardedAdWithSingleRetry(
-        async (attempt: RewardedAdRetryAttempt) => {
-          telemetry.click("rewarded_hint_ad_request", {
+    await runRewardedHintAdFlow({
+      attempt: async (attempt: RewardedAdRetryAttempt) =>
+        showRewardedHintAd((event) => {
+          telemetry.impression("rewarded_hint_ad_event", {
+            phase: event.phase,
             puzzle_id: puzzle.puzzleId,
             retry: attempt,
-            rewarded_hint_credits: launchConfig.rewardedHintCredits,
+            type: event.type,
           });
-          const attemptResult = await showRewardedHintAd((event) => {
-            telemetry.impression("rewarded_hint_ad_event", {
-              phase: event.phase,
-              puzzle_id: puzzle.puzzleId,
-              retry: attempt,
-              type: event.type,
-            });
-          });
-          telemetry.impression("rewarded_hint_ad_result", {
-            ...getFullScreenAdResultParams(attemptResult),
-            puzzle_id: puzzle.puzzleId,
-            retry: attempt,
-          });
-          return attemptResult;
-        },
-        (attemptResult) => attemptResult.status,
-        () => {
-          const message = "광고를 다시 준비하는 중이에요.";
-          setHintNotice(message);
-          showHintToast(message);
-        },
-      );
-
-      if (result.status === "rewarded") {
+        }),
+      getStatus: (result) => result.status,
+      onAttemptResult: (result, retry) => {
+        telemetry.impression(REWARDED_HINT_AD_RESULT_EVENT, {
+          ...getFullScreenAdResultParams(result),
+          puzzle_id: puzzle.puzzleId,
+          retry,
+        });
+      },
+      onAttemptStart: (retry) => {
+        telemetry.click(REWARDED_HINT_AD_REQUEST_EVENT, {
+          puzzle_id: puzzle.puzzleId,
+          retry,
+          rewarded_hint_credits: launchConfig.rewardedHintCredits,
+        });
+      },
+      onFailure: (result) => {
+        const message = getRewardedHintFailureMessage(result);
+        setHintNotice(message);
+        showHintToast(message);
+      },
+      onLoadingChange: (isLoading) => {
+        setRewardedAdStatus(isLoading ? "loading" : "idle");
+      },
+      onRetry: () => {
+        const message = "광고를 다시 준비하는 중이에요.";
+        setHintNotice(message);
+        showHintToast(message);
+      },
+      onReward: (_result, retry) => {
         setEarnedHintCredits((prev) => prev + launchConfig.rewardedHintCredits);
         const message = `힌트 +${launchConfig.rewardedHintCredits}개가 추가됐어요.`;
         setHintNotice(message);
         showHintToast(message);
-        telemetry.impression("rewarded_hint_ad_reward", {
+        telemetry.impression(REWARDED_HINT_AD_REWARD_EVENT, {
           puzzle_id: puzzle.puzzleId,
           retry,
           rewarded_hint_credits: launchConfig.rewardedHintCredits,
@@ -2357,14 +2366,8 @@ function App() {
           assistType: "rewarded_hint",
           result: "reward",
         });
-      } else {
-        const message = getRewardedHintFailureMessage(result);
-        setHintNotice(message);
-        showHintToast(message);
-      }
-    } finally {
-      setRewardedAdStatus("idle");
-    }
+      },
+    });
   }
 
   function useHintOrRequestReward() {

@@ -231,7 +231,7 @@ const featureParityMarkers = [
   "getNextRecommendedPuzzleSummary",
   "buildNextPuzzleCtaEvent",
   "result_overlay",
-  "runRewardedAdWithSingleRetry",
+  "runRewardedHintAdFlow",
   "retry:",
 ];
 for (const marker of featureParityMarkers) {
