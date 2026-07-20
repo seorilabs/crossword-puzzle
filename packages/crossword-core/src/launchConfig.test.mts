@@ -338,21 +338,23 @@ describe("launchConfig: 리더보드 점수 가중치(#216)", () => {
   });
 });
 
-describe("launchConfig: 막힘 힌트 노출 상한·백오프(#254)", () => {
-  it("기본값: attempt 당 3회 노출, 닫기 2회, 백오프 ×2", () => {
-    assert.equal(defaultLaunchConfig.stuckHintMaxPromptsPerAttempt, 3);
-    assert.equal(defaultLaunchConfig.stuckHintMaxDismissals, 2);
+describe("launchConfig: 막힘 힌트 노출 상한·쿨다운(#254, #265)", () => {
+  it("기본값: 퍼즐 당 2회 노출, 첫 닫기로 종료, 180초 쿨다운", () => {
+    assert.equal(defaultLaunchConfig.stuckHintMaxPromptsPerAttempt, 2);
+    assert.equal(defaultLaunchConfig.stuckHintMaxDismissals, 1);
     assert.equal(defaultLaunchConfig.stuckHintDismissBackoffFactor, 2);
+    assert.equal(defaultLaunchConfig.stuckHintMinCooldownMs, 180000);
   });
 
   it("Remote Config 기본값 맵과 키 이름이 반영된다", () => {
     const defaults = getLaunchConfigDefaultsForRemoteConfig();
     assert.equal(
       defaults[launchConfigKeys.stuckHintMaxPromptsPerAttempt],
-      3,
+      2,
     );
-    assert.equal(defaults[launchConfigKeys.stuckHintMaxDismissals], 2);
+    assert.equal(defaults[launchConfigKeys.stuckHintMaxDismissals], 1);
     assert.equal(defaults[launchConfigKeys.stuckHintDismissBackoffFactor], 2);
+    assert.equal(defaults[launchConfigKeys.stuckHintMinCooldownMs], 180000);
     assert.equal(
       launchConfigKeys.stuckHintMaxPromptsPerAttempt,
       "stuck_hint_max_prompts_per_attempt",
@@ -365,6 +367,10 @@ describe("launchConfig: 막힘 힌트 노출 상한·백오프(#254)", () => {
       launchConfigKeys.stuckHintDismissBackoffFactor,
       "stuck_hint_dismiss_backoff_factor",
     );
+    assert.equal(
+      launchConfigKeys.stuckHintMinCooldownMs,
+      "stuck_hint_min_cooldown_ms",
+    );
   });
 
   it("원격 값으로 조정되고 범위를 벗어나면 클램프된다", () => {
@@ -372,24 +378,29 @@ describe("launchConfig: 막힘 힌트 노출 상한·백오프(#254)", () => {
       stuckHintMaxPromptsPerAttempt: 5,
       stuckHintMaxDismissals: 1,
       stuckHintDismissBackoffFactor: 3,
+      stuckHintMinCooldownMs: 240000,
     });
     assert.equal(config.stuckHintMaxPromptsPerAttempt, 5);
     assert.equal(config.stuckHintMaxDismissals, 1);
     assert.equal(config.stuckHintDismissBackoffFactor, 3);
+    assert.equal(config.stuckHintMinCooldownMs, 240000);
 
     const clamped = normalizeLaunchConfig({
       stuckHintMaxPromptsPerAttempt: 999,
       stuckHintDismissBackoffFactor: 999,
+      stuckHintMinCooldownMs: 9999999,
     });
     assert.equal(clamped.stuckHintMaxPromptsPerAttempt, 20);
     assert.equal(clamped.stuckHintDismissBackoffFactor, 10);
+    assert.equal(clamped.stuckHintMinCooldownMs, 3600000);
   });
 
   it("값이 없으면 기본값으로 폴백한다", () => {
     const config = normalizeLaunchConfig({});
-    assert.equal(config.stuckHintMaxPromptsPerAttempt, 3);
-    assert.equal(config.stuckHintMaxDismissals, 2);
+    assert.equal(config.stuckHintMaxPromptsPerAttempt, 2);
+    assert.equal(config.stuckHintMaxDismissals, 1);
     assert.equal(config.stuckHintDismissBackoffFactor, 2);
+    assert.equal(config.stuckHintMinCooldownMs, 180000);
   });
 });
 

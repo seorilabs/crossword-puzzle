@@ -62,6 +62,18 @@ export async function loadFirebaseLaunchConfig(): Promise<LaunchConfig> {
         returnReminderEnabled: remoteConfigClient
           .getValue(launchConfigKeys.returnReminderEnabled)
           .asBoolean(),
+        stuckHintMaxPromptsPerAttempt: remoteConfigClient
+          .getValue(launchConfigKeys.stuckHintMaxPromptsPerAttempt)
+          .asNumber(),
+        stuckHintMaxDismissals: remoteConfigClient
+          .getValue(launchConfigKeys.stuckHintMaxDismissals)
+          .asNumber(),
+        stuckHintDismissBackoffFactor: remoteConfigClient
+          .getValue(launchConfigKeys.stuckHintDismissBackoffFactor)
+          .asNumber(),
+        stuckHintMinCooldownMs: remoteConfigClient
+          .getValue(launchConfigKeys.stuckHintMinCooldownMs)
+          .asNumber(),
       });
     } catch {
       return defaultLaunchConfig;

@@ -27,16 +27,19 @@ export interface UseStuckHintPromptInput {
   wrongCellThreshold: number;
   idleMs: number;
   wrongIdleMs: number;
-  // attempt 식별자(#254). 값이 바뀌면(새 도전) 노출/닫기 카운터를 리셋한다.
-  attemptKey?: unknown;
-  // attempt 당 노출 상한(#254). 0 이하면 무제한(미지정 시 무제한).
+  // 퍼즐 식별자(#265). 값이 바뀔 때만 노출/닫기/쿨다운 상태를 리셋해, 같은 퍼즐의
+  // 재도전이나 화면 왕복으로 억제 상태를 우회하지 못하게 한다.
+  puzzleKey?: unknown;
+  // 퍼즐 당 노출 상한(#254, #265). 0 이하면 무제한(미지정 시 무제한).
   maxPromptsPerAttempt?: number;
-  // attempt 당 닫기 상한(#254). 0 이하면 무제한.
+  // 퍼즐 당 닫기 상한(#254, #265). 0 이하면 무제한.
   maxDismissals?: number;
   // 닫을 때마다 다음 노출 지연에 곱하는 배수(#254). 미지정/1 이면 백오프 없음.
   dismissBackoffFactor?: number;
+  // 직전 노출 후 다음 노출까지 보장할 최소 간격(ms, #265).
+  minCooldownMs?: number;
   // CTA가 실제로 노출되는 순간 1회 호출(호출부에서 텔레메트리 emit). 발화 시점의
-  // 최신 클로저가 호출되도록 latestRef로 보관한다. promptSeq(이번 attempt N번째
+  // 최신 클로저가 호출되도록 latestRef로 보관한다. promptSeq(이번 퍼즐 N번째
   // 노출)·dismissCount(그 전까지 닫은 횟수)를 함께 전달한다(#254).
   onShow: (info: {
     trigger: "idle" | "wrong_answer";
@@ -64,19 +67,21 @@ export function useStuckHintPrompt(
     wrongCellThreshold,
     idleMs,
     wrongIdleMs,
-    attemptKey,
+    puzzleKey,
     maxPromptsPerAttempt = 0,
     maxDismissals = 0,
     dismissBackoffFactor = 1,
+    minCooldownMs = 0,
     onShow,
   } = input;
 
   const [isVisible, setIsVisible] = useState(false);
 
-  // 이번 attempt 노출/닫기 카운터(#254). 렌더를 유발하지 않도록 ref로 둔다.
+  // 이번 퍼즐의 노출/닫기/직전 노출 시각(#254, #265). 렌더를 유발하지 않도록 ref로 둔다.
   const promptSeqRef = useRef(0);
   const dismissCountRef = useRef(0);
-  const prevAttemptKeyRef = useRef(attemptKey);
+  const lastShownAtRef = useRef<number | null>(null);
+  const prevPuzzleKeyRef = useRef(puzzleKey);
   // 닫기 시 재스케줄(백오프·상한 재평가)을 트리거하기 위한 tick.
   const [dismissTick, setDismissTick] = useState(0);
 
@@ -87,11 +92,12 @@ export function useStuckHintPrompt(
   });
 
   useEffect(() => {
-    // 새 attempt 로 바뀌면 노출/닫기 카운터를 리셋한다(#254).
-    if (prevAttemptKeyRef.current !== attemptKey) {
-      prevAttemptKeyRef.current = attemptKey;
+    // 다른 퍼즐로 바뀔 때만 노출/닫기/쿨다운 상태를 리셋한다(#265).
+    if (prevPuzzleKeyRef.current !== puzzleKey) {
+      prevPuzzleKeyRef.current = puzzleKey;
       promptSeqRef.current = 0;
       dismissCountRef.current = 0;
+      lastShownAtRef.current = null;
     }
 
     if (!active) {
@@ -99,7 +105,7 @@ export function useStuckHintPrompt(
       return;
     }
 
-    // 노출/닫기 상한에 도달했으면 이 attempt 에서는 더 스케줄하지 않는다(#254).
+    // 노출/닫기 상한에 도달했으면 이 퍼즐에서는 더 스케줄하지 않는다(#254, #265).
     if (
       !shouldScheduleStuckHintPrompt({
         promptSeq: promptSeqRef.current,
@@ -121,14 +127,24 @@ export function useStuckHintPrompt(
       wrongIdleMs,
     });
     // 닫은 횟수만큼 다음 노출 지연을 백오프로 늘린다(#254).
-    const delayMs = getStuckHintBackoffDelayMs({
+    const backoffDelayMs = getStuckHintBackoffDelayMs({
       baseDelayMs,
       dismissCount: dismissCountRef.current,
       backoffFactor: dismissBackoffFactor,
     });
+    const elapsedSinceLastShowMs =
+      lastShownAtRef.current == null
+        ? Number.POSITIVE_INFINITY
+        : Math.max(0, Date.now() - lastShownAtRef.current);
+    const cooldownDelayMs = Math.max(
+      0,
+      minCooldownMs - elapsedSinceLastShowMs,
+    );
+    const delayMs = Math.max(backoffDelayMs, cooldownDelayMs);
 
     setIsVisible(false);
     const timerId = window.setTimeout(() => {
+      lastShownAtRef.current = Date.now();
       promptSeqRef.current += 1;
       setIsVisible(true);
       onShowRef.current({
@@ -148,10 +164,11 @@ export function useStuckHintPrompt(
     wrongCellThreshold,
     idleMs,
     wrongIdleMs,
-    attemptKey,
+    puzzleKey,
     maxPromptsPerAttempt,
     maxDismissals,
     dismissBackoffFactor,
+    minCooldownMs,
     dismissTick,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     ...resetKeys,

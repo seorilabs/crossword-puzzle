@@ -324,7 +324,7 @@ describe("useStuckHintPrompt", () => {
     expect(result.current.isVisible).toBe(false);
   });
 
-  // #254: dismiss 폭주 방어(노출 상한·닫기 상한·백오프·attempt 리셋).
+  // #254, #265: 과다 노출 방어(퍼즐 단위 상한·쿨다운·dismiss 억제).
   const capProps = (
     overrides: Partial<Parameters<typeof useStuckHintPrompt>[0]> = {},
   ) => ({
@@ -334,15 +334,16 @@ describe("useStuckHintPrompt", () => {
     wrongCellThreshold: 2,
     idleMs: 20000,
     wrongIdleMs: 5000,
-    attemptKey: 1,
+    puzzleKey: "puzzle-1",
     maxPromptsPerAttempt: 0,
     maxDismissals: 0,
     dismissBackoffFactor: 1,
+    minCooldownMs: 0,
     onShow: vi.fn(),
     ...overrides,
   });
 
-  it("attempt 당 노출 상한을 넘으면 더 노출하지 않는다(#254)", () => {
+  it("같은 퍼즐의 노출 상한을 넘으면 더 노출하지 않는다(#265)", () => {
     const onShow = vi.fn();
     const makeProps = (key: string) =>
       capProps({ resetKeys: [key], maxPromptsPerAttempt: 2, onShow });
@@ -363,6 +364,60 @@ describe("useStuckHintPrompt", () => {
     act(() => vi.advanceTimersByTime(60000));
     expect(result.current.isVisible).toBe(false);
     expect(onShow).toHaveBeenCalledTimes(2);
+  });
+
+  it("같은 퍼즐의 노출 사이에 최소 180초 쿨다운을 보장한다(#265)", () => {
+    const onShow = vi.fn();
+    const makeProps = (key: string) =>
+      capProps({ resetKeys: [key], minCooldownMs: 180000, onShow });
+    const { result, rerender } = renderHook((p) => useStuckHintPrompt(p), {
+      initialProps: makeProps("a"),
+    });
+
+    act(() => vi.advanceTimersByTime(20000));
+    expect(result.current.isVisible).toBe(true);
+
+    rerender(makeProps("b"));
+    act(() => vi.advanceTimersByTime(179999));
+    expect(result.current.isVisible).toBe(false);
+    expect(onShow).toHaveBeenCalledTimes(1);
+
+    act(() => vi.advanceTimersByTime(1));
+    expect(result.current.isVisible).toBe(true);
+    expect(onShow).toHaveBeenCalledTimes(2);
+    expect(onShow.mock.calls[1][0]).toMatchObject({
+      delayMs: 180000,
+      promptSeq: 2,
+    });
+  });
+
+  it("첫 dismiss 후 같은 퍼즐에서는 재도전·화면 왕복에도 재노출하지 않는다(#265)", () => {
+    const onShow = vi.fn();
+    const makeProps = (puzzleKey: string, key: string) =>
+      capProps({
+        puzzleKey,
+        resetKeys: [key],
+        maxDismissals: 1,
+        minCooldownMs: 180000,
+        onShow,
+      });
+    const { result, rerender } = renderHook((p) => useStuckHintPrompt(p), {
+      initialProps: makeProps("puzzle-1", "attempt-1"),
+    });
+
+    act(() => vi.advanceTimersByTime(20000));
+    act(() => result.current.dismiss());
+
+    rerender(makeProps("puzzle-1", "attempt-2"));
+    act(() => vi.advanceTimersByTime(600000));
+    expect(result.current.isVisible).toBe(false);
+    expect(onShow).toHaveBeenCalledTimes(1);
+
+    rerender(makeProps("puzzle-2", "attempt-1"));
+    act(() => vi.advanceTimersByTime(20000));
+    expect(result.current.isVisible).toBe(true);
+    expect(onShow).toHaveBeenCalledTimes(2);
+    expect(onShow.mock.calls[1][0]).toMatchObject({ promptSeq: 1 });
   });
 
   it("닫으면 다음 노출 지연이 백오프로 증가한다(#254)", () => {
@@ -393,7 +448,7 @@ describe("useStuckHintPrompt", () => {
     });
   });
 
-  it("닫기 상한에 도달하면 그 attempt 에서 더 노출하지 않는다(#254)", () => {
+  it("닫기 상한에 도달하면 같은 퍼즐에서 더 노출하지 않는다(#254)", () => {
     const onShow = vi.fn();
     const { result } = renderHook(() =>
       useStuckHintPrompt(capProps({ maxDismissals: 2, onShow })),
@@ -410,24 +465,24 @@ describe("useStuckHintPrompt", () => {
     expect(onShow).toHaveBeenCalledTimes(2);
   });
 
-  it("attemptKey 가 바뀌면 노출/닫기 카운터가 리셋된다(#254)", () => {
+  it("puzzleKey 가 바뀔 때만 노출/닫기 카운터가 리셋된다(#265)", () => {
     const onShow = vi.fn();
-    const makeProps = (attemptKey: number, key: string) =>
-      capProps({ attemptKey, resetKeys: [key], maxPromptsPerAttempt: 1, onShow });
+    const makeProps = (puzzleKey: string, key: string) =>
+      capProps({ puzzleKey, resetKeys: [key], maxPromptsPerAttempt: 1, onShow });
     const { result, rerender } = renderHook((p) => useStuckHintPrompt(p), {
-      initialProps: makeProps(1, "a"),
+      initialProps: makeProps("puzzle-1", "a"),
     });
 
     act(() => vi.advanceTimersByTime(20000));
-    expect(result.current.isVisible).toBe(true); // attempt 1 노출
-    // 같은 attempt 에서 활동해도 상한(1) 도달로 재노출 없음
-    rerender(makeProps(1, "b"));
+    expect(result.current.isVisible).toBe(true); // puzzle 1 노출
+    // 같은 퍼즐에서 활동해도 상한(1) 도달로 재노출 없음
+    rerender(makeProps("puzzle-1", "b"));
     act(() => vi.advanceTimersByTime(60000));
     expect(result.current.isVisible).toBe(false);
     expect(onShow).toHaveBeenCalledTimes(1);
 
-    // 새 attempt → 카운터 리셋 → 다시 노출
-    rerender(makeProps(2, "c"));
+    // 다른 퍼즐 → 카운터 리셋 → 다시 노출
+    rerender(makeProps("puzzle-2", "c"));
     act(() => vi.advanceTimersByTime(20000));
     expect(result.current.isVisible).toBe(true);
     expect(onShow).toHaveBeenCalledTimes(2);

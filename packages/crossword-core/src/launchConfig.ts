@@ -42,14 +42,16 @@ export type LaunchConfig = {
   stuckHintWrongIdleMs: number;
   // 이 개수 이상의 셀이 오답으로 남아 있으면 "막힘"으로 보고 빠른 노출을 적용한다.
   stuckHintWrongCellThreshold: number;
-  // 한 attempt 에서 막힘 힌트 CTA를 노출할 최대 횟수(#254). 초과하면 그 attempt 에서
-  // 더 띄우지 않아, 닫아도 계속 재노출되던 폭주를 막는다.
+  // 같은 퍼즐에서 막힘 힌트 CTA를 노출할 최대 횟수(#254, #265). 기존 Remote Config
+  // 키 이름은 호환을 위해 per_attempt 를 유지하지만, 런타임 카운터는 퍼즐 단위다.
   stuckHintMaxPromptsPerAttempt: number;
-  // 한 attempt 에서 CTA 닫기(dismiss)를 존중하는 상한(#254). 도달하면 그 attempt 에서
-  // 더 노출하지 않는다.
+  // 같은 퍼즐에서 CTA 닫기(dismiss)를 존중하는 상한. 기본 1회로, 한 번 닫으면 해당
+  // 퍼즐에서는 다시 노출하지 않는다(#265).
   stuckHintMaxDismissals: number;
   // 닫을 때마다 다음 노출 지연에 곱하는 배수(지수 백오프, #254). 1이면 백오프 없음.
   stuckHintDismissBackoffFactor: number;
+  // 같은 퍼즐에서 막힘 힌트 CTA를 다시 노출하기까지의 최소 간격(ms, #265).
+  stuckHintMinCooldownMs: number;
   // "이 단어 확인"으로 강조한 셀을 원복 전까지 보여주는 시간(ms).
   checkHighlightMs: number;
   // 리더보드 점수 산식 가중치(#216). 앱 재배포 없이 밸런스를 조정하도록 Remote
@@ -85,6 +87,7 @@ export const launchConfigKeys = {
   stuckHintMaxPromptsPerAttempt: "stuck_hint_max_prompts_per_attempt",
   stuckHintMaxDismissals: "stuck_hint_max_dismissals",
   stuckHintDismissBackoffFactor: "stuck_hint_dismiss_backoff_factor",
+  stuckHintMinCooldownMs: "stuck_hint_min_cooldown_ms",
   checkHighlightMs: "check_highlight_ms",
   leaderboardScoreCompletedWord: "leaderboard_score_completed_word",
   leaderboardScoreRemainingAttempt: "leaderboard_score_remaining_attempt",
@@ -126,11 +129,12 @@ export const defaultLaunchConfig: LaunchConfig = {
   stuckHintIdleMs: 20000,
   stuckHintWrongIdleMs: 5000,
   stuckHintWrongCellThreshold: 2,
-  // dismiss 폭주 방어 기본값(#254): attempt 당 최대 3회 노출, 닫기 2회면 종료,
-  // 닫을 때마다 다음 지연 ×2 백오프.
-  stuckHintMaxPromptsPerAttempt: 3,
-  stuckHintMaxDismissals: 2,
+  // 과다 노출 방어 기본값(#254, #265): 같은 퍼즐에서 최대 2회, 첫 dismiss로 종료,
+  // 노출 사이는 최소 180초. 원격 완화 시에도 기존 ×2 백오프를 함께 적용한다.
+  stuckHintMaxPromptsPerAttempt: 2,
+  stuckHintMaxDismissals: 1,
   stuckHintDismissBackoffFactor: 2,
+  stuckHintMinCooldownMs: 180000,
   checkHighlightMs: 2500,
   // 리더보드 가중치 기본값은 leaderboard.ts 상수를 그대로 따른다(#216).
   leaderboardScoreCompletedWord: LEADERBOARD_SCORE_WEIGHTS.completedWord,
@@ -297,6 +301,13 @@ export function normalizeLaunchConfig(
       1,
       10,
     ),
+    stuckHintMinCooldownMs: clampInteger(
+      value.stuckHintMinCooldownMs ??
+        defaultLaunchConfig.stuckHintMinCooldownMs,
+      defaultLaunchConfig.stuckHintMinCooldownMs,
+      0,
+      3600000,
+    ),
     checkHighlightMs: clampInteger(
       value.checkHighlightMs ?? defaultLaunchConfig.checkHighlightMs,
       defaultLaunchConfig.checkHighlightMs,
@@ -385,6 +396,8 @@ export function getLaunchConfigDefaultsForRemoteConfig() {
       defaultLaunchConfig.stuckHintMaxDismissals,
     [launchConfigKeys.stuckHintDismissBackoffFactor]:
       defaultLaunchConfig.stuckHintDismissBackoffFactor,
+    [launchConfigKeys.stuckHintMinCooldownMs]:
+      defaultLaunchConfig.stuckHintMinCooldownMs,
     [launchConfigKeys.checkHighlightMs]: defaultLaunchConfig.checkHighlightMs,
     [launchConfigKeys.leaderboardScoreCompletedWord]:
       defaultLaunchConfig.leaderboardScoreCompletedWord,

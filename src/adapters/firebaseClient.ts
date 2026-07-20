@@ -213,6 +213,22 @@ export async function loadFirebaseLaunchConfig(): Promise<LaunchConfig> {
         remoteConfig,
         launchConfigKeys.stuckHintWrongCellThreshold,
       ),
+      stuckHintMaxPromptsPerAttempt: getNumber(
+        remoteConfig,
+        launchConfigKeys.stuckHintMaxPromptsPerAttempt,
+      ),
+      stuckHintMaxDismissals: getNumber(
+        remoteConfig,
+        launchConfigKeys.stuckHintMaxDismissals,
+      ),
+      stuckHintDismissBackoffFactor: getNumber(
+        remoteConfig,
+        launchConfigKeys.stuckHintDismissBackoffFactor,
+      ),
+      stuckHintMinCooldownMs: getNumber(
+        remoteConfig,
+        launchConfigKeys.stuckHintMinCooldownMs,
+      ),
       checkHighlightMs: getNumber(
         remoteConfig,
         launchConfigKeys.checkHighlightMs,

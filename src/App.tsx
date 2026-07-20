@@ -99,6 +99,10 @@ import {
   buildReturnReminderResultParams,
   RETURN_REMINDER_PROMPT_EVENT,
   RETURN_REMINDER_RESULT_EVENT,
+  STUCK_HINT_PROMPT_ACCEPT_EVENT,
+  STUCK_HINT_PROMPT_DISMISS_EVENT,
+  STUCK_HINT_PROMPT_EVENT,
+  STUCK_HINT_PROMPT_REVEAL_WORD_EVENT,
   type CellLetterChange,
   type DailyMissionState,
   type Direction,
@@ -1561,14 +1565,15 @@ function App() {
     wrongCellThreshold: launchConfig.stuckHintWrongCellThreshold,
     idleMs: launchConfig.stuckHintIdleMs,
     wrongIdleMs: launchConfig.stuckHintWrongIdleMs,
-    // dismiss 폭주 방어(#254): attempt 리셋 기준·노출/닫기 상한·백오프는 launchConfig
-    // 원격 조정값을 따른다.
-    attemptKey: mission.attemptsUsed,
+    // 과다 노출 방어(#254, #265): 같은 퍼즐의 재도전·화면 왕복에도 카운터를 유지하고,
+    // 노출/닫기 상한·최소 쿨다운·백오프는 launchConfig 원격 조정값을 따른다.
+    puzzleKey: puzzle.puzzleId,
     maxPromptsPerAttempt: launchConfig.stuckHintMaxPromptsPerAttempt,
     maxDismissals: launchConfig.stuckHintMaxDismissals,
     dismissBackoffFactor: launchConfig.stuckHintDismissBackoffFactor,
+    minCooldownMs: launchConfig.stuckHintMinCooldownMs,
     onShow: ({ trigger, delayMs, promptSeq, dismissCount }) => {
-      telemetry.impression("stuck_hint_prompt", {
+      telemetry.impression(STUCK_HINT_PROMPT_EVENT, {
         ...puzzleTelemetryParams,
         attempt_number: mission.attemptsUsed,
         hint_count: hintCount,
@@ -2356,7 +2361,7 @@ function App() {
 
   function acceptStuckHintPrompt() {
     hideStuckHintPrompt();
-    telemetry.click("stuck_hint_prompt_accept", {
+    telemetry.click(STUCK_HINT_PROMPT_ACCEPT_EVENT, {
       ...puzzleTelemetryParams,
       attempt_number: mission.attemptsUsed,
       progress_percent: progressPercent,
@@ -2374,7 +2379,7 @@ function App() {
   // 공개해(revealSelectedWord) 막힌 사용자가 완료까지 진행하도록 돕는다(#163).
   function acceptStuckWordReveal() {
     hideStuckHintPrompt();
-    telemetry.click("stuck_hint_prompt_reveal_word", {
+    telemetry.click(STUCK_HINT_PROMPT_REVEAL_WORD_EVENT, {
       ...puzzleTelemetryParams,
       attempt_number: mission.attemptsUsed,
       progress_percent: progressPercent,
@@ -2385,7 +2390,7 @@ function App() {
   function dismissStuckHintPrompt() {
     // 닫기 카운터를 올려 백오프·상한을 재평가한다(#254). 단순 숨김(hide)과 구분한다.
     dismissStuckHintPromptCta();
-    telemetry.click("stuck_hint_prompt_dismiss", {
+    telemetry.click(STUCK_HINT_PROMPT_DISMISS_EVENT, {
       ...puzzleTelemetryParams,
       attempt_number: mission.attemptsUsed,
       progress_percent: progressPercent,
