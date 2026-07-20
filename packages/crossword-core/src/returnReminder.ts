@@ -37,6 +37,7 @@ export type ReturnReminderState = {
 
 export const RETURN_REMINDER_PROMPT_EVENT = "return_reminder_prompt";
 export const RETURN_REMINDER_RESULT_EVENT = "return_reminder_result";
+export const RETURN_REMINDER_MAX_PROMPT_COUNT = 3;
 
 export const initialReturnReminderState: ReturnReminderState = {
   promptCount: 0,
@@ -90,24 +91,36 @@ export function isReturnReminderResolved(state: ReturnReminderState): boolean {
 
 export type ShouldPromptReturnReminderInput = {
   enabled: boolean;
+  promptDate: string;
   state: ReturnReminderState;
 };
 
-// 완료 직후(고관여 시점)에 최대 1회만 푸시 동의를 유도한다.
+// 완료 직후(고관여 시점)에 최대 3회까지 푸시 동의를 유도한다.
 // - enabled=false면 절대 노출하지 않는다(원격 설정/시장 게이트).
 // - 이미 동의/거부/미지원으로 종결됐으면 다시 묻지 않는다.
-// - 이미 한 번이라도 유도했으면(promptCount>0) 자동 재유도하지 않는다.
+// - error/timeout은 익일에만 재유도하고, 같은 날에는 다시 묻지 않는다.
+// - 총 유도 상한에 도달하면 일시 실패여도 다시 묻지 않는다.
 export function shouldPromptReturnReminder({
   enabled,
+  promptDate,
   state,
 }: ShouldPromptReturnReminderInput): boolean {
   if (!enabled) {
     return false;
   }
-  if (state.promptCount > 0) {
+  if (isReturnReminderResolved(state)) {
     return false;
   }
-  return !isReturnReminderResolved(state);
+  if (state.promptCount >= RETURN_REMINDER_MAX_PROMPT_COUNT) {
+    return false;
+  }
+  if (state.promptCount === 0) {
+    return true;
+  }
+  if (state.outcome !== "error" && state.outcome !== "timeout") {
+    return false;
+  }
+  return state.lastPromptDate != null && state.lastPromptDate !== promptDate;
 }
 
 // AIT 알림 동의 결과(원문)를 코어 outcome으로 매핑한다.

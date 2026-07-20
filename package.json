@@ -8,7 +8,7 @@
     "build": "ait build",
     "deploy": "ait deploy",
     "test:adapters": "node --experimental-strip-types --test src/adapters/*.test.mts",
-    "test:core": "node --experimental-strip-types --test packages/crossword-core/src/*.test.mts",
+    "test:core": "node --experimental-strip-types --test packages/crossword-core/src/*.test.mts packages/crossword-core/src/*.test.ts",
     "test:components": "vitest run",
     "lint": "eslint .",
     "format": "prettier --write .",
