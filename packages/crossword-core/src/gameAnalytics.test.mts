@@ -1,15 +1,20 @@
 import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
+import { readFileSync } from "node:fs";
 
 import {
   buildGameAnalyticsEvent,
+  createBonusPuzzlePanelImpressionGuard,
   createGameAnalyticsClient,
   GAME_ANALYTICS_SCHEMA_VERSION,
+  trackBonusPuzzlePanelImpression,
   type GameAnalyticsSink,
   type GamePuzzleContext,
 } from "./gameAnalytics.ts";
 
-function context(overrides: Partial<GamePuzzleContext> = {}): GamePuzzleContext {
+function context(
+  overrides: Partial<GamePuzzleContext> = {},
+): GamePuzzleContext {
   return {
     puzzleId: "puzzle-1",
     difficulty: "normal",
@@ -100,6 +105,123 @@ describe("buildGameAnalyticsEvent", () => {
     assert.ok(!("theme_tag" in params));
     assert.ok(!("hint_remaining_after" in params));
     assert.equal(params.hint_type, "reveal_word");
+  });
+
+  it("AC-1: bonus_puzzle_panel_impression 이벤트를 기록한다 (#278)", () => {
+    const { name, params } = buildGameAnalyticsEvent(
+      "bonus_puzzle_panel_impression",
+      {
+        market: "apps-in-toss",
+        context: context(),
+        payload: { status: "available" },
+      },
+    );
+
+    assert.equal(name, "bonus_puzzle_panel_impression");
+    assert.equal(params.status, "available");
+    assert.equal(params.market, "apps-in-toss");
+    assert.equal(params.puzzle_id, "puzzle-1");
+    assert.equal(params.schema_version, GAME_ANALYTICS_SCHEMA_VERSION);
+  });
+});
+
+describe("trackBonusPuzzlePanelImpression (#278)", () => {
+  function createRecorder() {
+    const seen: Array<{ name: string; params: Record<string, unknown> }> = [];
+    const client = createGameAnalyticsClient({
+      market: "app-store",
+      sinks: [
+        {
+          id: "test",
+          logGameEvent: (name, params) => seen.push({ name, params }),
+        },
+      ],
+    });
+    const guard = createBonusPuzzlePanelImpressionGuard();
+
+    return { client, guard, seen };
+  }
+
+  it("AC-2: status=waiting|available|used|unlocked를 기록한다 (#278)", () => {
+    const { client, guard, seen } = createRecorder();
+
+    for (const status of [
+      "waiting",
+      "available",
+      "used",
+      "unlocked",
+    ] as const) {
+      assert.equal(
+        trackBonusPuzzlePanelImpression(client, guard, context(), status),
+        true,
+      );
+    }
+
+    assert.deepEqual(
+      seen.map(({ name, params }) => [name, params.status]),
+      [
+        ["bonus_puzzle_panel_impression", "waiting"],
+        ["bonus_puzzle_panel_impression", "available"],
+        ["bonus_puzzle_panel_impression", "used"],
+        ["bonus_puzzle_panel_impression", "unlocked"],
+      ],
+    );
+  });
+
+  it("AC-3: 같은 세션·같은 상태는 1회만 기록하고 상태 전이는 새로 기록한다 (#278)", () => {
+    const { client, guard, seen } = createRecorder();
+
+    assert.equal(
+      trackBonusPuzzlePanelImpression(client, guard, context(), "available"),
+      true,
+    );
+    assert.equal(
+      trackBonusPuzzlePanelImpression(client, guard, context(), "available"),
+      false,
+    );
+    assert.equal(
+      trackBonusPuzzlePanelImpression(client, guard, context(), "unlocked"),
+      true,
+    );
+    assert.equal(
+      trackBonusPuzzlePanelImpression(client, guard, context(), "unlocked"),
+      false,
+    );
+
+    assert.deepEqual(
+      seen.map(({ params }) => params.status),
+      ["available", "unlocked"],
+    );
+  });
+
+  it("AC-4: loading 상태는 제외한다 (#278)", () => {
+    const { client, guard, seen } = createRecorder();
+
+    assert.equal(
+      trackBonusPuzzlePanelImpression(client, guard, context(), "loading"),
+      false,
+    );
+    assert.deepEqual(seen, []);
+  });
+
+  it("AC-5: Web/mobile 공통 정책과 자동 회귀 테스트를 제공한다 (#278)", () => {
+    const webApp = readFileSync(
+      new URL("../../../src/App.tsx", import.meta.url),
+      "utf8",
+    );
+    const mobileApp = readFileSync(
+      new URL("../../../apps/mobile/App.tsx", import.meta.url),
+      "utf8",
+    );
+
+    for (const appSource of [webApp, mobileApp]) {
+      assert.match(appSource, /createBonusPuzzlePanelImpressionGuard/);
+      assert.match(appSource, /trackBonusPuzzlePanelImpression/);
+      assert.match(
+        appSource,
+        /route !== ["']home["'] && route !== ["']result["']/,
+      );
+    }
   });
 });
 

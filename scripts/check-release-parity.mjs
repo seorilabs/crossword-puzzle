@@ -233,6 +233,7 @@ const featureParityMarkers = [
   "result_overlay",
   "runRewardedHintAdFlow",
   "retry:",
+  "trackBonusPuzzlePanelImpression",
 ];
 for (const marker of featureParityMarkers) {
   assertIncludes(webApp, marker, webAppPath);

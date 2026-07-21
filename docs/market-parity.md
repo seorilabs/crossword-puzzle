@@ -76,6 +76,12 @@ flowchart TD
 - AIT/Web과 Android/iOS 완료 축하 오버레이는 추천 후보가 있을 때 난이도·퍼즐 라벨을 포함한 `다음 퍼즐 풀기`를 primary CTA로 먼저 노출하고, 탭하면 목록 없이 풀이 화면으로 진입한다. 후보가 없으면 기존 결과·홈·보너스 동선을 유지한다.
 - `next_puzzle_cta` 이벤트는 공용 이름을 유지하고 `source=result_overlay|result_screen`, `next_puzzle_id`, `next_difficulty`를 같은 계약으로 기록한다.
 
+## 보너스 퍼즐 패널 노출 계측 (#278)
+
+- `bonus_puzzle_panel_impression` 이벤트와 `status=waiting|available|used|unlocked` 계약은 `packages/crossword-core/src/gameAnalytics.ts`에 두고 AIT/Web과 Android/iOS가 동일하게 사용한다.
+- 패널이 실제 렌더되는 홈·결과 화면에서만 기록하며, 데이터 로딩 중인 `loading` 상태는 노출에서 제외한다.
+- 앱 세션 안에서 같은 상태는 최초 한 번만 기록하고, 패널 상태가 바뀌면 변경된 상태를 각각 한 번 새로 기록한다.
+
 ## 복귀 리마인드 푸시 동의 (D1 재방문)
 
 - 결정 로직(언제·몇 번 동의를 유도할지)은 코어 `packages/crossword-core/src/returnReminder.ts`에 두어 3개 시장이 같은 정책으로 동작한다. 노출 게이트는 Remote Config 키 `return_reminder_enabled`(기본값 `true`, #162)이다. 필요 시 Remote Config에서 `false`로 끌 수 있다.
