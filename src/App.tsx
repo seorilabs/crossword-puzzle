@@ -51,6 +51,7 @@ import {
   formatPuzzleCardSequenceLabel,
   getCompletedPuzzleIds,
   getEntryAnswerValue,
+  getFirstIncompleteEntry,
   getEntryCellIndex,
   getEntryCellKeyAt,
   getEntryCells,
@@ -89,6 +90,7 @@ import {
   trackBonusPuzzlePanelImpression,
   shouldCelebrateOnboardingWordCompletion,
   shouldOfferStuckWordReveal,
+  getStuckHintPromptText,
   shouldQuickStartActivePuzzle,
   shouldShowFirstInputGuide,
   shouldSubmitLeaderboardScore,
@@ -2467,9 +2469,7 @@ function App() {
       near_finish: true,
       words_remaining: stuckHintShownWordsRemaining,
     });
-    const firstIncomplete = puzzle.entries.find(
-      (entry) => getEntryAnswerValue(entry, cellValues) !== entry.answer,
-    );
+    const firstIncomplete = getFirstIncompleteEntry(puzzle.entries, cellValues);
     if (firstIncomplete != null) {
       selectEntry(firstIncomplete);
     }
@@ -3306,11 +3306,11 @@ function App() {
       {route === "today" && isStuckHintPromptVisible ? (
         <div className="stuckHintPrompt" role="status">
           <span className="stuckHintPromptText">
-            {isStuckHintNearFinish
-              ? `거의 다 왔어요! 남은 단어 ${stuckHintShownWordsRemaining}개 ✨`
-              : remainingHintCredits > 0
-                ? "막혔나요? 지금 힌트는 무료예요 💡"
-                : "막혔나요? 광고를 보면 힌트를 받을 수 있어요"}
+            {getStuckHintPromptText({
+              nearFinish: isStuckHintNearFinish,
+              wordsRemaining: stuckHintShownWordsRemaining,
+              hasHintCredits: remainingHintCredits > 0,
+            })}
           </span>
           <div className="stuckHintPromptActions">
             {isStuckHintNearFinish ? (

@@ -28,6 +28,7 @@ import {
   getStuckHintBackoffDelayMs,
   shouldScheduleStuckHintPrompt,
   isNearFinishNudge,
+  getStuckHintPromptText,
   resolveVerticalArrowAction,
   shouldOfferStuckWordReveal,
   shouldCelebrateOnboardingWordCompletion,
@@ -331,6 +332,47 @@ describe("isNearFinishNudge (#280)", () => {
         ...thresholds,
       }),
       false,
+    );
+  });
+});
+
+describe("getStuckHintPromptText (#280)", () => {
+  it("near-finish면 잔여 단어 수를 포함한 마무리 문구를 돌려준다", () => {
+    assert.equal(
+      getStuckHintPromptText({
+        nearFinish: true,
+        wordsRemaining: 2,
+        hasHintCredits: true,
+      }),
+      "거의 다 왔어요! 남은 단어 2개 ✨",
+    );
+    // near-finish 문구는 힌트 보유 여부와 무관하다.
+    assert.equal(
+      getStuckHintPromptText({
+        nearFinish: true,
+        wordsRemaining: 1,
+        hasHintCredits: false,
+      }),
+      "거의 다 왔어요! 남은 단어 1개 ✨",
+    );
+  });
+
+  it("near-finish가 아니면 힌트 보유 여부에 따른 기존 막힘 문구를 돌려준다", () => {
+    assert.equal(
+      getStuckHintPromptText({
+        nearFinish: false,
+        wordsRemaining: 5,
+        hasHintCredits: true,
+      }),
+      "막혔나요? 지금 힌트는 무료예요 💡",
+    );
+    assert.equal(
+      getStuckHintPromptText({
+        nearFinish: false,
+        wordsRemaining: 5,
+        hasHintCredits: false,
+      }),
+      "막혔나요? 광고를 보면 힌트를 받을 수 있어요",
     );
   });
 });

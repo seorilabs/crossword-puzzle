@@ -795,6 +795,21 @@ export function isNearFinishNudge(input: {
   );
 }
 
+// 막힘 프롬프트 본문 문구를 정한다. near-finish 발화면 잔여 단어 수를 포함한 마무리
+// 문구를, 아니면 힌트 보유 여부에 따라 기존 막힘 안내 문구를 돌려준다(#280).
+export function getStuckHintPromptText(input: {
+  nearFinish: boolean;
+  wordsRemaining: number;
+  hasHintCredits: boolean;
+}): string {
+  if (input.nearFinish) {
+    return `거의 다 왔어요! 남은 단어 ${input.wordsRemaining}개 ✨`;
+  }
+  return input.hasHintCredits
+    ? "막혔나요? 지금 힌트는 무료예요 💡"
+    : "막혔나요? 광고를 보면 힌트를 받을 수 있어요";
+}
+
 // 닫기 횟수에 따라 다음 노출 지연을 지수 백오프로 늘린다(#254).
 // delay = baseDelayMs * backoffFactor^dismissCount. backoffFactor 1 이하나
 // dismissCount 0 이면 baseDelayMs 그대로다.
