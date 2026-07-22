@@ -33,6 +33,7 @@ import {
   shouldOfferStuckWordReveal,
   shouldCelebrateOnboardingWordCompletion,
 } from "./uiPolicy.ts";
+import { getFirstIncompleteEntry } from "./puzzle.ts";
 import type { Puzzle, PuzzleEntry, PuzzleManifestItem } from "./types.ts";
 
 function createSummary(
@@ -374,6 +375,42 @@ describe("getStuckHintPromptText (#280)", () => {
       }),
       "막혔나요? 광고를 보면 힌트를 받을 수 있어요",
     );
+  });
+
+  it("near-finish 문구가 잔여 단어 수를 포함하고 수락 CTA가 첫 미완성 단어로 이동한다(#280 · AC-3)", () => {
+    // 문구: 잔여 단어 수를 포함한 마무리 문구. (App이 이 함수를 stuckHintPromptText에 사용.)
+    const a1 = {
+      id: "a1",
+      answer: "가나다",
+      direction: "across" as const,
+      row: 0,
+      col: 0,
+      clue: "",
+      generatedBy: "placed" as const,
+    };
+    const d1 = {
+      id: "d1",
+      answer: "다라",
+      direction: "down" as const,
+      row: 0,
+      col: 2,
+      clue: "",
+      generatedBy: "placed" as const,
+    };
+    const cellValues = { "0:0": "가", "0:1": "나", "0:2": "다" }; // a1 완성, d1 미완성
+    const wordsRemaining = [a1, d1].filter(
+      (entry) => getFirstIncompleteEntry([entry], cellValues) != null,
+    ).length;
+    assert.equal(
+      getStuckHintPromptText({
+        nearFinish: true,
+        wordsRemaining,
+        hasHintCredits: true,
+      }),
+      `거의 다 왔어요! 남은 단어 ${wordsRemaining}개 ✨`,
+    );
+    // 수락 CTA 이동 대상: 남은 미완성 단어 중 첫 단서(App acceptNearFinishNudge → selectEntry).
+    assert.equal(getFirstIncompleteEntry([a1, d1], cellValues)?.id, "d1");
   });
 });
 

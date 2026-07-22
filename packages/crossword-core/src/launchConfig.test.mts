@@ -166,6 +166,18 @@ describe("launchConfig: 완료 직전 마무리 넛지 임계(#280)", () => {
     assert.equal(config.finishNudgeWordsRemaining, 3);
   });
 
+  it("launchConfig에 finishNudge 임계 두 키가 추가되고 Remote Config로 덮어쓸 수 있다(#280 · AC-2)", () => {
+    // 기본값(90/2)이 있고, Remote Config 부분값으로 두 키를 독립적으로 덮어쓸 수 있다.
+    assert.equal(defaultLaunchConfig.finishNudgeProgressThreshold, 90);
+    assert.equal(defaultLaunchConfig.finishNudgeWordsRemaining, 2);
+    const overridden = normalizeLaunchConfig({
+      finishNudgeProgressThreshold: 80,
+      finishNudgeWordsRemaining: 1,
+    });
+    assert.equal(overridden.finishNudgeProgressThreshold, 80);
+    assert.equal(overridden.finishNudgeWordsRemaining, 1);
+  });
+
   it("허용 범위(진행률 0~100, 잔여 단어 1~20)를 벗어나면 clamp된다", () => {
     const tooHigh = normalizeLaunchConfig({
       finishNudgeProgressThreshold: 150,
