@@ -250,6 +250,23 @@ VITE_PUZZLE_PACK_BASE_URL=https://crossword-puzzle-79ae0.web.app npm run build
 
 GitHub Actions 배포에서는 repository variable `PUZZLE_PACK_BASE_URL`로 운영 Hosting URL을 바꿀 수 있습니다.
 
+### 복귀 리마인더 템플릿 코드
+
+"오늘의 퍼즐" 복귀 리마인드(스마트발송) 알림 동의는 `requestNotificationAgreement`에 `templateCode`를 넘겨 요청합니다. 이 코드는 개발자가 임의로 정한 슬러그가 아니라, **앱인토스 콘솔에서 알림 동의문·기능성 캠페인을 만들고 문구 검수 승인을 받으면 발급되는 실제 템플릿 코드**입니다. 콘솔 발급 코드와 다르거나 캠페인이 미승인 상태면 SDK `onError`가 전건 발화해 동의 요청이 무력화됩니다(#288).
+
+기본값은 `crossword-daily-reminder`이며, 빌드 환경변수 `VITE_RETURN_REMINDER_TEMPLATE_CODE`로 실제 발급 코드를 주입해 덮어씁니다.
+
+```bash
+VITE_RETURN_REMINDER_TEMPLATE_CODE=<콘솔 발급 코드> npm run build
+```
+
+콘솔 발급 코드 확인·반영 절차:
+
+1. [앱인토스 콘솔](https://apps-in-toss.toss.im/) > 미니앱 > 스마트 발송에서 "오늘의 퍼즐" 복귀 리마인드용 알림 동의문과 기능성 캠페인을 확인합니다.
+2. 문구 검수가 **승인** 상태인지, 발급된 `templateCode`가 무엇인지 확인합니다.
+3. 확인된 코드를 배포 환경의 `VITE_RETURN_REMINDER_TEMPLATE_CODE`(GitHub Actions는 repository variable/secret)에 반영합니다.
+4. 배포 후 GA4 `return_reminder_result`의 `outcome`·`error_code` 분포를 모니터링해 최초의 `agreed`/`declined`가 관측되는지 확인합니다.
+
 ## 배포하기
 
 - 앱인토스 배포 API 키는 [앱인토스 콘솔](https://apps-in-toss.toss.im/) > 워크스페이스 > API 키 > 콘솔 API 키 에서 발급받을 수 있어요.

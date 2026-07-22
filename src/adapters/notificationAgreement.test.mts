@@ -3,7 +3,12 @@
 import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
 
-import { requestReturnReminderAgreement } from "./notificationAgreement.ts";
+import {
+  requestReturnReminderAgreement,
+  resolveReturnReminderTemplateCode,
+  DEFAULT_RETURN_REMINDER_TEMPLATE_CODE,
+  RETURN_REMINDER_TEMPLATE_CODE,
+} from "./notificationAgreement.ts";
 
 type AgreementConfig = {
   options: { templateCode: string };
@@ -48,13 +53,24 @@ describe("requestReturnReminderAgreement (#253)", () => {
     assert.deepEqual(result, { outcome: "rejected" });
   });
 
-  it("onError 는 error + error_reason 요약을 담는다", async () => {
+  it("onError 는 error + error_reason 요약 + error_code 를 담는다 (#288)", async () => {
     const { fake } = makeFake((config) =>
       config.onError({ code: "E_BRIDGE", message: "not connected" }),
     );
     const result = await requestReturnReminderAgreement(fake);
     assert.equal(result.outcome, "error");
     assert.equal(result.errorReason, "E_BRIDGE: not connected");
+    assert.equal(result.errorCode, "E_BRIDGE");
+  });
+
+  it("코드 없는 onError(Error 인스턴스)는 error_code 없이 error_reason만 담는다 (#288)", async () => {
+    const { fake } = makeFake((config) =>
+      config.onError(new Error("알림 동의에 실패하였습니다.")),
+    );
+    const result = await requestReturnReminderAgreement(fake);
+    assert.equal(result.outcome, "error");
+    assert.equal(result.errorReason, "알림 동의에 실패하였습니다.");
+    assert.equal(result.errorCode, undefined);
   });
 
   it("동기 throw(미지원 환경)는 unsupported 로 폴백한다", async () => {
@@ -78,6 +94,18 @@ describe("requestReturnReminderAgreement (#253)", () => {
     );
     await requestReturnReminderAgreement(fake);
     assert.equal(cleanupCalls(), 1);
+  });
+
+  it("환경변수 미설정(node)에서는 템플릿 코드가 기본값으로 폴백한다 (#288)", () => {
+    // import.meta.env 부재(node) 환경이므로 옵셔널 체이닝으로 기본값을 쓴다.
+    assert.equal(
+      resolveReturnReminderTemplateCode(),
+      DEFAULT_RETURN_REMINDER_TEMPLATE_CODE,
+    );
+    assert.equal(
+      RETURN_REMINDER_TEMPLATE_CODE,
+      DEFAULT_RETURN_REMINDER_TEMPLATE_CODE,
+    );
   });
 
   it("먼저 확정된 결과만 반영하고 이후 콜백은 무시한다(중복 resolve 방지)", async () => {

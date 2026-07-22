@@ -33,6 +33,9 @@ export type ReturnReminderState = {
   outcome?: ReturnReminderOutcome;
   // outcome이 error일 때 SDK가 준 에러 요약(≤100자). 다른 결과에서는 비운다(#253).
   errorReason?: string;
+  // outcome이 error일 때 SDK가 준 구조화 에러 코드(code/status, ≤100자). 서버 거절
+  // 사유(요청 자체 거절)를 사람이 읽는 errorReason과 별개로 식별한다(#288).
+  errorCode?: string;
 };
 
 export const RETURN_REMINDER_PROMPT_EVENT = "return_reminder_prompt";
@@ -83,6 +86,44 @@ export function summarizeAgreementError(
     return "unknown";
   }
   return text.length > maxLength ? text.slice(0, maxLength) : text;
+}
+
+// SDK onError가 구조화 필드(code/status)를 준 경우 이를 error_code용 문자열로 보존한다.
+// error_reason(사람이 읽는 요약)과 별개로, 서버 거절 사유를 코드로 식별하기 위함이다(#288).
+// 구조화 코드가 없으면(문자열/일반 Error 등) undefined를 돌려 error_code를 생략한다.
+export function extractAgreementErrorCode(
+  error: unknown,
+  maxLength: number = ERROR_REASON_MAX_LENGTH,
+): string | undefined {
+  if (error == null || typeof error !== "object") {
+    return undefined;
+  }
+  const record = error as { code?: unknown; status?: unknown };
+  const candidate = record.code ?? record.status;
+  if (candidate == null || candidate === "") {
+    return undefined;
+  }
+  const text = String(candidate).replace(/\s+/g, " ").trim();
+  if (text.length === 0) {
+    return undefined;
+  }
+  return text.length > maxLength ? text.slice(0, maxLength) : text;
+}
+
+// error_reason(요약 문자열)과 error_code(구조화 코드)를 함께 산출한다. 어댑터가 SDK
+// onError 값을 한 번에 두 필드로 변환하도록 core에 두고 단위 테스트로 고정한다(#288).
+export type AgreementErrorSummary = {
+  reason: string;
+  code?: string;
+};
+
+export function summarizeAgreementFailure(
+  error: unknown,
+  maxLength: number = ERROR_REASON_MAX_LENGTH,
+): AgreementErrorSummary {
+  const reason = summarizeAgreementError(error, maxLength);
+  const code = extractAgreementErrorCode(error, maxLength);
+  return code == null ? { reason } : { reason, code };
 }
 
 export function isReturnReminderResolved(state: ReturnReminderState): boolean {
@@ -152,35 +193,47 @@ export function applyReturnReminderOutcome(
   state: ReturnReminderState,
   outcome: ReturnReminderOutcome,
   errorReason?: string,
+  errorCode?: string,
 ): ReturnReminderState {
   const next: ReturnReminderState = { ...state, outcome };
-  // errorReason은 error 결과에서만 의미가 있다. 다른 결과로 넘어가면 이전 오류
-  // 요약이 남지 않도록 항상 비운다.
+  // errorReason/errorCode는 error 결과에서만 의미가 있다. 다른 결과로 넘어가면
+  // 이전 오류 정보가 남지 않도록 항상 비운다.
   if (outcome === "error" && errorReason != null && errorReason !== "") {
     next.errorReason = errorReason;
   } else {
     delete next.errorReason;
   }
+  if (outcome === "error" && errorCode != null && errorCode !== "") {
+    next.errorCode = errorCode;
+  } else {
+    delete next.errorCode;
+  }
   return next;
 }
 
 // return_reminder_result 이벤트 파라미터(영문 키 유지). error 결과에 요약이 있으면
-// error_reason을 덧붙여 실패 원인을 데이터로 남긴다(#253).
+// error_reason(#253)을, 구조화 코드가 있으면 error_code(#288)를 덧붙여 실패 원인을
+// 데이터로 남긴다.
 export function buildReturnReminderResultParams(state: ReturnReminderState): {
   outcome: ReturnReminderOutcome;
   prompt_count: number;
   error_reason?: string;
+  error_code?: string;
 } {
   const params: {
     outcome: ReturnReminderOutcome;
     prompt_count: number;
     error_reason?: string;
+    error_code?: string;
   } = {
     outcome: state.outcome ?? "error",
     prompt_count: state.promptCount,
   };
   if (state.errorReason != null && state.errorReason !== "") {
     params.error_reason = state.errorReason;
+  }
+  if (state.errorCode != null && state.errorCode !== "") {
+    params.error_code = state.errorCode;
   }
   return params;
 }
