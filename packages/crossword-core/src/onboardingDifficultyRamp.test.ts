@@ -3,6 +3,7 @@
 // 를 한 파일에 모아, 인수조건↔테스트 대응을 명확히 한다.
 import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
+import { readFileSync } from "node:fs";
 
 import {
   DIFFICULTY_PROFILES,
@@ -120,11 +121,30 @@ describe("온보딩 난이도 램프 수락 조건 (#291)", () => {
     );
   });
 
-  it("AC-4: 기존 난이도 테스트를 갱신하고 신규 난이도 케이스를 추가한다", () => {
-    // 이 통합 테스트와 difficultyProfiles.test.mts·recommendation.test.mts·
-    // launchConfig.test.mts 의 신규 케이스가 온보딩 램프 난이도 동작을 새로 커버한다.
-    // 아래는 기존 난이도 추천(getNextRecommendedPuzzleSummary) 동작에 대해 새로 추가한
-    // 경계 케이스들이다.
+  it("AC-4: 기존 난이도 테스트(difficultyProfiles.test.mts, difficultyRotation.test.ts)를 갱신하고 신규 케이스를 추가한다", () => {
+    // (직접 검증) AC-4가 명시한 두 기존 난이도 테스트 파일이 이번 변경(#291)의 신규
+    // 케이스로 실제 갱신됐는지 파일 내용을 읽어 확인한다(실행 경로: readFileSync).
+    // 이 케이스들이 제거되면 이 테스트가 실패해 AC-4 커버리지 회귀를 막는다.
+    const profilesTest = readFileSync(
+      new URL("./difficultyProfiles.test.mts", import.meta.url),
+      "utf8",
+    );
+    const rotationTest = readFileSync(
+      new URL("./difficultyRotation.test.ts", import.meta.url),
+      "utf8",
+    );
+    assert.match(
+      profilesTest,
+      /온보딩 중간 난이도 프로파일 수락 조건 \(#291\)/,
+      "difficultyProfiles.test.mts 에 #291 신규 케이스가 있어야 한다",
+    );
+    assert.match(
+      rotationTest,
+      /발행 로테이션은 온보딩 램프와 무관하다 \(#291\)/,
+      "difficultyRotation.test.ts 에 #291 신규 케이스가 있어야 한다",
+    );
+
+    // (실행 경로) 갱신한 난이도 추천 동작의 신규 경계 케이스들을 함께 검증한다.
     const summaries = [
       summary("onboarding", "easy"),
       summary("easy2", "easy"),
