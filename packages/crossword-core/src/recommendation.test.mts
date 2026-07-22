@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
 
 import {
+  ONBOARDING_RAMP_MAX_COMPLETIONS,
   getNextRecommendedPuzzleSummary,
 } from "./recommendation.ts";
 import type { PuzzleManifestItem } from "./types.ts";
@@ -123,5 +124,77 @@ describe("getNextRecommendedPuzzleSummary", () => {
       difficulty: "normal",
     });
     assert.equal(next, undefined);
+  });
+});
+
+describe("온보딩 난이도 램프 (#291)", () => {
+  const summaries = [
+    summary("onboarding", "easy"),
+    summary("easy2", "easy"),
+    summary("normal1", "normal"),
+  ];
+
+  it("상한 상수는 0(첫 완료에서만 완화)이다", () => {
+    assert.equal(ONBOARDING_RAMP_MAX_COMPLETIONS, 0);
+  });
+
+  it("램프 off(기본)면 easy 완료 → normal 급점프로 기존 동작을 유지한다", () => {
+    const next = getNextRecommendedPuzzleSummary(
+      summaries,
+      SET("onboarding"),
+      { puzzleId: "onboarding", difficulty: "easy" },
+    );
+    assert.equal(next?.puzzleId, "normal1");
+  });
+
+  it("램프 on + 신규(첫 완료)면 normal 대신 남은 easy를 배정한다", () => {
+    const next = getNextRecommendedPuzzleSummary(
+      summaries,
+      SET("onboarding"),
+      { puzzleId: "onboarding", difficulty: "easy" },
+      { onboardingRampEnabled: true },
+    );
+    assert.equal(next?.puzzleId, "easy2", "easy→easy로 절벽 완화");
+  });
+
+  it("완료 집합에 현재 퍼즐이 없어도(렌더 타이밍) 첫 완료로 보고 완화한다", () => {
+    const next = getNextRecommendedPuzzleSummary(
+      summaries,
+      SET(),
+      { puzzleId: "onboarding", difficulty: "easy" },
+      { onboardingRampEnabled: true },
+    );
+    assert.equal(next?.puzzleId, "easy2");
+  });
+
+  it("두 번째 완료(현재 제외 기완료>상한)부터는 완화하지 않고 normal로 상승한다", () => {
+    // easy2 를 이미 완료한 상태에서 다시 easy 완료 → 기완료(현재 제외) 1 > 0
+    const next = getNextRecommendedPuzzleSummary(
+      summaries,
+      SET("easy2", "onboarding"),
+      { puzzleId: "onboarding", difficulty: "easy" },
+      { onboardingRampEnabled: true },
+    );
+    assert.equal(next?.puzzleId, "normal1", "급점프 완화는 첫 완료 1회뿐");
+  });
+
+  it("램프 on이라도 남은 easy가 없으면 기존 상승(normal)으로 폴백한다", () => {
+    const next = getNextRecommendedPuzzleSummary(
+      [summary("onboarding", "easy"), summary("normal1", "normal")],
+      SET("onboarding"),
+      { puzzleId: "onboarding", difficulty: "easy" },
+      { onboardingRampEnabled: true },
+    );
+    assert.equal(next?.puzzleId, "normal1");
+  });
+
+  it("현재가 easy가 아니면(예: normal 완료) 램프가 개입하지 않는다", () => {
+    const next = getNextRecommendedPuzzleSummary(
+      [summary("normal1", "normal"), summary("hard1", "hard")],
+      SET(),
+      { puzzleId: "cur", difficulty: "normal" },
+      { onboardingRampEnabled: true },
+    );
+    assert.equal(next?.puzzleId, "hard1", "normal→hard 상승 유지");
   });
 });

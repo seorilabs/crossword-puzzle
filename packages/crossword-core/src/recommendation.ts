@@ -17,6 +17,28 @@ export type NextRecommendationContext = {
   difficulty?: Difficulty;
 };
 
+// 온보딩 난이도 램프(#291) 옵션. 켜지면 신규 사용자의 easy(온보딩) 완료 직후 추천을
+// 완화한다. 기본(옵션 미전달/false)은 기존 동작과 완전히 동일하다.
+export type NextRecommendationOptions = {
+  onboardingRampEnabled?: boolean;
+};
+
+// 램프를 적용할 "신규 사용자" 상한(현재 퍼즐을 제외한 기완료 퍼즐 수). 0 이면 첫 완료
+// (온보딩 easy)에서만 완화하고, 두 번째 완료부터는 기존 난이도 상승 규칙으로 돌아간다.
+// → 진행 곡선은 easy(온보딩) → easy → normal 로 첫 급점프만 한 단계 늦춘다.
+export const ONBOARDING_RAMP_MAX_COMPLETIONS = 0;
+
+// 현재 퍼즐을 제외한 기완료 퍼즐 수. 완료 집합에는 방금 완료한 현재 퍼즐이 포함될 수
+// 있어(렌더 타이밍 의존) 이를 배제해 "이전에 몇 판 완료했는지"를 안정적으로 센다.
+function countPriorCompleted(
+  completedPuzzleIds: ReadonlySet<string>,
+  currentPuzzleId: string,
+): number {
+  return (
+    completedPuzzleIds.size - (completedPuzzleIds.has(currentPuzzleId) ? 1 : 0)
+  );
+}
+
 export const NEXT_PUZZLE_CTA_EVENT = "next_puzzle_cta";
 export type NextPuzzleCtaSource = "result_overlay" | "result_screen";
 
@@ -57,6 +79,7 @@ export function getNextRecommendedPuzzleSummary(
   puzzleSummaries: PuzzleManifestItem[],
   completedPuzzleIds: ReadonlySet<string>,
   current: NextRecommendationContext,
+  options?: NextRecommendationOptions,
 ): PuzzleManifestItem | undefined {
   const candidates = puzzleSummaries.filter(
     (summary) => summary.puzzleId !== current.puzzleId,
@@ -78,13 +101,27 @@ export function getNextRecommendedPuzzleSummary(
           (summary) => difficultyRank(summary.difficulty) === currentRank + 1,
         )
       : undefined;
+    const sameTier = uncompleted.find(
+      (summary) => difficultyRank(summary.difficulty) === currentRank,
+    );
+
+    // 온보딩 램프(#291): 램프가 켜져 있고 신규 사용자(현재 제외 기완료 ≤ 상한)가
+    // easy(온보딩)를 막 끝냈다면, normal 급점프 대신 같은 easy 티어를 한 단계 더
+    // 배정해 easy→normal 난이도 절벽을 완화한다. 남은 easy 후보가 없으면 아래 기존
+    // 상승 규칙으로 자연 폴백한다. 램프 off 시 이 분기는 건너뛰어 동작이 불변이다.
+    const softenOnboarding =
+      options?.onboardingRampEnabled === true &&
+      current.difficulty === "easy" &&
+      countPriorCompleted(completedPuzzleIds, current.puzzleId) <=
+        ONBOARDING_RAMP_MAX_COMPLETIONS;
+    if (softenOnboarding && sameTier != null) {
+      return sameTier;
+    }
+
     if (nextTierUp != null) {
       return nextTierUp;
     }
 
-    const sameTier = uncompleted.find(
-      (summary) => difficultyRank(summary.difficulty) === currentRank,
-    );
     if (sameTier != null) {
       return sameTier;
     }

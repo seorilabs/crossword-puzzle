@@ -1213,11 +1213,16 @@ function AppContent() {
               puzzleId: puzzle.puzzleId,
               difficulty: puzzle.difficulty,
             },
+            {
+              onboardingRampEnabled:
+                launchConfig.onboardingDifficultyRampEnabled,
+            },
           )
         : undefined,
     [
       completedPuzzleIds,
       isCompleted,
+      launchConfig.onboardingDifficultyRampEnabled,
       puzzle.difficulty,
       puzzle.puzzleId,
       visiblePuzzleSummaries,

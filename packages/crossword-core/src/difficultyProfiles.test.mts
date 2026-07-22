@@ -7,6 +7,7 @@ import {
   DIFFICULTY_ORDER,
   DIFFICULTY_PROFILES,
   MIN_GENERATION_WORD_POOL,
+  ONBOARDING_MEDIUM_PROFILE,
   filterWordsByDifficulty,
   getWordDifficulty,
   isDifficulty,
@@ -127,6 +128,45 @@ describe("DIFFICULTY_PROFILES 단조성", () => {
 
   it("DIFFICULTY_ORDER 는 easy→normal→hard 순이다", () => {
     assert.deepEqual([...DIFFICULTY_ORDER], ["easy", "normal", "hard"]);
+  });
+});
+
+describe("ONBOARDING_MEDIUM_PROFILE 중간 프로파일 (#291)", () => {
+  const easy = DIFFICULTY_PROFILES.easy;
+  const normal = DIFFICULTY_PROFILES.normal;
+  const medium = ONBOARDING_MEDIUM_PROFILE;
+
+  it("새 티어를 추가하지 않도록 difficulty 는 normal 로 유지한다(enum 파급 없음)", () => {
+    assert.equal(medium.difficulty, "normal");
+    // "medium" 은 여전히 유효 난이도가 아니다(Puzzle 타입·검증·계측 불변).
+    assert.equal(isDifficulty("medium"), false);
+  });
+
+  it("minWordCount 가 easy 와 normal 사이에 엄밀히 위치한다", () => {
+    assert.ok(
+      easy.minWordCount < medium.minWordCount &&
+        medium.minWordCount < normal.minWordCount,
+      `${easy.minWordCount} < ${medium.minWordCount} < ${normal.minWordCount}`,
+    );
+  });
+
+  it("단어 수 상한이 normal 보다 적어 완료 부담을 낮춘다", () => {
+    assert.ok(medium.maxWords < normal.maxWords);
+    assert.ok(medium.maxWords >= easy.maxWords);
+  });
+
+  it("교차율이 normal 이상(easy 수준)으로 단서 연결을 쉽게 한다", () => {
+    assert.ok(medium.minCrossRatio >= normal.minCrossRatio);
+    assert.equal(medium.minCrossRatio, easy.minCrossRatio);
+  });
+
+  it("보드 크기는 단조성 유지를 위해 normal 과 동일(8)하다", () => {
+    assert.equal(medium.boardSize, normal.boardSize);
+  });
+
+  it("고급(hard) 어휘를 배제해 어휘 편향도 완화한다", () => {
+    assert.equal(medium.wordDifficulties.includes("hard"), false);
+    assert.deepEqual([...medium.wordDifficulties], ["easy", "normal"]);
   });
 });
 

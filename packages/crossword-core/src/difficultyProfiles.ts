@@ -75,6 +75,31 @@ export const DIFFICULTY_PROFILES: Record<Difficulty, DifficultyProfile> = {
   },
 };
 
+// 온보딩 난이도 램프(#291)의 "중간" 생성 프로파일 — easy 와 normal 사이의 완화된
+// normal 파라미터 세트다. easy(73초) 대비 normal(약 18분) 완료 시간 절벽을 낮추기
+// 위해, 단어 수를 normal 보다 줄이고 교차율(easy 수준)로 촘촘히 얽어 체감 난도를
+// 낮춘다. 새 티어(enum) 를 추가하지 않으려고 difficulty 는 "normal" 로 유지하므로
+// (isDifficulty("medium") 는 계속 false) Puzzle 타입·검증·계측에 파급이 없다.
+//
+// 단조성: boardSize 는 easy(7)<normal(8) 사이에 정수가 없어 normal 과 같은 8 로 두되,
+// maxWords·minWordCount 를 easy 이상 normal 미만으로, 교차율은 easy 와 동일(0.6)하게
+// 상향해 "사이즈가 아니라 단어 수·교차로 난도를 낮춘다".
+export const ONBOARDING_MEDIUM_PROFILE: DifficultyProfile = {
+  difficulty: "normal",
+  boardSize: 8,
+  // easy(9) 이상 normal(10) 미만은 정수가 없어 easy 와 동일한 9 로 두어 normal 보다
+  // 한 단어 적게 배치한다.
+  maxWords: 9,
+  minWordLength: 2,
+  // minWordCount 는 easy(8)<9<normal(10) 로 엄밀히 중간에 둔다.
+  minWordCount: 9,
+  // 교차율은 easy 수준(0.6)으로 올려(normal 0.55 대비) 단서 연결을 쉽게 한다.
+  minCrossRatio: 0.6,
+  minBboxDensity: 0.5,
+  // 고급(hard) 어휘를 배제해 normal 대비 어휘 편향도 완화한다.
+  wordDifficulties: ["easy", "normal"],
+};
+
 export function isDifficulty(value: unknown): value is Difficulty {
   return value === "easy" || value === "normal" || value === "hard";
 }

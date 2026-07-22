@@ -34,6 +34,11 @@ export type LaunchConfig = {
   resultInterstitialAdsEnabled: boolean;
   leaderboardEnabled: boolean;
   returnReminderEnabled: boolean;
+  // 신규 사용자 온보딩 난이도 램프(#291). easy(온보딩) 완료 직후 normal 급점프
+  // (완료 중앙값 73초→18분, 약 14배) 대신 완화된 다음 단계(추가 easy)를 배정해
+  // 두 번째 퍼즐 완주·복귀를 돕는다. 데이터 확인 전이라 기본 OFF이며 Remote Config
+  // `onboarding_difficulty_ramp_enabled`로만 켠다(기본값은 기존 동작 유지).
+  onboardingDifficultyRampEnabled: boolean;
   // 신규 첫 실행에서 홈을 건너뛰고 온보딩 퍼즐 풀이 화면으로 자동 진입할지(#205).
   firstRunAutoStartEnabled: boolean;
   // 막힘 힌트 자동 노출: 입력 정체가 이 시간(ms)을 넘으면 비침습 힌트 CTA를 띄운다.
@@ -85,6 +90,7 @@ export const launchConfigKeys = {
   resultInterstitialAdsEnabled: "result_interstitial_ads_enabled",
   leaderboardEnabled: "leaderboard_enabled",
   returnReminderEnabled: "return_reminder_enabled",
+  onboardingDifficultyRampEnabled: "onboarding_difficulty_ramp_enabled",
   firstRunAutoStartEnabled: "first_run_auto_start_enabled",
   stuckHintIdleMs: "stuck_hint_idle_ms",
   stuckHintWrongIdleMs: "stuck_hint_wrong_idle_ms",
@@ -128,6 +134,10 @@ export const defaultLaunchConfig: LaunchConfig = {
   // Remote Config `return_reminder_enabled`로 끌 수 있다. mobile(RN)은 알림 동의
   // adapter가 없어 이 값과 무관하게 no-op이다(docs/market-parity.md 참고).
   returnReminderEnabled: true,
+  // 온보딩 난이도 램프(#291) 기본 OFF. easy→normal 절벽 완화 효과를 데이터로 확인하기
+  // 전이라 기존 동작(easy 완료 → normal 추천)을 유지하고, Remote Config
+  // `onboarding_difficulty_ramp_enabled`로만 켠다.
+  onboardingDifficultyRampEnabled: false,
   // 신규 첫 실행 온보딩 퍼즐 자동 진입 기본 활성(#205). 신규의 today 화면 도달률
   // (62%)·attempt_start 도달률(57%) 개선용. 회귀 시 Remote Config
   // `first_run_auto_start_enabled`로 즉시 끈다.
@@ -269,6 +279,9 @@ export function normalizeLaunchConfig(
     returnReminderEnabled:
       value.returnReminderEnabled ??
       defaultLaunchConfig.returnReminderEnabled,
+    onboardingDifficultyRampEnabled:
+      value.onboardingDifficultyRampEnabled ??
+      defaultLaunchConfig.onboardingDifficultyRampEnabled,
     firstRunAutoStartEnabled:
       value.firstRunAutoStartEnabled ??
       defaultLaunchConfig.firstRunAutoStartEnabled,
@@ -409,6 +422,8 @@ export function getLaunchConfigDefaultsForRemoteConfig() {
       defaultLaunchConfig.leaderboardEnabled,
     [launchConfigKeys.returnReminderEnabled]:
       defaultLaunchConfig.returnReminderEnabled,
+    [launchConfigKeys.onboardingDifficultyRampEnabled]:
+      defaultLaunchConfig.onboardingDifficultyRampEnabled,
     [launchConfigKeys.firstRunAutoStartEnabled]:
       defaultLaunchConfig.firstRunAutoStartEnabled,
     [launchConfigKeys.stuckHintIdleMs]: defaultLaunchConfig.stuckHintIdleMs,
