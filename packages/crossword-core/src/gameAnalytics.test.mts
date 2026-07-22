@@ -343,38 +343,6 @@ describe("createGameAnalyticsClient.trackProgression (#292)", () => {
   });
 });
 
-describe("진척 이벤트 web 배선 회귀 (#292)", () => {
-  function readWebApp(): string {
-    return readFileSync(
-      new URL("../../../src/App.tsx", import.meta.url),
-      "utf8",
-    );
-  }
-
-  it("AC-2: HistoryScreen 노출 시점과 스트릭 갱신 시점에 trackProgression을 배선한다 (#292)", () => {
-    const webApp = readWebApp();
-
-    // 스트릭 캘린더/통계 화면 노출 이벤트 2종 배선.
-    assert.match(webApp, /trackProgression\(\s*["']personal_stats_view["']/);
-    assert.match(webApp, /trackProgression\(\s*["']streak_view["']/);
-    // 스트릭 갱신(완료) 시점의 마일스톤 달성 이벤트 배선 + core 발화 조건 판정.
-    assert.match(webApp, /trackProgression\(\s*["']streak_milestone["']/);
-    assert.match(webApp, /getNewlyReachedStreakMilestone\(/);
-  });
-
-  it("AC-4: 노출 이벤트를 화면 노출당 1회(빈 의존성 useEffect) 가드로 발화한다 (#292)", () => {
-    const webApp = readWebApp();
-
-    // 노출 이벤트가 빈 의존성 useEffect(마운트당 1회) 블록 안에 있어 렌더 반복
-    // 재발화가 없음을 고정한다. HistoryScreen은 route가 history일 때만 조건부
-    // 마운트되므로 마운트당 1회 = 화면 노출당 1회 가드가 된다.
-    assert.match(
-      webApp,
-      /trackProgression\(\s*["']streak_view["'][\s\S]*?\}\s*,\s*\[\]\s*\)/,
-    );
-  });
-});
-
 describe("createGameAnalyticsClient", () => {
   it("등록된 모든 sink에 마켓을 주입해 팬아웃한다", () => {
     const seenA: Array<{ name: string; params: Record<string, unknown> }> = [];

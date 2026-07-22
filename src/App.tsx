@@ -75,7 +75,8 @@ import {
   getTodayDateKey,
   canGrantExtraAttempt,
   grantExtraAttempt,
-  getNewlyReachedStreakMilestone,
+  emitProgressionScreenView,
+  emitStreakMilestoneIfReached,
   getNextStreakMilestoneHint,
   getStreakBadgeLabel,
   getStreakMilestoneProgress,
@@ -1724,12 +1725,8 @@ function App() {
       const nextStreak = computeConsecutiveStreakDays();
       setConsecutiveStreak(nextStreak);
       // 완료로 스트릭이 새 마일스톤(7/30/100일)에 도달하면 달성 이벤트를 1회 보낸다.
-      // "이전 < 임계 ≤ 현재" 규칙이라 마일스톤을 넘긴 그 완료에서만 발화한다(#292).
-      if (getNewlyReachedStreakMilestone(previousStreak, nextStreak) != null) {
-        gameAnalytics.trackProgression("streak_milestone", {
-          streakLength: nextStreak,
-        });
-      }
+      // 발화 조건("이전 < 임계 ≤ 현재") 판정은 core 헬퍼가 담당한다(#292).
+      emitStreakMilestoneIfReached(gameAnalytics, previousStreak, nextStreak);
     });
     // 완료 시점의 노힌트 판정 신호(힌트 수·정답 보기 여부)를 archive 기록에 동결해,
     // 진행상태 저장소가 비워져도 히스토리 노힌트 집계가 결과 화면과 일치하게 한다.
@@ -6572,11 +6569,9 @@ function HistoryScreen({
   // route가 history일 때만 마운트되므로, 마운트당 1회 발화가 곧 "화면 노출당 1회"
   // 가드가 된다(렌더 반복 재발화 없음). 값은 노출 시점(마운트)의 집계를 그대로 싣는다.
   useEffect(() => {
-    gameAnalytics.trackProgression("personal_stats_view", {
+    emitProgressionScreenView(gameAnalytics, {
       totalPuzzles: personalStats.stats.totalPuzzles,
       completedCount: personalStats.stats.completedCount,
-    });
-    gameAnalytics.trackProgression("streak_view", {
       currentStreak: consecutiveStreak,
       longestStreak,
     });

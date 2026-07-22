@@ -15,6 +15,7 @@ import {
   type MarketTarget,
   type TelemetryParam,
 } from "./platformContracts.ts";
+import { getNewlyReachedStreakMilestone } from "./uiPolicy.ts";
 
 /**
  * 게임 이벤트가 실린 마켓. 마켓통합(all) 지표와 마켓개별 지표를 동시에 뽑기 위해
@@ -371,4 +372,52 @@ export function createGameAnalyticsClient(config: {
       fanOut(built);
     },
   };
+}
+
+/**
+ * 스트릭/개인 통계 화면(웹 HistoryScreen) 노출 시 1회 호출해 노출 이벤트 2종
+ * (personal_stats_view·streak_view)을 보낸다. presentation은 화면 노출당 1회
+ * (마운트 effect)만 이 헬퍼를 호출하면 되고, "어떤 이벤트를 어떤 파라미터로 보낼지"는
+ * core가 고정한다(3마켓 동일). 호출 1회 = 각 이벤트 정확히 1회 발화라, 발화 로직을
+ * 실행 경로로 단위 검증할 수 있다(#292).
+ */
+export function emitProgressionScreenView(
+  client: GameAnalyticsClient,
+  input: {
+    totalPuzzles: number;
+    completedCount: number;
+    currentStreak: number;
+    longestStreak: number;
+  },
+): void {
+  client.trackProgression("personal_stats_view", {
+    totalPuzzles: input.totalPuzzles,
+    completedCount: input.completedCount,
+  });
+  client.trackProgression("streak_view", {
+    currentStreak: input.currentStreak,
+    longestStreak: input.longestStreak,
+  });
+}
+
+/**
+ * 스트릭이 previousStreak→currentStreak로 오르며 새 마일스톤(7/30/100일)에 도달했으면
+ * streak_milestone을 1회 보내고 도달 마일스톤을 반환한다. 도달하지 않았으면 아무것도
+ * 보내지 않고 null을 반환한다. 발화 조건("이전 < 임계 ≤ 현재") 판정을 core로 고정해
+ * 3마켓이 같은 규칙으로 스트릭 갱신 시점을 계측하도록 한다(#292).
+ */
+export function emitStreakMilestoneIfReached(
+  client: GameAnalyticsClient,
+  previousStreak: number,
+  currentStreak: number,
+): number | null {
+  const milestone = getNewlyReachedStreakMilestone(
+    previousStreak,
+    currentStreak,
+  );
+  if (milestone == null) {
+    return null;
+  }
+  client.trackProgression("streak_milestone", { streakLength: currentStreak });
+  return milestone;
 }
