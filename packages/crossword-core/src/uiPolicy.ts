@@ -616,6 +616,31 @@ export function uniquePuzzleSummaries(summaries: PuzzleManifestItem[]) {
   return result;
 }
 
+// 스트릭 마일스톤 임계값(일). 배지·넛지·달성 이벤트가 공유하는 단일 출처라 세 곳의
+// 임계값이 어긋나지 않는다.
+export const STREAK_MILESTONE_DAYS = [7, 30, 100] as const;
+
+/**
+ * 스트릭이 previousStreak에서 currentStreak로 오르며 "새로" 넘어선 마일스톤을 반환한다
+ * (없으면 null). game_* 진행 마일스톤(getNewlyReachedProgressMilestones)과 동일한
+ * "이전 < 임계 ≤ 현재" 규칙을 스트릭 축에 적용한다. 완료로 스트릭이 여러 칸 점프해도
+ * 그 구간에서 가장 높은 마일스톤 하나만 인정한다(중복 발화 방지). 이미 넘긴 마일스톤은
+ * 다시 세지 않으므로 달성 이벤트가 정확히 1회만 발화한다.
+ */
+export function getNewlyReachedStreakMilestone(
+  previousStreak: number,
+  currentStreak: number,
+  milestones: readonly number[] = STREAK_MILESTONE_DAYS,
+): number | null {
+  let reached: number | null = null;
+  for (const milestone of milestones) {
+    if (previousStreak < milestone && currentStreak >= milestone) {
+      reached = milestone;
+    }
+  }
+  return reached;
+}
+
 export function getStreakBadgeLabel(streak: number): string | null {
   if (streak <= 0) return null;
   if (streak >= 100) return `🏆 ${streak}일 연속`;
@@ -626,7 +651,7 @@ export function getStreakBadgeLabel(streak: number): string | null {
 
 export function getNextStreakMilestoneHint(streak: number): string | null {
   if (streak <= 0) return null;
-  const milestones = [7, 30, 100] as const;
+  const milestones = STREAK_MILESTONE_DAYS;
   for (const milestone of milestones) {
     if (streak >= milestone) continue;
     const daysLeft = milestone - streak;
@@ -877,7 +902,7 @@ export function getStreakMilestoneProgress(streak: number): string | null {
   if (!Number.isFinite(streak) || streak <= 0) return null;
   const safeStreak = Math.floor(streak);
   if (safeStreak <= 0) return null;
-  const milestones = [7, 30, 100] as const;
+  const milestones = STREAK_MILESTONE_DAYS;
   for (const milestone of milestones) {
     if (safeStreak >= milestone) continue;
     const daysLeft = milestone - safeStreak;

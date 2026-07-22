@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 
 import {
   buildGameAnalyticsEvent,
+  buildGameProgressionEvent,
   createBonusPuzzlePanelImpressionGuard,
   createGameAnalyticsClient,
   GAME_ANALYTICS_SCHEMA_VERSION,
@@ -222,6 +223,122 @@ describe("trackBonusPuzzlePanelImpression (#278)", () => {
         /route !== ["']home["'] && route !== ["']result["']/,
       );
     }
+  });
+});
+
+describe("buildGameProgressionEvent (#292)", () => {
+  it("market·schema_version을 병합하고 페이로드를 snake_case 숫자로 변환한다", () => {
+    const { name, params } = buildGameProgressionEvent("streak_view", {
+      market: "apps-in-toss",
+      payload: { currentStreak: 6, longestStreak: 12 },
+    });
+
+    assert.equal(name, "streak_view");
+    assert.equal(params.market, "apps-in-toss");
+    assert.equal(params.schema_version, GAME_ANALYTICS_SCHEMA_VERSION);
+    // 숫자형 유지(string 적재 금지).
+    assert.equal(params.current_streak, 6);
+    assert.equal(params.longest_streak, 12);
+    assert.equal(typeof params.current_streak, "number");
+    // 진척 이벤트는 퍼즐 컨텍스트를 싣지 않는다.
+    assert.ok(!("puzzle_id" in params));
+    assert.ok(!("difficulty" in params));
+  });
+
+  it("streak_milestone·personal_stats_view 페이로드를 변환한다", () => {
+    const milestone = buildGameProgressionEvent("streak_milestone", {
+      market: "google-play",
+      payload: { streakLength: 7 },
+    });
+    assert.equal(milestone.params.streak_length, 7);
+    assert.equal(milestone.params.market, "google-play");
+
+    const statsView = buildGameProgressionEvent("personal_stats_view", {
+      market: "app-store",
+      payload: { totalPuzzles: 20, completedCount: 13 },
+    });
+    assert.equal(statsView.params.total_puzzles, 20);
+    assert.equal(statsView.params.completed_count, 13);
+  });
+});
+
+describe("createGameAnalyticsClient.trackProgression (#292)", () => {
+  it("등록된 모든 sink에 마켓을 주입해 진척 이벤트를 팬아웃한다", () => {
+    const seen: Array<{ name: string; params: Record<string, unknown> }> = [];
+    const client = createGameAnalyticsClient({
+      market: "apps-in-toss",
+      sinks: [
+        {
+          id: "test",
+          logGameEvent: (name, params) => seen.push({ name, params }),
+        },
+      ],
+    });
+
+    client.trackProgression("personal_stats_view", {
+      totalPuzzles: 4,
+      completedCount: 2,
+    });
+    client.trackProgression("streak_view", {
+      currentStreak: 3,
+      longestStreak: 9,
+    });
+
+    assert.deepEqual(
+      seen.map(({ name }) => name),
+      ["personal_stats_view", "streak_view"],
+    );
+    assert.equal(seen[0].params.market, "apps-in-toss");
+    assert.equal(seen[0].params.total_puzzles, 4);
+    assert.equal(seen[1].params.longest_streak, 9);
+  });
+
+  it("한 sink가 throw해도 나머지 sink와 호출부를 막지 않는다", () => {
+    const seen: string[] = [];
+    const errors: unknown[] = [];
+    const throwing: GameAnalyticsSink = {
+      id: "throwing",
+      logGameEvent: () => {
+        throw new Error("sink down");
+      },
+    };
+    const healthy: GameAnalyticsSink = {
+      id: "healthy",
+      logGameEvent: (name) => seen.push(name),
+    };
+
+    const client = createGameAnalyticsClient({
+      market: "apps-in-toss",
+      sinks: [throwing, healthy],
+      onError: (error) => errors.push(error),
+    });
+
+    assert.doesNotThrow(() => {
+      client.trackProgression("streak_milestone", { streakLength: 30 });
+    });
+    assert.deepEqual(seen, ["streak_milestone"]);
+    assert.equal(errors.length, 1);
+  });
+});
+
+describe("진척 이벤트 web 배선 회귀 (#292)", () => {
+  it("HistoryScreen 노출·스트릭 갱신에 trackProgression을 배선한다", () => {
+    const webApp = readFileSync(
+      new URL("../../../src/App.tsx", import.meta.url),
+      "utf8",
+    );
+
+    // 화면 노출 이벤트 2종 + 스트릭 마일스톤 달성 이벤트 배선.
+    assert.match(webApp, /trackProgression\(\s*["']personal_stats_view["']/);
+    assert.match(webApp, /trackProgression\(\s*["']streak_view["']/);
+    assert.match(webApp, /trackProgression\(\s*["']streak_milestone["']/);
+    // 마일스톤 발화 조건은 core 규칙(getNewlyReachedStreakMilestone)으로 판정한다.
+    assert.match(webApp, /getNewlyReachedStreakMilestone\(/);
+    // 화면 노출당 1회: 노출 이벤트는 빈 의존성 useEffect(마운트 1회) 가드 안에 있다.
+    assert.match(
+      webApp,
+      /trackProgression\(\s*["']streak_view["'][\s\S]*?\}\s*,\s*\[\]\s*\)/,
+    );
   });
 });
 

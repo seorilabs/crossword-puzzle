@@ -75,6 +75,7 @@ import {
   getTodayDateKey,
   canGrantExtraAttempt,
   grantExtraAttempt,
+  getNewlyReachedStreakMilestone,
   getNextStreakMilestoneHint,
   getStreakBadgeLabel,
   getStreakMilestoneProgress,
@@ -1713,9 +1714,22 @@ function App() {
     // 데일리 스트릭은 "완료 사실"(completedAt 보유 일자)만으로 산정한다.
     // 정답 보기(revealUsed)로 완료해도 완료는 완료로 인정하므로 스트릭은 끊기지
     // 않는다(노힌트·첫 도전·best-time만 revealUsed로 제외 — getCompletionAchievements).
+    // 완료 직전 스트릭. 모듈 캐시가 완료 반영 전(오늘 미완료) 값을 보유하고, 아래
+    // saveMission→invalidateStreakCache 이후 재계산한 완료 후 스트릭과 비교해 새
+    // 마일스톤 도달을 판정한다. 상태(consecutiveStreak) 대신 여기서 직접 읽어
+    // effect 의존성을 늘리지 않는다.
+    const previousStreak = computeConsecutiveStreakDays();
     void missionRepository.saveMission(nextMission).then(() => {
       invalidateStreakCache();
-      setConsecutiveStreak(computeConsecutiveStreakDays());
+      const nextStreak = computeConsecutiveStreakDays();
+      setConsecutiveStreak(nextStreak);
+      // 완료로 스트릭이 새 마일스톤(7/30/100일)에 도달하면 달성 이벤트를 1회 보낸다.
+      // "이전 < 임계 ≤ 현재" 규칙이라 마일스톤을 넘긴 그 완료에서만 발화한다(#292).
+      if (getNewlyReachedStreakMilestone(previousStreak, nextStreak) != null) {
+        gameAnalytics.trackProgression("streak_milestone", {
+          streakLength: nextStreak,
+        });
+      }
     });
     // 완료 시점의 노힌트 판정 신호(힌트 수·정답 보기 여부)를 archive 기록에 동결해,
     // 진행상태 저장소가 비워져도 히스토리 노힌트 집계가 결과 화면과 일치하게 한다.
@@ -6553,6 +6567,21 @@ function HistoryScreen({
     computeLongestStreakDays(getRecentCompletionDates(366)),
     consecutiveStreak,
   );
+
+  // 기록(개인 통계) + 스트릭 캘린더 화면 노출을 각각 1회 계측한다(#292). HistoryScreen은
+  // route가 history일 때만 마운트되므로, 마운트당 1회 발화가 곧 "화면 노출당 1회"
+  // 가드가 된다(렌더 반복 재발화 없음). 값은 노출 시점(마운트)의 집계를 그대로 싣는다.
+  useEffect(() => {
+    gameAnalytics.trackProgression("personal_stats_view", {
+      totalPuzzles: personalStats.stats.totalPuzzles,
+      completedCount: personalStats.stats.completedCount,
+    });
+    gameAnalytics.trackProgression("streak_view", {
+      currentStreak: consecutiveStreak,
+      longestStreak,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function openArchiveRecord(record: PuzzleArchiveRecord) {
     const state = dateCardStates[record.puzzleId];

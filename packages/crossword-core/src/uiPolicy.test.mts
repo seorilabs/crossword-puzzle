@@ -7,6 +7,7 @@ import {
   DEFAULT_HINT_CREDITS_BY_DIFFICULTY,
   getDefaultHintCreditsForDifficulty,
   getDailyFreePuzzleSummary,
+  getNewlyReachedStreakMilestone,
   getNextStreakMilestoneHint,
   getOpenPuzzleSummariesForDate,
   getPuzzleDailySequenceNumber,
@@ -1235,5 +1236,30 @@ describe("uiPolicy: 난이도별 기본 힌트 크레딧(#251)", () => {
     assert.equal(getDefaultHintCreditsForDifficulty(undefined), 3);
     assert.equal(getDefaultHintCreditsForDifficulty(null), 3);
     assert.equal(getDefaultHintCreditsForDifficulty("legendary"), 3);
+  });
+});
+
+describe("getNewlyReachedStreakMilestone (#292)", () => {
+  it("이전 < 임계 ≤ 현재로 넘긴 마일스톤을 반환한다", () => {
+    assert.equal(getNewlyReachedStreakMilestone(6, 7), 7);
+    assert.equal(getNewlyReachedStreakMilestone(29, 30), 30);
+    assert.equal(getNewlyReachedStreakMilestone(99, 100), 100);
+  });
+
+  it("마일스톤을 넘기지 않은 증가는 null을 반환한다", () => {
+    assert.equal(getNewlyReachedStreakMilestone(7, 8), null);
+    assert.equal(getNewlyReachedStreakMilestone(0, 1), null);
+    assert.equal(getNewlyReachedStreakMilestone(30, 31), null);
+  });
+
+  it("이미 넘긴 마일스톤은 다시 세지 않는다(경계 재발화 방지)", () => {
+    // 현재=임계이지만 이전에 이미 도달(이전 ≥ 임계)했으면 발화하지 않는다.
+    assert.equal(getNewlyReachedStreakMilestone(7, 7), null);
+    assert.equal(getNewlyReachedStreakMilestone(8, 8), null);
+  });
+
+  it("여러 마일스톤을 한 번에 점프하면 가장 높은 것 하나만 인정한다", () => {
+    assert.equal(getNewlyReachedStreakMilestone(5, 40), 30);
+    assert.equal(getNewlyReachedStreakMilestone(0, 100), 100);
   });
 });
