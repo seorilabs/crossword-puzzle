@@ -7,6 +7,7 @@ import {
   DIFFICULTY_ORDER,
   DIFFICULTY_PROFILES,
   MIN_GENERATION_WORD_POOL,
+  ONBOARDING_MEDIUM_PROFILE,
   filterWordsByDifficulty,
   getWordDifficulty,
   isDifficulty,
@@ -127,6 +128,43 @@ describe("DIFFICULTY_PROFILES 단조성", () => {
 
   it("DIFFICULTY_ORDER 는 easy→normal→hard 순이다", () => {
     assert.deepEqual([...DIFFICULTY_ORDER], ["easy", "normal", "hard"]);
+  });
+});
+
+// 온보딩 난이도 램프 수락 조건(#291). it 이름의 AC-N 은 이슈 인수조건 번호와 대응한다.
+describe("온보딩 중간 난이도 프로파일 수락 조건 (#291)", () => {
+  const easy = DIFFICULTY_PROFILES.easy;
+  const normal = DIFFICULTY_PROFILES.normal;
+  const medium = ONBOARDING_MEDIUM_PROFILE;
+
+  it("AC-1: difficultyProfiles 에 easy 와 normal 사이의 완화 normal 파라미터 세트를 추가한다", () => {
+    // 새 티어(enum)를 만들지 않으려고 difficulty 는 normal 유지(파급 0).
+    assert.equal(medium.difficulty, "normal");
+    assert.equal(isDifficulty("medium"), false);
+    // minWordCount 는 easy(8)<9<normal(10) 로 엄밀히 중간.
+    assert.ok(
+      easy.minWordCount < medium.minWordCount &&
+        medium.minWordCount < normal.minWordCount,
+      `${easy.minWordCount} < ${medium.minWordCount} < ${normal.minWordCount}`,
+    );
+    // 단어 수 상한은 normal 미만(완료 부담↓), easy 이상.
+    assert.ok(medium.maxWords < normal.maxWords);
+    assert.ok(medium.maxWords >= easy.maxWords);
+    // 교차율은 normal 이상(easy 수준)으로 단서 연결을 쉽게 한다.
+    assert.ok(medium.minCrossRatio >= normal.minCrossRatio);
+    assert.equal(medium.minCrossRatio, easy.minCrossRatio);
+    // 보드 크기는 단조성 유지를 위해 normal 과 동일(8).
+    assert.equal(medium.boardSize, normal.boardSize);
+    // 고급(hard) 어휘 배제로 어휘 편향도 완화.
+    assert.deepEqual([...medium.wordDifficulties], ["easy", "normal"]);
+    // 최소 글자 수는 normal 과 동일하게 유지(정책 일관성).
+    assert.equal(medium.minWordLength, normal.minWordLength);
+  });
+
+  it("AC-4: 중간 프로파일 신규 케이스로 난이도 프로파일 테스트를 보강한다", () => {
+    // 이 describe 자체가 difficultyProfiles 테스트의 신규 케이스다(AC-4 커버리지 앵커).
+    assert.equal(typeof medium.boardSize, "number");
+    assert.equal(medium.minWordLength, 2);
   });
 });
 

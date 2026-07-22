@@ -546,11 +546,13 @@ function getNextRecommendedSummary(
   puzzleSummaries: PuzzleManifestItem[],
   dateCardStates: Record<string, DateCardState>,
   current: { puzzleId: string; difficulty?: Puzzle["difficulty"] },
+  onboardingRampEnabled = false,
 ): PuzzleManifestItem | undefined {
   return getNextRecommendedPuzzleSummary(
     puzzleSummaries,
     getCompletedPuzzleIds(dateCardStates),
     current,
+    { onboardingRampEnabled },
   );
 }
 
@@ -3232,6 +3234,9 @@ function App() {
           isExtraAttemptAdLoading={rewardedAdStatus === "loading"}
           mission={mission}
           navigate={navigate}
+          onboardingDifficultyRampEnabled={
+            launchConfig.onboardingDifficultyRampEnabled
+          }
           onOpenLeaderboard={() => {
             telemetry.click("leaderboard_open", {
               puzzle_id: puzzle.puzzleId,
@@ -4713,10 +4718,15 @@ function TodayScreen({
       })
     : "";
   const completionNextRecommendedSummary = showCompletionCelebration
-    ? getNextRecommendedSummary(puzzleSummaries, dateCardStates, {
-        puzzleId: puzzle.puzzleId,
-        difficulty: puzzle.difficulty,
-      })
+    ? getNextRecommendedSummary(
+        puzzleSummaries,
+        dateCardStates,
+        {
+          puzzleId: puzzle.puzzleId,
+          difficulty: puzzle.difficulty,
+        },
+        launchConfig.onboardingDifficultyRampEnabled,
+      )
     : undefined;
   const completionNextRecommendedLabel =
     completionNextRecommendedSummary == null
@@ -6099,6 +6109,7 @@ type ResultScreenProps = DateSelectionProps & {
   leaderboardVisible: boolean;
   mission: DailyMissionState;
   navigate: (route: AppRoute) => void;
+  onboardingDifficultyRampEnabled: boolean;
   onOpenLeaderboard: () => void;
   progressPercent: number;
   puzzle: Puzzle;
@@ -6123,6 +6134,7 @@ function ResultScreen({
   loadState,
   mission,
   navigate,
+  onboardingDifficultyRampEnabled,
   onOpenLeaderboard,
   progressPercent,
   puzzle,
@@ -6139,10 +6151,15 @@ function ResultScreen({
   // 완료 시 이어서 풀 다음 추천 퍼즐(난이도 상승 우선). 단발 세션을 줄이고 재플레이를
   // 잇기 위한 연속 동선.
   const nextRecommendedSummary = isComplete
-    ? getNextRecommendedSummary(puzzleSummaries, dateCardStates, {
-        puzzleId: puzzle.puzzleId,
-        difficulty: puzzle.difficulty,
-      })
+    ? getNextRecommendedSummary(
+        puzzleSummaries,
+        dateCardStates,
+        {
+          puzzleId: puzzle.puzzleId,
+          difficulty: puzzle.difficulty,
+        },
+        onboardingDifficultyRampEnabled,
+      )
     : undefined;
   const nextRecommendedLabel =
     nextRecommendedSummary == null

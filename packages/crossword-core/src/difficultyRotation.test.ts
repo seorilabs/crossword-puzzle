@@ -60,3 +60,20 @@ describe("resolveScheduledDifficulty (#151)", () => {
     );
   });
 });
+
+// AC-4(#291): 온보딩 난이도 램프는 완료 직후 배정(추천) 계층에서만 완화하고, 발행 난이도
+// 로테이션(difficultyRotation)은 바꾸지 않는다. 기존 난이도 로테이션 테스트에 이 비간섭
+// 회귀 가드를 신규 케이스로 추가한다.
+describe("발행 로테이션은 온보딩 램프와 무관하다 (#291)", () => {
+  it("AC-4: 온보딩 램프 도입 후에도 발행 난이도 로테이션은 normal/easy/normal/hard로 불변이다", () => {
+    // 발행 로테이션 상수는 램프와 독립적으로 유지된다.
+    assert.deepEqual(
+      [...PUBLISHED_DIFFICULTY_ROTATION],
+      ["normal", "easy", "normal", "hard"],
+    );
+    // 실행 경로: 슬롯 시각으로 해석한 발행 난이도가 램프 도입 후에도 그대로다.
+    assert.equal(resolveScheduledDifficulty({ slotHour: 0 }), "normal");
+    assert.equal(resolveScheduledDifficulty({ slotHour: 2 }), "easy");
+    assert.equal(resolveScheduledDifficulty({ slotHour: 6 }), "hard");
+  });
+});
