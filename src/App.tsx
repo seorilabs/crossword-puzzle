@@ -1659,14 +1659,21 @@ function App() {
       trigger: "mission_complete",
     });
 
-    void requestReturnReminderAgreement().then(({ outcome, errorReason }) => {
-      const resolved = applyReturnReminderOutcome(prompted, outcome, errorReason);
-      saveReturnReminderState(resolved);
-      telemetry.impression(
-        RETURN_REMINDER_RESULT_EVENT,
-        buildReturnReminderResultParams(resolved),
-      );
-    });
+    void requestReturnReminderAgreement().then(
+      ({ outcome, errorReason, errorCode }) => {
+        const resolved = applyReturnReminderOutcome(
+          prompted,
+          outcome,
+          errorReason,
+          errorCode,
+        );
+        saveReturnReminderState(resolved);
+        telemetry.impression(
+          RETURN_REMINDER_RESULT_EVENT,
+          buildReturnReminderResultParams(resolved),
+        );
+      },
+    );
   }, [launchConfig.returnReminderEnabled]);
 
   useEffect(() => {

@@ -5,20 +5,43 @@
 import { requestNotificationAgreement } from "@apps-in-toss/web-framework";
 import {
   mapNotificationAgreementResult,
-  summarizeAgreementError,
+  summarizeAgreementFailure,
   type ReturnReminderOutcome,
 } from "../../packages/crossword-core/src/returnReminder.ts";
 
-// 동의 요청 결과. outcome이 error일 때만 errorReason(SDK 에러 요약, ≤100자)을
-// 함께 준다(#253). timeout은 안전망 타이머가 종료시킨 경우다.
+// 동의 요청 결과. outcome이 error일 때만 errorReason(SDK 에러 요약, ≤100자, #253)과
+// errorCode(SDK 구조화 코드, #288)를 함께 준다. timeout은 안전망 타이머가 종료시킨 경우다.
 export type ReturnReminderAgreementResult = {
   outcome: ReturnReminderOutcome;
   errorReason?: string;
+  errorCode?: string;
 };
 
-// 앱인토스 콘솔 > 미니앱 > 스마트발송에서 발급한 "오늘의 퍼즐" 복귀 리마인드
-// 캠페인 템플릿 코드. 광고 그룹 ID(appsInTossAds.ts)와 동일하게 상수로 둔다.
-export const RETURN_REMINDER_TEMPLATE_CODE = "crossword-daily-reminder";
+// 앱인토스 콘솔 > 미니앱 > 스마트발송에서 알림 동의문·기능성 캠페인을 만들고 검수
+// 승인을 받으면 발급되는 "오늘의 퍼즐" 복귀 리마인드 템플릿 코드의 기본값(현행 슬러그).
+// 콘솔 발급 코드가 이와 다르면 SDK가 요청을 거절하므로(#288), 빌드 환경변수
+// VITE_RETURN_REMINDER_TEMPLATE_CODE로 실제 발급 코드를 주입해 덮어쓴다. 절차는 README 참고.
+export const DEFAULT_RETURN_REMINDER_TEMPLATE_CODE = "crossword-daily-reminder";
+
+// 주입된 코드 문자열을 정규화해 실제 사용할 템플릿 코드를 고른다. 트림 후 비어있으면
+// 기본값으로 폴백한다. 환경변수 주입/미주입 두 분기를 모두 헤드리스로 검증할 수 있도록
+// import.meta.env 접근과 분리한 순수 함수다(#288).
+export function pickReturnReminderTemplateCode(configured?: string): string {
+  const trimmed = configured?.trim();
+  return trimmed != null && trimmed !== ""
+    ? trimmed
+    : DEFAULT_RETURN_REMINDER_TEMPLATE_CODE;
+}
+
+// 빌드타임 환경변수 우선, 미설정 시 기본값. node 테스트 등 import.meta.env 부재 환경
+// 에서도 안전하게 기본값으로 폴백한다(옵셔널 체이닝).
+export function resolveReturnReminderTemplateCode(): string {
+  const env = import.meta.env as ImportMetaEnv | undefined;
+  return pickReturnReminderTemplateCode(env?.VITE_RETURN_REMINDER_TEMPLATE_CODE);
+}
+
+// 현재 빌드에 적용된 템플릿 코드(환경변수 또는 기본값).
+export const RETURN_REMINDER_TEMPLATE_CODE = resolveReturnReminderTemplateCode();
 
 // 동의 다이얼로그 콜백이 전혀 돌아오지 않는(브리지 미연결) 상황에서 Promise가
 // 영원히 미해결로 남지 않도록 두는 안전망.
@@ -36,7 +59,11 @@ export function requestReturnReminderAgreement(
     let cleanup: (() => void) | undefined;
     let timer: ReturnType<typeof setTimeout> | undefined = undefined;
 
-    const finish = (outcome: ReturnReminderOutcome, errorReason?: string) => {
+    const finish = (
+      outcome: ReturnReminderOutcome,
+      errorReason?: string,
+      errorCode?: string,
+    ) => {
       if (settled) {
         return;
       }
@@ -49,16 +76,25 @@ export function requestReturnReminderAgreement(
       } catch {
         // cleanup 실패는 무시한다.
       }
-      resolve(errorReason == null ? { outcome } : { outcome, errorReason });
+      const result: ReturnReminderAgreementResult = { outcome };
+      if (errorReason != null) {
+        result.errorReason = errorReason;
+      }
+      if (errorCode != null) {
+        result.errorCode = errorCode;
+      }
+      resolve(result);
     };
 
     try {
       cleanup = requestAgreement({
         options: { templateCode: RETURN_REMINDER_TEMPLATE_CODE },
         onEvent: (result) => finish(mapNotificationAgreementResult(result.type)),
-        // SDK onError(일시 오류): 에러 정보를 error_reason 요약으로 남긴다.
-        onError: (error: unknown) =>
-          finish("error", summarizeAgreementError(error)),
+        // SDK onError(일시 오류): 에러 정보를 error_reason 요약과 error_code로 남긴다.
+        onError: (error: unknown) => {
+          const { reason, code } = summarizeAgreementFailure(error);
+          finish("error", reason, code);
+        },
       });
     } catch {
       // 미지원 환경(로컬 브라우저 등)에서는 동기 throw가 날 수 있다.

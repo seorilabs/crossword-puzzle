@@ -3,7 +3,17 @@
 import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
 
-import { requestReturnReminderAgreement } from "./notificationAgreement.ts";
+import {
+  requestReturnReminderAgreement,
+  resolveReturnReminderTemplateCode,
+  pickReturnReminderTemplateCode,
+  DEFAULT_RETURN_REMINDER_TEMPLATE_CODE,
+  RETURN_REMINDER_TEMPLATE_CODE,
+} from "./notificationAgreement.ts";
+import {
+  applyReturnReminderOutcome,
+  buildReturnReminderResultParams,
+} from "../../packages/crossword-core/src/returnReminder.ts";
 
 type AgreementConfig = {
   options: { templateCode: string };
@@ -48,13 +58,24 @@ describe("requestReturnReminderAgreement (#253)", () => {
     assert.deepEqual(result, { outcome: "rejected" });
   });
 
-  it("onError 는 error + error_reason 요약을 담는다", async () => {
+  it("onError 는 error + error_reason 요약 + error_code 를 담는다 (#288)", async () => {
     const { fake } = makeFake((config) =>
       config.onError({ code: "E_BRIDGE", message: "not connected" }),
     );
     const result = await requestReturnReminderAgreement(fake);
     assert.equal(result.outcome, "error");
     assert.equal(result.errorReason, "E_BRIDGE: not connected");
+    assert.equal(result.errorCode, "E_BRIDGE");
+  });
+
+  it("코드 없는 onError(Error 인스턴스)는 error_code 없이 error_reason만 담는다 (#288)", async () => {
+    const { fake } = makeFake((config) =>
+      config.onError(new Error("알림 동의에 실패하였습니다.")),
+    );
+    const result = await requestReturnReminderAgreement(fake);
+    assert.equal(result.outcome, "error");
+    assert.equal(result.errorReason, "알림 동의에 실패하였습니다.");
+    assert.equal(result.errorCode, undefined);
   });
 
   it("동기 throw(미지원 환경)는 unsupported 로 폴백한다", async () => {
@@ -78,6 +99,71 @@ describe("requestReturnReminderAgreement (#253)", () => {
     );
     await requestReturnReminderAgreement(fake);
     assert.equal(cleanupCalls(), 1);
+  });
+
+  it("환경변수 미설정(node)에서는 템플릿 코드가 기본값으로 폴백한다 (#288)", () => {
+    // import.meta.env 부재(node) 환경이므로 옵셔널 체이닝으로 기본값을 쓴다.
+    assert.equal(
+      resolveReturnReminderTemplateCode(),
+      DEFAULT_RETURN_REMINDER_TEMPLATE_CODE,
+    );
+    assert.equal(
+      RETURN_REMINDER_TEMPLATE_CODE,
+      DEFAULT_RETURN_REMINDER_TEMPLATE_CODE,
+    );
+  });
+
+  it("환경변수가 설정되면 그 값을 트림해 템플릿 코드로 쓴다 (#288)", () => {
+    // 환경변수 주입 분기: 주입된 코드가 그대로(트림 후) 쓰인다.
+    assert.equal(
+      pickReturnReminderTemplateCode("crossword-daily-v2"),
+      "crossword-daily-v2",
+    );
+    assert.equal(
+      pickReturnReminderTemplateCode("  padded-code  "),
+      "padded-code",
+    );
+  });
+
+  it("환경변수가 없거나 빈 값이면 현행 기본값으로 폴백한다 (#288)", () => {
+    // 미설정/빈 문자열/공백 분기: 모두 현행 기본값으로 폴백한다.
+    for (const value of [undefined, "", "   "]) {
+      assert.equal(
+        pickReturnReminderTemplateCode(value),
+        DEFAULT_RETURN_REMINDER_TEMPLATE_CODE,
+      );
+    }
+  });
+
+  it("onError 코드/메시지가 return_reminder_result 파라미터(error_reason+error_code)까지 전달된다 (#288)", async () => {
+    // AC-2 전체 경로: 어댑터 onError → 결과 → 상태 반영 → 이벤트 파라미터.
+    const { fake } = makeFake((config) =>
+      config.onError({ code: "E_REJECTED", message: "잘못된 요청입니다." }),
+    );
+    const result = await requestReturnReminderAgreement(fake);
+    const state = applyReturnReminderOutcome(
+      { promptCount: 1 },
+      result.outcome,
+      result.errorReason,
+      result.errorCode,
+    );
+    const params = buildReturnReminderResultParams(state);
+    assert.equal(params.outcome, "error");
+    assert.equal(params.error_reason, "E_REJECTED: 잘못된 요청입니다.");
+    assert.equal(params.error_code, "E_REJECTED");
+  });
+
+  it("해석된 템플릿 코드를 SDK 동의 요청 options에 넘긴다 (#288)", async () => {
+    // 환경변수 → resolveReturnReminderTemplateCode → SDK 요청까지의 배선을
+    // 고정한다. node 환경이라 값은 기본값이며, 환경변수 주입 시 이 경로로 전달된다.
+    let sentTemplateCode: string | undefined;
+    const { fake } = makeFake((config) => {
+      sentTemplateCode = config.options.templateCode;
+      config.onEvent({ type: "newAgreement" });
+    });
+    await requestReturnReminderAgreement(fake);
+    assert.equal(sentTemplateCode, RETURN_REMINDER_TEMPLATE_CODE);
+    assert.equal(sentTemplateCode, DEFAULT_RETURN_REMINDER_TEMPLATE_CODE);
   });
 
   it("먼저 확정된 결과만 반영하고 이후 콜백은 무시한다(중복 resolve 방지)", async () => {

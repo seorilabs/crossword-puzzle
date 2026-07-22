@@ -13,6 +13,8 @@ import {
   RETURN_REMINDER_RESULT_EVENT,
   shouldPromptReturnReminder,
   summarizeAgreementError,
+  summarizeAgreementFailure,
+  extractAgreementErrorCode,
   type ReturnReminderState,
 } from "./returnReminder.ts";
 
@@ -278,6 +280,37 @@ describe("returnReminder 정책", () => {
     });
   });
 
+  it("error_code가 있으면 결과 파라미터에 덧붙인다 (#288)", () => {
+    const state: ReturnReminderState = {
+      promptCount: 1,
+      outcome: "error",
+      errorReason: "E_UNSUPPORTED: no bridge",
+      errorCode: "E_UNSUPPORTED",
+    };
+    assert.deepEqual(buildReturnReminderResultParams(state), {
+      outcome: "error",
+      prompt_count: 1,
+      error_reason: "E_UNSUPPORTED: no bridge",
+      error_code: "E_UNSUPPORTED",
+    });
+  });
+
+  it("applyReturnReminderOutcome은 error에서만 errorCode를 보존한다 (#288)", () => {
+    const withCode = applyReturnReminderOutcome(
+      { promptCount: 1 },
+      "error",
+      "E_X: msg",
+      "E_X",
+    );
+    assert.equal(withCode.errorCode, "E_X");
+    // 다른 결과로 넘어가면 이전 코드가 남지 않는다.
+    const agreed = applyReturnReminderOutcome(withCode, "agreed");
+    assert.equal(agreed.errorCode, undefined);
+    // error여도 코드가 없으면 비운다.
+    const noCode = applyReturnReminderOutcome(withCode, "error", "msg");
+    assert.equal(noCode.errorCode, undefined);
+  });
+
   it("timeout outcome은 error_reason 없이 그대로 기록된다 (#253)", () => {
     const state: ReturnReminderState = { promptCount: 1, outcome: "timeout" };
     assert.deepEqual(buildReturnReminderResultParams(state), {
@@ -321,5 +354,43 @@ describe("summarizeAgreementError (#253)", () => {
     const long = "x".repeat(250);
     const summary = summarizeAgreementError(long);
     assert.equal(summary.length, 100);
+  });
+});
+
+describe("summarizeAgreementFailure / error_code (#288)", () => {
+  it("{code, message} 객체는 reason 합성 + code 보존", () => {
+    assert.deepEqual(
+      summarizeAgreementFailure({ code: "E_UNSUPPORTED", message: "no bridge" }),
+      { reason: "E_UNSUPPORTED: no bridge", code: "E_UNSUPPORTED" },
+    );
+  });
+
+  it("Error 인스턴스는 message만 요약하고 code는 생략한다", () => {
+    assert.deepEqual(
+      summarizeAgreementFailure(new Error("bridge disconnected")),
+      { reason: "bridge disconnected" },
+    );
+    assert.equal(
+      extractAgreementErrorCode(new Error("bridge disconnected")),
+      undefined,
+    );
+  });
+
+  it("문자열은 reason만 남기고 code는 생략한다", () => {
+    assert.deepEqual(summarizeAgreementFailure("알림 동의에 실패하였습니다."), {
+      reason: "알림 동의에 실패하였습니다.",
+    });
+  });
+
+  it("code가 없고 status만 있으면 status를 코드로 보존한다", () => {
+    assert.equal(
+      extractAgreementErrorCode({ status: 400, message: "잘못된 요청입니다." }),
+      "400",
+    );
+  });
+
+  it("code가 100자를 넘으면 상한을 지킨다", () => {
+    const code = extractAgreementErrorCode({ code: "e".repeat(250) });
+    assert.equal(code?.length, 100);
   });
 });
