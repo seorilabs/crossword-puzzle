@@ -40,8 +40,9 @@ function readWebApp(): string {
 }
 
 describe("#292 진척 이벤트 계측 인수조건", () => {
-  it("AC-1: `gameAnalytics.ts`(코어)에 위 이벤트 스키마 정의 (이벤트명·파라미터 타입)", () => {
-    // 세 이벤트 모두 코어 빌더가 이벤트명 + 문서화된 파라미터 키로 변환한다.
+  it("AC-1: gameAnalytics.ts(코어)에 위 이벤트 스키마 정의 (이벤트명·파라미터 타입)", () => {
+    // 코어 gameAnalytics 계약이 세 진척 이벤트를 이벤트명 + 파라미터 키·타입으로
+    // 정의함을 빌더 실행 경로로 확인한다. 각 이벤트의 파라미터는 숫자형(타입) 유지.
     const streakView = buildGameProgressionEvent("streak_view", {
       market: "apps-in-toss",
       payload: { currentStreak: 6, longestStreak: 12 },
@@ -49,6 +50,8 @@ describe("#292 진척 이벤트 계측 인수조건", () => {
     assert.equal(streakView.name, "streak_view");
     assert.equal(streakView.params.current_streak, 6);
     assert.equal(streakView.params.longest_streak, 12);
+    assert.equal(typeof streakView.params.current_streak, "number");
+    assert.equal(typeof streakView.params.longest_streak, "number");
     assert.equal(streakView.params.schema_version, GAME_ANALYTICS_SCHEMA_VERSION);
 
     const milestone = buildGameProgressionEvent("streak_milestone", {
@@ -57,6 +60,7 @@ describe("#292 진척 이벤트 계측 인수조건", () => {
     });
     assert.equal(milestone.name, "streak_milestone");
     assert.equal(milestone.params.streak_length, 7);
+    assert.equal(typeof milestone.params.streak_length, "number");
 
     const statsView = buildGameProgressionEvent("personal_stats_view", {
       market: "app-store",
@@ -65,6 +69,14 @@ describe("#292 진척 이벤트 계측 인수조건", () => {
     assert.equal(statsView.name, "personal_stats_view");
     assert.equal(statsView.params.total_puzzles, 20);
     assert.equal(statsView.params.completed_count, 13);
+    assert.equal(typeof statsView.params.total_puzzles, "number");
+    assert.equal(typeof statsView.params.completed_count, "number");
+
+    // 세 진척 이벤트명이 계약에 정의되어 있다(스키마 커버리지).
+    assert.deepEqual(
+      [streakView.name, milestone.name, statsView.name],
+      ["streak_view", "streak_milestone", "personal_stats_view"],
+    );
 
     // 진척 이벤트는 퍼즐(콘텐츠) 컨텍스트를 싣지 않는다(화면·계정 단위 신호).
     assert.ok(!("puzzle_id" in streakView.params));
