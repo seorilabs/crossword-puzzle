@@ -7,7 +7,9 @@ import { strict as assert } from "node:assert";
 import {
   DIFFICULTY_PROFILES,
   ONBOARDING_MEDIUM_PROFILE,
+  filterWordsByDifficulty,
   isDifficulty,
+  selectWordsForProfile,
 } from "./difficultyProfiles.ts";
 import {
   ONBOARDING_RAMP_MAX_COMPLETIONS,
@@ -43,6 +45,20 @@ describe("온보딩 난이도 램프 수락 조건 (#291)", () => {
     assert.ok(medium.maxWords < normal.maxWords);
     assert.ok(medium.minCrossRatio >= normal.minCrossRatio);
     assert.deepEqual([...medium.wordDifficulties], ["easy", "normal"]);
+
+    // 실행 경로: 실제 생성 파이프라인 함수(filterWordsByDifficulty)에 중간 프로파일을
+    // 넣으면 easy·normal 어휘만 남고 hard(고급) 어휘는 배제된다 — easy와 normal 사이의
+    // 완화 프로파일로 동작함을 확인한다.
+    const words = [
+      { answer: "가게", difficulty: "easy" },
+      { answer: "평면", difficulty: "normal" },
+      { answer: "정정", difficulty: "hard" },
+    ];
+    const filtered = filterWordsByDifficulty(words, medium).map((w) => w.answer);
+    assert.deepEqual(filtered, ["가게", "평면"]);
+    // 실행 경로: 생성 단어 선택도 easy/normal 로 구성되고 hard 는 편향에서 빠진다.
+    const selection = selectWordsForProfile(words, medium, 0);
+    assert.equal(selection.difficulties.includes("hard"), false);
   });
 
   it("AC-2: 배정 로직이 신규 사용자의 easy 완료 직후 완화(중간) 난이도를 제공한다", () => {
@@ -92,13 +108,32 @@ describe("온보딩 난이도 램프 수락 조건 (#291)", () => {
     );
   });
 
-  it("AC-4: 난이도 테스트를 신규 케이스로 보강한다(램프 상한·중간 프로파일 회귀 가드)", () => {
-    // 램프는 첫 완료(현재 제외 기완료 0)에서만 완화한다.
-    assert.equal(ONBOARDING_RAMP_MAX_COMPLETIONS, 0);
-    // 중간 프로파일의 최소 글자 수는 normal과 동일(정책 일관성).
-    assert.equal(
-      ONBOARDING_MEDIUM_PROFILE.minWordLength,
-      DIFFICULTY_PROFILES.normal.minWordLength,
+  it("AC-4: 난이도 배정에 신규 케이스(램프 경계 회귀 가드)를 추가한다", () => {
+    const summaries = [
+      summary("onboarding", "easy"),
+      summary("easy2", "easy"),
+      summary("normal1", "normal"),
+    ];
+    const current = { puzzleId: "onboarding", difficulty: "easy" as const };
+    // 신규 케이스 1(실행 경로): 두 번째 완료(현재 제외 기완료 1 > 상한 0)부터는 완화하지
+    // 않고 기존 normal 상승으로 돌아간다 — 첫 급점프만 1회 늦춘다는 회귀 가드.
+    const secondCompletion = getNextRecommendedPuzzleSummary(
+      summaries,
+      new Set(["easy2", "onboarding"]),
+      current,
+      { onboardingRampEnabled: true },
     );
+    assert.equal(secondCompletion?.difficulty, "normal");
+    assert.equal(ONBOARDING_RAMP_MAX_COMPLETIONS, 0);
+
+    // 신규 케이스 2(실행 경로): 램프가 켜져도 남은 easy가 없으면 기존 상승(normal)으로
+    // 안전하게 폴백한다.
+    const noEasyLeft = getNextRecommendedPuzzleSummary(
+      [summary("onboarding", "easy"), summary("normal1", "normal")],
+      new Set(["onboarding"]),
+      current,
+      { onboardingRampEnabled: true },
+    );
+    assert.equal(noEasyLeft?.difficulty, "normal");
   });
 });
