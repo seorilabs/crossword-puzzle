@@ -564,4 +564,33 @@ describe("useStuckHintPrompt", () => {
       wordsRemaining: 6,
     });
   });
+
+  it("near-finish 모드여도 기존 노출 상한을 그대로 공유해 총량이 늘지 않는다(#280)", () => {
+    // near-finish 발화가 별도 카운터를 신설하지 않고 maxPromptsPerAttempt 상한을
+    // 공유함을 고정한다(#265 취지 유지, 프롬프트 총량 증가 없음).
+    const onShow = vi.fn();
+    const makeProps = (key: string) =>
+      nudgeProps({
+        progressPercent: 95,
+        wordsRemaining: 1,
+        puzzleKey: "puzzle-1",
+        resetKeys: [key],
+        maxPromptsPerAttempt: 2,
+        onShow,
+      });
+    const { result, rerender } = renderHook((p) => useStuckHintPrompt(p), {
+      initialProps: makeProps("a"),
+    });
+
+    act(() => vi.advanceTimersByTime(20000));
+    expect(result.current.nearFinish).toBe(true); // near-finish로 1회차 발화
+    rerender(makeProps("b"));
+    act(() => vi.advanceTimersByTime(20000));
+    expect(onShow).toHaveBeenCalledTimes(2); // 2회차
+    // 상한(2) 도달 → near-finish여도 추가 노출 없음(총량 증가 없음).
+    rerender(makeProps("c"));
+    act(() => vi.advanceTimersByTime(60000));
+    expect(result.current.isVisible).toBe(false);
+    expect(onShow).toHaveBeenCalledTimes(2);
+  });
 });
