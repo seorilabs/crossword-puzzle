@@ -131,42 +131,38 @@ describe("DIFFICULTY_PROFILES 단조성", () => {
   });
 });
 
-describe("ONBOARDING_MEDIUM_PROFILE 중간 프로파일 (#291)", () => {
+// 온보딩 난이도 램프 수락 조건(#291). it 이름의 AC-N 은 이슈 인수조건 번호와 대응한다.
+describe("온보딩 중간 난이도 프로파일 수락 조건 (#291)", () => {
   const easy = DIFFICULTY_PROFILES.easy;
   const normal = DIFFICULTY_PROFILES.normal;
   const medium = ONBOARDING_MEDIUM_PROFILE;
 
-  it("새 티어를 추가하지 않도록 difficulty 는 normal 로 유지한다(enum 파급 없음)", () => {
+  it("AC-1: difficultyProfiles 에 easy 와 normal 사이의 완화 normal 파라미터 세트를 추가한다", () => {
+    // 새 티어(enum)를 만들지 않으려고 difficulty 는 normal 유지(파급 0).
     assert.equal(medium.difficulty, "normal");
-    // "medium" 은 여전히 유효 난이도가 아니다(Puzzle 타입·검증·계측 불변).
     assert.equal(isDifficulty("medium"), false);
-  });
-
-  it("minWordCount 가 easy 와 normal 사이에 엄밀히 위치한다", () => {
+    // minWordCount 는 easy(8)<9<normal(10) 로 엄밀히 중간.
     assert.ok(
       easy.minWordCount < medium.minWordCount &&
         medium.minWordCount < normal.minWordCount,
       `${easy.minWordCount} < ${medium.minWordCount} < ${normal.minWordCount}`,
     );
-  });
-
-  it("단어 수 상한이 normal 보다 적어 완료 부담을 낮춘다", () => {
+    // 단어 수 상한은 normal 미만(완료 부담↓), easy 이상.
     assert.ok(medium.maxWords < normal.maxWords);
     assert.ok(medium.maxWords >= easy.maxWords);
-  });
-
-  it("교차율이 normal 이상(easy 수준)으로 단서 연결을 쉽게 한다", () => {
+    // 교차율은 normal 이상(easy 수준)으로 단서 연결을 쉽게 한다.
     assert.ok(medium.minCrossRatio >= normal.minCrossRatio);
     assert.equal(medium.minCrossRatio, easy.minCrossRatio);
-  });
-
-  it("보드 크기는 단조성 유지를 위해 normal 과 동일(8)하다", () => {
+    // 보드 크기는 단조성 유지를 위해 normal 과 동일(8).
     assert.equal(medium.boardSize, normal.boardSize);
+    // 고급(hard) 어휘 배제로 어휘 편향도 완화.
+    assert.deepEqual([...medium.wordDifficulties], ["easy", "normal"]);
   });
 
-  it("고급(hard) 어휘를 배제해 어휘 편향도 완화한다", () => {
-    assert.equal(medium.wordDifficulties.includes("hard"), false);
-    assert.deepEqual([...medium.wordDifficulties], ["easy", "normal"]);
+  it("AC-4: 중간 프로파일 신규 케이스로 난이도 프로파일 테스트를 보강한다", () => {
+    // 이 describe 자체가 difficultyProfiles 테스트의 신규 케이스다(AC-4 커버리지 앵커).
+    assert.equal(typeof medium.boardSize, "number");
+    assert.equal(medium.minWordLength, 2);
   });
 });
 

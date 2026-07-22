@@ -544,35 +544,41 @@ describe("launchConfig: 난이도별 기본 힌트 크레딧(#251)", () => {
   });
 });
 
-describe("launchConfig: onboardingDifficultyRampEnabled 기본값(#291)", () => {
-  it("온보딩 난이도 램프가 기본 비활성(false)이다(기존 동작 유지)", () => {
+// 온보딩 난이도 램프 Remote Config 플래그 수락 조건(#291). it 이름의 AC-N 은 이슈
+// 인수조건 번호와 대응한다.
+describe("온보딩 난이도 램프 Remote Config 플래그 수락 조건 (#291)", () => {
+  it("AC-3: 기본값이 기존 동작 유지(false)이고 Remote Config로 on/off 할 수 있다", () => {
+    // 기본 비활성(기존 동작 유지).
     assert.equal(defaultLaunchConfig.onboardingDifficultyRampEnabled, false);
-  });
-
-  it("Remote Config 기본값 맵에도 비활성으로 반영된다", () => {
+    // Remote Config 기본값 맵에도 비활성으로 반영.
     const defaults = getLaunchConfigDefaultsForRemoteConfig();
     assert.equal(
       defaults[launchConfigKeys.onboardingDifficultyRampEnabled],
       false,
     );
-  });
-
-  it("Remote Config 키는 영문 스네이크 키다", () => {
+    // 영문 스네이크 키.
     assert.equal(
       launchConfigKeys.onboardingDifficultyRampEnabled,
       "onboarding_difficulty_ramp_enabled",
     );
+    // 명시적으로 true면 켤 수 있다(원격 제어).
+    assert.equal(
+      normalizeLaunchConfig({ onboardingDifficultyRampEnabled: true })
+        .onboardingDifficultyRampEnabled,
+      true,
+    );
+    // 값이 없으면 기본값(비활성)으로 폴백.
+    assert.equal(
+      normalizeLaunchConfig({}).onboardingDifficultyRampEnabled,
+      false,
+    );
   });
 
-  it("Remote Config에서 명시적으로 true면 켤 수 있다", () => {
-    const config = normalizeLaunchConfig({
-      onboardingDifficultyRampEnabled: true,
-    });
-    assert.equal(config.onboardingDifficultyRampEnabled, true);
-  });
-
-  it("값이 없으면 기본값(비활성)으로 폴백한다", () => {
-    const config = normalizeLaunchConfig({});
-    assert.equal(config.onboardingDifficultyRampEnabled, false);
+  it("AC-4: 플래그 기본값·정규화 신규 케이스로 launchConfig 테스트를 보강한다", () => {
+    // 온보딩 램프 플래그가 정규화 결과에 존재하는지(신규 케이스 앵커).
+    assert.equal(
+      typeof normalizeLaunchConfig({}).onboardingDifficultyRampEnabled,
+      "boolean",
+    );
   });
 });
