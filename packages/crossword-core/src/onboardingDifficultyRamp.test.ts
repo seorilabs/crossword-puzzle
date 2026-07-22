@@ -31,32 +31,44 @@ function summary(
 }
 
 describe("온보딩 난이도 램프 수락 조건 (#291)", () => {
-  it("AC-1: difficultyProfiles에 easy와 normal 사이의 완화 normal 파라미터 세트를 추가한다", () => {
+  it("AC-1: difficultyProfiles.ts에 easy와 normal 사이의 중간 프로파일(normal 완화 파라미터 세트)을 추가한다", () => {
     const { easy, normal } = DIFFICULTY_PROFILES;
     const medium = ONBOARDING_MEDIUM_PROFILE;
+
+    // (1) difficultyProfiles.ts에 프로파일이 실제로 추가·export 되었다.
+    assert.ok(medium, "ONBOARDING_MEDIUM_PROFILE 이 존재한다");
     // 새 티어(enum)를 만들지 않으려고 difficulty는 normal 유지(파급 0).
     assert.equal(medium.difficulty, "normal");
     assert.equal(isDifficulty("medium"), false);
-    // 단어 수는 easy와 normal 사이(완료 부담↓), 교차율은 easy 수준(단서 연결 쉬움).
+
+    // (2) "easy와 normal 사이": 완료 부담(단어 수)이 easy 이상 normal 미만 사이에 위치.
     assert.ok(
       easy.minWordCount < medium.minWordCount &&
         medium.minWordCount < normal.minWordCount,
+      `easy(${easy.minWordCount}) < medium(${medium.minWordCount}) < normal(${normal.minWordCount})`,
     );
-    assert.ok(medium.maxWords < normal.maxWords);
+    assert.ok(medium.maxWords >= easy.maxWords && medium.maxWords < normal.maxWords);
+
+    // (3) "normal 완화": 교차율은 normal보다 높거나 같아(단서 연결↑) 체감 난도를 낮추고,
+    // 고급(hard) 어휘를 배제해 어휘 편향도 normal보다 완화한다.
     assert.ok(medium.minCrossRatio >= normal.minCrossRatio);
     assert.deepEqual([...medium.wordDifficulties], ["easy", "normal"]);
 
-    // 실행 경로: 실제 생성 파이프라인 함수(filterWordsByDifficulty)에 중간 프로파일을
-    // 넣으면 easy·normal 어휘만 남고 hard(고급) 어휘는 배제된다 — easy와 normal 사이의
-    // 완화 프로파일로 동작함을 확인한다.
+    // (4) 실행 경로: 생성 파이프라인 함수에 넣으면 normal(=easy·normal·hard 허용) 대비
+    // hard 어휘를 배제한 완화 프로파일로 동작한다.
     const words = [
       { answer: "가게", difficulty: "easy" },
       { answer: "평면", difficulty: "normal" },
       { answer: "정정", difficulty: "hard" },
     ];
-    const filtered = filterWordsByDifficulty(words, medium).map((w) => w.answer);
-    assert.deepEqual(filtered, ["가게", "평면"]);
-    // 실행 경로: 생성 단어 선택도 easy/normal 로 구성되고 hard 는 편향에서 빠진다.
+    const mediumWords = filterWordsByDifficulty(words, medium).map((w) => w.answer);
+    const normalWords = filterWordsByDifficulty(words, normal).map((w) => w.answer);
+    assert.deepEqual(mediumWords, ["가게", "평면"], "중간: hard 배제");
+    assert.deepEqual(normalWords, ["가게", "평면", "정정"], "normal: hard 포함");
+    assert.ok(
+      mediumWords.length < normalWords.length,
+      "중간 프로파일이 normal보다 어휘를 완화(축소)한다",
+    );
     const selection = selectWordsForProfile(words, medium, 0);
     assert.equal(selection.difficulties.includes("hard"), false);
   });
@@ -108,15 +120,29 @@ describe("온보딩 난이도 램프 수락 조건 (#291)", () => {
     );
   });
 
-  it("AC-4: 난이도 배정에 신규 케이스(램프 경계 회귀 가드)를 추가한다", () => {
+  it("AC-4: 기존 난이도 테스트를 갱신하고 신규 난이도 케이스를 추가한다", () => {
+    // 이 통합 테스트와 difficultyProfiles.test.mts·recommendation.test.mts·
+    // launchConfig.test.mts 의 신규 케이스가 온보딩 램프 난이도 동작을 새로 커버한다.
+    // 아래는 기존 난이도 추천(getNextRecommendedPuzzleSummary) 동작에 대해 새로 추가한
+    // 경계 케이스들이다.
     const summaries = [
       summary("onboarding", "easy"),
       summary("easy2", "easy"),
       summary("normal1", "normal"),
     ];
     const current = { puzzleId: "onboarding", difficulty: "easy" as const };
-    // 신규 케이스 1(실행 경로): 두 번째 완료(현재 제외 기완료 1 > 상한 0)부터는 완화하지
-    // 않고 기존 normal 상승으로 돌아간다 — 첫 급점프만 1회 늦춘다는 회귀 가드.
+
+    // 신규 케이스 1(실행 경로): 램프 off(기본)면 기존 난이도 상승(easy→normal)을 유지 —
+    // 기존 동작 회귀 가드.
+    const rampOff = getNextRecommendedPuzzleSummary(
+      summaries,
+      new Set(["onboarding"]),
+      current,
+    );
+    assert.equal(rampOff?.difficulty, "normal");
+
+    // 신규 케이스 2(실행 경로): 두 번째 완료(현재 제외 기완료 1 > 상한 0)부터는 완화하지
+    // 않고 기존 normal 상승으로 돌아간다 — 첫 급점프만 1회 늦춘다.
     const secondCompletion = getNextRecommendedPuzzleSummary(
       summaries,
       new Set(["easy2", "onboarding"]),
@@ -126,7 +152,7 @@ describe("온보딩 난이도 램프 수락 조건 (#291)", () => {
     assert.equal(secondCompletion?.difficulty, "normal");
     assert.equal(ONBOARDING_RAMP_MAX_COMPLETIONS, 0);
 
-    // 신규 케이스 2(실행 경로): 램프가 켜져도 남은 easy가 없으면 기존 상승(normal)으로
+    // 신규 케이스 3(실행 경로): 램프가 켜져도 남은 easy가 없으면 기존 상승(normal)으로
     // 안전하게 폴백한다.
     const noEasyLeft = getNextRecommendedPuzzleSummary(
       [summary("onboarding", "easy"), summary("normal1", "normal")],
