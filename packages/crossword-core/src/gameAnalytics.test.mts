@@ -226,8 +226,8 @@ describe("trackBonusPuzzlePanelImpression (#278)", () => {
   });
 });
 
-describe("buildGameProgressionEvent (#292)", () => {
-  it("market·schema_version을 병합하고 페이로드를 snake_case 숫자로 변환한다", () => {
+describe("진척 이벤트 스키마·빌더 buildGameProgressionEvent (#292)", () => {
+  it("AC-1: 코어 gameAnalytics에 streak_view 이벤트명·파라미터 키를 정의한다 (#292)", () => {
     const { name, params } = buildGameProgressionEvent("streak_view", {
       market: "apps-in-toss",
       payload: { currentStreak: 6, longestStreak: 12 },
@@ -236,20 +236,19 @@ describe("buildGameProgressionEvent (#292)", () => {
     assert.equal(name, "streak_view");
     assert.equal(params.market, "apps-in-toss");
     assert.equal(params.schema_version, GAME_ANALYTICS_SCHEMA_VERSION);
-    // 숫자형 유지(string 적재 금지).
     assert.equal(params.current_streak, 6);
     assert.equal(params.longest_streak, 12);
-    assert.equal(typeof params.current_streak, "number");
     // 진척 이벤트는 퍼즐 컨텍스트를 싣지 않는다.
     assert.ok(!("puzzle_id" in params));
     assert.ok(!("difficulty" in params));
   });
 
-  it("streak_milestone·personal_stats_view 페이로드를 변환한다", () => {
+  it("AC-1: streak_milestone·personal_stats_view 이벤트명·파라미터 키를 정의한다 (#292)", () => {
     const milestone = buildGameProgressionEvent("streak_milestone", {
       market: "google-play",
       payload: { streakLength: 7 },
     });
+    assert.equal(milestone.name, "streak_milestone");
     assert.equal(milestone.params.streak_length, 7);
     assert.equal(milestone.params.market, "google-play");
 
@@ -257,13 +256,36 @@ describe("buildGameProgressionEvent (#292)", () => {
       market: "app-store",
       payload: { totalPuzzles: 20, completedCount: 13 },
     });
+    assert.equal(statsView.name, "personal_stats_view");
     assert.equal(statsView.params.total_puzzles, 20);
     assert.equal(statsView.params.completed_count, 13);
+  });
+
+  it("AC-3: 진척 파라미터를 숫자형으로 유지한다 — string 적재 금지 (#292)", () => {
+    const streakView = buildGameProgressionEvent("streak_view", {
+      market: "apps-in-toss",
+      payload: { currentStreak: 6, longestStreak: 12 },
+    });
+    assert.equal(typeof streakView.params.current_streak, "number");
+    assert.equal(typeof streakView.params.longest_streak, "number");
+
+    const milestone = buildGameProgressionEvent("streak_milestone", {
+      market: "apps-in-toss",
+      payload: { streakLength: 7 },
+    });
+    assert.equal(typeof milestone.params.streak_length, "number");
+
+    const statsView = buildGameProgressionEvent("personal_stats_view", {
+      market: "apps-in-toss",
+      payload: { totalPuzzles: 20, completedCount: 13 },
+    });
+    assert.equal(typeof statsView.params.total_puzzles, "number");
+    assert.equal(typeof statsView.params.completed_count, "number");
   });
 });
 
 describe("createGameAnalyticsClient.trackProgression (#292)", () => {
-  it("등록된 모든 sink에 마켓을 주입해 진척 이벤트를 팬아웃한다", () => {
+  it("AC-5: 등록된 모든 sink에 마켓을 주입해 진척 이벤트를 팬아웃한다 — 파라미터 검증 (#292)", () => {
     const seen: Array<{ name: string; params: Record<string, unknown> }> = [];
     const client = createGameAnalyticsClient({
       market: "apps-in-toss",
@@ -293,7 +315,7 @@ describe("createGameAnalyticsClient.trackProgression (#292)", () => {
     assert.equal(seen[1].params.longest_streak, 9);
   });
 
-  it("한 sink가 throw해도 나머지 sink와 호출부를 막지 않는다", () => {
+  it("AC-5: 한 sink가 throw해도 나머지 sink와 호출부를 막지 않는다 (#292)", () => {
     const seen: string[] = [];
     const errors: unknown[] = [];
     const throwing: GameAnalyticsSink = {
@@ -322,19 +344,30 @@ describe("createGameAnalyticsClient.trackProgression (#292)", () => {
 });
 
 describe("진척 이벤트 web 배선 회귀 (#292)", () => {
-  it("HistoryScreen 노출·스트릭 갱신에 trackProgression을 배선한다", () => {
-    const webApp = readFileSync(
+  function readWebApp(): string {
+    return readFileSync(
       new URL("../../../src/App.tsx", import.meta.url),
       "utf8",
     );
+  }
 
-    // 화면 노출 이벤트 2종 + 스트릭 마일스톤 달성 이벤트 배선.
+  it("AC-2: HistoryScreen 노출 시점과 스트릭 갱신 시점에 trackProgression을 배선한다 (#292)", () => {
+    const webApp = readWebApp();
+
+    // 스트릭 캘린더/통계 화면 노출 이벤트 2종 배선.
     assert.match(webApp, /trackProgression\(\s*["']personal_stats_view["']/);
     assert.match(webApp, /trackProgression\(\s*["']streak_view["']/);
+    // 스트릭 갱신(완료) 시점의 마일스톤 달성 이벤트 배선 + core 발화 조건 판정.
     assert.match(webApp, /trackProgression\(\s*["']streak_milestone["']/);
-    // 마일스톤 발화 조건은 core 규칙(getNewlyReachedStreakMilestone)으로 판정한다.
     assert.match(webApp, /getNewlyReachedStreakMilestone\(/);
-    // 화면 노출당 1회: 노출 이벤트는 빈 의존성 useEffect(마운트 1회) 가드 안에 있다.
+  });
+
+  it("AC-4: 노출 이벤트를 화면 노출당 1회(빈 의존성 useEffect) 가드로 발화한다 (#292)", () => {
+    const webApp = readWebApp();
+
+    // 노출 이벤트가 빈 의존성 useEffect(마운트당 1회) 블록 안에 있어 렌더 반복
+    // 재발화가 없음을 고정한다. HistoryScreen은 route가 history일 때만 조건부
+    // 마운트되므로 마운트당 1회 = 화면 노출당 1회 가드가 된다.
     assert.match(
       webApp,
       /trackProgression\(\s*["']streak_view["'][\s\S]*?\}\s*,\s*\[\]\s*\)/,
