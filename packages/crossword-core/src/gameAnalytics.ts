@@ -15,6 +15,7 @@ import {
   type MarketTarget,
   type TelemetryParam,
 } from "./platformContracts.ts";
+import { getNewlyReachedStreakMilestone } from "./uiPolicy.ts";
 
 /**
  * 게임 이벤트가 실린 마켓. 마켓통합(all) 지표와 마켓개별 지표를 동시에 뽑기 위해
@@ -138,6 +139,33 @@ export type GameAnalyticsEventPayloads = {
 export type GameAnalyticsEventName = keyof GameAnalyticsEventPayloads;
 
 /**
+ * 진척(progression) 이벤트 페이로드. game_* 완료 퍼널이 특정 퍼즐(콘텐츠) 차원을
+ * 재는 것과 달리, 이 이벤트들은 "장기 리텐션 장치"(스트릭·개인 통계)의 노출/달성을
+ * 재는 화면·계정 단위 신호라 GamePuzzleContext를 싣지 않는다. D2~D7 복귀를 "장치가
+ * 노출되는데 효과가 없는지 vs 노출 자체가 안 되는지"로 분해하기 위한 계측이다(#292).
+ * 모든 파라미터는 숫자형으로 유지한다(string 적재 금지 — BigQuery 수치 집계 보존).
+ */
+export type GameProgressionEventPayloads = {
+  // 스트릭 서피스(캘린더/통계 화면) 노출. 화면 노출당 1회.
+  streak_view: {
+    currentStreak: number;
+    longestStreak: number;
+  };
+  // 스트릭이 마일스톤(7/30/100일 등)에 도달. streakLength는 도달 시점의 실제 스트릭.
+  streak_milestone: {
+    streakLength: number;
+  };
+  // 개인 통계(기록) 화면 노출. 화면 노출당 1회.
+  personal_stats_view: {
+    totalPuzzles: number;
+    completedCount: number;
+  };
+};
+
+/** 전송 가능한 진척 이벤트 이름의 유니온. */
+export type GameProgressionEventName = keyof GameProgressionEventPayloads;
+
+/**
  * presentation 레이어가 쓰는 게임 분석 포트. 마켓은 adapter가 주입하므로 호출부는
  * 넘기지 않는다(호출부는 어떤 마켓에서 도는지 몰라도 된다). fire-and-forget이며
  * 절대 throw하지 않는다(분석이 퍼즐 플레이를 끊으면 안 된다).
@@ -147,6 +175,14 @@ export type GameAnalyticsClient = {
     name: E,
     context: GamePuzzleContext,
     payload: GameAnalyticsEventPayloads[E],
+  ): void;
+  /**
+   * 퍼즐과 무관한 진척(스트릭/개인 통계) 이벤트를 보낸다. 컨텍스트 없이 마켓만
+   * 주입되며, track과 동일하게 fire-and-forget이고 절대 throw하지 않는다.
+   */
+  trackProgression<E extends GameProgressionEventName>(
+    name: E,
+    payload: GameProgressionEventPayloads[E],
   ): void;
 };
 
@@ -255,6 +291,34 @@ export function buildGameAnalyticsEvent<E extends GameAnalyticsEventName>(
 }
 
 /**
+ * 진척 이벤트 → 전송용 파라미터로 변환하는 순수 함수. 마켓·스키마 버전을 병합하고
+ * 페이로드를 snake_case로 변환한다. buildGameAnalyticsEvent와 달리 퍼즐 컨텍스트가
+ * 없다(스트릭/개인 통계는 특정 퍼즐이 아니라 사용자 단위 신호). null/undefined는
+ * compactTelemetryParams가 제거한다.
+ */
+export function buildGameProgressionEvent<E extends GameProgressionEventName>(
+  name: E,
+  input: {
+    market: GameMarket;
+    payload: GameProgressionEventPayloads[E];
+  },
+): { name: E; params: CompactTelemetryParams } {
+  const payload = input.payload as Record<string, TelemetryParam>;
+  const snakeCased: Record<string, TelemetryParam> = {};
+  for (const [key, value] of Object.entries(payload)) {
+    snakeCased[toSnakeCase(key)] = value;
+  }
+
+  const params = compactTelemetryParams({
+    schema_version: GAME_ANALYTICS_SCHEMA_VERSION,
+    market: input.market,
+    ...snakeCased,
+  });
+
+  return { name, params };
+}
+
+/**
  * adapter가 GameAnalyticsClient를 만들 때 쓰는 팩토리. 마켓과 sink 목록만 주면 core가
  * 파라미터 빌드 + 팬아웃 + throw 차단을 담당한다. adapter는 sink 구현(Firebase/AIT/자체
  * 서버)만 제공하면 된다. 자체 지표 서버는 GameAnalyticsSink를 하나 더 추가하는 것으로 끝난다.
@@ -264,6 +328,21 @@ export function createGameAnalyticsClient(config: {
   sinks: readonly GameAnalyticsSink[];
   onError?: (error: unknown) => void;
 }): GameAnalyticsClient {
+  // 빌드된 이벤트를 모든 sink로 팬아웃한다. 한 sink가 실패해도 나머지 sink 전송은
+  // 계속한다(분석은 절대 플레이를 끊지 않는다). track/trackProgression이 공유한다.
+  function fanOut(built: {
+    name: string;
+    params: CompactTelemetryParams;
+  }): void {
+    for (const sink of config.sinks) {
+      try {
+        sink.logGameEvent(built.name, built.params);
+      } catch (error) {
+        config.onError?.(error);
+      }
+    }
+  }
+
   return {
     track(name, context, payload) {
       let built: { name: string; params: CompactTelemetryParams };
@@ -277,15 +356,68 @@ export function createGameAnalyticsClient(config: {
         config.onError?.(error);
         return;
       }
-
-      for (const sink of config.sinks) {
-        try {
-          sink.logGameEvent(built.name, built.params);
-        } catch (error) {
-          // 한 sink가 실패해도 나머지 sink 전송은 계속한다. 분석은 절대 플레이를 끊지 않는다.
-          config.onError?.(error);
-        }
+      fanOut(built);
+    },
+    trackProgression(name, payload) {
+      let built: { name: string; params: CompactTelemetryParams };
+      try {
+        built = buildGameProgressionEvent(name, {
+          market: config.market,
+          payload,
+        });
+      } catch (error) {
+        config.onError?.(error);
+        return;
       }
+      fanOut(built);
     },
   };
+}
+
+/**
+ * 스트릭/개인 통계 화면(웹 HistoryScreen) 노출 시 1회 호출해 노출 이벤트 2종
+ * (personal_stats_view·streak_view)을 보낸다. presentation은 화면 노출당 1회
+ * (마운트 effect)만 이 헬퍼를 호출하면 되고, "어떤 이벤트를 어떤 파라미터로 보낼지"는
+ * core가 고정한다(3마켓 동일). 호출 1회 = 각 이벤트 정확히 1회 발화라, 발화 로직을
+ * 실행 경로로 단위 검증할 수 있다(#292).
+ */
+export function emitProgressionScreenView(
+  client: GameAnalyticsClient,
+  input: {
+    totalPuzzles: number;
+    completedCount: number;
+    currentStreak: number;
+    longestStreak: number;
+  },
+): void {
+  client.trackProgression("personal_stats_view", {
+    totalPuzzles: input.totalPuzzles,
+    completedCount: input.completedCount,
+  });
+  client.trackProgression("streak_view", {
+    currentStreak: input.currentStreak,
+    longestStreak: input.longestStreak,
+  });
+}
+
+/**
+ * 스트릭이 previousStreak→currentStreak로 오르며 새 마일스톤(7/30/100일)에 도달했으면
+ * streak_milestone을 1회 보내고 도달 마일스톤을 반환한다. 도달하지 않았으면 아무것도
+ * 보내지 않고 null을 반환한다. 발화 조건("이전 < 임계 ≤ 현재") 판정을 core로 고정해
+ * 3마켓이 같은 규칙으로 스트릭 갱신 시점을 계측하도록 한다(#292).
+ */
+export function emitStreakMilestoneIfReached(
+  client: GameAnalyticsClient,
+  previousStreak: number,
+  currentStreak: number,
+): number | null {
+  const milestone = getNewlyReachedStreakMilestone(
+    previousStreak,
+    currentStreak,
+  );
+  if (milestone == null) {
+    return null;
+  }
+  client.trackProgression("streak_milestone", { streakLength: currentStreak });
+  return milestone;
 }
