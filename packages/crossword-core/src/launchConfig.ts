@@ -52,6 +52,11 @@ export type LaunchConfig = {
   stuckHintDismissBackoffFactor: number;
   // 같은 퍼즐에서 막힘 힌트 CTA를 다시 노출하기까지의 최소 간격(ms, #265).
   stuckHintMinCooldownMs: number;
+  // 완료 직전(near-finish) 마무리 넛지(#280). 진행률이 이 값(%) 이상이면 막힘 프롬프트
+  // 발화 시 마무리 문구·CTA로 바꾼다.
+  finishNudgeProgressThreshold: number;
+  // 잔여 미완성 단어가 이 개수 이하이면 마무리 넛지 모드로 본다(#280).
+  finishNudgeWordsRemaining: number;
   // "이 단어 확인"으로 강조한 셀을 원복 전까지 보여주는 시간(ms).
   checkHighlightMs: number;
   // 리더보드 점수 산식 가중치(#216). 앱 재배포 없이 밸런스를 조정하도록 Remote
@@ -88,6 +93,8 @@ export const launchConfigKeys = {
   stuckHintMaxDismissals: "stuck_hint_max_dismissals",
   stuckHintDismissBackoffFactor: "stuck_hint_dismiss_backoff_factor",
   stuckHintMinCooldownMs: "stuck_hint_min_cooldown_ms",
+  finishNudgeProgressThreshold: "finish_nudge_progress_threshold",
+  finishNudgeWordsRemaining: "finish_nudge_words_remaining",
   checkHighlightMs: "check_highlight_ms",
   leaderboardScoreCompletedWord: "leaderboard_score_completed_word",
   leaderboardScoreRemainingAttempt: "leaderboard_score_remaining_attempt",
@@ -135,6 +142,10 @@ export const defaultLaunchConfig: LaunchConfig = {
   stuckHintMaxDismissals: 1,
   stuckHintDismissBackoffFactor: 2,
   stuckHintMinCooldownMs: 180000,
+  // 완료 직전 마무리 넛지 임계 기본값(#280): 진행률 90% 이상 또는 잔여 단어 2개 이하.
+  // 90%+ 완료 직전 이탈(5건/28일) 구제용. Remote Config로 조정 가능.
+  finishNudgeProgressThreshold: 90,
+  finishNudgeWordsRemaining: 2,
   checkHighlightMs: 2500,
   // 리더보드 가중치 기본값은 leaderboard.ts 상수를 그대로 따른다(#216).
   leaderboardScoreCompletedWord: LEADERBOARD_SCORE_WEIGHTS.completedWord,
@@ -308,6 +319,21 @@ export function normalizeLaunchConfig(
       0,
       3600000,
     ),
+    // 진행률 임계는 0~100(%), 잔여 단어 임계는 1~20으로 방어한다(#280).
+    finishNudgeProgressThreshold: clampInteger(
+      value.finishNudgeProgressThreshold ??
+        defaultLaunchConfig.finishNudgeProgressThreshold,
+      defaultLaunchConfig.finishNudgeProgressThreshold,
+      0,
+      100,
+    ),
+    finishNudgeWordsRemaining: clampInteger(
+      value.finishNudgeWordsRemaining ??
+        defaultLaunchConfig.finishNudgeWordsRemaining,
+      defaultLaunchConfig.finishNudgeWordsRemaining,
+      1,
+      20,
+    ),
     checkHighlightMs: clampInteger(
       value.checkHighlightMs ?? defaultLaunchConfig.checkHighlightMs,
       defaultLaunchConfig.checkHighlightMs,
@@ -398,6 +424,10 @@ export function getLaunchConfigDefaultsForRemoteConfig() {
       defaultLaunchConfig.stuckHintDismissBackoffFactor,
     [launchConfigKeys.stuckHintMinCooldownMs]:
       defaultLaunchConfig.stuckHintMinCooldownMs,
+    [launchConfigKeys.finishNudgeProgressThreshold]:
+      defaultLaunchConfig.finishNudgeProgressThreshold,
+    [launchConfigKeys.finishNudgeWordsRemaining]:
+      defaultLaunchConfig.finishNudgeWordsRemaining,
     [launchConfigKeys.checkHighlightMs]: defaultLaunchConfig.checkHighlightMs,
     [launchConfigKeys.leaderboardScoreCompletedWord]:
       defaultLaunchConfig.leaderboardScoreCompletedWord,

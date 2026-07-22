@@ -131,6 +131,69 @@ describe("launchConfig: 막힘 힌트/피드백 튜닝값(#172)", () => {
   });
 });
 
+describe("launchConfig: 완료 직전 마무리 넛지 임계(#280)", () => {
+  it("기본값은 진행률 90%·잔여 단어 2개다", () => {
+    assert.equal(defaultLaunchConfig.finishNudgeProgressThreshold, 90);
+    assert.equal(defaultLaunchConfig.finishNudgeWordsRemaining, 2);
+  });
+
+  it("미설정(빈 값)이면 기본값으로 폴백한다", () => {
+    const config = normalizeLaunchConfig({});
+    assert.equal(config.finishNudgeProgressThreshold, 90);
+    assert.equal(config.finishNudgeWordsRemaining, 2);
+  });
+
+  it("Remote Config 키·기본값 맵에 영문 스네이크 키로 반영된다", () => {
+    assert.equal(
+      launchConfigKeys.finishNudgeProgressThreshold,
+      "finish_nudge_progress_threshold",
+    );
+    assert.equal(
+      launchConfigKeys.finishNudgeWordsRemaining,
+      "finish_nudge_words_remaining",
+    );
+    const defaults = getLaunchConfigDefaultsForRemoteConfig();
+    assert.equal(defaults["finish_nudge_progress_threshold"], 90);
+    assert.equal(defaults["finish_nudge_words_remaining"], 2);
+  });
+
+  it("원격 값으로 임계를 조정할 수 있다", () => {
+    const config = normalizeLaunchConfig({
+      finishNudgeProgressThreshold: 75,
+      finishNudgeWordsRemaining: 3,
+    });
+    assert.equal(config.finishNudgeProgressThreshold, 75);
+    assert.equal(config.finishNudgeWordsRemaining, 3);
+  });
+
+  it("launchConfig에 finishNudge 임계 두 키가 추가되고 Remote Config로 덮어쓸 수 있다(#280 · AC-2)", () => {
+    // 기본값(90/2)이 있고, Remote Config 부분값으로 두 키를 독립적으로 덮어쓸 수 있다.
+    assert.equal(defaultLaunchConfig.finishNudgeProgressThreshold, 90);
+    assert.equal(defaultLaunchConfig.finishNudgeWordsRemaining, 2);
+    const overridden = normalizeLaunchConfig({
+      finishNudgeProgressThreshold: 80,
+      finishNudgeWordsRemaining: 1,
+    });
+    assert.equal(overridden.finishNudgeProgressThreshold, 80);
+    assert.equal(overridden.finishNudgeWordsRemaining, 1);
+  });
+
+  it("허용 범위(진행률 0~100, 잔여 단어 1~20)를 벗어나면 clamp된다", () => {
+    const tooHigh = normalizeLaunchConfig({
+      finishNudgeProgressThreshold: 150,
+      finishNudgeWordsRemaining: 99,
+    });
+    assert.equal(tooHigh.finishNudgeProgressThreshold, 100);
+    assert.equal(tooHigh.finishNudgeWordsRemaining, 20);
+    const tooLow = normalizeLaunchConfig({
+      finishNudgeProgressThreshold: -10,
+      finishNudgeWordsRemaining: 0,
+    });
+    assert.equal(tooLow.finishNudgeProgressThreshold, 0);
+    assert.equal(tooLow.finishNudgeWordsRemaining, 1);
+  });
+});
+
 describe("launchConfig: rewardedExtraAttempt 게이트(#204)", () => {
   it("소진 구제 리워드 광고 CTA가 기본 비활성(false)이다", () => {
     assert.equal(defaultLaunchConfig.rewardedExtraAttemptEnabled, false);

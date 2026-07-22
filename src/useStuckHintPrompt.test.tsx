@@ -70,6 +70,8 @@ describe("useStuckHintPrompt", () => {
       delayMs: 20000,
       promptSeq: 1,
       dismissCount: 0,
+      nearFinish: false,
+      wordsRemaining: 0,
     });
   });
 
@@ -94,6 +96,8 @@ describe("useStuckHintPrompt", () => {
       delayMs: 5000,
       promptSeq: 1,
       dismissCount: 0,
+      nearFinish: false,
+      wordsRemaining: 0,
     });
   });
 
@@ -146,6 +150,8 @@ describe("useStuckHintPrompt", () => {
       delayMs: 8000,
       promptSeq: 1,
       dismissCount: 0,
+      nearFinish: false,
+      wordsRemaining: 0,
     });
   });
 
@@ -230,6 +236,8 @@ describe("useStuckHintPrompt", () => {
       delayMs: 20000,
       promptSeq: 1,
       dismissCount: 0,
+      nearFinish: false,
+      wordsRemaining: 0,
     });
   });
 
@@ -487,5 +495,149 @@ describe("useStuckHintPrompt", () => {
     expect(result.current.isVisible).toBe(true);
     expect(onShow).toHaveBeenCalledTimes(2);
     expect(onShow.mock.calls[1][0]).toMatchObject({ promptSeq: 1 });
+  });
+
+  // #280: 완료 직전 마무리 넛지 판별. 상한·백오프 카운터는 공유하고, 발화 시점의
+  // 진행률·잔여 단어로 near-finish 여부·wordsRemaining을 정한다.
+  const nudgeProps = (
+    overrides: Partial<Parameters<typeof useStuckHintPrompt>[0]> = {},
+  ) => ({
+    active: true,
+    resetKeys: ["k"] as readonly unknown[],
+    wrongCellCount: 0,
+    wrongCellThreshold: 2,
+    idleMs: 20000,
+    wrongIdleMs: 5000,
+    finishNudgeProgressThreshold: 90,
+    finishNudgeWordsRemaining: 2,
+    onShow: vi.fn(),
+    ...overrides,
+  });
+
+  it("잔여 단어가 임계 이하면 near-finish 모드로 발화한다(#280)", () => {
+    const onShow = vi.fn();
+    const { result } = renderHook(() =>
+      useStuckHintPrompt(
+        nudgeProps({ progressPercent: 80, wordsRemaining: 2, onShow }),
+      ),
+    );
+
+    act(() => vi.advanceTimersByTime(20000));
+    expect(result.current.isVisible).toBe(true);
+    expect(result.current.nearFinish).toBe(true);
+    expect(result.current.wordsRemaining).toBe(2);
+    expect(onShow.mock.calls[0][0]).toMatchObject({
+      nearFinish: true,
+      wordsRemaining: 2,
+    });
+  });
+
+  it("진행률이 임계 이상이면 잔여 단어가 많아도 near-finish 모드로 발화한다(#280)", () => {
+    const onShow = vi.fn();
+    const { result } = renderHook(() =>
+      useStuckHintPrompt(
+        nudgeProps({ progressPercent: 95, wordsRemaining: 4, onShow }),
+      ),
+    );
+
+    act(() => vi.advanceTimersByTime(20000));
+    expect(result.current.nearFinish).toBe(true);
+    expect(onShow.mock.calls[0][0]).toMatchObject({
+      nearFinish: true,
+      wordsRemaining: 4,
+    });
+  });
+
+  it("진행률·잔여 단어가 임계 밖이면 near-finish가 아니다(#280)", () => {
+    const onShow = vi.fn();
+    const { result } = renderHook(() =>
+      useStuckHintPrompt(
+        nudgeProps({ progressPercent: 50, wordsRemaining: 6, onShow }),
+      ),
+    );
+
+    act(() => vi.advanceTimersByTime(20000));
+    expect(result.current.isVisible).toBe(true);
+    expect(result.current.nearFinish).toBe(false);
+    expect(onShow.mock.calls[0][0]).toMatchObject({
+      nearFinish: false,
+      wordsRemaining: 6,
+    });
+  });
+
+  it("useStuckHintPrompt가 진행률·잔여 단어로 near-finish 모드를 판별한다(#280 · AC-1)", () => {
+    // 진행률이 임계(90)와 정확히 같으면 near-finish(잔여 단어가 임계 초과여도).
+    const onShowA = vi.fn();
+    const a = renderHook(() =>
+      useStuckHintPrompt(
+        nudgeProps({ progressPercent: 90, wordsRemaining: 9, onShow: onShowA }),
+      ),
+    );
+    act(() => vi.advanceTimersByTime(20000));
+    expect(a.result.current.nearFinish).toBe(true);
+
+    // 잔여 단어가 임계(2)와 정확히 같으면 near-finish(진행률이 임계 미만이어도).
+    const onShowB = vi.fn();
+    const b = renderHook(() =>
+      useStuckHintPrompt(
+        nudgeProps({ progressPercent: 10, wordsRemaining: 2, onShow: onShowB }),
+      ),
+    );
+    act(() => vi.advanceTimersByTime(20000));
+    expect(b.result.current.nearFinish).toBe(true);
+
+    // 진행률·잔여 단어 모두 임계 밖이면 near-finish 아님.
+    const onShowC = vi.fn();
+    const c = renderHook(() =>
+      useStuckHintPrompt(
+        nudgeProps({ progressPercent: 89, wordsRemaining: 3, onShow: onShowC }),
+      ),
+    );
+    act(() => vi.advanceTimersByTime(20000));
+    expect(c.result.current.nearFinish).toBe(false);
+  });
+
+  it("stuck_hint_prompt 발화 파라미터에 near_finish·words_remaining가 포함된다(#280 · AC-4)", () => {
+    // onShow 페이로드(호출부가 near_finish/words_remaining 이벤트 키로 emit)를 고정한다.
+    const onShow = vi.fn();
+    renderHook(() =>
+      useStuckHintPrompt(
+        nudgeProps({ progressPercent: 95, wordsRemaining: 1, onShow }),
+      ),
+    );
+    act(() => vi.advanceTimersByTime(20000));
+    expect(onShow).toHaveBeenCalledTimes(1);
+    const payload = onShow.mock.calls[0][0];
+    expect(payload).toHaveProperty("nearFinish", true);
+    expect(payload).toHaveProperty("wordsRemaining", 1);
+  });
+
+  it("near-finish 모드여도 기존 노출 상한을 그대로 공유해 총량이 늘지 않는다(#280)", () => {
+    // near-finish 발화가 별도 카운터를 신설하지 않고 maxPromptsPerAttempt 상한을
+    // 공유함을 고정한다(#265 취지 유지, 프롬프트 총량 증가 없음).
+    const onShow = vi.fn();
+    const makeProps = (key: string) =>
+      nudgeProps({
+        progressPercent: 95,
+        wordsRemaining: 1,
+        puzzleKey: "puzzle-1",
+        resetKeys: [key],
+        maxPromptsPerAttempt: 2,
+        onShow,
+      });
+    const { result, rerender } = renderHook((p) => useStuckHintPrompt(p), {
+      initialProps: makeProps("a"),
+    });
+
+    act(() => vi.advanceTimersByTime(20000));
+    expect(result.current.nearFinish).toBe(true); // near-finish로 1회차 발화
+    rerender(makeProps("b"));
+    act(() => vi.advanceTimersByTime(20000));
+    expect(onShow).toHaveBeenCalledTimes(2); // 2회차
+    // 상한(2) 도달 → near-finish여도 추가 노출 없음(총량 증가 없음).
+    rerender(makeProps("c"));
+    act(() => vi.advanceTimersByTime(60000));
+    expect(result.current.isVisible).toBe(false);
+    expect(onShow).toHaveBeenCalledTimes(2);
   });
 });

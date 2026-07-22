@@ -3,6 +3,7 @@ import { strict as assert } from "node:assert";
 
 import {
   buildCellEntries,
+  getFirstIncompleteEntry,
   getNearestUncompletedEntry,
   getNextFocusEntryAfterCompletion,
   getWordCheckResult,
@@ -13,6 +14,28 @@ import type { PuzzleEntry } from "./types.ts";
 function entry(partial: Partial<PuzzleEntry> & Pick<PuzzleEntry, "id" | "answer" | "direction" | "row" | "col">): PuzzleEntry {
   return { clue: "", generatedBy: "placed", ...partial };
 }
+
+describe("getFirstIncompleteEntry (#280)", () => {
+  // a1 "가나다"(가로, (0,0)~(0,2)), d1 "다라"(세로, (0,2)~(1,2)).
+  const a1 = entry({ id: "a1", answer: "가나다", direction: "across", row: 0, col: 0 });
+  const d1 = entry({ id: "d1", answer: "다라", direction: "down", row: 0, col: 2 });
+  const entries = [a1, d1];
+
+  it("모두 비어 있으면 entries 순서상 첫 단서를 돌려준다", () => {
+    assert.equal(getFirstIncompleteEntry(entries, {})?.id, "a1");
+  });
+
+  it("앞 단어가 완성됐으면 다음 미완성 단어를 돌려준다", () => {
+    // a1 완성(가/나/다), d1은 (1,2) 미입력 → d1이 첫 미완성.
+    const values = { "0:0": "가", "0:1": "나", "0:2": "다" };
+    assert.equal(getFirstIncompleteEntry(entries, values)?.id, "d1");
+  });
+
+  it("모두 완성됐으면 undefined다", () => {
+    const values = { "0:0": "가", "0:1": "나", "0:2": "다", "1:2": "라" };
+    assert.equal(getFirstIncompleteEntry(entries, values), undefined);
+  });
+});
 
 describe("pickHintCellIndex", () => {
   // a1 "가나다"(가로, (0,0)~(0,2))와 d1 "다라"(세로, (0,2)~(1,2))가 (0,2)에서 교차.

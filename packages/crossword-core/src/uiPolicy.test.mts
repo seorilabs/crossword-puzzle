@@ -27,10 +27,13 @@ import {
   getStuckHintDelayMs,
   getStuckHintBackoffDelayMs,
   shouldScheduleStuckHintPrompt,
+  isNearFinishNudge,
+  getStuckHintPromptText,
   resolveVerticalArrowAction,
   shouldOfferStuckWordReveal,
   shouldCelebrateOnboardingWordCompletion,
 } from "./uiPolicy.ts";
+import { getFirstIncompleteEntry } from "./puzzle.ts";
 import type { Puzzle, PuzzleEntry, PuzzleManifestItem } from "./types.ts";
 
 function createSummary(
@@ -275,6 +278,139 @@ describe("shouldScheduleStuckHintPrompt (#254)", () => {
       }),
       true,
     );
+  });
+});
+
+describe("isNearFinishNudge (#280)", () => {
+  const thresholds = { progressThreshold: 90, wordsRemainingThreshold: 2 };
+
+  it("잔여 단어가 임계 이하면 near-finish다(진행률 낮아도)", () => {
+    assert.equal(
+      isNearFinishNudge({
+        progressPercent: 40,
+        wordsRemaining: 2,
+        ...thresholds,
+      }),
+      true,
+    );
+    assert.equal(
+      isNearFinishNudge({
+        progressPercent: 40,
+        wordsRemaining: 1,
+        ...thresholds,
+      }),
+      true,
+    );
+  });
+
+  it("진행률이 임계 이상이면 near-finish다(잔여 단어 많아도)", () => {
+    assert.equal(
+      isNearFinishNudge({
+        progressPercent: 90,
+        wordsRemaining: 5,
+        ...thresholds,
+      }),
+      true,
+    );
+  });
+
+  it("두 임계 모두 밖이면 near-finish가 아니다", () => {
+    assert.equal(
+      isNearFinishNudge({
+        progressPercent: 89,
+        wordsRemaining: 3,
+        ...thresholds,
+      }),
+      false,
+    );
+  });
+
+  it("잔여 단어가 0(완료)이면 임계와 무관하게 near-finish가 아니다", () => {
+    assert.equal(
+      isNearFinishNudge({
+        progressPercent: 100,
+        wordsRemaining: 0,
+        ...thresholds,
+      }),
+      false,
+    );
+  });
+});
+
+describe("getStuckHintPromptText (#280)", () => {
+  it("near-finish면 잔여 단어 수를 포함한 마무리 문구를 돌려준다", () => {
+    assert.equal(
+      getStuckHintPromptText({
+        nearFinish: true,
+        wordsRemaining: 2,
+        hasHintCredits: true,
+      }),
+      "거의 다 왔어요! 남은 단어 2개 ✨",
+    );
+    // near-finish 문구는 힌트 보유 여부와 무관하다.
+    assert.equal(
+      getStuckHintPromptText({
+        nearFinish: true,
+        wordsRemaining: 1,
+        hasHintCredits: false,
+      }),
+      "거의 다 왔어요! 남은 단어 1개 ✨",
+    );
+  });
+
+  it("near-finish가 아니면 힌트 보유 여부에 따른 기존 막힘 문구를 돌려준다", () => {
+    assert.equal(
+      getStuckHintPromptText({
+        nearFinish: false,
+        wordsRemaining: 5,
+        hasHintCredits: true,
+      }),
+      "막혔나요? 지금 힌트는 무료예요 💡",
+    );
+    assert.equal(
+      getStuckHintPromptText({
+        nearFinish: false,
+        wordsRemaining: 5,
+        hasHintCredits: false,
+      }),
+      "막혔나요? 광고를 보면 힌트를 받을 수 있어요",
+    );
+  });
+
+  it("near-finish 문구가 잔여 단어 수를 포함하고 수락 CTA가 첫 미완성 단어로 이동한다(#280 · AC-3)", () => {
+    // 문구: 잔여 단어 수를 포함한 마무리 문구. (App이 이 함수를 stuckHintPromptText에 사용.)
+    const a1 = {
+      id: "a1",
+      answer: "가나다",
+      direction: "across" as const,
+      row: 0,
+      col: 0,
+      clue: "",
+      generatedBy: "placed" as const,
+    };
+    const d1 = {
+      id: "d1",
+      answer: "다라",
+      direction: "down" as const,
+      row: 0,
+      col: 2,
+      clue: "",
+      generatedBy: "placed" as const,
+    };
+    const cellValues = { "0:0": "가", "0:1": "나", "0:2": "다" }; // a1 완성, d1 미완성
+    const wordsRemaining = [a1, d1].filter(
+      (entry) => getFirstIncompleteEntry([entry], cellValues) != null,
+    ).length;
+    assert.equal(
+      getStuckHintPromptText({
+        nearFinish: true,
+        wordsRemaining,
+        hasHintCredits: true,
+      }),
+      `거의 다 왔어요! 남은 단어 ${wordsRemaining}개 ✨`,
+    );
+    // 수락 CTA 이동 대상: 남은 미완성 단어 중 첫 단서(App acceptNearFinishNudge → selectEntry).
+    assert.equal(getFirstIncompleteEntry([a1, d1], cellValues)?.id, "d1");
   });
 });
 

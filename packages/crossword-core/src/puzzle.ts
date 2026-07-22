@@ -259,6 +259,17 @@ export function getEntryAnswerValue(
     .join("");
 }
 
+// 남은 미완성 단어 중 entries 순서상 첫 단서를 돌려준다(#280). 완료 직전 마무리
+// 넛지 수락 시 이 단어로 선택·하이라이트를 이동시킨다. 모두 완성됐으면 undefined.
+export function getFirstIncompleteEntry(
+  entries: readonly PuzzleEntry[],
+  cellValues: Record<string, string>,
+): PuzzleEntry | undefined {
+  return entries.find(
+    (entry) => getEntryAnswerValue(entry, cellValues) !== entry.answer,
+  );
+}
+
 export type WordCheckResult = {
   // 단어를 이루는 모든 셀 키(강조 대상)
   cellKeys: string[];
