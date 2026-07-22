@@ -6,9 +6,14 @@ import { strict as assert } from "node:assert";
 import {
   requestReturnReminderAgreement,
   resolveReturnReminderTemplateCode,
+  pickReturnReminderTemplateCode,
   DEFAULT_RETURN_REMINDER_TEMPLATE_CODE,
   RETURN_REMINDER_TEMPLATE_CODE,
 } from "./notificationAgreement.ts";
+import {
+  applyReturnReminderOutcome,
+  buildReturnReminderResultParams,
+} from "../../packages/crossword-core/src/returnReminder.ts";
 
 type AgreementConfig = {
   options: { templateCode: string };
@@ -106,6 +111,46 @@ describe("requestReturnReminderAgreement (#253)", () => {
       RETURN_REMINDER_TEMPLATE_CODE,
       DEFAULT_RETURN_REMINDER_TEMPLATE_CODE,
     );
+  });
+
+  it("환경변수가 설정되면 그 값을 트림해 템플릿 코드로 쓴다 (#288)", () => {
+    // 환경변수 주입 분기: 주입된 코드가 그대로(트림 후) 쓰인다.
+    assert.equal(
+      pickReturnReminderTemplateCode("crossword-daily-v2"),
+      "crossword-daily-v2",
+    );
+    assert.equal(
+      pickReturnReminderTemplateCode("  padded-code  "),
+      "padded-code",
+    );
+  });
+
+  it("환경변수가 없거나 빈 값이면 현행 기본값으로 폴백한다 (#288)", () => {
+    // 미설정/빈 문자열/공백 분기: 모두 현행 기본값으로 폴백한다.
+    for (const value of [undefined, "", "   "]) {
+      assert.equal(
+        pickReturnReminderTemplateCode(value),
+        DEFAULT_RETURN_REMINDER_TEMPLATE_CODE,
+      );
+    }
+  });
+
+  it("onError 코드/메시지가 return_reminder_result 파라미터(error_reason+error_code)까지 전달된다 (#288)", async () => {
+    // AC-2 전체 경로: 어댑터 onError → 결과 → 상태 반영 → 이벤트 파라미터.
+    const { fake } = makeFake((config) =>
+      config.onError({ code: "E_REJECTED", message: "잘못된 요청입니다." }),
+    );
+    const result = await requestReturnReminderAgreement(fake);
+    const state = applyReturnReminderOutcome(
+      { promptCount: 1 },
+      result.outcome,
+      result.errorReason,
+      result.errorCode,
+    );
+    const params = buildReturnReminderResultParams(state);
+    assert.equal(params.outcome, "error");
+    assert.equal(params.error_reason, "E_REJECTED: 잘못된 요청입니다.");
+    assert.equal(params.error_code, "E_REJECTED");
   });
 
   it("해석된 템플릿 코드를 SDK 동의 요청 options에 넘긴다 (#288)", async () => {

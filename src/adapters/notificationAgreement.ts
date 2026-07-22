@@ -23,14 +23,21 @@ export type ReturnReminderAgreementResult = {
 // VITE_RETURN_REMINDER_TEMPLATE_CODE로 실제 발급 코드를 주입해 덮어쓴다. 절차는 README 참고.
 export const DEFAULT_RETURN_REMINDER_TEMPLATE_CODE = "crossword-daily-reminder";
 
+// 주입된 코드 문자열을 정규화해 실제 사용할 템플릿 코드를 고른다. 트림 후 비어있으면
+// 기본값으로 폴백한다. 환경변수 주입/미주입 두 분기를 모두 헤드리스로 검증할 수 있도록
+// import.meta.env 접근과 분리한 순수 함수다(#288).
+export function pickReturnReminderTemplateCode(configured?: string): string {
+  const trimmed = configured?.trim();
+  return trimmed != null && trimmed !== ""
+    ? trimmed
+    : DEFAULT_RETURN_REMINDER_TEMPLATE_CODE;
+}
+
 // 빌드타임 환경변수 우선, 미설정 시 기본값. node 테스트 등 import.meta.env 부재 환경
 // 에서도 안전하게 기본값으로 폴백한다(옵셔널 체이닝).
 export function resolveReturnReminderTemplateCode(): string {
   const env = import.meta.env as ImportMetaEnv | undefined;
-  const configured = env?.VITE_RETURN_REMINDER_TEMPLATE_CODE?.trim();
-  return configured != null && configured !== ""
-    ? configured
-    : DEFAULT_RETURN_REMINDER_TEMPLATE_CODE;
+  return pickReturnReminderTemplateCode(env?.VITE_RETURN_REMINDER_TEMPLATE_CODE);
 }
 
 // 현재 빌드에 적용된 템플릿 코드(환경변수 또는 기본값).
