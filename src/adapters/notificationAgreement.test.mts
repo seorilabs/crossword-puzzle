@@ -108,6 +108,19 @@ describe("requestReturnReminderAgreement (#253)", () => {
     );
   });
 
+  it("해석된 템플릿 코드를 SDK 동의 요청 options에 넘긴다 (#288)", async () => {
+    // 환경변수 → resolveReturnReminderTemplateCode → SDK 요청까지의 배선을
+    // 고정한다. node 환경이라 값은 기본값이며, 환경변수 주입 시 이 경로로 전달된다.
+    let sentTemplateCode: string | undefined;
+    const { fake } = makeFake((config) => {
+      sentTemplateCode = config.options.templateCode;
+      config.onEvent({ type: "newAgreement" });
+    });
+    await requestReturnReminderAgreement(fake);
+    assert.equal(sentTemplateCode, RETURN_REMINDER_TEMPLATE_CODE);
+    assert.equal(sentTemplateCode, DEFAULT_RETURN_REMINDER_TEMPLATE_CODE);
+  });
+
   it("먼저 확정된 결과만 반영하고 이후 콜백은 무시한다(중복 resolve 방지)", async () => {
     let capturedOnError: ((error: unknown) => void) | undefined;
     const { fake } = makeFake((config) => {
