@@ -157,6 +157,8 @@ describe("온보딩 중간 난이도 프로파일 수락 조건 (#291)", () => {
     assert.equal(medium.boardSize, normal.boardSize);
     // 고급(hard) 어휘 배제로 어휘 편향도 완화.
     assert.deepEqual([...medium.wordDifficulties], ["easy", "normal"]);
+    // 최소 글자 수는 normal 과 동일하게 유지(정책 일관성).
+    assert.equal(medium.minWordLength, normal.minWordLength);
   });
 
   it("AC-4: 중간 프로파일 신규 케이스로 난이도 프로파일 테스트를 보강한다", () => {

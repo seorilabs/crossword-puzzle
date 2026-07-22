@@ -572,6 +572,11 @@ describe("온보딩 난이도 램프 Remote Config 플래그 수락 조건 (#291
       normalizeLaunchConfig({}).onboardingDifficultyRampEnabled,
       false,
     );
+    // Remote Config 기본값 맵에 키가 실제로 존재한다(원격 노출 보장).
+    assert.ok(
+      launchConfigKeys.onboardingDifficultyRampEnabled in
+        getLaunchConfigDefaultsForRemoteConfig(),
+    );
   });
 
   it("AC-4: 플래그 기본값·정규화 신규 케이스로 launchConfig 테스트를 보강한다", () => {

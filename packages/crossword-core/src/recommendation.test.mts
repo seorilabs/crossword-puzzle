@@ -136,13 +136,15 @@ describe("온보딩 난이도 램프 배정 수락 조건 (#291)", () => {
   ];
 
   it("AC-2: 램프 on + 신규(첫 완료)면 easy 완료 직후 normal 대신 완화(남은 easy)를 배정한다", () => {
-    const next = getNextRecommendedPuzzleSummary(
-      summaries,
-      SET("onboarding"),
-      { puzzleId: "onboarding", difficulty: "easy" },
-      { onboardingRampEnabled: true },
-    );
+    const current = { puzzleId: "onboarding", difficulty: "easy" as const };
+    // 같은 입력에서 램프 off는 normal(급점프), 램프 on은 easy(완화)로 갈린다.
+    const off = getNextRecommendedPuzzleSummary(summaries, SET("onboarding"), current);
+    const next = getNextRecommendedPuzzleSummary(summaries, SET("onboarding"), current, {
+      onboardingRampEnabled: true,
+    });
+    assert.equal(off?.difficulty, "normal", "램프 off: 기존 normal 급점프");
     assert.equal(next?.puzzleId, "easy2", "easy→easy로 절벽 완화");
+    assert.equal(next?.difficulty, "easy", "램프 on: 더 낮은 난이도로 배정");
   });
 
   it("AC-3: 램프 off(옵션 미전달)면 easy 완료 → normal 급점프로 기존 동작을 유지한다", () => {
