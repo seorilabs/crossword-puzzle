@@ -1581,8 +1581,13 @@ function App() {
   // 탐색만 하는 사용자에게는 CTA가 끝내 뜨지 않았다(#184: stuck_hint_prompt 미발화 완화).
   // 타이머·재스케줄·발화 페이로드 최신화는 useStuckHintPrompt 훅에 캡슐화해 회귀
   // 테스트로 고정한다(임계·지연은 launchConfig 원격 조정, idle_seconds는 실제 지연).
+  // 완료 직전 마무리 넛지(#280)에 쓸 잔여 미완성 단어 수.
+  const stuckHintWordsRemaining =
+    puzzle.entries.length - viewModel.completedEntries.length;
   const {
     isVisible: isStuckHintPromptVisible,
+    nearFinish: isStuckHintNearFinish,
+    wordsRemaining: stuckHintShownWordsRemaining,
     hide: hideStuckHintPrompt,
     dismiss: dismissStuckHintPromptCta,
   } = useStuckHintPrompt({
@@ -1599,7 +1604,20 @@ function App() {
     maxDismissals: launchConfig.stuckHintMaxDismissals,
     dismissBackoffFactor: launchConfig.stuckHintDismissBackoffFactor,
     minCooldownMs: launchConfig.stuckHintMinCooldownMs,
-    onShow: ({ trigger, delayMs, promptSeq, dismissCount }) => {
+    // 완료 직전 마무리 넛지 판별 입력(#280). 상한·백오프 카운터는 공유하고 문구·CTA만
+    // 마무리형으로 바꾼다(별도 카운터 신설 없음 → #265 취지 유지).
+    progressPercent,
+    wordsRemaining: stuckHintWordsRemaining,
+    finishNudgeProgressThreshold: launchConfig.finishNudgeProgressThreshold,
+    finishNudgeWordsRemaining: launchConfig.finishNudgeWordsRemaining,
+    onShow: ({
+      trigger,
+      delayMs,
+      promptSeq,
+      dismissCount,
+      nearFinish,
+      wordsRemaining,
+    }) => {
       telemetry.impression(STUCK_HINT_PROMPT_EVENT, {
         ...puzzleTelemetryParams,
         attempt_number: mission.attemptsUsed,
@@ -1613,6 +1631,8 @@ function App() {
         dismiss_count: dismissCount,
         words_filled: viewModel.completedEntries.length,
         wrong_cell_count: wrongCellCount,
+        near_finish: nearFinish,
+        words_remaining: wordsRemaining,
       });
     },
   });
@@ -2423,12 +2443,35 @@ function App() {
       attempt_number: mission.attemptsUsed,
       progress_percent: progressPercent,
       remaining_hint_credits: remainingHintCredits,
+      near_finish: isStuckHintNearFinish,
+      words_remaining: stuckHintShownWordsRemaining,
     });
     // useHintOrRequestReward와 동일 동작(이름의 use 접두사로 인한 hook 오탐 회피).
     if (remainingHintCredits > 0) {
       revealLetter();
     } else {
       setIsRewardedHintPromptOpen(true);
+    }
+  }
+
+  // 완료 직전 마무리 넛지 수락(#280): 남은 미완성 단어 중 첫 단서를 선택·하이라이트로
+  // 이동시켜, 완료 직전에 막힌 사용자가 바로 남은 단어에 손대게 한다. 힌트를 소모하지
+  // 않는 안내형 CTA다(기존 한 글자 힌트/단어 공개 CTA는 그대로 유지).
+  function acceptNearFinishNudge() {
+    hideStuckHintPrompt();
+    telemetry.click(STUCK_HINT_PROMPT_ACCEPT_EVENT, {
+      ...puzzleTelemetryParams,
+      attempt_number: mission.attemptsUsed,
+      progress_percent: progressPercent,
+      remaining_hint_credits: remainingHintCredits,
+      near_finish: true,
+      words_remaining: stuckHintShownWordsRemaining,
+    });
+    const firstIncomplete = puzzle.entries.find(
+      (entry) => getEntryAnswerValue(entry, cellValues) !== entry.answer,
+    );
+    if (firstIncomplete != null) {
+      selectEntry(firstIncomplete);
     }
   }
 
@@ -2440,6 +2483,8 @@ function App() {
       ...puzzleTelemetryParams,
       attempt_number: mission.attemptsUsed,
       progress_percent: progressPercent,
+      near_finish: isStuckHintNearFinish,
+      words_remaining: stuckHintShownWordsRemaining,
     });
     revealSelectedWord();
   }
@@ -2451,6 +2496,8 @@ function App() {
       ...puzzleTelemetryParams,
       attempt_number: mission.attemptsUsed,
       progress_percent: progressPercent,
+      near_finish: isStuckHintNearFinish,
+      words_remaining: stuckHintShownWordsRemaining,
     });
   }
 
@@ -3259,11 +3306,24 @@ function App() {
       {route === "today" && isStuckHintPromptVisible ? (
         <div className="stuckHintPrompt" role="status">
           <span className="stuckHintPromptText">
-            {remainingHintCredits > 0
-              ? "막혔나요? 지금 힌트는 무료예요 💡"
-              : "막혔나요? 광고를 보면 힌트를 받을 수 있어요"}
+            {isStuckHintNearFinish
+              ? `거의 다 왔어요! 남은 단어 ${stuckHintShownWordsRemaining}개 ✨`
+              : remainingHintCredits > 0
+                ? "막혔나요? 지금 힌트는 무료예요 💡"
+                : "막혔나요? 광고를 보면 힌트를 받을 수 있어요"}
           </span>
           <div className="stuckHintPromptActions">
+            {isStuckHintNearFinish ? (
+              // near-finish 발화: 남은 미완성 단어 중 첫 단서로 이동시키는 마무리 CTA(#280).
+              // 기존 한 글자 힌트/단어 공개 CTA는 아래에 그대로 유지한다.
+              <button
+                type="button"
+                className="stuckHintPromptCta"
+                onClick={acceptNearFinishNudge}
+              >
+                남은 단어 마저 풀기
+              </button>
+            ) : null}
             <button
               type="button"
               className="stuckHintPromptCta"

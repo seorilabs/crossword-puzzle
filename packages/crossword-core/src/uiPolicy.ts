@@ -776,6 +776,25 @@ export function shouldScheduleStuckHintPrompt(input: {
   return true;
 }
 
+// 완료 직전(near-finish) 마무리 넛지 판별(#280). 진행 중 상태에서 잔여 미완성 단어가
+// 임계 이하이거나 진행률이 임계 이상이면 마무리 넛지 모드로 본다. 잔여 단어가 없으면
+// (=완료) 넛지하지 않는다. 이 판별은 기존 stall 발화 조건을 대체하지 않고, stall 발화가
+// 결정된 뒤 프롬프트 문구·CTA를 마무리형으로 바꾸는 데만 쓴다.
+export function isNearFinishNudge(input: {
+  progressPercent: number;
+  wordsRemaining: number;
+  progressThreshold: number;
+  wordsRemainingThreshold: number;
+}): boolean {
+  if (input.wordsRemaining <= 0) {
+    return false;
+  }
+  return (
+    input.wordsRemaining <= input.wordsRemainingThreshold ||
+    input.progressPercent >= input.progressThreshold
+  );
+}
+
 // 닫기 횟수에 따라 다음 노출 지연을 지수 백오프로 늘린다(#254).
 // delay = baseDelayMs * backoffFactor^dismissCount. backoffFactor 1 이하나
 // dismissCount 0 이면 baseDelayMs 그대로다.

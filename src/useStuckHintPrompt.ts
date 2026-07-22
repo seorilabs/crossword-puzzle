@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   getStuckHintBackoffDelayMs,
   getStuckHintDelayMs,
+  isNearFinishNudge,
   shouldScheduleStuckHintPrompt,
 } from "../packages/crossword-core/src";
 
@@ -38,19 +39,34 @@ export interface UseStuckHintPromptInput {
   dismissBackoffFactor?: number;
   // 직전 노출 후 다음 노출까지 보장할 최소 간격(ms, #265).
   minCooldownMs?: number;
+  // 완료 직전(near-finish) 마무리 넛지 판별 입력(#280). 진행률·잔여 미완성 단어 수와
+  // launchConfig 임계값을 받아, 발화 시점에 마무리 모드 여부를 정한다. 값은 매 커밋
+  // latestRef로 최신화하므로 진행 변화가 idle 타이머를 재스케줄하지 않는다.
+  progressPercent?: number;
+  wordsRemaining?: number;
+  finishNudgeProgressThreshold?: number;
+  finishNudgeWordsRemaining?: number;
   // CTA가 실제로 노출되는 순간 1회 호출(호출부에서 텔레메트리 emit). 발화 시점의
   // 최신 클로저가 호출되도록 latestRef로 보관한다. promptSeq(이번 퍼즐 N번째
-  // 노출)·dismissCount(그 전까지 닫은 횟수)를 함께 전달한다(#254).
+  // 노출)·dismissCount(그 전까지 닫은 횟수)를 함께 전달한다(#254). near-finish 발화면
+  // nearFinish=true와 발화 시점 잔여 단어 수(wordsRemaining)를 함께 준다(#280).
   onShow: (info: {
     trigger: "idle" | "wrong_answer";
     delayMs: number;
     promptSeq: number;
     dismissCount: number;
+    nearFinish: boolean;
+    wordsRemaining: number;
   }) => void;
 }
 
 export interface UseStuckHintPromptResult {
   isVisible: boolean;
+  // 현재 노출 중인 프롬프트가 완료 직전 마무리 넛지 모드인지(#280). 호출부가 문구·CTA·
+  // 텔레메트리 분기를 이 값으로 결정한다.
+  nearFinish: boolean;
+  // 발화 시점에 고정된 잔여 미완성 단어 수(#280).
+  wordsRemaining: number;
   // 수락/공개 등 닫기가 아닌 동작으로 CTA를 즉시 숨긴다(닫기 카운터 미증가).
   hide: () => void;
   // 사용자가 CTA를 닫는다(#254). 숨기고 닫기 카운터를 올려 백오프·상한을 재평가한다.
@@ -72,10 +88,19 @@ export function useStuckHintPrompt(
     maxDismissals = 0,
     dismissBackoffFactor = 1,
     minCooldownMs = 0,
+    progressPercent = 0,
+    wordsRemaining = 0,
+    finishNudgeProgressThreshold = 100,
+    finishNudgeWordsRemaining = 0,
     onShow,
   } = input;
 
   const [isVisible, setIsVisible] = useState(false);
+  // 현재(발화 시점에 고정된) near-finish 모드·잔여 단어 수(#280). 렌더·텔레메트리 분기용.
+  const [nearFinishInfo, setNearFinishInfo] = useState<{
+    nearFinish: boolean;
+    wordsRemaining: number;
+  }>({ nearFinish: false, wordsRemaining: 0 });
 
   // 이번 퍼즐의 노출/닫기/직전 노출 시각(#254, #265). 렌더를 유발하지 않도록 ref로 둔다.
   const promptSeqRef = useRef(0);
@@ -89,6 +114,24 @@ export function useStuckHintPrompt(
   const onShowRef = useRef(onShow);
   useEffect(() => {
     onShowRef.current = onShow;
+  });
+
+  // near-finish 판별 입력도 latestRef로 최신화한다(#280). 진행률·잔여 단어는 발화 시점
+  // 값으로 읽어야 정확하고, 이 값 변화가 idle 타이머를 재스케줄하지 않도록 effect 의존성
+  // 에서 제외한다(입력 활동은 resetKeys가 이미 재스케줄한다).
+  const nudgeInputsRef = useRef({
+    progressPercent,
+    wordsRemaining,
+    finishNudgeProgressThreshold,
+    finishNudgeWordsRemaining,
+  });
+  useEffect(() => {
+    nudgeInputsRef.current = {
+      progressPercent,
+      wordsRemaining,
+      finishNudgeProgressThreshold,
+      finishNudgeWordsRemaining,
+    };
   });
 
   useEffect(() => {
@@ -146,12 +189,23 @@ export function useStuckHintPrompt(
     const timerId = window.setTimeout(() => {
       lastShownAtRef.current = Date.now();
       promptSeqRef.current += 1;
+      // 발화 시점의 최신 진행 상태로 near-finish 모드를 판별한다(#280).
+      const nudge = nudgeInputsRef.current;
+      const nearFinish = isNearFinishNudge({
+        progressPercent: nudge.progressPercent,
+        wordsRemaining: nudge.wordsRemaining,
+        progressThreshold: nudge.finishNudgeProgressThreshold,
+        wordsRemainingThreshold: nudge.finishNudgeWordsRemaining,
+      });
+      setNearFinishInfo({ nearFinish, wordsRemaining: nudge.wordsRemaining });
       setIsVisible(true);
       onShowRef.current({
         trigger,
         delayMs,
         promptSeq: promptSeqRef.current,
         dismissCount: dismissCountRef.current,
+        nearFinish,
+        wordsRemaining: nudge.wordsRemaining,
       });
     }, delayMs);
 
@@ -183,5 +237,11 @@ export function useStuckHintPrompt(
     setDismissTick((tick) => tick + 1);
   }, []);
 
-  return { isVisible, hide, dismiss };
+  return {
+    isVisible,
+    nearFinish: nearFinishInfo.nearFinish,
+    wordsRemaining: nearFinishInfo.wordsRemaining,
+    hide,
+    dismiss,
+  };
 }

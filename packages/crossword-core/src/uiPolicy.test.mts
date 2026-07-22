@@ -27,6 +27,7 @@ import {
   getStuckHintDelayMs,
   getStuckHintBackoffDelayMs,
   shouldScheduleStuckHintPrompt,
+  isNearFinishNudge,
   resolveVerticalArrowAction,
   shouldOfferStuckWordReveal,
   shouldCelebrateOnboardingWordCompletion,
@@ -274,6 +275,62 @@ describe("shouldScheduleStuckHintPrompt (#254)", () => {
         maxDismissals: 0,
       }),
       true,
+    );
+  });
+});
+
+describe("isNearFinishNudge (#280)", () => {
+  const thresholds = { progressThreshold: 90, wordsRemainingThreshold: 2 };
+
+  it("잔여 단어가 임계 이하면 near-finish다(진행률 낮아도)", () => {
+    assert.equal(
+      isNearFinishNudge({
+        progressPercent: 40,
+        wordsRemaining: 2,
+        ...thresholds,
+      }),
+      true,
+    );
+    assert.equal(
+      isNearFinishNudge({
+        progressPercent: 40,
+        wordsRemaining: 1,
+        ...thresholds,
+      }),
+      true,
+    );
+  });
+
+  it("진행률이 임계 이상이면 near-finish다(잔여 단어 많아도)", () => {
+    assert.equal(
+      isNearFinishNudge({
+        progressPercent: 90,
+        wordsRemaining: 5,
+        ...thresholds,
+      }),
+      true,
+    );
+  });
+
+  it("두 임계 모두 밖이면 near-finish가 아니다", () => {
+    assert.equal(
+      isNearFinishNudge({
+        progressPercent: 89,
+        wordsRemaining: 3,
+        ...thresholds,
+      }),
+      false,
+    );
+  });
+
+  it("잔여 단어가 0(완료)이면 임계와 무관하게 near-finish가 아니다", () => {
+    assert.equal(
+      isNearFinishNudge({
+        progressPercent: 100,
+        wordsRemaining: 0,
+        ...thresholds,
+      }),
+      false,
     );
   });
 });
