@@ -1,0 +1,104 @@
+// 온보딩 난이도 램프(#291) 수락 조건 통합 검증.
+// issue #278(bonusPuzzlePanelImpression.test.ts) 관례를 따라 인수조건별로 it("AC-N: …")
+// 를 한 파일에 모아, 인수조건↔테스트 대응을 명확히 한다.
+import { describe, it } from "node:test";
+import { strict as assert } from "node:assert";
+
+import {
+  DIFFICULTY_PROFILES,
+  ONBOARDING_MEDIUM_PROFILE,
+  isDifficulty,
+} from "./difficultyProfiles.ts";
+import {
+  ONBOARDING_RAMP_MAX_COMPLETIONS,
+  getNextRecommendedPuzzleSummary,
+} from "./recommendation.ts";
+import {
+  defaultLaunchConfig,
+  getLaunchConfigDefaultsForRemoteConfig,
+  launchConfigKeys,
+  normalizeLaunchConfig,
+} from "./launchConfig.ts";
+import type { PuzzleManifestItem } from "./types.ts";
+
+function summary(
+  puzzleId: string,
+  difficulty: PuzzleManifestItem["difficulty"],
+): PuzzleManifestItem {
+  return { puzzleId, date: "2026-06-29", path: `/${puzzleId}.json`, difficulty };
+}
+
+describe("온보딩 난이도 램프 수락 조건 (#291)", () => {
+  it("AC-1: difficultyProfiles에 easy와 normal 사이의 완화 normal 파라미터 세트를 추가한다", () => {
+    const { easy, normal } = DIFFICULTY_PROFILES;
+    const medium = ONBOARDING_MEDIUM_PROFILE;
+    // 새 티어(enum)를 만들지 않으려고 difficulty는 normal 유지(파급 0).
+    assert.equal(medium.difficulty, "normal");
+    assert.equal(isDifficulty("medium"), false);
+    // 단어 수는 easy와 normal 사이(완료 부담↓), 교차율은 easy 수준(단서 연결 쉬움).
+    assert.ok(
+      easy.minWordCount < medium.minWordCount &&
+        medium.minWordCount < normal.minWordCount,
+    );
+    assert.ok(medium.maxWords < normal.maxWords);
+    assert.ok(medium.minCrossRatio >= normal.minCrossRatio);
+    assert.deepEqual([...medium.wordDifficulties], ["easy", "normal"]);
+  });
+
+  it("AC-2: 배정 로직이 신규 사용자의 easy 완료 직후 완화(중간) 난이도를 제공한다", () => {
+    const summaries = [
+      summary("onboarding", "easy"),
+      summary("easy2", "easy"),
+      summary("normal1", "normal"),
+    ];
+    const current = { puzzleId: "onboarding", difficulty: "easy" as const };
+    // 같은 입력에서 램프 off는 normal 급점프, 램프 on은 완화된 easy로 갈린다.
+    const off = getNextRecommendedPuzzleSummary(
+      summaries,
+      new Set(["onboarding"]),
+      current,
+    );
+    const on = getNextRecommendedPuzzleSummary(
+      summaries,
+      new Set(["onboarding"]),
+      current,
+      { onboardingRampEnabled: true },
+    );
+    assert.equal(off?.difficulty, "normal", "램프 off: 기존 동작(normal 상승)");
+    assert.equal(on?.puzzleId, "easy2");
+    assert.equal(on?.difficulty, "easy", "램프 on: 완화된 난이도 배정");
+  });
+
+  it("AC-3: launchConfig 플래그로 on/off 가능하고 기본값은 기존 동작 유지(false)다", () => {
+    assert.equal(defaultLaunchConfig.onboardingDifficultyRampEnabled, false);
+    assert.equal(
+      getLaunchConfigDefaultsForRemoteConfig()[
+        launchConfigKeys.onboardingDifficultyRampEnabled
+      ],
+      false,
+    );
+    assert.equal(
+      launchConfigKeys.onboardingDifficultyRampEnabled,
+      "onboarding_difficulty_ramp_enabled",
+    );
+    assert.equal(
+      normalizeLaunchConfig({ onboardingDifficultyRampEnabled: true })
+        .onboardingDifficultyRampEnabled,
+      true,
+    );
+    assert.equal(
+      normalizeLaunchConfig({}).onboardingDifficultyRampEnabled,
+      false,
+    );
+  });
+
+  it("AC-4: 난이도 테스트를 신규 케이스로 보강한다(램프 상한·중간 프로파일 회귀 가드)", () => {
+    // 램프는 첫 완료(현재 제외 기완료 0)에서만 완화한다.
+    assert.equal(ONBOARDING_RAMP_MAX_COMPLETIONS, 0);
+    // 중간 프로파일의 최소 글자 수는 normal과 동일(정책 일관성).
+    assert.equal(
+      ONBOARDING_MEDIUM_PROFILE.minWordLength,
+      DIFFICULTY_PROFILES.normal.minWordLength,
+    );
+  });
+});
