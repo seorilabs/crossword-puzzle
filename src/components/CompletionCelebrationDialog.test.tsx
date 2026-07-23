@@ -113,7 +113,7 @@ describe("CompletionCelebrationDialog 공유 CTA 계측(#299)", () => {
       puzzle_id: "26060114",
       difficulty: "hard",
     });
-    // 전달 결과도 같은 surface로 이어진다(AC-3).
+    // 전달 결과도 같은 surface로 이어진다.
     expect(impressionMock).toHaveBeenCalledWith("share_result_outcome", {
       surface: "completion_dialog",
       outcome: "shared",
@@ -134,6 +134,62 @@ describe("CompletionCelebrationDialog 공유 CTA 계측(#299)", () => {
       surface: "completion_dialog",
       puzzle_id: "26060114",
       difficulty: "hard",
+    });
+  });
+
+  it("결과 공유하기 버튼 클릭이 outcome 4분기 shared·aborted·copied·failed 각각을 share_result_outcome으로 발화한다(AC-3)", async () => {
+    // AC-3 실행 경로: 실제 버튼 클릭 → useShareResult.share → deliverShareText가
+    // navigator 상태별로 4개 outcome을 반환 → telemetry.impression("share_result_outcome",
+    // { surface, outcome }). 네 분기를 각각 실제 렌더·클릭으로 검증한다.
+    const abort = new Error("cancelled");
+    abort.name = "AbortError";
+
+    // 분기 1/4: navigator.share 성공 → shared.
+    vi.stubGlobal("navigator", { share: vi.fn(() => Promise.resolve()) });
+    renderDialog({ puzzleId: "26060114", difficulty: "easy" });
+    fireEvent.click(screen.getByRole("button", { name: "결과 공유하기" }));
+    await flushShare();
+    expect(impressionMock).toHaveBeenCalledWith("share_result_outcome", {
+      surface: "completion_dialog",
+      outcome: "shared",
+    });
+
+    // 분기 2/4: 공유 시트 닫힘(AbortError) → aborted.
+    cleanup();
+    impressionMock.mockReset();
+    vi.stubGlobal("navigator", { share: vi.fn(() => Promise.reject(abort)) });
+    renderDialog({ puzzleId: "26060114", difficulty: "easy" });
+    fireEvent.click(screen.getByRole("button", { name: "결과 공유하기" }));
+    await flushShare();
+    expect(impressionMock).toHaveBeenCalledWith("share_result_outcome", {
+      surface: "completion_dialog",
+      outcome: "aborted",
+    });
+
+    // 분기 3/4: 공유 시트 미지원 → 클립보드 복사 성공 → copied.
+    cleanup();
+    impressionMock.mockReset();
+    vi.stubGlobal("navigator", {
+      clipboard: { writeText: vi.fn(() => Promise.resolve()) },
+    });
+    renderDialog({ puzzleId: "26060114", difficulty: "easy" });
+    fireEvent.click(screen.getByRole("button", { name: "결과 공유하기" }));
+    await flushShare();
+    expect(impressionMock).toHaveBeenCalledWith("share_result_outcome", {
+      surface: "completion_dialog",
+      outcome: "copied",
+    });
+
+    // 분기 4/4: 공유·클립보드 모두 미지원 → failed.
+    cleanup();
+    impressionMock.mockReset();
+    vi.stubGlobal("navigator", {});
+    renderDialog({ puzzleId: "26060114", difficulty: "easy" });
+    fireEvent.click(screen.getByRole("button", { name: "결과 공유하기" }));
+    await flushShare();
+    expect(impressionMock).toHaveBeenCalledWith("share_result_outcome", {
+      surface: "completion_dialog",
+      outcome: "failed",
     });
   });
 

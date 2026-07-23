@@ -168,7 +168,7 @@ describe("useShareResult 텔레메트리(#299)", () => {
     });
   });
 
-  it("outcome 4분기 shared·aborted·copied·failed 각각을 share_result_outcome으로 발화한다(AC-3)", async () => {
+  it("outcome 4분기 shared·aborted·copied·failed 각각을 share_result_outcome으로 발화한다(훅 단위 계약)", async () => {
     // 분기 1/4: navigator.share 성공 → outcome=shared.
     patchNavigator({ share: vi.fn(() => Promise.resolve()) });
     const shared = renderHook(() => useShareResult("result_screen"));
