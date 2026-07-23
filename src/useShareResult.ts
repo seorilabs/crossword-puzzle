@@ -1,9 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import type { TelemetryParams } from "../packages/crossword-core/src";
+import { telemetry } from "./adapters/telemetry";
+
 // 결과 공유 전달 공통 로직. navigator.share(공유 시트)를 우선 시도하고,
 // 미지원·실패 시 클립보드 복사로 폴백한다. ResultScreen과 완료 축하
 // 다이얼로그가 같은 동작을 공유하도록 화면 밖으로 추출했다(#202).
 export type ShareDeliveryOutcome = "shared" | "aborted" | "copied" | "failed";
+
+// 공유 표면 구분(#299). 결과 화면·완료 축하 다이얼로그에서 각각 발화하는
+// 공유 CTA를 GA4에서 나눠 볼 수 있도록 이벤트 파라미터 surface에 싣는다.
+export type ShareSurface = "result_screen" | "completion_dialog";
 
 export async function deliverShareText(
   text: string,
@@ -38,11 +45,12 @@ export async function deliverShareText(
 
 // 공유 버튼 상태 훅: 복사 성공 토스트(2초 뒤 자동 소멸)와 실패 토스트 상태를
 // 관리한다. 공유 시트로 전달됐거나 사용자가 닫은 경우에는 토스트를 띄우지
-// 않는다(기존 ResultScreen 동작 유지).
-export function useShareResult(): {
+// 않는다(기존 ResultScreen 동작 유지). surface(공유 표면)를 받아 클릭·전달
+// 결과 텔레메트리에 실어 GA4에서 표면별로 사용률·실패율을 분석한다(#299).
+export function useShareResult(surface: ShareSurface): {
   shareCopied: boolean;
   shareFailed: boolean;
-  share: (text: string) => void;
+  share: (text: string, clickParams?: TelemetryParams) => void;
 } {
   const [shareCopied, setShareCopied] = useState(false);
   const [shareFailed, setShareFailed] = useState(false);
@@ -56,30 +64,35 @@ export function useShareResult(): {
     };
   }, []);
 
-  const share = useCallback((text: string) => {
-    void deliverShareText(text).then((outcome) => {
-      if (outcome === "copied") {
-        setShareCopied(true);
-        setShareFailed(false);
-        if (timeoutRef.current != null) {
-          window.clearTimeout(timeoutRef.current);
+  const share = useCallback(
+    (text: string, clickParams?: TelemetryParams) => {
+      telemetry.click("share_result_click", { surface, ...clickParams });
+      void deliverShareText(text).then((outcome) => {
+        telemetry.impression("share_result_outcome", { surface, outcome });
+        if (outcome === "copied") {
+          setShareCopied(true);
+          setShareFailed(false);
+          if (timeoutRef.current != null) {
+            window.clearTimeout(timeoutRef.current);
+          }
+          timeoutRef.current = window.setTimeout(() => {
+            setShareCopied(false);
+            timeoutRef.current = null;
+          }, 2000);
+          return;
         }
-        timeoutRef.current = window.setTimeout(() => {
+        if (outcome === "failed") {
           setShareCopied(false);
-          timeoutRef.current = null;
-        }, 2000);
-        return;
-      }
-      if (outcome === "failed") {
-        setShareCopied(false);
-        setShareFailed(true);
-        if (timeoutRef.current != null) {
-          window.clearTimeout(timeoutRef.current);
-          timeoutRef.current = null;
+          setShareFailed(true);
+          if (timeoutRef.current != null) {
+            window.clearTimeout(timeoutRef.current);
+            timeoutRef.current = null;
+          }
         }
-      }
-    });
-  }, []);
+      });
+    },
+    [surface],
+  );
 
   return { shareCopied, shareFailed, share };
 }

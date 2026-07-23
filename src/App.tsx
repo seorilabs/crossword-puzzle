@@ -5889,10 +5889,12 @@ function TodayScreen({
           attemptsUsed={mission.attemptsUsed}
           completedCount={completedEntries.length}
           consecutiveStreak={consecutiveStreak}
+          difficulty={puzzle.difficulty}
           elapsedLabel={celebrationElapsedLabel}
           hintCount={hintCount}
           isNewBestTime={isNewBestTime}
           nextPuzzleLabel={completionNextRecommendedLabel}
+          puzzleId={puzzle.puzzleId}
           revealUsed={revealUsed}
           shareGrid={celebrationShareGrid}
           shareText={celebrationShareText}
@@ -6228,7 +6230,7 @@ function ResultScreen({
     () => buildStartLabels(puzzle.entries),
     [puzzle.entries],
   );
-  const { shareCopied, shareFailed, share } = useShareResult();
+  const { shareCopied, shareFailed, share } = useShareResult("result_screen");
 
   function handleShare() {
     share(
@@ -6245,6 +6247,7 @@ function ResultScreen({
         shareGrid: buildShareGrid(puzzle, cellValues),
         shareLandingUrl,
       }),
+      { puzzle_id: puzzle.puzzleId, difficulty: puzzle.difficulty },
     );
   }
 

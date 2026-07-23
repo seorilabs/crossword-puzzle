@@ -18,6 +18,7 @@ function renderDialog(
     elapsedLabel: "01:20",
     hintCount: 0,
     isNewBestTime: false,
+    puzzleId: "26060114",
     revealUsed: false,
     shareGrid: "🟩🟩",
     shareText: "공유 결과",
