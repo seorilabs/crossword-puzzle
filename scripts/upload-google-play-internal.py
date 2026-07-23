@@ -117,6 +117,56 @@ def default_release_notes(release_config, language):
     return ""
 
 
+def unit_fraction(value):
+    parsed = float(value)
+    if not 0 < parsed <= 1:
+        raise argparse.ArgumentTypeError("must be in (0, 1]")
+    return parsed
+
+
+def load_notes_map(path):
+    """Backoffice 가 붙인 release-notes.json({notes:{'ko-KR':..}}) → {storeLocale: text}."""
+    if not path:
+        return {}
+    notes_path = Path(path)
+    if not notes_path.exists():
+        return {}
+    with notes_path.open(encoding="utf-8") as file:
+        doc = json.load(file)
+    notes = doc.get("notes", {}) if isinstance(doc, dict) else {}
+    return {k: v for k, v in notes.items() if isinstance(v, str) and v.strip()}
+
+
+def listing_languages(publisher, package_name, edit_id, retries):
+    """앱 스토어 등록(listing) 언어 집합. 실패 시 빈 집합."""
+    try:
+        response = execute_request(
+            publisher.edits().listings().list(packageName=package_name, editId=edit_id),
+            retries,
+        )
+    except Exception as error:
+        print(f"Warning: failed to list Google Play listings: {error}", file=sys.stderr)
+        return set()
+    return {item.get("language") for item in response.get("listings", []) if item.get("language")}
+
+
+def build_release_notes(publisher, package_name, edit_id, args, retries):
+    """release-notes.json 이 있으면 앱 등록 언어와 교집합인 언어별 노트 전부를,
+    없으면 단일 --release-notes 를 반환한다(미등록 언어는 400 방지 위해 제외)."""
+    notes_map = load_notes_map(getattr(args, "release_notes_json", None))
+    if notes_map:
+        languages = listing_languages(publisher, package_name, edit_id, retries)
+        if languages:
+            selected = {lang: text for lang, text in notes_map.items() if lang in languages}
+        else:
+            selected = notes_map
+        if selected:
+            return [{"language": lang, "text": text} for lang, text in selected.items()]
+    if args.release_notes:
+        return [{"language": args.release_notes_language, "text": args.release_notes}]
+    return []
+
+
 def resolve_track(publisher, package_name, edit_id, requested_track, retries):
     try:
         response = execute_request(
@@ -146,8 +196,6 @@ def upload_internal_release(args):
         raise RuntimeError("Google Play package name is required.")
     if not aab_path.exists():
         raise FileNotFoundError(f"AAB file does not exist: {aab_path}")
-    if not args.release_notes:
-        raise RuntimeError("Release notes are required.")
 
     publisher = make_android_publisher(args.api_timeout_seconds)
     edit = execute_request(publisher.edits().insert(packageName=package_name, body={}), args.api_retries)
@@ -156,6 +204,10 @@ def upload_internal_release(args):
 
     try:
         from googleapiclient.http import MediaFileUpload
+
+        release_notes = build_release_notes(publisher, package_name, edit_id, args, args.api_retries)
+        if not release_notes:
+            raise RuntimeError("Release notes are required.")
 
         media = MediaFileUpload(
             str(aab_path),
@@ -176,12 +228,7 @@ def upload_internal_release(args):
             "name": args.release_name,
             "versionCodes": [str(version_code)],
             "status": args.release_status,
-            "releaseNotes": [
-                {
-                    "language": args.release_notes_language,
-                    "text": args.release_notes,
-                }
-            ],
+            "releaseNotes": release_notes,
         }
         execute_request(
             publisher.edits().tracks().update(
@@ -220,6 +267,68 @@ def upload_internal_release(args):
         raise
 
 
+def promote_release(args):
+    """from-track 최신 versionCode 를 재빌드 없이 to-track 으로 승격 + 언어별 노트 반영
+    + commit(=심사 제출). rollout 지정 시 단계적 출시."""
+    package_name = args.package_name
+    if not package_name or "확정 필요" in package_name:
+        raise RuntimeError("Google Play package name is required.")
+
+    publisher = make_android_publisher(args.api_timeout_seconds)
+    edit = execute_request(publisher.edits().insert(packageName=package_name, body={}), args.api_retries)
+    edit_id = edit["id"]
+    try:
+        from_track = resolve_track(publisher, package_name, edit_id, args.promote_from_track, args.api_retries)
+        to_track = resolve_track(publisher, package_name, edit_id, args.promote_to_track, args.api_retries)
+        source = execute_request(
+            publisher.edits().tracks().get(packageName=package_name, editId=edit_id, track=from_track),
+            args.api_retries,
+        )
+        version_codes = []
+        for release in source.get("releases", []):
+            version_codes.extend(int(v) for v in release.get("versionCodes", []) or [])
+        if not version_codes:
+            raise RuntimeError(f"No versionCode on '{from_track}' track to promote.")
+        latest = str(max(version_codes))
+
+        release_notes = build_release_notes(publisher, package_name, edit_id, args, args.api_retries)
+        release = {
+            "name": args.release_name,
+            "versionCodes": [latest],
+            "status": args.release_status,
+        }
+        if release_notes:
+            release["releaseNotes"] = release_notes
+        if args.rollout is not None:
+            release["status"] = "inProgress"
+            release["userFraction"] = args.rollout
+
+        execute_request(
+            publisher.edits().tracks().update(
+                packageName=package_name,
+                editId=edit_id,
+                track=to_track,
+                body={"track": to_track, "releases": [release]},
+            ),
+            args.api_retries,
+        )
+        committed_edit = execute_request(publisher.edits().commit(packageName=package_name, editId=edit_id), args.api_retries)
+        return {
+            "packageName": package_name,
+            "fromTrack": from_track,
+            "toTrack": to_track,
+            "versionCode": int(latest),
+            "releaseStatus": release["status"],
+            "editId": committed_edit["id"],
+        }
+    except Exception:
+        try:
+            execute_request(publisher.edits().delete(packageName=package_name, editId=edit_id), args.api_retries)
+        except Exception as cleanup_error:
+            print(f"Warning: failed to delete Google Play edit {edit_id}: {cleanup_error}", file=sys.stderr)
+        raise
+
+
 def main():
     config = load_config()
     release_config = config.get("release", {})
@@ -234,7 +343,18 @@ def main():
     parser.add_argument("--release-name", default=release_config.get("name", "0.1.0-internal"))
     parser.add_argument("--release-notes-language", default=default_language)
     parser.add_argument("--release-notes", default=default_release_notes(release_config, default_language))
+    parser.add_argument(
+        "--release-notes-json",
+        default=os.environ.get("RELEASE_NOTES_JSON") or None,
+        help="Path to release-notes.json ({notes:{locale:text}}) for per-language notes.",
+    )
     parser.add_argument("--changes-not-sent-for-review", action="store_true")
+    parser.add_argument("--promote", action="store_true",
+                        help="Promote an existing build from one track to another (no rebuild).")
+    parser.add_argument("--promote-from-track", default="internal")
+    parser.add_argument("--promote-to-track", default="production")
+    parser.add_argument("--rollout", type=unit_fraction, default=None,
+                        help="Staged rollout fraction (0,1] for promotion. Omit for full release.")
     parser.add_argument(
         "--api-timeout-seconds",
         type=positive_int,
@@ -248,9 +368,10 @@ def main():
     args = parser.parse_args()
 
     try:
-        result = upload_internal_release(args)
+        result = promote_release(args) if args.promote else upload_internal_release(args)
     except Exception as error:
-        print(f"Google Play internal upload failed: {error}", file=sys.stderr)
+        action = "promotion" if args.promote else "internal upload"
+        print(f"Google Play {action} failed: {error}", file=sys.stderr)
         return 1
 
     print(json.dumps(result, ensure_ascii=False, indent=2))
