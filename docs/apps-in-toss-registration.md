@@ -1,5 +1,10 @@
 # AppsInToss 앱 등록 정보
 
+> ⚠️ 이 문서는 **비게임** 앱 `crossword-puzzle`(miniAppId 36555)의 최초 등록 기준이다.
+> 게임 카테고리 재등록(`crossword-puzzle-game` / 56407, 앱 이름 "가로세로 낱말")의 확정 메타데이터·이미지·MCP 페이로드는
+> [`release-assets/apps-in-toss/registration-metadata.md`](../release-assets/apps-in-toss/registration-metadata.md)를 참고한다.
+> 아래 앱 내 기능·검수 메모 등은 게임 등록에도 그대로 유효하다.
+
 ## 출시 방향
 
 - 1차 론칭 목표는 AppsInToss WebView다.

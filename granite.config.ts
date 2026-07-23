@@ -1,7 +1,7 @@
 import { defineConfig } from "@apps-in-toss/web-framework/config";
 
 export default defineConfig({
-  appName: "crossword-puzzle",
+  appName: "crossword-puzzle-game",
   brand: {
     displayName: "가로세로 낱말 퍼즐",
     primaryColor: "#00A88F",
