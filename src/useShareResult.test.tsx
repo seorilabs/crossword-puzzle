@@ -151,7 +151,7 @@ describe("useShareResult 텔레메트리(#299)", () => {
     });
   });
 
-  it("클립보드 폴백 복사(copied) 시 outcome=copied를 발화한다", async () => {
+  it("클립보드 폴백 복사(copied) 시 outcome=copied 발화 + 복사 토스트를 켠다(AC-4)", async () => {
     patchNavigator({
       clipboard: { writeText: vi.fn(() => Promise.resolve()) },
     });
@@ -166,9 +166,12 @@ describe("useShareResult 텔레메트리(#299)", () => {
       surface: "completion_dialog",
       outcome: "copied",
     });
+    // 복사 성공 토스트 상태(회귀 없음).
+    expect(result.current.shareCopied).toBe(true);
+    expect(result.current.shareFailed).toBe(false);
   });
 
-  it("공유·클립보드 모두 미지원(failed) 시 outcome=failed를 발화한다", async () => {
+  it("공유·클립보드 모두 미지원(failed) 시 outcome=failed 발화 + 실패 토스트를 켠다(AC-4)", async () => {
     patchNavigator({});
     const { result } = renderHook(() => useShareResult("result_screen"));
 
@@ -181,6 +184,22 @@ describe("useShareResult 텔레메트리(#299)", () => {
       surface: "result_screen",
       outcome: "failed",
     });
+    // 실패 토스트 상태(회귀 없음).
+    expect(result.current.shareFailed).toBe(true);
+    expect(result.current.shareCopied).toBe(false);
+  });
+
+  it("공유 시트 전달(shared)·닫힘(aborted) 시에는 어떤 토스트도 켜지 않는다(AC-4)", async () => {
+    patchNavigator({ share: vi.fn(() => Promise.resolve()) });
+    const { result } = renderHook(() => useShareResult("result_screen"));
+
+    act(() => {
+      result.current.share("본문");
+    });
+    await flushShare();
+
+    expect(result.current.shareCopied).toBe(false);
+    expect(result.current.shareFailed).toBe(false);
   });
 
   it("클릭 발화 시 아직 outcome은 발화되지 않는다(전달 결과는 이후에)", async () => {
