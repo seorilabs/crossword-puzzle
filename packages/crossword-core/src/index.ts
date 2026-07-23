@@ -13,6 +13,7 @@ export * from "./platformContracts";
 export * from "./puzzle";
 export * from "./puzzleLabels";
 export * from "./recommendation";
+export * from "./releaseVersion";
 export * from "./repositories";
 export * from "./returnReminder";
 export * from "./rewardedAdRetry";

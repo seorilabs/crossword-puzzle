@@ -1,8 +1,10 @@
 import { Analytics as AppsInTossAnalytics } from "@apps-in-toss/web-framework";
-import type {
-  CompactTelemetryParams,
-  GameAnalyticsSink,
-  GameMarket,
+import {
+  createReleaseVersionedSink,
+  resolveReleaseVersion,
+  type CompactTelemetryParams,
+  type GameAnalyticsSink,
+  type GameMarket,
 } from "../../packages/crossword-core/src";
 import { logFirebaseAnalyticsEvent } from "./firebaseClient";
 
@@ -15,6 +17,15 @@ import { logFirebaseAnalyticsEvent } from "./firebaseClient";
 
 /** 이 앱 빌드가 도는 마켓. AIT WebView 빌드는 항상 apps-in-toss다. */
 export const currentMarket: GameMarket = "apps-in-toss";
+
+// 이 빌드의 릴리즈 버전(release_version 계측 값). 배포 워크플로가 주입하는 태그 유래
+// VITE_APP_VERSION/VITE_RELEASE_TAG를 우선 쓰고, 없으면 vite define으로 주입된 패키지
+// 유래 상수(__APP_VERSION__)로 폴백한다. 값 형식은 core가 정규화한다(#293).
+export const RELEASE_VERSION = resolveReleaseVersion(
+  import.meta.env.VITE_APP_VERSION,
+  import.meta.env.VITE_RELEASE_TAG,
+  __APP_VERSION__,
+);
 
 /** 팬아웃되는 분석 이벤트 1건. game은 게임 세부 지표(core gameAnalytics)에서 온다. */
 export type AnalyticsEvent =
@@ -118,7 +129,12 @@ function buildSinks(): AnalyticsSink[] {
   return sinks;
 }
 
-export const analyticsSinks: readonly AnalyticsSink[] = buildSinks();
+// 모든 sink를 release_version 첨부 데코레이터로 감싼다. dispatchAnalytics와
+// gameAnalyticsSinks가 모두 이 배열에서 파생되므로, 여기 한 곳에서 감싸면 screen/
+// impression/click/game 전 이벤트에 개별 호출 수정 없이 release_version이 실린다(#293).
+export const analyticsSinks: readonly AnalyticsSink[] = buildSinks().map((sink) =>
+  createReleaseVersionedSink(sink, RELEASE_VERSION),
+);
 
 /** 등록된 모든 sink로 이벤트를 팬아웃한다. 한 sink 실패가 나머지를 막지 않는다. */
 export function dispatchAnalytics(event: AnalyticsEvent): void {
