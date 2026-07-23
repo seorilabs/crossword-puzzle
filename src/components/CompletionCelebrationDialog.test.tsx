@@ -120,6 +120,23 @@ describe("CompletionCelebrationDialog 공유 CTA 계측(#299)", () => {
     });
   });
 
+  it("공유 버튼 클릭 시 telemetry.click을 share_result_click·{surface,puzzle_id,difficulty}로 발화한다(AC-2)", async () => {
+    // AC-2 실행 경로: 실제 "결과 공유하기" 버튼 클릭 → useShareResult.share →
+    // telemetry.click("share_result_click", { surface, puzzle_id, difficulty }).
+    vi.stubGlobal("navigator", { share: vi.fn(() => Promise.resolve()) });
+    renderDialog({ puzzleId: "26060114", difficulty: "hard" });
+
+    fireEvent.click(screen.getByRole("button", { name: "결과 공유하기" }));
+    await flushShare();
+
+    expect(clickMock).toHaveBeenCalledTimes(1);
+    expect(clickMock).toHaveBeenCalledWith("share_result_click", {
+      surface: "completion_dialog",
+      puzzle_id: "26060114",
+      difficulty: "hard",
+    });
+  });
+
   it("클립보드 폴백 복사 시 복사 토스트를 노출한다(AC-4 회귀 없음)", async () => {
     // 공유 시트 미지원 → 클립보드 복사 성공.
     vi.stubGlobal("navigator", {

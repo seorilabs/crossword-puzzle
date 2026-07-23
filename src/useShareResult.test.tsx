@@ -169,36 +169,64 @@ describe("useShareResult 텔레메트리(#299)", () => {
   });
 
   it("outcome 4분기 shared·aborted·copied·failed 각각을 share_result_outcome으로 발화한다(AC-3)", async () => {
+    // 분기 1/4: navigator.share 성공 → outcome=shared.
+    patchNavigator({ share: vi.fn(() => Promise.resolve()) });
+    const shared = renderHook(() => useShareResult("result_screen"));
+    act(() => {
+      shared.result.current.share("본문");
+    });
+    await flushShare();
+    expect(impressionMock).toHaveBeenCalledWith("share_result_outcome", {
+      surface: "result_screen",
+      outcome: "shared",
+    });
+    shared.unmount();
+
+    // 분기 2/4: 사용자가 공유 시트를 닫음(AbortError) → outcome=aborted.
+    impressionMock.mockReset();
     const abort = new Error("cancelled");
     abort.name = "AbortError";
-    const cases: Array<{ nav: NavigatorPatch; outcome: string }> = [
-      { nav: { share: () => Promise.resolve() }, outcome: "shared" },
-      { nav: { share: () => Promise.reject(abort) }, outcome: "aborted" },
-      {
-        nav: { clipboard: { writeText: () => Promise.resolve() } },
-        outcome: "copied",
-      },
-      { nav: {}, outcome: "failed" },
-    ];
+    patchNavigator({ share: vi.fn(() => Promise.reject(abort)) });
+    const aborted = renderHook(() => useShareResult("result_screen"));
+    act(() => {
+      aborted.result.current.share("본문");
+    });
+    await flushShare();
+    expect(impressionMock).toHaveBeenCalledWith("share_result_outcome", {
+      surface: "result_screen",
+      outcome: "aborted",
+    });
+    aborted.unmount();
 
-    for (const { nav, outcome } of cases) {
-      impressionMock.mockReset();
-      patchNavigator(nav);
-      const { result, unmount } = renderHook(() =>
-        useShareResult("result_screen"),
-      );
+    // 분기 3/4: 공유 시트 미지원 → 클립보드 복사 성공 → outcome=copied.
+    impressionMock.mockReset();
+    patchNavigator({
+      clipboard: { writeText: vi.fn(() => Promise.resolve()) },
+    });
+    const copied = renderHook(() => useShareResult("result_screen"));
+    act(() => {
+      copied.result.current.share("본문");
+    });
+    await flushShare();
+    expect(impressionMock).toHaveBeenCalledWith("share_result_outcome", {
+      surface: "result_screen",
+      outcome: "copied",
+    });
+    copied.unmount();
 
-      act(() => {
-        result.current.share("본문");
-      });
-      await flushShare();
-
-      expect(impressionMock).toHaveBeenCalledWith("share_result_outcome", {
-        surface: "result_screen",
-        outcome,
-      });
-      unmount();
-    }
+    // 분기 4/4: 공유·클립보드 모두 미지원 → outcome=failed.
+    impressionMock.mockReset();
+    patchNavigator({});
+    const failed = renderHook(() => useShareResult("result_screen"));
+    act(() => {
+      failed.result.current.share("본문");
+    });
+    await flushShare();
+    expect(impressionMock).toHaveBeenCalledWith("share_result_outcome", {
+      surface: "result_screen",
+      outcome: "failed",
+    });
+    failed.unmount();
   });
 
   it("공유 시트 전달(shared) 시 surface·outcome을 share_result_outcome으로 발화한다", async () => {
