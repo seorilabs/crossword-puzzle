@@ -2,6 +2,7 @@ import {
   getCompletionAchievements,
   getNextStreakMilestoneHint,
   getStreakBadgeLabel,
+  type Puzzle,
 } from "../../packages/crossword-core/src";
 import { formatThemeHeadline } from "../puzzleLabels";
 import { useShareResult } from "../useShareResult";
@@ -11,10 +12,12 @@ export type CompletionCelebrationDialogProps = {
   attemptsUsed: number;
   completedCount: number;
   consecutiveStreak: number;
+  difficulty?: Puzzle["difficulty"];
   elapsedLabel: string | null;
   hintCount: number;
   isNewBestTime: boolean;
   nextPuzzleLabel?: string;
+  puzzleId: string;
   revealUsed: boolean;
   shareGrid: string;
   shareText: string;
@@ -30,10 +33,12 @@ export function CompletionCelebrationDialog({
   attemptsUsed,
   completedCount,
   consecutiveStreak,
+  difficulty,
   elapsedLabel,
   hintCount,
   isNewBestTime,
   nextPuzzleLabel,
+  puzzleId,
   revealUsed,
   shareGrid,
   shareText,
@@ -44,7 +49,8 @@ export function CompletionCelebrationDialog({
   onSeeResult,
   onStartNextPuzzle,
 }: CompletionCelebrationDialogProps) {
-  const { shareCopied, shareFailed, share } = useShareResult();
+  const { shareCopied, shareFailed, share } =
+    useShareResult("completion_dialog");
   const themeHeadline = formatThemeHeadline(themeLabel);
   const streakBadge = getStreakBadgeLabel(consecutiveStreak);
   const nextStreakHint = getNextStreakMilestoneHint(consecutiveStreak);
@@ -121,7 +127,9 @@ export function CompletionCelebrationDialog({
           <button
             className="shareButton"
             type="button"
-            onClick={() => share(shareText)}
+            onClick={() =>
+              share(shareText, { puzzle_id: puzzleId, difficulty })
+            }
           >
             결과 공유하기
           </button>
