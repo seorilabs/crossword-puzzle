@@ -129,12 +129,13 @@ describe("useShareResult 텔레메트리(#299)", () => {
     }
   });
 
-  it("공유 클릭 시 surface·puzzle_id·difficulty를 share_result_click으로 발화한다(AC-2)", async () => {
+  it("공유 클릭 시 share_result_click을 surface·puzzle_id·difficulty로 발화한다(AC-2)", async () => {
+    // result_screen 호출부 파라미터 형태.
     patchNavigator({ share: vi.fn(() => Promise.resolve()) });
-    const { result } = renderHook(() => useShareResult("result_screen"));
+    const rs = renderHook(() => useShareResult("result_screen"));
 
     act(() => {
-      result.current.share("본문", { puzzle_id: "p1", difficulty: "easy" });
+      rs.result.current.share("본문", { puzzle_id: "p1", difficulty: "easy" });
     });
     await flushShare();
 
@@ -144,9 +145,30 @@ describe("useShareResult 텔레메트리(#299)", () => {
       puzzle_id: "p1",
       difficulty: "easy",
     });
+    rs.unmount();
+
+    // completion_dialog 호출부 파라미터 형태(다른 puzzle_id·difficulty).
+    clickMock.mockReset();
+    patchNavigator({ share: vi.fn(() => Promise.resolve()) });
+    const cd = renderHook(() => useShareResult("completion_dialog"));
+
+    act(() => {
+      cd.result.current.share("본문", {
+        puzzle_id: "26060114",
+        difficulty: "hard",
+      });
+    });
+    await flushShare();
+
+    expect(clickMock).toHaveBeenCalledTimes(1);
+    expect(clickMock).toHaveBeenCalledWith("share_result_click", {
+      surface: "completion_dialog",
+      puzzle_id: "26060114",
+      difficulty: "hard",
+    });
   });
 
-  it("outcome 4분기(shared·aborted·copied·failed) 각각 share_result_outcome을 발화한다(AC-3)", async () => {
+  it("outcome 4분기 shared·aborted·copied·failed 각각을 share_result_outcome으로 발화한다(AC-3)", async () => {
     const abort = new Error("cancelled");
     abort.name = "AbortError";
     const cases: Array<{ nav: NavigatorPatch; outcome: string }> = [
