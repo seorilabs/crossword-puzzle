@@ -101,7 +101,35 @@ describe("deliverShareText", () => {
 });
 
 describe("useShareResult 텔레메트리(#299)", () => {
-  it("공유 클릭 시 surface·puzzle_id·difficulty를 share_result_click으로 발화한다", async () => {
+  it("surface 컨텍스트가 result_screen·completion_dialog 두 표면 모두에서 이벤트에 실린다(AC-1)", async () => {
+    // AC-1: useShareResult(surface) 시그니처가 표면을 받아 클릭·전달결과 이벤트에
+    // 그대로 싣는다. 두 호출부가 넘기는 리터럴(result_screen/completion_dialog)이
+    // 각각 이벤트 surface로 관측됨을 검증한다(완료 다이얼로그 실호출부 검증은
+    // CompletionCelebrationDialog.test.tsx의 AC-1 테스트가 실제 렌더로 담당).
+    for (const surface of ["result_screen", "completion_dialog"] as const) {
+      clickMock.mockReset();
+      impressionMock.mockReset();
+      patchNavigator({ share: vi.fn(() => Promise.resolve()) });
+      const { result, unmount } = renderHook(() => useShareResult(surface));
+
+      act(() => {
+        result.current.share("본문", { puzzle_id: "p1" });
+      });
+      await flushShare();
+
+      expect(clickMock).toHaveBeenCalledWith(
+        "share_result_click",
+        expect.objectContaining({ surface }),
+      );
+      expect(impressionMock).toHaveBeenCalledWith("share_result_outcome", {
+        surface,
+        outcome: "shared",
+      });
+      unmount();
+    }
+  });
+
+  it("공유 클릭 시 surface·puzzle_id·difficulty를 share_result_click으로 발화한다(AC-2)", async () => {
     patchNavigator({ share: vi.fn(() => Promise.resolve()) });
     const { result } = renderHook(() => useShareResult("result_screen"));
 
@@ -116,6 +144,39 @@ describe("useShareResult 텔레메트리(#299)", () => {
       puzzle_id: "p1",
       difficulty: "easy",
     });
+  });
+
+  it("outcome 4분기(shared·aborted·copied·failed) 각각 share_result_outcome을 발화한다(AC-3)", async () => {
+    const abort = new Error("cancelled");
+    abort.name = "AbortError";
+    const cases: Array<{ nav: NavigatorPatch; outcome: string }> = [
+      { nav: { share: () => Promise.resolve() }, outcome: "shared" },
+      { nav: { share: () => Promise.reject(abort) }, outcome: "aborted" },
+      {
+        nav: { clipboard: { writeText: () => Promise.resolve() } },
+        outcome: "copied",
+      },
+      { nav: {}, outcome: "failed" },
+    ];
+
+    for (const { nav, outcome } of cases) {
+      impressionMock.mockReset();
+      patchNavigator(nav);
+      const { result, unmount } = renderHook(() =>
+        useShareResult("result_screen"),
+      );
+
+      act(() => {
+        result.current.share("본문");
+      });
+      await flushShare();
+
+      expect(impressionMock).toHaveBeenCalledWith("share_result_outcome", {
+        surface: "result_screen",
+        outcome,
+      });
+      unmount();
+    }
   });
 
   it("공유 시트 전달(shared) 시 surface·outcome을 share_result_outcome으로 발화한다", async () => {

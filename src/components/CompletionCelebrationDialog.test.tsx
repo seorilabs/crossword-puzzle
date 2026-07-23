@@ -99,7 +99,7 @@ describe("CompletionCelebrationDialog 다음 퍼즐 CTA(#274)", () => {
 });
 
 describe("CompletionCelebrationDialog 공유 CTA 계측(#299)", () => {
-  it("공유 버튼 클릭 시 completion_dialog surface·puzzle_id·difficulty로 share_result_click을 발화한다(AC-1·AC-2)", async () => {
+  it("완료 다이얼로그 공유 버튼 클릭 시 completion_dialog surface·puzzle_id·difficulty로 share_result_click을 발화한다(AC-1)", async () => {
     // 공유 시트 성공 경로.
     vi.stubGlobal("navigator", { share: vi.fn(() => Promise.resolve()) });
     renderDialog({ puzzleId: "26060114", difficulty: "hard" });
