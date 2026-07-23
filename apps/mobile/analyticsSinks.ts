@@ -1,9 +1,12 @@
 import {Platform} from 'react-native';
-import type {
-  CompactTelemetryParams,
-  GameAnalyticsSink,
-  GameMarket,
+import {
+  createReleaseVersionedSink,
+  resolveReleaseVersion,
+  type CompactTelemetryParams,
+  type GameAnalyticsSink,
+  type GameMarket,
 } from '../../packages/crossword-core/src';
+import {version as packageVersion} from './package.json';
 import {logFirebaseAnalyticsEvent} from './firebaseClient';
 
 // 분석 이벤트 팬아웃 seam(Android/iOS RN). 웹(src/adapters/analyticsSinks.ts)과 같은 구조를
@@ -16,6 +19,11 @@ import {logFirebaseAnalyticsEvent} from './firebaseClient';
  */
 export const currentMarket: GameMarket =
   Platform.OS === 'ios' ? 'app-store' : 'google-play';
+
+// 이 빌드의 릴리즈 버전(release_version 계측 값). RN JS 레이어에는 태그 유래 빌드 env
+// 브리지가 없으므로 패키지 유래 상수(apps/mobile/package.json version)를 쓴다. 값 형식은
+// core가 정규화한다. 태그 유래 주입(네이티브 버전 브리지)은 후속 과제다(#293).
+export const RELEASE_VERSION = resolveReleaseVersion(packageVersion);
 
 export type AnalyticsEvent =
   | {kind: 'screen'; name: string; params: CompactTelemetryParams}
@@ -79,7 +87,12 @@ function buildSinks(): AnalyticsSink[] {
   return sinks;
 }
 
-export const analyticsSinks: readonly AnalyticsSink[] = buildSinks();
+// 모든 sink를 release_version 첨부 데코레이터로 감싼다. dispatchAnalytics와
+// gameAnalyticsSinks가 모두 이 배열에서 파생되므로, 여기 한 곳에서 감싸면 전 이벤트에
+// 개별 호출 수정 없이 release_version이 실린다(웹 adapter와 동일 구조, #293).
+export const analyticsSinks: readonly AnalyticsSink[] = buildSinks().map(sink =>
+  createReleaseVersionedSink(sink, RELEASE_VERSION),
+);
 
 export function dispatchAnalytics(event: AnalyticsEvent): void {
   for (const sink of analyticsSinks) {
