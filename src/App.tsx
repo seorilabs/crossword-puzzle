@@ -66,7 +66,6 @@ import {
   getNewlyReachedProgressMilestones,
   buildNextPuzzleCtaEvent,
   getNextRecommendedPuzzleSummary,
-  getOpenPuzzleSummariesForDate,
   getProgressMilestoneRewardMessage,
   resolveDefaultHintCredits,
   getPuzzlePackAlias,
@@ -1331,13 +1330,6 @@ function App() {
         .map((record) => createPuzzleSummary(record.puzzle)),
     [launchConfig.visiblePuzzleCount, puzzleArchiveRecords],
   );
-  const todayArchivePuzzleSummaries = useMemo(
-    () =>
-      puzzleArchiveRecords
-        .map((record) => createPuzzleSummary(record.puzzle))
-        .filter((summary) => summary.date === todayKey),
-    [puzzleArchiveRecords, todayKey],
-  );
   const unlockedBonusSummaries = useMemo(
     () =>
       uniquePuzzleSummaries(
@@ -1439,23 +1431,6 @@ function App() {
       getPuzzleSummaryFromArchive(puzzleArchiveRecords, puzzle.puzzleId) ??
       createPuzzleSummary(puzzle),
     [puzzle, puzzleArchiveRecords, puzzleSummaries],
-  );
-  const todayOpenPuzzleSummaries = useMemo(
-    () =>
-      getOpenPuzzleSummariesForDate({
-        archivePuzzleSummaries: todayArchivePuzzleSummaries,
-        date: todayKey,
-        dailyFreeSummary,
-        selectedPuzzleSummary,
-        unlockedBonusSummaries,
-      }),
-    [
-      dailyFreeSummary,
-      selectedPuzzleSummary,
-      todayArchivePuzzleSummaries,
-      todayKey,
-      unlockedBonusSummaries,
-    ],
   );
   const visiblePuzzleSummaries = useMemo(
     () =>
@@ -3211,7 +3186,6 @@ function App() {
           startLabels={viewModel.startLabels}
           startOrResumeMission={startOrResumeMission}
           startTodayPuzzle={() => void startTodayPuzzle()}
-          todayPuzzleSummaries={todayOpenPuzzleSummaries}
         />
       )}
       {isRewardedHintPromptOpen ? (
@@ -3459,19 +3433,16 @@ type HomeScreenProps = DateSelectionProps & {
   startLabels: Map<string, number>;
   startOrResumeMission: () => void;
   startTodayPuzzle: () => void;
-  todayPuzzleSummaries: PuzzleManifestItem[];
 };
 
 function HomeScreen({
   bonusPuzzlePanelState,
   completedEntries,
   consecutiveStreak,
-  dateCardStates,
   hasStarted,
   hintBalance,
   isCompleted,
   isSelectedDailyFree,
-  launchConfig,
   loadState,
   mission,
   navigate,
@@ -3484,13 +3455,10 @@ function HomeScreen({
   requestRewardedHint,
   selectedEntry,
   selectedPuzzleId,
-  selectPuzzle,
   startLabels,
   startOrResumeMission,
   startTodayPuzzle,
-  todayPuzzleSummaries,
 }: HomeScreenProps) {
-  const [isPackInfoOpen, setIsPackInfoOpen] = useState(false);
   const isLoadingPuzzlePack = loadState === "loading";
   const isAttemptExhaustedUncompleted =
     hasStarted && remainingAttempts <= 0 && !isCompleted;
@@ -3535,18 +3503,6 @@ function HomeScreen({
   const missionDescription = isLoadingPuzzlePack
     ? "최신 퍼즐 목록을 가져오는 중이에요"
     : missionStatusLabel;
-  const packInfoPanelTitle =
-    loadState === "remote"
-      ? "하루 1개 기본 공개"
-      : loadState === "loading"
-        ? "원격 퍼즐팩 확인 중"
-        : "기기저장 기본 퍼즐";
-  const packInfoPanelDescription =
-    loadState === "remote"
-      ? `${launchConfig.puzzleGenerationIntervalHours}시간마다 생성된 퍼즐은 최근 ${launchConfig.puzzleKeepCount}개까지 유지해요. 홈에는 하루 1개씩 최근 ${launchConfig.visiblePuzzleCount}일치 무료 퍼즐과 해금된 보너스, 기기에 저장된 기록을 함께 보여줘요.`
-      : loadState === "loading"
-        ? "원격 퍼즐팩이 준비되면 최신 퍼즐 목록으로 바뀝니다."
-        : "원격 퍼즐팩을 사용할 수 없을 때 기기에 포함된 기본 퍼즐을 보여줘요.";
   const streakMilestoneHint = !isLoadingPuzzlePack
     ? getStreakMilestoneProgress(consecutiveStreak)
     : null;
@@ -3585,34 +3541,6 @@ function HomeScreen({
         <span className="homeQuickStartLabel">{quickStartLabel}</span>
         <span className="homeQuickStartHint">한 번 눌러 바로 풀기 시작</span>
       </button>
-
-      <DateCarousel
-        dateCardStates={dateCardStates}
-        loadState={loadState}
-        puzzleSummaries={puzzleSummaries}
-        selectedPuzzleId={selectedPuzzleId}
-        selectPuzzle={selectPuzzle}
-      />
-
-      <div className="packInfoRow">
-        <span>{formatPackInfoLabel(loadState, puzzleSummaries.length)}</span>
-        <button
-          className="infoButton"
-          type="button"
-          aria-expanded={isPackInfoOpen}
-          aria-label="퍼즐 생성 주기 안내"
-          onClick={() => setIsPackInfoOpen((prev) => !prev)}
-        >
-          i
-        </button>
-      </div>
-
-      {isPackInfoOpen ? (
-        <section className="packInfoPanel" aria-label="퍼즐 생성 주기">
-          <strong>{packInfoPanelTitle}</strong>
-          <span>{packInfoPanelDescription}</span>
-        </section>
-      ) : null}
 
       <section className="todayMission" aria-label="선택한 미션">
         <div className="missionLead">
@@ -3718,14 +3646,6 @@ function HomeScreen({
         </div>
       </section>
 
-      <TodayPuzzleNavigator
-        dateCardStates={dateCardStates}
-        loadState={loadState}
-        puzzleSummaries={todayPuzzleSummaries}
-        selectedPuzzleId={selectedPuzzleId}
-        selectPuzzle={selectPuzzle}
-      />
-
       <button
         className="cluePeek"
         type="button"
@@ -3795,80 +3715,6 @@ function HomeScreen({
         </Button>
       </div>
     </>
-  );
-}
-
-type TodayPuzzleNavigatorProps = Pick<
-  DateSelectionProps,
-  "dateCardStates" | "loadState" | "selectedPuzzleId" | "selectPuzzle"
-> & {
-  puzzleSummaries: PuzzleManifestItem[];
-};
-
-function TodayPuzzleNavigator({
-  dateCardStates,
-  loadState,
-  puzzleSummaries,
-  selectedPuzzleId,
-  selectPuzzle,
-}: TodayPuzzleNavigatorProps) {
-  if (loadState === "loading" || puzzleSummaries.length <= 1) {
-    return null;
-  }
-
-  const isRemotePack = loadState === "remote";
-
-  return (
-    <section className="todayPuzzleRail" aria-label="오늘 열린 퍼즐">
-      <div className="todayPuzzleRailHeader">
-        <strong>오늘 열린 퍼즐</strong>
-        <span>{puzzleSummaries.length}개</span>
-      </div>
-      <div className="todayPuzzleScroller">
-        {puzzleSummaries.map((summary) => {
-          const state = dateCardStates[summary.puzzleId];
-          const isSelected = summary.puzzleId === selectedPuzzleId;
-          const statusLabel =
-            state?.completedAt != null
-              ? "완료"
-              : state?.attemptsUsed != null &&
-                  state.attemptsUsed >= state.maxAttempts
-                ? "도전 종료"
-                : state?.hasProgress
-                  ? "진행 중"
-                  : "대기";
-          const titleLabel = isRemotePack
-            ? formatPuzzleCardSequenceLabel(summary)
-            : formatPuzzleAliasLabel(summary);
-
-          return (
-            <button
-              key={summary.puzzleId}
-              className={[
-                "todayPuzzleChip",
-                isSelected ? "todayPuzzleChipSelected" : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              type="button"
-              aria-pressed={isSelected}
-              onClick={() => void selectPuzzle(summary.puzzleId)}
-            >
-              <span>{titleLabel}</span>
-              <strong>{statusLabel}</strong>
-              <em>
-                {[
-                  formatDifficultyLabel(summary.difficulty),
-                  `${summary.metrics?.wordCount ?? "-"}개 낱말`,
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </em>
-            </button>
-          );
-        })}
-      </div>
-    </section>
   );
 }
 
@@ -4138,19 +3984,6 @@ function formatPuzzleHeaderLabel(date: string, loadState: LoadState) {
       return "불러오는 중";
     case "fallback":
       return "기기저장 퍼즐";
-  }
-}
-
-function formatPackInfoLabel(loadState: LoadState, puzzleCount: number) {
-  switch (loadState) {
-    case "remote":
-      return puzzleCount > 1
-        ? `최근 퍼즐 ${puzzleCount}개`
-        : "오늘의 무료 퍼즐";
-    case "loading":
-      return "원격 퍼즐팩 불러오는 중";
-    case "fallback":
-      return `기기저장 기본 퍼즐 ${puzzleCount}개`;
   }
 }
 
