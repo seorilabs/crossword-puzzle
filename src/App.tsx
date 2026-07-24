@@ -40,7 +40,6 @@ import {
   getCellKey,
   getCompletedEntries,
   getCompletionAchievements,
-  getDailyFreePuzzleSummaries,
   getDailyFreePuzzleSummary,
   findPuzzleSummaryById,
   formatDateCardDay,
@@ -477,6 +476,9 @@ function isRemotePuzzlePackSummary(summary: PuzzleManifestItem) {
 function getPuzzlePackLoadState(summaries: PuzzleManifestItem[]): LoadState {
   return summaries.some(isRemotePuzzlePackSummary) ? "remote" : "fallback";
 }
+
+// 난이도 정렬 순위(당일 서빙 목록·홈 난이도 선택에서 easy→normal→hard 순으로 노출).
+const DIFFICULTY_RANK: Record<string, number> = { easy: 0, normal: 1, hard: 2 };
 
 function getInitialPuzzleId(
   puzzleSummaries: PuzzleManifestItem[],
@@ -1246,14 +1248,18 @@ function App() {
     () => getDailyFreePuzzleSummary(puzzleSummaries, todayKey),
     [puzzleSummaries, todayKey],
   );
-  const dailyFreeSummaries = useMemo(
+  // 당일 서빙: 오늘 발행된 퍼즐(easy 5×5 · normal 8×8)만 노출한다. 난이도 오름차순
+  // (easy→normal→hard)으로 정렬해 홈에서 원하는 난이도를 고를 수 있게 한다.
+  const todayPuzzleSummaries = useMemo(
     () =>
-      getDailyFreePuzzleSummaries(
-        puzzleSummaries,
-        todayKey,
-        launchConfig.visiblePuzzleCount,
-      ),
-    [launchConfig.visiblePuzzleCount, puzzleSummaries, todayKey],
+      puzzleSummaries
+        .filter((summary) => summary.date === todayKey)
+        .sort(
+          (a, b) =>
+            (DIFFICULTY_RANK[a.difficulty ?? "normal"] ?? 1) -
+            (DIFFICULTY_RANK[b.difficulty ?? "normal"] ?? 1),
+        ),
+    [puzzleSummaries, todayKey],
   );
   const archivePuzzleSummaries = useMemo(
     () =>
@@ -1277,13 +1283,13 @@ function App() {
       sortPuzzleSummariesByRecency(
         uniquePuzzleSummaries(
           [
-            ...dailyFreeSummaries,
+            ...todayPuzzleSummaries,
             selectedPuzzleSummary,
             ...archivePuzzleSummaries,
           ].filter((summary): summary is PuzzleManifestItem => summary != null),
         ),
       ),
-    [archivePuzzleSummaries, dailyFreeSummaries, selectedPuzzleSummary],
+    [archivePuzzleSummaries, todayPuzzleSummaries, selectedPuzzleSummary],
   );
   // 현재 퍼즐 난이도에 맞는 기본 힌트 크레딧(#251). easy 는 과다·hard 는 부족한
   // 평면 3크레딧 대신 난이도별 기본값을 쓴다(원격 오버라이드 가능).
@@ -2840,6 +2846,7 @@ function App() {
           startLabels={viewModel.startLabels}
           startOrResumeMission={startOrResumeMission}
           startTodayPuzzle={() => void startTodayPuzzle()}
+          todayPuzzleSummaries={todayPuzzleSummaries}
         />
       )}
       {isRewardedHintPromptOpen ? (
@@ -3085,6 +3092,7 @@ type HomeScreenProps = DateSelectionProps & {
   startLabels: Map<string, number>;
   startOrResumeMission: () => void;
   startTodayPuzzle: () => void;
+  todayPuzzleSummaries: PuzzleManifestItem[];
 };
 
 function HomeScreen({
@@ -3103,11 +3111,14 @@ function HomeScreen({
   puzzleSummaries,
   remainingAttempts,
   requestRewardedHint,
+  dateCardStates,
   selectedEntry,
   selectedPuzzleId,
+  selectPuzzle,
   startLabels,
   startOrResumeMission,
   startTodayPuzzle,
+  todayPuzzleSummaries,
 }: HomeScreenProps) {
   const isLoadingPuzzlePack = loadState === "loading";
   const isAttemptExhaustedUncompleted =
@@ -3191,6 +3202,39 @@ function HomeScreen({
         <span className="homeQuickStartLabel">{quickStartLabel}</span>
         <span className="homeQuickStartHint">한 번 눌러 바로 풀기 시작</span>
       </button>
+
+      {todayPuzzleSummaries.length > 1 ? (
+        <section className="todayDifficultyPicker" aria-label="오늘의 퍼즐 난이도">
+          {todayPuzzleSummaries.map((summary) => {
+            const state = dateCardStates[summary.puzzleId];
+            const isSelected = summary.puzzleId === selectedPuzzleId;
+            const statusLabel =
+              state?.completedAt != null
+                ? "완료"
+                : state?.hasProgress
+                  ? "이어 풀기"
+                  : "새 퍼즐";
+
+            return (
+              <button
+                key={summary.puzzleId}
+                type="button"
+                className={[
+                  "todayDifficultyChip",
+                  isSelected ? "todayDifficultyChipSelected" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                aria-pressed={isSelected}
+                onClick={() => void selectPuzzle(summary.puzzleId)}
+              >
+                <strong>{formatDifficultyLabel(summary.difficulty)}</strong>
+                <span>{statusLabel}</span>
+              </button>
+            );
+          })}
+        </section>
+      ) : null}
 
       <section className="todayMission" aria-label="선택한 미션">
         <div className="missionLead">
