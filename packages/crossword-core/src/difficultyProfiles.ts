@@ -34,10 +34,14 @@ export const DIFFICULTY_ORDER: readonly Difficulty[] = ["easy", "normal", "hard"
 export const DIFFICULTY_PROFILES: Record<Difficulty, DifficultyProfile> = {
   easy: {
     difficulty: "easy",
-    boardSize: 7,
-    maxWords: 9,
+    // 매일 5×5 easy를 서빙하는 방향(당일 2판: easy 5×5 + normal 8×8)에 맞춰 보드를
+    // 5로 낮춘다. 온보딩 퍼즐과 같은 5×5 규격으로, 초급 어휘·촘촘한 교차로 1~2분
+    // 안에 푸는 가벼운 데일리를 목표로 한다. 5×5 자동생성은 초급 워드뱅크(약 900개)로
+    // 검증됨(생성 PoC: entries 9, cross 0.75, bbox 0.6).
+    boardSize: 5,
+    maxWords: 7,
     minWordLength: 2,
-    minWordCount: 8,
+    minWordCount: 6,
     // easy 는 더 촘촘한 교차(쉬운 단서 연결)가 유리해 교차율을 normal 보다 약간
     // 상향한다. 작은 보드라 밀도는 normal 과 동일하게 둔다(생성 리포트로 보정).
     minCrossRatio: 0.6,
