@@ -42,7 +42,6 @@ import {
   getCellAnswerLetter,
   getCellKey,
   getCompletedEntries,
-  getDailyFreePuzzleSummaries,
   getDailyFreePuzzleSummary,
   findPuzzleSummaryById,
   formatDateCardDay,
@@ -65,7 +64,6 @@ import {
   isCellLocked,
   isHangulJamoInput,
   getNextStreakMilestoneHint,
-  getOpenPuzzleSummariesForDate,
   getPuzzlePackAlias,
   getRemainingAttempts,
   getStreakBadgeLabel,
@@ -121,13 +119,20 @@ import puzzle20260529 from '../../public/puzzles/2026-05-29-normal-05.json';
 import puzzle20260530 from '../../public/puzzles/2026-05-30-normal-06.json';
 import puzzle20260531 from '../../public/puzzles/2026-05-31-normal-07.json';
 
-export type AppRoute = 'home' | 'today' | 'result' | 'history' | 'license';
+export type AppRoute =
+  | 'home'
+  | 'today'
+  | 'result'
+  | 'history'
+  | 'resume'
+  | 'license';
 
 const APP_ROUTE_GRAPH: Record<AppRoute, { backTarget: AppRoute | null }> = {
   history: { backTarget: 'home' },
   home: { backTarget: null },
   license: { backTarget: 'history' },
   result: { backTarget: 'home' },
+  resume: { backTarget: 'home' },
   today: { backTarget: 'home' },
 };
 
@@ -295,6 +300,9 @@ function dedupePuzzleSummaries(puzzles: PuzzleManifestItem[]) {
 
   return result;
 }
+
+// 난이도 정렬 순위(당일 서빙 목록·홈 난이도 선택에서 easy→normal→hard 순).
+const DIFFICULTY_RANK: Record<string, number> = {easy: 0, normal: 1, hard: 2};
 
 function getInitialPuzzleId(puzzles: PuzzleManifestItem[]) {
   const today = getTodayDateKey();
@@ -1050,18 +1058,17 @@ function AppContent() {
     () => getCompletedPuzzleIds(dateCardStates),
     [dateCardStates],
   );
-  const dailyFreeSummary = useMemo(
-    () => getDailyFreePuzzleSummary(puzzlePack.summaries, todayKey),
-    [puzzlePack.summaries, todayKey],
-  );
-  const dailyFreeSummaries = useMemo(
+  // 당일 서빙: 오늘 발행된 퍼즐(easy 5×5 · normal 8×8)만, 난이도 오름차순 정렬.
+  const todayPuzzleSummaries = useMemo(
     () =>
-      getDailyFreePuzzleSummaries(
-        puzzlePack.summaries,
-        todayKey,
-        launchConfig.visiblePuzzleCount,
-      ),
-    [launchConfig.visiblePuzzleCount, puzzlePack.summaries, todayKey],
+      puzzlePack.summaries
+        .filter(summary => summary.date === todayKey)
+        .sort(
+          (a, b) =>
+            (DIFFICULTY_RANK[a.difficulty ?? 'normal'] ?? 1) -
+            (DIFFICULTY_RANK[b.difficulty ?? 'normal'] ?? 1),
+        ),
+    [puzzlePack.summaries, todayKey],
   );
   const archivePuzzleSummaries = useMemo(
     () =>
@@ -1084,34 +1091,18 @@ function AppContent() {
       createPuzzleSummary(puzzle),
     [archivePuzzleSummaries, puzzle, puzzlePack.summaries],
   );
-  const todayOpenPuzzleSummaries = useMemo(
-    () =>
-      getOpenPuzzleSummariesForDate({
-        archivePuzzleSummaries: todayArchivePuzzleSummaries,
-        date: todayKey,
-        dailyFreeSummary,
-        selectedPuzzleSummary,
-        unlockedBonusSummaries: [],
-      }),
-    [
-      dailyFreeSummary,
-      selectedPuzzleSummary,
-      todayArchivePuzzleSummaries,
-      todayKey,
-    ],
-  );
   const visiblePuzzleSummaries = useMemo(
     () =>
       sortPuzzleSummariesByRecency(
         uniquePuzzleSummaries(
           [
-            ...dailyFreeSummaries,
+            ...todayPuzzleSummaries,
             selectedPuzzleSummary,
             ...archivePuzzleSummaries,
           ].filter((summary): summary is PuzzleManifestItem => summary != null),
         ),
       ),
-    [archivePuzzleSummaries, dailyFreeSummaries, selectedPuzzleSummary],
+    [archivePuzzleSummaries, todayPuzzleSummaries, selectedPuzzleSummary],
   );
   const nextRecommendedSummary = useMemo(
     () =>
@@ -2204,121 +2195,98 @@ function AppContent() {
     );
   }
 
-  function renderDateSelector() {
+  function renderDifficultyPicker() {
+    if (todayPuzzleSummaries.length < 2) {
+      return null;
+    }
     return (
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.dateList}
-      >
-        {visiblePuzzleSummaries.map(summary => {
+      <View style={styles.difficultyPicker}>
+        {todayPuzzleSummaries.map(summary => {
           const state = dateCardStates[summary.puzzleId];
           const isSelected = summary.puzzleId === puzzle.puzzleId;
-          const isDone = state?.completedAt != null;
-          const sequenceLabel =
-            puzzlePack.source === 'remote'
-              ? formatPuzzleCardSequenceLabel(summary)
-              : '';
-          const wordCountLabel = `${summary.metrics?.wordCount ?? '-'}단어`;
-          const difficultyLabel = formatDifficultyLabel(summary.difficulty);
-          const metaLabel =
-            sequenceLabel === ''
-              ? [difficultyLabel, wordCountLabel, `${state?.attemptsUsed ?? 0}/${DAILY_ATTEMPT_LIMIT}회`]
-                  .filter(Boolean)
-                  .join(' · ')
-              : [difficultyLabel, sequenceLabel, wordCountLabel].filter(Boolean).join(' · ');
-          const titleLabel = formatPuzzleCardTitle(summary, puzzlePack.source);
-
+          const statusLabel =
+            state?.completedAt != null
+              ? '완료'
+              : state?.hasProgress
+                ? '이어 풀기'
+                : '새 퍼즐';
           return (
             <Pressable
               key={summary.puzzleId}
               onPress={() => {
-                selectPuzzle(summary.puzzleId);
+                void selectPuzzle(summary.puzzleId);
               }}
               style={[
-                styles.dateCard,
-                isSelected && styles.dateCardSelected,
-                isDone && styles.dateCardCompleted,
+                styles.difficultyChip,
+                isSelected ? styles.difficultyChipSelected : null,
               ]}
             >
-              <Text style={styles.dateCardDate}>{titleLabel}</Text>
-              <Text style={styles.dateCardMeta}>{metaLabel}</Text>
-              <Text style={styles.dateCardState}>
-                {isDone
-                  ? '완료'
-                  : (state?.attemptsUsed ?? 0) >= DAILY_ATTEMPT_LIMIT
-                    ? '도전 종료'
-                    : state?.hasProgress
-                      ? '진행 중'
-                      : '대기'}
+              <Text style={styles.difficultyChipLabel}>
+                {formatDifficultyLabel(summary.difficulty)}
               </Text>
+              <Text style={styles.difficultyChipStatus}>{statusLabel}</Text>
             </Pressable>
           );
         })}
-      </ScrollView>
+      </View>
     );
   }
 
-  function renderTodayPuzzleNavigator() {
-    if (isLoading || todayOpenPuzzleSummaries.length <= 1) {
-      return null;
-    }
-
+  // 오늘/과거에 시작했지만 끝내지 못한 퍼즐을 로컬 아카이브에서 모아 보여준다.
+  function renderResume() {
+    const incomplete = puzzleArchiveRecords.filter(record => {
+      const state = dateCardStates[record.puzzleId];
+      const isCompleted =
+        record.completedAt != null || state?.completedAt != null;
+      const hasStarted =
+        record.startedAt != null ||
+        (state?.attemptsUsed ?? 0) > 0 ||
+        state?.hasProgress === true;
+      return !isCompleted && hasStarted;
+    });
     return (
-      <View style={styles.todayPuzzleRail}>
-        <View style={styles.todayPuzzleRailHeader}>
-          <Text style={styles.todayPuzzleRailTitle}>오늘 열린 퍼즐</Text>
-          <Text style={styles.todayPuzzleRailCount}>
-            {todayOpenPuzzleSummaries.length}개
-          </Text>
-        </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.todayPuzzleList}
-        >
-          {todayOpenPuzzleSummaries.map(summary => {
-            const state = dateCardStates[summary.puzzleId];
-            const isSelected = summary.puzzleId === puzzle.puzzleId;
-            const statusLabel =
-              state?.completedAt != null
-                ? '완료'
-                : (state?.attemptsUsed ?? 0) >= DAILY_ATTEMPT_LIMIT
-                  ? '도전 종료'
-                  : state?.hasProgress
-                    ? '진행 중'
-                    : '대기';
-            const titleLabel =
-              puzzlePack.source === 'remote'
-                ? formatPuzzleCardSequenceLabel(summary)
-                : formatPuzzleAliasLabel(summary);
-
+      <ScrollView contentContainerStyle={styles.homeContent}>
+        {renderHeader('이어 풀기', `못 끝낸 퍼즐 ${incomplete.length}개`)}
+        {incomplete.length > 0 ? (
+          incomplete.map(record => {
+            const state = dateCardStates[record.puzzleId];
+            const isExhausted =
+              (state?.attemptsUsed ?? 0) >= DAILY_ATTEMPT_LIMIT;
+            const summary = createPuzzleSummary(record.puzzle);
             return (
               <Pressable
-                key={summary.puzzleId}
+                key={record.puzzleId}
                 onPress={() => {
-                  selectPuzzle(summary.puzzleId);
+                  void selectPuzzle(record.puzzleId);
+                  navigateTo(isExhausted ? 'result' : 'today');
                 }}
-                style={[
-                  styles.todayPuzzleChip,
-                  isSelected && styles.todayPuzzleChipSelected,
-                ]}
+                style={styles.summaryPanel}
               >
-                <Text style={styles.todayPuzzleChipTitle}>{titleLabel}</Text>
-                <Text style={styles.todayPuzzleChipState}>{statusLabel}</Text>
-                <Text style={styles.todayPuzzleChipMeta}>
-                  {[
-                    formatDifficultyLabel(summary.difficulty),
-                    `${summary.metrics?.wordCount ?? '-'}단어`,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
+                <Text style={styles.panelTitle}>
+                  {formatDifficultyLabel(summary.difficulty)} ·{' '}
+                  {record.puzzle.gridSize}x{record.puzzle.gridSize}
+                </Text>
+                <Text style={styles.smallText}>
+                  {record.puzzle.entries.length}개 단어 ·{' '}
+                  {isExhausted ? '결과 보기' : '이어 풀기'} · 기기 저장 사본
                 </Text>
               </Pressable>
             );
-          })}
-        </ScrollView>
-      </View>
+          })
+        ) : (
+          <View style={styles.summaryPanel}>
+            <Text style={styles.smallText}>
+              못 끝낸 퍼즐이 없어요. 오늘의 퍼즐을 풀어보세요.
+            </Text>
+          </View>
+        )}
+        <Pressable
+          onPress={() => navigateTo('home')}
+          style={styles.secondaryButton}
+        >
+          <Text style={styles.secondaryButtonText}>홈으로</Text>
+        </Pressable>
+      </ScrollView>
     );
   }
 
@@ -2335,18 +2303,7 @@ function AppContent() {
     return (
       <ScrollView contentContainerStyle={styles.homeContent}>
         {renderHeader(HOME_HEADER_TITLE, selectedPuzzleLabel)}
-        {renderDateSelector()}
-
-        <View style={styles.policyPanel}>
-          <Text style={styles.policyTitle}>하루 1개 기본 공개</Text>
-          <Text style={styles.smallText}>
-            홈에는 하루 1개씩 최근 {launchConfig.visiblePuzzleCount}일치 무료
-            퍼즐과 기기에 저장된 기록을 함께 보여줍니다. 추가 퍼즐은 보너스 해금
-            흐름으로 엽니다. 원격 퍼즐은{' '}
-            {launchConfig.puzzleGenerationIntervalHours}시간마다 생성되고 최근{' '}
-            {launchConfig.puzzleKeepCount}개까지 유지됩니다.
-          </Text>
-        </View>
+        {renderDifficultyPicker()}
 
         <View style={styles.summaryPanel}>
           <Text style={styles.panelTitle}>{selectedPuzzleSequenceLabel}</Text>
@@ -2388,6 +2345,12 @@ function AppContent() {
               </Text>
             </Pressable>
             <Pressable
+              onPress={() => navigateTo('resume')}
+              style={styles.secondaryButton}
+            >
+              <Text style={styles.secondaryButtonText}>못 끝낸 퍼즐</Text>
+            </Pressable>
+            <Pressable
               onPress={() => navigateTo('history')}
               style={styles.secondaryButton}
             >
@@ -2396,9 +2359,6 @@ function AppContent() {
           </View>
           <Text style={styles.notice}>{notice}</Text>
         </View>
-
-        {renderTodayPuzzleNavigator()}
-
 
         <View style={styles.previewPanel}>
           <Text style={styles.panelTitle}>첫 힌트</Text>
@@ -3493,9 +3453,11 @@ function AppContent() {
             ? renderResult()
             : route === 'history'
               ? renderHistory()
-              : route === 'license'
-                ? renderLicense()
-                : renderHome()}
+              : route === 'resume'
+                ? renderResume()
+                : route === 'license'
+                  ? renderLicense()
+                  : renderHome()}
         {renderAdDiagnosticsModal()}
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -4043,6 +4005,32 @@ const styles = StyleSheet.create({
     color: '#0f172a',
     fontSize: 18,
     fontWeight: '900',
+  },
+  difficultyPicker: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  difficultyChip: {
+    flex: 1,
+    gap: 2,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(15,23,42,0.08)',
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
+  },
+  difficultyChipSelected: {
+    borderColor: '#00a88f',
+    backgroundColor: '#f1f9f9',
+  },
+  difficultyChipLabel: {
+    color: '#0f172a',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  difficultyChipStatus: {
+    color: '#64748b',
+    fontSize: 12,
   },
   playScreen: {
     flex: 1,
