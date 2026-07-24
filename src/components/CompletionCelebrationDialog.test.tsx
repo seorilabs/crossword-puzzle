@@ -5,12 +5,14 @@ import {
   render,
   screen,
 } from "@testing-library/react";
+import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   CompletionCelebrationDialog,
   type CompletionCelebrationDialogProps,
 } from "./CompletionCelebrationDialog";
+import { openHistory } from "../useHistoryOpen";
 
 // 공유 CTA 계측(#299) 검증을 위해 telemetry 파사드를 목킹한다.
 const { clickMock, impressionMock } = vi.hoisted(() => ({
@@ -208,5 +210,107 @@ describe("CompletionCelebrationDialog 공유 CTA 계측(#299)", () => {
       surface: "completion_dialog",
       outcome: "copied",
     });
+  });
+});
+
+// 완료 축하 다이얼로그에 앱 배선(dismiss + navigate("history"))을 그대로 재현한
+// 하네스. 실제 "내 기록 보기" 클릭이 다이얼로그를 닫고 history 화면으로 전환하며
+// history_open 을 발화하는 최종 결과를 DOM으로 검증한다(#300, AC-1 통합).
+function CompletionHistoryHarness(
+  overrides: Partial<CompletionCelebrationDialogProps> = {},
+) {
+  const [open, setOpen] = useState(true);
+  const [route, setRoute] = useState<"today" | "history">("today");
+  return (
+    <div>
+      <div data-testid="route">{route}</div>
+      {open ? (
+        <CompletionCelebrationDialog
+          attemptsUsed={1}
+          completedCount={10}
+          consecutiveStreak={2}
+          elapsedLabel="01:20"
+          hintCount={0}
+          isNewBestTime={false}
+          puzzleId="26060114"
+          revealUsed={false}
+          shareGrid="🟩🟩"
+          shareText="공유 결과"
+          totalCount={10}
+          onClose={vi.fn()}
+          onGoHome={vi.fn()}
+          onSeeResult={vi.fn()}
+          onSeeHistory={() => {
+            // App.tsx 완료 다이얼로그 배선과 동일: 다이얼로그를 닫고 openHistory로
+            // 계측·전환을 수행한다.
+            setOpen(false);
+            openHistory("completion_dialog", (next) => setRoute(next));
+          }}
+          {...overrides}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+describe("CompletionCelebrationDialog 기록 진입 CTA(#300)", () => {
+  it("onSeeHistory가 없으면 '내 기록 보기' 버튼을 렌더하지 않는다", () => {
+    renderDialog();
+    expect(screen.queryByRole("button", { name: "내 기록 보기" })).toBeNull();
+  });
+
+  it("'내 기록 보기' 버튼이 존재하고 클릭 시 onSeeHistory만 호출한다(AC-1 버튼·콜백)", () => {
+    const onSeeHistory = vi.fn();
+    const props = renderDialog({ onSeeHistory });
+
+    const button = screen.getByRole("button", { name: "내 기록 보기" });
+    fireEvent.click(button);
+
+    expect(onSeeHistory).toHaveBeenCalledTimes(1);
+    // 기록 진입 버튼은 다른 CTA 콜백을 트리거하지 않는다.
+    expect(props.onGoHome).not.toHaveBeenCalled();
+    expect(props.onSeeResult).not.toHaveBeenCalled();
+    expect(props.onClose).not.toHaveBeenCalled();
+  });
+
+  it("'내 기록 보기' 클릭이 다이얼로그를 닫고 history 화면으로 전환한다(AC-1 통합)", () => {
+    render(<CompletionHistoryHarness />);
+
+    // 클릭 전: 다이얼로그 노출 + 라우트 today.
+    expect(screen.getByRole("button", { name: "내 기록 보기" })).toBeTruthy();
+    expect(screen.getByTestId("route").textContent).toBe("today");
+
+    fireEvent.click(screen.getByRole("button", { name: "내 기록 보기" }));
+
+    // 클릭 후: 다이얼로그 닫힘 + history 전환(navigate 결과)을 DOM으로 단언.
+    expect(screen.queryByRole("button", { name: "내 기록 보기" })).toBeNull();
+    expect(screen.getByTestId("route").textContent).toBe("history");
+  });
+
+  it("'내 기록 보기' 클릭 시 history_open을 source=completion_dialog로 1회 발화한다(AC-3)", () => {
+    render(<CompletionHistoryHarness />);
+
+    fireEvent.click(screen.getByRole("button", { name: "내 기록 보기" }));
+
+    expect(clickMock).toHaveBeenCalledTimes(1);
+    expect(clickMock).toHaveBeenCalledWith("history_open", {
+      source: "completion_dialog",
+    });
+  });
+
+  it("기록 진입 CTA는 기존 공유·다음 퍼즐·홈·결과 보기 CTA와 공존한다(AC-4 회귀 없음)", () => {
+    renderDialog({
+      nextPuzzleLabel: "#26060114 · 어려움",
+      onStartNextPuzzle: vi.fn(),
+      onSeeHistory: vi.fn(),
+    });
+
+    expect(screen.getByRole("button", { name: "결과 공유하기" })).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "다음 퍼즐 풀기 · #26060114 · 어려움" }),
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "홈으로" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "결과 보기" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "내 기록 보기" })).toBeTruthy();
   });
 });

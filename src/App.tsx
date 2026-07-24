@@ -71,6 +71,7 @@ import {
   emitProgressionScreenView,
   emitStreakMilestoneIfReached,
   getNextStreakMilestoneHint,
+  buildMissionRecordSummary,
   getStreakBadgeLabel,
   getStreakMilestoneProgress,
   applyTentativeUpdate,
@@ -129,6 +130,8 @@ import { PuzzleBoard } from "./components/PuzzleBoard";
 import { HowToPlayDialog } from "./components/HowToPlayDialog";
 import { SettingsSheet } from "./components/SettingsSheet";
 import { CompletionCelebrationDialog } from "./components/CompletionCelebrationDialog";
+import { MissionRecordCard } from "./components/MissionRecordCard";
+import { openHistory } from "./useHistoryOpen";
 import { PuzzleMetaChips } from "./components/PuzzleMetaChips";
 import { formatDifficultyLabel } from "./puzzleLabels";
 import { useShareResult } from "./useShareResult";
@@ -3173,6 +3176,17 @@ function HomeScreen({
   const streakMilestoneHint = !isLoadingPuzzlePack
     ? getStreakMilestoneProgress(consecutiveStreak)
     : null;
+  // 홈 미션 기록 카드 요약(#300): 기기에 보유한 최고 기록 중 가장 빠른 값을 읽어
+  // 현재 스트릭과 함께 요약한다. 홈은 렌더가 잦지 않아(기록 화면과 동일 패턴) 매
+  // 렌더 계산해도 부담이 없고, 이렇게 하면 완료 직후에도 항상 최신 값을 반영한다.
+  const homeBestTimeValues = getAllBestTimePuzzleIds()
+    .map((puzzleId) => getBestTimeMs(puzzleId))
+    .filter((ms): ms is number => ms != null);
+  const missionRecordSummary = buildMissionRecordSummary({
+    consecutiveStreak,
+    bestTimeMs:
+      homeBestTimeValues.length > 0 ? Math.min(...homeBestTimeValues) : null,
+  });
   // 홈 최상단 원탭 CTA: 선택 단계 없이 오늘의 퍼즐로 바로 진입시킨다. 라벨은
   // 오늘의 퍼즐이 선택된 경우에만 진행 상태(이어 풀기/결과 보기)를 반영한다.
   const quickStartLabel = isLoadingPuzzlePack
@@ -3381,13 +3395,11 @@ function HomeScreen({
           </div>
           <em>보기</em>
         </button>
-        <button type="button" onClick={() => navigate("history")}>
-          <div>
-            <strong>미션 기록</strong>
-            <span>{mission.attemptsUsed}번 도전</span>
-          </div>
-          <em>보기</em>
-        </button>
+        <MissionRecordCard
+          summary={missionRecordSummary}
+          attemptsUsed={mission.attemptsUsed}
+          onOpen={() => openHistory("home_card", navigate)}
+        />
       </section>
 
       <section className="sourceNotice" aria-label="힌트 출처 안내">
@@ -5010,6 +5022,10 @@ function TodayScreen({
           onGoHome={() => {
             dismissCompletionCelebration();
             navigate("home");
+          }}
+          onSeeHistory={() => {
+            dismissCompletionCelebration();
+            openHistory("completion_dialog", navigate);
           }}
           onSeeResult={() => {
             dismissCompletionCelebration();

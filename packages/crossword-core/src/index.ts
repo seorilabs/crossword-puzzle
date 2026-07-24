@@ -8,6 +8,7 @@ export * from "./gameAnalytics";
 export * from "./launchConfig";
 export * from "./leaderboard";
 export * from "./mission";
+export * from "./missionRecordSummary";
 export * from "./personalStats";
 export * from "./platformContracts";
 export * from "./puzzle";

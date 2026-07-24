@@ -25,6 +25,7 @@ export type CompletionCelebrationDialogProps = {
   totalCount: number;
   onClose: () => void;
   onGoHome: () => void;
+  onSeeHistory?: () => void;
   onSeeResult: () => void;
   onStartNextPuzzle?: () => void;
 };
@@ -46,6 +47,7 @@ export function CompletionCelebrationDialog({
   totalCount,
   onClose,
   onGoHome,
+  onSeeHistory,
   onSeeResult,
   onStartNextPuzzle,
 }: CompletionCelebrationDialogProps) {
@@ -172,6 +174,15 @@ export function CompletionCelebrationDialog({
           >
             결과 보기
           </button>
+          {onSeeHistory != null && (
+            <button
+              className="secondaryButton completionSeeHistoryButton"
+              type="button"
+              onClick={onSeeHistory}
+            >
+              내 기록 보기
+            </button>
+          )}
         </div>
         <button
           className="completionDialogReview"
