@@ -87,32 +87,6 @@
       "description": "힌트 보상형 광고 CTA 노출 여부",
       "valueType": "BOOLEAN"
     },
-    "rewarded_extra_attempt_enabled": {
-      "defaultValue": {
-        "value": "false"
-      },
-      "conditionalValues": {
-        "ios_app_store_review_ads_off": {
-          "value": "false"
-        }
-      },
-      "description": "도전 기회 소진 시 리워드 광고로 1회 충전하는 CTA 노출 여부(#204). 데이터 확인 전 기본 비활성",
-      "valueType": "BOOLEAN"
-    },
-    "rewarded_extra_attempt_daily_cap": {
-      "defaultValue": {
-        "value": "1"
-      },
-      "description": "하루에 광고로 충전할 수 있는 추가 도전 횟수 상한(#204). 허용 1~5",
-      "valueType": "NUMBER"
-    },
-    "result_interstitial_ads_enabled": {
-      "defaultValue": {
-        "value": "false"
-      },
-      "description": "결과 화면 진입 후 전면 광고 노출 여부. 기본값은 완료 직후 사용자 피로를 줄이기 위해 비활성",
-      "valueType": "BOOLEAN"
-    },
     "leaderboard_enabled": {
       "defaultValue": {
         "value": "false"

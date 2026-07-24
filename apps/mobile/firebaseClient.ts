@@ -53,9 +53,6 @@ export async function loadFirebaseLaunchConfig(): Promise<LaunchConfig> {
         rewardedHintAdsEnabled: remoteConfigClient
           .getValue(launchConfigKeys.rewardedHintAdsEnabled)
           .asBoolean(),
-        resultInterstitialAdsEnabled: remoteConfigClient
-          .getValue(launchConfigKeys.resultInterstitialAdsEnabled)
-          .asBoolean(),
         leaderboardEnabled: remoteConfigClient
           .getValue(launchConfigKeys.leaderboardEnabled)
           .asBoolean(),
