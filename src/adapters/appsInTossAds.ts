@@ -6,7 +6,6 @@ import {
 } from "@apps-in-toss/web-framework";
 
 export const appsInTossAdGroupIds = {
-  rewardedBonusPuzzle: "ait.v2.live.434bcf7cff1d462e",
   rewardedHint: "ait.v2.live.434bcf7cff1d462e",
 } as const;
 
@@ -197,16 +196,6 @@ export function showRewardedHintAd(
 ) {
   return loadAndShowFullScreenAd({
     adGroupId: appsInTossAdGroupIds.rewardedHint,
-    dismissalDelayMs: 3000,
-    onTrace,
-  });
-}
-
-export function showRewardedBonusPuzzleAd(
-  onTrace?: (event: FullScreenAdTraceEvent) => void,
-) {
-  return loadAndShowFullScreenAd({
-    adGroupId: appsInTossAdGroupIds.rewardedBonusPuzzle,
     dismissalDelayMs: 3000,
     onTrace,
   });

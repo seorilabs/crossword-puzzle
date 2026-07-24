@@ -47,9 +47,6 @@ export async function loadFirebaseLaunchConfig(): Promise<LaunchConfig> {
         puzzleKeepCount: remoteConfigClient
           .getValue(launchConfigKeys.puzzleKeepCount)
           .asNumber(),
-        rewardedBonusPuzzleAdsEnabled: remoteConfigClient
-          .getValue(launchConfigKeys.rewardedBonusPuzzleAdsEnabled)
-          .asBoolean(),
         rewardedHintAdsEnabled: remoteConfigClient
           .getValue(launchConfigKeys.rewardedHintAdsEnabled)
           .asBoolean(),

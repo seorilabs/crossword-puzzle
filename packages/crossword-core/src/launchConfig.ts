@@ -24,7 +24,6 @@ export type LaunchConfig = {
   // 하루 도전 횟수 상한(#225). 다른 밸런스 레버처럼 재배포 없이 원격 조정하려고
   // Remote Config로 뺀다. 기본값은 uiPolicy.DAILY_ATTEMPT_LIMIT와 동일해 회귀가 없다.
   dailyAttemptLimit: number;
-  rewardedBonusPuzzleAdsEnabled: boolean;
   rewardedHintAdsEnabled: boolean;
   leaderboardEnabled: boolean;
   returnReminderEnabled: boolean;
@@ -77,7 +76,6 @@ export const launchConfigKeys = {
   puzzleGenerationIntervalHours: "puzzle_generation_interval_hours",
   puzzleKeepCount: "puzzle_keep_count",
   dailyAttemptLimit: "daily_attempt_limit",
-  rewardedBonusPuzzleAdsEnabled: "rewarded_bonus_puzzle_ads_enabled",
   rewardedHintAdsEnabled: "rewarded_hint_ads_enabled",
   leaderboardEnabled: "leaderboard_enabled",
   returnReminderEnabled: "return_reminder_enabled",
@@ -112,7 +110,6 @@ export const defaultLaunchConfig: LaunchConfig = {
   // 하루 도전 횟수 상한 기본값(#225). uiPolicy 상수와 동일하게 둬 원격 미주입 시
   // 기존과 같은 3회로 동작한다.
   dailyAttemptLimit: DAILY_ATTEMPT_LIMIT,
-  rewardedBonusPuzzleAdsEnabled: true,
   rewardedHintAdsEnabled: true,
   leaderboardEnabled: false,
   // 복귀 리마인드 푸시 동의 유도(D1 재방문) 기본 활성. 스마트발송 템플릿이 등록돼
@@ -241,9 +238,6 @@ export function normalizeLaunchConfig(
       1,
       20,
     ),
-    rewardedBonusPuzzleAdsEnabled:
-      value.rewardedBonusPuzzleAdsEnabled ??
-      defaultLaunchConfig.rewardedBonusPuzzleAdsEnabled,
     rewardedHintAdsEnabled:
       value.rewardedHintAdsEnabled ??
       defaultLaunchConfig.rewardedHintAdsEnabled,
@@ -381,8 +375,6 @@ export function getLaunchConfigDefaultsForRemoteConfig() {
     [launchConfigKeys.puzzleKeepCount]: defaultLaunchConfig.puzzleKeepCount,
     [launchConfigKeys.dailyAttemptLimit]:
       defaultLaunchConfig.dailyAttemptLimit,
-    [launchConfigKeys.rewardedBonusPuzzleAdsEnabled]:
-      defaultLaunchConfig.rewardedBonusPuzzleAdsEnabled,
     [launchConfigKeys.rewardedHintAdsEnabled]:
       defaultLaunchConfig.rewardedHintAdsEnabled,
     [launchConfigKeys.leaderboardEnabled]:
