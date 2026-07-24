@@ -857,7 +857,10 @@ function App() {
   );
 
   const refreshPuzzleArchive = useCallback(async () => {
-    const nextArchiveRecords = await puzzleArchiveRepository.listPuzzles();
+    // 입문(온보딩) 퍼즐은 튜토리얼이므로 이어 풀기·기록·통계 목록에서 숨긴다.
+    const nextArchiveRecords = (
+      await puzzleArchiveRepository.listPuzzles()
+    ).filter((record) => record.puzzleId !== onboardingPuzzle.puzzleId);
     const archiveStates = await loadDateCardStates(
       nextArchiveRecords.map((record) => createPuzzleSummary(record.puzzle)),
     );
@@ -880,7 +883,10 @@ function App() {
     async function loadPuzzlePack() {
       try {
         const loadedSummaries = await puzzleRepository.listPuzzleSummaries();
-        const nextArchiveRecords = await puzzleArchiveRepository.listPuzzles();
+        // 입문(온보딩) 퍼즐은 튜토리얼이므로 목록·통계에서 숨긴다.
+        const nextArchiveRecords = (
+          await puzzleArchiveRepository.listPuzzles()
+        ).filter((record) => record.puzzleId !== onboardingPuzzle.puzzleId);
         const nextSummaries =
           loadedSummaries.length > 0
             ? loadedSummaries

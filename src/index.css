@@ -68,7 +68,7 @@ body {
 .todayDifficultyPicker {
   display: flex;
   gap: 8px;
-  margin: 4px 0 12px;
+  margin: 16px 0 18px;
 }
 .todayDifficultyChip {
   flex: 1;

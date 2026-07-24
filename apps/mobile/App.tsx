@@ -4009,6 +4009,8 @@ const styles = StyleSheet.create({
   difficultyPicker: {
     flexDirection: 'row',
     gap: 8,
+    marginTop: 16,
+    marginBottom: 18,
   },
   difficultyChip: {
     flex: 1,
