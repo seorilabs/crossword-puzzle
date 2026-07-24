@@ -511,32 +511,6 @@ export function getDailyFreePuzzleSummaries(
   return fallbackSummary == null ? [] : [fallbackSummary];
 }
 
-export function getBonusPuzzleCandidateSummary({
-  completedPuzzleIds,
-  dailyFreeSummary,
-  puzzleSummaries,
-  today,
-}: {
-  completedPuzzleIds: Set<string>;
-  dailyFreeSummary?: PuzzleManifestItem;
-  puzzleSummaries: PuzzleManifestItem[];
-  today: string;
-}) {
-  if (dailyFreeSummary?.date !== today) {
-    return undefined;
-  }
-
-  return sortPuzzleSummariesByRecency(
-    puzzleSummaries.filter(
-      (summary) =>
-        summary.date === today &&
-        summary.puzzleId !== dailyFreeSummary.puzzleId &&
-        !completedPuzzleIds.has(summary.puzzleId) &&
-        isPublishedPuzzle(summary),
-    ),
-  )[0];
-}
-
 export function getOpenPuzzleSummariesForDate({
   archivePuzzleSummaries,
   date,

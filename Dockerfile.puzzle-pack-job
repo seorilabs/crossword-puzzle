@@ -11,5 +11,9 @@ COPY data ./data
 COPY public ./public
 COPY scripts ./scripts
 COPY server ./server
+# 배치(server/batch·scripts)가 packages/crossword-core/src의 순수 로직
+# (difficultyProfiles·difficultyRotation·themeRotation 등)을 상대경로로 import하므로
+# 이미지에 함께 포함한다.
+COPY packages ./packages
 
 CMD ["npm", "run", "job:puzzle-pack"]

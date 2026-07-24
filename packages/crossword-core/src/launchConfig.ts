@@ -24,14 +24,7 @@ export type LaunchConfig = {
   // 하루 도전 횟수 상한(#225). 다른 밸런스 레버처럼 재배포 없이 원격 조정하려고
   // Remote Config로 뺀다. 기본값은 uiPolicy.DAILY_ATTEMPT_LIMIT와 동일해 회귀가 없다.
   dailyAttemptLimit: number;
-  rewardedBonusPuzzleAdsEnabled: boolean;
   rewardedHintAdsEnabled: boolean;
-  // 도전 기회 소진 시 리워드 광고로 1회 충전하는 CTA 노출 여부(#204).
-  // 데이터 확인 전이므로 기본 비활성이며 Remote Config로만 켠다.
-  rewardedExtraAttemptEnabled: boolean;
-  // 하루에 광고로 충전할 수 있는 추가 도전 횟수 상한(#204).
-  rewardedExtraAttemptDailyCap: number;
-  resultInterstitialAdsEnabled: boolean;
   leaderboardEnabled: boolean;
   returnReminderEnabled: boolean;
   // 신규 사용자 온보딩 난이도 램프(#291). easy(온보딩) 완료 직후 normal 급점프
@@ -83,11 +76,7 @@ export const launchConfigKeys = {
   puzzleGenerationIntervalHours: "puzzle_generation_interval_hours",
   puzzleKeepCount: "puzzle_keep_count",
   dailyAttemptLimit: "daily_attempt_limit",
-  rewardedBonusPuzzleAdsEnabled: "rewarded_bonus_puzzle_ads_enabled",
   rewardedHintAdsEnabled: "rewarded_hint_ads_enabled",
-  rewardedExtraAttemptEnabled: "rewarded_extra_attempt_enabled",
-  rewardedExtraAttemptDailyCap: "rewarded_extra_attempt_daily_cap",
-  resultInterstitialAdsEnabled: "result_interstitial_ads_enabled",
   leaderboardEnabled: "leaderboard_enabled",
   returnReminderEnabled: "return_reminder_enabled",
   onboardingDifficultyRampEnabled: "onboarding_difficulty_ramp_enabled",
@@ -121,13 +110,7 @@ export const defaultLaunchConfig: LaunchConfig = {
   // 하루 도전 횟수 상한 기본값(#225). uiPolicy 상수와 동일하게 둬 원격 미주입 시
   // 기존과 같은 3회로 동작한다.
   dailyAttemptLimit: DAILY_ATTEMPT_LIMIT,
-  rewardedBonusPuzzleAdsEnabled: true,
   rewardedHintAdsEnabled: true,
-  // 소진 구제 리워드 광고(#204). remaining_attempts=0 이탈 데이터 확인 전이라
-  // 기본 OFF. 켤 때는 Remote Config `rewarded_extra_attempt_enabled`로 켠다.
-  rewardedExtraAttemptEnabled: false,
-  rewardedExtraAttemptDailyCap: 1,
-  resultInterstitialAdsEnabled: false,
   leaderboardEnabled: false,
   // 복귀 리마인드 푸시 동의 유도(D1 재방문) 기본 활성. 스마트발송 템플릿이 등록돼
   // AIT/Web 동의 요청 경로가 갖춰졌고, D1 잔존(8.6%) 개선을 위해 켠다(#162). 필요 시
@@ -255,25 +238,9 @@ export function normalizeLaunchConfig(
       1,
       20,
     ),
-    rewardedBonusPuzzleAdsEnabled:
-      value.rewardedBonusPuzzleAdsEnabled ??
-      defaultLaunchConfig.rewardedBonusPuzzleAdsEnabled,
     rewardedHintAdsEnabled:
       value.rewardedHintAdsEnabled ??
       defaultLaunchConfig.rewardedHintAdsEnabled,
-    rewardedExtraAttemptEnabled:
-      value.rewardedExtraAttemptEnabled ??
-      defaultLaunchConfig.rewardedExtraAttemptEnabled,
-    rewardedExtraAttemptDailyCap: clampInteger(
-      value.rewardedExtraAttemptDailyCap ??
-        defaultLaunchConfig.rewardedExtraAttemptDailyCap,
-      defaultLaunchConfig.rewardedExtraAttemptDailyCap,
-      1,
-      5,
-    ),
-    resultInterstitialAdsEnabled:
-      value.resultInterstitialAdsEnabled ??
-      defaultLaunchConfig.resultInterstitialAdsEnabled,
     leaderboardEnabled:
       value.leaderboardEnabled ?? defaultLaunchConfig.leaderboardEnabled,
     returnReminderEnabled:
@@ -408,16 +375,8 @@ export function getLaunchConfigDefaultsForRemoteConfig() {
     [launchConfigKeys.puzzleKeepCount]: defaultLaunchConfig.puzzleKeepCount,
     [launchConfigKeys.dailyAttemptLimit]:
       defaultLaunchConfig.dailyAttemptLimit,
-    [launchConfigKeys.rewardedBonusPuzzleAdsEnabled]:
-      defaultLaunchConfig.rewardedBonusPuzzleAdsEnabled,
     [launchConfigKeys.rewardedHintAdsEnabled]:
       defaultLaunchConfig.rewardedHintAdsEnabled,
-    [launchConfigKeys.rewardedExtraAttemptEnabled]:
-      defaultLaunchConfig.rewardedExtraAttemptEnabled,
-    [launchConfigKeys.rewardedExtraAttemptDailyCap]:
-      defaultLaunchConfig.rewardedExtraAttemptDailyCap,
-    [launchConfigKeys.resultInterstitialAdsEnabled]:
-      defaultLaunchConfig.resultInterstitialAdsEnabled,
     [launchConfigKeys.leaderboardEnabled]:
       defaultLaunchConfig.leaderboardEnabled,
     [launchConfigKeys.returnReminderEnabled]:

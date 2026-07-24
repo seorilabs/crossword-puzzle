@@ -33,7 +33,7 @@ export type MobileAdEvent = {
 };
 
 export type MobileAdUnitMode = 'production' | 'test';
-export type RewardedAdPlacement = 'rewardedBonusPuzzle' | 'rewardedHint';
+export type RewardedAdPlacement = 'rewardedHint';
 export type InterstitialAdPlacement = 'interstitialResult';
 export type MobileAdRequestOptions = {
   adUnitMode?: MobileAdUnitMode;
@@ -78,12 +78,10 @@ const loadTimeoutMs = 15000;
 const productionAdUnitIds = {
   android: {
     interstitialResult: 'ca-app-pub-2444587584524186/4930691809',
-    rewardedBonusPuzzle: 'ca-app-pub-2444587584524186/2299285882',
     rewardedHint: 'ca-app-pub-2444587584524186/7533141122',
   },
   ios: {
     interstitialResult: 'ca-app-pub-2444587584524186/3402324424',
-    rewardedBonusPuzzle: 'ca-app-pub-2444587584524186/2089242756',
     rewardedHint: 'ca-app-pub-2444587584524186/6151776694',
   },
 } as const;
