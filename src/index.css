@@ -32,3 +32,34 @@ body {
     background-color: #0f1115 !important;
   }
 }
+
+/* 최상위 ErrorBoundary 폴백 UI. 렌더 예외 시 빈 화면 대신 노출된다. */
+.appErrorBoundary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 100vh;
+  padding: 24px;
+  text-align: center;
+}
+.appErrorBoundaryTitle {
+  font-size: 18px;
+  font-weight: 700;
+}
+.appErrorBoundaryDescription {
+  font-size: 14px;
+  opacity: 0.7;
+  line-height: 1.5;
+}
+.appErrorBoundaryButton {
+  margin-top: 8px;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 12px;
+  background: #00a88f;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+}

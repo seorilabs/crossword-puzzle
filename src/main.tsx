@@ -5,6 +5,7 @@ import { createRoot } from "react-dom/client";
 
 import config from "../granite.config.ts";
 import App from "./App.tsx";
+import { AppErrorBoundary } from "./components/AppErrorBoundary.tsx";
 import "./index.css";
 
 const localUserAgent = {
@@ -21,17 +22,19 @@ const isTossApp =
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    {isTossApp ? (
-      <TDSMobileAITProvider brandPrimaryColor={config.brand.primaryColor}>
-        <App />
-      </TDSMobileAITProvider>
-    ) : (
-      <TDSMobileProvider
-        token={{ color: { primary: config.brand.primaryColor } }}
-        userAgent={localUserAgent}
-      >
-        <App />
-      </TDSMobileProvider>
-    )}
+    <AppErrorBoundary>
+      {isTossApp ? (
+        <TDSMobileAITProvider brandPrimaryColor={config.brand.primaryColor}>
+          <App />
+        </TDSMobileAITProvider>
+      ) : (
+        <TDSMobileProvider
+          token={{ color: { primary: config.brand.primaryColor } }}
+          userAgent={localUserAgent}
+        >
+          <App />
+        </TDSMobileProvider>
+      )}
+    </AppErrorBoundary>
   </StrictMode>,
 );
