@@ -100,25 +100,31 @@ describe("CompletionCelebrationDialog 다음 퍼즐 CTA(#274)", () => {
 });
 
 describe("CompletionCelebrationDialog 기록 진입 CTA(#300)", () => {
-  it("'내 기록 보기' 보조 버튼이 존재하고 클릭 시 다이얼로그 닫기+navigate 콜백(onSeeHistory)을 호출한다(AC-1)", () => {
+  it("'내 기록 보기' 보조 버튼이 존재하고 클릭 시 다이얼로그 닫기+navigate 콜백(onSeeHistory)만 호출한다(AC-1)", () => {
     // AC-1: 버튼 존재 + 클릭 시 onSeeHistory 실행. 실제 다이얼로그 닫기·navigate("history")는
-    // 호출부(App)의 onSeeHistory 핸들러가 담당하며, 다이얼로그의 계약은 이 콜백 호출이다.
+    // 호출부(App)의 onSeeHistory 핸들러가 담당하며(onSeeHistory={() => { dismiss(); navigate("history"); }}),
+    // 다이얼로그의 계약은 이 콜백 호출이다. 다른 CTA 콜백은 건드리지 않음을 함께 고정한다.
     const onSeeHistory = vi.fn();
-    renderDialog({ onSeeHistory });
+    const props = renderDialog({ onSeeHistory });
 
     const button = screen.getByRole("button", { name: "내 기록 보기" });
     expect(button).toBeTruthy();
 
     fireEvent.click(button);
     expect(onSeeHistory).toHaveBeenCalledTimes(1);
+    // 기록 진입 버튼은 홈·결과·닫기 등 다른 동선을 트리거하지 않는다.
+    expect(props.onGoHome).not.toHaveBeenCalled();
+    expect(props.onSeeResult).not.toHaveBeenCalled();
+    expect(props.onClose).not.toHaveBeenCalled();
   });
 
-  it("'내 기록 보기' 클릭 시 history_open(source=completion_dialog)을 발화한다(AC-3)", () => {
+  it("'내 기록 보기' 클릭 시 history_open을 source=completion_dialog로 정확히 1회 발화한다(AC-3)", () => {
     const onSeeHistory = vi.fn();
     renderDialog({ onSeeHistory });
 
     fireEvent.click(screen.getByRole("button", { name: "내 기록 보기" }));
 
+    expect(clickMock).toHaveBeenCalledTimes(1);
     expect(clickMock).toHaveBeenCalledWith("history_open", {
       source: "completion_dialog",
     });

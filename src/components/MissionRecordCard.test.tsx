@@ -56,7 +56,7 @@ describe("MissionRecordCard(#300)", () => {
     expect(screen.queryByText(/연속/)).toBeNull();
   });
 
-  it("카드 클릭 시 history_open(source=home_card) 계측 후 onOpen을 호출한다(AC-3)", () => {
+  it("카드 클릭 시 history_open을 source=home_card로 정확히 1회 발화한 뒤 onOpen을 호출한다(AC-3)", () => {
     const onOpen = vi.fn();
     render(
       <MissionRecordCard summary={null} attemptsUsed={1} onOpen={onOpen} />,
@@ -64,6 +64,7 @@ describe("MissionRecordCard(#300)", () => {
 
     fireEvent.click(screen.getByRole("button"));
 
+    expect(clickMock).toHaveBeenCalledTimes(1);
     expect(clickMock).toHaveBeenCalledWith("history_open", {
       source: "home_card",
     });
