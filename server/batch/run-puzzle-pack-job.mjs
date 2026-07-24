@@ -323,7 +323,7 @@ async function run() {
       { difficulty: "normal", hour: 1 },
     ];
 
-    for (const tier of tiers) {
+    for (const [index, tier] of tiers.entries()) {
       const publishedAt = new Date(
         `${dateKey}T${String(tier.hour).padStart(2, "0")}:00:00+09:00`,
       ).toISOString();
@@ -332,6 +332,14 @@ async function run() {
       tierArgs = setArg(tierArgs, "intervalHours", "1");
       if (getArgValue(tierArgs, "append") == null) {
         tierArgs = [...tierArgs, "--append"];
+      }
+      // 두 번째 티어부터는 방금 로컬에 쓴 manifest(앞 티어 결과)에 누적해야 하므로
+      // 원격 manifest(appendManifestUrl)를 다시 읽지 않게 한다. 원격을 다시 읽으면
+      // 앞 티어(easy)가 빠진 상태로 로드돼 덮어써진다.
+      if (index > 0) {
+        tierArgs = tierArgs.filter(
+          (arg) => !arg.startsWith("--appendManifestUrl="),
+        );
       }
       console.log(
         `[daily-tiers] generating difficulty=${tier.difficulty} date=${dateKey} publishedAt=${publishedAt}`,
