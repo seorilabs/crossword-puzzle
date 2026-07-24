@@ -46,7 +46,6 @@ import {
   getDailyFreePuzzleSummary,
   findPuzzleSummaryById,
   formatDateCardDay,
-  formatDateCardWeekday,
   formatPuzzleAliasLabel,
   formatPuzzleCardSequenceLabel,
   getCompletedPuzzleIds,
@@ -3987,10 +3986,6 @@ function formatPuzzleHeaderLabel(date: string, loadState: LoadState) {
   }
 }
 
-function formatFallbackCardTitle(index: number, puzzleCount: number) {
-  return puzzleCount > 1 ? `기본 ${index + 1}` : "기본";
-}
-
 function formatPuzzleCardSlot(summary: PuzzleManifestItem) {
   if (summary.publishedAt == null) {
     return "";
@@ -4021,25 +4016,6 @@ function formatPuzzleHistoryLabel(
   return loadState === "remote"
     ? `${formatPuzzleCardSequenceLabel(summary)} · ${aliasLabel}`
     : aliasLabel;
-}
-
-function getDateCardStatus(state?: DateCardState) {
-  if (state?.completedAt != null) {
-    return "완료";
-  }
-
-  if (
-    state?.attemptsUsed != null &&
-    state.attemptsUsed >= state.maxAttempts
-  ) {
-    return "도전 종료";
-  }
-
-  if (state?.hasProgress) {
-    return "진행";
-  }
-
-  return "대기";
 }
 
 function LiveTimer({
@@ -4082,157 +4058,6 @@ function LiveTimer({
     >
       {formatLiveTimer(seconds)}
     </span>
-  );
-}
-
-function DateCarousel({
-  dateCardStates,
-  loadState,
-  puzzleSummaries,
-  selectedPuzzleId,
-  selectPuzzle,
-}: DateSelectionProps) {
-  const scrollerRef = useRef<HTMLDivElement>(null);
-  const lastScrolledRef = useRef<{
-    key: string;
-    scroller: HTMLDivElement;
-  } | null>(null);
-  const todayKey = getTodayDateKey();
-
-  const puzzleIdsKey = JSON.stringify(
-    puzzleSummaries.map((p) => String(p.puzzleId)),
-  );
-
-  useEffect(() => {
-    const scroller = scrollerRef.current;
-    if (scroller == null) return;
-    const scrollKey = `${selectedPuzzleId}::${puzzleIdsKey}`;
-    const last = lastScrolledRef.current;
-    if (last?.key === scrollKey && last?.scroller === scroller) return;
-    const allCards =
-      scroller.querySelectorAll<HTMLButtonElement>("[data-puzzle-id]");
-    const selectedCard = Array.from(allCards).find(
-      (el) => el.dataset.puzzleId === String(selectedPuzzleId),
-    );
-    if (selectedCard == null) return;
-    lastScrolledRef.current = { key: scrollKey, scroller };
-    const prefersReducedMotion =
-      typeof window !== "undefined" && typeof window.matchMedia === "function"
-        ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
-        : true;
-    try {
-      selectedCard.scrollIntoView({
-        behavior: prefersReducedMotion ? "auto" : "smooth",
-        inline: "nearest",
-        block: "nearest",
-      });
-    } catch {
-      selectedCard.scrollIntoView();
-    }
-  }, [selectedPuzzleId, loadState, puzzleIdsKey]);
-
-  if (loadState === "loading") {
-    return (
-      <section className="dateRail" aria-label="퍼즐팩 로딩" aria-busy="true">
-        <div className="dateScroller">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="dateCard dateLoading" aria-hidden="true">
-              <span />
-              <strong />
-              <em />
-            </div>
-          ))}
-        </div>
-      </section>
-    );
-  }
-
-  const isFallbackPack = loadState === "fallback";
-
-  return (
-    <section className="dateRail" aria-label="퍼즐 날짜 선택">
-      <div className="dateScroller" ref={scrollerRef}>
-        {puzzleSummaries.map((summary, index) => {
-          const state = dateCardStates[summary.puzzleId];
-          const isSelected = summary.puzzleId === selectedPuzzleId;
-          const isToday = !isFallbackPack && summary.date === todayKey;
-          const sequenceLabel = isFallbackPack
-            ? ""
-            : formatPuzzleCardSequenceLabel(summary);
-          const statusLabel = getDateCardStatus(state);
-          const wordCountLabel = `${summary.metrics?.wordCount ?? "-"}개`;
-          const isEasy = !isFallbackPack && summary.difficulty === "easy";
-          const eyebrowLabel = isFallbackPack
-            ? "기기저장"
-            : isToday
-              ? "오늘"
-              : `${formatDateCardWeekday(summary.date)} ${formatDateCardDay(
-                  summary.date,
-                )}`;
-          const titleLabel = isFallbackPack
-            ? formatFallbackCardTitle(index, puzzleSummaries.length)
-            : sequenceLabel;
-          const difficultyLabel = formatDifficultyLabel(summary.difficulty);
-          const metaLabel = [statusLabel, wordCountLabel]
-            .filter(Boolean)
-            .join(" · ");
-          const ariaLabel = isFallbackPack
-            ? [eyebrowLabel, titleLabel, difficultyLabel, statusLabel]
-                .filter(Boolean)
-                .join(" ")
-            : [
-                titleLabel,
-                isToday
-                  ? `오늘 ${formatGameHeaderDate(summary.date)}`
-                  : formatGameHeaderDate(summary.date),
-                difficultyLabel,
-                statusLabel,
-              ]
-                .filter(Boolean)
-                .join(" ");
-
-          return (
-            <button
-              key={summary.puzzleId}
-              data-puzzle-id={summary.puzzleId}
-              className={[
-                "dateCard",
-                isSelected ? "dateSelected" : "",
-                state?.completedAt != null ? "dateCompleted" : "",
-                isToday ? "dateToday" : "",
-                isEasy ? "dateEasy" : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              type="button"
-              aria-label={ariaLabel}
-              aria-pressed={isSelected}
-              onClick={() => void selectPuzzle(summary.puzzleId)}
-            >
-              <span>{eyebrowLabel}</span>
-              <strong>{titleLabel}</strong>
-              {difficultyLabel !== "" ? (
-                <span className="dateCardValue">
-                  <span
-                    className={[
-                      "dateDifficulty",
-                      summary.difficulty
-                        ? `difficulty-${summary.difficulty}`
-                        : "",
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                  >
-                    {difficultyLabel}
-                  </span>
-                </span>
-              ) : null}
-              <em>{metaLabel}</em>
-            </button>
-          );
-        })}
-      </div>
-    </section>
   );
 }
 
@@ -4990,13 +4815,6 @@ function TodayScreen({
           eyebrow={`남은 도전 ${remainingAttempts}/${mission.maxAttempts}`}
           title="퍼즐 풀기"
           onBack={() => navigate("home")}
-        />
-        <DateCarousel
-          dateCardStates={dateCardStates}
-          loadState={loadState}
-          puzzleSummaries={puzzleSummaries}
-          selectedPuzzleId={selectedPuzzleId}
-          selectPuzzle={selectPuzzle}
         />
         <section className="startPanel" aria-label="미션 시작">
           <Paragraph typography="t2" fontWeight="bold">
@@ -5984,13 +5802,6 @@ function ResultScreen({
         onBack={() => navigate("home")}
       />
 
-      <DateCarousel
-        dateCardStates={dateCardStates}
-        loadState={loadState}
-        puzzleSummaries={puzzleSummaries}
-        selectedPuzzleId={selectedPuzzleId}
-        selectPuzzle={selectPuzzle}
-      />
 
       <section className="resultPanel" aria-label="미션 결과">
         <strong>{isComplete ? "완료" : `${progressPercent}% 진행`}</strong>
@@ -6418,13 +6229,6 @@ function HistoryScreen({
 
       <StreakHeatmap weeks={streakWeeks} />
 
-      <DateCarousel
-        dateCardStates={dateCardStates}
-        loadState={loadState}
-        puzzleSummaries={puzzleSummaries}
-        selectedPuzzleId={selectedPuzzleId}
-        selectPuzzle={selectPuzzle}
-      />
 
       <section className="historyList" aria-label="미션 기록">
         {archiveRecords.length > 0 ? (
