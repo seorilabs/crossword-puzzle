@@ -1,5 +1,7 @@
 import type { Puzzle, PuzzleManifestItem, SavedProgress } from "./types";
 
+export type { SavedProgress } from "./types";
+
 export type PuzzleRepository = {
   listPuzzleSummaries(): Promise<PuzzleManifestItem[]>;
   getPuzzleById(puzzleId: string): Promise<Puzzle | null>;

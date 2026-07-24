@@ -8,6 +8,7 @@ const nextPuzzle: PuzzleManifestItem = {
   date: "2026-07-21",
   difficulty: "hard",
   puzzleId: "hard1",
+  path: "packs/hard1.json",
 };
 
 describe("next_puzzle_cta telemetry 계약 (#274)", () => {

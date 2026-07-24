@@ -5,6 +5,8 @@
 
 import type { CompactTelemetryParams } from "./platformContracts.ts";
 
+export type { CompactTelemetryParams } from "./platformContracts.ts";
+
 /**
  * 모든 이벤트에 실리는 릴리즈 버전 파라미터 키. happy-farm 등 다른 Seorilabs AIT 게임의
  * 버전 표준 파라미터와 동일한 이름을 써, 백오피스가 게임 간 같은 축으로 집계할 수 있다.

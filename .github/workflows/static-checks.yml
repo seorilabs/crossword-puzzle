@@ -29,9 +29,11 @@ jobs:
         npm ci --prefix apps/mobile
       check_command: |
         npm run lint
+        npm run typecheck
         npm run validate:puzzles
         npm run test:adapters
         npm run test:core
+        npm run test:components
         npm run build
         npm run check:release-parity
         npm run check:mobile

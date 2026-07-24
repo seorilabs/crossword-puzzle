@@ -2411,6 +2411,12 @@ function App() {
         );
       },
       onFailure: (result) => {
+        // onFailure는 실패 결과에만 호출되지만 콜백 타입은 성공("rewarded")까지
+        // 포함한 FullScreenAdResult이므로, 실패 전용 메시지 함수에 넘기기 전에
+        // 성공 케이스를 좁혀낸다.
+        if (result.status === "rewarded") {
+          return;
+        }
         const message = getRewardedHintFailureMessage(result);
         setHintNotice(message);
         showHintToast(message);
@@ -5454,7 +5460,7 @@ function TodayScreen({
                 queueCommitInputValue(nextValue);
               }}
               onKeyDown={(event) => {
-                const nativeEvent = event.nativeEvent as KeyboardEvent;
+                const nativeEvent = event.nativeEvent;
 
                 if (isComposing || nativeEvent.isComposing) {
                   return;
@@ -5571,7 +5577,7 @@ function TodayScreen({
             <>
               {selectedPuzzleLabel} ·{" "}
               <LiveTimer
-                startedAt={mission.lastStartedAt}
+                startedAt={mission.lastStartedAt ?? ""}
                 pausedMs={pause.pausedMs}
                 pausedAt={pause.pausedAt}
               />
@@ -6723,7 +6729,17 @@ function HistoryScreen({
 
 type DevSimulatorScreenProps = Omit<
   TodayScreenProps,
-  "completionCelebrationId" | "dismissCompletionCelebration"
+  // dev 시뮬레이터는 완료 축하·리워드 광고·일시정지·입력 가이드 UI를 렌더하지
+  // 않으므로 관련 prop을 요구하지 않는다.
+  | "completionCelebrationId"
+  | "dismissCompletionCelebration"
+  | "pause"
+  | "canRequestExtraAttempt"
+  | "isExtraAttemptAdLoading"
+  | "isFirstInputGuideVisible"
+  | "isPaused"
+  | "togglePause"
+  | "requestRewardedExtraAttempt"
 > & {
   clearProgress: () => Promise<void>;
   revealAll: () => void;
