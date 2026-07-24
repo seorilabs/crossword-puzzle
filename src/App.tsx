@@ -30,13 +30,11 @@ import {
   computePersonalStats,
   computeSolveTimeDistribution,
   getTextScaleFontMultiplier,
-  createBonusPuzzlePanelImpressionGuard,
   createPuzzleSummary,
   createDailyMissionState,
   DAILY_ATTEMPT_LIMIT,
   getAnswerCommitLetters,
   getAnswerInputLetters,
-  getBonusPuzzleCandidateSummary,
   getBounds,
   getCellAnswerLetter,
   getCellKey,
@@ -85,7 +83,6 @@ import {
   runRewardedHintAdFlow,
   trackRewardedHintAdRequest,
   trackRewardedHintAdResult,
-  trackBonusPuzzlePanelImpression,
   shouldCelebrateOnboardingWordCompletion,
   shouldOfferStuckWordReveal,
   getStuckHintPromptText,
@@ -111,7 +108,6 @@ import {
   STUCK_HINT_PROMPT_REVEAL_WORD_EVENT,
   REWARDED_HINT_AD_REWARD_EVENT,
   type CellLetterChange,
-  type BonusPuzzlePanelStatus,
   type DailyMissionState,
   type Direction,
   type GamePuzzleContext,
@@ -154,9 +150,7 @@ import {
   invalidateStreakCache,
 } from "./adapters/localMissionRepository";
 import {
-  createLocalBonusPuzzleUnlockRepository,
   createLocalPuzzleArchiveRepository,
-  type BonusPuzzleUnlock,
   type PuzzleArchiveRecord,
   type PuzzleArchiveSaveOptions,
 } from "./adapters/localPuzzleAccessRepository";
@@ -195,7 +189,6 @@ import {
 } from "./adapters/feedbackSettingsRepository";
 import { emitFeedback } from "./adapters/feedback";
 import {
-  showRewardedBonusPuzzleAd,
   showRewardedHintAd,
   type FullScreenAdResult,
 } from "./adapters/appsInTossAds";
@@ -282,18 +275,6 @@ type PuzzleSession = {
 
 type RewardedAdStatus = "idle" | "loading";
 
-type BonusPuzzlePanelState = {
-  adsEnabled: boolean;
-  candidateSummary?: PuzzleManifestItem;
-  generationIntervalHours: number;
-  isAdBusy: boolean;
-  nextBonusPublishedAt?: Date;
-  notice: string;
-  now: Date;
-  status: BonusPuzzlePanelStatus;
-  unlockedSummary?: PuzzleManifestItem;
-};
-
 type HintBalance = {
   adsEnabled: boolean;
   defaultCredits: number;
@@ -338,7 +319,6 @@ const puzzleRepository = createOnboardingPuzzleRepository(
 const progressRepository = createLocalProgressRepository();
 const missionRepository = createLocalMissionRepository();
 const puzzleArchiveRepository = createLocalPuzzleArchiveRepository();
-const bonusPuzzleUnlockRepository = createLocalBonusPuzzleUnlockRepository();
 
 const directionLabels: Record<Direction, string> = {
   across: "가로",
@@ -420,23 +400,6 @@ function getRewardedHintFailureMessage(result: FullScreenAdFailureResult) {
         : "광고 표시가 시작되지 않아 힌트가 추가되지 않았어요. 잠시 후 다시 시도해 주세요.";
     case "failed":
       return "광고를 표시하지 못해 힌트가 추가되지 않았어요. 잠시 후 다시 시도해 주세요.";
-  }
-}
-
-function getRewardedBonusPuzzleFailureMessage(
-  result: FullScreenAdFailureResult,
-) {
-  switch (result.status) {
-    case "unsupported":
-      return "현재 환경에서는 보너스 퍼즐 광고를 사용할 수 없어요.";
-    case "dismissed":
-      return "광고 시청이 완료되지 않아 퍼즐이 열리지 않았어요.";
-    case "timeout":
-      return result.reason === "load_timeout"
-        ? "광고를 불러오는 데 시간이 오래 걸려 퍼즐이 열리지 않았어요. 잠시 후 다시 시도해 주세요."
-        : "광고 표시가 시작되지 않아 퍼즐이 열리지 않았어요. 잠시 후 다시 시도해 주세요.";
-    case "failed":
-      return "광고를 표시하지 못해 퍼즐이 열리지 않았어요. 잠시 후 다시 시도해 주세요.";
   }
 }
 
@@ -614,9 +577,6 @@ function App() {
     getRouteFromPathname(window.location.pathname),
   );
   const [puzzle, setPuzzle] = useState<Puzzle>(fallbackPuzzle);
-  const [bonusPuzzlePanelImpressionGuard] = useState(
-    createBonusPuzzlePanelImpressionGuard,
-  );
   const [cellValues, setCellValues] = useState<Record<string, string>>({});
   const [selectedDirection, setSelectedDirection] =
     useState<Direction>("across");
@@ -641,10 +601,8 @@ function App() {
     useState<FirstRunSnapshot | null>(null);
   const [rewardedAdStatus, setRewardedAdStatus] =
     useState<RewardedAdStatus>("idle");
-  const [bonusAdStatus, setBonusAdStatus] = useState<RewardedAdStatus>("idle");
   const [isRewardedHintPromptOpen, setIsRewardedHintPromptOpen] =
     useState(false);
-  const [bonusNotice, setBonusNotice] = useState("");
   const [hintNotice, setHintNotice] = useState("");
   const [hintToast, setHintToast] = useState<{ id: number; message: string }>({
     id: 0,
@@ -660,9 +618,6 @@ function App() {
   >({});
   const [puzzleArchiveRecords, setPuzzleArchiveRecords] = useState<
     PuzzleArchiveRecord[]
-  >([]);
-  const [bonusPuzzleUnlocks, setBonusPuzzleUnlocks] = useState<
-    BonusPuzzleUnlock[]
   >([]);
   const [completionCelebrationId, setCompletionCelebrationId] = useState<
     string | null
@@ -709,7 +664,6 @@ function App() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [hapticEnabled, setHapticEnabled] = useState(true);
   // "이 단어 확인"으로 잠시 강조 중인 셀. 일정 시간 후 비워 원상 복구한다.
-  const [now, setNow] = useState(() => new Date());
   const [hasSeenHowToPlay, setHasSeenHowToPlay] = useState(loadHowToPlaySeen);
   const [answerInputMode, setAnswerInputMode] =
     useState<AnswerInputMode>(loadAnswerInputMode);
@@ -930,7 +884,7 @@ function App() {
             ? loadedSummaries
             : [createPuzzleSummary(fallbackPuzzle)];
         const today = getTodayDateKey();
-        const [nextDateCardStates, nextBonusPuzzleUnlocks, onboardingSession] =
+        const [nextDateCardStates, onboardingSession] =
           await Promise.all([
             loadDateCardStates([
               ...nextSummaries,
@@ -938,7 +892,6 @@ function App() {
                 createPuzzleSummary(record.puzzle),
               ),
             ]),
-            bonusPuzzleUnlockRepository.loadUnlocks(today),
             loadPuzzleSession(onboardingPuzzle.puzzleId),
           ]);
 
@@ -974,7 +927,6 @@ function App() {
         if (!isCancelled) {
           setPuzzleSummaries(nextSummaries);
           setPuzzleArchiveRecords(nextArchiveRecords);
-          setBonusPuzzleUnlocks(nextBonusPuzzleUnlocks);
           setDateCardStates(nextDateCardStates);
           applyPuzzleSession(session);
           setLoadState(getPuzzlePackLoadState(nextSummaries));
@@ -1290,22 +1242,6 @@ function App() {
   }, []);
 
   const todayKey = getTodayDateKey();
-  const completedPuzzleIds = useMemo(
-    () => getCompletedPuzzleIds(dateCardStates),
-    [dateCardStates],
-  );
-  const activeBonusPuzzleUnlocks = useMemo(
-    () => bonusPuzzleUnlocks.filter((unlock) => unlock.date === todayKey),
-    [bonusPuzzleUnlocks, todayKey],
-  );
-  const unlockedBonusPuzzleIds = useMemo(
-    () => new Set(activeBonusPuzzleUnlocks.map((unlock) => unlock.puzzleId)),
-    [activeBonusPuzzleUnlocks],
-  );
-  const completedOrUnlockedPuzzleIds = useMemo(
-    () => new Set([...completedPuzzleIds, ...unlockedBonusPuzzleIds]),
-    [completedPuzzleIds, unlockedBonusPuzzleIds],
-  );
   const dailyFreeSummary = useMemo(
     () => getDailyFreePuzzleSummary(puzzleSummaries, todayKey),
     [puzzleSummaries, todayKey],
@@ -1329,101 +1265,6 @@ function App() {
         .map((record) => createPuzzleSummary(record.puzzle)),
     [launchConfig.visiblePuzzleCount, puzzleArchiveRecords],
   );
-  const unlockedBonusSummaries = useMemo(
-    () =>
-      uniquePuzzleSummaries(
-        activeBonusPuzzleUnlocks
-          .map(
-            (unlock) =>
-              findPuzzleSummaryById(puzzleSummaries, unlock.puzzleId) ??
-              getPuzzleSummaryFromArchive(
-                puzzleArchiveRecords,
-                unlock.puzzleId,
-              ),
-          )
-          .filter((summary): summary is PuzzleManifestItem => summary != null),
-      ),
-    [activeBonusPuzzleUnlocks, puzzleArchiveRecords, puzzleSummaries],
-  );
-  const unlockedPlayableBonusSummary = useMemo(
-    () =>
-      unlockedBonusSummaries.find(
-        (summary) => !completedPuzzleIds.has(summary.puzzleId),
-      ),
-    [completedPuzzleIds, unlockedBonusSummaries],
-  );
-  const bonusCandidateSummary = useMemo(
-    () =>
-      getBonusPuzzleCandidateSummary({
-        completedPuzzleIds: completedOrUnlockedPuzzleIds,
-        dailyFreeSummary,
-        puzzleSummaries,
-        today: todayKey,
-      }),
-    [completedOrUnlockedPuzzleIds, dailyFreeSummary, puzzleSummaries, todayKey],
-  );
-  const bonusPuzzlePanelIsWaiting =
-    loadState !== "loading" &&
-    unlockedPlayableBonusSummary == null &&
-    bonusCandidateSummary == null &&
-    unlockedBonusSummaries.length === 0;
-  const nextBonusPuzzlePublishedAt = useMemo(() => {
-    const nowMs = now.getTime();
-    const next = puzzleSummaries.reduce<PuzzleManifestItem | undefined>(
-      (min, s) => {
-        if (
-          s.date !== todayKey ||
-          s.puzzleId === dailyFreeSummary?.puzzleId ||
-          completedOrUnlockedPuzzleIds.has(s.puzzleId) ||
-          s.publishedAt == null
-        ) {
-          return min;
-        }
-        const publishedAtMs = new Date(s.publishedAt).getTime();
-        if (!Number.isFinite(publishedAtMs) || publishedAtMs < nowMs - 60_000) {
-          return min;
-        }
-        return min == null ||
-          publishedAtMs < new Date(min.publishedAt!).getTime()
-          ? s
-          : min;
-      },
-      undefined,
-    );
-    return next?.publishedAt != null ? new Date(next.publishedAt) : undefined;
-  }, [
-    completedOrUnlockedPuzzleIds,
-    dailyFreeSummary,
-    now,
-    puzzleSummaries,
-    todayKey,
-  ]);
-  const nextBonusPuzzlePublishedAtMs =
-    nextBonusPuzzlePublishedAt?.getTime() ?? null;
-  useEffect(() => {
-    if (nextBonusPuzzlePublishedAtMs == null || !bonusPuzzlePanelIsWaiting)
-      return;
-    const nowMs = Date.now();
-    const msUntilNextMinute = Math.ceil(nowMs / 60_000) * 60_000 - nowMs;
-    const msUntilNextAt = Math.max(0, nextBonusPuzzlePublishedAtMs - nowMs);
-    const msUntilFirstTick = Math.min(msUntilNextMinute, msUntilNextAt);
-    let intervalId: ReturnType<typeof setInterval> | null = null;
-    if (msUntilFirstTick === 0) {
-      setNow(new Date());
-      intervalId = setInterval(() => setNow(new Date()), 60_000);
-      return () => {
-        if (intervalId != null) clearInterval(intervalId);
-      };
-    }
-    const timeoutId = setTimeout(() => {
-      setNow(new Date());
-      intervalId = setInterval(() => setNow(new Date()), 60_000);
-    }, msUntilFirstTick);
-    return () => {
-      clearTimeout(timeoutId);
-      if (intervalId != null) clearInterval(intervalId);
-    };
-  }, [bonusPuzzlePanelIsWaiting, nextBonusPuzzlePublishedAtMs]);
   const selectedPuzzleSummary = useMemo(
     () =>
       findPuzzleSummaryById(puzzleSummaries, puzzle.puzzleId) ??
@@ -1437,18 +1278,12 @@ function App() {
         uniquePuzzleSummaries(
           [
             ...dailyFreeSummaries,
-            ...unlockedBonusSummaries,
             selectedPuzzleSummary,
             ...archivePuzzleSummaries,
           ].filter((summary): summary is PuzzleManifestItem => summary != null),
         ),
       ),
-    [
-      archivePuzzleSummaries,
-      dailyFreeSummaries,
-      selectedPuzzleSummary,
-      unlockedBonusSummaries,
-    ],
+    [archivePuzzleSummaries, dailyFreeSummaries, selectedPuzzleSummary],
   );
   // 현재 퍼즐 난이도에 맞는 기본 힌트 크레딧(#251). easy 는 과다·hard 는 부족한
   // 평면 3크레딧 대신 난이도별 기본값을 쓴다(원격 오버라이드 가능).
@@ -1472,45 +1307,6 @@ function App() {
     total: totalHintCredits,
     used: hintCount,
   };
-  const bonusPuzzlePanelState: BonusPuzzlePanelState = {
-    adsEnabled: launchConfig.rewardedBonusPuzzleAdsEnabled,
-    candidateSummary: bonusCandidateSummary,
-    generationIntervalHours: launchConfig.puzzleGenerationIntervalHours,
-    isAdBusy: bonusAdStatus === "loading",
-    nextBonusPublishedAt: nextBonusPuzzlePublishedAt,
-    notice: bonusNotice,
-    now,
-    status:
-      loadState === "loading"
-        ? "loading"
-        : unlockedPlayableBonusSummary != null
-          ? "unlocked"
-          : bonusCandidateSummary != null
-            ? "available"
-            : unlockedBonusSummaries.length > 0
-              ? "used"
-              : "waiting",
-    unlockedSummary:
-      unlockedPlayableBonusSummary ?? unlockedBonusSummaries[0] ?? undefined,
-  };
-
-  useEffect(() => {
-    if (route !== "home" && route !== "result") {
-      return;
-    }
-
-    trackBonusPuzzlePanelImpression(
-      gameAnalytics,
-      bonusPuzzlePanelImpressionGuard,
-      getGamePuzzleContext(puzzle),
-      bonusPuzzlePanelState.status,
-    );
-  }, [
-    bonusPuzzlePanelImpressionGuard,
-    bonusPuzzlePanelState.status,
-    puzzle,
-    route,
-  ]);
 
   useEffect(() => {
     if (hintToast.message === "") {
@@ -2505,143 +2301,6 @@ function App() {
     void requestRewardedHint();
   }
 
-  async function openBonusPuzzle(summary: PuzzleManifestItem) {
-    const session = await loadPuzzleSession(summary.puzzleId);
-
-    if (session == null) {
-      setBonusNotice("보너스 퍼즐을 불러오지 못했어요.");
-      telemetry.click("bonus_puzzle_open", {
-        puzzle_id: summary.puzzleId,
-        status: "missing",
-      });
-      return;
-    }
-
-    const alreadyStarted = hasSavedProgress(
-      session.savedMission,
-      session.savedProgress,
-    );
-    let nextMission = session.savedMission;
-
-    if (
-      !alreadyStarted &&
-      nextMission.completedAt == null &&
-      getRemainingAttempts(nextMission) > 0
-    ) {
-      nextMission = startMissionAttempt(nextMission);
-      void missionRepository.saveMission(nextMission);
-      telemetry.impression("mission_start", {
-        ...getPuzzleTelemetryParams(session.nextPuzzle),
-        attempt_number: nextMission.attemptsUsed,
-        earned_hint_credits: session.savedProgress.earnedHintCredits,
-        hint_count: session.savedProgress.hintCount,
-        remaining_attempts: getRemainingAttempts(nextMission),
-        started_at: nextMission.lastStartedAt,
-      });
-      telemetry.impression("attempt_start", {
-        ...getPuzzleTelemetryParams(session.nextPuzzle),
-        attempt_kind: "first",
-        attempt_number: nextMission.attemptsUsed,
-        earned_hint_credits: session.savedProgress.earnedHintCredits,
-        hint_count: session.savedProgress.hintCount,
-        remaining_attempts: getRemainingAttempts(nextMission),
-        started_at: nextMission.lastStartedAt,
-      });
-      // 게임 세부 지표: 시도 시작(완료 퍼널 시작점, 마켓 차원 포함).
-      gameAnalytics.track(
-        "game_puzzle_start",
-        getGamePuzzleContext(session.nextPuzzle),
-        { attemptKind: "first", attemptNumber: nextMission.attemptsUsed },
-      );
-    }
-
-    await savePuzzleSnapshot(session.nextPuzzle, {
-      completedAt: nextMission.completedAt,
-      startedAt: nextMission.lastStartedAt,
-    });
-    applyPuzzleSession(session, { mission: nextMission });
-    navigate(nextMission.completedAt == null ? "today" : "result");
-    telemetry.click("bonus_puzzle_open", {
-      ...getPuzzleTelemetryParams(session.nextPuzzle),
-      status: "loaded",
-    });
-  }
-
-  async function requestBonusPuzzle() {
-    const unlockedSummary = bonusPuzzlePanelState.unlockedSummary;
-
-    if (
-      bonusPuzzlePanelState.status === "unlocked" ||
-      bonusPuzzlePanelState.status === "used"
-    ) {
-      if (unlockedSummary != null) {
-        await openBonusPuzzle(unlockedSummary);
-      }
-      return;
-    }
-
-    const candidateSummary = bonusPuzzlePanelState.candidateSummary;
-
-    if (
-      candidateSummary == null ||
-      bonusPuzzlePanelState.status !== "available"
-    ) {
-      setBonusNotice("다음 보너스 퍼즐을 준비 중이에요.");
-      return;
-    }
-
-    if (!launchConfig.rewardedBonusPuzzleAdsEnabled) {
-      setBonusNotice("지금은 보너스 퍼즐 광고를 사용할 수 없어요.");
-      telemetry.click("rewarded_bonus_puzzle_ad_disabled", {
-        puzzle_id: candidateSummary.puzzleId,
-      });
-      return;
-    }
-
-    if (bonusAdStatus === "loading") {
-      return;
-    }
-
-    setBonusAdStatus("loading");
-    setBonusNotice("광고를 준비하는 중이에요.");
-    telemetry.click("rewarded_bonus_puzzle_ad_request", {
-      puzzle_id: candidateSummary.puzzleId,
-    });
-
-    const result = await showRewardedBonusPuzzleAd((event) => {
-      telemetry.impression("rewarded_bonus_puzzle_ad_event", {
-        phase: event.phase,
-        puzzle_id: candidateSummary.puzzleId,
-        type: event.type,
-      });
-    });
-    telemetry.impression("rewarded_bonus_puzzle_ad_result", {
-      ...getFullScreenAdResultParams(result),
-      puzzle_id: candidateSummary.puzzleId,
-    });
-
-    if (result.status === "rewarded") {
-      const nextUnlock = {
-        date: todayKey,
-        puzzleId: candidateSummary.puzzleId,
-        unlockedAt: new Date().toISOString(),
-      };
-
-      const nextUnlocks =
-        await bonusPuzzleUnlockRepository.saveUnlock(nextUnlock);
-      setBonusPuzzleUnlocks(nextUnlocks);
-      setBonusNotice("보너스 퍼즐이 열렸어요.");
-      telemetry.impression("rewarded_bonus_puzzle_ad_reward", {
-        puzzle_id: candidateSummary.puzzleId,
-      });
-      await openBonusPuzzle(candidateSummary);
-    } else {
-      setBonusNotice(getRewardedBonusPuzzleFailureMessage(result));
-    }
-
-    setBonusAdStatus("idle");
-  }
-
   function revealSelected() {
     if (viewModel.selectedEntry != null) {
       applyAnswer(
@@ -3109,7 +2768,6 @@ function App() {
         <ResultScreen
           {...dateSelectionProps}
           cellValues={cellValues}
-          bonusPuzzlePanelState={bonusPuzzlePanelState}
           completedEntries={viewModel.completedEntries}
           consecutiveStreak={consecutiveStreak}
           hintCount={hintCount}
@@ -3133,7 +2791,6 @@ function App() {
           progressPercent={progressPercent}
           puzzle={puzzle}
           remainingAttempts={remainingAttempts}
-          requestBonusPuzzle={() => void requestBonusPuzzle()}
           restartMissionAttempt={restartMissionAttempt}
           revealUsed={revealUsed}
         />
@@ -3165,7 +2822,6 @@ function App() {
       ) : (
         <HomeScreen
           {...dateSelectionProps}
-          bonusPuzzlePanelState={bonusPuzzlePanelState}
           completedEntries={viewModel.completedEntries}
           consecutiveStreak={consecutiveStreak}
           hasStarted={hasStarted}
@@ -3179,7 +2835,6 @@ function App() {
           progressPercent={progressPercent}
           puzzle={puzzle}
           remainingAttempts={remainingAttempts}
-          requestBonusPuzzle={() => void requestBonusPuzzle()}
           requestRewardedHint={requestRewardedHint}
           selectedEntry={viewModel.selectedEntry}
           startLabels={viewModel.startLabels}
@@ -3412,7 +3067,6 @@ function usePuzzleViewModel(
 }
 
 type HomeScreenProps = DateSelectionProps & {
-  bonusPuzzlePanelState: BonusPuzzlePanelState;
   completedEntries: PuzzleEntry[];
   consecutiveStreak: number;
   hasStarted: boolean;
@@ -3426,7 +3080,6 @@ type HomeScreenProps = DateSelectionProps & {
   progressPercent: number;
   puzzle: Puzzle;
   remainingAttempts: number;
-  requestBonusPuzzle: () => void;
   requestRewardedHint: () => void;
   selectedEntry?: PuzzleEntry;
   startLabels: Map<string, number>;
@@ -3435,7 +3088,6 @@ type HomeScreenProps = DateSelectionProps & {
 };
 
 function HomeScreen({
-  bonusPuzzlePanelState,
   completedEntries,
   consecutiveStreak,
   hasStarted,
@@ -3450,7 +3102,6 @@ function HomeScreen({
   puzzle,
   puzzleSummaries,
   remainingAttempts,
-  requestBonusPuzzle,
   requestRewardedHint,
   selectedEntry,
   selectedPuzzleId,
@@ -3671,10 +3322,6 @@ function HomeScreen({
         requestRewardedHint={requestRewardedHint}
       />
 
-      <BonusPuzzlePanel
-        state={bonusPuzzlePanelState}
-        onAction={requestBonusPuzzle}
-      />
 
       <section className="homeList" aria-label="진행 정보">
         <button type="button" onClick={() => navigate("resume")}>
@@ -3821,123 +3468,6 @@ function HintRewardPanel({
   );
 }
 
-type BonusPuzzlePanelProps = {
-  onAction: () => void;
-  state: BonusPuzzlePanelState;
-};
-
-function getBonusPuzzleMeta(summary?: PuzzleManifestItem) {
-  if (summary == null) {
-    return "";
-  }
-
-  const aliasLabel = formatPuzzleAliasLabel(summary);
-  const slotLabel = formatPuzzleCardSlot(summary);
-  const wordCountLabel = `${summary.metrics?.wordCount ?? "-"}개 낱말`;
-
-  return slotLabel === ""
-    ? `${aliasLabel} · ${wordCountLabel}`
-    : `${aliasLabel} · ${slotLabel} 도착 · ${wordCountLabel}`;
-}
-
-function formatWaitingDescription(
-  nextAt: Date | undefined,
-  intervalHours: number,
-  now: Date | undefined,
-): string {
-  if (nextAt == null) {
-    const safeHours = Number.isFinite(intervalHours)
-      ? Math.max(1, Math.floor(intervalHours))
-      : 2;
-    return `약 ${safeHours}시간 후 새 보너스 퍼즐이 발행돼요.`;
-  }
-  const nowMs = now instanceof Date ? now.getTime() : Date.now();
-  const nextMs = nextAt.getTime();
-  if (!Number.isFinite(nowMs) || !Number.isFinite(nextMs)) {
-    return "새 보너스 퍼즐이 곧 발행돼요.";
-  }
-  const totalMinutes = Math.ceil((nextMs - nowMs) / 60_000);
-  if (totalMinutes <= 0) {
-    return "새 보너스 퍼즐이 곧 발행돼요.";
-  }
-  if (totalMinutes < 60) {
-    return `${totalMinutes}분 후 새 보너스 퍼즐이 발행돼요.`;
-  }
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  return minutes === 0
-    ? `${hours}시간 후 새 보너스 퍼즐이 발행돼요.`
-    : `${hours}시간 ${minutes}분 후 새 보너스 퍼즐이 발행돼요.`;
-}
-
-function BonusPuzzlePanel({ onAction, state }: BonusPuzzlePanelProps) {
-  const summary = state.unlockedSummary ?? state.candidateSummary;
-  const title =
-    state.status === "available"
-      ? "새 퍼즐이 도착했어요"
-      : state.status === "unlocked"
-        ? "보너스 퍼즐이 열려 있어요"
-        : state.status === "used"
-          ? "오늘의 보너스 퍼즐을 풀었어요"
-          : state.status === "loading"
-            ? "보너스 퍼즐 확인 중"
-            : "다음 보너스 퍼즐을 준비 중이에요";
-  const description =
-    state.status === "available"
-      ? `${getBonusPuzzleMeta(summary)} · 광고를 보면 하나 더 풀 수 있어요.`
-      : state.status === "unlocked"
-        ? `${getBonusPuzzleMeta(summary)} · 광고 없이 이어서 풀 수 있어요.`
-        : state.status === "used"
-          ? `${getBonusPuzzleMeta(summary)} · 기록에서 다시 볼 수 있어요.`
-          : state.status === "loading"
-            ? "원격 퍼즐팩을 확인하고 있어요."
-            : formatWaitingDescription(
-                state.nextBonusPublishedAt,
-                state.generationIntervalHours,
-                state.now,
-              );
-  const buttonLabel =
-    state.status === "available"
-      ? state.isAdBusy
-        ? "광고 준비 중"
-        : "광고 보고 하나 더 풀기"
-      : "";
-  const canShowAction = state.status === "available";
-  const isActionDisabled =
-    state.isAdBusy ||
-    (state.status === "available" && !state.adsEnabled) ||
-    summary == null;
-
-  return (
-    <section
-      className={[
-        "bonusPuzzlePanel",
-        state.status === "available" ? "bonusPuzzlePanelAvailable" : "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
-      aria-label="보너스 퍼즐"
-    >
-      <div>
-        <span>하나 더 풀기</span>
-        <strong>{title}</strong>
-        <em>{description}</em>
-        {state.notice === "" ? null : <p>{state.notice}</p>}
-      </div>
-      {canShowAction ? (
-        <button
-          className="primaryButton"
-          type="button"
-          disabled={isActionDisabled}
-          onClick={onAction}
-        >
-          {buttonLabel}
-        </button>
-      ) : null}
-    </section>
-  );
-}
-
 function formatGameHeaderDate(date: string) {
   const dayLabel = formatDateCardDay(date);
   const value = new Date(`${date}T00:00:00`);
@@ -3984,27 +3514,6 @@ function formatPuzzleHeaderLabel(date: string, loadState: LoadState) {
     case "fallback":
       return "기기저장 퍼즐";
   }
-}
-
-function formatPuzzleCardSlot(summary: PuzzleManifestItem) {
-  if (summary.publishedAt == null) {
-    return "";
-  }
-
-  const value = new Date(summary.publishedAt);
-  if (Number.isNaN(value.getTime())) {
-    return "";
-  }
-
-  const hour = new Intl.DateTimeFormat("ko-KR", {
-    hour: "2-digit",
-    hour12: false,
-    timeZone: "Asia/Seoul",
-  })
-    .formatToParts(value)
-    .find((part) => part.type === "hour")?.value;
-
-  return hour == null ? "" : `${Number(hour) % 24}시`;
 }
 
 function formatPuzzleHistoryLabel(
@@ -5659,7 +5168,6 @@ function SettingsIcon() {
 
 type ResultScreenProps = DateSelectionProps & {
   cellValues: Record<string, string>;
-  bonusPuzzlePanelState: BonusPuzzlePanelState;
   completedEntries: PuzzleEntry[];
   consecutiveStreak: number;
   hintCount: number;
@@ -5673,14 +5181,12 @@ type ResultScreenProps = DateSelectionProps & {
   progressPercent: number;
   puzzle: Puzzle;
   remainingAttempts: number;
-  requestBonusPuzzle: () => void;
   restartMissionAttempt: () => void;
   revealUsed: boolean;
 };
 
 function ResultScreen({
   cellValues,
-  bonusPuzzlePanelState,
   completedEntries,
   consecutiveStreak,
   dateCardStates,
@@ -5697,7 +5203,6 @@ function ResultScreen({
   puzzle,
   puzzleSummaries,
   remainingAttempts,
-  requestBonusPuzzle,
   restartMissionAttempt,
   revealUsed,
   selectedPuzzleId,
@@ -5844,16 +5349,7 @@ function ResultScreen({
         </span>
         {!isComplete && remainingAttempts === 0 && (
           <p className="resultDayLimitNotice" role="status" aria-live="polite">
-            오늘의 도전 기회를 모두 사용했어요.{" "}
-            {bonusPuzzlePanelState?.status === "available"
-              ? "아래 보너스 퍼즐을 확인해보세요."
-              : bonusPuzzlePanelState?.status === "waiting"
-                ? formatWaitingDescription(
-                    bonusPuzzlePanelState.nextBonusPublishedAt,
-                    bonusPuzzlePanelState.generationIntervalHours,
-                    bonusPuzzlePanelState.now,
-                  )
-                : "내일 새로운 퍼즐이 기다려요."}
+            오늘의 도전 기회를 모두 사용했어요. 내일 새로운 퍼즐이 기다려요.
           </p>
         )}
       </section>
@@ -6000,10 +5496,6 @@ function ResultScreen({
           )}
       </section>
 
-      <BonusPuzzlePanel
-        state={bonusPuzzlePanelState}
-        onAction={requestBonusPuzzle}
-      />
     </>
   );
 }
