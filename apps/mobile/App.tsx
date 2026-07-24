@@ -1077,13 +1077,6 @@ function AppContent() {
         .map(record => createPuzzleSummary(record.puzzle)),
     [launchConfig.visiblePuzzleCount, puzzleArchiveRecords],
   );
-  const todayArchivePuzzleSummaries = useMemo(
-    () =>
-      puzzleArchiveRecords
-        .map(record => createPuzzleSummary(record.puzzle))
-        .filter(summary => summary.date === todayKey),
-    [puzzleArchiveRecords, todayKey],
-  );
   const selectedPuzzleSummary = useMemo(
     () =>
       findPuzzleSummaryById(puzzlePack.summaries, puzzle.puzzleId) ??
@@ -1320,25 +1313,6 @@ function AppContent() {
       ad_provider: 'admob',
     }),
     [puzzle, selectedPuzzleSummary],
-  );
-
-  const logMobileAdEvents = useCallback(
-    (
-      eventName: string,
-      placement: string,
-      events: MobileAdEvent[],
-      nextPuzzle = puzzle,
-      summary = selectedPuzzleSummary,
-    ) => {
-      events.forEach(event => {
-        telemetry.impression(eventName, {
-          ...getMobileAdTelemetryParams(placement, nextPuzzle, summary),
-          ad_error_code: event.errorCode,
-          ad_event: event.type,
-        });
-      });
-    },
-    [getMobileAdTelemetryParams, puzzle, selectedPuzzleSummary],
   );
 
   const openAdDiagnostics = useCallback(() => {
