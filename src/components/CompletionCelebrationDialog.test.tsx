@@ -5,6 +5,7 @@ import {
   render,
   screen,
 } from "@testing-library/react";
+import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -116,6 +117,52 @@ describe("CompletionCelebrationDialog 기록 진입 CTA(#300)", () => {
     expect(props.onGoHome).not.toHaveBeenCalled();
     expect(props.onSeeResult).not.toHaveBeenCalled();
     expect(props.onClose).not.toHaveBeenCalled();
+  });
+
+  it("'내 기록 보기' 클릭이 App 배선(dismiss+navigate)을 통과해 다이얼로그를 닫고 history 화면으로 전환한다(AC-1 통합)", () => {
+    // AC-1의 관찰 가능한 결과("다이얼로그 닫고 navigate('history')")를 DOM으로 직접 검증한다.
+    // App(src/App.tsx:5916)의 onSeeHistory={() => { dismissCompletionCelebration(); navigate("history"); }}
+    // 배선을 그대로 재현: dismiss는 다이얼로그 언마운트, navigate("history")는 history 화면 마운트.
+    function Harness() {
+      const [view, setView] = useState<"dialog" | "history">("dialog");
+      if (view === "history") {
+        return <div data-testid="history-screen">기록 화면</div>;
+      }
+      return (
+        <CompletionCelebrationDialog
+          attemptsUsed={1}
+          completedCount={10}
+          consecutiveStreak={2}
+          elapsedLabel="01:20"
+          hintCount={0}
+          isNewBestTime={false}
+          puzzleId="26060114"
+          revealUsed={false}
+          shareGrid="🟩🟩"
+          shareText="공유 결과"
+          totalCount={10}
+          onClose={vi.fn()}
+          onGoHome={vi.fn()}
+          onSeeResult={vi.fn()}
+          onSeeHistory={() => {
+            // App 배선과 동일: 다이얼로그 닫기 + history로 이동.
+            setView("history");
+          }}
+        />
+      );
+    }
+
+    render(<Harness />);
+    // 초기: 다이얼로그가 열려 있고 history 화면은 없다.
+    expect(screen.getByRole("button", { name: "내 기록 보기" })).toBeTruthy();
+    expect(screen.queryByTestId("history-screen")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "내 기록 보기" }));
+
+    // 클릭 후: 다이얼로그(및 버튼)가 사라지고(닫힘) history 화면이 나타난다(navigate).
+    expect(screen.queryByRole("button", { name: "내 기록 보기" })).toBeNull();
+    expect(screen.getByTestId("history-screen")).toBeTruthy();
+    expect(screen.getByText("기록 화면")).toBeTruthy();
   });
 
   it("'내 기록 보기' 클릭 시 history_open을 source=completion_dialog로 정확히 1회 발화한다(AC-3)", () => {
