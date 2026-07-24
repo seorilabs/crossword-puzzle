@@ -3186,6 +3186,9 @@ function App() {
         isCompleted={isCompleted}
         isNewBestTime={isNewBestTime}
         navigate={navigate}
+        onboardingDifficultyRampEnabled={
+          launchConfig.onboardingDifficultyRampEnabled
+        }
         revealAll={revealAll}
         revealSelected={revealSelected}
         startOrResumeMission={startOrResumeMission}
@@ -3224,6 +3227,9 @@ function App() {
           isNewBestTime={isNewBestTime}
           isPaused={isPaused}
           navigate={navigate}
+          onboardingDifficultyRampEnabled={
+            launchConfig.onboardingDifficultyRampEnabled
+          }
           pause={pause}
           requestRewardedExtraAttempt={() => void requestRewardedExtraAttempt()}
           togglePause={togglePause}
@@ -3255,6 +3261,7 @@ function App() {
             });
             void leaderboardAdapter.openLeaderboard();
           }}
+          pause={pause}
           progressPercent={progressPercent}
           puzzle={puzzle}
           remainingAttempts={remainingAttempts}
@@ -4585,6 +4592,7 @@ type TodayScreenProps = DateSelectionProps & {
   hapticEnabled: boolean;
   mission: DailyMissionState;
   navigate: (route: AppRoute) => void;
+  onboardingDifficultyRampEnabled: boolean;
   pencilMode: boolean;
   pause: { pausedMs: number; pausedAt: string | null };
   togglePause: () => void;
@@ -4644,6 +4652,7 @@ function TodayScreen({
   loadState,
   mission,
   navigate,
+  onboardingDifficultyRampEnabled,
   pencilMode,
   pause,
   togglePause,
@@ -4663,6 +4672,7 @@ function TodayScreen({
   toggleSound,
   toggleTimerVisible,
   selectedCellKey,
+  selectedDirection,
   selectedPuzzleId,
   selectedEntry,
   selectPuzzle,
@@ -4736,7 +4746,7 @@ function TodayScreen({
           puzzleId: puzzle.puzzleId,
           difficulty: puzzle.difficulty,
         },
-        launchConfig.onboardingDifficultyRampEnabled,
+        onboardingDifficultyRampEnabled,
       )
     : undefined;
   const completionNextRecommendedLabel =
@@ -6124,6 +6134,7 @@ type ResultScreenProps = DateSelectionProps & {
   navigate: (route: AppRoute) => void;
   onboardingDifficultyRampEnabled: boolean;
   onOpenLeaderboard: () => void;
+  pause: { pausedMs: number; pausedAt: string | null };
   progressPercent: number;
   puzzle: Puzzle;
   remainingAttempts: number;
@@ -6149,6 +6160,7 @@ function ResultScreen({
   navigate,
   onboardingDifficultyRampEnabled,
   onOpenLeaderboard,
+  pause,
   progressPercent,
   puzzle,
   puzzleSummaries,
@@ -6713,7 +6725,7 @@ type DevSimulatorScreenProps = Omit<
   TodayScreenProps,
   "completionCelebrationId" | "dismissCompletionCelebration"
 > & {
-  clearProgress: () => void;
+  clearProgress: () => Promise<void>;
   revealAll: () => void;
   revealSelected: () => void;
 };
@@ -6731,6 +6743,7 @@ function DevSimulatorScreen({
   revealLetter,
   revealSelected,
   selectedAnswer,
+  selectedCellKey,
   selectedDirection,
   selectedEntry,
   startLabels,
