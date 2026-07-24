@@ -57,6 +57,7 @@ function renderDialog(
     totalCount: 10,
     onClose: vi.fn(),
     onGoHome: vi.fn(),
+    onSeeHistory: vi.fn(),
     onSeeResult: vi.fn(),
     ...overrides,
   };
@@ -95,6 +96,29 @@ describe("CompletionCelebrationDialog 다음 퍼즐 CTA(#274)", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "홈으로" }));
     expect(props.onGoHome).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("CompletionCelebrationDialog 기록 진입 CTA(#300)", () => {
+  it("'내 기록 보기' 버튼 클릭 시 history_open(source=completion_dialog) 계측 후 onSeeHistory를 호출한다", () => {
+    const onSeeHistory = vi.fn();
+    renderDialog({ onSeeHistory });
+
+    fireEvent.click(screen.getByRole("button", { name: "내 기록 보기" }));
+
+    expect(clickMock).toHaveBeenCalledWith("history_open", {
+      source: "completion_dialog",
+    });
+    expect(onSeeHistory).toHaveBeenCalledTimes(1);
+  });
+
+  it("기록 진입 CTA는 기존 공유·다음 퍼즐·결과 보기 CTA와 공존한다(회귀 없음)", () => {
+    renderDialog({ nextPuzzleLabel: "#1 · 보통", onStartNextPuzzle: vi.fn() });
+
+    expect(screen.getByRole("button", { name: "결과 공유하기" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /다음 퍼즐 풀기/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "결과 보기" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "내 기록 보기" })).toBeTruthy();
   });
 });
 

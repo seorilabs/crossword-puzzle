@@ -29,6 +29,7 @@ import {
   computeLeaderboardScore,
   computePersonalStats,
   computeSolveTimeDistribution,
+  buildMissionRecordSummary,
   getTextScaleFontMultiplier,
   createBonusPuzzlePanelImpressionGuard,
   createPuzzleSummary,
@@ -138,6 +139,7 @@ import { PuzzleBoard } from "./components/PuzzleBoard";
 import { HowToPlayDialog } from "./components/HowToPlayDialog";
 import { SettingsSheet } from "./components/SettingsSheet";
 import { CompletionCelebrationDialog } from "./components/CompletionCelebrationDialog";
+import { MissionRecordCard } from "./components/MissionRecordCard";
 import { PuzzleMetaChips } from "./components/PuzzleMetaChips";
 import { formatDifficultyLabel } from "./puzzleLabels";
 import { useShareResult } from "./useShareResult";
@@ -3616,6 +3618,16 @@ function HomeScreen({
   const isPrimaryDisabled =
     isLoadingPuzzlePack ||
     (!isCompleted && !hasStarted && remainingAttempts === 0);
+  // 미션 기록 카드 요약(#300). 기기 보유 최고 기록에서 최단 시간을, 스트릭에서
+  // 연속 완료일을 뽑아 카드에 미리 노출한다. 완료 시 스트릭이 갱신되면서 재계산돼
+  // 최신 최고 기록·연속 완료일을 반영한다.
+  const missionRecordSummary = useMemo(() => {
+    const bestTimeValuesMs = getAllBestTimePuzzleIds()
+      .map((puzzleId) => getBestTimeMs(puzzleId))
+      .filter((ms): ms is number => ms != null);
+    const { fastestBestTimeMs } = computePersonalStats([], bestTimeValuesMs);
+    return buildMissionRecordSummary({ consecutiveStreak, fastestBestTimeMs });
+  }, [consecutiveStreak]);
   const missionLeadLabel = isLoadingPuzzlePack
     ? "원격 퍼즐팩"
     : loadState === "remote"
@@ -3849,15 +3861,14 @@ function HomeScreen({
         onAction={requestBonusPuzzle}
       />
 
-      <section className="homeList" aria-label="진행 정보">
-        <button type="button" onClick={() => navigate("history")}>
-          <div>
-            <strong>미션 기록</strong>
-            <span>{mission.attemptsUsed}번 도전</span>
-          </div>
-          <em>보기</em>
-        </button>
-      </section>
+      <MissionRecordCard
+        summary={missionRecordSummary}
+        attemptsUsed={mission.attemptsUsed}
+        onOpen={() => {
+          telemetry.click("history_open", { source: "home_card" });
+          navigate("history");
+        }}
+      />
 
       <section className="sourceNotice" aria-label="힌트 출처 안내">
         <span>{contentSourceNotice}</span>
@@ -5904,6 +5915,10 @@ function TodayScreen({
           onGoHome={() => {
             dismissCompletionCelebration();
             navigate("home");
+          }}
+          onSeeHistory={() => {
+            dismissCompletionCelebration();
+            navigate("history");
           }}
           onSeeResult={() => {
             dismissCompletionCelebration();

@@ -4,6 +4,7 @@ import {
   getStreakBadgeLabel,
   type Puzzle,
 } from "../../packages/crossword-core/src";
+import { telemetry } from "../adapters/telemetry";
 import { formatThemeHeadline } from "../puzzleLabels";
 import { useShareResult } from "../useShareResult";
 import { ShareGridPreview } from "./ShareGridPreview";
@@ -25,6 +26,7 @@ export type CompletionCelebrationDialogProps = {
   totalCount: number;
   onClose: () => void;
   onGoHome: () => void;
+  onSeeHistory: () => void;
   onSeeResult: () => void;
   onStartNextPuzzle?: () => void;
 };
@@ -46,6 +48,7 @@ export function CompletionCelebrationDialog({
   totalCount,
   onClose,
   onGoHome,
+  onSeeHistory,
   onSeeResult,
   onStartNextPuzzle,
 }: CompletionCelebrationDialogProps) {
@@ -171,6 +174,16 @@ export function CompletionCelebrationDialog({
             autoFocus={onStartNextPuzzle == null}
           >
             결과 보기
+          </button>
+          <button
+            className="secondaryButton"
+            type="button"
+            onClick={() => {
+              telemetry.click("history_open", { source: "completion_dialog" });
+              onSeeHistory();
+            }}
+          >
+            내 기록 보기
           </button>
         </div>
         <button
