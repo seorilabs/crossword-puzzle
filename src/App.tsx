@@ -228,6 +228,7 @@ type AppRoute =
   | "today"
   | "result"
   | "history"
+  | "resume"
   | "license"
   | "dev-simulator";
 
@@ -454,6 +455,10 @@ function getRouteFromPathname(pathname: string): AppRoute {
     return "history";
   }
 
+  if (pathname === "/resume") {
+    return "resume";
+  }
+
   if (pathname === "/license") {
     return "license";
   }
@@ -473,6 +478,8 @@ function getPathForRoute(route: AppRoute) {
       return "/result";
     case "history":
       return "/history";
+    case "resume":
+      return "/resume";
     case "license":
       return "/license";
     case "dev-simulator":
@@ -3171,6 +3178,14 @@ function App() {
           remainingAttempts={remainingAttempts}
           startOrResumeMission={startOrResumeMission}
         />
+      ) : route === "resume" ? (
+        <ResumeScreen
+          archiveRecords={puzzleArchiveRecords}
+          dateCardStates={dateCardStates}
+          loadState={loadState}
+          navigate={navigate}
+          selectPuzzle={selectPuzzle}
+        />
       ) : route === "license" ? (
         <LicenseScreen navigate={navigate} />
       ) : (
@@ -3743,6 +3758,13 @@ function HomeScreen({
       />
 
       <section className="homeList" aria-label="진행 정보">
+        <button type="button" onClick={() => navigate("resume")}>
+          <div>
+            <strong>못 끝낸 퍼즐</strong>
+            <span>이어서 풀기</span>
+          </div>
+          <em>보기</em>
+        </button>
         <button type="button" onClick={() => navigate("history")}>
           <div>
             <strong>미션 기록</strong>
@@ -6338,6 +6360,100 @@ function ResultScreen({
         state={bonusPuzzlePanelState}
         onAction={requestBonusPuzzle}
       />
+    </>
+  );
+}
+
+type ResumeScreenProps = {
+  archiveRecords: PuzzleArchiveRecord[];
+  dateCardStates: Record<string, DateCardState>;
+  loadState: LoadState;
+  navigate: (route: AppRoute) => void;
+  selectPuzzle: (puzzleId: string) => void;
+};
+
+// 오늘/과거에 시작했지만 끝내지 못한 퍼즐을 로컬 아카이브(기기 저장 사본)에서
+// 모아 보여준다. 서버는 당일 퍼즐만 서빙하므로, 지난 미완료 퍼즐은 이 화면에서만
+// 다시 이어 풀 수 있다(서버 재조회 없이 로컬 스냅샷 재생).
+function ResumeScreen({
+  archiveRecords,
+  dateCardStates,
+  loadState,
+  navigate,
+  selectPuzzle,
+}: ResumeScreenProps) {
+  const incompleteRecords = archiveRecords.filter((record) => {
+    const state = dateCardStates[record.puzzleId];
+    const isCompleted =
+      record.completedAt != null || state?.completedAt != null;
+    const hasStarted =
+      record.startedAt != null ||
+      (state?.attemptsUsed ?? 0) > 0 ||
+      state?.hasProgress === true;
+    return !isCompleted && hasStarted;
+  });
+
+  function openRecord(record: PuzzleArchiveRecord) {
+    const state = dateCardStates[record.puzzleId];
+    const isExhausted =
+      state?.attemptsUsed != null && state.attemptsUsed >= state.maxAttempts;
+    void selectPuzzle(record.puzzleId);
+    navigate(isExhausted ? "result" : "today");
+  }
+
+  return (
+    <>
+      <AppHeader
+        eyebrow={`못 끝낸 퍼즐 ${incompleteRecords.length}개`}
+        title="이어 풀기"
+        onBack={() => navigate("home")}
+      />
+
+      <section className="historyList" aria-label="못 끝낸 퍼즐">
+        {incompleteRecords.length > 0 ? (
+          incompleteRecords.map((record) => {
+            const state = dateCardStates[record.puzzleId];
+            const isExhausted =
+              state?.attemptsUsed != null &&
+              state.attemptsUsed >= state.maxAttempts;
+
+            return (
+              <button
+                key={record.puzzleId}
+                className="historyItem"
+                type="button"
+                onClick={() => openRecord(record)}
+              >
+                <span>
+                  {formatPuzzleHistoryLabel(
+                    createPuzzleSummary(record.puzzle),
+                    loadState,
+                  )}{" "}
+                  · 기기 저장 사본
+                </span>
+                <strong>{isExhausted ? "도전 종료" : "진행 중"}</strong>
+                <em>
+                  {record.puzzle.entries.length}개 단어 ·{" "}
+                  {isExhausted ? "결과 보기" : "이어 풀기"}
+                </em>
+              </button>
+            );
+          })
+        ) : (
+          <>
+            <p className="historyEmptyNotice">
+              못 끝낸 퍼즐이 없어요. 오늘의 퍼즐을 풀어보세요.
+            </p>
+            <button
+              className="primaryButton"
+              type="button"
+              onClick={() => navigate("home")}
+            >
+              오늘의 퍼즐 보기
+            </button>
+          </>
+        )}
+      </section>
     </>
   );
 }
