@@ -3,7 +3,21 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { MissionRecordCard } from "./MissionRecordCard";
 
-afterEach(cleanup);
+// history_open(source=home_card) 계측(#300 AC-3) 검증을 위해 telemetry를 목킹한다.
+const { clickMock } = vi.hoisted(() => ({ clickMock: vi.fn() }));
+
+vi.mock("../adapters/telemetry", () => ({
+  telemetry: {
+    screen: vi.fn(),
+    click: clickMock,
+    impression: vi.fn(),
+  },
+}));
+
+afterEach(() => {
+  cleanup();
+  clickMock.mockReset();
+});
 
 describe("MissionRecordCard(#300)", () => {
   it("요약이 없으면 기존 'N번 도전' 문구로 폴백한다(AC-2)", () => {
@@ -42,13 +56,17 @@ describe("MissionRecordCard(#300)", () => {
     expect(screen.queryByText(/연속/)).toBeNull();
   });
 
-  it("카드 클릭 시 onOpen을 호출한다(AC-3 home_card 진입 경로)", () => {
+  it("카드 클릭 시 history_open(source=home_card) 계측 후 onOpen을 호출한다(AC-3)", () => {
     const onOpen = vi.fn();
     render(
       <MissionRecordCard summary={null} attemptsUsed={1} onOpen={onOpen} />,
     );
 
     fireEvent.click(screen.getByRole("button"));
+
+    expect(clickMock).toHaveBeenCalledWith("history_open", {
+      source: "home_card",
+    });
     expect(onOpen).toHaveBeenCalledTimes(1);
   });
 });

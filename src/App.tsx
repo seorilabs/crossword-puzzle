@@ -3864,10 +3864,7 @@ function HomeScreen({
       <MissionRecordCard
         summary={missionRecordSummary}
         attemptsUsed={mission.attemptsUsed}
-        onOpen={() => {
-          telemetry.click("history_open", { source: "home_card" });
-          navigate("history");
-        }}
+        onOpen={() => navigate("history")}
       />
 
       <section className="sourceNotice" aria-label="힌트 출처 안내">
