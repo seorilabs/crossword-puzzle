@@ -136,7 +136,7 @@ describe("CompletionCelebrationDialog 기록 진입 CTA(#300)", () => {
 });
 
 describe("CompletionCelebrationDialog 공유 CTA 계측(#299)", () => {
-  it("완료 다이얼로그 공유 버튼 클릭 시 completion_dialog surface·puzzle_id·difficulty로 share_result_click을 발화한다(AC-1)", async () => {
+  it("완료 다이얼로그 공유 버튼 클릭 시 completion_dialog surface·puzzle_id·difficulty로 share_result_click을 발화한다(#299 AC-1)", async () => {
     // 공유 시트 성공 경로.
     vi.stubGlobal("navigator", { share: vi.fn(() => Promise.resolve()) });
     renderDialog({ puzzleId: "26060114", difficulty: "hard" });
@@ -157,7 +157,7 @@ describe("CompletionCelebrationDialog 공유 CTA 계측(#299)", () => {
     });
   });
 
-  it("공유 버튼 클릭 시 telemetry.click을 share_result_click·{surface,puzzle_id,difficulty}로 발화한다(AC-2)", async () => {
+  it("공유 버튼 클릭 시 telemetry.click을 share_result_click·{surface,puzzle_id,difficulty}로 발화한다(#299 AC-2)", async () => {
     // AC-2 실행 경로: 실제 "결과 공유하기" 버튼 클릭 → useShareResult.share →
     // telemetry.click("share_result_click", { surface, puzzle_id, difficulty }).
     vi.stubGlobal("navigator", { share: vi.fn(() => Promise.resolve()) });
@@ -174,7 +174,7 @@ describe("CompletionCelebrationDialog 공유 CTA 계측(#299)", () => {
     });
   });
 
-  it("결과 공유하기 버튼 클릭이 outcome 4분기 shared·aborted·copied·failed 각각을 share_result_outcome으로 발화한다(AC-3)", async () => {
+  it("결과 공유하기 버튼 클릭이 outcome 4분기 shared·aborted·copied·failed 각각을 share_result_outcome으로 발화한다(#299 AC-3)", async () => {
     // AC-3 실행 경로: 실제 버튼 클릭 → useShareResult.share → deliverShareText가
     // navigator 상태별로 4개 outcome을 반환 → telemetry.impression("share_result_outcome",
     // { surface, outcome }). 네 분기를 각각 실제 렌더·클릭으로 검증한다.
@@ -230,7 +230,7 @@ describe("CompletionCelebrationDialog 공유 CTA 계측(#299)", () => {
     });
   });
 
-  it("클립보드 폴백 복사 시 복사 토스트를 노출한다(AC-4 회귀 없음)", async () => {
+  it("클립보드 폴백 복사 시 복사 토스트를 노출한다(#299 AC-4 회귀 없음)", async () => {
     // 공유 시트 미지원 → 클립보드 복사 성공.
     vi.stubGlobal("navigator", {
       clipboard: { writeText: vi.fn(() => Promise.resolve()) },
