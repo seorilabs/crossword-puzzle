@@ -110,6 +110,17 @@ function ensureArg(args, key, value) {
   return [...args, `--${key}=${value}`];
 }
 
+// ensureArg와 달리 기존 값을 덮어쓴다(당일 2티어 생성에서 난이도·publishedAt을
+// 티어별로 교체하기 위함).
+function setArg(args, key, value) {
+  if (value == null || value === "") {
+    return args;
+  }
+
+  const withoutKey = args.filter((arg) => !arg.startsWith(`--${key}=`));
+  return [...withoutKey, `--${key}=${value}`];
+}
+
 async function runNode(scriptPath, args) {
   await new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [scriptPath, ...args], {
@@ -295,26 +306,68 @@ async function run() {
     }
   }
 
-  // 로테이션이 자동 배정한 주제만 보강 대상이다. 명시 지정(PUZZLE_THEME)으로
-  // 실패한 경우는 의도된 실패이므로 그대로 전파한다.
-  const themeInjectedByRotation =
-    (process.env.PUZZLE_THEME == null || process.env.PUZZLE_THEME === "") &&
-    getArgValue(generatorArgs, "theme") != null;
+  // 당일 2판(easy 5×5 + normal 8×8) 생성 모드. 자정 1회 실행에서 두 난이도를
+  // 서로 다른 슬롯 시각(intervalHours=1의 h00/h01)으로 append 생성해, 같은 날짜에
+  // 두 퍼즐이 모두 발행되도록 한다. 명시 난이도(PUZZLE_DIFFICULTY)가 주어지면
+  // 단일 생성(기존 경로)으로 폴백한다.
+  const dailyTiers =
+    readEnvBooleanWithDefault("PUZZLE_DAILY_TIERS", true) &&
+    getArgValue(generatorArgs, "difficulty") == null;
 
-  try {
-    await generateThenValidate(generatorArgs);
-  } catch (error) {
-    if (!themeInjectedByRotation) {
-      throw error;
+  if (dailyTiers) {
+    const timeZone = getArgValue(generatorArgs, "timeZone") ?? "Asia/Seoul";
+    const dateKey =
+      getArgValue(generatorArgs, "start") ?? getDateKey(timeZone, new Date());
+    const tiers = [
+      { difficulty: "easy", hour: 0 },
+      { difficulty: "normal", hour: 1 },
+    ];
+
+    for (const [index, tier] of tiers.entries()) {
+      const publishedAt = new Date(
+        `${dateKey}T${String(tier.hour).padStart(2, "0")}:00:00+09:00`,
+      ).toISOString();
+      let tierArgs = setArg(generatorArgs, "difficulty", tier.difficulty);
+      tierArgs = setArg(tierArgs, "publishedAt", publishedAt);
+      tierArgs = setArg(tierArgs, "intervalHours", "1");
+      if (getArgValue(tierArgs, "append") == null) {
+        tierArgs = [...tierArgs, "--append"];
+      }
+      // 두 번째 티어부터는 방금 로컬에 쓴 manifest(앞 티어 결과)에 누적해야 하므로
+      // 원격 manifest(appendManifestUrl)를 다시 읽지 않게 한다. 원격을 다시 읽으면
+      // 앞 티어(easy)가 빠진 상태로 로드돼 덮어써진다.
+      if (index > 0) {
+        tierArgs = tierArgs.filter(
+          (arg) => !arg.startsWith("--appendManifestUrl="),
+        );
+      }
+      console.log(
+        `[daily-tiers] generating difficulty=${tier.difficulty} date=${dateKey} publishedAt=${publishedAt}`,
+      );
+      await generateThenValidate(tierArgs);
     }
+  } else {
+    // 로테이션이 자동 배정한 주제만 보강 대상이다. 명시 지정(PUZZLE_THEME)으로
+    // 실패한 경우는 의도된 실패이므로 그대로 전파한다.
+    const themeInjectedByRotation =
+      (process.env.PUZZLE_THEME == null || process.env.PUZZLE_THEME === "") &&
+      getArgValue(generatorArgs, "theme") != null;
 
-    // 주제 제약으로 생성/검증이 실패하면, 일간 발행이 끊기지 않도록 주제를 풀고
-    // 한 번 더 생성·검증한다(보강). 검수 단서 커버리지가 오르면(#250) 이 폴백 없이
-    // 주제 퍼즐이 그대로 발행된다.
-    console.warn(
-      `[theme-rotation] themed pack failed (${error.message}); retrying without theme constraint to keep the daily pack published.`,
-    );
-    await generateThenValidate(stripThemeArgs(generatorArgs));
+    try {
+      await generateThenValidate(generatorArgs);
+    } catch (error) {
+      if (!themeInjectedByRotation) {
+        throw error;
+      }
+
+      // 주제 제약으로 생성/검증이 실패하면, 일간 발행이 끊기지 않도록 주제를 풀고
+      // 한 번 더 생성·검증한다(보강). 검수 단서 커버리지가 오르면(#250) 이 폴백 없이
+      // 주제 퍼즐이 그대로 발행된다.
+      console.warn(
+        `[theme-rotation] themed pack failed (${error.message}); retrying without theme constraint to keep the daily pack published.`,
+      );
+      await generateThenValidate(stripThemeArgs(generatorArgs));
+    }
   }
 
   if (!options.skipPublish) {

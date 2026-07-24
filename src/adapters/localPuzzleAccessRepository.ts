@@ -26,18 +26,7 @@ export type PuzzleArchiveSaveOptions = {
   startedAt?: string;
 };
 
-export type BonusPuzzleUnlock = {
-  date: string;
-  puzzleId: string;
-  unlockedAt: string;
-};
-
 type LocalPuzzleArchiveRepositoryOptions = {
-  keyPrefix?: string;
-  storage?: KeyValueStorage | null;
-};
-
-type LocalBonusPuzzleUnlockRepositoryOptions = {
   keyPrefix?: string;
   storage?: KeyValueStorage | null;
 };
@@ -56,45 +45,6 @@ function getArchiveIndexKey(keyPrefix: string) {
 
 function getArchiveRecordKey(keyPrefix: string, puzzleId: string) {
   return `${keyPrefix}:record:${puzzleId}`;
-}
-
-function getBonusUnlockKey(keyPrefix: string, date: string) {
-  return `${keyPrefix}:${date}`;
-}
-
-function normalizeBonusPuzzleUnlocks(
-  value: unknown,
-  date: string,
-): BonusPuzzleUnlock[] {
-  const rawUnlocks = Array.isArray(value) ? value : value == null ? [] : [value];
-  const seenPuzzleIds = new Set<string>();
-  const unlocks: BonusPuzzleUnlock[] = [];
-
-  for (const rawUnlock of rawUnlocks) {
-    if (rawUnlock == null || typeof rawUnlock !== "object") {
-      continue;
-    }
-
-    const unlock = rawUnlock as Partial<BonusPuzzleUnlock>;
-
-    if (
-      unlock.date !== date ||
-      typeof unlock.puzzleId !== "string" ||
-      typeof unlock.unlockedAt !== "string" ||
-      seenPuzzleIds.has(unlock.puzzleId)
-    ) {
-      continue;
-    }
-
-    seenPuzzleIds.add(unlock.puzzleId);
-    unlocks.push({
-      date: unlock.date,
-      puzzleId: unlock.puzzleId,
-      unlockedAt: unlock.unlockedAt,
-    });
-  }
-
-  return unlocks;
 }
 
 function readArchiveIndex(storage: KeyValueStorage, keyPrefix: string) {
@@ -245,61 +195,6 @@ export function createLocalPuzzleArchiveRepository({
       } catch {
         // Local persistence is best effort.
       }
-    },
-  };
-}
-
-export function createLocalBonusPuzzleUnlockRepository({
-  keyPrefix = "crossword-puzzle:bonus-unlock",
-  storage = getDefaultStorage(),
-}: LocalBonusPuzzleUnlockRepositoryOptions = {}) {
-  async function loadUnlocks(date: string) {
-    if (storage == null) {
-      return [];
-    }
-
-    try {
-      const raw = storage.getItem(getBonusUnlockKey(keyPrefix, date));
-      const value = raw == null ? null : (JSON.parse(raw) as unknown);
-
-      return normalizeBonusPuzzleUnlocks(value, date);
-    } catch {
-      return [];
-    }
-  }
-
-  return {
-    async loadUnlock(date: string) {
-      const unlocks = await loadUnlocks(date);
-
-      return unlocks[0] ?? null;
-    },
-
-    loadUnlocks,
-
-    async saveUnlock(unlock: BonusPuzzleUnlock) {
-      if (storage == null) {
-        return [];
-      }
-
-      const existingUnlocks = await loadUnlocks(unlock.date);
-      const nextUnlocks = [
-        ...existingUnlocks.filter(
-          (existingUnlock) => existingUnlock.puzzleId !== unlock.puzzleId,
-        ),
-        unlock,
-      ];
-
-      try {
-        storage.setItem(
-          getBonusUnlockKey(keyPrefix, unlock.date),
-          JSON.stringify(nextUnlocks),
-        );
-      } catch {
-        // Local persistence is best effort.
-      }
-
-      return nextUnlocks;
     },
   };
 }

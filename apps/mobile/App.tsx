@@ -31,7 +31,6 @@ import {
   buildStartLabels,
   completeMission,
   computeElapsedSeconds,
-  createBonusPuzzlePanelImpressionGuard,
   createDailyMissionState,
   createEmptyProgress,
   createPuzzleSummary,
@@ -39,12 +38,10 @@ import {
   defaultLaunchConfig,
   getAnswerCommitLetters,
   getAnswerInputLetters,
-  getBonusPuzzleCandidateSummary,
   getBounds,
   getCellAnswerLetter,
   getCellKey,
   getCompletedEntries,
-  getDailyFreePuzzleSummaries,
   getDailyFreePuzzleSummary,
   findPuzzleSummaryById,
   formatDateCardDay,
@@ -67,7 +64,6 @@ import {
   isCellLocked,
   isHangulJamoInput,
   getNextStreakMilestoneHint,
-  getOpenPuzzleSummariesForDate,
   getPuzzlePackAlias,
   getRemainingAttempts,
   getStreakBadgeLabel,
@@ -76,14 +72,12 @@ import {
   runRewardedHintAdFlow,
   trackRewardedHintAdRequest,
   trackRewardedHintAdResult,
-  trackBonusPuzzlePanelImpression,
   sortPuzzleSummariesByRecency,
   startMissionAttempt,
   uniquePuzzleSummaries,
   validatePuzzleSlots,
   REWARDED_HINT_AD_REWARD_EVENT,
   type Bounds,
-  type BonusPuzzlePanelStatus,
   type DailyMissionState,
   type Direction,
   type GamePuzzleContext,
@@ -104,11 +98,6 @@ import {
   type PuzzleArchiveRecord,
   type PuzzleArchiveSaveOptions,
 } from './puzzleArchive';
-import {
-  loadBonusPuzzleUnlocks,
-  saveBonusPuzzleUnlock,
-  type BonusPuzzleUnlock,
-} from './bonusPuzzleUnlockRepository';
 import { loadFirebaseLaunchConfig } from './firebaseClient';
 import {
   initializeMobileAds,
@@ -130,13 +119,20 @@ import puzzle20260529 from '../../public/puzzles/2026-05-29-normal-05.json';
 import puzzle20260530 from '../../public/puzzles/2026-05-30-normal-06.json';
 import puzzle20260531 from '../../public/puzzles/2026-05-31-normal-07.json';
 
-export type AppRoute = 'home' | 'today' | 'result' | 'history' | 'license';
+export type AppRoute =
+  | 'home'
+  | 'today'
+  | 'result'
+  | 'history'
+  | 'resume'
+  | 'license';
 
 const APP_ROUTE_GRAPH: Record<AppRoute, { backTarget: AppRoute | null }> = {
   history: { backTarget: 'home' },
   home: { backTarget: null },
   license: { backTarget: 'history' },
   result: { backTarget: 'home' },
+  resume: { backTarget: 'home' },
   today: { backTarget: 'home' },
 };
 
@@ -183,14 +179,6 @@ type PuzzleViewModel = {
   selectedEntry?: PuzzleEntry;
   startLabels: Map<string, number>;
   slotValidationPass: boolean;
-};
-
-type BonusPuzzlePanelState = {
-  candidateSummary?: PuzzleManifestItem;
-  unlockedSummary?: PuzzleManifestItem;
-  isUnlocking: boolean;
-  notice: string;
-  status: BonusPuzzlePanelStatus;
 };
 
 type AdDiagnosticState = {
@@ -313,6 +301,9 @@ function dedupePuzzleSummaries(puzzles: PuzzleManifestItem[]) {
   return result;
 }
 
+// 난이도 정렬 순위(당일 서빙 목록·홈 난이도 선택에서 easy→normal→hard 순).
+const DIFFICULTY_RANK: Record<string, number> = {easy: 0, normal: 1, hard: 2};
+
 function getInitialPuzzleId(puzzles: PuzzleManifestItem[]) {
   const today = getTodayDateKey();
   return (
@@ -395,19 +386,6 @@ export function formatPuzzleCardTitle(
   return weekday === '' ? dayLabel : `${dayLabel} ${weekday}`;
 }
 
-function formatBonusPuzzleMeta(summary?: PuzzleManifestItem) {
-  if (summary == null) {
-    return '새 퍼즐 대기';
-  }
-
-  const puzzleLabel = formatPuzzleCardTitle(summary, 'remote');
-  const wordCountLabel =
-    summary.metrics?.wordCount == null
-      ? '단어 수 확인 중'
-      : `${summary.metrics.wordCount}개 단어`;
-
-  return `${puzzleLabel} · ${wordCountLabel}`;
-}
 
 // Chooses which cell `clearAnswerCell` should erase: the caret cell if it holds
 // an editable letter, otherwise the nearest earlier editable cell, skipping
@@ -870,9 +848,6 @@ function AppContent() {
   const [route, setRoute] = useState<AppRoute>('home');
   const [isLoading, setIsLoading] = useState(true);
   const [puzzle, setPuzzle] = useState(initialPuzzle);
-  const [bonusPuzzlePanelImpressionGuard] = useState(
-    createBonusPuzzlePanelImpressionGuard,
-  );
   const [dateCardStates, setDateCardStates] = useState<
     Record<string, DateCardState>
   >({});
@@ -881,9 +856,6 @@ function AppContent() {
     PuzzleArchiveRecord[]
   >([]);
   const [consecutiveStreak, setConsecutiveStreak] = useState(0);
-  const [bonusPuzzleUnlocks, setBonusPuzzleUnlocks] = useState<
-    BonusPuzzleUnlock[]
-  >([]);
   const [cellValues, setCellValues] = useState<Record<string, string>>({});
   const [earnedHintCredits, setEarnedHintCredits] = useState(0);
   const [hintCount, setHintCount] = useState(0);
@@ -1086,30 +1058,17 @@ function AppContent() {
     () => getCompletedPuzzleIds(dateCardStates),
     [dateCardStates],
   );
-  const activeBonusPuzzleUnlocks = useMemo(
-    () => bonusPuzzleUnlocks.filter(unlock => unlock.date === todayKey),
-    [bonusPuzzleUnlocks, todayKey],
-  );
-  const unlockedBonusPuzzleIds = useMemo(
-    () => new Set(activeBonusPuzzleUnlocks.map(unlock => unlock.puzzleId)),
-    [activeBonusPuzzleUnlocks],
-  );
-  const completedOrUnlockedPuzzleIds = useMemo(
-    () => new Set([...completedPuzzleIds, ...unlockedBonusPuzzleIds]),
-    [completedPuzzleIds, unlockedBonusPuzzleIds],
-  );
-  const dailyFreeSummary = useMemo(
-    () => getDailyFreePuzzleSummary(puzzlePack.summaries, todayKey),
-    [puzzlePack.summaries, todayKey],
-  );
-  const dailyFreeSummaries = useMemo(
+  // 당일 서빙: 오늘 발행된 퍼즐(easy 5×5 · normal 8×8)만, 난이도 오름차순 정렬.
+  const todayPuzzleSummaries = useMemo(
     () =>
-      getDailyFreePuzzleSummaries(
-        puzzlePack.summaries,
-        todayKey,
-        launchConfig.visiblePuzzleCount,
-      ),
-    [launchConfig.visiblePuzzleCount, puzzlePack.summaries, todayKey],
+      puzzlePack.summaries
+        .filter(summary => summary.date === todayKey)
+        .sort(
+          (a, b) =>
+            (DIFFICULTY_RANK[a.difficulty ?? 'normal'] ?? 1) -
+            (DIFFICULTY_RANK[b.difficulty ?? 'normal'] ?? 1),
+        ),
+    [puzzlePack.summaries, todayKey],
   );
   const archivePuzzleSummaries = useMemo(
     () =>
@@ -1118,33 +1077,6 @@ function AppContent() {
         .map(record => createPuzzleSummary(record.puzzle)),
     [launchConfig.visiblePuzzleCount, puzzleArchiveRecords],
   );
-  const todayArchivePuzzleSummaries = useMemo(
-    () =>
-      puzzleArchiveRecords
-        .map(record => createPuzzleSummary(record.puzzle))
-        .filter(summary => summary.date === todayKey),
-    [puzzleArchiveRecords, todayKey],
-  );
-  const unlockedBonusSummaries = useMemo(
-    () =>
-      uniquePuzzleSummaries(
-        activeBonusPuzzleUnlocks
-          .map(
-            unlock =>
-              findPuzzleSummaryById(puzzlePack.summaries, unlock.puzzleId) ??
-              findPuzzleSummaryById(archivePuzzleSummaries, unlock.puzzleId),
-          )
-          .filter((summary): summary is PuzzleManifestItem => summary != null),
-      ),
-    [activeBonusPuzzleUnlocks, archivePuzzleSummaries, puzzlePack.summaries],
-  );
-  const unlockedPlayableBonusSummary = useMemo(
-    () =>
-      unlockedBonusSummaries.find(
-        summary => !completedPuzzleIds.has(summary.puzzleId),
-      ),
-    [completedPuzzleIds, unlockedBonusSummaries],
-  );
   const selectedPuzzleSummary = useMemo(
     () =>
       findPuzzleSummaryById(puzzlePack.summaries, puzzle.puzzleId) ??
@@ -1152,56 +1084,18 @@ function AppContent() {
       createPuzzleSummary(puzzle),
     [archivePuzzleSummaries, puzzle, puzzlePack.summaries],
   );
-  const todayOpenPuzzleSummaries = useMemo(
-    () =>
-      getOpenPuzzleSummariesForDate({
-        archivePuzzleSummaries: todayArchivePuzzleSummaries,
-        date: todayKey,
-        dailyFreeSummary,
-        selectedPuzzleSummary,
-        unlockedBonusSummaries,
-      }),
-    [
-      dailyFreeSummary,
-      selectedPuzzleSummary,
-      todayArchivePuzzleSummaries,
-      todayKey,
-      unlockedBonusSummaries,
-    ],
-  );
-  const bonusCandidateSummary = useMemo(
-    () =>
-      getBonusPuzzleCandidateSummary({
-        completedPuzzleIds: completedOrUnlockedPuzzleIds,
-        dailyFreeSummary,
-        puzzleSummaries: puzzlePack.summaries,
-        today: todayKey,
-      }),
-    [
-      completedOrUnlockedPuzzleIds,
-      dailyFreeSummary,
-      puzzlePack.summaries,
-      todayKey,
-    ],
-  );
   const visiblePuzzleSummaries = useMemo(
     () =>
       sortPuzzleSummariesByRecency(
         uniquePuzzleSummaries(
           [
-            ...dailyFreeSummaries,
-            ...unlockedBonusSummaries,
+            ...todayPuzzleSummaries,
             selectedPuzzleSummary,
             ...archivePuzzleSummaries,
           ].filter((summary): summary is PuzzleManifestItem => summary != null),
         ),
       ),
-    [
-      archivePuzzleSummaries,
-      dailyFreeSummaries,
-      selectedPuzzleSummary,
-      unlockedBonusSummaries,
-    ],
+    [archivePuzzleSummaries, todayPuzzleSummaries, selectedPuzzleSummary],
   );
   const nextRecommendedSummary = useMemo(
     () =>
@@ -1238,44 +1132,6 @@ function AppContent() {
           .filter(Boolean)
           .join(' · ');
 
-  const bonusPuzzlePanelState: BonusPuzzlePanelState = {
-    candidateSummary: bonusCandidateSummary,
-    unlockedSummary:
-      unlockedPlayableBonusSummary ?? unlockedBonusSummaries[0] ?? undefined,
-    isUnlocking: rewardedAdPlacement === 'rewardedBonusPuzzle',
-    notice:
-      unlockedPlayableBonusSummary != null
-        ? '이미 광고로 연 퍼즐입니다. 광고 없이 이어서 풀 수 있습니다.'
-        : launchConfig.rewardedBonusPuzzleAdsEnabled
-          ? '광고를 끝까지 보면 추가 퍼즐이 열립니다.'
-          : '운영 설정에서 보너스 광고가 꺼져 있습니다.',
-    status: isLoading
-      ? 'loading'
-      : unlockedPlayableBonusSummary != null
-        ? 'unlocked'
-        : bonusCandidateSummary != null
-          ? 'available'
-          : unlockedBonusSummaries.length > 0
-            ? 'used'
-            : 'waiting',
-  };
-  useEffect(() => {
-    if (route !== 'home' && route !== 'result') {
-      return;
-    }
-
-    trackBonusPuzzlePanelImpression(
-      gameAnalytics,
-      bonusPuzzlePanelImpressionGuard,
-      getGamePuzzleContext(puzzle),
-      bonusPuzzlePanelState.status,
-    );
-  }, [
-    bonusPuzzlePanelImpressionGuard,
-    bonusPuzzlePanelState.status,
-    puzzle,
-    route,
-  ]);
   const boardCellSize = Math.max(
     32,
     Math.min(
@@ -1362,11 +1218,9 @@ function AppContent() {
         ...nextArchiveRecords.map(record => createPuzzleSummary(record.puzzle)),
       ]);
       const initialPuzzleId = getInitialPuzzleId(nextSummaries);
-      const today = getTodayDateKey();
-      const [states, session, nextBonusPuzzleUnlocks] = await Promise.all([
+      const [states, session] = await Promise.all([
         loadDateCardStates(hydratedSummaries),
         loadPuzzleSession(initialPuzzleId, nextPuzzlePack),
-        loadBonusPuzzleUnlocks(today),
       ]);
 
       if (isCancelled) {
@@ -1375,7 +1229,6 @@ function AppContent() {
 
       setPuzzlePack(nextPuzzlePack);
       setPuzzleArchiveRecords(nextArchiveRecords);
-      setBonusPuzzleUnlocks(nextBonusPuzzleUnlocks);
       setDateCardStates(states);
       applyPuzzleSession(session);
       setNotice(
@@ -1460,25 +1313,6 @@ function AppContent() {
       ad_provider: 'admob',
     }),
     [puzzle, selectedPuzzleSummary],
-  );
-
-  const logMobileAdEvents = useCallback(
-    (
-      eventName: string,
-      placement: string,
-      events: MobileAdEvent[],
-      nextPuzzle = puzzle,
-      summary = selectedPuzzleSummary,
-    ) => {
-      events.forEach(event => {
-        telemetry.impression(eventName, {
-          ...getMobileAdTelemetryParams(placement, nextPuzzle, summary),
-          ad_error_code: event.errorCode,
-          ad_event: event.type,
-        });
-      });
-    },
-    [getMobileAdTelemetryParams, puzzle, selectedPuzzleSummary],
   );
 
   const openAdDiagnostics = useCallback(() => {
@@ -1832,88 +1666,6 @@ function AppContent() {
         );
       },
     });
-  }
-
-  async function unlockBonusPuzzle() {
-    const unlockedSummary = bonusPuzzlePanelState.unlockedSummary;
-
-    if (
-      (bonusPuzzlePanelState.status === 'unlocked' ||
-        bonusPuzzlePanelState.status === 'used') &&
-      unlockedSummary != null
-    ) {
-      const shouldOpenResult = completedPuzzleIds.has(unlockedSummary.puzzleId);
-      await selectPuzzle(unlockedSummary.puzzleId);
-      if (shouldOpenResult) {
-        navigateTo('result');
-      }
-      setNotice('광고로 열어 둔 보너스 퍼즐을 불러왔습니다.');
-      return;
-    }
-
-    const summary = bonusCandidateSummary;
-
-    if (summary == null) {
-      setNotice('열 수 있는 보너스 퍼즐이 없습니다.');
-      return;
-    }
-
-    if (!launchConfig.rewardedBonusPuzzleAdsEnabled) {
-      setNotice('운영 설정에서 보너스 광고가 꺼져 있습니다.');
-      return;
-    }
-
-    if (rewardedAdPlacement != null || isLoading) {
-      setNotice('광고를 불러오는 중입니다.');
-      return;
-    }
-
-    setRewardedAdPlacement('rewardedBonusPuzzle');
-    telemetry.click('rewarded_bonus_puzzle_ad_request', {
-      ...getMobileAdTelemetryParams('rewardedBonusPuzzle'),
-      bonus_puzzle_id: summary.puzzleId,
-    });
-
-    try {
-      const result = await showRewardedAd('rewardedBonusPuzzle');
-      logMobileAdEvents(
-        'rewarded_bonus_puzzle_ad_event',
-        'rewardedBonusPuzzle',
-        result.events,
-      );
-      telemetry.impression('rewarded_bonus_puzzle_ad_result', {
-        ...getMobileAdTelemetryParams('rewardedBonusPuzzle'),
-        ad_status: result.status,
-        bonus_puzzle_id: summary.puzzleId,
-      });
-
-      if (result.status === 'rewarded') {
-        const nextUnlock = {
-          date: todayKey,
-          puzzleId: summary.puzzleId,
-          unlockedAt: new Date().toISOString(),
-        };
-        const nextUnlocks = await saveBonusPuzzleUnlock(nextUnlock);
-
-        setBonusPuzzleUnlocks(nextUnlocks);
-        telemetry.impression('rewarded_bonus_puzzle_ad_reward', {
-          ...getMobileAdTelemetryParams('rewardedBonusPuzzle'),
-          bonus_puzzle_id: summary.puzzleId,
-        });
-        await selectPuzzle(summary.puzzleId);
-        setNotice('광고 보상으로 보너스 퍼즐을 열었습니다.');
-      } else if (result.status === 'closed') {
-        setNotice('광고를 끝까지 보지 않아 보너스 퍼즐이 열리지 않았습니다.');
-      } else {
-        setNotice(
-          `광고를 불러오지 못했습니다. (${getMobileAdFailureCode(
-            result.events,
-          )})`,
-        );
-      }
-    } finally {
-      setRewardedAdPlacement(null);
-    }
   }
 
   function openCompletedResult() {
@@ -2417,121 +2169,98 @@ function AppContent() {
     );
   }
 
-  function renderDateSelector() {
+  function renderDifficultyPicker() {
+    if (todayPuzzleSummaries.length < 2) {
+      return null;
+    }
     return (
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.dateList}
-      >
-        {visiblePuzzleSummaries.map(summary => {
+      <View style={styles.difficultyPicker}>
+        {todayPuzzleSummaries.map(summary => {
           const state = dateCardStates[summary.puzzleId];
           const isSelected = summary.puzzleId === puzzle.puzzleId;
-          const isDone = state?.completedAt != null;
-          const sequenceLabel =
-            puzzlePack.source === 'remote'
-              ? formatPuzzleCardSequenceLabel(summary)
-              : '';
-          const wordCountLabel = `${summary.metrics?.wordCount ?? '-'}단어`;
-          const difficultyLabel = formatDifficultyLabel(summary.difficulty);
-          const metaLabel =
-            sequenceLabel === ''
-              ? [difficultyLabel, wordCountLabel, `${state?.attemptsUsed ?? 0}/${DAILY_ATTEMPT_LIMIT}회`]
-                  .filter(Boolean)
-                  .join(' · ')
-              : [difficultyLabel, sequenceLabel, wordCountLabel].filter(Boolean).join(' · ');
-          const titleLabel = formatPuzzleCardTitle(summary, puzzlePack.source);
-
+          const statusLabel =
+            state?.completedAt != null
+              ? '완료'
+              : state?.hasProgress
+                ? '이어 풀기'
+                : '새 퍼즐';
           return (
             <Pressable
               key={summary.puzzleId}
               onPress={() => {
-                selectPuzzle(summary.puzzleId);
+                void selectPuzzle(summary.puzzleId);
               }}
               style={[
-                styles.dateCard,
-                isSelected && styles.dateCardSelected,
-                isDone && styles.dateCardCompleted,
+                styles.difficultyChip,
+                isSelected ? styles.difficultyChipSelected : null,
               ]}
             >
-              <Text style={styles.dateCardDate}>{titleLabel}</Text>
-              <Text style={styles.dateCardMeta}>{metaLabel}</Text>
-              <Text style={styles.dateCardState}>
-                {isDone
-                  ? '완료'
-                  : (state?.attemptsUsed ?? 0) >= DAILY_ATTEMPT_LIMIT
-                    ? '도전 종료'
-                    : state?.hasProgress
-                      ? '진행 중'
-                      : '대기'}
+              <Text style={styles.difficultyChipLabel}>
+                {formatDifficultyLabel(summary.difficulty)}
               </Text>
+              <Text style={styles.difficultyChipStatus}>{statusLabel}</Text>
             </Pressable>
           );
         })}
-      </ScrollView>
+      </View>
     );
   }
 
-  function renderTodayPuzzleNavigator() {
-    if (isLoading || todayOpenPuzzleSummaries.length <= 1) {
-      return null;
-    }
-
+  // 오늘/과거에 시작했지만 끝내지 못한 퍼즐을 로컬 아카이브에서 모아 보여준다.
+  function renderResume() {
+    const incomplete = puzzleArchiveRecords.filter(record => {
+      const state = dateCardStates[record.puzzleId];
+      const isCompleted =
+        record.completedAt != null || state?.completedAt != null;
+      const hasStarted =
+        record.startedAt != null ||
+        (state?.attemptsUsed ?? 0) > 0 ||
+        state?.hasProgress === true;
+      return !isCompleted && hasStarted;
+    });
     return (
-      <View style={styles.todayPuzzleRail}>
-        <View style={styles.todayPuzzleRailHeader}>
-          <Text style={styles.todayPuzzleRailTitle}>오늘 열린 퍼즐</Text>
-          <Text style={styles.todayPuzzleRailCount}>
-            {todayOpenPuzzleSummaries.length}개
-          </Text>
-        </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.todayPuzzleList}
-        >
-          {todayOpenPuzzleSummaries.map(summary => {
-            const state = dateCardStates[summary.puzzleId];
-            const isSelected = summary.puzzleId === puzzle.puzzleId;
-            const statusLabel =
-              state?.completedAt != null
-                ? '완료'
-                : (state?.attemptsUsed ?? 0) >= DAILY_ATTEMPT_LIMIT
-                  ? '도전 종료'
-                  : state?.hasProgress
-                    ? '진행 중'
-                    : '대기';
-            const titleLabel =
-              puzzlePack.source === 'remote'
-                ? formatPuzzleCardSequenceLabel(summary)
-                : formatPuzzleAliasLabel(summary);
-
+      <ScrollView contentContainerStyle={styles.homeContent}>
+        {renderHeader('이어 풀기', `못 끝낸 퍼즐 ${incomplete.length}개`)}
+        {incomplete.length > 0 ? (
+          incomplete.map(record => {
+            const state = dateCardStates[record.puzzleId];
+            const isExhausted =
+              (state?.attemptsUsed ?? 0) >= DAILY_ATTEMPT_LIMIT;
+            const summary = createPuzzleSummary(record.puzzle);
             return (
               <Pressable
-                key={summary.puzzleId}
+                key={record.puzzleId}
                 onPress={() => {
-                  selectPuzzle(summary.puzzleId);
+                  void selectPuzzle(record.puzzleId);
+                  navigateTo(isExhausted ? 'result' : 'today');
                 }}
-                style={[
-                  styles.todayPuzzleChip,
-                  isSelected && styles.todayPuzzleChipSelected,
-                ]}
+                style={styles.summaryPanel}
               >
-                <Text style={styles.todayPuzzleChipTitle}>{titleLabel}</Text>
-                <Text style={styles.todayPuzzleChipState}>{statusLabel}</Text>
-                <Text style={styles.todayPuzzleChipMeta}>
-                  {[
-                    formatDifficultyLabel(summary.difficulty),
-                    `${summary.metrics?.wordCount ?? '-'}단어`,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
+                <Text style={styles.panelTitle}>
+                  {formatDifficultyLabel(summary.difficulty)} ·{' '}
+                  {record.puzzle.gridSize}x{record.puzzle.gridSize}
+                </Text>
+                <Text style={styles.smallText}>
+                  {record.puzzle.entries.length}개 단어 ·{' '}
+                  {isExhausted ? '결과 보기' : '이어 풀기'} · 기기 저장 사본
                 </Text>
               </Pressable>
             );
-          })}
-        </ScrollView>
-      </View>
+          })
+        ) : (
+          <View style={styles.summaryPanel}>
+            <Text style={styles.smallText}>
+              못 끝낸 퍼즐이 없어요. 오늘의 퍼즐을 풀어보세요.
+            </Text>
+          </View>
+        )}
+        <Pressable
+          onPress={() => navigateTo('home')}
+          style={styles.secondaryButton}
+        >
+          <Text style={styles.secondaryButtonText}>홈으로</Text>
+        </Pressable>
+      </ScrollView>
     );
   }
 
@@ -2548,18 +2277,7 @@ function AppContent() {
     return (
       <ScrollView contentContainerStyle={styles.homeContent}>
         {renderHeader(HOME_HEADER_TITLE, selectedPuzzleLabel)}
-        {renderDateSelector()}
-
-        <View style={styles.policyPanel}>
-          <Text style={styles.policyTitle}>하루 1개 기본 공개</Text>
-          <Text style={styles.smallText}>
-            홈에는 하루 1개씩 최근 {launchConfig.visiblePuzzleCount}일치 무료
-            퍼즐과 기기에 저장된 기록을 함께 보여줍니다. 추가 퍼즐은 보너스 해금
-            흐름으로 엽니다. 원격 퍼즐은{' '}
-            {launchConfig.puzzleGenerationIntervalHours}시간마다 생성되고 최근{' '}
-            {launchConfig.puzzleKeepCount}개까지 유지됩니다.
-          </Text>
-        </View>
+        {renderDifficultyPicker()}
 
         <View style={styles.summaryPanel}>
           <Text style={styles.panelTitle}>{selectedPuzzleSequenceLabel}</Text>
@@ -2601,6 +2319,12 @@ function AppContent() {
               </Text>
             </Pressable>
             <Pressable
+              onPress={() => navigateTo('resume')}
+              style={styles.secondaryButton}
+            >
+              <Text style={styles.secondaryButtonText}>못 끝낸 퍼즐</Text>
+            </Pressable>
+            <Pressable
               onPress={() => navigateTo('history')}
               style={styles.secondaryButton}
             >
@@ -2609,13 +2333,6 @@ function AppContent() {
           </View>
           <Text style={styles.notice}>{notice}</Text>
         </View>
-
-        {renderTodayPuzzleNavigator()}
-
-        <BonusPuzzlePanel
-          onUnlock={unlockBonusPuzzle}
-          state={bonusPuzzlePanelState}
-        />
 
         <View style={styles.previewPanel}>
           <Text style={styles.panelTitle}>첫 힌트</Text>
@@ -3337,24 +3054,6 @@ function AppContent() {
               >
                 <Text style={styles.secondaryButtonText}>힌트 운영</Text>
               </Pressable>
-              <Pressable
-                disabled={adDiagnosticState.isRunning}
-                onPress={() =>
-                  runRewardedAdDiagnostic('rewardedBonusPuzzle', 'test')
-                }
-                style={styles.secondaryButton}
-              >
-                <Text style={styles.secondaryButtonText}>보너스 테스트</Text>
-              </Pressable>
-              <Pressable
-                disabled={adDiagnosticState.isRunning}
-                onPress={() =>
-                  runRewardedAdDiagnostic('rewardedBonusPuzzle', 'production')
-                }
-                style={styles.secondaryButton}
-              >
-                <Text style={styles.secondaryButtonText}>보너스 운영</Text>
-              </Pressable>
             </View>
             <View style={styles.completionDialogActions}>
               <Pressable
@@ -3600,10 +3299,6 @@ function AppContent() {
             )}
           </View>
         )}
-        <BonusPuzzlePanel
-          onUnlock={unlockBonusPuzzle}
-          state={bonusPuzzlePanelState}
-        />
       </ScrollView>
     );
   }
@@ -3732,75 +3427,14 @@ function AppContent() {
             ? renderResult()
             : route === 'history'
               ? renderHistory()
-              : route === 'license'
-                ? renderLicense()
-                : renderHome()}
+              : route === 'resume'
+                ? renderResume()
+                : route === 'license'
+                  ? renderLicense()
+                  : renderHome()}
         {renderAdDiagnosticsModal()}
       </KeyboardAvoidingView>
     </SafeAreaView>
-  );
-}
-
-function BonusPuzzlePanel({
-  onUnlock,
-  state,
-}: {
-  onUnlock: () => void;
-  state: BonusPuzzlePanelState;
-}) {
-  const summary = state.unlockedSummary ?? state.candidateSummary;
-  let title = '다음 보너스 퍼즐을 준비 중이에요';
-  let description = '오늘 공개된 추가 퍼즐이 생기면 여기에 표시됩니다.';
-
-  if (state.status === 'available') {
-    title = '새 퍼즐이 도착했어요';
-    description = `${formatBonusPuzzleMeta(summary)} · 광고를 보면 하나 더 풀 수 있어요.`;
-  } else if (state.status === 'unlocked') {
-    title = '보너스 퍼즐이 열려 있어요';
-    description = `${formatBonusPuzzleMeta(summary)} · 광고 없이 이어서 풀 수 있어요.`;
-  } else if (state.status === 'used') {
-    title = '오늘의 보너스 퍼즐을 풀었어요';
-    description = `${formatBonusPuzzleMeta(summary)} · 결과를 다시 볼 수 있어요.`;
-  } else if (state.status === 'loading') {
-    title = '보너스 퍼즐 확인 중';
-    description = '원격 퍼즐팩을 확인하고 있습니다.';
-  }
-
-  const buttonLabel =
-    state.status === 'available'
-      ? state.isUnlocking
-        ? '광고 불러오는 중'
-        : '광고 보고 열기'
-      : '';
-  const canShowAction = state.status === 'available';
-  const isActionDisabled = state.isUnlocking || summary == null;
-
-  return (
-    <View
-      style={[
-        styles.bonusPanel,
-        state.status === 'available' && styles.bonusPanelAvailable,
-      ]}
-    >
-      <View style={styles.bonusPanelText}>
-        <Text style={styles.bonusEyebrow}>하나 더 풀기</Text>
-        <Text style={styles.bonusTitle}>{title}</Text>
-        <Text style={styles.smallText}>{description}</Text>
-        <Text style={styles.bonusNotice}>{state.notice}</Text>
-      </View>
-      {canShowAction ? (
-        <Pressable
-          disabled={isActionDisabled}
-          onPress={onUnlock}
-          style={[
-            styles.primaryButton,
-            isActionDisabled && styles.disabledButton,
-          ]}
-        >
-          <Text style={styles.primaryButtonText}>{buttonLabel}</Text>
-        </Pressable>
-      ) : null}
-    </View>
   );
 }
 
@@ -4345,6 +3979,34 @@ const styles = StyleSheet.create({
     color: '#0f172a',
     fontSize: 18,
     fontWeight: '900',
+  },
+  difficultyPicker: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 16,
+    marginBottom: 18,
+  },
+  difficultyChip: {
+    flex: 1,
+    gap: 2,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(15,23,42,0.08)',
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
+  },
+  difficultyChipSelected: {
+    borderColor: '#00a88f',
+    backgroundColor: '#f1f9f9',
+  },
+  difficultyChipLabel: {
+    color: '#0f172a',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  difficultyChipStatus: {
+    color: '#64748b',
+    fontSize: 12,
   },
   playScreen: {
     flex: 1,

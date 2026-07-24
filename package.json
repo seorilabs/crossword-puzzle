@@ -10,6 +10,7 @@
     "test:adapters": "node --experimental-strip-types --test src/adapters/*.test.mts",
     "test:core": "node --experimental-strip-types --test packages/crossword-core/src/*.test.mts packages/crossword-core/src/*.test.ts",
     "test:components": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "lint": "eslint .",
     "format": "prettier --write .",
     "mobile:install": "npm ci --prefix apps/mobile",

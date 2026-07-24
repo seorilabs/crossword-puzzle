@@ -41,8 +41,6 @@ const sharedPolicyExports = [
   "PUZZLE_GENERATION_INTERVAL_HOURS",
   "PUZZLE_KEEP_COUNT",
   "createPuzzleSummary",
-  "getBonusPuzzleCandidateSummary",
-  "getDailyFreePuzzleSummaries",
   "getDailyFreePuzzleSummary",
   "getPuzzlePackAlias",
   "sortPuzzleSummariesByRecency",
@@ -52,8 +50,6 @@ const sharedPolicyExports = [
 const requiredWebImports = [
   "DAILY_ATTEMPT_LIMIT",
   "createPuzzleSummary",
-  "getBonusPuzzleCandidateSummary",
-  "getDailyFreePuzzleSummaries",
   "getDailyFreePuzzleSummary",
   "getPuzzlePackAlias",
   "sortPuzzleSummariesByRecency",
@@ -64,8 +60,6 @@ const requiredMobileImports = [
   "DAILY_ATTEMPT_LIMIT",
   "createPuzzleSummary",
   "defaultLaunchConfig",
-  "getBonusPuzzleCandidateSummary",
-  "getDailyFreePuzzleSummaries",
   "getDailyFreePuzzleSummary",
   "getPuzzlePackAlias",
   "sortPuzzleSummariesByRecency",
@@ -79,8 +73,6 @@ const forbiddenLocalDefinitions = [
   "PUZZLE_GENERATION_INTERVAL_HOURS",
   "PUZZLE_KEEP_COUNT",
   "createPuzzleSummary",
-  "getBonusPuzzleCandidateSummary",
-  "getDailyFreePuzzleSummaries",
   "getDailyFreePuzzleSummary",
   "getPuzzlePackAlias",
   "sortPuzzleSummariesByRecency",
@@ -233,7 +225,6 @@ const featureParityMarkers = [
   "result_overlay",
   "runRewardedHintAdFlow",
   "retry:",
-  "trackBonusPuzzlePanelImpression",
 ];
 for (const marker of featureParityMarkers) {
   assertIncludes(webApp, marker, webAppPath);
