@@ -129,6 +129,7 @@ import { PuzzleBoard } from "./components/PuzzleBoard";
 import { HowToPlayDialog } from "./components/HowToPlayDialog";
 import { SettingsSheet } from "./components/SettingsSheet";
 import { CompletionCelebrationDialog } from "./components/CompletionCelebrationDialog";
+import { MissionHistoryCard } from "./components/MissionHistoryCard";
 import { PuzzleMetaChips } from "./components/PuzzleMetaChips";
 import { formatDifficultyLabel } from "./puzzleLabels";
 import { useShareResult } from "./useShareResult";
@@ -157,6 +158,7 @@ import {
   createLocalProgressRepository,
   getAllBestTimePuzzleIds,
   getBestTimeMs,
+  getOverallBestTimeMs,
   saveBestTimeMs,
 } from "./adapters/localProgressRepository";
 import {
@@ -3396,13 +3398,12 @@ function HomeScreen({
           </div>
           <em>보기</em>
         </button>
-        <button type="button" onClick={() => navigate("history")}>
-          <div>
-            <strong>미션 기록</strong>
-            <span>{mission.attemptsUsed}번 도전</span>
-          </div>
-          <em>보기</em>
-        </button>
+        <MissionHistoryCard
+          attemptsUsed={mission.attemptsUsed}
+          consecutiveStreak={consecutiveStreak}
+          fastestBestTimeMs={getOverallBestTimeMs()}
+          onOpen={() => navigate("history")}
+        />
       </section>
 
       <section className="sourceNotice" aria-label="힌트 출처 안내">
@@ -5025,6 +5026,10 @@ function TodayScreen({
           onGoHome={() => {
             dismissCompletionCelebration();
             navigate("home");
+          }}
+          onSeeHistory={() => {
+            dismissCompletionCelebration();
+            navigate("history");
           }}
           onSeeResult={() => {
             dismissCompletionCelebration();

@@ -57,6 +57,7 @@ function renderDialog(
     totalCount: 10,
     onClose: vi.fn(),
     onGoHome: vi.fn(),
+    onSeeHistory: vi.fn(),
     onSeeResult: vi.fn(),
     ...overrides,
   };
@@ -95,6 +96,43 @@ describe("CompletionCelebrationDialog 다음 퍼즐 CTA(#274)", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "홈으로" }));
     expect(props.onGoHome).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("CompletionCelebrationDialog 기록 진입 CTA(#300)", () => {
+  it("\"내 기록 보기\" 보조 버튼을 렌더하고, 클릭 시 다이얼로그를 닫고 navigate(\"history\")를 합성한 onSeeHistory를 호출한다(AC-1)", () => {
+    const props = renderDialog();
+
+    // "보조 버튼 추가": 실제로 렌더된다.
+    const button = screen.getByRole("button", { name: "내 기록 보기" });
+    expect(button.classList.contains("secondaryButton")).toBe(true);
+
+    fireEvent.click(button);
+
+    // "클릭 시 다이얼로그 닫고 navigate(\"history\") 실행"은 이 콜백에 합성돼
+    // 주입된다 — 호출부 배선(src/App.tsx): onSeeHistory={() => {
+    //   dismissCompletionCelebration(); navigate("history"); }}.
+    // AC-4에서 확인된 onGoHome/onSeeResult 와 동일한 주입 seam이다.
+    expect(props.onSeeHistory).toHaveBeenCalledTimes(1);
+    // 기록 CTA는 닫기/결과/홈 콜백을 대신 호출하지 않는다.
+    expect(props.onClose).not.toHaveBeenCalled();
+    expect(props.onSeeResult).not.toHaveBeenCalled();
+    expect(props.onGoHome).not.toHaveBeenCalled();
+  });
+
+  it("기록 CTA는 공유·다음 퍼즐 CTA와 독립적으로 동작한다(회귀 없음)", () => {
+    const onStartNextPuzzle = vi.fn();
+    const props = renderDialog({
+      nextPuzzleLabel: "#26060114 · 어려움",
+      onStartNextPuzzle,
+    });
+
+    // 기록 CTA 클릭이 다른 CTA 콜백을 건드리지 않는다.
+    fireEvent.click(screen.getByRole("button", { name: "내 기록 보기" }));
+    expect(props.onSeeHistory).toHaveBeenCalledTimes(1);
+    expect(onStartNextPuzzle).not.toHaveBeenCalled();
+    expect(props.onSeeResult).not.toHaveBeenCalled();
+    expect(props.onGoHome).not.toHaveBeenCalled();
   });
 });
 

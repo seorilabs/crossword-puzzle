@@ -6,6 +6,7 @@ import { strict as assert } from "node:assert";
 import {
   createLocalProgressRepository,
   getAllBestTimePuzzleIds,
+  getOverallBestTimeMs,
   saveBestTimeMs,
 } from "./localProgressRepository.ts";
 
@@ -331,5 +332,43 @@ describe("getAllBestTimePuzzleIds — 전체 최고기록 키 열거", () => {
 
   it("저장소가 없으면 빈 배열을 반환한다", () => {
     assert.deepEqual(getAllBestTimePuzzleIds(null), []);
+  });
+});
+
+describe("getOverallBestTimeMs — 통산 최고 기록(가장 빠른 값)", () => {
+  it("보유한 기록 중 가장 빠른 값(ms)을 반환한다", () => {
+    const storage = createEnumerableStorage();
+    saveBestTimeMs("puzzle-a", 90_000, storage);
+    saveBestTimeMs("puzzle-b", 42_000, storage);
+    saveBestTimeMs("puzzle-c", 120_000, storage);
+    assert.equal(getOverallBestTimeMs(storage), 42_000);
+  });
+
+  it("기록이 하나면 그 값을 반환한다", () => {
+    const storage = createEnumerableStorage();
+    saveBestTimeMs("only", 55_000, storage);
+    assert.equal(getOverallBestTimeMs(storage), 55_000);
+  });
+
+  it("보유 기록이 없으면 null 을 반환한다", () => {
+    assert.equal(getOverallBestTimeMs(createEnumerableStorage()), null);
+  });
+
+  it("키 열거를 지원하지 않는 저장소는 null 을 반환한다", () => {
+    assert.equal(getOverallBestTimeMs(createMemoryStorage()), null);
+  });
+
+  it("저장소가 없으면 null 을 반환한다", () => {
+    assert.equal(getOverallBestTimeMs(null), null);
+  });
+
+  it("오염 값(0/음수/NaN)은 무시하고 유효한 최소값만 고른다", () => {
+    const storage = createEnumerableStorage();
+    // getBestTimeMs 가 유효성(유한·양수)을 검사하므로 오염 값은 null 로 걸러진다.
+    storage.setItem("crossword-puzzle:best-time:dirty-zero", "0");
+    storage.setItem("crossword-puzzle:best-time:dirty-neg", "-5");
+    storage.setItem("crossword-puzzle:best-time:dirty-nan", "not-a-number");
+    saveBestTimeMs("valid", 33_000, storage);
+    assert.equal(getOverallBestTimeMs(storage), 33_000);
   });
 });

@@ -83,6 +83,22 @@ export function getAllBestTimePuzzleIds(
   }
 }
 
+// 기기에 보유한 모든 최고 기록 중 가장 빠른 값(ms). 홈 "미션 기록" 카드가 통산
+// 최고 기록을 요약 표기하는 데 쓴다. 보유 0건이거나 유효(유한·양수) 값이 없으면
+// null 을 반환해, 호출부가 빈 상태 문구를 유지하게 한다(#300).
+export function getOverallBestTimeMs(
+  storage: KeyValueStorage | null = getDefaultStorage(),
+): number | null {
+  let fastest: number | null = null;
+  for (const puzzleId of getAllBestTimePuzzleIds(storage)) {
+    const value = getBestTimeMs(puzzleId, storage);
+    if (value != null && (fastest == null || value < fastest)) {
+      fastest = value;
+    }
+  }
+  return fastest;
+}
+
 export function saveBestTimeMs(
   puzzleId: string,
   elapsedMs: number,
