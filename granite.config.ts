@@ -3,9 +3,9 @@ import { defineConfig } from "@apps-in-toss/web-framework/config";
 export default defineConfig({
   appName: "crossword-puzzle-game",
   brand: {
-    displayName: "가로세로 낱말 퍼즐",
+    displayName: "가로세로 낱말",
     primaryColor: "#00A88F",
-    icon: "https://static.toss.im/appsintoss/38345/15757b74-afc5-4f91-acc9-19602ffb73e6.png",
+    icon: "https://static.toss.im/appsintoss/38345/ee65422a-6347-4c07-a33f-bb50ddc0168a.png",
   },
   web: {
     host: "localhost",

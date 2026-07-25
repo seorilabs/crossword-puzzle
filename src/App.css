@@ -92,6 +92,7 @@ button:disabled {
   min-width: 0;
   flex-direction: column;
   gap: 2px;
+  overflow: hidden;
 }
 
 .appHeader span {
@@ -107,6 +108,9 @@ button:disabled {
   font-size: 24px;
   font-weight: 900;
   line-height: 32px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .homeHeader {
@@ -126,7 +130,9 @@ button:disabled {
   min-width: 0;
   align-items: center;
   flex-direction: row;
-  gap: 6px;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+  gap: 4px;
   margin-left: auto;
 }
 
@@ -2394,8 +2400,8 @@ button:disabled {
 
 .iconButton {
   display: grid;
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   flex: 0 0 auto;
   place-items: center;
   border: 0;
