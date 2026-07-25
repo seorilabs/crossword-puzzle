@@ -124,7 +124,7 @@
 - 세로 스크린샷 3장은 로컬 앱을 실행해 실제 UI에서 캡처했다.
 - `brand.icon`에는 로컬 경로를 넣지 않는다. AppsInToss Console에 업로드한 로고 HTTPS URL을 `granite.config.ts`의 `brand.icon`에 반영했다.
 - 현재 퍼즐 힌트는 한국어기초사전 뜻풀이 기반이다. 앱 홈과 `/license` 화면에서 출처와 `CC-BY-SA-2.0-KR` 조건을 상시 표시한다. 검수 대상 문장은 `docs/hint-license-review.md`에 정리했다.
-- 광고 그룹 ID는 결과 전면 `ait.v2.live.a1439d344fa34821`, 힌트 보상형 `ait.v2.live.434bcf7cff1d462e`를 사용한다.
+- 광고 그룹 ID는 힌트 보상형 `ait.v2.live.bf12924f4bf84b74`를 사용한다. (결과 전면 광고 `ait.v2.live.a1439d344fa34821`는 광고 힌트 한정 리팩터에서 제거됨)
 - 보상형 광고 힌트는 `userEarnedReward` 이벤트 수신 즉시 지급한다. `dismissed`는 광고 닫힘 이벤트일 뿐 보상 지급 근거로 쓰지 않는다.
 - Firebase Analytics / Remote Config 설정과 QA는 `docs/firebase-analytics-remote-config.md`를 기준으로 한다. Firebase Web app 값은 GitHub Variables에 등록해 AIT 배포 워크플로에서 읽는다.
 - 퍼즐별 참여자/완료율은 `docs/puzzle-completion-stats.md`의 공개 JSON 계약과 Remote Config gate를 기준으로 한다.
