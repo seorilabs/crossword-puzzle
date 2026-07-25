@@ -64,32 +64,41 @@ body {
   font-weight: 600;
 }
 
-/* 홈 오늘의 퍼즐 난이도 선택(easy 5×5 / normal 8×8) */
-.todayDifficultyPicker {
+/* 홈 오늘의 퍼즐 시작 버튼(쉬움 | 보통 2열). 좌우 버튼 사이 여백을 둔다. */
+.todayStartButtons {
   display: flex;
-  gap: 8px;
-  margin: 16px 0 18px;
+  gap: 12px;
+  margin: 8px 0 18px;
 }
-.todayDifficultyChip {
-  flex: 1;
+.todayStartButton {
+  flex: 1 1 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 12px;
-  background: #fff;
-  align-items: flex-start;
+  align-items: center;
+  gap: 4px;
+  padding: 18px 12px;
+  border: 0;
+  border-radius: 16px;
+  background: #00a88f;
+  color: #fff;
+  cursor: pointer;
 }
-.todayDifficultyChipSelected {
-  border-color: #00a88f;
-  background: #f1f9f9;
+.todayStartButton:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
-.todayDifficultyChip strong {
-  font-size: 15px;
+.todayStartButtonLead {
+  font-size: 14px;
   font-weight: 700;
+  opacity: 0.92;
 }
-.todayDifficultyChip span {
+.todayStartButtonDifficulty {
+  font-size: 18px;
+  font-weight: 900;
+}
+.todayStartButtonStatus {
   font-size: 12px;
-  opacity: 0.65;
+  font-weight: 700;
+  opacity: 0.82;
 }

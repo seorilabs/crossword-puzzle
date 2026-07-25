@@ -2550,8 +2550,22 @@ function App() {
       return;
     }
 
-    // 다른 날짜 퍼즐을 보던 중이면 오늘의 퍼즐 세션을 불러와 바로 시작한다.
-    const session = await loadPuzzleSession(todaysSummary.puzzleId);
+    // 다른 날짜 퍼즐을 보던 중이면 오늘의 퍼즐을 불러와 바로 시작한다.
+    if (todaysSummary == null) {
+      return;
+    }
+
+    await startPuzzleById(todaysSummary.puzzleId, "switched_to_today");
+  }
+
+  // 특정 퍼즐을 로드해 바로 시작(필요 시 첫 시도)하고 풀이 화면으로 이동한다.
+  // 홈 원탭 CTA와 난이도별 시작 버튼이 공유하는 로드+시작 로직이다.
+  async function startPuzzleById(targetPuzzleId: string, source: string) {
+    if (loadState === "loading") {
+      return;
+    }
+
+    const session = await loadPuzzleSession(targetPuzzleId);
 
     if (session == null) {
       setLoadState("fallback");
@@ -2560,8 +2574,8 @@ function App() {
         message: "오늘의 퍼즐을 불러오지 못했어요.",
       }));
       telemetry.click("home_quick_start", {
-        puzzle_id: todaysSummary.puzzleId,
-        source: "switched_to_today",
+        puzzle_id: targetPuzzleId,
+        source,
         status: "missing",
       });
       return;
@@ -2613,7 +2627,7 @@ function App() {
     navigate(nextMission.completedAt == null ? "today" : "result");
     telemetry.click("home_quick_start", {
       ...getPuzzleTelemetryParams(session.nextPuzzle),
-      source: "switched_to_today",
+      source,
       status: "loaded",
     });
   }
@@ -2851,6 +2865,9 @@ function App() {
           selectedEntry={viewModel.selectedEntry}
           startLabels={viewModel.startLabels}
           startOrResumeMission={startOrResumeMission}
+          startPuzzleById={(puzzleId) =>
+            void startPuzzleById(puzzleId, "difficulty_start")
+          }
           startTodayPuzzle={() => void startTodayPuzzle()}
           todayPuzzleSummaries={todayPuzzleSummaries}
         />
@@ -3097,6 +3114,7 @@ type HomeScreenProps = DateSelectionProps & {
   selectedEntry?: PuzzleEntry;
   startLabels: Map<string, number>;
   startOrResumeMission: () => void;
+  startPuzzleById: (puzzleId: string) => void;
   startTodayPuzzle: () => void;
   todayPuzzleSummaries: PuzzleManifestItem[];
 };
@@ -3120,9 +3138,9 @@ function HomeScreen({
   dateCardStates,
   selectedEntry,
   selectedPuzzleId,
-  selectPuzzle,
   startLabels,
   startOrResumeMission,
+  startPuzzleById,
   startTodayPuzzle,
   todayPuzzleSummaries,
 }: HomeScreenProps) {
@@ -3199,21 +3217,10 @@ function HomeScreen({
         }${consecutiveStreak > 0 ? ` · 🔥 ${consecutiveStreak}일째 도전 중` : ""}`}
       />
 
-      <button
-        type="button"
-        className="homeQuickStart"
-        disabled={isQuickStartDisabled}
-        onClick={startTodayPuzzle}
-      >
-        <span className="homeQuickStartLabel">{quickStartLabel}</span>
-        <span className="homeQuickStartHint">한 번 눌러 바로 풀기 시작</span>
-      </button>
-
-      {todayPuzzleSummaries.length > 1 ? (
-        <section className="todayDifficultyPicker" aria-label="오늘의 퍼즐 난이도">
+      {todayPuzzleSummaries.length > 0 ? (
+        <section className="todayStartButtons" aria-label="오늘의 퍼즐 시작">
           {todayPuzzleSummaries.map((summary) => {
             const state = dateCardStates[summary.puzzleId];
-            const isSelected = summary.puzzleId === selectedPuzzleId;
             const statusLabel =
               state?.completedAt != null
                 ? "완료"
@@ -3225,22 +3232,30 @@ function HomeScreen({
               <button
                 key={summary.puzzleId}
                 type="button"
-                className={[
-                  "todayDifficultyChip",
-                  isSelected ? "todayDifficultyChipSelected" : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-                aria-pressed={isSelected}
-                onClick={() => void selectPuzzle(summary.puzzleId)}
+                className="todayStartButton"
+                disabled={isLoadingPuzzlePack}
+                onClick={() => startPuzzleById(summary.puzzleId)}
               >
-                <strong>{formatDifficultyLabel(summary.difficulty)}</strong>
-                <span>{statusLabel}</span>
+                <span className="todayStartButtonLead">오늘의 퍼즐 시작</span>
+                <span className="todayStartButtonDifficulty">
+                  난이도 {formatDifficultyLabel(summary.difficulty)}
+                </span>
+                <span className="todayStartButtonStatus">{statusLabel}</span>
               </button>
             );
           })}
         </section>
-      ) : null}
+      ) : (
+        <button
+          type="button"
+          className="homeQuickStart"
+          disabled={isQuickStartDisabled}
+          onClick={startTodayPuzzle}
+        >
+          <span className="homeQuickStartLabel">{quickStartLabel}</span>
+          <span className="homeQuickStartHint">한 번 눌러 바로 풀기 시작</span>
+        </button>
+      )}
 
       <section className="todayMission" aria-label="선택한 미션">
         <div className="missionLead">
