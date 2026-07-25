@@ -6,7 +6,7 @@ import {
 } from "@apps-in-toss/web-framework";
 
 export const appsInTossAdGroupIds = {
-  rewardedHint: "ait.v2.live.434bcf7cff1d462e",
+  rewardedHint: "ait.v2.live.bf12924f4bf84b74",
 } as const;
 
 export type FullScreenAdResult =
