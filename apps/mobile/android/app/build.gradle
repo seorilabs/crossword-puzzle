@@ -77,8 +77,11 @@ react {
 
 /**
  * Set this to true to Run Proguard on Release builds to minify the Java bytecode.
+ * R8(코드 축소·난독화·리소스 축소)을 release AAB에 적용해 Play Console 앱 최적화
+ * 점수를 개선한다. 켠 뒤에는 반드시 internal 트랙 빌드를 실기기에서 검증한다
+ * (R8 규칙 누락은 빌드가 아닌 런타임 크래시로 나타남).
  */
-def enableProguardInReleaseBuilds = false
+def enableProguardInReleaseBuilds = true
 
 /**
  * The preferred build flavor of JavaScriptCore (JSC)
@@ -135,6 +138,7 @@ android {
         release {
             signingConfig signingConfigs.release
             minifyEnabled enableProguardInReleaseBuilds
+            shrinkResources enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
     }
