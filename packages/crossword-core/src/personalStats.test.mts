@@ -5,6 +5,7 @@ import {
   computePersonalStats,
   computeSolveTimeDistribution,
   formatBestTime,
+  formatMissionHistoryCardSummary,
 } from "./personalStats.ts";
 import type { PersonalStatsRecord } from "./personalStats.ts";
 
@@ -223,6 +224,65 @@ describe("computeSolveTimeDistribution", () => {
     assert.deepEqual(
       dist.buckets.map((b) => b.count),
       [1, 0, 1, 0, 0],
+    );
+  });
+});
+
+describe("formatMissionHistoryCardSummary", () => {
+  it("스트릭·최고 기록이 모두 있으면 두 요약을 · 로 잇는다", () => {
+    assert.equal(
+      formatMissionHistoryCardSummary({
+        consecutiveStreak: 3,
+        fastestBestTimeMs: 75_000,
+      }),
+      "🔥 3일 연속 · ⏱ 최고 01:15",
+    );
+  });
+
+  it("스트릭만 있으면 스트릭 요약만 반환한다", () => {
+    assert.equal(
+      formatMissionHistoryCardSummary({
+        consecutiveStreak: 5,
+        fastestBestTimeMs: null,
+      }),
+      "🔥 5일 연속",
+    );
+  });
+
+  it("최고 기록만 있으면 최고 기록 요약만 반환한다", () => {
+    assert.equal(
+      formatMissionHistoryCardSummary({
+        consecutiveStreak: 0,
+        fastestBestTimeMs: 42_000,
+      }),
+      "⏱ 최고 00:42",
+    );
+  });
+
+  it("표시할 데이터가 없으면 null 을 반환해 호출부가 기존 문구를 유지하게 한다", () => {
+    assert.equal(
+      formatMissionHistoryCardSummary({
+        consecutiveStreak: 0,
+        fastestBestTimeMs: null,
+      }),
+      null,
+    );
+  });
+
+  it("오염 값(음수 스트릭·0/음수/NaN 최고 기록)은 요약에서 제외한다", () => {
+    assert.equal(
+      formatMissionHistoryCardSummary({
+        consecutiveStreak: -1,
+        fastestBestTimeMs: 0,
+      }),
+      null,
+    );
+    assert.equal(
+      formatMissionHistoryCardSummary({
+        consecutiveStreak: Number.NaN,
+        fastestBestTimeMs: Number.NaN,
+      }),
+      null,
     );
   });
 });

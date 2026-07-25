@@ -57,6 +57,7 @@ function renderDialog(
     totalCount: 10,
     onClose: vi.fn(),
     onGoHome: vi.fn(),
+    onSeeHistory: vi.fn(),
     onSeeResult: vi.fn(),
     ...overrides,
   };
@@ -95,6 +96,38 @@ describe("CompletionCelebrationDialog 다음 퍼즐 CTA(#274)", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "홈으로" }));
     expect(props.onGoHome).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("CompletionCelebrationDialog 기록 진입 CTA(#300)", () => {
+  it("\"내 기록 보기\" 보조 버튼 클릭 시 history_open·{source:completion_dialog} 계측 후 onSeeHistory를 호출한다(AC-1)", () => {
+    const props = renderDialog();
+
+    const button = screen.getByRole("button", { name: "내 기록 보기" });
+    expect(button.classList.contains("secondaryButton")).toBe(true);
+
+    fireEvent.click(button);
+
+    // 계측이 먼저, 이동/닫힘 위임이 그다음.
+    expect(clickMock).toHaveBeenCalledWith("history_open", {
+      source: "completion_dialog",
+    });
+    expect(props.onSeeHistory).toHaveBeenCalledTimes(1);
+  });
+
+  it("기록 CTA는 공유·다음 퍼즐 CTA와 독립적으로 동작한다(회귀 없음)", () => {
+    const onStartNextPuzzle = vi.fn();
+    const props = renderDialog({
+      nextPuzzleLabel: "#26060114 · 어려움",
+      onStartNextPuzzle,
+    });
+
+    // 기록 CTA 클릭이 다른 CTA 콜백을 건드리지 않는다.
+    fireEvent.click(screen.getByRole("button", { name: "내 기록 보기" }));
+    expect(props.onSeeHistory).toHaveBeenCalledTimes(1);
+    expect(onStartNextPuzzle).not.toHaveBeenCalled();
+    expect(props.onSeeResult).not.toHaveBeenCalled();
+    expect(props.onGoHome).not.toHaveBeenCalled();
   });
 });
 

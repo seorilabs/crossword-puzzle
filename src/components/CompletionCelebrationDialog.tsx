@@ -4,6 +4,7 @@ import {
   getStreakBadgeLabel,
   type Puzzle,
 } from "../../packages/crossword-core/src";
+import { telemetry } from "../adapters/telemetry";
 import { formatThemeHeadline } from "../puzzleLabels";
 import { useShareResult } from "../useShareResult";
 import { ShareGridPreview } from "./ShareGridPreview";
@@ -25,6 +26,7 @@ export type CompletionCelebrationDialogProps = {
   totalCount: number;
   onClose: () => void;
   onGoHome: () => void;
+  onSeeHistory: () => void;
   onSeeResult: () => void;
   onStartNextPuzzle?: () => void;
 };
@@ -46,6 +48,7 @@ export function CompletionCelebrationDialog({
   totalCount,
   onClose,
   onGoHome,
+  onSeeHistory,
   onSeeResult,
   onStartNextPuzzle,
 }: CompletionCelebrationDialogProps) {
@@ -69,6 +72,13 @@ export function CompletionCelebrationDialog({
     nextPuzzleLabel == null || nextPuzzleLabel === ""
       ? "다음 퍼즐 풀기"
       : `다음 퍼즐 풀기 · ${nextPuzzleLabel}`;
+
+  // 완료 직후(고관여 시점) 기록 화면으로 잇는 보조 동선. 진입 소스를 구분해
+  // 계측한 뒤(#300) 다이얼로그 닫힘·이동은 호출부(onSeeHistory)에 위임한다.
+  function seeHistory() {
+    telemetry.click("history_open", { source: "completion_dialog" });
+    onSeeHistory();
+  }
 
   return (
     <div className="rewardDialogScrim" onClick={onClose}>
@@ -171,6 +181,13 @@ export function CompletionCelebrationDialog({
             autoFocus={onStartNextPuzzle == null}
           >
             결과 보기
+          </button>
+          <button
+            className="secondaryButton completionSeeHistoryButton"
+            type="button"
+            onClick={seeHistory}
+          >
+            내 기록 보기
           </button>
         </div>
         <button

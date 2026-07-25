@@ -119,6 +119,34 @@ export function formatBestTime(ms: number): string {
   return hours > 0 ? `${hours}:${mmss}` : mmss;
 }
 
+/** 홈 "미션 기록" 카드 요약 입력. 재방문 레버(스트릭·통산 최고 기록) 미리보기용. */
+export type MissionHistoryCardSummaryInput = {
+  // 현재 연속 완료일(스트릭). 0 이하/비유한이면 표시하지 않는다.
+  consecutiveStreak: number;
+  // 통산 보유 최고 기록 중 가장 빠른 값(ms). 없으면 null.
+  fastestBestTimeMs: number | null;
+};
+
+/**
+ * 홈 "미션 기록" 카드에 노출할 값 문구를 만든다. 현재 스트릭·통산 최고 기록을
+ * 요약해, 기록 화면에 도달하기 전에 잔존 가치를 미리 보여준다(#300). 표시할
+ * 데이터가 하나도 없으면 null 을 반환해, 호출부가 기존 "N번 도전" 문구를
+ * 그대로 유지하도록 한다.
+ */
+export function formatMissionHistoryCardSummary({
+  consecutiveStreak,
+  fastestBestTimeMs,
+}: MissionHistoryCardSummaryInput): string | null {
+  const parts: string[] = [];
+  if (Number.isFinite(consecutiveStreak) && consecutiveStreak > 0) {
+    parts.push(`🔥 ${Math.floor(consecutiveStreak)}일 연속`);
+  }
+  if (fastestBestTimeMs != null && isValidBestTimeMs(fastestBestTimeMs)) {
+    parts.push(`⏱ 최고 ${formatBestTime(fastestBestTimeMs)}`);
+  }
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
 /**
  * 기기에 남은 퍼즐 기록 배열에서 개인 누적 통계를 집계한다.
  *
