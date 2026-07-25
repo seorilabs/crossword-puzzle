@@ -29,7 +29,6 @@ import {
   computeLeaderboardScore,
   computePersonalStats,
   computeSolveTimeDistribution,
-  formatMissionHistoryCardSummary,
   getTextScaleFontMultiplier,
   createPuzzleSummary,
   createDailyMissionState,
@@ -130,6 +129,7 @@ import { PuzzleBoard } from "./components/PuzzleBoard";
 import { HowToPlayDialog } from "./components/HowToPlayDialog";
 import { SettingsSheet } from "./components/SettingsSheet";
 import { CompletionCelebrationDialog } from "./components/CompletionCelebrationDialog";
+import { MissionHistoryCard } from "./components/MissionHistoryCard";
 import { PuzzleMetaChips } from "./components/PuzzleMetaChips";
 import { formatDifficultyLabel } from "./puzzleLabels";
 import { useShareResult } from "./useShareResult";
@@ -3207,15 +3207,6 @@ function HomeScreen({
   const isQuickStartDisabled = isSelectedDailyFree
     ? isPrimaryDisabled
     : isLoadingPuzzlePack;
-  // 미션 기록 카드에 현재 스트릭·통산 최고 기록을 미리 보여줘, 기록 화면 도달
-  // 전에 잔존 가치를 노출한다(#300). 히트맵과 같은 규칙으로 매 렌더 localStorage
-  // 를 읽어 최신 최고 기록을 반영하고, 표시할 데이터가 없으면 기존 "N번 도전"
-  // 문구를 유지한다.
-  const missionHistorySummary =
-    formatMissionHistoryCardSummary({
-      consecutiveStreak,
-      fastestBestTimeMs: getOverallBestTimeMs(),
-    }) ?? `${mission.attemptsUsed}번 도전`;
 
   return (
     <>
@@ -3407,19 +3398,12 @@ function HomeScreen({
           </div>
           <em>보기</em>
         </button>
-        <button
-          type="button"
-          onClick={() => {
-            telemetry.click("history_open", { source: "home_card" });
-            navigate("history");
-          }}
-        >
-          <div>
-            <strong>미션 기록</strong>
-            <span>{missionHistorySummary}</span>
-          </div>
-          <em>보기</em>
-        </button>
+        <MissionHistoryCard
+          attemptsUsed={mission.attemptsUsed}
+          consecutiveStreak={consecutiveStreak}
+          fastestBestTimeMs={getOverallBestTimeMs()}
+          onOpen={() => navigate("history")}
+        />
       </section>
 
       <section className="sourceNotice" aria-label="힌트 출처 안내">
