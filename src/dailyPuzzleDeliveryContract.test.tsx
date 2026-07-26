@@ -19,8 +19,21 @@ const generatorSource = readFileSync(
   join(root, "server/batch/generate-puzzle-pack.mjs"),
   "utf8",
 );
+const prototypeSource = readFileSync(
+  join(root, "scripts/crossword-generator-prototype.mjs"),
+  "utf8",
+);
+const validatorSource = readFileSync(
+  join(root, "scripts/validate-puzzle-pack.mjs"),
+  "utf8",
+);
 const webSource = readFileSync(join(root, "src/App.tsx"), "utf8");
+const webLabelSource = readFileSync(join(root, "src/puzzleLabels.ts"), "utf8");
 const mobileSource = readFileSync(join(root, "apps/mobile/App.tsx"), "utf8");
+const aitWorkflowSource = readFileSync(
+  join(root, ".github/workflows/deploy-apps-in-toss.yml"),
+  "utf8",
+);
 
 describe("일간 퍼즐 전달 계약", () => {
   it("AC-3: Job은 매일 세 난이도를 생성하고 최근 7일치 21판을 유지한다", () => {
@@ -34,13 +47,27 @@ describe("일간 퍼즐 전달 계약", () => {
     expect(runnerSource).toContain('process.env.PUZZLE_KEEP ?? "21"');
   });
 
-  it("AC-4: Hard 기본 프로파일은 생성 검증값인 8×8과 11개 배치를 사용한다", () => {
+  it("AC-2: 검수 제한 완화 뒤에도 출처·차단·길이·구조 검증을 유지한다", () => {
+    expect(generatorSource).toContain(
+      "words: words.filter((word) => word.allowForPuzzle !== false)",
+    );
+    expect(generatorSource).toContain(
+      'clueSource: sourceWord?.clueSource ?? "unknown"',
+    );
+    expect(prototypeSource).toContain(
+      "(word) => splitWord(word.answer).length >= options.minWordLength",
+    );
+    expect(validatorSource).toContain("answerMismatches.length === 0");
+    expect(validatorSource).toContain("selfReferentialEntries.length === 0");
+  });
+
+  it("AC-3: Hard 기본 프로파일은 생성 검증값인 8×8과 11개 배치를 사용한다", () => {
     expect(DIFFICULTY_PROFILES.hard.boardSize).toBe(8);
     expect(DIFFICULTY_PROFILES.hard.maxWords).toBe(11);
     expect(DIFFICULTY_PROFILES.hard.minWordCount).toBe(12);
   });
 
-  it("AC-5: Web과 Mobile은 난이도 선택을 퍼즐 변경과 스캐폴드 렌더에 연결한다", () => {
+  it("AC-4: Web과 Mobile은 난이도 선택을 퍼즐 변경과 스캐폴드 렌더에 연결한다", () => {
     expect(
       DAILY_PUZZLE_TIERS.map((tier) => formatDifficultyLabel(tier.difficulty)),
     ).toEqual(["쉬움", "보통", "어려움"]);
@@ -52,6 +79,22 @@ describe("일간 퍼즐 전달 계약", () => {
     expect(mobileSource).toContain("void selectPuzzle(summary.puzzleId)");
     expect(mobileSource).toContain("renderSelectedPuzzleScaffold()");
     expect(mobileSource).toContain("styles.selectedPuzzleScaffold");
+  });
+
+  it("AC-5: AIT·Android·iOS는 같은 manifest와 공용 난이도 라벨을 사용한다", () => {
+    expect(webLabelSource).toContain(
+      'export { formatDifficultyLabel } from "../packages/crossword-core/src"',
+    );
+    expect(mobileSource).toContain("formatDifficultyLabel,");
+    expect(mobileSource).toContain(
+      "from '../../packages/crossword-core/src';",
+    );
+    expect(aitWorkflowSource).toContain(
+      "https://crossword-puzzle-79ae0.web.app",
+    );
+    expect(mobileSource).toContain(
+      "const REMOTE_PUZZLE_PACK_BASE_URL = 'https://crossword-puzzle-79ae0.web.app';",
+    );
   });
 
   it("AC-7: 사전 뜻풀이 전체 풀을 seed별 후보 추출에 사용한다", () => {
