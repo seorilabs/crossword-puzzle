@@ -295,9 +295,12 @@ esac
       );
 
       assert.equal(result.status, 0, result.stderr);
-      const capturedPolicy = JSON.parse(
-        await readFile(policyCapturePath, "utf8"),
-      ) as { displayName: string; filter: string };
+      const capturedPolicyRaw = await readFile(policyCapturePath, "utf8");
+      assert.doesNotThrow(() => JSON.parse(capturedPolicyRaw));
+      const capturedPolicy = JSON.parse(capturedPolicyRaw) as {
+        displayName: string;
+        filter: string;
+      };
       assert.equal(
         capturedPolicy.displayName,
         "가로세로 낱말 퍼즐 일간팩 오류",
