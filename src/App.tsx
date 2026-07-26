@@ -67,6 +67,7 @@ import {
   getNextRecommendedPuzzleSummary,
   getProgressMilestoneRewardMessage,
   grantDailyHintCredits,
+  loadOrMigrateDailyHintWallet,
   getPuzzlePackAlias,
   getNextFocusEntryAfterCompletion,
   getRemainingAttempts,
@@ -100,7 +101,6 @@ import {
   validatePuzzleSlots,
   shouldPromptReturnReminder,
   markReturnReminderPrompted,
-  migrateLegacyDailyHintWallet,
   applyReturnReminderOutcome,
   buildReturnReminderResultParams,
   RETURN_REMINDER_PROMPT_EVENT,
@@ -868,27 +868,21 @@ function App() {
     [launchConfig.dailyAttemptLimit],
   );
 
-  const loadOrMigrateDailyHintWallet = useCallback(
+  const loadDailyHintWalletForDate = useCallback(
     async (date: string, summaries: PuzzleManifestItem[]) => {
-      const savedWallet = await dailyHintWalletRepository.loadWallet(date);
-      if (savedWallet != null) {
-        return savedWallet;
-      }
-
       const dateSummaries = uniquePuzzleSummaries(summaries).filter(
         (summary) => summary.date === date,
       );
-      const legacyProgresses = await Promise.all(
-        dateSummaries.map((summary) =>
-          progressRepository.loadProgress(summary.puzzleId),
-        ),
-      );
-      const migratedWallet = migrateLegacyDailyHintWallet(
+      return loadOrMigrateDailyHintWallet({
         date,
-        legacyProgresses,
-      );
-      await dailyHintWalletRepository.saveWallet(migratedWallet);
-      return migratedWallet;
+        loadLegacyProgresses: () =>
+          Promise.all(
+            dateSummaries.map((summary) =>
+              progressRepository.loadProgress(summary.puzzleId),
+            ),
+          ),
+        repository: dailyHintWalletRepository,
+      });
     },
     [],
   );
@@ -914,11 +908,11 @@ function App() {
         createPuzzleSummary(record.puzzle),
       ),
     ];
-    const wallet = await loadOrMigrateDailyHintWallet(date, summaries);
+    const wallet = await loadDailyHintWalletForDate(date, summaries);
     setDailyHintWallet(wallet);
   }, [
     dailyHintWallet.date,
-    loadOrMigrateDailyHintWallet,
+    loadDailyHintWalletForDate,
     puzzleArchiveRecords,
     puzzleSummaries,
   ]);
@@ -969,7 +963,7 @@ function App() {
           await Promise.all([
             loadDateCardStates([...allSummaries]),
             loadPuzzleSession(onboardingPuzzle.puzzleId),
-            loadOrMigrateDailyHintWallet(today, allSummaries),
+            loadDailyHintWalletForDate(today, allSummaries),
           ]);
 
         // 신규 사용자(아직 첫 성공 전)면 입문 퍼즐을, 그 외에는 일반 일일 퍼즐을
@@ -1037,7 +1031,7 @@ function App() {
   }, [
     applyPuzzleSession,
     loadDateCardStates,
-    loadOrMigrateDailyHintWallet,
+    loadDailyHintWalletForDate,
     loadPuzzleSession,
   ]);
 

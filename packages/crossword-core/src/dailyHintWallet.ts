@@ -17,6 +17,11 @@ export type DailyHintBalance = {
   usedCredits: number;
 };
 
+type DailyHintWalletStorage = {
+  loadWallet(date: string): Promise<DailyHintWallet | null>;
+  saveWallet(wallet: DailyHintWallet): Promise<void>;
+};
+
 function normalizeCreditCount(value: unknown): number {
   return typeof value === "number" && Number.isFinite(value)
     ? Math.max(0, Math.floor(value))
@@ -103,4 +108,28 @@ export function migrateLegacyDailyHintWallet(
     }),
     createDailyHintWallet(date),
   );
+}
+
+export async function loadOrMigrateDailyHintWallet({
+  date,
+  loadLegacyProgresses,
+  repository,
+}: {
+  date: string;
+  loadLegacyProgresses: () => Promise<
+    Pick<SavedProgress, "earnedHintCredits" | "hintCount">[]
+  >;
+  repository: DailyHintWalletStorage;
+}): Promise<DailyHintWallet> {
+  const savedWallet = await repository.loadWallet(date);
+  if (savedWallet != null) {
+    return savedWallet;
+  }
+
+  const migratedWallet = migrateLegacyDailyHintWallet(
+    date,
+    await loadLegacyProgresses(),
+  );
+  await repository.saveWallet(migratedWallet);
+  return migratedWallet;
 }

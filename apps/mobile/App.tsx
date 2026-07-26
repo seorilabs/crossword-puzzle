@@ -74,7 +74,7 @@ import {
   getStreakBadgeLabel,
   getTodayDateKey,
   grantDailyHintCredits,
-  migrateLegacyDailyHintWallet,
+  loadOrMigrateDailyHintWallet,
   runRewardedHintAdFlow,
   trackRewardedHintAdRequest,
   trackRewardedHintAdResult,
@@ -619,24 +619,21 @@ async function clearStoredProgress(puzzleId: string) {
   }
 }
 
-async function loadOrMigrateDailyHintWallet(
+async function loadDailyHintWalletForDate(
   date: string,
   summaries: PuzzleManifestItem[],
 ) {
-  const savedWallet = await dailyHintWalletRepository.loadWallet(date);
-  if (savedWallet != null) {
-    return savedWallet;
-  }
-
   const dateSummaries = uniquePuzzleSummaries(summaries).filter(
     summary => summary.date === date,
   );
-  const legacyProgresses = await Promise.all(
-    dateSummaries.map(summary => loadStoredProgress(summary.puzzleId)),
-  );
-  const migratedWallet = migrateLegacyDailyHintWallet(date, legacyProgresses);
-  await dailyHintWalletRepository.saveWallet(migratedWallet);
-  return migratedWallet;
+  return loadOrMigrateDailyHintWallet({
+    date,
+    loadLegacyProgresses: () =>
+      Promise.all(
+        dateSummaries.map(summary => loadStoredProgress(summary.puzzleId)),
+      ),
+    repository: dailyHintWalletRepository,
+  });
 }
 
 function normalizeMission(
@@ -1251,7 +1248,7 @@ function AppContent() {
       const [states, session, nextDailyHintWallet] = await Promise.all([
         loadDateCardStates(hydratedSummaries),
         loadPuzzleSession(initialPuzzleId, nextPuzzlePack),
-        loadOrMigrateDailyHintWallet(getTodayDateKey(), hydratedSummaries),
+        loadDailyHintWalletForDate(getTodayDateKey(), hydratedSummaries),
       ]);
 
       if (isCancelled) {
@@ -1293,7 +1290,7 @@ function AppContent() {
       ...puzzlePack.summaries,
       ...puzzleArchiveRecords.map(record => createPuzzleSummary(record.puzzle)),
     ]);
-    const wallet = await loadOrMigrateDailyHintWallet(date, summaries);
+    const wallet = await loadDailyHintWalletForDate(date, summaries);
     setDailyHintWallet(wallet);
   }, [dailyHintWallet.date, puzzleArchiveRecords, puzzlePack.summaries]);
 
