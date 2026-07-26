@@ -6033,7 +6033,9 @@ function DevSimulatorScreen({
                 {entry.crossPoints.length === 0
                   ? "-"
                   : entry.crossPoints.join(" ")}
-                {entry.needsManualClue ? " · 힌트 재작성 필요" : ""}
+                {entry.clueSource === "krdict-definition"
+                  ? " · 사전 뜻풀이"
+                  : ""}
               </span>
             </button>
           ))}

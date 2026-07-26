@@ -4,10 +4,18 @@ import { test } from "node:test";
 import type { PuzzleManifestItem } from "./types.ts";
 import {
   findPuzzleSummaryById,
+  formatDifficultyLabel,
   formatDateCardDay,
   formatDateCardWeekday,
   getCompletedPuzzleIds,
 } from "./puzzleLabels.ts";
+
+test("formatDifficultyLabel: 세 마켓 공통 한글 난이도 라벨", () => {
+  assert.equal(formatDifficultyLabel("easy"), "쉬움");
+  assert.equal(formatDifficultyLabel("normal"), "보통");
+  assert.equal(formatDifficultyLabel("hard"), "어려움");
+  assert.equal(formatDifficultyLabel(undefined), "");
+});
 
 const summaries = [
   { puzzleId: "a" },

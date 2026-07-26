@@ -5,13 +5,12 @@
 // 검수 완료 단서의 출처 표기. 사전 정의문(krdict-definition)과 구분한다.
 export const CURATED_CLUE_SOURCE = "manual";
 
-// 발행 퍼즐에서 허용하는 needsManualClue:true 엔트리 비율 상한. 한 퍼즐이라도
-// 이 비율을 넘으면 발행 검증이 실패한다(전건 미검수 팩 발행 차단). 검수 단서
-// 커버리지를 단계적으로 확대하며(#152 → #173 → #201) 상한도 0.95 → 0.8 → 0.5
-// → 0.4 로 낮춰 미검수(사전 정의문) 단서 비중을 강제로 제한한다. #201에서 검수
-// 단서를 411건으로 늘려 발행 팩 7종의 미검수 엔트리를 0건으로 만든 뒤 상한을
-// 0.4 로 조정했다.
-export const DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO = 0.4;
+// 사전 뜻풀이(krdict-definition)는 워드뱅크 생성 단계에서 명사·길이·정답 노출·
+// 괄호 규칙을 통과하고, 앱에도 출처와 CC BY-SA 조건을 상시 고지한다. 따라서
+// needsManualClue는 후속 자체 문장 큐레이션 상태만 나타내며 발행 가능 여부를
+// 제한하지 않는다. 명시적 검수 캠페인은 selectWordsForManualClueCoverage에
+// 더 낮은 비율을 넘겨 기존 커버리지 계산을 그대로 사용할 수 있다.
+export const DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO = 1;
 
 // 단서가 정답을 부분 문자열로 포함하면 자기참조(답을 그대로 노출)로 본다.
 export function isSelfReferentialClue(
@@ -42,9 +41,9 @@ export function needsManualClueRatio(
   return countNeedsManualClue(entries) / entries.length;
 }
 
-// 생성 후보 풀이 발행 게이트를 구조적으로 만족하도록 검수 완료 단어를 우선한다.
-// 검수 완료 단어가 목표 후보 수에 부족하면 미검수 비율 상한을 넘지 않는 크기까지
-// 전체 풀을 줄인다. 부정확한 단서를 자동 생성해 게이트를 우회하지 않는다.
+// 자체 문장 커버리지 목표가 명시된 작업에서 검수 완료 단어를 우선한다. 기본
+// 발행 정책은 사전 뜻풀이를 허용하므로 전체 후보를 그대로 사용할 수 있고, 0.4
+// 같은 별도 목표를 넘기면 기존처럼 목표 비율을 만족하는 크기까지 풀을 줄인다.
 export function selectWordsForManualClueCoverage<
   T extends { needsManualClue?: boolean },
 >(

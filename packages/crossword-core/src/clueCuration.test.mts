@@ -37,12 +37,8 @@ describe("isSelfReferentialClue", () => {
 });
 
 describe("DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO", () => {
-  it("미검수 단서 상한이 0.4 이하로 단계적으로 조여졌다(#173 → #201)", () => {
-    assert.ok(
-      DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO <= 0.4,
-      `상한 ${DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO} — 0.4 이하여야 함`,
-    );
-    assert.ok(DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO > 0);
+  it("사전 뜻풀이는 기본적으로 전부 발행 가능하다", () => {
+    assert.equal(DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO, 1);
   });
 });
 
@@ -70,6 +66,14 @@ describe("needsManualClueRatio", () => {
 describe("selectWordsForManualClueCoverage (#151)", () => {
   const reviewed = (id: number) => ({ id, needsManualClue: false });
   const unreviewed = (id: number) => ({ id, needsManualClue: true });
+
+  it("기본 정책은 자체 문장 검수 여부와 무관하게 전체 후보를 유지한다", () => {
+    const words = Array.from({ length: 10 }, (_, index) => unreviewed(index));
+    const selected = selectWordsForManualClueCoverage(words);
+
+    assert.deepEqual(selected, words);
+    assert.equal(needsManualClueRatio(selected), 1);
+  });
 
   it("후보가 충분하면 40% 발행 상한에 맞춰 검수 단어를 60% 포함한다", () => {
     const selected = selectWordsForManualClueCoverage(

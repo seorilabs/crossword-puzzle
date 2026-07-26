@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import {
   DAILY_PUZZLE_TIERS,
   DIFFICULTY_PROFILES,
+  formatDifficultyLabel,
   PUZZLE_KEEP_COUNT,
 } from "../packages/crossword-core/src";
 
@@ -40,12 +41,24 @@ describe("일간 퍼즐 전달 계약", () => {
   });
 
   it("AC-5: Web과 Mobile은 난이도 선택을 퍼즐 변경과 스캐폴드 렌더에 연결한다", () => {
-    expect(webSource).toContain("onClick={() => selectPuzzle(summary.puzzleId)}");
+    expect(
+      DAILY_PUZZLE_TIERS.map((tier) => formatDifficultyLabel(tier.difficulty)),
+    ).toEqual(["쉬움", "보통", "어려움"]);
+    expect(webSource).toContain(
+      "onClick={() => selectPuzzle(summary.puzzleId)}",
+    );
     expect(webSource).toContain('className="selectedPuzzleScaffold"');
     expect(webSource).toContain("<MiniPuzzlePreview puzzle={puzzle}");
     expect(mobileSource).toContain("void selectPuzzle(summary.puzzleId)");
     expect(mobileSource).toContain("renderSelectedPuzzleScaffold()");
     expect(mobileSource).toContain("styles.selectedPuzzleScaffold");
+  });
+
+  it("AC-7: 사전 뜻풀이 전체 풀을 seed별 후보 추출에 사용한다", () => {
+    expect(generatorSource).toContain(
+      "const generationWords = difficultyFilteredWords;",
+    );
+    expect(generatorSource).not.toContain("selectWordsForManualClueCoverage(");
   });
 
   it("AC-6: manifest와 생성 리포트에 다양성 기준과 채택 지표를 기록한다", () => {
