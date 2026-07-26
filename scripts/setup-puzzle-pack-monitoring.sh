@@ -288,7 +288,7 @@ cat >"$POLICY_FILE" <<JSON
     {
       "displayName": "퍼즐팩 Cloud Run Job 오류 로그 발생",
       "conditionThreshold": {
-        "filter": "metric.type=\\\"logging.googleapis.com/user/${LOG_METRIC_NAME}\\\" AND resource.type=\\\"cloud_run_job\\\"",
+        "filter": "metric.type=\"logging.googleapis.com/user/${LOG_METRIC_NAME}\" AND resource.type=\"cloud_run_job\"",
         "aggregations": [
           {
             "alignmentPeriod": "60s",

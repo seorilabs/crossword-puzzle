@@ -214,16 +214,43 @@ describe("puzzle pack monitoring setup", () => {
     );
   });
 
-  it("AC-6 기존 monitoring 리소스를 모두 idempotent하게 갱신한다", async () => {
+  it("AC-1 AC-2 alert policy JSON과 metric filter를 검증하고 기존 리소스를 갱신한다", async () => {
     const testRoot = await mkdtemp(
       path.join(tmpdir(), "crossword-monitoring-test-"),
     );
     const fakeGcloud = path.join(testRoot, "gcloud");
     const callsPath = path.join(testRoot, "calls.log");
+    const policyCapturePath = path.join(testRoot, "policy.json");
 
     await writeFile(
       fakeGcloud,
       `#!/usr/bin/env bash
+if [ "$1" = "monitoring" ] && [ "$2" = "policies" ]; then
+  policy_file=""
+  previous=""
+  for argument in "$@"; do
+    if [ "$previous" = "--policy-from-file" ]; then
+      policy_file="$argument"
+      break
+    fi
+    previous="$argument"
+  done
+  node -e '
+    const fs = require("node:fs");
+    const policy = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+    const filter = policy.conditions[0].conditionThreshold.filter;
+    const quote = String.fromCharCode(34);
+    const expected = "metric.type=" + quote + "logging.googleapis.com/user/crossword_puzzle_pack_job_error_count" + quote + " AND resource.type=" + quote + "cloud_run_job" + quote;
+    if (filter !== expected) {
+      process.stderr.write("unexpected alert policy filter: " + filter);
+      process.exit(2);
+    }
+    fs.writeFileSync(process.env.POLICY_CAPTURE_PATH, JSON.stringify({
+      displayName: policy.displayName,
+      filter,
+    }));
+  ' "$policy_file"
+fi
 printf '%s\n' "$*" >> "$GCLOUD_CALLS_PATH"
 case "$*" in
   "projects describe "*)
@@ -261,12 +288,27 @@ esac
           env: {
             ...process.env,
             GCLOUD_CALLS_PATH: callsPath,
+            POLICY_CAPTURE_PATH: policyCapturePath,
             PATH: `${testRoot}:${process.env.PATH ?? ""}`,
           },
         },
       );
 
       assert.equal(result.status, 0, result.stderr);
+      const capturedPolicyRaw = await readFile(policyCapturePath, "utf8");
+      assert.doesNotThrow(() => JSON.parse(capturedPolicyRaw));
+      const capturedPolicy = JSON.parse(capturedPolicyRaw) as {
+        displayName: string;
+        filter: string;
+      };
+      assert.equal(
+        capturedPolicy.displayName,
+        "가로세로 낱말 퍼즐 일간팩 오류",
+      );
+      assert.equal(
+        capturedPolicy.filter,
+        'metric.type="logging.googleapis.com/user/crossword_puzzle_pack_job_error_count" AND resource.type="cloud_run_job"',
+      );
       const calls = await readFile(callsPath, "utf8");
       assert.match(calls, /run jobs update crossword-puzzle-pack-health /);
       assert.match(
