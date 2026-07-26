@@ -136,9 +136,27 @@ describe("resolveStarterCell", () => {
   }
 
   // a1(가로, len2, 0:0), a2(가로, len2, 0:3), d1(세로, len3, 0:0)
-  const a1 = createEntry({ id: "a1", answer: "가나", direction: "across", row: 0, col: 0 });
-  const a2 = createEntry({ id: "a2", answer: "다라", direction: "across", row: 0, col: 3 });
-  const d1 = createEntry({ id: "d1", answer: "가마바", direction: "down", row: 0, col: 0 });
+  const a1 = createEntry({
+    id: "a1",
+    answer: "가나",
+    direction: "across",
+    row: 0,
+    col: 0,
+  });
+  const a2 = createEntry({
+    id: "a2",
+    answer: "다라",
+    direction: "across",
+    row: 0,
+    col: 3,
+  });
+  const d1 = createEntry({
+    id: "d1",
+    answer: "가마바",
+    direction: "down",
+    row: 0,
+    col: 0,
+  });
 
   it("빈 그리드에서는 가장 짧은 단어의 시작 칸을 시작 칸으로 고른다", () => {
     const starter = resolveStarterCell({
@@ -231,11 +249,19 @@ describe("getStuckHintDelayMs", () => {
   it("임계값만 바뀌어도 같은 오답 수에서 선택되는 지연 티어가 달라진다", () => {
     // wrongCellCount=2 고정. 임계 2면 짧은 지연, 임계 3이면 기본 지연으로 전환된다.
     assert.equal(
-      getStuckHintDelayMs({ ...params, wrongCellThreshold: 2, wrongCellCount: 2 }),
+      getStuckHintDelayMs({
+        ...params,
+        wrongCellThreshold: 2,
+        wrongCellCount: 2,
+      }),
       5000,
     );
     assert.equal(
-      getStuckHintDelayMs({ ...params, wrongCellThreshold: 3, wrongCellCount: 2 }),
+      getStuckHintDelayMs({
+        ...params,
+        wrongCellThreshold: 3,
+        wrongCellCount: 2,
+      }),
       20000,
     );
   });
@@ -587,10 +613,9 @@ describe("getNewlyReachedProgressMilestones", () => {
 
   it("한 번에 여러 마일스톤을 넘으면 모두 오름차순으로 돌려준다", () => {
     assert.deepEqual(getNewlyReachedProgressMilestones(0, 60), [25, 50]);
-    assert.deepEqual(
-      getNewlyReachedProgressMilestones(0, 100),
-      [...PUZZLE_PROGRESS_MILESTONES],
-    );
+    assert.deepEqual(getNewlyReachedProgressMilestones(0, 100), [
+      ...PUZZLE_PROGRESS_MILESTONES,
+    ]);
   });
 
   it("진행률이 줄거나 그대로면 빈 배열을 돌려준다(중복 emit 방지)", () => {
@@ -930,7 +955,7 @@ describe("getOpenPuzzleSummariesForDate", () => {
     assert.equal(result[0]?.puzzleId, "same-puzzle");
     assert.equal(result[0]?.slotId, "2026-06-12-h10");
     assert.equal(result[0]?.path, "/puzzles/same-puzzle.json");
-    assert.equal(getPuzzleDailySequenceNumber(result[0]!), 6);
+    assert.equal(getPuzzleDailySequenceNumber(result[0]!), 11);
   });
 });
 
@@ -943,14 +968,20 @@ describe("isPublishedPuzzle", () => {
 
   it("returns true when publishedAt is in the past", () => {
     assert.equal(
-      isPublishedPuzzle(createSummary("p2", { publishedAt: "2026-06-12T09:00:00.000Z" }), now),
+      isPublishedPuzzle(
+        createSummary("p2", { publishedAt: "2026-06-12T09:00:00.000Z" }),
+        now,
+      ),
       true,
     );
   });
 
   it("returns false when publishedAt is in the future", () => {
     assert.equal(
-      isPublishedPuzzle(createSummary("p3", { publishedAt: "2026-06-12T11:00:00.000Z" }), now),
+      isPublishedPuzzle(
+        createSummary("p3", { publishedAt: "2026-06-12T11:00:00.000Z" }),
+        now,
+      ),
       false,
     );
   });
@@ -975,17 +1006,25 @@ describe("getPuzzlePackAlias", () => {
   });
 
   it("normalizes slotId to compact YYMMDDH2 alias", () => {
-    assert.equal(getPuzzlePackAlias({ slotId: "2026-06-12-h10" }), "260612" + "10");
+    assert.equal(
+      getPuzzlePackAlias({ slotId: "2026-06-12-h10" }),
+      "260612" + "10",
+    );
   });
 
   it("derives alias from publishedAt in Seoul time", () => {
     // 2026-06-12T01:00:00Z = 2026-06-12T10:00:00+09:00
-    const alias = getPuzzlePackAlias({ publishedAt: "2026-06-12T01:00:00.000Z" });
+    const alias = getPuzzlePackAlias({
+      publishedAt: "2026-06-12T01:00:00.000Z",
+    });
     assert.equal(alias, "26061210");
   });
 
   it("normalizes pack-YYYYMMDDHHMMSS packId", () => {
-    assert.equal(getPuzzlePackAlias({ packId: "pack-20260612100000" }), "26061210");
+    assert.equal(
+      getPuzzlePackAlias({ packId: "pack-20260612100000" }),
+      "26061210",
+    );
   });
 
   it("falls back to date-based alias", () => {
@@ -1064,8 +1103,14 @@ describe("getNextStreakMilestoneHint", () => {
   });
 
   it("returns 3-day hint for 3 days before 7-day milestone", () => {
-    assert.equal(getNextStreakMilestoneHint(4), "3일만 더하면 일주일 연속이에요!");
-    assert.equal(getNextStreakMilestoneHint(5), "2일만 더하면 일주일 연속이에요!");
+    assert.equal(
+      getNextStreakMilestoneHint(4),
+      "3일만 더하면 일주일 연속이에요!",
+    );
+    assert.equal(
+      getNextStreakMilestoneHint(5),
+      "2일만 더하면 일주일 연속이에요!",
+    );
     assert.equal(getNextStreakMilestoneHint(6), "내일 풀면 일주일 연속이에요!");
   });
 
@@ -1076,12 +1121,18 @@ describe("getNextStreakMilestoneHint", () => {
   });
 
   it("returns hint for 3 days before 30-day milestone", () => {
-    assert.equal(getNextStreakMilestoneHint(27), "3일만 더하면 한 달 연속이에요!");
+    assert.equal(
+      getNextStreakMilestoneHint(27),
+      "3일만 더하면 한 달 연속이에요!",
+    );
     assert.equal(getNextStreakMilestoneHint(29), "내일 풀면 한 달 연속이에요!");
   });
 
   it("returns hint for 3 days before 100-day milestone", () => {
-    assert.equal(getNextStreakMilestoneHint(97), "3일만 더하면 100일 연속이에요!");
+    assert.equal(
+      getNextStreakMilestoneHint(97),
+      "3일만 더하면 100일 연속이에요!",
+    );
     assert.equal(getNextStreakMilestoneHint(99), "내일 풀면 100일 연속이에요!");
   });
 });
@@ -1097,31 +1148,55 @@ describe("getStreakMilestoneProgress", () => {
   });
 
   it("floors non-integer streak values", () => {
-    assert.equal(getStreakMilestoneProgress(1.9), "일주일 연속까지 6일 남았어요");
-    assert.equal(getStreakMilestoneProgress(6.5), "내일 풀면 일주일 연속이에요!");
+    assert.equal(
+      getStreakMilestoneProgress(1.9),
+      "일주일 연속까지 6일 남았어요",
+    );
+    assert.equal(
+      getStreakMilestoneProgress(6.5),
+      "내일 풀면 일주일 연속이에요!",
+    );
   });
 
   it("returns progress text for streak far from next milestone", () => {
     assert.equal(getStreakMilestoneProgress(1), "일주일 연속까지 6일 남았어요");
     assert.equal(getStreakMilestoneProgress(3), "일주일 연속까지 4일 남았어요");
     assert.equal(getStreakMilestoneProgress(7), "한 달 연속까지 23일 남았어요");
-    assert.equal(getStreakMilestoneProgress(10), "한 달 연속까지 20일 남았어요");
-    assert.equal(getStreakMilestoneProgress(30), "100일 연속까지 70일 남았어요");
+    assert.equal(
+      getStreakMilestoneProgress(10),
+      "한 달 연속까지 20일 남았어요",
+    );
+    assert.equal(
+      getStreakMilestoneProgress(30),
+      "100일 연속까지 70일 남았어요",
+    );
   });
 
   it("returns urgent hint for streak within 3 days of 7-day milestone", () => {
-    assert.equal(getStreakMilestoneProgress(4), "3일만 더하면 일주일 연속이에요!");
-    assert.equal(getStreakMilestoneProgress(5), "2일만 더하면 일주일 연속이에요!");
+    assert.equal(
+      getStreakMilestoneProgress(4),
+      "3일만 더하면 일주일 연속이에요!",
+    );
+    assert.equal(
+      getStreakMilestoneProgress(5),
+      "2일만 더하면 일주일 연속이에요!",
+    );
     assert.equal(getStreakMilestoneProgress(6), "내일 풀면 일주일 연속이에요!");
   });
 
   it("returns urgent hint for streak within 3 days of 30-day milestone", () => {
-    assert.equal(getStreakMilestoneProgress(27), "3일만 더하면 한 달 연속이에요!");
+    assert.equal(
+      getStreakMilestoneProgress(27),
+      "3일만 더하면 한 달 연속이에요!",
+    );
     assert.equal(getStreakMilestoneProgress(29), "내일 풀면 한 달 연속이에요!");
   });
 
   it("returns urgent hint for streak within 3 days of 100-day milestone", () => {
-    assert.equal(getStreakMilestoneProgress(97), "3일만 더하면 100일 연속이에요!");
+    assert.equal(
+      getStreakMilestoneProgress(97),
+      "3일만 더하면 100일 연속이에요!",
+    );
     assert.equal(getStreakMilestoneProgress(99), "내일 풀면 100일 연속이에요!");
   });
 
@@ -1136,24 +1211,48 @@ describe("getDailyFreePuzzleSummary", () => {
   const now = Date.parse("2026-06-12T02:00:00.000Z");
 
   it("returns the earliest published puzzle for today", () => {
-    const early = createSummary("early", { date: today, publishedAt: "2026-06-12T00:00:00.000Z", slotId: "2026-06-12-h00" });
-    const late = createSummary("late", { date: today, publishedAt: "2026-06-12T01:00:00.000Z", slotId: "2026-06-12-h02" });
+    const early = createSummary("early", {
+      date: today,
+      publishedAt: "2026-06-12T00:00:00.000Z",
+      slotId: "2026-06-12-h00",
+    });
+    const late = createSummary("late", {
+      date: today,
+      publishedAt: "2026-06-12T01:00:00.000Z",
+      slotId: "2026-06-12-h02",
+    });
 
     const result = getDailyFreePuzzleSummary([late, early], today, now);
     assert.equal(result?.puzzleId, "early");
   });
 
   it("falls back to the most recent past date when no today puzzle exists", () => {
-    const yesterday = createSummary("yesterday", { date: "2026-06-11", publishedAt: "2026-06-11T00:00:00.000Z" });
-    const twoDaysAgo = createSummary("two-days-ago", { date: "2026-06-10", publishedAt: "2026-06-10T00:00:00.000Z" });
+    const yesterday = createSummary("yesterday", {
+      date: "2026-06-11",
+      publishedAt: "2026-06-11T00:00:00.000Z",
+    });
+    const twoDaysAgo = createSummary("two-days-ago", {
+      date: "2026-06-10",
+      publishedAt: "2026-06-10T00:00:00.000Z",
+    });
 
-    const result = getDailyFreePuzzleSummary([twoDaysAgo, yesterday], today, now);
+    const result = getDailyFreePuzzleSummary(
+      [twoDaysAgo, yesterday],
+      today,
+      now,
+    );
     assert.equal(result?.puzzleId, "yesterday");
   });
 
   it("excludes future puzzles even when on today's date", () => {
-    const past = createSummary("past", { date: today, publishedAt: "2026-06-12T01:00:00.000Z" });
-    const future = createSummary("future", { date: today, publishedAt: "2026-06-12T03:00:00.000Z" });
+    const past = createSummary("past", {
+      date: today,
+      publishedAt: "2026-06-12T01:00:00.000Z",
+    });
+    const future = createSummary("future", {
+      date: today,
+      publishedAt: "2026-06-12T03:00:00.000Z",
+    });
 
     const result = getDailyFreePuzzleSummary([past, future], today, now);
     assert.equal(result?.puzzleId, "past");
@@ -1209,7 +1308,10 @@ describe("isWrongCellVisible", () => {
 describe("uiPolicy: 난이도별 기본 힌트 크레딧(#251)", () => {
   it("난이도 매핑은 easy<normal<hard 로 단조 증가한다", () => {
     assert.equal(DEFAULT_HINT_CREDITS_BY_DIFFICULTY.easy, 2);
-    assert.equal(DEFAULT_HINT_CREDITS_BY_DIFFICULTY.normal, DEFAULT_HINT_CREDITS);
+    assert.equal(
+      DEFAULT_HINT_CREDITS_BY_DIFFICULTY.normal,
+      DEFAULT_HINT_CREDITS,
+    );
     assert.equal(DEFAULT_HINT_CREDITS_BY_DIFFICULTY.hard, 5);
     assert.ok(
       DEFAULT_HINT_CREDITS_BY_DIFFICULTY.easy <

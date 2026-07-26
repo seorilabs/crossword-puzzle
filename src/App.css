@@ -621,11 +621,16 @@ button:disabled {
 
 .miniBoard {
   display: grid;
-  /* 실제 보드 폭(--mini-cols)을 따라 열 수를 잡아 8×8/9×9 도 잘리지 않게 한다.
+  /* 실제 보드 폭(--mini-cols)을 따라 열 수를 잡아 5×5/8×8 도 잘리지 않게 한다.
      변수가 없으면 발행 기본값인 normal 보드(8열)로 폴백한다. */
   grid-template-columns: repeat(var(--mini-cols, 8), minmax(0, 1fr));
   gap: 3px;
   align-self: center;
+}
+
+.selectedPuzzleScaffold {
+  align-self: center;
+  width: 100%;
 }
 
 .miniCell {
@@ -2894,7 +2899,9 @@ button:disabled {
   color: var(--cw-text);
   font-size: 20px;
   font-weight: 800;
-  transition: background 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    background 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .howToPlayDemoCellBlock {
@@ -2962,7 +2969,9 @@ button:disabled {
   height: 7px;
   border-radius: 50%;
   background: var(--cw-border-strong);
-  transition: background 0.2s ease, transform 0.2s ease;
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
 }
 
 .howToPlayDotOn {
@@ -3141,7 +3150,6 @@ button:disabled {
   font-weight: 800;
   line-height: 20px;
 }
-
 
 .completionDialogReview {
   border: 0;

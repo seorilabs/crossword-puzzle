@@ -1,6 +1,11 @@
 import { type Difficulty, isDifficulty } from "./difficultyProfiles.ts";
 import { getCellKey, getEntryCells } from "./puzzle.ts";
-import type { Direction, Puzzle, PuzzleEntry, PuzzleManifestItem } from "./types";
+import type {
+  Direction,
+  Puzzle,
+  PuzzleEntry,
+  PuzzleManifestItem,
+} from "./types";
 
 export const DAILY_ATTEMPT_LIMIT = 3;
 export const DEFAULT_HINT_CREDITS = 3;
@@ -26,8 +31,8 @@ export function getDefaultHintCreditsForDifficulty(
 }
 
 export const DEFAULT_VISIBLE_PUZZLE_COUNT = 7;
-export const PUZZLE_GENERATION_INTERVAL_HOURS = 2;
-export const PUZZLE_KEEP_COUNT = 84;
+export const PUZZLE_GENERATION_INTERVAL_HOURS = 1;
+export const PUZZLE_KEEP_COUNT = 21;
 
 type PuzzleAliasSource = {
   alias?: string;
@@ -158,7 +163,9 @@ function normalizePuzzleAlias(value: string) {
   if (/^\d{8}$/.test(trimmedValue)) {
     const year = trimmedValue.slice(0, 4);
 
-    return isFourDigitGregorianYear(year) ? trimmedValue.slice(2) : trimmedValue;
+    return isFourDigitGregorianYear(year)
+      ? trimmedValue.slice(2)
+      : trimmedValue;
   }
 
   const dateMatch = trimmedValue.match(/^(\d{4})(\d{2})(\d{2})$/);
@@ -249,9 +256,7 @@ export function getPuzzlePublishedTime(summary: PuzzleManifestItem) {
     }
   }
 
-  const slotMatch = summary.slotId?.match(
-    /^(\d{4})-(\d{2})-(\d{2})-h(\d{2})$/,
-  );
+  const slotMatch = summary.slotId?.match(/^(\d{4})-(\d{2})-(\d{2})-h(\d{2})$/);
 
   if (slotMatch == null) {
     return undefined;
@@ -535,7 +540,9 @@ export function getOpenPuzzleSummariesForDate({
     const existing = summaryByPuzzleId.get(summary.puzzleId);
     summaryByPuzzleId.set(
       summary.puzzleId,
-      existing == null ? summary : mergePuzzleSummaryMetadata(existing, summary),
+      existing == null
+        ? summary
+        : mergePuzzleSummaryMetadata(existing, summary),
     );
   };
 
@@ -545,7 +552,8 @@ export function getOpenPuzzleSummariesForDate({
       : undefined,
   );
   addSummary(
-    selectedPuzzleSummary != null && isPublishedPuzzle(selectedPuzzleSummary, now)
+    selectedPuzzleSummary != null &&
+      isPublishedPuzzle(selectedPuzzleSummary, now)
       ? selectedPuzzleSummary
       : undefined,
   );
@@ -864,9 +872,7 @@ export function shouldCelebrateOnboardingWordCompletion(input: {
   puzzleComplete: boolean;
 }): boolean {
   return (
-    input.isOnboardingPuzzle &&
-    input.justCompletedWord &&
-    !input.puzzleComplete
+    input.isOnboardingPuzzle && input.justCompletedWord && !input.puzzleComplete
   );
 }
 

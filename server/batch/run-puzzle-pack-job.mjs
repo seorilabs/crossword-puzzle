@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
 
+import { DAILY_PUZZLE_TIERS } from "../../packages/crossword-core/src/dailyPuzzleTiers.ts";
 import { resolveScheduledDifficulty } from "../../packages/crossword-core/src/difficultyRotation.ts";
 import { resolveScheduledTheme } from "../../packages/crossword-core/src/themeRotation.ts";
 
@@ -56,7 +57,7 @@ function makeDefaultSeed(value) {
     hash = Math.imul(hash, 16777619);
   }
 
-  return String((hash >>> 0) || 1);
+  return String(hash >>> 0 || 1);
 }
 
 function parseArgs(argv) {
@@ -110,7 +111,7 @@ function ensureArg(args, key, value) {
   return [...args, `--${key}=${value}`];
 }
 
-// ensureArg와 달리 기존 값을 덮어쓴다(당일 2티어 생성에서 난이도·publishedAt을
+// ensureArg와 달리 기존 값을 덮어쓴다(일간 3티어 생성에서 난이도·publishedAt을
 // 티어별로 교체하기 위함).
 function setArg(args, key, value) {
   if (value == null || value === "") {
@@ -180,11 +181,11 @@ function getGeneratorArgs(options) {
     process.env.PUZZLE_OUT_DIR ?? "public/puzzles",
   );
   args = ensureArg(args, "timeZone", timeZone);
-  args = ensureArg(args, "keep", process.env.PUZZLE_KEEP ?? "84");
+  args = ensureArg(args, "keep", process.env.PUZZLE_KEEP ?? "21");
   args = ensureArg(
     args,
     "intervalHours",
-    process.env.PUZZLE_INTERVAL_HOURS ?? "2",
+    process.env.PUZZLE_INTERVAL_HOURS ?? "1",
   );
   args = ensureArg(args, "publishedAt", publishedAt);
   args = ensureArg(args, "hostingBaseUrl", hostingBaseUrl);
@@ -203,7 +204,10 @@ function getGeneratorArgs(options) {
     ["PUZZLE_BRANCH", "branch"],
     ["PUZZLE_CANDIDATES", "candidates"],
     ["PUZZLE_DENSE", "dense"],
+    ["PUZZLE_DIVERSITY_HISTORY", "diversityHistory"],
     ["PUZZLE_MAX_AUTO", "maxAuto"],
+    ["PUZZLE_MAX_ANSWER_REUSE", "maxAnswerReuse"],
+    ["PUZZLE_MAX_SCAFFOLD_SIMILARITY", "maxScaffoldSimilarity"],
     ["PUZZLE_MIN_CROSS", "minCross"],
     ["PUZZLE_MIN_DENSITY", "minDensity"],
     ["PUZZLE_MIN_ENTRIES", "minEntries"],
@@ -217,11 +221,12 @@ function getGeneratorArgs(options) {
     args = ensureArg(args, argName, process.env[envName]);
   }
 
-  // 명시 난이도가 있으면 우선하고, 없으면 2시간 슬롯 시각으로
-  // normal/easy/normal/hard 로테이션을 적용한다(#151).
+  // PUZZLE_DAILY_TIERS=false인 레거시 실행에서만 명시 난이도를 우선하고,
+  // 없으면 2시간 슬롯 시각으로 normal/easy/normal/hard 로테이션을 적용한다(#151).
   args = ensureArg(args, "difficulty", process.env.PUZZLE_DIFFICULTY);
   if (
     getArgValue(args, "difficulty") == null &&
+    !readEnvBooleanWithDefault("PUZZLE_DAILY_TIERS", true) &&
     readEnvBooleanWithDefault("PUZZLE_DIFFICULTY_ROTATION", true)
   ) {
     const intervalHours = Number(getArgValue(args, "intervalHours") ?? "2");
@@ -306,9 +311,9 @@ async function run() {
     }
   }
 
-  // 당일 2판(easy 5×5 + normal 8×8) 생성 모드. 자정 1회 실행에서 두 난이도를
-  // 서로 다른 슬롯 시각(intervalHours=1의 h00/h01)으로 append 생성해, 같은 날짜에
-  // 두 퍼즐이 모두 발행되도록 한다. 명시 난이도(PUZZLE_DIFFICULTY)가 주어지면
+  // 당일 3판(easy 5×5 + normal 8×8 + hard 8×8) 생성 모드. 자정 1회 실행에서
+  // 세 난이도를 서로 다른 내부 슬롯(h00/h01/h02)으로 append 생성해, 같은 날짜에
+  // 세 퍼즐이 모두 발행되도록 한다. 명시 난이도(PUZZLE_DIFFICULTY)가 주어지면
   // 단일 생성(기존 경로)으로 폴백한다.
   const dailyTiers =
     readEnvBooleanWithDefault("PUZZLE_DAILY_TIERS", true) &&
@@ -318,14 +323,9 @@ async function run() {
     const timeZone = getArgValue(generatorArgs, "timeZone") ?? "Asia/Seoul";
     const dateKey =
       getArgValue(generatorArgs, "start") ?? getDateKey(timeZone, new Date());
-    const tiers = [
-      { difficulty: "easy", hour: 0 },
-      { difficulty: "normal", hour: 1 },
-    ];
-
-    for (const [index, tier] of tiers.entries()) {
+    for (const [index, tier] of DAILY_PUZZLE_TIERS.entries()) {
       const publishedAt = new Date(
-        `${dateKey}T${String(tier.hour).padStart(2, "0")}:00:00+09:00`,
+        `${dateKey}T${String(tier.slotHour).padStart(2, "0")}:00:00+09:00`,
       ).toISOString();
       let tierArgs = setArg(generatorArgs, "difficulty", tier.difficulty);
       tierArgs = setArg(tierArgs, "publishedAt", publishedAt);
@@ -371,7 +371,10 @@ async function run() {
   }
 
   if (!options.skipPublish) {
-    const publishArgs = [`--manifest=${manifestPath}`, `--publicDir=${publicDir}`];
+    const publishArgs = [
+      `--manifest=${manifestPath}`,
+      `--publicDir=${publicDir}`,
+    ];
 
     if (options.dryRun) {
       publishArgs.push("--dryRun");

@@ -466,7 +466,6 @@ function formatQualityValue(check: PuzzleQualityCheck) {
   return `${check.actual} / ${check.expected}`;
 }
 
-
 function isRemotePuzzlePackSummary(summary: PuzzleManifestItem) {
   return (
     summary.packId != null ||
@@ -774,30 +773,33 @@ function App() {
     };
   }, []);
 
-  const loadPuzzleSession = useCallback(async (puzzleId: string) => {
-    const nextPuzzle =
-      (await puzzleRepository.getPuzzleById(puzzleId)) ??
-      (await puzzleArchiveRepository.loadPuzzle(puzzleId));
+  const loadPuzzleSession = useCallback(
+    async (puzzleId: string) => {
+      const nextPuzzle =
+        (await puzzleRepository.getPuzzleById(puzzleId)) ??
+        (await puzzleArchiveRepository.loadPuzzle(puzzleId));
 
-    if (nextPuzzle == null) {
-      return null;
-    }
+      if (nextPuzzle == null) {
+        return null;
+      }
 
-    const [savedProgress, savedMission] = await Promise.all([
-      progressRepository.loadProgress(nextPuzzle.puzzleId),
-      missionRepository.loadMission(
-        nextPuzzle.date,
-        nextPuzzle.puzzleId,
-        launchConfig.dailyAttemptLimit,
-      ),
-    ]);
+      const [savedProgress, savedMission] = await Promise.all([
+        progressRepository.loadProgress(nextPuzzle.puzzleId),
+        missionRepository.loadMission(
+          nextPuzzle.date,
+          nextPuzzle.puzzleId,
+          launchConfig.dailyAttemptLimit,
+        ),
+      ]);
 
-    return {
-      nextPuzzle,
-      savedMission,
-      savedProgress,
-    } satisfies PuzzleSession;
-  }, [launchConfig.dailyAttemptLimit]);
+      return {
+        nextPuzzle,
+        savedMission,
+        savedProgress,
+      } satisfies PuzzleSession;
+    },
+    [launchConfig.dailyAttemptLimit],
+  );
 
   const applyPuzzleSession = useCallback(
     (
@@ -894,16 +896,15 @@ function App() {
             ? loadedSummaries
             : [createPuzzleSummary(fallbackPuzzle)];
         const today = getTodayDateKey();
-        const [nextDateCardStates, onboardingSession] =
-          await Promise.all([
-            loadDateCardStates([
-              ...nextSummaries,
-              ...nextArchiveRecords.map((record) =>
-                createPuzzleSummary(record.puzzle),
-              ),
-            ]),
-            loadPuzzleSession(onboardingPuzzle.puzzleId),
-          ]);
+        const [nextDateCardStates, onboardingSession] = await Promise.all([
+          loadDateCardStates([
+            ...nextSummaries,
+            ...nextArchiveRecords.map((record) =>
+              createPuzzleSummary(record.puzzle),
+            ),
+          ]),
+          loadPuzzleSession(onboardingPuzzle.puzzleId),
+        ]);
 
         // 신규 사용자(아직 첫 성공 전)면 입문 퍼즐을, 그 외에는 일반 일일 퍼즐을
         // 첫 활성 퍼즐로 둔다. 입문 퍼즐 세션은 위에서 미리 불러와 재사용한다.
@@ -951,8 +952,7 @@ function App() {
                 onboardingSession.savedProgress,
               ),
             activePuzzleIsOnboarding:
-              session != null &&
-              initialPuzzleId === onboardingPuzzle.puzzleId,
+              session != null && initialPuzzleId === onboardingPuzzle.puzzleId,
           });
         }
       } catch {
@@ -1256,7 +1256,7 @@ function App() {
     () => getDailyFreePuzzleSummary(puzzleSummaries, todayKey),
     [puzzleSummaries, todayKey],
   );
-  // 당일 서빙: 오늘 발행된 퍼즐(easy 5×5 · normal 8×8)만 노출한다. 난이도 오름차순
+  // 당일 서빙: 오늘 발행된 퍼즐(easy 5×5 · normal/hard 8×8)만 노출한다. 난이도 오름차순
   // (easy→normal→hard)으로 정렬해 홈에서 원하는 난이도를 고를 수 있게 한다.
   const todayPuzzleSummaries = useMemo(
     () =>
@@ -2867,9 +2867,6 @@ function App() {
           selectedEntry={viewModel.selectedEntry}
           startLabels={viewModel.startLabels}
           startOrResumeMission={startOrResumeMission}
-          startPuzzleById={(puzzleId) =>
-            void startPuzzleById(puzzleId, "difficulty_start")
-          }
           startTodayPuzzle={() => void startTodayPuzzle()}
           todayPuzzleSummaries={todayPuzzleSummaries}
         />
@@ -3116,7 +3113,6 @@ type HomeScreenProps = DateSelectionProps & {
   selectedEntry?: PuzzleEntry;
   startLabels: Map<string, number>;
   startOrResumeMission: () => void;
-  startPuzzleById: (puzzleId: string) => void;
   startTodayPuzzle: () => void;
   todayPuzzleSummaries: PuzzleManifestItem[];
 };
@@ -3140,9 +3136,9 @@ function HomeScreen({
   dateCardStates,
   selectedEntry,
   selectedPuzzleId,
+  selectPuzzle,
   startLabels,
   startOrResumeMission,
-  startPuzzleById,
   startTodayPuzzle,
   todayPuzzleSummaries,
 }: HomeScreenProps) {
@@ -3220,7 +3216,10 @@ function HomeScreen({
       />
 
       {todayPuzzleSummaries.length > 0 ? (
-        <section className="todayStartButtons" aria-label="오늘의 퍼즐 시작">
+        <section
+          className="todayStartButtons"
+          aria-label="오늘의 퍼즐 난이도 선택"
+        >
           {todayPuzzleSummaries.map((summary) => {
             const state = dateCardStates[summary.puzzleId];
             const statusLabel =
@@ -3234,11 +3233,19 @@ function HomeScreen({
               <button
                 key={summary.puzzleId}
                 type="button"
-                className="todayStartButton"
+                className={[
+                  "todayStartButton",
+                  summary.puzzleId === selectedPuzzleId
+                    ? "todayStartButtonSelected"
+                    : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                aria-pressed={summary.puzzleId === selectedPuzzleId}
                 disabled={isLoadingPuzzlePack}
-                onClick={() => startPuzzleById(summary.puzzleId)}
+                onClick={() => selectPuzzle(summary.puzzleId)}
               >
-                <span className="todayStartButtonLead">오늘의 퍼즐 시작</span>
+                <span className="todayStartButtonLead">난이도 선택</span>
                 <span className="todayStartButtonDifficulty">
                   난이도 {formatDifficultyLabel(summary.difficulty)}
                 </span>
@@ -3282,7 +3289,12 @@ function HomeScreen({
           )}
         </div>
 
-        <MiniPuzzlePreview puzzle={puzzle} isLoading={isLoadingPuzzlePack} />
+        <div
+          className="selectedPuzzleScaffold"
+          aria-label="선택한 퍼즐판 미리보기"
+        >
+          <MiniPuzzlePreview puzzle={puzzle} isLoading={isLoadingPuzzlePack} />
+        </div>
 
         <div
           className="attemptStrip"
@@ -3388,7 +3400,6 @@ function HomeScreen({
         hintBalance={hintBalance}
         requestRewardedHint={requestRewardedHint}
       />
-
 
       <section className="homeList" aria-label="진행 정보">
         <button type="button" onClick={() => navigate("resume")}>
@@ -3827,9 +3838,10 @@ function TodayScreen({
   const commitTimerRef = useRef<number | null>(null);
   // 지연 커밋에 걸린 값을 보관해, 셀/문항 전환이 타이머를 취소하기 전에 먼저
   // 커밋(flush)할 수 있게 한다. cell 모드에서 마지막 글자가 유실되던 원인.
-  const pendingCommitRef = useRef<{ value: string; startCellKey: string } | null>(
-    null,
-  );
+  const pendingCommitRef = useRef<{
+    value: string;
+    startCellKey: string;
+  } | null>(null);
   const isComposingRef = useRef(false);
   const [inputValue, setInputValue] = useState("");
   const [isComposing, setIsComposing] = useState(false);
@@ -4133,7 +4145,13 @@ function TodayScreen({
         boardInputRef.current?.focus({ preventScroll: true });
       }
     });
-  }, [answerInputMode, cellValues, isFirstInputGuideVisible, puzzle, selectEntry]);
+  }, [
+    answerInputMode,
+    cellValues,
+    isFirstInputGuideVisible,
+    puzzle,
+    selectEntry,
+  ]);
 
   function focusPuzzleBoard() {
     requestAnimationFrame(() => {
@@ -4501,7 +4519,10 @@ function TodayScreen({
                     {displayValue}
                     {/* 색상 외 형태(×) 신호로도 오답을 구분한다(WCAG 1.4.1). */}
                     {isWrong ? (
-                      <span className="answerSlotWrongMark" aria-hidden="true" />
+                      <span
+                        className="answerSlotWrongMark"
+                        aria-hidden="true"
+                      />
                     ) : null}
                   </button>
                 );
@@ -4768,10 +4789,7 @@ function TodayScreen({
                   <EraserIcon />
                 </button>
                 <button
-                  className={[
-                    "iconButton",
-                    pencilMode ? "iconButtonOn" : "",
-                  ]
+                  className={["iconButton", pencilMode ? "iconButtonOn" : ""]
                     .filter(Boolean)
                     .join(" ")}
                   type="button"
@@ -4906,7 +4924,9 @@ function TodayScreen({
           role="region"
           aria-label="도전 종료 안내"
         >
-          <span>오늘 도전 기회를 모두 사용했어요 · 내일 다시 도전해 보세요</span>
+          <span>
+            오늘 도전 기회를 모두 사용했어요 · 내일 다시 도전해 보세요
+          </span>
           <button
             className="exhaustedBannerLink"
             type="button"
@@ -5377,7 +5397,6 @@ function ResultScreen({
         onBack={() => navigate("home")}
       />
 
-
       <section className="resultPanel" aria-label="미션 결과">
         <strong>{isComplete ? "완료" : `${progressPercent}% 진행`}</strong>
         {elapsedLabel != null && (
@@ -5565,7 +5584,6 @@ function ResultScreen({
             </div>
           )}
       </section>
-
     </>
   );
 }
@@ -5790,7 +5808,6 @@ function HistoryScreen({
       />
 
       <StreakHeatmap weeks={streakWeeks} />
-
 
       <section className="historyList" aria-label="미션 기록">
         {archiveRecords.length > 0 ? (

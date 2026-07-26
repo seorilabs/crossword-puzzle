@@ -1,6 +1,7 @@
 export * from "./answerInput";
 export * from "./boardNavigation";
 export * from "./clueCuration";
+export * from "./dailyPuzzleTiers";
 export * from "./difficultyProfiles";
 export * from "./difficultyRotation";
 export * from "./feedbackPolicy";
@@ -11,6 +12,7 @@ export * from "./mission";
 export * from "./personalStats";
 export * from "./platformContracts";
 export * from "./puzzle";
+export * from "./puzzleDiversity";
 export * from "./puzzleLabels";
 export * from "./recommendation";
 export * from "./releaseVersion";

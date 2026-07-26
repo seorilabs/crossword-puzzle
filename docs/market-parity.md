@@ -52,9 +52,10 @@ flowchart TD
 - Android/iOS가 같은 `apps/mobile` 타깃을 공유하므로, 인앱 홈 타이틀이나 입력 UX를 `Platform.OS === 'ios'` / `Platform.OS === 'android'` 분기로 되돌리면 안 된다. `check:release-parity`는 iOS 전용 홈 타이틀 분기, Android 전용 보드 입력 재포커스, 관련 테스트 누락을 실패 처리한다.
 - 한 시장에서만 기능을 임시로 끄는 경우, fallback UX와 해제 조건을 이 문서 또는 release 문서에 남긴다.
 
-## 발행 퍼즐 난이도 로테이션 (#151)
+## 일간 발행 난이도 구성
 
-- 2시간 슬롯은 코어 정책에 따라 `normal/easy/normal/hard`를 반복해 하루 12개 기준 normal 6개, easy 3개, hard 3개를 발행한다.
+- 자정 배치 한 번에서 `easy 5×5`, `normal 8×8`, `hard 8×8`을 각각 한 판 발행한다. 내부 슬롯은 h00/h01/h02로 분리한다.
+- `PUZZLE_DAILY_TIERS=false`인 레거시 다회 실행에서만 코어의 `normal/easy/normal/hard` 로테이션을 사용한다.
 - AIT/Web과 Android/iOS는 같은 Firebase Hosting manifest를 읽으므로 난이도 구성과 완료 후 상위 티어 추천 정책이 세 시장에서 동일하다.
 - manifest 항목과 퍼즐 JSON의 `difficulty`는 모두 필수이며 서로 다르면 발행 검증이 실패한다. 난이도가 없는 구버전 원격 항목은 전환 시 제거하고 검수·품질 게이트를 통과한 새 슬롯으로 교체한다.
 

@@ -118,6 +118,11 @@ export type PuzzleManifestItem = {
 
 export type PuzzleManifest = {
   days?: number;
+  diversityThresholds?: {
+    historyLimit: number;
+    maxScaffoldSimilarity: number;
+    maxSharedAnswerRatio: number;
+  };
   generatedAt?: string;
   keep?: number;
   qualityThresholds?: Record<string, number>;

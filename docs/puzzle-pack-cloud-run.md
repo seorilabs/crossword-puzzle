@@ -4,8 +4,8 @@
 
 ```mermaid
 flowchart LR
-  Scheduler["Cloud Scheduler"] --> Job["Cloud Run Job"]
-  Job --> Generator["퍼즐 pack 생성"]
+  Scheduler["Cloud Scheduler - 매일 자정"] --> Job["Cloud Run Job"]
+  Job --> Generator["Easy Normal Hard 생성"]
   Generator --> Validator["slot validator"]
   Validator --> Hosting["Firebase Hosting: /puzzles/*.json"]
   App["AIT WebView"] --> Hosting
@@ -72,10 +72,11 @@ scripts/setup-puzzle-pack-cloud-run-job.sh \
   --firebase-hosting-site <firebase-hosting-site-id> \
   --region asia-northeast3 \
   --scheduler-location asia-northeast3 \
-  --schedule "15 */2 * * *" \
+  --schedule "5 0 * * *" \
   --time-zone Asia/Seoul \
   --puzzle-days 1 \
-  --puzzle-keep 84
+  --puzzle-keep 21 \
+  --puzzle-interval-hours 1
 ```
 
 스크립트가 수행하는 일:
@@ -103,34 +104,40 @@ gcloud run jobs execute crossword-puzzle-pack-generator \
 
 Cloud Run Job은 다음 환경 변수를 사용한다.
 
-| 변수                      |                   기본값 | 설명                                                                                                                      |
-| ------------------------- | -----------------------: | ------------------------------------------------------------------------------------------------------------------------- |
-| `FIREBASE_PROJECT_ID`     |                     필수 | Firebase Hosting project                                                                                                  |
-| `FIREBASE_HOSTING_SITE`   |                     필수 | Firebase Hosting site ID                                                                                                  |
-| `PUZZLE_DAYS`             |                      `1` | 한 번에 생성할 퍼즐 슬롯 수                                                                                               |
-| `PUZZLE_TIME_ZONE`        |             `Asia/Seoul` | 동적 시작 날짜 계산 timezone                                                                                              |
-| `PUZZLE_SEED`             |                     자동 | 재현용 고정 seed. 지정하지 않으면 `PUZZLE_TIME_ZONE`, 시작 날짜, `PUZZLE_PUBLISHED_AT`을 섞어 실행마다 다른 seed를 만든다 |
-| `PUZZLE_OUT_DIR`          |         `public/puzzles` | 생성 결과 출력 폴더                                                                                                       |
-| `PUZZLE_HOSTING_BASE_URL` | `https://<site>.web.app` | 앱/운영자가 참조할 base URL                                                                                               |
-| `PUZZLE_APPEND`           |                   `true` | 기존 manifest를 불러와 새 퍼즐을 append할지 여부                                                                          |
-| `PUZZLE_KEEP`             |                     `84` | manifest에 유지할 최근 퍼즐 수. 2시간 주기 기준 7일치                                                                     |
-| `PUZZLE_INTERVAL_HOURS`   |                      `2` | `slotId` 계산에 사용하는 퍼즐 발행 간격                                                                                   |
-| `PUZZLE_DIFFICULTY`       |                     비움 | 지정하면 모든 슬롯을 해당 난이도(`easy`/`normal`/`hard`)로 고정                                                          |
-| `PUZZLE_DIFFICULTY_ROTATION` |                 `true` | 고정 난이도가 없을 때 2시간 슬롯을 `normal/easy/normal/hard` 순서로 반복                                                 |
-| `PUZZLE_CORS_ORIGIN`      |                      `*` | AIT WebView에서 JSON을 fetch할 수 있도록 `/puzzles/**` 응답에 넣을 CORS origin                                            |
+| 변수                             |                   기본값 | 설명                                                                                                                      |
+| -------------------------------- | -----------------------: | ------------------------------------------------------------------------------------------------------------------------- |
+| `FIREBASE_PROJECT_ID`            |                     필수 | Firebase Hosting project                                                                                                  |
+| `FIREBASE_HOSTING_SITE`          |                     필수 | Firebase Hosting site ID                                                                                                  |
+| `PUZZLE_DAYS`                    |                      `1` | 한 번에 생성할 퍼즐 슬롯 수                                                                                               |
+| `PUZZLE_TIME_ZONE`               |             `Asia/Seoul` | 동적 시작 날짜 계산 timezone                                                                                              |
+| `PUZZLE_SEED`                    |                     자동 | 재현용 고정 seed. 지정하지 않으면 `PUZZLE_TIME_ZONE`, 시작 날짜, `PUZZLE_PUBLISHED_AT`을 섞어 실행마다 다른 seed를 만든다 |
+| `PUZZLE_OUT_DIR`                 |         `public/puzzles` | 생성 결과 출력 폴더                                                                                                       |
+| `PUZZLE_HOSTING_BASE_URL`        | `https://<site>.web.app` | 앱/운영자가 참조할 base URL                                                                                               |
+| `PUZZLE_APPEND`                  |                   `true` | 기존 manifest를 불러와 새 퍼즐을 append할지 여부                                                                          |
+| `PUZZLE_KEEP`                    |                     `21` | manifest에 유지할 최근 퍼즐 수. 일간 3판 기준 7일치                                                                       |
+| `PUZZLE_INTERVAL_HOURS`          |                      `1` | Easy/Normal/Hard의 내부 `slotId`를 h00/h01/h02로 분리하는 간격                                                            |
+| `PUZZLE_DIFFICULTY`              |                     비움 | 지정하면 모든 슬롯을 해당 난이도(`easy`/`normal`/`hard`)로 고정                                                           |
+| `PUZZLE_DAILY_TIERS`             |                   `true` | 고정 난이도가 없을 때 매일 Easy 5×5, Normal 8×8, Hard 8×8을 한 판씩 생성                                                  |
+| `PUZZLE_DIFFICULTY_ROTATION`     |                  `false` | `PUZZLE_DAILY_TIERS=false`인 레거시 다회 실행에서만 `normal/easy/normal/hard` 순환                                        |
+| `PUZZLE_DIVERSITY_HISTORY`       |                      `7` | 같은 난이도에서 다양성을 비교할 최근 퍼즐 수                                                                              |
+| `PUZZLE_MAX_ANSWER_REUSE`        |                    `0.5` | 최근 동일 난이도 한 판과 겹쳐도 되는 후보 정답 비율 상한                                                                  |
+| `PUZZLE_MAX_SCAFFOLD_SIMILARITY` |                   `0.75` | 최근 동일 난이도 한 판과 겹쳐도 되는 채운 칸 골격 Jaccard 유사도 상한                                                     |
+| `PUZZLE_CORS_ORIGIN`             |                      `*` | AIT WebView에서 JSON을 fetch할 수 있도록 `/puzzles/**` 응답에 넣을 CORS origin                                            |
 
-생성 옵션은 `PUZZLE_ATTEMPTS`, `PUZZLE_BEAM`, `PUZZLE_BRANCH`, `PUZZLE_CANDIDATES`, `PUZZLE_DENSE`, `PUZZLE_MIN_CROSS`, `PUZZLE_MIN_DENSITY`, `PUZZLE_MIN_ENTRIES`, `PUZZLE_MIN_MULTI`, `PUZZLE_MAX_AUTO`, `PUZZLE_RETRIES`, `PUZZLE_SAMPLES`, `PUZZLE_SIZE`, `PUZZLE_WORDS`, `PUZZLE_WORDBANK`, `PUZZLE_PUBLISHED_AT`, `PUZZLE_EXISTING_MANIFEST_URL`로 override할 수 있다. `PUZZLE_SEED`를 지정하면 같은 입력에서 같은 퍼즐이 다시 생성될 수 있으므로, 운영 스케줄에서는 보통 비워 둔다.
+생성 옵션은 `PUZZLE_ATTEMPTS`, `PUZZLE_BEAM`, `PUZZLE_BRANCH`, `PUZZLE_CANDIDATES`, `PUZZLE_DENSE`, `PUZZLE_DIVERSITY_HISTORY`, `PUZZLE_MAX_ANSWER_REUSE`, `PUZZLE_MAX_SCAFFOLD_SIMILARITY`, `PUZZLE_MIN_CROSS`, `PUZZLE_MIN_DENSITY`, `PUZZLE_MIN_ENTRIES`, `PUZZLE_MIN_MULTI`, `PUZZLE_MAX_AUTO`, `PUZZLE_RETRIES`, `PUZZLE_SAMPLES`, `PUZZLE_SIZE`, `PUZZLE_WORDS`, `PUZZLE_WORDBANK`, `PUZZLE_PUBLISHED_AT`, `PUZZLE_EXISTING_MANIFEST_URL`로 override할 수 있다. `PUZZLE_SEED`를 지정하면 같은 입력에서 같은 퍼즐이 다시 생성될 수 있으므로, 운영 스케줄에서는 보통 비워 둔다.
 
 ## Append manifest
 
-2시간마다 1개씩 생성하면 하루 12개가 생긴다. Job은 새 퍼즐을 기존 manifest에 append하고, `PUZZLE_KEEP` 개수만 남긴다.
+매일 00:05 KST에 한 번 실행해 같은 날짜의 Easy, Normal, Hard 세 판을 만든다. Job은 새 퍼즐을 기존 manifest에 append하고, `PUZZLE_KEEP` 개수만 남긴다.
 
-- 기본 스케줄은 `15 */2 * * *`이다.
-- 기본 유지 개수는 `84`개다. 2시간 주기 기준 최근 7일치다.
-- 기본 난이도 로테이션은 하루 12개 슬롯을 normal 6개, easy 3개, hard 3개로 발행한다.
+- 기본 스케줄은 `5 0 * * *`이다.
+- 기본 유지 개수는 `21`개다. 일간 3판 기준 최근 7일치다.
+- 기본 일간 구성은 easy 5×5, normal 8×8, hard 8×8 각 1개다.
 - 각 생성물은 `packId`, `puzzleId`, `slotId`, `publishedAt`를 가진다.
 - `puzzleId`는 로컬 진행 상태 key로 쓰이므로 같은 날짜에 여러 퍼즐이 있어도 진행 상태가 섞이지 않는다.
-- `PUZZLE_SEED`를 고정하지 않으면 기본 seed가 `publishedAt` 기반으로 바뀌어서 같은 날짜의 2시간 슬롯도 서로 다른 퍼즐로 생성된다.
+- `PUZZLE_SEED`를 고정하지 않으면 기본 seed가 실행 시각을 포함해 날짜마다 바뀐다.
+- 품질 게이트를 통과한 후보 중 최근 같은 난이도와 정답이 50% 초과로 겹치거나 채운 칸 골격 Jaccard 유사도가 75%를 초과하는 후보는 건너뛴다.
+- 같은 슬롯을 재실행할 때는 그 슬롯 자체를 다양성 비교에서 제외해 같은 seed의 재현성과 idempotency를 유지한다.
 - 기존 remote manifest가 있으면 `PUZZLE_HOSTING_BASE_URL/puzzles/manifest.json`을 먼저 읽고, 유지 대상 puzzle JSON도 다시 받아 현재 publish 디렉터리에 채운다.
 - remote manifest가 아직 없으면 로컬 `public/puzzles/manifest.json`을 fallback source로 사용한다.
 - `difficulty`가 없는 구버전 manifest 항목은 다중 난이도 전환 시 제거한다. 새 항목은 검수 단서·난이도 게이트를 통과한 뒤 슬롯마다 다시 누적된다.
