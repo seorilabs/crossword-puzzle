@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 import {
   DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO,
@@ -103,7 +104,7 @@ function slotKey(item) {
   return `${item.direction}:${item.row}:${item.col}`;
 }
 
-function validatePuzzle(puzzle, maxNeedsManualClueRatio) {
+export function validatePuzzle(puzzle, maxNeedsManualClueRatio) {
   const slots = scanSlots(puzzle.grid);
   const slotsByKey = new Map(slots.map((slot) => [slotKey(slot), slot]));
   const entriesByKey = new Map();
@@ -265,7 +266,12 @@ async function run() {
   );
 }
 
-run().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+if (
+  process.argv[1] != null &&
+  import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href
+) {
+  run().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}

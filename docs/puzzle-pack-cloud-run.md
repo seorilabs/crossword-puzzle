@@ -170,3 +170,36 @@ GitHub Actions의 AppsInToss 배포 workflow는 `vars.PUZZLE_PACK_BASE_URL`이 �
 - 두 환경 변수가 없으면 기존처럼 번들에 포함된 `/puzzles/manifest.json`만 읽는다.
 
 Firebase Hosting을 AIT 앱 origin과 다른 도메인에서 읽기 때문에 CORS가 필요하다. `npm run publish:puzzles`는 `/puzzles/**` 응답에 `Access-Control-Allow-Origin`을 기본 `*`로 배포한다. 퍼즐 pack은 공개 읽기 전용 정적 데이터라 이 설정을 기본으로 둔다.
+
+## 운영 health check와 알림
+
+생성 Job과 별도로 매일 `00:30 KST`에 공개 Firebase Hosting 결과를 다시 읽는
+`crossword-puzzle-pack-health` Job을 실행한다.
+
+- 오늘 날짜에 Easy, Normal, Hard가 정확히 한 판씩 있는지 확인한다.
+- Easy는 5×5, Normal과 Hard는 8×8인지 확인한다.
+- manifest와 puzzle metadata, 격자 slot과 entry를 다시 검증한다.
+- 당일 세 난이도 정답 교집합이 0개인지 확인한다.
+- 실패하면 stderr와 non-zero exit를 남겨 Cloud Run Job을 실패 처리한다.
+
+로컬 또는 운영 공개본을 직접 확인할 수 있다.
+
+```bash
+npm run health:puzzles -- \
+  --baseUrl=https://crossword-puzzle-79ae0.web.app \
+  --date=2026-07-26
+```
+
+Cloud Monitoring notification channel을 준비한 뒤 health Job, Scheduler, 로그
+기반 metric, alert policy를 함께 생성한다.
+
+```bash
+scripts/setup-puzzle-pack-monitoring.sh \
+  --project-id crossword-puzzle-79ae0 \
+  --hosting-base-url https://crossword-puzzle-79ae0.web.app \
+  --notification-channel projects/crossword-puzzle-79ae0/notificationChannels/<id>
+```
+
+알림 대상은 generator와 health Job의 `severity>=ERROR` 로그다. health Job이
+오늘 퍼즐 누락, 난이도 누락, 중복 정답, 공개 JSON 구조 오류를 같은 경로로
+오류 로그에 기록하므로 하나의 정책으로 생성 장애와 발행 결과 장애를 감시한다.
