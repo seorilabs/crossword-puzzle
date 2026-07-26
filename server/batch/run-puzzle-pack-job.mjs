@@ -243,11 +243,9 @@ function getGeneratorArgs(options) {
   // 전달한다(themeLabel 미지정 시 생성기가 themeCategories 에서 해석). 명시 지정이
   // 없고 로테이션이 켜져 있으면 슬롯의 요일·시각으로 주제를 배정한다(#249).
   //
-  // 로테이션 기본값은 off 다. 주제 단어의 검수 단서 커버리지가 아직 낮아(테마별
-  // 3~5%) 주제 팩이 발행 게이트(needsManualClue<40%, validate:puzzles)를 통과하지
-  // 못하기 때문이다. #250 으로 주제 검수 단서를 확대한 뒤 PUZZLE_THEME_ROTATION=1
-  // 로 켜면 코드 변경 없이 활성화된다. 그 전에 켜더라도 아래 run()의 보강 경로가
-  // 주제 제약을 풀어 일간 발행을 보호한다.
+  // 로테이션 기본값은 off다. 사전 뜻풀이는 기본 허용하므로 검수 단서 커버리지와
+  // 무관하게 PUZZLE_THEME_ROTATION=1로 활성화할 수 있다. 좁은 주제 풀이 보드 생성
+  // 조건을 못 채우면 아래 run()의 보강 경로가 주제 제약을 풀어 일간 발행을 보호한다.
   args = ensureArg(args, "theme", process.env.PUZZLE_THEME);
   args = ensureArg(args, "themeLabel", process.env.PUZZLE_THEME_LABEL);
 
@@ -296,9 +294,9 @@ async function run() {
   const manifestPath = path.join(outDir, "manifest.json");
   const publicDir = getAssetRoot(outDir);
 
-  // 생성 → 검증을 하나의 단위로 실행한다. 주제 슬롯은 후보 부족(빈 풀)뿐 아니라
-  // 검수 단서 비율 게이트(#250 대상)로 검증에서 걸릴 수 있어, 둘 중 어느 단계가
-  // 실패하든 같은 보강 경로로 처리하려면 검증을 try 안에 둬야 한다.
+  // 생성 → 검증을 하나의 단위로 실행한다. 주제 슬롯은 후보 부족이나 보드 품질
+  // 게이트에서 실패할 수 있어, 둘 중 어느 단계가 실패하든 같은 보강 경로로
+  // 처리하려면 검증을 try 안에 둬야 한다.
   async function generateThenValidate(args) {
     if (!options.skipGenerate) {
       await runNode("server/batch/generate-puzzle-pack.mjs", args);
@@ -361,8 +359,8 @@ async function run() {
       }
 
       // 주제 제약으로 생성/검증이 실패하면, 일간 발행이 끊기지 않도록 주제를 풀고
-      // 한 번 더 생성·검증한다(보강). 검수 단서 커버리지가 오르면(#250) 이 폴백 없이
-      // 주제 퍼즐이 그대로 발행된다.
+      // 한 번 더 생성·검증한다(보강). 주제 단어 풀이 보드 조건을 만족하면 이
+      // 폴백 없이 주제 퍼즐이 그대로 발행된다.
       console.warn(
         `[theme-rotation] themed pack failed (${error.message}); retrying without theme constraint to keep the daily pack published.`,
       );

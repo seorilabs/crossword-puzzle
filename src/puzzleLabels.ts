@@ -1,12 +1,5 @@
-import type { Puzzle } from "../packages/crossword-core/src";
-
-// 난이도(easy/normal/hard)를 한글 라벨로 변환한다. 값이 없으면 빈 문자열.
-export function formatDifficultyLabel(difficulty?: Puzzle["difficulty"]) {
-  if (difficulty === "easy") return "쉬움";
-  if (difficulty === "normal") return "보통";
-  if (difficulty === "hard") return "어려움";
-  return "";
-}
+// 기존 Web import 경로를 유지하면서 AIT·Android·iOS 공용 코어 구현을 사용한다.
+export { formatDifficultyLabel } from "../packages/crossword-core/src";
 
 // 기본 4개 테마(음식/동물/자연/신체)에 아이콘을 붙여 칩 가독성을 높인다.
 // 알 수 없는 themeTag 는 아이콘 없이 라벨만 노출한다(#248).

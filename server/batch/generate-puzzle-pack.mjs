@@ -20,7 +20,6 @@ import {
 import {
   DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO,
   needsManualClueRatio,
-  selectWordsForManualClueCoverage,
 } from "../../packages/crossword-core/src/clueCuration.ts";
 import {
   DEFAULT_DIVERSITY_HISTORY_LIMIT,
@@ -812,11 +811,11 @@ async function run() {
     options.theme == null
       ? wordSelection.words
       : filterWordsByTheme(wordSelection.words, options.theme);
-  const generationWords = selectWordsForManualClueCoverage(
-    difficultyFilteredWords,
-    DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO,
-    options.candidateWordLimit,
-  );
+  // 한국어기초사전 뜻풀이는 기본 사용 가능하다. 여기서 앞쪽 600개로 자르면
+  // 워드뱅크 정렬 순서에 따라 쉬운 단어만 고정될 수 있으므로 전체 난이도 풀을
+  // 생성기에 넘긴다. generateBoards가 seed별로 섞은 뒤 candidateWordLimit만큼
+  // 추출해 날짜마다 폭넓은 후보를 사용한다.
+  const generationWords = difficultyFilteredWords;
   const wordBankDifficultyCounts = summarizeWordDifficulties(
     difficultyFilteredWords,
   );
@@ -831,7 +830,7 @@ async function run() {
 
   if (generationWords.length < profile.minWordCount) {
     throw new Error(
-      `Not enough manually reviewed words for ${profile.difficulty}: candidates=${generationWords.length} minEntries=${profile.minWordCount}`,
+      `Not enough usable words for ${profile.difficulty}: candidates=${generationWords.length} minEntries=${profile.minWordCount}`,
     );
   }
 
@@ -1073,17 +1072,13 @@ async function run() {
       ...buildThemeMeta(puzzle.themeTag, puzzle.themeLabel),
     });
 
-    // 발행 품질 게이트(needsManualClue 비율)는 validate:puzzles 가 최종 강제하지만,
-    // 신규 생성 팩(특히 아직 수동 클루가 없는 주제 풀)이 이를 넘겼는지 생성 단계에서
-    // 미리 드러내 "게이트가 조용히 미적용"되지 않도록 경고한다(#236).
+    // needsManualClue는 발행 차단이 아니라 자체 문장 큐레이션 현황이다. 사전
+    // 뜻풀이도 기본 허용하되 비율을 리포트에 남겨 후속 편집 대상을 추적한다.
     const manualClueRatio = needsManualClueRatio(puzzle.entries);
-    if (manualClueRatio > DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO) {
-      console.warn(
-        `[${slotInfo.slotId}] needsManualClue ratio ${(manualClueRatio * 100).toFixed(1)}% ` +
-          `> ${(DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO * 100).toFixed(0)}% publish gate. ` +
-          `Add manual clues (cluesByAnswer) before publishing; validate:puzzles will block otherwise.`,
-      );
-    }
+    console.log(
+      `[${slotInfo.slotId}] dictionary clue ratio ${(manualClueRatio * 100).toFixed(1)}% ` +
+        `(accepted by default clue policy)`,
+    );
     generationReport.push({
       alias: puzzle.alias,
       date: slotInfo.date,

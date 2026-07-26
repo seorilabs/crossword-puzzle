@@ -124,9 +124,9 @@ async function applyToPuzzles(puzzlesDir, clues) {
 }
 
 // --report: 파일을 변경하지 않고, 발행 퍼즐 디렉터리의 퍼즐을 난이도·주제별로
-// 묶어 미검수(needsManualClue) 비율을 집계·출력한다(#250). "로테이션 대상 팩이
-// 발행 게이트를 통과하는지"를 한눈에 드러내는 커버리지 리포트로, 게이트를 넘는
-// 그룹이 하나라도 있으면 종료 코드 1로 실패시켜 CI 가드로도 쓸 수 있다.
+// 묶어 미검수(needsManualClue) 비율을 집계·출력한다(#250). 기본 정책은 사전
+// 뜻풀이를 모두 허용하므로 자체 문장 편집 우선순위를 보여 주는 리포트다. 코어에
+// 더 낮은 상한을 넘기는 별도 검수 정책에서는 같은 집계를 실패 게이트로 쓸 수 있다.
 async function report(puzzlesDir) {
   const files = (await readdir(puzzlesDir)).filter(
     (file) => file.endsWith(".json") && !SKIP_PUZZLE_FILES.has(file),
@@ -149,7 +149,7 @@ async function report(puzzlesDir) {
   const gatePercent = (DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO * 100).toFixed(0);
 
   console.log(
-    `Coverage report over ${puzzles.length} puzzle(s) in ${puzzlesDir} (gate: needsManualClue <= ${gatePercent}%)`,
+    `Coverage report over ${puzzles.length} puzzle(s) in ${puzzlesDir} (default allowed: needsManualClue <= ${gatePercent}%)`,
   );
   if (summary.groups.length === 0) {
     console.log("  (no puzzles with entries found)");
@@ -176,9 +176,7 @@ async function report(puzzlesDir) {
     );
     process.exitCode = 1;
   } else {
-    console.log(
-      `All tier/theme groups within ${gatePercent}% publish gate.`,
-    );
+    console.log(`All tier/theme groups within ${gatePercent}% default allowance.`);
   }
 }
 

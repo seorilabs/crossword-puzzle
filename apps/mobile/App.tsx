@@ -46,6 +46,7 @@ import {
   findPuzzleSummaryById,
   formatDateCardDay,
   formatDateCardWeekday,
+  formatDifficultyLabel,
   formatPuzzleAliasLabel,
   formatPuzzleCardSequenceLabel,
   getCompletedPuzzleIds,
@@ -310,13 +311,6 @@ function getInitialPuzzleId(puzzles: PuzzleManifestItem[]) {
     puzzles[0]?.puzzleId ??
     fallbackPuzzle.puzzleId
   );
-}
-
-function formatDifficultyLabel(difficulty?: Puzzle['difficulty']) {
-  if (difficulty === 'easy') return '쉬움';
-  if (difficulty === 'normal') return '보통';
-  if (difficulty === 'hard') return '어려움';
-  return '';
 }
 
 function getPuzzleTelemetryParams(

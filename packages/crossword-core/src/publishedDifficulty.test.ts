@@ -35,7 +35,7 @@ describe("번들 발행 팩 난이도 계약 (#151)", () => {
     );
   });
 
-  it("validate:puzzles가 난이도 일치와 단서 품질을 함께 검증한다", () => {
+  it("validate:puzzles가 난이도 일치와 사전 뜻풀이 기본 허용 정책을 함께 검증한다", () => {
     const validation = spawnSync(
       process.execPath,
       ["--experimental-strip-types", "scripts/validate-puzzle-pack.mjs"],
@@ -45,7 +45,7 @@ describe("번들 발행 팩 난이도 계약 (#151)", () => {
     assert.equal(validation.status, 0, validation.stderr);
     assert.match(
       validation.stdout,
-      /validated 9 puzzle\(s\) \(maxNeedsManualClueRatio=40%\)/,
+      /validated 9 puzzle\(s\) \(maxNeedsManualClueRatio=100%\)/,
     );
   });
 });

@@ -6,6 +6,17 @@ import {
   getPuzzleDailySequenceNumber,
   getPuzzlePackAlias,
 } from "./uiPolicy.ts";
+import type { Puzzle } from "./types.ts";
+
+// AIT WebView와 Android/iOS React Native가 같은 한글 난이도 라벨을 노출한다.
+export function formatDifficultyLabel(
+  difficulty?: Puzzle["difficulty"],
+): string {
+  if (difficulty === "easy") return "쉬움";
+  if (difficulty === "normal") return "보통";
+  if (difficulty === "hard") return "어려움";
+  return "";
+}
 
 export function findPuzzleSummaryById(
   puzzleSummaries: PuzzleManifestItem[],
