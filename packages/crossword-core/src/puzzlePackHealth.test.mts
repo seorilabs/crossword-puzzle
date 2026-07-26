@@ -115,6 +115,29 @@ describe("evaluatePublishedPuzzlePackHealth", () => {
     );
   });
 
+  it("fails when a date has more than one puzzle for the same difficulty", () => {
+    const fixture = createFixture();
+    fixture.manifest.puzzles.push({
+      ...fixture.manifest.puzzles[0],
+      path: "/puzzles/puzzle-easy-duplicate.json",
+      puzzleId: "puzzle-easy-duplicate",
+    });
+
+    const result = evaluatePublishedPuzzlePackHealth({
+      expectedDate: DATE,
+      manifest: fixture.manifest,
+      puzzlesByPath: fixture.puzzlesByPath,
+    });
+
+    assert.equal(result.pass, false);
+    assert.ok(
+      result.issues.some(
+        (issue) =>
+          issue.code === "duplicate_difficulty" && issue.difficulty === "easy",
+      ),
+    );
+  });
+
   it("fails when two difficulty tiers share an answer", () => {
     const fixture = createFixture();
     fixture.puzzles.normal.entries[0].answer =
@@ -128,6 +151,26 @@ describe("evaluatePublishedPuzzlePackHealth", () => {
 
     assert.equal(result.pass, false);
     assert.ok(result.issues.some((issue) => issue.code === "shared_answer"));
+  });
+
+  it("fails when puzzle metadata differs from the manifest", () => {
+    const fixture = createFixture();
+    fixture.puzzles.normal.puzzleId = "unexpected-normal-id";
+
+    const result = evaluatePublishedPuzzlePackHealth({
+      expectedDate: DATE,
+      manifest: fixture.manifest,
+      puzzlesByPath: fixture.puzzlesByPath,
+    });
+
+    assert.equal(result.pass, false);
+    assert.ok(
+      result.issues.some(
+        (issue) =>
+          issue.code === "puzzle_metadata_mismatch" &&
+          issue.difficulty === "normal",
+      ),
+    );
   });
 
   it("fails when the published grid size or diversity threshold drifts", () => {
