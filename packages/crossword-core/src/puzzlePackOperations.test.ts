@@ -214,12 +214,13 @@ describe("puzzle pack monitoring setup", () => {
     );
   });
 
-  it("AC-6 기존 monitoring 리소스를 모두 idempotent하게 갱신한다", async () => {
+  it("AC-1 AC-2 alert policy JSON과 metric filter를 검증하고 기존 리소스를 갱신한다", async () => {
     const testRoot = await mkdtemp(
       path.join(tmpdir(), "crossword-monitoring-test-"),
     );
     const fakeGcloud = path.join(testRoot, "gcloud");
     const callsPath = path.join(testRoot, "calls.log");
+    const policyCapturePath = path.join(testRoot, "policy.json");
 
     await writeFile(
       fakeGcloud,
@@ -244,6 +245,10 @@ if [ "$1" = "monitoring" ] && [ "$2" = "policies" ]; then
       process.stderr.write("unexpected alert policy filter: " + filter);
       process.exit(2);
     }
+    fs.writeFileSync(process.env.POLICY_CAPTURE_PATH, JSON.stringify({
+      displayName: policy.displayName,
+      filter,
+    }));
   ' "$policy_file"
 fi
 printf '%s\n' "$*" >> "$GCLOUD_CALLS_PATH"
@@ -283,12 +288,24 @@ esac
           env: {
             ...process.env,
             GCLOUD_CALLS_PATH: callsPath,
+            POLICY_CAPTURE_PATH: policyCapturePath,
             PATH: `${testRoot}:${process.env.PATH ?? ""}`,
           },
         },
       );
 
       assert.equal(result.status, 0, result.stderr);
+      const capturedPolicy = JSON.parse(
+        await readFile(policyCapturePath, "utf8"),
+      ) as { displayName: string; filter: string };
+      assert.equal(
+        capturedPolicy.displayName,
+        "가로세로 낱말 퍼즐 일간팩 오류",
+      );
+      assert.equal(
+        capturedPolicy.filter,
+        'metric.type="logging.googleapis.com/user/crossword_puzzle_pack_job_error_count" AND resource.type="cloud_run_job"',
+      );
       const calls = await readFile(callsPath, "utf8");
       assert.match(calls, /run jobs update crossword-puzzle-pack-health /);
       assert.match(
