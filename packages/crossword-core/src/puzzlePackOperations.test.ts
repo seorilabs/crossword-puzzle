@@ -313,6 +313,10 @@ esac
       assert.match(calls, /run jobs update crossword-puzzle-pack-health /);
       assert.match(
         calls,
+        /run jobs update crossword-puzzle-pack-health .*--service-account runtime@test\.iam\.gserviceaccount\.com /,
+      );
+      assert.match(
+        calls,
         /scheduler jobs update http crossword-puzzle-pack-health-daily /,
       );
       assert.match(

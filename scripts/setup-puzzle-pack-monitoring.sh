@@ -144,13 +144,13 @@ else
     IMAGE="$(gcloud run jobs describe "$GENERATOR_JOB_NAME" \
       --project "$PROJECT_ID" \
       --region "$REGION" \
-      --format='value(spec.template.template.containers[0].image)')"
+      --format='value(spec.template.spec.template.spec.containers[0].image)')"
   fi
   if [ -z "$RUNTIME_SERVICE_ACCOUNT" ]; then
     RUNTIME_SERVICE_ACCOUNT="$(gcloud run jobs describe "$GENERATOR_JOB_NAME" \
       --project "$PROJECT_ID" \
       --region "$REGION" \
-      --format='value(spec.template.template.serviceAccount)')"
+      --format='value(spec.template.spec.template.spec.serviceAccountName)')"
   fi
 fi
 
