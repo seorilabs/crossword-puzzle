@@ -313,6 +313,10 @@ esac
       assert.match(calls, /run jobs update crossword-puzzle-pack-health /);
       assert.match(
         calls,
+        /run jobs update crossword-puzzle-pack-health .*--service-account runtime@test\.iam\.gserviceaccount\.com /,
+      );
+      assert.match(
+        calls,
         /scheduler jobs update http crossword-puzzle-pack-health-daily /,
       );
       assert.match(
@@ -322,6 +326,10 @@ esac
       assert.match(
         calls,
         /monitoring policies update projects\/crossword-puzzle-79ae0\/alertPolicies\/existing /,
+      );
+      assert.match(
+        calls,
+        /monitoring policies list .*--filter displayName="가로세로 낱말 퍼즐 일간팩 오류" /,
       );
     } finally {
       await rm(testRoot, { recursive: true, force: true });
