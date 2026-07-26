@@ -5,6 +5,7 @@ import {
   DEFAULT_MAX_SCAFFOLD_SIMILARITY,
   DEFAULT_MAX_SHARED_ANSWER_RATIO,
   evaluatePuzzleDiversity,
+  excludePreviouslyUsedAnswers,
   selectComparableDiversityHistory,
   type PuzzleDiversitySnapshot,
 } from "./puzzleDiversity.ts";
@@ -148,5 +149,19 @@ describe("퍼즐 다양성 게이트", () => {
       comparable.map((snapshot) => snapshot.puzzleId),
       history.slice(1).map((snapshot) => snapshot.puzzleId),
     );
+  });
+
+  it("AC-1: 같은 날짜 앞 난이도에서 사용한 정답은 다음 난이도 후보에서 제외한다", () => {
+    const words = [
+      { answer: "가로" },
+      { answer: "신상명세서" },
+      { answer: "세로" },
+    ];
+
+    assert.deepEqual(excludePreviouslyUsedAnswers(words, [" 신상명세서 "]), [
+      { answer: "가로" },
+      { answer: "세로" },
+    ]);
+    assert.equal(words.length, 3);
   });
 });

@@ -26,6 +26,7 @@ import {
   DEFAULT_MAX_SCAFFOLD_SIMILARITY,
   DEFAULT_MAX_SHARED_ANSWER_RATIO,
   evaluatePuzzleDiversity,
+  excludePreviouslyUsedAnswers,
   selectComparableDiversityHistory,
 } from "../../packages/crossword-core/src/puzzleDiversity.ts";
 
@@ -796,6 +797,44 @@ async function loadDiversityHistory(
   return snapshots;
 }
 
+async function loadSameDateAnswerHistory(
+  items,
+  assetRoot,
+  outDir,
+  date,
+  currentSlotId,
+  currentPuzzleId,
+) {
+  const answers = new Set();
+  let puzzleCount = 0;
+
+  for (const item of items) {
+    const isCurrentPuzzle =
+      item.slotId === currentSlotId || item.puzzleId === currentPuzzleId;
+
+    if (item.date !== date || isCurrentPuzzle) {
+      continue;
+    }
+
+    const puzzle = await readJsonOptional(
+      resolvePuzzleOutputPath(assetRoot, outDir, item.path),
+    );
+
+    if (puzzle == null) {
+      continue;
+    }
+
+    puzzleCount += 1;
+    for (const entry of puzzle.entries ?? []) {
+      if (typeof entry.answer === "string" && entry.answer.trim() !== "") {
+        answers.add(entry.answer.trim());
+      }
+    }
+  }
+
+  return { answers, puzzleCount };
+}
+
 async function run() {
   const options = parseArgs(process.argv.slice(2));
   const outDir = path.resolve(options.outDir);
@@ -897,8 +936,6 @@ async function run() {
     `Diversity gate history=${diversityHistory.length}/${Math.max(0, Math.floor(options.diversityHistoryLimit))} maxAnswerReuse=${diversityThresholds.maxSharedAnswerRatio} maxScaffoldSimilarity=${diversityThresholds.maxScaffoldSimilarity}`,
   );
 
-  const generationWordMap = makeWordMap(generationWords);
-
   for (let dayIndex = 0; dayIndex < options.days; dayIndex += 1) {
     const slotInfo = makeSlotInfo(
       addHours(basePublishedAt, dayIndex * options.intervalHours),
@@ -916,9 +953,31 @@ async function run() {
       slotInfo.slotId,
       options.diversityHistoryLimit,
     );
+    const sameDateAnswerHistory = await loadSameDateAnswerHistory(
+      [...hydratedExistingPuzzles, ...puzzles],
+      assetRoot,
+      outDir,
+      slotInfo.date,
+      slotInfo.slotId,
+      slotInfo.alias,
+    );
+    const slotGenerationWords = excludePreviouslyUsedAnswers(
+      generationWords,
+      sameDateAnswerHistory.answers,
+    );
+    const slotGenerationWordMap = makeWordMap(slotGenerationWords);
+
+    if (slotGenerationWords.length < profile.minWordCount) {
+      throw new Error(
+        `Not enough unused same-date answers for ${profile.difficulty}: candidates=${slotGenerationWords.length} minEntries=${profile.minWordCount}`,
+      );
+    }
 
     console.log(
       `[${slotInfo.slotId}] generation started (${dayIndex + 1}/${options.days}) packId=${packId}`,
+    );
+    console.log(
+      `[${slotInfo.slotId}] same-date answer gate comparedPuzzles=${sameDateAnswerHistory.puzzleCount} excludedAnswers=${sameDateAnswerHistory.answers.size} candidates=${slotGenerationWords.length}/${generationWords.length}`,
     );
 
     for (let retryIndex = 0; retryIndex < options.retries; retryIndex += 1) {
@@ -940,7 +999,7 @@ async function run() {
         minWordLength: options.minWordLength,
         samples: options.samples,
         seed,
-        wordBank: generationWords,
+        wordBank: slotGenerationWords,
       });
       const retryElapsedSeconds = (
         (Date.now() - retryStartTime) /
@@ -949,8 +1008,8 @@ async function run() {
 
       const candidates = boards.map((candidate, candidateIndex) => {
         const quality = evaluateQuality(candidate, qualityThresholds);
-        const candidateEntries = analyzeRuns(candidate, generationWordMap)
-          .runs.map((run) => generationWordMap.get(run.answer))
+        const candidateEntries = analyzeRuns(candidate, slotGenerationWordMap)
+          .runs.map((run) => slotGenerationWordMap.get(run.answer))
           .filter((entry) => entry != null);
         const manualClueRatio = needsManualClueRatio(candidateEntries);
         const manualClueGatePass =
@@ -985,6 +1044,9 @@ async function run() {
             maxSharedAnswerRatio: Number(
               diversity.maxSharedAnswerRatio.toFixed(3),
             ),
+            sameDateComparedPuzzleCount: sameDateAnswerHistory.puzzleCount,
+            sameDateExcludedAnswerCount: sameDateAnswerHistory.answers.size,
+            sameDateSharedAnswerCount: 0,
           },
           metrics: {
             autoRunCount: candidate.metrics.autoRunCount,
@@ -1051,6 +1113,19 @@ async function run() {
       options.difficulty,
       { themeTag: options.theme, themeLabel },
     );
+    const sameDateSharedAnswers = [
+      ...new Set(
+        puzzle.entries
+          .map((entry) => entry.answer)
+          .filter((answer) => sameDateAnswerHistory.answers.has(answer)),
+      ),
+    ];
+
+    if (sameDateSharedAnswers.length > 0) {
+      throw new Error(
+        `Same-date answers leaked into ${slotInfo.slotId}: ${sameDateSharedAnswers.join(",")}`,
+      );
+    }
     const filename = `${puzzle.puzzleId}.json`;
     const filePath = path.join(outDir, filename);
 
@@ -1146,6 +1221,7 @@ async function run() {
     qualityThresholds,
     diversityThresholds: {
       historyLimit: Math.max(0, Math.floor(options.diversityHistoryLimit)),
+      maxSameDateSharedAnswers: 0,
       ...diversityThresholds,
     },
     puzzles: manifestPuzzles,
