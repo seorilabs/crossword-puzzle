@@ -86,9 +86,7 @@ describe("일간 퍼즐 전달 계약", () => {
       'export { formatDifficultyLabel } from "../packages/crossword-core/src"',
     );
     expect(mobileSource).toContain("formatDifficultyLabel,");
-    expect(mobileSource).toContain(
-      "from '../../packages/crossword-core/src';",
-    );
+    expect(mobileSource).toContain("from '../../packages/crossword-core/src';");
     expect(aitWorkflowSource).toContain(
       "https://crossword-puzzle-79ae0.web.app",
     );
@@ -110,5 +108,15 @@ describe("일간 퍼즐 전달 계약", () => {
     expect(generatorSource).toContain(
       "diversityThresholds: manifest.diversityThresholds",
     );
+  });
+
+  it("AC-8: 같은 날짜의 앞 난이도 정답은 다음 난이도 후보에서 제외한다", () => {
+    expect(generatorSource).toContain(
+      "const slotGenerationWords = excludePreviouslyUsedAnswers(",
+    );
+    expect(generatorSource).toContain(
+      "sameDateAnswerHistory.answers.has(answer)",
+    );
+    expect(generatorSource).toContain("maxSameDateSharedAnswers: 0");
   });
 });

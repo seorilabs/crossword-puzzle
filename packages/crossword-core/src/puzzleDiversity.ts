@@ -27,6 +27,17 @@ export type PuzzleDiversityResult = {
   pass: boolean;
 };
 
+export function excludePreviouslyUsedAnswers<T extends { answer: string }>(
+  words: readonly T[],
+  usedAnswers: Iterable<string>,
+) {
+  const normalizedUsedAnswers = new Set(
+    [...usedAnswers].map((answer) => answer.trim()).filter(Boolean),
+  );
+
+  return words.filter((word) => !normalizedUsedAnswers.has(word.answer.trim()));
+}
+
 export function selectComparableDiversityHistory(
   recentPuzzles: readonly PuzzleDiversitySnapshot[],
   currentSlotId: string,

@@ -120,6 +120,7 @@ export type PuzzleManifest = {
   days?: number;
   diversityThresholds?: {
     historyLimit: number;
+    maxSameDateSharedAnswers: number;
     maxScaffoldSimilarity: number;
     maxSharedAnswerRatio: number;
   };

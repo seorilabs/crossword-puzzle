@@ -231,6 +231,8 @@ public/puzzles/generation-report.json
 
 운영 배치는 매일 한 번 Easy 5×5, Normal 8×8, Hard 8×8 세 판을 만들고 `--append --keep=21`로 최근 7일치를 유지합니다. 각 퍼즐은 `packId`, `puzzleId`, `slotId`, `publishedAt`를 가지며, 앱의 로컬 진행 상태는 `puzzleId` 기준으로 저장됩니다.
 
+같은 날짜에 먼저 생성된 난이도의 정답은 다음 난이도 후보에서 제외하므로, 당일 세 퍼즐 사이에는 같은 정답을 다시 사용하지 않습니다. `--maxAnswerReuse`는 날짜가 다른 최근 동일 난이도 퍼즐과의 재사용 비율을 제한하는 별도 기준입니다.
+
 Cloud Run Job wrapper는 `PUZZLE_SEED`를 지정하지 않으면 실행 시각까지 포함해 기본 seed를 만들기 때문에 날짜마다 다른 후보를 생성합니다. 같은 퍼즐을 재현해야 할 때만 `--seed` 또는 `PUZZLE_SEED`를 고정합니다.
 
 생성 후 `npm run dev`를 켜고 앱에서 `manifest.json`과 오늘 날짜 puzzle JSON을 확인합니다.
