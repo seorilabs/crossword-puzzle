@@ -86,7 +86,7 @@ describe("dailyHintWallet", () => {
     assert.equal(getDailyHintBalance(migrated).remainingCredits, 2);
   });
 
-  it("AC-5: 저장된 일일 지갑이 있으면 구버전 이관을 다시 실행하지 않는다", async () => {
+  it("AC-5: 구버전 퍼즐별 기록을 최초 1회만 합산 이관한다", async () => {
     let savedWallet = null as ReturnType<typeof createDailyHintWallet> | null;
     let legacyLoadCount = 0;
     let saveCount = 0;
@@ -101,7 +101,11 @@ describe("dailyHintWallet", () => {
     };
     const loadLegacyProgresses = async () => {
       legacyLoadCount += 1;
-      return [{ earnedHintCredits: 1, hintCount: 2 }];
+      return [
+        { earnedHintCredits: 2, hintCount: 2 },
+        { earnedHintCredits: 0, hintCount: 1 },
+        { earnedHintCredits: 0, hintCount: 0 },
+      ];
     };
 
     const first = await loadOrMigrateDailyHintWallet({
@@ -115,7 +119,13 @@ describe("dailyHintWallet", () => {
       repository,
     });
 
-    assert.deepEqual(first, reopened);
+    assert.deepEqual(first, {
+      date: "2026-07-26",
+      earnedCredits: 2,
+      usedCredits: 3,
+    });
+    assert.equal(getDailyHintBalance(first).remainingCredits, 2);
+    assert.deepEqual(reopened, first);
     assert.equal(legacyLoadCount, 1);
     assert.equal(saveCount, 1);
   });
