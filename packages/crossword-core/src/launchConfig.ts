@@ -1,5 +1,9 @@
 import { LEADERBOARD_SCORE_WEIGHTS } from "./leaderboard.ts";
 import {
+  DEFAULT_DAILY_FREE_HINT_CREDITS,
+  DEFAULT_REWARDED_HINT_CREDITS,
+} from "./dailyHintWallet.ts";
+import {
   DAILY_ATTEMPT_LIMIT,
   DEFAULT_HINT_CREDITS,
   DEFAULT_HINT_CREDITS_BY_DIFFICULTY,
@@ -9,8 +13,11 @@ import {
 } from "./uiPolicy.ts";
 
 export type LaunchConfig = {
+  // 세 난이도와 지난 퍼즐이 함께 쓰는 KST 날짜별 무료 힌트 개수.
+  dailyFreeHintCredits: number;
   // normal(및 난이도 미상) 퍼즐의 기본 힌트 크레딧. easy/hard 는 아래 전용 키로
-  // 오버라이드한다(#251).
+  // 오버라이드한다(#251). 신규 일일 지갑 클라이언트는 사용하지 않지만 구버전
+  // 클라이언트 호환을 위해 Remote Config 계약을 유지한다.
   defaultHintCredits: number;
   // 난이도별 기본 힌트 크레딧 오버라이드(#251). 평면 3크레딧이 easy 는 과다·hard 는
   // 부족한 문제를 재배포 없이 원격 조정하려고 뺀다. 기본값은 uiPolicy 의 난이도별
@@ -68,6 +75,7 @@ export type LaunchConfig = {
 };
 
 export const launchConfigKeys = {
+  dailyFreeHintCredits: "daily_free_hint_credits",
   defaultHintCredits: "default_hint_credits",
   defaultHintCreditsEasy: "default_hint_credits_easy",
   defaultHintCreditsHard: "default_hint_credits_hard",
@@ -99,11 +107,12 @@ export const launchConfigKeys = {
 } as const;
 
 export const defaultLaunchConfig: LaunchConfig = {
+  dailyFreeHintCredits: DEFAULT_DAILY_FREE_HINT_CREDITS,
   defaultHintCredits: DEFAULT_HINT_CREDITS,
   // 난이도별 기본 힌트 크레딧 기본값은 uiPolicy 코드 기본값(easy:2/hard:5)과 동일(#251).
   defaultHintCreditsEasy: DEFAULT_HINT_CREDITS_BY_DIFFICULTY.easy,
   defaultHintCreditsHard: DEFAULT_HINT_CREDITS_BY_DIFFICULTY.hard,
-  rewardedHintCredits: 2,
+  rewardedHintCredits: DEFAULT_REWARDED_HINT_CREDITS,
   visiblePuzzleCount: DEFAULT_VISIBLE_PUZZLE_COUNT,
   puzzleGenerationIntervalHours: PUZZLE_GENERATION_INTERVAL_HOURS,
   puzzleKeepCount: PUZZLE_KEEP_COUNT,
@@ -184,6 +193,12 @@ export function normalizeLaunchConfig(
   value: Partial<LaunchConfig>,
 ): LaunchConfig {
   return {
+    dailyFreeHintCredits: clampInteger(
+      value.dailyFreeHintCredits ?? defaultLaunchConfig.dailyFreeHintCredits,
+      defaultLaunchConfig.dailyFreeHintCredits,
+      0,
+      20,
+    ),
     defaultHintCredits: clampInteger(
       value.defaultHintCredits ?? defaultLaunchConfig.defaultHintCredits,
       defaultLaunchConfig.defaultHintCredits,
@@ -244,8 +259,7 @@ export function normalizeLaunchConfig(
     leaderboardEnabled:
       value.leaderboardEnabled ?? defaultLaunchConfig.leaderboardEnabled,
     returnReminderEnabled:
-      value.returnReminderEnabled ??
-      defaultLaunchConfig.returnReminderEnabled,
+      value.returnReminderEnabled ?? defaultLaunchConfig.returnReminderEnabled,
     onboardingDifficultyRampEnabled:
       value.onboardingDifficultyRampEnabled ??
       defaultLaunchConfig.onboardingDifficultyRampEnabled,
@@ -360,6 +374,8 @@ export function normalizeLaunchConfig(
 
 export function getLaunchConfigDefaultsForRemoteConfig() {
   return {
+    [launchConfigKeys.dailyFreeHintCredits]:
+      defaultLaunchConfig.dailyFreeHintCredits,
     [launchConfigKeys.defaultHintCredits]:
       defaultLaunchConfig.defaultHintCredits,
     [launchConfigKeys.defaultHintCreditsEasy]:
@@ -373,8 +389,7 @@ export function getLaunchConfigDefaultsForRemoteConfig() {
     [launchConfigKeys.puzzleGenerationIntervalHours]:
       defaultLaunchConfig.puzzleGenerationIntervalHours,
     [launchConfigKeys.puzzleKeepCount]: defaultLaunchConfig.puzzleKeepCount,
-    [launchConfigKeys.dailyAttemptLimit]:
-      defaultLaunchConfig.dailyAttemptLimit,
+    [launchConfigKeys.dailyAttemptLimit]: defaultLaunchConfig.dailyAttemptLimit,
     [launchConfigKeys.rewardedHintAdsEnabled]:
       defaultLaunchConfig.rewardedHintAdsEnabled,
     [launchConfigKeys.leaderboardEnabled]:

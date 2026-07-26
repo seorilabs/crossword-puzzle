@@ -145,6 +145,10 @@ export async function loadFirebaseLaunchConfig(): Promise<LaunchConfig> {
     }
 
     return normalizeLaunchConfig({
+      dailyFreeHintCredits: getNumber(
+        remoteConfig,
+        launchConfigKeys.dailyFreeHintCredits,
+      ),
       defaultHintCredits: getNumber(
         remoteConfig,
         launchConfigKeys.defaultHintCredits,
