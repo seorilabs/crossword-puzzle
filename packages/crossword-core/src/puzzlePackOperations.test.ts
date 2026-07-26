@@ -224,6 +224,28 @@ describe("puzzle pack monitoring setup", () => {
     await writeFile(
       fakeGcloud,
       `#!/usr/bin/env bash
+if [ "$1" = "monitoring" ] && [ "$2" = "policies" ]; then
+  policy_file=""
+  previous=""
+  for argument in "$@"; do
+    if [ "$previous" = "--policy-from-file" ]; then
+      policy_file="$argument"
+      break
+    fi
+    previous="$argument"
+  done
+  node -e '
+    const fs = require("node:fs");
+    const policy = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+    const filter = policy.conditions[0].conditionThreshold.filter;
+    const quote = String.fromCharCode(34);
+    const expected = "metric.type=" + quote + "logging.googleapis.com/user/crossword_puzzle_pack_job_error_count" + quote + " AND resource.type=" + quote + "cloud_run_job" + quote;
+    if (filter !== expected) {
+      process.stderr.write("unexpected alert policy filter: " + filter);
+      process.exit(2);
+    }
+  ' "$policy_file"
+fi
 printf '%s\n' "$*" >> "$GCLOUD_CALLS_PATH"
 case "$*" in
   "projects describe "*)
