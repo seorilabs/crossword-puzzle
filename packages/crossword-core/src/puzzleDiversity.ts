@@ -27,6 +27,18 @@ export type PuzzleDiversityResult = {
   pass: boolean;
 };
 
+export function selectComparableDiversityHistory(
+  recentPuzzles: readonly PuzzleDiversitySnapshot[],
+  currentSlotId: string,
+  limit = DEFAULT_DIVERSITY_HISTORY_LIMIT,
+) {
+  const safeLimit = Math.max(0, Math.floor(limit));
+
+  return recentPuzzles
+    .filter((snapshot) => snapshot.slotId !== currentSlotId)
+    .slice(0, safeLimit);
+}
+
 function uniqueNonEmpty(values: readonly string[]) {
   return new Set(values.map((value) => value.trim()).filter(Boolean));
 }

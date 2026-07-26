@@ -27,6 +27,7 @@ import {
   DEFAULT_MAX_SCAFFOLD_SIMILARITY,
   DEFAULT_MAX_SHARED_ANSWER_RATIO,
   evaluatePuzzleDiversity,
+  selectComparableDiversityHistory,
 } from "../../packages/crossword-core/src/puzzleDiversity.ts";
 
 const DEFAULT_BATCH_OPTIONS = {
@@ -778,7 +779,9 @@ async function loadDiversityHistory(
     .sort((left, right) =>
       getManifestSortKey(right).localeCompare(getManifestSortKey(left)),
     )
-    .slice(0, safeLimit);
+    // 같은 슬롯 재실행 시 현재 슬롯을 제외하고도 limit개를 유지할 수 있게 한 건 더
+    // 읽는다. 실제 비교 대상 선택은 slotId가 정해진 뒤 순수 helper에서 수행한다.
+    .slice(0, safeLimit + 1);
   const snapshots = [];
 
   for (const item of recentItems) {
@@ -909,8 +912,10 @@ async function run() {
     let selectedDiversity = null;
     const attempts = [];
     const dayStartTime = Date.now();
-    const slotDiversityHistory = diversityHistory.filter(
-      (snapshot) => snapshot.slotId !== slotInfo.slotId,
+    const slotDiversityHistory = selectComparableDiversityHistory(
+      diversityHistory,
+      slotInfo.slotId,
+      options.diversityHistoryLimit,
     );
 
     console.log(

@@ -5,6 +5,7 @@ import {
   DEFAULT_MAX_SCAFFOLD_SIMILARITY,
   DEFAULT_MAX_SHARED_ANSWER_RATIO,
   evaluatePuzzleDiversity,
+  selectComparableDiversityHistory,
   type PuzzleDiversitySnapshot,
 } from "./puzzleDiversity.ts";
 
@@ -122,5 +123,30 @@ describe("퍼즐 다양성 게이트", () => {
       maxScaffoldSimilarity: 0,
       pass: true,
     });
+  });
+
+  it("AC-2: 같은 슬롯 재실행은 현재 슬롯을 제외하고 이전 7개를 비교한다", () => {
+    const history = Array.from({ length: 8 }, (_, index) => ({
+      answers: [`정답-${index}`],
+      occupiedCellKeys: [`0:${index}`],
+      puzzleId: `puzzle-${index}`,
+      slotId: index === 0 ? "2026-07-26-h00" : `2026-07-${26 - index}-h00`,
+    }));
+
+    const comparable = selectComparableDiversityHistory(
+      history,
+      "2026-07-26-h00",
+      7,
+    );
+
+    assert.equal(comparable.length, 7);
+    assert.equal(
+      comparable.some((snapshot) => snapshot.slotId === "2026-07-26-h00"),
+      false,
+    );
+    assert.deepEqual(
+      comparable.map((snapshot) => snapshot.puzzleId),
+      history.slice(1).map((snapshot) => snapshot.puzzleId),
+    );
   });
 });
