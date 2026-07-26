@@ -166,7 +166,6 @@ type PuzzlePack = {
   summaries: PuzzleManifestItem[];
 };
 
-
 type PuzzleViewModel = {
   bounds: ReturnType<typeof getBounds>;
   cellEntries: Map<string, PuzzleEntry[]>;
@@ -302,7 +301,7 @@ function dedupePuzzleSummaries(puzzles: PuzzleManifestItem[]) {
 }
 
 // 난이도 정렬 순위(당일 서빙 목록·홈 난이도 선택에서 easy→normal→hard 순).
-const DIFFICULTY_RANK: Record<string, number> = {easy: 0, normal: 1, hard: 2};
+const DIFFICULTY_RANK: Record<string, number> = { easy: 0, normal: 1, hard: 2 };
 
 function getInitialPuzzleId(puzzles: PuzzleManifestItem[]) {
   const today = getTodayDateKey();
@@ -385,7 +384,6 @@ export function formatPuzzleCardTitle(
 
   return weekday === '' ? dayLabel : `${dayLabel} ${weekday}`;
 }
-
 
 // Chooses which cell `clearAnswerCell` should erase: the caret cell if it holds
 // an editable letter, otherwise the nearest earlier editable cell, skipping
@@ -495,7 +493,8 @@ export function computeMobileStreakDays(
 
   function getPrevDate(dateStr: string): string {
     const [y, m, d] = dateStr.split('-').map(Number);
-    if (!Number.isInteger(y) || !Number.isInteger(m) || !Number.isInteger(d)) return '';
+    if (!Number.isInteger(y) || !Number.isInteger(m) || !Number.isInteger(d))
+      return '';
     const prev = new Date(Date.UTC(y, m - 1, d - 1));
     return prev.toISOString().slice(0, 10);
   }
@@ -537,7 +536,6 @@ export function formatPuzzleHistoryTitle(
     ? `${formatPuzzleCardSequenceLabel(summary)} · ${aliasLabel}`
     : aliasLabel;
 }
-
 
 function createDateCardState(
   mission: DailyMissionState,
@@ -885,10 +883,12 @@ function AppContent() {
     useState<RewardedAdPlacement | null>(null);
   const [, setAdDiagnosticsTapCount] = useState(0);
   const [isAdDiagnosticsOpen, setIsAdDiagnosticsOpen] = useState(false);
-  const [adDiagnosticState, setAdDiagnosticState] = useState<AdDiagnosticState>({
-    isRunning: false,
-    message: '대기 중',
-  });
+  const [adDiagnosticState, setAdDiagnosticState] = useState<AdDiagnosticState>(
+    {
+      isRunning: false,
+      message: '대기 중',
+    },
+  );
   const hasLoggedFirstAnswerInputRef = useRef(false);
   const playScreenScrollRef = useRef<React.ElementRef<typeof ScrollView>>(null);
   const boardInputRef = useRef<React.ElementRef<typeof TextInput>>(null);
@@ -937,12 +937,7 @@ function AppContent() {
 
     navigateTo(backTarget);
     return true;
-  }, [
-    completionCelebrationPuzzleId,
-    isClueListOpen,
-    navigateTo,
-    route,
-  ]);
+  }, [completionCelebrationPuzzleId, isClueListOpen, navigateTo, route]);
 
   const viewModel = usePuzzleViewModel(
     puzzle,
@@ -1058,7 +1053,7 @@ function AppContent() {
     () => getCompletedPuzzleIds(dateCardStates),
     [dateCardStates],
   );
-  // 당일 서빙: 오늘 발행된 퍼즐(easy 5×5 · normal 8×8)만, 난이도 오름차순 정렬.
+  // 당일 서빙: 오늘 발행된 퍼즐(easy 5×5 · normal/hard 8×8)만, 난이도 오름차순 정렬.
   const todayPuzzleSummaries = useMemo(
     () =>
       puzzlePack.summaries
@@ -1159,7 +1154,9 @@ function AppContent() {
     );
 
     setPuzzleArchiveRecords(nextArchiveRecords);
-    setConsecutiveStreak(computeMobileStreakDays(nextArchiveRecords, getTodayDateKey()));
+    setConsecutiveStreak(
+      computeMobileStreakDays(nextArchiveRecords, getTodayDateKey()),
+    );
     setDateCardStates(previous => ({ ...previous, ...archiveStates }));
   }, []);
 
@@ -1547,7 +1544,9 @@ function AppContent() {
           setHasSeenHowToPlay(false);
         }
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   function dismissHowToPlay() {
@@ -2187,6 +2186,9 @@ function AppContent() {
           return (
             <Pressable
               key={summary.puzzleId}
+              accessibilityLabel={`${formatDifficultyLabel(summary.difficulty)} 난이도 ${statusLabel}`}
+              accessibilityRole="button"
+              accessibilityState={{ selected: isSelected }}
               onPress={() => {
                 void selectPuzzle(summary.puzzleId);
               }}
@@ -2202,6 +2204,42 @@ function AppContent() {
             </Pressable>
           );
         })}
+      </View>
+    );
+  }
+
+  function renderSelectedPuzzleScaffold() {
+    return (
+      <View
+        accessible
+        accessibilityLabel={`선택한 ${formatDifficultyLabel(puzzle.difficulty)} 난이도 ${puzzle.gridSize} 곱하기 ${puzzle.gridSize} 퍼즐판 미리보기`}
+        style={styles.selectedPuzzleScaffold}
+      >
+        <View style={styles.puzzleScaffoldHeader}>
+          <Text style={styles.puzzleScaffoldTitle}>선택한 퍼즐판</Text>
+          <Text style={styles.puzzleScaffoldMeta}>
+            {formatDifficultyLabel(puzzle.difficulty)} · {puzzle.gridSize}×
+            {puzzle.gridSize}
+          </Text>
+        </View>
+        <View style={styles.puzzleScaffoldBoard}>
+          {puzzle.grid.map((row, rowIndex) => (
+            <View
+              key={`scaffold-row-${rowIndex}`}
+              style={styles.puzzleScaffoldRow}
+            >
+              {row.map((cell, colIndex) => (
+                <View
+                  key={`scaffold-cell-${rowIndex}-${colIndex}`}
+                  style={[
+                    styles.puzzleScaffoldCell,
+                    cell === '' ? styles.puzzleScaffoldBlock : null,
+                  ]}
+                />
+              ))}
+            </View>
+          ))}
+        </View>
       </View>
     );
   }
@@ -2278,6 +2316,7 @@ function AppContent() {
       <ScrollView contentContainerStyle={styles.homeContent}>
         {renderHeader(HOME_HEADER_TITLE, selectedPuzzleLabel)}
         {renderDifficultyPicker()}
+        {renderSelectedPuzzleScaffold()}
 
         <View style={styles.summaryPanel}>
           <Text style={styles.panelTitle}>{selectedPuzzleSequenceLabel}</Text>
@@ -2681,41 +2720,45 @@ function AppContent() {
         </View>
         {answerInputMode === 'cell' || isReviewMode ? (
           <View style={styles.answerSlots}>
-          {answerSlots.map((slot, index) => (
-            <Pressable
-              accessibilityLabel={`${index + 1}/${slotCount}번째 칸${
-                slot.value === ''
-                  ? ', 빈 칸'
-                  : `, ${slot.value}${
-                      slot.isLocked ? ' 정답 잠금' : slot.isWrong ? ' 오답' : ''
-                    }`
-              }`}
-              accessibilityRole="button"
-              accessibilityState={{ selected: slot.isActive }}
-              key={slot.key}
-              onPress={() => {
-                selectEntry(selectedEntry, slot.key);
-                focusBoardInput(slot.key);
-              }}
-              style={[
-                styles.answerSlot,
-                slot.isActive && styles.answerSlotActive,
-                slot.isPending && styles.answerSlotPending,
-                slot.isLocked && styles.answerSlotLocked,
-                slot.isWrong && styles.answerSlotWrong,
-              ]}
-            >
-              <Text
+            {answerSlots.map((slot, index) => (
+              <Pressable
+                accessibilityLabel={`${index + 1}/${slotCount}번째 칸${
+                  slot.value === ''
+                    ? ', 빈 칸'
+                    : `, ${slot.value}${
+                        slot.isLocked
+                          ? ' 정답 잠금'
+                          : slot.isWrong
+                            ? ' 오답'
+                            : ''
+                      }`
+                }`}
+                accessibilityRole="button"
+                accessibilityState={{ selected: slot.isActive }}
+                key={slot.key}
+                onPress={() => {
+                  selectEntry(selectedEntry, slot.key);
+                  focusBoardInput(slot.key);
+                }}
                 style={[
-                  styles.answerSlotText,
-                  slot.isLocked && styles.answerSlotTextLocked,
-                  slot.isWrong && styles.answerSlotTextWrong,
+                  styles.answerSlot,
+                  slot.isActive && styles.answerSlotActive,
+                  slot.isPending && styles.answerSlotPending,
+                  slot.isLocked && styles.answerSlotLocked,
+                  slot.isWrong && styles.answerSlotWrong,
                 ]}
               >
-                {slot.value}
-              </Text>
-            </Pressable>
-          ))}
+                <Text
+                  style={[
+                    styles.answerSlotText,
+                    slot.isLocked && styles.answerSlotTextLocked,
+                    slot.isWrong && styles.answerSlotTextWrong,
+                  ]}
+                >
+                  {slot.value}
+                </Text>
+              </Pressable>
+            ))}
           </View>
         ) : (
           <TextInput
@@ -2914,8 +2957,8 @@ function AppContent() {
                 }`}
                 accessibilityRole="button"
                 onPress={() => {
-                  startNextRecommendedPuzzle('result_overlay').catch(() =>
-                    undefined,
+                  startNextRecommendedPuzzle('result_overlay').catch(
+                    () => undefined,
                   );
                 }}
                 style={styles.primaryButton}
@@ -3004,7 +3047,7 @@ function AppContent() {
             <View style={styles.completionDialogActions}>
               <Pressable
                 onPress={dismissHowToPlay}
-                style={[styles.primaryButton, {flex: 1}]}
+                style={[styles.primaryButton, { flex: 1 }]}
               >
                 <Text style={styles.primaryButtonText}>
                   알겠어요, 시작할게요!
@@ -3151,10 +3194,7 @@ function AppContent() {
             {isCompleted ? (
               <>
                 <Metric label="도전 횟수" value={`${mission.attemptsUsed}회`} />
-                <Metric
-                  label="풀이 시간"
-                  value={elapsedLabel ?? '−'}
-                />
+                <Metric label="풀이 시간" value={elapsedLabel ?? '−'} />
                 <Metric label="사용 힌트" value={`${hintCount}개`} />
               </>
             ) : (
@@ -3179,8 +3219,8 @@ function AppContent() {
                     : ` · ${nextRecommendedLabel}`
                 }`}
                 onPress={() => {
-                  startNextRecommendedPuzzle('result_screen').catch(() =>
-                    undefined,
+                  startNextRecommendedPuzzle('result_screen').catch(
+                    () => undefined,
                   );
                 }}
                 style={styles.primaryButton}
@@ -3267,7 +3307,9 @@ function AppContent() {
                       <Text style={styles.resultWordNumber}>
                         {label != null ? `${label}번` : '·'}
                       </Text>
-                      <Text style={styles.resultWordAnswer}>{entry.answer}</Text>
+                      <Text style={styles.resultWordAnswer}>
+                        {entry.answer}
+                      </Text>
                       <Text style={styles.resultWordClue} numberOfLines={2}>
                         {entry.clue}
                       </Text>
@@ -3288,7 +3330,9 @@ function AppContent() {
                       <Text style={styles.resultWordNumber}>
                         {label != null ? `${label}번` : '·'}
                       </Text>
-                      <Text style={styles.resultWordAnswer}>{entry.answer}</Text>
+                      <Text style={styles.resultWordAnswer}>
+                        {entry.answer}
+                      </Text>
                       <Text style={styles.resultWordClue} numberOfLines={2}>
                         {entry.clue}
                       </Text>
@@ -4007,6 +4051,52 @@ const styles = StyleSheet.create({
   difficultyChipStatus: {
     color: '#64748b',
     fontSize: 12,
+  },
+  selectedPuzzleScaffold: {
+    alignItems: 'center',
+    alignSelf: 'stretch',
+    backgroundColor: '#f1f9f9',
+    borderColor: '#c7ebe5',
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 10,
+    marginBottom: 18,
+    padding: 14,
+  },
+  puzzleScaffoldHeader: {
+    alignItems: 'center',
+    alignSelf: 'stretch',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  puzzleScaffoldTitle: {
+    color: '#0f172a',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  puzzleScaffoldMeta: {
+    color: '#0f766e',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  puzzleScaffoldBoard: {
+    aspectRatio: 1,
+    backgroundColor: '#d7e8e5',
+    gap: 2,
+    padding: 2,
+    width: 152,
+  },
+  puzzleScaffoldRow: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 2,
+  },
+  puzzleScaffoldCell: {
+    backgroundColor: '#ffffff',
+    flex: 1,
+  },
+  puzzleScaffoldBlock: {
+    backgroundColor: '#475569',
   },
   playScreen: {
     flex: 1,

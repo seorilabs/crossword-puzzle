@@ -25,19 +25,22 @@ export type DifficultyProfile = {
   wordDifficulties: readonly Difficulty[];
 };
 
-export const DIFFICULTY_ORDER: readonly Difficulty[] = ["easy", "normal", "hard"];
+export const DIFFICULTY_ORDER: readonly Difficulty[] = [
+  "easy",
+  "normal",
+  "hard",
+];
 
-// easy < normal < hard 로 boardSize/maxWords 가 단조 증가하도록 유지한다.
-// "사이즈와 난이도를 동시에 올리지 말 것" 원칙에 따라 easy 는 작은 보드+적은 단어+
-// 초급 어휘로, hard 는 큰 보드+많은 단어+고급 어휘로 구성한다. normal 은 기존
+// easy < normal <= hard 로 보드 크기를 유지한다. "사이즈와 난이도를 동시에 올리지
+// 말 것" 원칙에 따라 easy 는 작은 보드+적은 단어+초급 어휘로, hard 는 normal과
+// 같은 8×8에서 더 많은 단어+고급 어휘+완화된 교차율로 구성한다. normal 은 기존
 // 기본 생성값과 동일하게 유지해 회귀가 없도록 한다.
 export const DIFFICULTY_PROFILES: Record<Difficulty, DifficultyProfile> = {
   easy: {
     difficulty: "easy",
-    // 매일 5×5 easy를 서빙하는 방향(당일 2판: easy 5×5 + normal 8×8)에 맞춰 보드를
-    // 5로 낮춘다. 온보딩 퍼즐과 같은 5×5 규격으로, 초급 어휘·촘촘한 교차로 1~2분
-    // 안에 푸는 가벼운 데일리를 목표로 한다. 5×5 자동생성은 초급 워드뱅크(약 900개)로
-    // 검증됨(생성 PoC: entries 9, cross 0.75, bbox 0.6).
+    // 매일 5×5 easy를 서빙하는 방향(일간 easy 5×5 + normal/hard 8×8)에 맞춰
+    // 보드를 5로 낮춘다. 온보딩 퍼즐과 같은 5×5 규격으로, 초급 어휘·촘촘한
+    // 교차로 1~2분 안에 푸는 가벼운 데일리를 목표로 한다.
     boardSize: 5,
     maxWords: 7,
     minWordLength: 2,
@@ -64,14 +67,13 @@ export const DIFFICULTY_PROFILES: Record<Difficulty, DifficultyProfile> = {
   },
   hard: {
     difficulty: "hard",
-    boardSize: 9,
-    // normal→hard 난도 점프를 완화한다(#154). 기존 maxWords 16/minWordCount 18 은
-    // normal(10/10) 대비 +60%/+80% 로 점프가 커 normal 직후 hard 진입 시 난도 벽이
-    // 컸다. 13/14 로 낮춰 +30%/+40% 로 줄이면서 단조성(easy<normal<hard)과 hard
-    // 품질 게이트(minCrossRatio 0.5, minBboxDensity 0.45)는 그대로 통과한다.
-    maxWords: 13,
+    // 모바일에서 normal과 같은 물리 크기로 비교·선택할 수 있도록 hard도 8×8로
+    // 고정한다. 13개 배치를 8×8에 강제하면 유효 후보가 고갈되므로 실제 생성
+    // 검증을 통과한 11개 배치로 조정하고, 어휘 편향·교차율·단어 수로 난도를 올린다.
+    boardSize: 8,
+    maxWords: 11,
     minWordLength: 2,
-    minWordCount: 14,
+    minWordCount: 12,
     // hard 는 큰 보드에 더 성긴 배치를 허용해도 되므로 교차율·밀도를 완화한다.
     minCrossRatio: 0.5,
     minBboxDensity: 0.45,
@@ -85,17 +87,16 @@ export const DIFFICULTY_PROFILES: Record<Difficulty, DifficultyProfile> = {
 // 낮춘다. 새 티어(enum) 를 추가하지 않으려고 difficulty 는 "normal" 로 유지하므로
 // (isDifficulty("medium") 는 계속 false) Puzzle 타입·검증·계측에 파급이 없다.
 //
-// 단조성: boardSize 는 easy(7)<normal(8) 사이에 정수가 없어 normal 과 같은 8 로 두되,
+// 단조성: boardSize 는 easy(5)<normal(8) 사이에 정수가 없어 normal 과 같은 8 로 두되,
 // maxWords·minWordCount 를 easy 이상 normal 미만으로, 교차율은 easy 와 동일(0.6)하게
 // 상향해 "사이즈가 아니라 단어 수·교차로 난도를 낮춘다".
 export const ONBOARDING_MEDIUM_PROFILE: DifficultyProfile = {
   difficulty: "normal",
   boardSize: 8,
-  // easy(9) 이상 normal(10) 미만은 정수가 없어 easy 와 동일한 9 로 두어 normal 보다
-  // 한 단어 적게 배치한다.
+  // easy(7) 이상 normal(10) 미만인 9로 두어 normal보다 한 단어 적게 배치한다.
   maxWords: 9,
   minWordLength: 2,
-  // minWordCount 는 easy(8)<9<normal(10) 로 엄밀히 중간에 둔다.
+  // minWordCount 는 easy(6)<9<normal(10) 로 엄밀히 중간에 둔다.
   minWordCount: 9,
   // 교차율은 easy 수준(0.6)으로 올려(normal 0.55 대비) 단서 연결을 쉽게 한다.
   minCrossRatio: 0.6,
@@ -166,9 +167,7 @@ export type WordSelection<T> = {
 // 프로파일 difficulty 로 단어를 거른다. 1차 풀이 minPool 미만이면 생성 실패를
 // 막기 위해 인접(난이도 순) 티어 단어를 차례로 더해 minPool 이상이 되도록
 // 보강한다. 1차 풀이 충분하면(예: easy 907단어) 보강 없이 순수 티어 풀을 쓴다.
-export function selectWordsForProfile<
-  T extends { difficulty?: string | null },
->(
+export function selectWordsForProfile<T extends { difficulty?: string | null }>(
   words: readonly T[],
   profile: DifficultyProfile,
   minPool: number = MIN_GENERATION_WORD_POOL,

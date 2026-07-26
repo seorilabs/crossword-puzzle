@@ -64,10 +64,10 @@ body {
   font-weight: 600;
 }
 
-/* 홈 오늘의 퍼즐 시작 버튼(쉬움 | 보통 2열). 좌우 버튼 사이 여백을 둔다. */
+/* 홈 난이도 선택 버튼. 선택만 하고 아래 스캐폴드와 CTA가 선택 퍼즐로 갱신된다. */
 .todayStartButtons {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   margin: 8px 0 18px;
 }
 .todayStartButton {
@@ -77,28 +77,34 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  padding: 18px 12px;
-  border: 0;
-  border-radius: 16px;
-  background: #00a88f;
-  color: #fff;
+  padding: 14px 8px;
+  border: 1px solid var(--cw-border);
+  border-radius: 12px;
+  background: var(--cw-surface);
+  color: var(--cw-text);
   cursor: pointer;
+}
+.todayStartButtonSelected {
+  border-color: var(--cw-brand);
+  background: var(--cw-brand-soft-2);
+  box-shadow: inset 0 0 0 1px var(--cw-brand);
 }
 .todayStartButton:disabled {
   opacity: 0.5;
   cursor: default;
 }
 .todayStartButtonLead {
-  font-size: 14px;
+  color: var(--cw-text-3);
+  font-size: 12px;
   font-weight: 700;
-  opacity: 0.92;
 }
 .todayStartButtonDifficulty {
-  font-size: 18px;
+  color: var(--cw-text);
+  font-size: 16px;
   font-weight: 900;
 }
 .todayStartButtonStatus {
+  color: var(--cw-text-2);
   font-size: 12px;
   font-weight: 700;
-  opacity: 0.82;
 }

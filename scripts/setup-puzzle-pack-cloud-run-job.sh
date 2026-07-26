@@ -15,7 +15,7 @@ FIREBASE_HOSTING_SITE=""
 SCHEDULE="5 0 * * *"
 TIME_ZONE="Asia/Seoul"
 PUZZLE_DAYS="1"
-PUZZLE_KEEP="6"
+PUZZLE_KEEP="21"
 PUZZLE_INTERVAL_HOURS="1"
 MEMORY="1Gi"
 CPU="1"
@@ -37,8 +37,8 @@ Options:
   --schedule <cron>                 Scheduler cron. Default: "5 0 * * *" (매일 00:05 KST).
   --time-zone <zone>                Scheduler/job timezone. Default: Asia/Seoul.
   --puzzle-days <n>                 Number of puzzle slots to generate per run. Default: 1.
-  --puzzle-keep <n>                 Number of recent puzzle packs to keep. Default: 84.
-  --puzzle-interval-hours <n>       Slot interval hours. Default: 2.
+  --puzzle-keep <n>                 Number of recent puzzle packs to keep. Default: 21.
+  --puzzle-interval-hours <n>       Internal tier slot interval. Default: 1.
   --memory <size>                   Cloud Run Job memory. Default: 1Gi.
   --cpu <n>                         Cloud Run Job CPU. Default: 1.
   --task-timeout <duration>         Cloud Run Job timeout. Default: 1800s.
@@ -227,7 +227,7 @@ CLOUD_BUILD_SERVICE_ACCOUNT="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
 COMPUTE_DEFAULT_SERVICE_ACCOUNT="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
 IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REPOSITORY}/${IMAGE_NAME}:${IMAGE_TAG}"
 RUN_JOB_URI="https://run.googleapis.com/v2/projects/${PROJECT_ID}/locations/${REGION}/jobs/${JOB_NAME}:run"
-ENV_VARS="FIREBASE_PROJECT_ID=${PROJECT_ID},FIREBASE_HOSTING_SITE=${FIREBASE_HOSTING_SITE},PUZZLE_DAYS=${PUZZLE_DAYS},PUZZLE_TIME_ZONE=${TIME_ZONE},PUZZLE_HOSTING_BASE_URL=https://${FIREBASE_HOSTING_SITE}.web.app,PUZZLE_APPEND=true,PUZZLE_KEEP=${PUZZLE_KEEP},PUZZLE_INTERVAL_HOURS=${PUZZLE_INTERVAL_HOURS},PUZZLE_DIFFICULTY_ROTATION=false,PUZZLE_DAILY_TIERS=true"
+ENV_VARS="FIREBASE_PROJECT_ID=${PROJECT_ID},FIREBASE_HOSTING_SITE=${FIREBASE_HOSTING_SITE},PUZZLE_DAYS=${PUZZLE_DAYS},PUZZLE_TIME_ZONE=${TIME_ZONE},PUZZLE_HOSTING_BASE_URL=https://${FIREBASE_HOSTING_SITE}.web.app,PUZZLE_APPEND=true,PUZZLE_KEEP=${PUZZLE_KEEP},PUZZLE_INTERVAL_HOURS=${PUZZLE_INTERVAL_HOURS},PUZZLE_DIFFICULTY_ROTATION=false,PUZZLE_DAILY_TIERS=true,PUZZLE_DIVERSITY_HISTORY=7,PUZZLE_MAX_ANSWER_REUSE=0.5,PUZZLE_MAX_SCAFFOLD_SIMILARITY=0.75"
 
 echo "Project:              ${PROJECT_ID} (${PROJECT_NUMBER})"
 echo "Region:               ${REGION}"

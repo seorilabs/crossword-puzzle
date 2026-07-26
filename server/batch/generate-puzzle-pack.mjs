@@ -22,12 +22,20 @@ import {
   needsManualClueRatio,
   selectWordsForManualClueCoverage,
 } from "../../packages/crossword-core/src/clueCuration.ts";
+import {
+  DEFAULT_DIVERSITY_HISTORY_LIMIT,
+  DEFAULT_MAX_SCAFFOLD_SIMILARITY,
+  DEFAULT_MAX_SHARED_ANSWER_RATIO,
+  evaluatePuzzleDiversity,
+  selectComparableDiversityHistory,
+} from "../../packages/crossword-core/src/puzzleDiversity.ts";
 
 const DEFAULT_BATCH_OPTIONS = {
   append: false,
   appendManifestUrl: undefined,
   attempts: 30,
   boardSize: 8,
+  diversityHistoryLimit: DEFAULT_DIVERSITY_HISTORY_LIMIT,
   difficulty: "normal",
   beamWidth: 16,
   branchLimit: 14,
@@ -35,13 +43,15 @@ const DEFAULT_BATCH_OPTIONS = {
   days: 1,
   denseCandidateLimit: 96,
   hostingBaseUrl: undefined,
-  intervalHours: 2,
-  keepPuzzles: 84,
+  intervalHours: 1,
+  keepPuzzles: 21,
   // maxWords/minWordCount/boardSize 는 parseArgs 에서 난이도 프로파일(기본 normal)이
   // 먼저 덮어쓰고, 이후 개별 CLI 플래그(--words/--minEntries/--size)로 다시 덮어쓸 수
   // 있다. 여기 기본값은 normal 프로파일과 동일하게 맞춰 둔다(완료 시간 단축 튜닝 반영).
   maxWords: 10,
   maxAutoRunRatio: 0.5,
+  maxScaffoldSimilarity: DEFAULT_MAX_SCAFFOLD_SIMILARITY,
+  maxSharedAnswerRatio: DEFAULT_MAX_SHARED_ANSWER_RATIO,
   minBboxDensity: 0.5,
   minCrossRatio: 0.55,
   minMultiCrossRatio: 0.65,
@@ -107,6 +117,9 @@ function parseArgs(argv) {
     if (key === "dense" && Number.isFinite(numericValue)) {
       options.denseCandidateLimit = numericValue;
     }
+    if (key === "diversityHistory" && Number.isFinite(numericValue)) {
+      options.diversityHistoryLimit = numericValue;
+    }
     if (key === "hostingBaseUrl" && rawValue) {
       options.hostingBaseUrl = rawValue;
     }
@@ -118,6 +131,12 @@ function parseArgs(argv) {
     }
     if (key === "maxAuto" && Number.isFinite(numericValue)) {
       options.maxAutoRunRatio = numericValue;
+    }
+    if (key === "maxAnswerReuse" && Number.isFinite(numericValue)) {
+      options.maxSharedAnswerRatio = numericValue;
+    }
+    if (key === "maxScaffoldSimilarity" && Number.isFinite(numericValue)) {
+      options.maxScaffoldSimilarity = numericValue;
     }
     if (key === "minCross" && Number.isFinite(numericValue)) {
       options.minCrossRatio = numericValue;
@@ -233,7 +252,9 @@ function normalizeAlias(value) {
   if (/^\d{8}$/.test(trimmedValue)) {
     const year = trimmedValue.slice(0, 4);
 
-    return isFourDigitGregorianYear(year) ? trimmedValue.slice(2) : trimmedValue;
+    return isFourDigitGregorianYear(year)
+      ? trimmedValue.slice(2)
+      : trimmedValue;
   }
 
   const dateMatch = trimmedValue.match(/^(\d{4})(\d{2})(\d{2})$/);
@@ -295,6 +316,23 @@ function makeQualityThresholds(options) {
     minCrossRatio: options.minCrossRatio,
     minMultiCrossRatio: options.minMultiCrossRatio,
     minWordCount: options.minWordCount,
+  };
+}
+
+function clampRatio(value, fallback) {
+  return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : fallback;
+}
+
+function makeDiversityThresholds(options) {
+  return {
+    maxSharedAnswerRatio: clampRatio(
+      options.maxSharedAnswerRatio,
+      DEFAULT_MAX_SHARED_ANSWER_RATIO,
+    ),
+    maxScaffoldSimilarity: clampRatio(
+      options.maxScaffoldSimilarity,
+      DEFAULT_MAX_SCAFFOLD_SIMILARITY,
+    ),
   };
 }
 
@@ -662,12 +700,7 @@ function mergeManifestPuzzles(existingPuzzles, newPuzzles, keepPuzzles) {
     .slice(0, keepPuzzles);
 }
 
-async function hydrateManifestPuzzles(
-  items,
-  options,
-  assetRoot,
-  outDir,
-) {
+async function hydrateManifestPuzzles(items, options, assetRoot, outDir) {
   const hydratedItems = [];
 
   for (const item of items) {
@@ -691,7 +724,9 @@ async function hydrateManifestPuzzles(
 
       await mkdir(path.dirname(outputPath), { recursive: true });
       await writeFile(outputPath, `${JSON.stringify(puzzle, null, 2)}\n`);
-      console.log(`Hydrated existing puzzle ${item.puzzleId} from ${remoteUrl}`);
+      console.log(
+        `Hydrated existing puzzle ${item.puzzleId} from ${remoteUrl}`,
+      );
     }
 
     if (!isDifficulty(puzzle.difficulty)) {
@@ -699,7 +734,10 @@ async function hydrateManifestPuzzles(
         `Puzzle ${item.puzzleId} has invalid difficulty: ${String(puzzle.difficulty)}`,
       );
     }
-    if (isDifficulty(item.difficulty) && item.difficulty !== puzzle.difficulty) {
+    if (
+      isDifficulty(item.difficulty) &&
+      item.difficulty !== puzzle.difficulty
+    ) {
       throw new Error(
         `Puzzle ${item.puzzleId} difficulty mismatch: manifest=${item.difficulty} puzzle=${puzzle.difficulty}`,
       );
@@ -709,6 +747,54 @@ async function hydrateManifestPuzzles(
   }
 
   return hydratedItems;
+}
+
+function getOccupiedCellKeys(grid) {
+  return grid.flatMap((row, rowIndex) =>
+    row.flatMap((cell, colIndex) =>
+      cell == null || cell === "" ? [] : [`${rowIndex}:${colIndex}`],
+    ),
+  );
+}
+
+function makeDiversitySnapshot(puzzle) {
+  return {
+    answers: puzzle.entries.map((entry) => entry.answer),
+    occupiedCellKeys: getOccupiedCellKeys(puzzle.grid),
+    puzzleId: puzzle.puzzleId,
+    slotId: puzzle.slotId,
+  };
+}
+
+async function loadDiversityHistory(
+  items,
+  assetRoot,
+  outDir,
+  difficulty,
+  limit,
+) {
+  const safeLimit = Math.max(0, Math.floor(limit));
+  const recentItems = items
+    .filter((item) => item.difficulty === difficulty)
+    .sort((left, right) =>
+      getManifestSortKey(right).localeCompare(getManifestSortKey(left)),
+    )
+    // 같은 슬롯 재실행 시 현재 슬롯을 제외하고도 limit개를 유지할 수 있게 한 건 더
+    // 읽는다. 실제 비교 대상 선택은 slotId가 정해진 뒤 순수 helper에서 수행한다.
+    .slice(0, safeLimit + 1);
+  const snapshots = [];
+
+  for (const item of recentItems) {
+    const puzzle = await readJsonOptional(
+      resolvePuzzleOutputPath(assetRoot, outDir, item.path),
+    );
+
+    if (puzzle != null) {
+      snapshots.push(makeDiversitySnapshot(puzzle));
+    }
+  }
+
+  return snapshots;
 }
 
 async function run() {
@@ -762,6 +848,7 @@ async function run() {
   }
 
   const qualityThresholds = makeQualityThresholds(options);
+  const diversityThresholds = makeDiversityThresholds(options);
   const existingManifest = await loadExistingManifest(options, outDir);
   const existingPuzzles = (existingManifest?.puzzles ?? []).filter((puzzle) => {
     const keep = isDifficulty(puzzle.difficulty);
@@ -782,6 +869,22 @@ async function run() {
   }
 
   await mkdir(outDir, { recursive: true });
+  const hydratedExistingPuzzles =
+    options.append && existingPuzzles.length > 0
+      ? await hydrateManifestPuzzles(
+          existingPuzzles,
+          options,
+          assetRoot,
+          outDir,
+        )
+      : existingPuzzles;
+  const diversityHistory = await loadDiversityHistory(
+    hydratedExistingPuzzles,
+    assetRoot,
+    outDir,
+    profile.difficulty,
+    options.diversityHistoryLimit,
+  );
   console.log(
     `Generating puzzle pack count=${options.days} start=${options.startDate} seed=${options.seed} outDir=${outDir}`,
   );
@@ -790,6 +893,9 @@ async function run() {
   );
   console.log(
     `Difficulty profile=${profile.difficulty} boardSize=${options.boardSize} maxWords=${options.maxWords} minWordLength=${options.minWordLength} minWordCount=${options.minWordCount} wordBank allowed=[${wordSelection.difficulties.join(",")}] words=${difficultyFilteredWords.length}/${wordBank.words.length} generationCandidates=${generationWords.length} candidateNeedsManualClueRatio=${needsManualClueRatio(generationWords).toFixed(3)} byDifficulty=${JSON.stringify(wordBankDifficultyCounts)}`,
+  );
+  console.log(
+    `Diversity gate history=${diversityHistory.length}/${Math.max(0, Math.floor(options.diversityHistoryLimit))} maxAnswerReuse=${diversityThresholds.maxSharedAnswerRatio} maxScaffoldSimilarity=${diversityThresholds.maxScaffoldSimilarity}`,
   );
 
   const generationWordMap = makeWordMap(generationWords);
@@ -803,8 +909,14 @@ async function run() {
     const packId = makePackId(slotInfo, options.seed + dayIndex);
     let board = null;
     let selectedQuality = null;
+    let selectedDiversity = null;
     const attempts = [];
     const dayStartTime = Date.now();
+    const slotDiversityHistory = selectComparableDiversityHistory(
+      diversityHistory,
+      slotInfo.slotId,
+      options.diversityHistoryLimit,
+    );
 
     console.log(
       `[${slotInfo.slotId}] generation started (${dayIndex + 1}/${options.days}) packId=${packId}`,
@@ -838,18 +950,43 @@ async function run() {
 
       const candidates = boards.map((candidate, candidateIndex) => {
         const quality = evaluateQuality(candidate, qualityThresholds);
-        const candidateEntries = analyzeRuns(candidate, generationWordMap).runs
-          .map((run) => generationWordMap.get(run.answer))
+        const candidateEntries = analyzeRuns(candidate, generationWordMap)
+          .runs.map((run) => generationWordMap.get(run.answer))
           .filter((entry) => entry != null);
         const manualClueRatio = needsManualClueRatio(candidateEntries);
         const manualClueGatePass =
           manualClueRatio <= DEFAULT_MAX_NEEDS_MANUAL_CLUE_RATIO;
+        const diversity = evaluatePuzzleDiversity(
+          {
+            answers: candidateEntries.map((entry) => entry.answer),
+            occupiedCellKeys: getOccupiedCellKeys(candidate.grid),
+          },
+          slotDiversityHistory,
+          diversityThresholds,
+        );
         return {
           candidateIndex,
           failureReasons: [
             ...summarizeFailureReasons(quality),
             ...(manualClueGatePass ? [] : ["maxNeedsManualClueRatio"]),
+            ...(diversity.maxSharedAnswerRatio <=
+            diversityThresholds.maxSharedAnswerRatio
+              ? []
+              : ["maxSharedAnswerRatio"]),
+            ...(diversity.maxScaffoldSimilarity <=
+            diversityThresholds.maxScaffoldSimilarity
+              ? []
+              : ["maxScaffoldSimilarity"]),
           ],
+          diversity: {
+            comparedPuzzleCount: diversity.comparisons.length,
+            maxScaffoldSimilarity: Number(
+              diversity.maxScaffoldSimilarity.toFixed(3),
+            ),
+            maxSharedAnswerRatio: Number(
+              diversity.maxSharedAnswerRatio.toFixed(3),
+            ),
+          },
           metrics: {
             autoRunCount: candidate.metrics.autoRunCount,
             bboxDensity: candidate.metrics.bboxDensity,
@@ -858,7 +995,7 @@ async function run() {
             multiCrossEntries: candidate.metrics.multiIntersectionPlacements,
             wordCount: candidate.metrics.wordCount,
           },
-          pass: quality.pass && manualClueGatePass,
+          pass: quality.pass && manualClueGatePass && diversity.pass,
           ratios: quality.ratios,
         };
       });
@@ -873,8 +1010,9 @@ async function run() {
       if (acceptedIndex !== -1) {
         board = boards[acceptedIndex];
         selectedQuality = evaluateQuality(board, qualityThresholds);
+        selectedDiversity = candidates[acceptedIndex].diversity;
         console.log(
-          `[${slotInfo.slotId}] accepted candidate=${acceptedIndex} entries=${board.metrics.wordCount} cross=${board.metrics.crossRatio} bbox=${board.metrics.bboxDensity} elapsed=${retryElapsedSeconds}s`,
+          `[${slotInfo.slotId}] accepted candidate=${acceptedIndex} entries=${board.metrics.wordCount} cross=${board.metrics.crossRatio} bbox=${board.metrics.bboxDensity} answerReuse=${selectedDiversity.maxSharedAnswerRatio} scaffold=${selectedDiversity.maxScaffoldSimilarity} elapsed=${retryElapsedSeconds}s`,
         );
         break;
       }
@@ -960,12 +1098,17 @@ async function run() {
         difficulty: puzzle.difficulty,
         quality: puzzle.quality,
         metrics: puzzle.metrics,
+        diversity: selectedDiversity,
       },
       attempts,
     });
   }
   const mergedManifestPuzzles = options.append
-    ? mergeManifestPuzzles(existingPuzzles, puzzles, options.keepPuzzles)
+    ? mergeManifestPuzzles(
+        hydratedExistingPuzzles,
+        puzzles,
+        options.keepPuzzles,
+      )
     : puzzles;
 
   const manifestPuzzles = await hydrateManifestPuzzles(
@@ -1006,6 +1149,10 @@ async function run() {
       byDifficulty: wordBankDifficultyCounts,
     },
     qualityThresholds,
+    diversityThresholds: {
+      historyLimit: Math.max(0, Math.floor(options.diversityHistoryLimit)),
+      ...diversityThresholds,
+    },
     puzzles: manifestPuzzles,
   };
 
@@ -1015,7 +1162,15 @@ async function run() {
   );
   await writeFile(
     path.join(outDir, "generation-report.json"),
-    `${JSON.stringify({ generatedAt: new Date().toISOString(), report: generationReport }, null, 2)}\n`,
+    `${JSON.stringify(
+      {
+        generatedAt: new Date().toISOString(),
+        diversityThresholds: manifest.diversityThresholds,
+        report: generationReport,
+      },
+      null,
+      2,
+    )}\n`,
   );
 
   console.log(`Generated ${puzzles.length} puzzle pack(s) in ${outDir}`);

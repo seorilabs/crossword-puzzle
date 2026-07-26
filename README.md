@@ -23,23 +23,23 @@ npm run dev
 
 모든 명령은 repo 루트에서 실행합니다.
 
-| 명령                              | 용도                                       |
-| --------------------------------- | ------------------------------------------ |
-| `npm run dev`                     | 로컬 개발 서버 실행                        |
-| `npm run lint`                    | ESLint 검사                                |
-| `npm run build`                   | AppsInToss `.ait` 빌드                     |
-| `npm run deploy`                  | AppsInToss 배포                            |
-| `npm run mobile:install`          | `apps/mobile` RN 의존성 설치               |
-| `npm run check:mobile`            | `apps/mobile` lint/test                    |
+| 명령                              | 용도                                                                              |
+| --------------------------------- | --------------------------------------------------------------------------------- |
+| `npm run dev`                     | 로컬 개발 서버 실행                                                               |
+| `npm run lint`                    | ESLint 검사                                                                       |
+| `npm run build`                   | AppsInToss `.ait` 빌드                                                            |
+| `npm run deploy`                  | AppsInToss 배포                                                                   |
+| `npm run mobile:install`          | `apps/mobile` RN 의존성 설치                                                      |
+| `npm run check:mobile`            | `apps/mobile` lint/test                                                           |
 | `npm run build:android`           | Google Play용 Android App Bundle 빌드. 제출용 키가 없으면 로컬 fallback 키로 서명 |
-| `npm run wordbank:krdict`         | 한국어기초사전 XML에서 퍼즐용 단어장 생성  |
-| `npm run release:next-tag`        | 다음 semver 릴리즈 태그 계산               |
-| `npm run release:resolve-version` | 릴리즈 태그에서 앱 빌드 버전 계산          |
-| `npm run prototype:crossword`     | 콘솔에서 퍼즐판 생성 알고리즘 샘플 출력    |
-| `npm run batch:puzzles`           | 날짜별 puzzle JSON pack 생성               |
-| `npm run job:puzzle-pack`         | 생성/검증/publish를 묶은 배치잡 entrypoint |
-| `npm run publish:puzzles`         | Firebase Hosting publish                   |
-| `npm run validate:puzzles`        | 격자 슬롯과 entry/clue 매칭 검증           |
+| `npm run wordbank:krdict`         | 한국어기초사전 XML에서 퍼즐용 단어장 생성                                         |
+| `npm run release:next-tag`        | 다음 semver 릴리즈 태그 계산                                                      |
+| `npm run release:resolve-version` | 릴리즈 태그에서 앱 빌드 버전 계산                                                 |
+| `npm run prototype:crossword`     | 콘솔에서 퍼즐판 생성 알고리즘 샘플 출력                                           |
+| `npm run batch:puzzles`           | 날짜별 puzzle JSON pack 생성                                                      |
+| `npm run job:puzzle-pack`         | 생성/검증/publish를 묶은 배치잡 entrypoint                                        |
+| `npm run publish:puzzles`         | Firebase Hosting publish                                                          |
+| `npm run validate:puzzles`        | 격자 슬롯과 entry/clue 매칭 검증                                                  |
 
 ## 구조
 
@@ -88,16 +88,16 @@ npm run wordbank:krdict -- --limit=5000 --maxLength=6 --out=tmp/wordbank.json
 
 단어장 항목에는 batch와 검수에 필요한 정제 필드가 포함됩니다.
 
-| 필드              | 설명                                                        |
-| ----------------- | ----------------------------------------------------------- |
-| `difficulty`      | `easy`, `normal`, `hard` 중 하나                            |
+| 필드              | 설명                                                                   |
+| ----------------- | ---------------------------------------------------------------------- |
+| `difficulty`      | `easy`, `normal`, `hard` 중 하나                                       |
 | `themeTags`       | 주제 태그 배열(예: `["food"]`). 필터의 `themeCategories` 규칙으로 부여 |
-| `allowForPuzzle`  | 퍼즐 생성 후보로 사용할 수 있는지                           |
-| `blockedReason`   | 제외 사유. 허용 단어는 `null`                               |
-| `definition`      | 한국어기초사전 뜻풀이 원문                                  |
-| `clue`            | 앱에서 보여줄 힌트. 수동 힌트가 없으면 임시로 뜻풀이를 사용 |
-| `clueSource`      | `manual` 또는 `krdict-definition`                           |
-| `needsManualClue` | 출시 전 자체 힌트 재작성이 필요한지                         |
+| `allowForPuzzle`  | 퍼즐 생성 후보로 사용할 수 있는지                                      |
+| `blockedReason`   | 제외 사유. 허용 단어는 `null`                                          |
+| `definition`      | 한국어기초사전 뜻풀이 원문                                             |
+| `clue`            | 앱에서 보여줄 힌트. 수동 힌트가 없으면 임시로 뜻풀이를 사용            |
+| `clueSource`      | `manual` 또는 `krdict-definition`                                      |
+| `needsManualClue` | 출시 전 자체 힌트 재작성이 필요한지                                    |
 
 수동 차단이나 태깅은 `data/lexicon/puzzle-word-filter.json`에서 관리합니다.
 출시용 힌트는 `cluesByAnswer`에 직접 작성합니다.
@@ -201,13 +201,13 @@ public/puzzles/generation-report.json
 | -------------------- | -----------------------------------------: | --------------------------------------- |
 | `--days=1`           |                                        `1` | 한 번에 생성할 퍼즐 슬롯 수             |
 | `--append`           |                                      false | 기존 manifest에 새 퍼즐을 append        |
-| `--keep=84`          |                                       `84` | append 시 유지할 최근 퍼즐 수           |
-| `--intervalHours=2`  |                                        `2` | `slotId` 계산에 사용하는 발행 간격      |
+| `--keep=21`          |                                       `21` | append 시 유지할 최근 퍼즐 수           |
+| `--intervalHours=1`  |                                        `1` | 난이도별 내부 `slotId` 간격             |
 | `--start=2026-05-25` |                               `2026-05-25` | 시작 날짜                               |
 | `--seed=20260525`    |                                 `20260525` | 시작 seed                               |
 | `--publishedAt=...`  |                                  현재 시각 | 발행 시각 override                      |
 | `--size=8`           |                                        `8` | 퍼즐판 한 변 크기                       |
-| `--words=12`         |                                       `12` | 직접 배치할 최대 단어 수                |
+| `--words=10`         |                                       `10` | 직접 배치할 최대 단어 수                |
 | `--attempts=30`      |                                       `30` | 날짜별 생성 시도 수                     |
 | `--samples=5`        |                                        `5` | retry마다 품질 게이트에 올릴 후보 판 수 |
 | `--retries=8`        |                                        `8` | 실패 시 seed를 바꿔 재시도하는 횟수     |
@@ -216,19 +216,22 @@ public/puzzles/generation-report.json
 
 품질 게이트 옵션:
 
-| 옵션               | 기본값 | 설명                     |
-| ------------------ | -----: | ------------------------ |
-| `--minEntries=12`  |   `12` | 최소 최종 단어 수        |
-| `--minCross=0.55`  | `0.55` | 최소 교차율              |
-| `--minDensity=0.5` |  `0.5` | 최소 bbox 밀도           |
-| `--minMulti=0.65`  | `0.65` | 최소 다중 교차 단어 비율 |
-| `--maxAuto=0.5`    |  `0.5` | 최대 자동 단어 비율      |
+| 옵션                           | 기본값 | 설명                                    |
+| ------------------------------ | -----: | --------------------------------------- |
+| `--minEntries=10`              |   `10` | 최소 최종 단어 수                       |
+| `--minCross=0.55`              | `0.55` | 최소 교차율                             |
+| `--minDensity=0.5`             |  `0.5` | 최소 bbox 밀도                          |
+| `--minMulti=0.65`              | `0.65` | 최소 다중 교차 단어 비율                |
+| `--maxAuto=0.5`                |  `0.5` | 최대 자동 단어 비율                     |
+| `--maxAnswerReuse=0.5`         |  `0.5` | 최근 동일 난이도 정답 재사용 비율 상한  |
+| `--maxScaffoldSimilarity=0.75` | `0.75` | 최근 동일 난이도 보드 골격 Jaccard 상한 |
+| `--diversityHistory=7`         |    `7` | 비교할 최근 동일 난이도 퍼즐 수         |
 
 `generation-report.json`에는 날짜별 retry, 후보별 실패 사유, 최종 채택된 판의 품질 게이트 결과가 기록됩니다.
 
-2시간마다 1개씩 운영할 때는 `--append --keep=84`를 사용합니다. 각 퍼즐은 `packId`, `puzzleId`, `slotId`, `publishedAt`를 가지며, 앱의 로컬 진행 상태는 `puzzleId` 기준으로 저장됩니다.
+운영 배치는 매일 한 번 Easy 5×5, Normal 8×8, Hard 8×8 세 판을 만들고 `--append --keep=21`로 최근 7일치를 유지합니다. 각 퍼즐은 `packId`, `puzzleId`, `slotId`, `publishedAt`를 가지며, 앱의 로컬 진행 상태는 `puzzleId` 기준으로 저장됩니다.
 
-Cloud Run Job wrapper는 `PUZZLE_SEED`를 지정하지 않으면 `publishedAt`까지 포함해 기본 seed를 만들기 때문에, 같은 날짜에 생성되는 2시간 슬롯도 서로 다른 퍼즐이 됩니다. 같은 퍼즐을 재현해야 할 때만 `--seed` 또는 `PUZZLE_SEED`를 고정합니다.
+Cloud Run Job wrapper는 `PUZZLE_SEED`를 지정하지 않으면 실행 시각까지 포함해 기본 seed를 만들기 때문에 날짜마다 다른 후보를 생성합니다. 같은 퍼즐을 재현해야 할 때만 `--seed` 또는 `PUZZLE_SEED`를 고정합니다.
 
 생성 후 `npm run dev`를 켜고 앱에서 `manifest.json`과 오늘 날짜 puzzle JSON을 확인합니다.
 

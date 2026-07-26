@@ -225,6 +225,7 @@ const featureParityMarkers = [
   "result_overlay",
   "runRewardedHintAdFlow",
   "retry:",
+  "selectedPuzzleScaffold",
 ];
 for (const marker of featureParityMarkers) {
   assertIncludes(webApp, marker, webAppPath);

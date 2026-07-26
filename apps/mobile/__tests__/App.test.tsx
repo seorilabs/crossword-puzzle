@@ -184,7 +184,7 @@ test('formats mobile home puzzle labels without exposing remote ids', () => {
   expect(formatPuzzleCardTitle(summary, 'bundled')).toBe('2026-06-12');
 });
 
-test('formats two-digit puzzle sequence labels from two-hour slots', () => {
+test('formats two-digit puzzle sequence labels from one-hour tier slots', () => {
   const summary: PuzzleManifestItem = {
     date: '2026-06-12',
     difficulty: 'normal',
@@ -213,20 +213,20 @@ test('formats two-digit puzzle sequence labels from two-hour slots', () => {
       ...summary,
       publishedAt: '2026-06-12T09:00:00.000Z',
     }),
-  ).toBe('퍼즐 10번');
+  ).toBe('퍼즐 19번');
   expect(
     formatPuzzleCardSequenceLabel({
       ...summary,
       slotId: '2026-06-12-h22',
     }),
-  ).toBe('퍼즐 12번');
+  ).toBe('퍼즐 23번');
   expect(
     formatPuzzleCardSequenceLabel({
       ...summary,
       publishedAt: '2026-06-12T09:00:00.000Z',
       slotId: '2026-06-12-h99',
     }),
-  ).toBe('퍼즐 10번');
+  ).toBe('퍼즐 19번');
   expect(
     formatPuzzleCardSequenceLabel({
       ...summary,
@@ -257,7 +257,7 @@ test('formats history titles with home sequence labels for remote puzzles', () =
   };
 
   expect(formatPuzzleHistoryTitle(summary, 'remote')).toBe(
-    '퍼즐 12번 · #26061222',
+    '퍼즐 23번 · #26061222',
   );
   expect(formatPuzzleHistoryTitle(summary, 'bundled')).toBe('#26061222');
 });
@@ -294,13 +294,11 @@ test('leaves the hidden board input uncapped for Korean IME composition', async 
   });
   await flushAsyncWork(5);
 
-  const startLabel = renderer?.root.find(
-    node =>
-      node.children.some(
-        child =>
-          typeof child === 'string' &&
-          ['퍼즐 시작', '이어 풀기'].includes(child),
-      ),
+  const startLabel = renderer?.root.find(node =>
+    node.children.some(
+      child =>
+        typeof child === 'string' && ['퍼즐 시작', '이어 풀기'].includes(child),
+    ),
   );
   const startButton = findAncestorWithOnPress(startLabel);
 
@@ -576,17 +574,29 @@ describe('computeMobileStreakDays', () => {
 
   test('오늘 완료한 경우 스트릭 1을 반환한다', () => {
     const today = '2026-06-10';
-    expect(computeMobileStreakDays([rec(today, '2026-06-10T10:00:00Z')], today)).toBe(1);
+    expect(
+      computeMobileStreakDays([rec(today, '2026-06-10T10:00:00Z')], today),
+    ).toBe(1);
   });
 
   test('오늘 미완료, 어제 완료인 경우 스트릭 1을 반환한다', () => {
     const today = '2026-06-10';
-    expect(computeMobileStreakDays([rec('2026-06-09', '2026-06-09T10:00:00Z')], today)).toBe(1);
+    expect(
+      computeMobileStreakDays(
+        [rec('2026-06-09', '2026-06-09T10:00:00Z')],
+        today,
+      ),
+    ).toBe(1);
   });
 
   test('어제도 미완료인 경우 0을 반환한다', () => {
     const today = '2026-06-10';
-    expect(computeMobileStreakDays([rec('2026-06-08', '2026-06-08T10:00:00Z')], today)).toBe(0);
+    expect(
+      computeMobileStreakDays(
+        [rec('2026-06-08', '2026-06-08T10:00:00Z')],
+        today,
+      ),
+    ).toBe(0);
   });
 
   test('3일 연속 완료한 경우 스트릭 3을 반환한다', () => {

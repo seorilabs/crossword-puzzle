@@ -29,21 +29,21 @@ describe("MiniPuzzlePreview", () => {
     expect(cells).toHaveLength(64);
   });
 
-  it("9×9 보드의 81칸을 모두 렌더한다(hard 보드도 잘리지 않음)", () => {
+  it("5×5 Easy 보드의 25칸을 모두 렌더한다", () => {
     const { container } = render(
-      <MiniPuzzlePreview puzzle={makePuzzle(squareGrid(9))} />,
+      <MiniPuzzlePreview puzzle={makePuzzle(squareGrid(5))} />,
     );
 
-    expect(container.querySelectorAll(".miniCell")).toHaveLength(81);
+    expect(container.querySelectorAll(".miniCell")).toHaveLength(25);
   });
 
   it("열 수를 실제 보드 폭에 맞춰 --mini-cols CSS 변수로 설정한다", () => {
     const { container } = render(
-      <MiniPuzzlePreview puzzle={makePuzzle(squareGrid(9))} />,
+      <MiniPuzzlePreview puzzle={makePuzzle(squareGrid(8))} />,
     );
 
     const board = container.querySelector(".miniBoard") as HTMLElement;
-    expect(board.style.getPropertyValue("--mini-cols")).toBe("9");
+    expect(board.style.getPropertyValue("--mini-cols")).toBe("8");
   });
 
   it("빈 문자열 셀만 검은칸(miniBlock)으로 구분한다", () => {
@@ -70,11 +70,7 @@ describe("MiniPuzzlePreview", () => {
 
   it("행 길이가 불규칙해도 스켈레톤 셀 수를 행×열(--mini-cols의 배수)로 유지한다", () => {
     // 비직사각 그리드(둘째 행이 짧음): 열 수는 grid[0].length=3, 행 수는 3.
-    const jagged = [
-      ["A", "A", "A"],
-      ["A"],
-      ["A", "A", "A"],
-    ];
+    const jagged = [["A", "A", "A"], ["A"], ["A", "A", "A"]];
     const { container } = render(
       <MiniPuzzlePreview puzzle={makePuzzle(jagged)} isLoading />,
     );

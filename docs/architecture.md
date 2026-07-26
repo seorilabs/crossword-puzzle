@@ -65,23 +65,22 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-  Scheduler["Cloud Scheduler"] --> Job["Cloud Run Job"]
+  Scheduler["Cloud Scheduler - 매일 자정"] --> Job["Cloud Run Job"]
   Job --> Generator["server/batch/generate-puzzle-pack.mjs"]
   Generator --> Validator["scripts/validate-puzzle-pack.mjs"]
   Validator --> Hosting["Firebase Hosting<br/>/puzzles/*.json"]
   AIT["AIT WebView"] --> Hosting
 ```
 
-- `npm run batch:puzzles`는 JSON pack을 생성한다. 운영 Job은 `--append --keep=84`로 최근 84개만 유지한다.
+- `npm run batch:puzzles`는 JSON pack을 생성한다. 운영 Job은 `--append --keep=21`로 일간 3판의 최근 7일치를 유지한다.
 - `npm run job:puzzle-pack`은 생성, 슬롯 검증, Firebase publish를 순서대로 실행하는 Cloud Run Job entrypoint다.
 - `npm run publish:puzzles`는 `public` root를 Firebase Hosting에 배포한다.
 - 자세한 설정은 `docs/puzzle-pack-cloud-run.md`를 기준으로 한다.
 
 ## 퍼즐 공개/보너스 정책
 
-- 원격 배치는 2시간 주기로 유지할 수 있지만, 사용자 기본 공개는 KST 기준 하루 1개다.
-- 같은 날짜에 여러 퍼즐이 있으면 해당 날짜의 첫 발행분을 무료 퍼즐로 고정하고, 추가 발행분은 보너스 후보로만 쓴다.
-- `하나 더 풀기`는 새 퍼즐 생성권이 아니라 manifest에 이미 들어온 미풀이 퍼즐 접근권이다. 보상형 광고 완료 이벤트가 확인된 뒤에만 당일 보너스 `puzzleId`를 로컬에 저장한다.
+- 원격 배치는 KST 기준 매일 한 번 실행하며 Easy 5×5, Normal 8×8, Hard 8×8을 모두 공개한다.
+- 사용자는 홈에서 난이도를 먼저 선택해 보드 골격을 확인한 뒤 선택한 퍼즐을 시작한다.
 - 퍼즐을 시작하거나 완료하면 퍼즐 JSON 스냅샷을 기기에 저장한다. 원격 retention에서 빠진 퍼즐도 기록 화면에서 로컬 사본으로 열 수 있지만, 앱 데이터 삭제/기기 변경/저장공간 정리 시 사라질 수 있다.
 - 무료 퍼즐 선택, 보너스 후보 선택, 기본 시도 횟수와 기본 힌트 수는 `packages/crossword-core/src/uiPolicy.ts`를 source of truth로 둔다. AIT WebView와 `apps/mobile`은 렌더링/광고 어댑터만 다르게 구현하고 같은 정책 함수를 import해야 한다.
 
@@ -97,9 +96,9 @@ flowchart LR
 
 ## Firebase Hosting 연동 순서
 
-1. Cloud Scheduler가 2시간마다 Cloud Run Job을 실행한다.
-2. Cloud Run Job은 새 퍼즐 1개를 생성하고 기존 manifest에 append한다.
-3. manifest는 최신순으로 정렬하고 최근 84개만 유지한다.
+1. Cloud Scheduler가 매일 00:05 KST에 Cloud Run Job을 실행한다.
+2. Cloud Run Job은 Easy, Normal, Hard 세 퍼즐을 생성하고 기존 manifest에 append한다.
+3. manifest는 최신순으로 정렬하고 최근 21개만 유지한다.
 4. 각 퍼즐은 `packId`, `puzzleId`, `slotId`, `publishedAt`를 가진다. 앱의 로컬 진행 상태는 `puzzleId` 기준으로 저장한다.
 5. `npm run publish:puzzles`가 Firebase Hosting에 `/puzzles/**`를 배포한다.
 6. Hosting release config는 `/puzzles/**`에 `Cache-Control`과 `Access-Control-Allow-Origin`을 넣는다.

@@ -42,8 +42,8 @@ GitHub Actions AIT 배포는 같은 값을 GitHub Variables에서 읽는다. 미
 | `default_hint_credits`               |     `3` | 퍼즐별 기본 무료 힌트 개수                |
 | `rewarded_hint_credits`              |     `2` | 보상형 광고 1회 완료 시 지급할 힌트 개수  |
 | `visible_puzzle_count`               |     `7` | 홈 날짜 캐러셀에 보여줄 최신 퍼즐 개수    |
-| `puzzle_generation_interval_hours`   |     `2` | 사용자 안내용 퍼즐 생성 주기              |
-| `puzzle_keep_count`                  |    `84` | 사용자 안내용 원격 퍼즐팩 보관 개수       |
+| `puzzle_generation_interval_hours`   |     `1` | 사용자 안내용 난이도별 슬롯 간격           |
+| `puzzle_keep_count`                  |    `21` | 사용자 안내용 원격 퍼즐팩 보관 개수       |
 | `rewarded_hint_ads_enabled`          |  `true` | 힌트 보상형 광고 CTA 노출 여부            |
 | `rewarded_bonus_puzzle_ads_enabled`  |  `true` | 보너스 퍼즐 보상형 광고 CTA 노출 여부     |
 | `result_interstitial_ads_enabled`    | `false` | 결과 화면 진입 후 전면 광고 노출 여부. 현재 기본 비활성 |

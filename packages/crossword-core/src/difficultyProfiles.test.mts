@@ -49,13 +49,13 @@ describe("isDifficulty", () => {
 });
 
 describe("DIFFICULTY_PROFILES 단조성", () => {
-  it("easy < normal < hard 로 boardSize 가 증가한다", () => {
+  it("easy는 5×5, normal과 hard는 8×8로 제공한다", () => {
     assert.ok(
       DIFFICULTY_PROFILES.easy.boardSize < DIFFICULTY_PROFILES.normal.boardSize,
     );
-    assert.ok(
-      DIFFICULTY_PROFILES.normal.boardSize < DIFFICULTY_PROFILES.hard.boardSize,
-    );
+    assert.equal(DIFFICULTY_PROFILES.easy.boardSize, 5);
+    assert.equal(DIFFICULTY_PROFILES.normal.boardSize, 8);
+    assert.equal(DIFFICULTY_PROFILES.hard.boardSize, 8);
   });
 
   it("easy < normal < hard 로 maxWords 가 증가한다", () => {
@@ -80,7 +80,7 @@ describe("DIFFICULTY_PROFILES 단조성", () => {
 
   it("normal 프로파일은 완료 시간 단축을 위해 단어 수를 낮춘 값으로 고정한다(회귀 방지)", () => {
     // 첫 완료 소요(~10분) 단축을 위해 maxWords/minWordCount 를 12→10 으로 낮췄다.
-    // 보드 크기는 easy(7)와의 단조성을 위해 8로 유지한다.
+    // 보드 크기는 easy(5)보다 큰 8로 유지한다.
     assert.equal(DIFFICULTY_PROFILES.normal.boardSize, 8);
     assert.equal(DIFFICULTY_PROFILES.normal.maxWords, 10);
     assert.equal(DIFFICULTY_PROFILES.normal.minWordLength, 2);
@@ -263,9 +263,10 @@ describe("summarizeWordDifficulties", () => {
 });
 
 describe("DIFFICULTY_PROFILES hard 점프 완화 (#154)", () => {
-  it("hard 프로파일은 점프 완화 값으로 고정한다(회귀 방지)", () => {
-    assert.equal(DIFFICULTY_PROFILES.hard.maxWords, 13);
-    assert.equal(DIFFICULTY_PROFILES.hard.minWordCount, 14);
+  it("hard 프로파일은 8×8 생성 검증을 통과한 값으로 고정한다", () => {
+    assert.equal(DIFFICULTY_PROFILES.hard.boardSize, 8);
+    assert.equal(DIFFICULTY_PROFILES.hard.maxWords, 11);
+    assert.equal(DIFFICULTY_PROFILES.hard.minWordCount, 12);
   });
 
   it("normal→hard maxWords/minWordCount 증가율이 과거(16/18)보다 완화된다", () => {
@@ -275,7 +276,10 @@ describe("DIFFICULTY_PROFILES hard 점프 완화 (#154)", () => {
     const minWordCountJump = (h.minWordCount - n.minWordCount) / n.minWordCount;
     // 과거 값(maxWords 16, minWordCount 18) 기준 점프: 0.6, 0.8
     assert.ok(maxWordsJump < 0.6, `maxWords 증가율 ${maxWordsJump} < 0.6`);
-    assert.ok(minWordCountJump < 0.8, `minWordCount 증가율 ${minWordCountJump} < 0.8`);
+    assert.ok(
+      minWordCountJump < 0.8,
+      `minWordCount 증가율 ${minWordCountJump} < 0.8`,
+    );
   });
 
   it("hard 품질 게이트(교차율·밀도) 하한은 유지한다", () => {

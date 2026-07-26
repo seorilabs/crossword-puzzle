@@ -44,16 +44,16 @@
     },
     "puzzle_generation_interval_hours": {
       "defaultValue": {
-        "value": "2"
+        "value": "1"
       },
-      "description": "사용자 안내용 퍼즐 생성 주기",
+      "description": "일간 난이도별 내부 퍼즐 슬롯 간격",
       "valueType": "NUMBER"
     },
     "puzzle_keep_count": {
       "defaultValue": {
-        "value": "84"
+        "value": "21"
       },
-      "description": "사용자 안내용 원격 퍼즐팩 보관 개수",
+      "description": "일간 3판 기준 최근 7일 원격 퍼즐팩 보관 개수",
       "valueType": "NUMBER"
     },
     "daily_attempt_limit": {
