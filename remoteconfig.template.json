@@ -7,30 +7,37 @@
     }
   ],
   "parameters": {
+    "daily_free_hint_credits": {
+      "defaultValue": {
+        "value": "3"
+      },
+      "description": "KST 날짜 기준 모든 퍼즐이 공유하는 하루 무료 힌트 개수",
+      "valueType": "NUMBER"
+    },
     "default_hint_credits": {
       "defaultValue": {
         "value": "3"
       },
-      "description": "퍼즐별 기본 무료 힌트 개수(normal·난이도 미상)",
+      "description": "구버전 클라이언트용 퍼즐별 기본 무료 힌트 개수(normal·난이도 미상)",
       "valueType": "NUMBER"
     },
     "default_hint_credits_easy": {
       "defaultValue": {
         "value": "2"
       },
-      "description": "easy 퍼즐 기본 무료 힌트 개수(#251). 단어가 적어 3보다 낮춘다",
+      "description": "구버전 클라이언트용 easy 퍼즐 기본 무료 힌트 개수",
       "valueType": "NUMBER"
     },
     "default_hint_credits_hard": {
       "defaultValue": {
         "value": "5"
       },
-      "description": "hard 퍼즐 기본 무료 힌트 개수(#251). 단어가 많아 3보다 높인다",
+      "description": "구버전 클라이언트용 hard 퍼즐 기본 무료 힌트 개수",
       "valueType": "NUMBER"
     },
     "rewarded_hint_credits": {
       "defaultValue": {
-        "value": "2"
+        "value": "1"
       },
       "description": "보상형 광고 1회 완료 시 지급할 힌트 개수",
       "valueType": "NUMBER"

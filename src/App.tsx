@@ -29,6 +29,8 @@ import {
   computeLeaderboardScore,
   computePersonalStats,
   computeSolveTimeDistribution,
+  consumeDailyHintCredit,
+  createDailyHintWallet,
   getTextScaleFontMultiplier,
   createPuzzleSummary,
   createDailyMissionState,
@@ -41,6 +43,7 @@ import {
   getCompletedEntries,
   getCompletionAchievements,
   getDailyFreePuzzleSummary,
+  getDailyHintBalance,
   findPuzzleSummaryById,
   formatDateCardDay,
   formatPuzzleAliasLabel,
@@ -63,7 +66,8 @@ import {
   buildNextPuzzleCtaEvent,
   getNextRecommendedPuzzleSummary,
   getProgressMilestoneRewardMessage,
-  resolveDefaultHintCredits,
+  grantDailyHintCredits,
+  loadOrMigrateDailyHintWallet,
   getPuzzlePackAlias,
   getNextFocusEntryAfterCompletion,
   getRemainingAttempts,
@@ -108,6 +112,7 @@ import {
   REWARDED_HINT_AD_REWARD_EVENT,
   type CellLetterChange,
   type DailyMissionState,
+  type DailyHintWallet,
   type Direction,
   type GamePuzzleContext,
   type Puzzle,
@@ -154,6 +159,7 @@ import {
   type PuzzleArchiveRecord,
   type PuzzleArchiveSaveOptions,
 } from "./adapters/localPuzzleAccessRepository";
+import { createLocalDailyHintWalletRepository } from "./adapters/localDailyHintWalletRepository";
 import {
   createLocalProgressRepository,
   getAllBestTimePuzzleIds,
@@ -318,6 +324,7 @@ const puzzleRepository = createOnboardingPuzzleRepository(
   onboardingPuzzle,
 );
 const progressRepository = createLocalProgressRepository();
+const dailyHintWalletRepository = createLocalDailyHintWalletRepository();
 const missionRepository = createLocalMissionRepository();
 const puzzleArchiveRepository = createLocalPuzzleArchiveRepository();
 
@@ -540,7 +547,6 @@ function createDateCardState(
 function hasSavedProgress(mission: DailyMissionState, progress: SavedProgress) {
   return (
     mission.attemptsUsed > 0 ||
-    progress.earnedHintCredits > 0 ||
     progress.hintCount > 0 ||
     Object.keys(progress.cellValues).length > 0
   );
@@ -593,7 +599,10 @@ function App() {
     hasRemotePuzzlePack ? "loading" : "fallback",
   );
   const [hintCount, setHintCount] = useState(0);
-  const [earnedHintCredits, setEarnedHintCredits] = useState(0);
+  const [dailyHintWallet, setDailyHintWallet] = useState<DailyHintWallet>(() =>
+    createDailyHintWallet(getTodayDateKey()),
+  );
+  const earnedHintCredits = dailyHintWallet.earnedCredits;
   const [launchConfig, setLaunchConfig] =
     useState<LaunchConfig>(defaultLaunchConfig);
   // 원격 설정 fetch가 끝났는지(성공/실패 무관). 첫 실행 자동 진입(#205)은 게이트
@@ -814,7 +823,6 @@ function App() {
 
       setPuzzle(session.nextPuzzle);
       setCellValues(session.savedProgress.cellValues);
-      setEarnedHintCredits(session.savedProgress.earnedHintCredits);
       setHintCount(session.savedProgress.hintCount);
       setRevealUsed(session.savedProgress.revealUsed ?? false);
       setTentativeCellKeys(new Set(session.savedProgress.tentativeCells ?? []));
@@ -860,6 +868,55 @@ function App() {
     [launchConfig.dailyAttemptLimit],
   );
 
+  const loadDailyHintWalletForDate = useCallback(
+    async (date: string, summaries: PuzzleManifestItem[]) => {
+      const dateSummaries = uniquePuzzleSummaries(summaries).filter(
+        (summary) => summary.date === date,
+      );
+      return loadOrMigrateDailyHintWallet({
+        date,
+        loadLegacyProgresses: () =>
+          Promise.all(
+            dateSummaries.map((summary) =>
+              progressRepository.loadProgress(summary.puzzleId),
+            ),
+          ),
+        repository: dailyHintWalletRepository,
+      });
+    },
+    [],
+  );
+
+  const persistDailyHintWallet = useCallback((wallet: DailyHintWallet) => {
+    setDailyHintWallet(wallet);
+    void dailyHintWalletRepository.saveWallet(wallet).catch(() => {
+      telemetry.impression("daily_hint_wallet_save_error", {
+        date: wallet.date,
+      });
+    });
+  }, []);
+
+  const refreshDailyHintWallet = useCallback(async () => {
+    const date = getTodayDateKey();
+    if (dailyHintWallet.date === date) {
+      return;
+    }
+
+    const summaries = [
+      ...puzzleSummaries,
+      ...puzzleArchiveRecords.map((record) =>
+        createPuzzleSummary(record.puzzle),
+      ),
+    ];
+    const wallet = await loadDailyHintWalletForDate(date, summaries);
+    setDailyHintWallet(wallet);
+  }, [
+    dailyHintWallet.date,
+    loadDailyHintWalletForDate,
+    puzzleArchiveRecords,
+    puzzleSummaries,
+  ]);
+
   const refreshPuzzleArchive = useCallback(async () => {
     // 입문(온보딩) 퍼즐은 튜토리얼이므로 이어 풀기·기록·통계 목록에서 숨긴다.
     const nextArchiveRecords = (
@@ -896,15 +953,18 @@ function App() {
             ? loadedSummaries
             : [createPuzzleSummary(fallbackPuzzle)];
         const today = getTodayDateKey();
-        const [nextDateCardStates, onboardingSession] = await Promise.all([
-          loadDateCardStates([
-            ...nextSummaries,
-            ...nextArchiveRecords.map((record) =>
-              createPuzzleSummary(record.puzzle),
-            ),
-          ]),
-          loadPuzzleSession(onboardingPuzzle.puzzleId),
-        ]);
+        const allSummaries = [
+          ...nextSummaries,
+          ...nextArchiveRecords.map((record) =>
+            createPuzzleSummary(record.puzzle),
+          ),
+        ];
+        const [nextDateCardStates, onboardingSession, nextDailyHintWallet] =
+          await Promise.all([
+            loadDateCardStates([...allSummaries]),
+            loadPuzzleSession(onboardingPuzzle.puzzleId),
+            loadDailyHintWalletForDate(today, allSummaries),
+          ]);
 
         // 신규 사용자(아직 첫 성공 전)면 입문 퍼즐을, 그 외에는 일반 일일 퍼즐을
         // 첫 활성 퍼즐로 둔다. 입문 퍼즐 세션은 위에서 미리 불러와 재사용한다.
@@ -939,6 +999,7 @@ function App() {
           setPuzzleSummaries(nextSummaries);
           setPuzzleArchiveRecords(nextArchiveRecords);
           setDateCardStates(nextDateCardStates);
+          setDailyHintWallet(nextDailyHintWallet);
           applyPuzzleSession(session);
           setLoadState(getPuzzlePackLoadState(nextSummaries));
           // 첫 실행 자동 진입(#205) 판정 입력을 로드 시점 값으로 고정해 둔다.
@@ -967,7 +1028,12 @@ function App() {
     return () => {
       isCancelled = true;
     };
-  }, [applyPuzzleSession, loadDateCardStates, loadPuzzleSession]);
+  }, [
+    applyPuzzleSession,
+    loadDateCardStates,
+    loadDailyHintWalletForDate,
+    loadPuzzleSession,
+  ]);
 
   const selectPuzzle = useCallback(
     async (puzzleId: string) => {
@@ -1012,7 +1078,6 @@ function App() {
     // 모든 값이 기본값이면 저장 스킵: clearProgress가 삭제한 키가 재생성되지 않도록 함
     if (
       Object.keys(cellValues).length === 0 &&
-      earnedHintCredits === 0 &&
       hintCount === 0 &&
       !revealUsed
     ) {
@@ -1021,7 +1086,8 @@ function App() {
     void progressRepository
       .saveProgress(puzzle.puzzleId, {
         cellValues,
-        earnedHintCredits,
+        // 광고 보상은 날짜별 공용 지갑에 저장한다. 필드는 구버전 스키마 호환용이다.
+        earnedHintCredits: 0,
         hintCount,
         revealUsed,
         // 값이 없는(지워진) 셀의 임시 표시는 저장하지 않아 stale 키를 정리한다.
@@ -1034,14 +1100,7 @@ function App() {
           puzzle_id: puzzle.puzzleId,
         });
       });
-  }, [
-    cellValues,
-    earnedHintCredits,
-    hintCount,
-    revealUsed,
-    tentativeCellKeys,
-    puzzle.puzzleId,
-  ]);
+  }, [cellValues, hintCount, revealUsed, tentativeCellKeys, puzzle.puzzleId]);
 
   // autocheck 저장값은 마운트 후에만 반영한다(첫 렌더 기본값 true와 분리).
   useEffect(() => {
@@ -1061,19 +1120,12 @@ function App() {
       ...prev,
       [puzzle.puzzleId]: createDateCardState(mission, {
         cellValues,
-        earnedHintCredits,
+        earnedHintCredits: 0,
         hintCount,
         revealUsed,
       }),
     }));
-  }, [
-    cellValues,
-    earnedHintCredits,
-    hintCount,
-    mission,
-    puzzle.puzzleId,
-    revealUsed,
-  ]);
+  }, [cellValues, hintCount, mission, puzzle.puzzleId, revealUsed]);
 
   const viewModel = usePuzzleViewModel(
     puzzle,
@@ -1092,7 +1144,6 @@ function App() {
   const remainingAttempts = getRemainingAttempts(mission);
   const hasProgress =
     Object.keys(cellValues).length > 0 ||
-    earnedHintCredits > 0 ||
     hintCount > 0 ||
     viewModel.completedEntries.length > 0;
   const hasStarted = mission.attemptsUsed > 0 || hasProgress;
@@ -1251,6 +1302,25 @@ function App() {
     };
   }, []);
 
+  // KST 날짜가 바뀐 뒤 화면 이동 또는 백그라운드 복귀 시 새 일일 지갑을 불러온다.
+  // 재시도·퍼즐 전환만으로는 날짜가 같으므로 잔액이 초기화되지 않는다.
+  useEffect(() => {
+    void refreshDailyHintWallet();
+  }, [refreshDailyHintWallet, route]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void refreshDailyHintWallet();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [refreshDailyHintWallet]);
+
   const todayKey = getTodayDateKey();
   const dailyFreeSummary = useMemo(
     () => getDailyFreePuzzleSummary(puzzleSummaries, todayKey),
@@ -1299,21 +1369,21 @@ function App() {
       ),
     [archivePuzzleSummaries, todayPuzzleSummaries, selectedPuzzleSummary],
   );
-  // 현재 퍼즐 난이도에 맞는 기본 힌트 크레딧(#251). easy 는 과다·hard 는 부족한
-  // 평면 3크레딧 대신 난이도별 기본값을 쓴다(원격 오버라이드 가능).
-  const difficultyDefaultHintCredits = resolveDefaultHintCredits(
-    launchConfig,
-    puzzle.difficulty,
+  // KST 날짜별 공용 지갑. 난이도·재시도·지난 퍼즐을 오가도 같은 잔액을 쓴다.
+  const activeDailyHintWallet =
+    dailyHintWallet.date === todayKey
+      ? dailyHintWallet
+      : createDailyHintWallet(todayKey);
+  const dailyHintBalance = getDailyHintBalance(
+    activeDailyHintWallet,
+    launchConfig.dailyFreeHintCredits,
   );
-  const totalHintCredits = Math.max(
-    0,
-    difficultyDefaultHintCredits + earnedHintCredits,
-  );
-  const remainingHintCredits = Math.max(0, totalHintCredits - hintCount);
+  const totalHintCredits = dailyHintBalance.totalCredits;
+  const remainingHintCredits = dailyHintBalance.remainingCredits;
   const hintBalance: HintBalance = {
     adsEnabled: launchConfig.rewardedHintAdsEnabled,
-    defaultCredits: difficultyDefaultHintCredits,
-    earnedCredits: earnedHintCredits,
+    defaultCredits: dailyHintBalance.dailyCredits,
+    earnedCredits: dailyHintBalance.earnedCredits,
     isAdBusy: rewardedAdStatus === "loading",
     notice: hintNotice,
     remaining: remainingHintCredits,
@@ -2079,7 +2149,7 @@ function App() {
 
     if (remainingHintCredits === 0) {
       setHintNotice(
-        "무료 힌트를 모두 썼어요. 광고를 보면 힌트를 더 받을 수 있어요.",
+        "오늘의 무료 힌트를 모두 썼어요. 광고를 보면 힌트를 더 받을 수 있어요.",
       );
       return false;
     }
@@ -2100,6 +2170,17 @@ function App() {
 
     const targetCell = cells[targetIndex];
     const targetCellKey = getCellKey(targetCell.row, targetCell.col);
+    const nextWallet = consumeDailyHintCredit(
+      activeDailyHintWallet,
+      launchConfig.dailyFreeHintCredits,
+    );
+    if (nextWallet == null) {
+      setHintNotice(
+        "오늘의 무료 힌트를 모두 썼어요. 광고를 보면 힌트를 더 받을 수 있어요.",
+      );
+      return false;
+    }
+    persistDailyHintWallet(nextWallet);
     setHintCount((prev) => prev + 1);
     setCellValues((prev) => ({
       ...prev,
@@ -2200,7 +2281,12 @@ function App() {
         showHintToast(message);
       },
       onReward: (_result, retry) => {
-        setEarnedHintCredits((prev) => prev + launchConfig.rewardedHintCredits);
+        persistDailyHintWallet(
+          grantDailyHintCredits(
+            activeDailyHintWallet,
+            launchConfig.rewardedHintCredits,
+          ),
+        );
         const message = `힌트 +${launchConfig.rewardedHintCredits}개가 추가됐어요.`;
         setHintNotice(message);
         showHintToast(message);
@@ -2410,25 +2496,12 @@ function App() {
     setPencilMode((prev) => !prev);
   }
 
-  async function clearProgress(preserveEarnedHintCredits?: number) {
-    const raw = preserveEarnedHintCredits ?? 0;
-    const creditsValue = Number.isFinite(raw) ? Math.max(0, raw) : 0;
-
+  async function clearProgress() {
     // 저장소 작업 먼저: 실패 시 UI 상태를 건드리지 않아 저장소-UI 일관성 유지
-    if (creditsValue > 0) {
-      await progressRepository.saveProgress(puzzle.puzzleId, {
-        cellValues: {},
-        earnedHintCredits: creditsValue,
-        hintCount: 0,
-        revealUsed: false,
-      });
-    } else {
-      await progressRepository.clearProgress(puzzle.puzzleId);
-    }
+    await progressRepository.clearProgress(puzzle.puzzleId);
 
     setCellValues({});
     setTentativeCellKeys(new Set());
-    setEarnedHintCredits(creditsValue);
     setHintCount(0);
     setRevealUsed(false);
     setHintNotice("");
@@ -2599,7 +2672,7 @@ function App() {
       telemetry.impression("mission_start", {
         ...getPuzzleTelemetryParams(session.nextPuzzle),
         attempt_number: nextMission.attemptsUsed,
-        earned_hint_credits: session.savedProgress.earnedHintCredits,
+        earned_hint_credits: earnedHintCredits,
         hint_count: session.savedProgress.hintCount,
         remaining_attempts: getRemainingAttempts(nextMission),
         started_at: nextMission.lastStartedAt,
@@ -2608,7 +2681,7 @@ function App() {
         ...getPuzzleTelemetryParams(session.nextPuzzle),
         attempt_kind: "first",
         attempt_number: nextMission.attemptsUsed,
-        earned_hint_credits: session.savedProgress.earnedHintCredits,
+        earned_hint_credits: earnedHintCredits,
         hint_count: session.savedProgress.hintCount,
         remaining_attempts: getRemainingAttempts(nextMission),
         started_at: nextMission.lastStartedAt,
@@ -2641,12 +2714,8 @@ function App() {
       return;
     }
 
-    const rawCredits = earnedHintCredits;
-    const creditsToPreserve = Number.isFinite(rawCredits)
-      ? Math.max(0, rawCredits)
-      : 0;
     try {
-      await clearProgress(creditsToPreserve);
+      await clearProgress();
       setIsNewBestTime(false);
       const nextMission = startMissionAttempt(baseMission);
       setMission(nextMission);
@@ -2663,7 +2732,7 @@ function App() {
         });
       });
       trackAttemptStart(nextMission, "retry", {
-        earnedHintCredits: creditsToPreserve,
+        earnedHintCredits,
         hintCount: 0,
       });
       navigate("today");
@@ -3514,7 +3583,7 @@ function HintRewardPanel({
           {hintBalance.remaining}/{hintBalance.total}개
         </strong>
         <em>
-          기본 {hintBalance.defaultCredits}개
+          오늘 기본 {hintBalance.defaultCredits}개 · 모든 퍼즐 공용
           {hintBalance.earnedCredits > 0
             ? ` · 광고 보상 ${hintBalance.earnedCredits}개`
             : ""}

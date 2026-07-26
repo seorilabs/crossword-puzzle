@@ -37,17 +37,23 @@ GitHub Actions AIT 배포는 같은 값을 GitHub Variables에서 읽는다. 미
 
 `remoteconfig.template.json`이 현재 운영 기본값의 source of truth다.
 
-| Key                                  |  기본값 | 설명                                      |
-| ------------------------------------ | ------: | ----------------------------------------- |
-| `default_hint_credits`               |     `3` | 퍼즐별 기본 무료 힌트 개수                |
-| `rewarded_hint_credits`              |     `2` | 보상형 광고 1회 완료 시 지급할 힌트 개수  |
-| `visible_puzzle_count`               |     `7` | 홈 날짜 캐러셀에 보여줄 최신 퍼즐 개수    |
-| `puzzle_generation_interval_hours`   |     `1` | 사용자 안내용 난이도별 슬롯 간격           |
-| `puzzle_keep_count`                  |    `21` | 사용자 안내용 원격 퍼즐팩 보관 개수       |
-| `rewarded_hint_ads_enabled`          |  `true` | 힌트 보상형 광고 CTA 노출 여부            |
-| `rewarded_bonus_puzzle_ads_enabled`  |  `true` | 보너스 퍼즐 보상형 광고 CTA 노출 여부     |
-| `result_interstitial_ads_enabled`    | `false` | 결과 화면 진입 후 전면 광고 노출 여부. 현재 기본 비활성 |
-| `leaderboard_enabled`                | `false` | 리더보드 UI 노출 여부                     |
+| Key                                 |  기본값 | 설명                                                    |
+| ----------------------------------- | ------: | ------------------------------------------------------- |
+| `daily_free_hint_credits`           |     `3` | KST 날짜별 공용 무료 힌트 개수                          |
+| `default_hint_credits`              |     `3` | 구버전용 퍼즐별 기본 무료 힌트 개수                     |
+| `rewarded_hint_credits`             |     `1` | 보상형 광고 1회 완료 시 지급할 힌트 개수                |
+| `visible_puzzle_count`              |     `7` | 홈 날짜 캐러셀에 보여줄 최신 퍼즐 개수                  |
+| `puzzle_generation_interval_hours`  |     `1` | 사용자 안내용 난이도별 슬롯 간격                        |
+| `puzzle_keep_count`                 |    `21` | 사용자 안내용 원격 퍼즐팩 보관 개수                     |
+| `rewarded_hint_ads_enabled`         |  `true` | 힌트 보상형 광고 CTA 노출 여부                          |
+| `rewarded_bonus_puzzle_ads_enabled` |  `true` | 보너스 퍼즐 보상형 광고 CTA 노출 여부                   |
+| `result_interstitial_ads_enabled`   | `false` | 결과 화면 진입 후 전면 광고 노출 여부. 현재 기본 비활성 |
+| `leaderboard_enabled`               | `false` | 리더보드 UI 노출 여부                                   |
+
+힌트 잔액은 KST 날짜별 공용 지갑으로 저장한다. 쉬움·보통·어려움·지난 퍼즐과
+재도전이 같은 무료 3개를 공유하며, 날짜가 바뀌면 무료분과 광고 보상분을 이월하지
+않는다. 구버전의 퍼즐별 `hintCount`와 `earnedHintCredits`는 해당 날짜의 공용 지갑이
+처음 만들어질 때 합산 이관해 업데이트 직후 중복 지급을 막는다.
 
 `ios_app_store_review_ads_off` 조건은 iOS Firebase app `1:547625965706:ios:1b21e504c7895f959ef573`에만 적용한다. App Store 최초 심사 중 AdMob 앱 검토 전 `no-fill` 실패 CTA가 보이지 않도록 `rewarded_hint_ads_enabled`, `rewarded_bonus_puzzle_ads_enabled`를 조건부 `false`로 둔다. AdMob 앱 상태가 `Ready`가 되면 이 조건부 값을 제거하거나 `true`로 되돌린다.
 
@@ -57,25 +63,25 @@ Remote Config는 보안 결정이나 정답 검증의 source가 아니다. UI �
 
 AIT는 AppsInToss Analytics와 Firebase Analytics를 함께 호출한다. 샌드박스나 로컬 브라우저에서 일부 이벤트가 실제 콘솔에 쌓이지 않을 수 있으므로, QA는 런타임 로그와 라이브 콘솔을 분리해서 본다.
 
-| Event                              | 시점                                        |
-| ---------------------------------- | ------------------------------------------- |
-| `screen_view`                      | 홈, 풀이, 결과, 기록 화면 진입              |
-| `puzzle_select`                    | 홈/풀이/결과에서 다른 퍼즐 카드 선택        |
-| `mission_start`                    | 퍼즐별 첫 도전 시작                          |
-| `attempt_start`                    | 첫 도전 또는 재도전 시작                    |
-| `first_answer_input`               | 도전 중 첫 수동 입력                        |
-| `hint_reveal`                      | 힌트 1개 사용                               |
-| `rewarded_hint_ad_request`         | 보상형 광고 요청                            |
-| `rewarded_hint_ad_event`           | 보상형 광고 load/show 이벤트                |
-| `rewarded_hint_ad_reward`          | `userEarnedReward` 수신 후 힌트 지급        |
-| `rewarded_bonus_puzzle_ad_request` | 보너스 퍼즐 보상형 광고 요청                |
-| `rewarded_bonus_puzzle_ad_event`   | 보너스 퍼즐 보상형 광고 load/show 이벤트    |
-| `rewarded_bonus_puzzle_ad_reward`  | `userEarnedReward` 수신 후 보너스 퍼즐 해금 |
-| `mission_complete`                 | 퍼즐 완료. 완료자 집계 기준                 |
-| `puzzle_abandon`                   | 시작 후 미완료로 보드 이탈(시도당 1회)      |
-| `result_interstitial_ad_request`   | 결과 전면 광고 요청. 현재 기본 비활성       |
+| Event                              | 시점                                              |
+| ---------------------------------- | ------------------------------------------------- |
+| `screen_view`                      | 홈, 풀이, 결과, 기록 화면 진입                    |
+| `puzzle_select`                    | 홈/풀이/결과에서 다른 퍼즐 카드 선택              |
+| `mission_start`                    | 퍼즐별 첫 도전 시작                               |
+| `attempt_start`                    | 첫 도전 또는 재도전 시작                          |
+| `first_answer_input`               | 도전 중 첫 수동 입력                              |
+| `hint_reveal`                      | 힌트 1개 사용                                     |
+| `rewarded_hint_ad_request`         | 보상형 광고 요청                                  |
+| `rewarded_hint_ad_event`           | 보상형 광고 load/show 이벤트                      |
+| `rewarded_hint_ad_reward`          | `userEarnedReward` 수신 후 힌트 지급              |
+| `rewarded_bonus_puzzle_ad_request` | 보너스 퍼즐 보상형 광고 요청                      |
+| `rewarded_bonus_puzzle_ad_event`   | 보너스 퍼즐 보상형 광고 load/show 이벤트          |
+| `rewarded_bonus_puzzle_ad_reward`  | `userEarnedReward` 수신 후 보너스 퍼즐 해금       |
+| `mission_complete`                 | 퍼즐 완료. 완료자 집계 기준                       |
+| `puzzle_abandon`                   | 시작 후 미완료로 보드 이탈(시도당 1회)            |
+| `result_interstitial_ad_request`   | 결과 전면 광고 요청. 현재 기본 비활성             |
 | `result_interstitial_ad_event`     | 결과 전면 광고 load/show 이벤트. 현재 기본 비활성 |
-| `result_interstitial_ad_result`    | 결과 전면 광고 종료/실패. 현재 기본 비활성 |
+| `result_interstitial_ad_result`    | 결과 전면 광고 종료/실패. 현재 기본 비활성        |
 
 집계용 이벤트는 공통으로 `puzzle_id`, `slot_id`, `pack_id`, `published_at`, `difficulty`, `grid_size`, `word_count`를 포함한다. 미션/시도 이벤트는 `attempt_number`, `remaining_attempts`, `hint_count`, `earned_hint_credits`를 추가한다. `mission_complete`는 `completed_at`, `elapsed_seconds`, `completed_word_count`도 포함한다.
 

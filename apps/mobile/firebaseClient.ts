@@ -32,6 +32,9 @@ export async function loadFirebaseLaunchConfig(): Promise<LaunchConfig> {
       await remoteConfigClient.fetchAndActivate();
 
       return normalizeLaunchConfig({
+        dailyFreeHintCredits: remoteConfigClient
+          .getValue(launchConfigKeys.dailyFreeHintCredits)
+          .asNumber(),
         defaultHintCredits: remoteConfigClient
           .getValue(launchConfigKeys.defaultHintCredits)
           .asNumber(),

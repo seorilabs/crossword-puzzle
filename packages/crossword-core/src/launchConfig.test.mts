@@ -10,6 +10,10 @@ import {
 } from "./launchConfig.ts";
 import { LEADERBOARD_SCORE_WEIGHTS } from "./leaderboard.ts";
 import {
+  DEFAULT_DAILY_FREE_HINT_CREDITS,
+  DEFAULT_REWARDED_HINT_CREDITS,
+} from "./dailyHintWallet.ts";
+import {
   DAILY_ATTEMPT_LIMIT,
   DEFAULT_HINT_CREDITS_BY_DIFFICULTY,
 } from "./uiPolicy.ts";
@@ -230,7 +234,8 @@ describe("launchConfig: dailyAttemptLimit 원격화(#225)", () => {
       1,
     );
     assert.equal(
-      normalizeLaunchConfig({ dailyAttemptLimit: Number.NaN }).dailyAttemptLimit,
+      normalizeLaunchConfig({ dailyAttemptLimit: Number.NaN })
+        .dailyAttemptLimit,
       3,
     );
   });
@@ -331,10 +336,7 @@ describe("launchConfig: 리더보드 점수 가중치(#216)", () => {
       leaderboardScoreHint: Number.NaN,
     });
     // 비유한 값은 기본값으로 폴백.
-    assert.equal(
-      nan.leaderboardScoreHint,
-      LEADERBOARD_SCORE_WEIGHTS.hint,
-    );
+    assert.equal(nan.leaderboardScoreHint, LEADERBOARD_SCORE_WEIGHTS.hint);
   });
 
   it("상한을 넘으면 클램프된다", () => {
@@ -357,10 +359,7 @@ describe("launchConfig: 막힘 힌트 노출 상한·쿨다운(#254, #265)", () 
 
   it("Remote Config 기본값 맵과 키 이름이 반영된다", () => {
     const defaults = getLaunchConfigDefaultsForRemoteConfig();
-    assert.equal(
-      defaults[launchConfigKeys.stuckHintMaxPromptsPerAttempt],
-      2,
-    );
+    assert.equal(defaults[launchConfigKeys.stuckHintMaxPromptsPerAttempt], 2);
     assert.equal(defaults[launchConfigKeys.stuckHintMaxDismissals], 1);
     assert.equal(defaults[launchConfigKeys.stuckHintDismissBackoffFactor], 2);
     assert.equal(defaults[launchConfigKeys.stuckHintMinCooldownMs], 180000);
@@ -487,6 +486,41 @@ describe("launchConfig: 난이도별 기본 힌트 크레딧(#251)", () => {
     const defaults = getLaunchConfigDefaultsForRemoteConfig();
     assert.equal(defaults[launchConfigKeys.defaultHintCreditsEasy], 2);
     assert.equal(defaults[launchConfigKeys.defaultHintCreditsHard], 5);
+  });
+});
+
+describe("launchConfig: 날짜별 공용 힌트", () => {
+  it("무료 3개와 광고 보상 1개가 공통 기본값이다", () => {
+    assert.equal(
+      defaultLaunchConfig.dailyFreeHintCredits,
+      DEFAULT_DAILY_FREE_HINT_CREDITS,
+    );
+    assert.equal(
+      defaultLaunchConfig.rewardedHintCredits,
+      DEFAULT_REWARDED_HINT_CREDITS,
+    );
+  });
+
+  it("Remote Config 키와 기본값 맵에 반영된다", () => {
+    const defaults = getLaunchConfigDefaultsForRemoteConfig();
+
+    assert.equal(
+      launchConfigKeys.dailyFreeHintCredits,
+      "daily_free_hint_credits",
+    );
+    assert.equal(defaults[launchConfigKeys.dailyFreeHintCredits], 3);
+    assert.equal(defaults[launchConfigKeys.rewardedHintCredits], 1);
+  });
+
+  it("일일 무료 개수는 0~20 범위로 정규화한다", () => {
+    assert.equal(
+      normalizeLaunchConfig({ dailyFreeHintCredits: -1 }).dailyFreeHintCredits,
+      0,
+    );
+    assert.equal(
+      normalizeLaunchConfig({ dailyFreeHintCredits: 99 }).dailyFreeHintCredits,
+      20,
+    );
   });
 });
 
