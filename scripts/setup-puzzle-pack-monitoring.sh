@@ -315,7 +315,7 @@ if [ "$DRY_RUN" = "1" ]; then
 else
   POLICY_NAME="$(gcloud monitoring policies list \
     --project "$PROJECT_ID" \
-    --filter "displayName=${ALERT_POLICY_DISPLAY_NAME}" \
+    --filter "displayName=\"${ALERT_POLICY_DISPLAY_NAME}\"" \
     --format='value(name)' \
     --limit=1)"
   if [ -n "$POLICY_NAME" ]; then

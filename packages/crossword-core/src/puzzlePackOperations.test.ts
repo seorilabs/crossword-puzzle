@@ -327,6 +327,10 @@ esac
         calls,
         /monitoring policies update projects\/crossword-puzzle-79ae0\/alertPolicies\/existing /,
       );
+      assert.match(
+        calls,
+        /monitoring policies list .*--filter displayName="가로세로 낱말 퍼즐 일간팩 오류" /,
+      );
     } finally {
       await rm(testRoot, { recursive: true, force: true });
     }
