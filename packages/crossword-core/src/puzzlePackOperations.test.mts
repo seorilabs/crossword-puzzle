@@ -43,7 +43,7 @@ function collectChildProcess(
 }
 
 describe("published puzzle pack health CLI", () => {
-  it("exits non-zero and emits an ERROR-severity stderr marker for a missing daily pack", async () => {
+  it("AC-5 오류 시 non-zero 종료와 severity ERROR용 stderr marker를 남긴다", async () => {
     const server = createServer((_request, response) => {
       response.writeHead(200, { "content-type": "application/json" });
       response.end(
@@ -83,10 +83,102 @@ describe("published puzzle pack health CLI", () => {
       });
     }
   });
+
+  it("AC-3 공개 puzzle의 격자 slot과 entry가 다르면 실패한다", async () => {
+    const date = "2026-07-26";
+    const createPuzzle = (
+      difficulty: "easy" | "normal" | "hard",
+      answer: string,
+    ) => {
+      const gridSize = difficulty === "easy" ? 5 : 8;
+      const grid = Array.from({ length: gridSize }, () =>
+        Array.from({ length: gridSize }, () => ""),
+      );
+      answer.split("").forEach((letter, index) => {
+        grid[0][index] = letter;
+      });
+
+      return {
+        puzzleId: `puzzle-${difficulty}`,
+        date,
+        difficulty,
+        gridSize,
+        grid,
+        entries: [
+          {
+            id: `${difficulty}-1`,
+            answer,
+            clue: `${difficulty} clue`,
+            direction: "across",
+            row: 0,
+            col: 0,
+            generatedBy: "placed",
+          },
+        ],
+        metrics: {},
+      };
+    };
+    const puzzles = {
+      "/puzzles/easy.json": createPuzzle("easy", "가나다"),
+      "/puzzles/normal.json": createPuzzle("normal", "라마바"),
+      "/puzzles/hard.json": createPuzzle("hard", "사아자"),
+    };
+    puzzles["/puzzles/normal.json"].grid[0][0] = "마";
+    const manifest = {
+      diversityThresholds: {
+        historyLimit: 7,
+        maxSameDateSharedAnswers: 0,
+        maxScaffoldSimilarity: 0.75,
+        maxSharedAnswerRatio: 0.5,
+      },
+      puzzles: Object.entries(puzzles).map(([puzzlePath, puzzle]) => ({
+        date,
+        difficulty: puzzle.difficulty,
+        path: puzzlePath,
+        puzzleId: puzzle.puzzleId,
+      })),
+    };
+    const server = createServer((request, response) => {
+      const requestPath = new URL(request.url ?? "/", "http://127.0.0.1")
+        .pathname;
+      const body =
+        requestPath === "/puzzles/manifest.json"
+          ? manifest
+          : puzzles[requestPath as keyof typeof puzzles];
+      response.writeHead(body == null ? 404 : 200, {
+        "content-type": "application/json",
+      });
+      response.end(JSON.stringify(body ?? { error: "not found" }));
+    });
+
+    await new Promise<void>((resolve) => {
+      server.listen(0, "127.0.0.1", resolve);
+    });
+
+    try {
+      const address = server.address();
+      if (address == null || typeof address === "string") {
+        throw new Error("health test server did not expose a TCP port");
+      }
+      const result = await collectChildProcess(process.execPath, [
+        HEALTH_SCRIPT,
+        `--baseUrl=http://127.0.0.1:${address.port}`,
+        `--date=${date}`,
+      ]);
+
+      assert.equal(result.code, 1);
+      assert.match(result.stderr, /structural_validation_failed/);
+      assert.match(result.stderr, /puzzle-normal/);
+    } finally {
+      await new Promise<void>((resolve, reject) => {
+        server.close((error) => (error == null ? resolve() : reject(error)));
+      });
+    }
+  });
 });
 
 describe("puzzle pack monitoring setup", () => {
-  it("dry-run contains the health job, 00:30 scheduler, metric, policy, and notification channel", () => {
+  it("AC-6 health Job과 00:30 Scheduler와 metric과 policy 생성 명령을 만든다", () => {
     const result = spawnSync(
       SETUP_SCRIPT,
       [
@@ -122,7 +214,7 @@ describe("puzzle pack monitoring setup", () => {
     );
   });
 
-  it("updates every existing monitoring resource idempotently", async () => {
+  it("AC-6 기존 monitoring 리소스를 모두 idempotent하게 갱신한다", async () => {
     const testRoot = await mkdtemp(
       path.join(tmpdir(), "crossword-monitoring-test-"),
     );

@@ -76,7 +76,7 @@ function createFixture() {
 }
 
 describe("evaluatePublishedPuzzlePackHealth", () => {
-  it("passes a complete easy normal hard pack with no shared answers", () => {
+  it("AC-1 공개 manifest에 Easy Normal Hard가 정확히 한 판씩 있으면 통과한다", () => {
     const fixture = createFixture();
 
     const result = evaluatePublishedPuzzlePackHealth({
@@ -94,7 +94,7 @@ describe("evaluatePublishedPuzzlePackHealth", () => {
     });
   });
 
-  it("fails when today's hard puzzle is missing", () => {
+  it("AC-1 오늘 Hard 퍼즐이 없으면 missing_difficulty로 실패한다", () => {
     const fixture = createFixture();
     fixture.manifest.puzzles = fixture.manifest.puzzles.filter(
       (item) => item.difficulty !== "hard",
@@ -115,7 +115,7 @@ describe("evaluatePublishedPuzzlePackHealth", () => {
     );
   });
 
-  it("fails when a date has more than one puzzle for the same difficulty", () => {
+  it("AC-1 같은 날짜와 난이도 퍼즐이 둘이면 duplicate_difficulty로 실패한다", () => {
     const fixture = createFixture();
     fixture.manifest.puzzles.push({
       ...fixture.manifest.puzzles[0],
@@ -138,7 +138,7 @@ describe("evaluatePublishedPuzzlePackHealth", () => {
     );
   });
 
-  it("fails when two difficulty tiers share an answer", () => {
+  it("AC-4 당일 세 난이도 정답 교집합이 있으면 shared_answer로 실패한다", () => {
     const fixture = createFixture();
     fixture.puzzles.normal.entries[0].answer =
       fixture.puzzles.easy.entries[0].answer;
@@ -153,7 +153,7 @@ describe("evaluatePublishedPuzzlePackHealth", () => {
     assert.ok(result.issues.some((issue) => issue.code === "shared_answer"));
   });
 
-  it("fails when puzzle metadata differs from the manifest", () => {
+  it("AC-3 manifest와 puzzle metadata가 다르면 실패한다", () => {
     const fixture = createFixture();
     fixture.puzzles.normal.puzzleId = "unexpected-normal-id";
 
@@ -173,7 +173,7 @@ describe("evaluatePublishedPuzzlePackHealth", () => {
     );
   });
 
-  it("fails when the published grid size or diversity threshold drifts", () => {
+  it("AC-2 Easy는 5x5 Normal과 Hard는 8x8 규격을 강제한다", () => {
     const fixture = createFixture();
     fixture.puzzles.hard.gridSize = 7;
     fixture.manifest.diversityThresholds = {
