@@ -13,23 +13,46 @@ const deployWorkflow = readFileSync(
 const readme = readFileSync(new URL("README.md", repoRoot), "utf8");
 const appSource = readFileSync(new URL("src/App.tsx", repoRoot), "utf8");
 
-// 배포 잡의 잡 레벨 env 블록(`    env:` ~ `    steps:`)만 잘라, 주입 라인이
-// 실제로 빌드 스텝이 process env로 받는 위치에 있는지 검증한다.
+// 배포 잡의 잡 레벨 env 블록(`    env:` ~ `    steps:`)만 잘라, 주입 키가 실제로
+// 빌드 스텝이 process env로 받는 위치에 있는지 검증한다.
 const jobEnvBlock = deployWorkflow.slice(
   deployWorkflow.indexOf("\n    env:"),
   deployWorkflow.indexOf("\n    steps:"),
 );
+
+// 잡 레벨 env 블록을 key→value 맵으로 파싱한다. `      KEY: VALUE`(6칸 들여쓰기)
+// 라인만 취해, 텍스트 존재가 아니라 "구조상 env 키가 존재하고 그 값이 무엇인지"로
+// 인수조건을 검증한다.
+function parseJobEnv(block: string): Record<string, string> {
+  const env: Record<string, string> = {};
+  for (const line of block.split("\n")) {
+    const match = /^ {6}([A-Z0-9_]+):\s*(.*)$/.exec(line);
+    if (match) {
+      env[match[1]] = match[2].trim();
+    }
+  }
+  return env;
+}
+
+const jobEnv = parseJobEnv(jobEnvBlock);
 
 describe("복귀 리마인더 배포 배선 설정 (#319)", () => {
   it("AC-1: 배포 워크플로 빌드 env(잡 레벨 env 블록)에 VITE_RETURN_REMINDER_TEMPLATE_CODE를 repo variable로 주입한다", () => {
     // 슬라이스가 실제로 env 블록을 잡았는지(가드): 두 마커가 모두 존재해야 한다.
     assert.ok(deployWorkflow.includes("\n    env:"));
     assert.ok(deployWorkflow.includes("\n    steps:"));
-    assert.ok(jobEnvBlock.length > 0);
-    // 주입 라인이 그 env 블록 안에 있고, repo variable 폴백('')까지 정확한지 확인.
+    // 구조 검증: env 맵에 해당 키가 존재하고, 값이 repo variable를 '' 폴백으로
+    // 참조하는 표현식이어야 한다(텍스트 존재가 아니라 파싱된 키/값으로 확인).
+    assert.ok(
+      Object.prototype.hasOwnProperty.call(
+        jobEnv,
+        "VITE_RETURN_REMINDER_TEMPLATE_CODE",
+      ),
+      "잡 env에 VITE_RETURN_REMINDER_TEMPLATE_CODE 키가 있어야 한다",
+    );
     assert.match(
-      jobEnvBlock,
-      /VITE_RETURN_REMINDER_TEMPLATE_CODE:\s*\$\{\{\s*vars\.RETURN_REMINDER_TEMPLATE_CODE\s*\|\|\s*''\s*\}\}/,
+      jobEnv.VITE_RETURN_REMINDER_TEMPLATE_CODE,
+      /^\$\{\{\s*vars\.RETURN_REMINDER_TEMPLATE_CODE\s*\|\|\s*''\s*\}\}$/,
     );
     // 이 env를 소비하는 빌드 스텝이 존재한다(npm run build).
     assert.match(deployWorkflow, /run:\s*npm run build/);
