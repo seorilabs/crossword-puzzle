@@ -104,7 +104,7 @@ jobs:
       - name: Warn on missing return reminder template code
         if: ${{ vars.RETURN_REMINDER_TEMPLATE_CODE == '' }}
         run: |
-          echo "::warning::repo variable RETURN_REMINDER_TEMPLATE_CODE 미설정 — 폴백 템플릿 코드로 빌드됨. 복귀 리마인더 동의가 전건 실패함(#319). README '복귀 리마인더 템플릿 코드' 절차 참고."
+          echo "::warning::repo variable RETURN_REMINDER_TEMPLATE_CODE 미설정 — 폴백 템플릿 코드로 빌드됨 — 리마인더 동의가 전건 실패함(#319). README '복귀 리마인더 템플릿 코드' 절차 참고."
 
       - name: Build .ait bundle
         env:

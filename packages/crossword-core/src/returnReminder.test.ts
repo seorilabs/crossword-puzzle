@@ -12,6 +12,7 @@ import {
   mapNotificationAgreementResult,
   markReturnReminderPrompted,
   RETURN_REMINDER_MAX_PROMPT_COUNT,
+  RETURN_REMINDER_PROMPT_EVENT,
   RETURN_REMINDER_RESULT_EVENT,
   shouldPromptReturnReminder,
   summarizeAgreementError,
@@ -355,6 +356,24 @@ describe("returnReminder 정책", () => {
       buildReturnReminderPromptParams("mission_complete", "default"),
       { trigger: "mission_complete", template_code_source: "default" },
     );
+  });
+
+  it("AC-3: prompt·result 두 이벤트 파라미터 모두 template_code_source를 적재한다 (#319)", () => {
+    // App.tsx emit부가 두 이벤트에 쓰는 파라미터 빌더가 모두 출처를 담는지 고정한다.
+    const source = "env" as const;
+    const promptParams = buildReturnReminderPromptParams(
+      "mission_complete",
+      source,
+    );
+    const resultParams = buildReturnReminderResultParams(
+      { promptCount: 1, outcome: "agreed" },
+      source,
+    );
+    // 두 이벤트가 실재하고(상수) 각 파라미터에 동일 출처가 실린다.
+    assert.equal(RETURN_REMINDER_PROMPT_EVENT, "return_reminder_prompt");
+    assert.equal(RETURN_REMINDER_RESULT_EVENT, "return_reminder_result");
+    assert.equal(promptParams.template_code_source, source);
+    assert.equal(resultParams.template_code_source, source);
   });
 });
 
