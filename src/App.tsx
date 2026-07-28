@@ -102,6 +102,7 @@ import {
   shouldPromptReturnReminder,
   markReturnReminderPrompted,
   applyReturnReminderOutcome,
+  buildReturnReminderPromptParams,
   buildReturnReminderResultParams,
   RETURN_REMINDER_PROMPT_EVENT,
   RETURN_REMINDER_RESULT_EVENT,
@@ -206,7 +207,10 @@ import {
   loadReturnReminderState,
   saveReturnReminderState,
 } from "./adapters/returnReminderRepository";
-import { requestReturnReminderAgreement } from "./adapters/notificationAgreement";
+import {
+  requestReturnReminderAgreement,
+  RETURN_REMINDER_TEMPLATE_CODE_SOURCE,
+} from "./adapters/notificationAgreement";
 import {
   defaultLaunchConfig,
   type LaunchConfig,
@@ -1521,9 +1525,13 @@ function App() {
 
     const prompted = markReturnReminderPrompted(state, promptDate);
     saveReturnReminderState(prompted);
-    telemetry.impression(RETURN_REMINDER_PROMPT_EVENT, {
-      trigger: "mission_complete",
-    });
+    telemetry.impression(
+      RETURN_REMINDER_PROMPT_EVENT,
+      buildReturnReminderPromptParams(
+        "mission_complete",
+        RETURN_REMINDER_TEMPLATE_CODE_SOURCE,
+      ),
+    );
 
     void requestReturnReminderAgreement().then(
       ({ outcome, errorReason, errorCode }) => {
@@ -1536,7 +1544,10 @@ function App() {
         saveReturnReminderState(resolved);
         telemetry.impression(
           RETURN_REMINDER_RESULT_EVENT,
-          buildReturnReminderResultParams(resolved),
+          buildReturnReminderResultParams(
+            resolved,
+            RETURN_REMINDER_TEMPLATE_CODE_SOURCE,
+          ),
         );
       },
     );
