@@ -101,6 +101,22 @@ export type GameAnalyticsEventPayloads = {
 /** 전송 가능한 게임 이벤트 이름의 유니온. */
 export type GameAnalyticsEventName = keyof GameAnalyticsEventPayloads;
 
+// game_assist_ad result 매핑(#321): 리워드 광고 실패/취소 결과의 플랫폼별 status를
+// 신규 크로스마켓 택소노미 result 값으로 변환한다. 유저가 광고를 끝까지 보지 않고
+// 닫은 취소(웹 "dismissed" / 모바일 "closed")는 "dismiss", 그 외 실패(failed/timeout/
+// unsupported 등)는 "error"로 계측한다. 성공(reward)은 별도 경로에서 발화하므로 여기서
+// 다루지 않는다. 웹·모바일 onFailure가 공유해 두 마켓 계측을 정합하게 만든다.
+const REWARDED_AD_DISMISS_STATUSES: ReadonlySet<string> = new Set([
+  "dismissed",
+  "closed",
+]);
+
+export function mapRewardedAdFailureToAssistResult(
+  status: string,
+): "dismiss" | "error" {
+  return REWARDED_AD_DISMISS_STATUSES.has(status) ? "dismiss" : "error";
+}
+
 /**
  * 진척(progression) 이벤트 페이로드. game_* 완료 퍼널이 특정 퍼즐(콘텐츠) 차원을
  * 재는 것과 달리, 이 이벤트들은 "장기 리텐션 장치"(스트릭·개인 통계)의 노출/달성을

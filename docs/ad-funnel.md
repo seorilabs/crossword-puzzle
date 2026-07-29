@@ -36,6 +36,19 @@
 
 > placement를 emit-side 파라미터로 통일(예: 모든 광고 이벤트에 `placement` 추가)하는 것은 web/mobile 양쪽 emit을 함께 바꿔야 하는 parity-민감 변경이라, 본 작업은 **분석 레이어에서 prefix→placement 정규화**로 표준화했다. 이벤트 종류가 늘어 prefix 규칙이 불충분해지면 그때 emit-side `placement` 도입을 별도 PR로 검토한다.
 
+### 크로스마켓 `game_assist_ad` result 매핑 (#321)
+
+레거시 `*_ad_*` 이벤트와 별개로, 크로스마켓 택소노미 `game_assist_ad`(`assistType=rewarded_hint`)는 리워드 광고 보조 단계를 `result` 4종으로 계측한다. #321에서 실패/취소 경로(`dismiss`/`error`)를 웹·모바일 양쪽에 배선해, 이전에 `request`/`reward`만 발화하던 결함을 해소했다.
+
+| `game_assist_ad.result` | 발화 시점 | 레거시 매핑 |
+| --- | --- | --- |
+| `request` | 리워드 광고 보조 요청 | `rewarded_hint_ad_request` |
+| `reward` | 보상 지급(완주) | `rewarded_hint_ad_result` status=`rewarded` / `*_ad_reward` |
+| `dismiss` | 유저가 광고를 끝까지 보지 않고 닫음(취소) | 웹 result status=`dismissed` / 모바일 `closed` / `rewarded_hint_ad_cancel` |
+| `error` | 그 외 실패 | result status ∈ (`failed`,`timeout`,`unsupported`) |
+
+> 검증: 배포 후 `game_assist_ad`의 `result` 분포가 레거시 `rewarded_hint_ad_result` status 분포와 정합하는지 BQ로 대조한다(`dismiss`↔`dismissed`+cancel, `error`↔`failed`+`timeout`+`unsupported`).
+
 ## 실행
 
 ```bash
