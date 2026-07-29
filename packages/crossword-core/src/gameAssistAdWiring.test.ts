@@ -16,6 +16,20 @@ const mobileApp = readFileSync(
   new URL("apps/mobile/App.tsx", repoRoot),
   "utf8",
 );
+
+// onFailure 콜백 블록(`onFailure:` ~ 다음 콜백 `onLoadingChange:`)만 잘라, emit이
+// 실제로 실패/취소 경로(onFailure) 안에 있는지 구조로 확인한다.
+function sliceOnFailureBlock(source: string): string {
+  const start = source.indexOf("onFailure:");
+  if (start < 0) {
+    return "";
+  }
+  const end = source.indexOf("onLoadingChange:", start);
+  return end > start ? source.slice(start, end) : "";
+}
+
+const webOnFailure = sliceOnFailureBlock(webApp);
+const mobileOnFailure = sliceOnFailureBlock(mobileApp);
 const adFunnelDoc = readFileSync(
   new URL("docs/ad-funnel.md", repoRoot),
   "utf8",
@@ -27,21 +41,36 @@ const adFunnelSql = readFileSync(
 
 describe("game_assist_ad dismiss/error 배선 (#321)", () => {
   it("AC-1: src/App.tsx requestRewardedHint의 onFailure에서 실패는 error, 유저 취소는 dismiss로 game_assist_ad를 발화한다", () => {
-    // onFailure 분기 안에서 game_assist_ad를 core 매핑 결과(result.status→dismiss/error)로 발화한다.
-    assert.match(
-      webApp,
-      /onFailure:[\s\S]*?gameAnalytics\.track\(\s*"game_assist_ad"[\s\S]*?result:\s*mapRewardedAdFailureToAssistResult\(result\.status\)/,
+    // onFailure 블록이 실재하고(가드), 그 안에서 game_assist_ad를 core 매핑 결과로
+    // 발화한다(정확 문자열 근거).
+    assert.ok(webOnFailure.length > 0, "src/App.tsx에 onFailure 블록이 있어야 한다");
+    assert.ok(
+      webOnFailure.includes('gameAnalytics.track("game_assist_ad"'),
+      "onFailure 안에서 game_assist_ad를 발화해야 한다",
     );
-    // 매핑은 core 계약을 import해 쓴다(번역·재구현 금지).
-    assert.match(webApp, /mapRewardedAdFailureToAssistResult/);
+    assert.ok(
+      webOnFailure.includes(
+        "result: mapRewardedAdFailureToAssistResult(result.status)",
+      ),
+      "result를 core 매핑(mapRewardedAdFailureToAssistResult) 결과로 실어야 한다",
+    );
   });
 
   it("AC-2: apps/mobile/App.tsx의 대응 onFailure 지점에도 동일하게 game_assist_ad를 배선한다", () => {
-    assert.match(
-      mobileApp,
-      /onFailure:[\s\S]*?gameAnalytics\.track\(\s*'game_assist_ad'[\s\S]*?result:\s*mapRewardedAdFailureToAssistResult\(result\.status\)/,
+    assert.ok(
+      mobileOnFailure.length > 0,
+      "apps/mobile/App.tsx에 onFailure 블록이 있어야 한다",
     );
-    assert.match(mobileApp, /mapRewardedAdFailureToAssistResult/);
+    assert.ok(
+      mobileOnFailure.includes("gameAnalytics.track('game_assist_ad'"),
+      "모바일 onFailure 안에서 game_assist_ad를 발화해야 한다",
+    );
+    assert.ok(
+      mobileOnFailure.includes(
+        "result: mapRewardedAdFailureToAssistResult(result.status)",
+      ),
+      "모바일도 result를 core 매핑 결과로 실어야 한다",
+    );
   });
 
   it("AC-3: 발화 분기(성공은 reward 경로, 취소→dismiss, 실패→error)를 mapRewardedAdFailureToAssistResult 단위 테스트로 고정한다", () => {
