@@ -358,22 +358,24 @@ describe("returnReminder 정책", () => {
     );
   });
 
-  it("AC-3: prompt·result 두 이벤트 파라미터 모두 template_code_source를 적재한다 (#319)", () => {
-    // App.tsx emit부가 두 이벤트에 쓰는 파라미터 빌더가 모두 출처를 담는지 고정한다.
-    const source = "env" as const;
-    const promptParams = buildReturnReminderPromptParams(
-      "mission_complete",
-      source,
-    );
-    const resultParams = buildReturnReminderResultParams(
-      { promptCount: 1, outcome: "agreed" },
-      source,
-    );
-    // 두 이벤트가 실재하고(상수) 각 파라미터에 동일 출처가 실린다.
-    assert.equal(RETURN_REMINDER_PROMPT_EVENT, "return_reminder_prompt");
-    assert.equal(RETURN_REMINDER_RESULT_EVENT, "return_reminder_result");
-    assert.equal(promptParams.template_code_source, source);
-    assert.equal(resultParams.template_code_source, source);
+  it("AC-3: buildReturnReminderResultParams의 template_code_source env/default를 return_reminder_prompt·return_reminder_result 양쪽에 적재한다 (#319)", () => {
+    // App.tsx emit부가 두 이벤트에 쓰는 파라미터 빌더가 허용된 두 출처 값을
+    // 동일하게 전달하는지 한 실행 테스트에서 폐곡한다.
+    for (const source of ["env", "default"] as const) {
+      const promptParams = buildReturnReminderPromptParams(
+        "mission_complete",
+        source,
+      );
+      const resultParams = buildReturnReminderResultParams(
+        { promptCount: 1, outcome: "agreed" },
+        source,
+      );
+      // 두 이벤트가 실재하고(상수) 각 파라미터에 동일 출처가 실린다.
+      assert.equal(RETURN_REMINDER_PROMPT_EVENT, "return_reminder_prompt");
+      assert.equal(RETURN_REMINDER_RESULT_EVENT, "return_reminder_result");
+      assert.equal(promptParams.template_code_source, source);
+      assert.equal(resultParams.template_code_source, source);
+    }
   });
 });
 

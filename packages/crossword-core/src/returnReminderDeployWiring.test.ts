@@ -37,7 +37,7 @@ function parseJobEnv(block: string): Record<string, string> {
 const jobEnv = parseJobEnv(jobEnvBlock);
 
 describe("복귀 리마인더 배포 배선 설정 (#319)", () => {
-  it("AC-1: 배포 워크플로 빌드 env(잡 레벨 env 블록)에 VITE_RETURN_REMINDER_TEMPLATE_CODE를 repo variable로 주입한다", () => {
+  it("AC-1: .github/workflows/deploy-apps-in-toss.yml 빌드 env에 VITE_RETURN_REMINDER_TEMPLATE_CODE를 repo variable로 주입한다", () => {
     // 슬라이스가 실제로 env 블록을 잡았는지(가드): 두 마커가 모두 존재해야 한다.
     assert.ok(deployWorkflow.includes("\n    env:"));
     assert.ok(deployWorkflow.includes("\n    steps:"));
@@ -50,9 +50,9 @@ describe("복귀 리마인더 배포 배선 설정 (#319)", () => {
       ),
       "잡 env에 VITE_RETURN_REMINDER_TEMPLATE_CODE 키가 있어야 한다",
     );
-    assert.match(
+    assert.equal(
       jobEnv.VITE_RETURN_REMINDER_TEMPLATE_CODE,
-      /^\$\{\{\s*vars\.RETURN_REMINDER_TEMPLATE_CODE\s*\|\|\s*''\s*\}\}$/,
+      "${{ vars.RETURN_REMINDER_TEMPLATE_CODE || '' }}",
     );
     // 이 env를 소비하는 빌드 스텝이 존재한다(npm run build).
     assert.match(deployWorkflow, /run:\s*npm run build/);
