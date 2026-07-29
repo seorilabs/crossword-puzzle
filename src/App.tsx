@@ -116,6 +116,7 @@ import {
   type DailyHintWallet,
   type Direction,
   type GamePuzzleContext,
+  mapRewardedAdFailureToAssistResult,
   type Puzzle,
   type PuzzleEntry,
   type PuzzleManifestItem,
@@ -2279,6 +2280,12 @@ function App() {
         if (result.status === "rewarded") {
           return;
         }
+        // 게임 세부 지표: 리워드 광고 보조 실패/취소(힌트). 유저 취소(dismissed)는
+        // dismiss, 그 외 실패(failed/timeout/unsupported)는 error로 계측한다(#321).
+        gameAnalytics.track("game_assist_ad", getGamePuzzleContext(puzzle), {
+          assistType: "rewarded_hint",
+          result: mapRewardedAdFailureToAssistResult(result.status),
+        });
         const message = getRewardedHintFailureMessage(result);
         setHintNotice(message);
         showHintToast(message);

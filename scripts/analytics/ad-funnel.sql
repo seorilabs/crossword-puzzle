@@ -23,6 +23,14 @@
 --   완주(reward)    = result.status = 'rewarded'
 --   no_fill/실패    = status IN ('failed','timeout','unsupported')
 --
+-- 크로스마켓 택소노미 game_assist_ad.result 매핑(#321) — 위 레거시 status와의 정합 대조용:
+--   request  ← rewarded_hint_ad_request
+--   reward   ← result.status = 'rewarded' (= *_ad_reward)
+--   dismiss  ← 유저 취소: 웹 result.status='dismissed' / 모바일 'closed' / rewarded_hint_ad_cancel
+--   error    ← 그 외 실패: status IN ('failed','timeout','unsupported')
+--   (#321에서 dismiss/error 경로를 웹·모바일 onFailure에 배선. 배포 후
+--    game_assist_ad.result 분포가 레거시 status 분포와 정합하는지 BQ로 대조한다.)
+--
 -- 구간 변수(from_suffix / to_suffix)는 GA4 export 테이블 접미사(YYYYMMDD)다.
 -- 기본값은 최근 28일 롤링이며, 특정 구간으로 고정하려면 아래 두 DECLARE 줄만 바꾼다.
 --

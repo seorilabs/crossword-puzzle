@@ -88,6 +88,7 @@ import {
   type DailyHintWallet,
   type Direction,
   type GamePuzzleContext,
+  mapRewardedAdFailureToAssistResult,
   type Puzzle,
   type PuzzleEntry,
   type PuzzleManifest,
@@ -1681,6 +1682,12 @@ function AppContent() {
         );
       },
       onFailure: result => {
+        // 게임 세부 지표: 리워드 광고 보조 실패/취소(힌트). 유저 취소(closed)는
+        // dismiss, 그 외 실패(failed 등)는 error로 계측한다(#321).
+        gameAnalytics.track('game_assist_ad', getGamePuzzleContext(puzzle), {
+          assistType: 'rewarded_hint',
+          result: mapRewardedAdFailureToAssistResult(result.status),
+        });
         if (result.status === 'closed') {
           setNotice('광고를 끝까지 보지 않아 힌트가 지급되지 않았습니다.');
         } else {

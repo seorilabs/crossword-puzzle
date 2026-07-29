@@ -6,6 +6,7 @@ import {
   buildGameProgressionEvent,
   createGameAnalyticsClient,
   GAME_ANALYTICS_SCHEMA_VERSION,
+  mapRewardedAdFailureToAssistResult,
   type GameAnalyticsSink,
   type GamePuzzleContext,
 } from "./gameAnalytics.ts";
@@ -161,6 +162,24 @@ describe("진척 이벤트 스키마·빌더 buildGameProgressionEvent (#292)", 
     });
     assert.equal(typeof statsView.params.total_puzzles, "number");
     assert.equal(typeof statsView.params.completed_count, "number");
+  });
+});
+
+describe("mapRewardedAdFailureToAssistResult (#321)", () => {
+  it("유저 취소(웹 dismissed / 모바일 closed)는 dismiss로 매핑한다", () => {
+    assert.equal(mapRewardedAdFailureToAssistResult("dismissed"), "dismiss");
+    assert.equal(mapRewardedAdFailureToAssistResult("closed"), "dismiss");
+  });
+
+  it("실패(failed/timeout/unsupported)는 error로 매핑한다", () => {
+    for (const status of ["failed", "timeout", "unsupported"]) {
+      assert.equal(mapRewardedAdFailureToAssistResult(status), "error");
+    }
+  });
+
+  it("알 수 없는 실패 status도 안전하게 error로 폴백한다", () => {
+    assert.equal(mapRewardedAdFailureToAssistResult("load_error"), "error");
+    assert.equal(mapRewardedAdFailureToAssistResult(""), "error");
   });
 });
 
