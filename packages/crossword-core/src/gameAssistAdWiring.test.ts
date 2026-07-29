@@ -40,9 +40,9 @@ const adFunnelSql = readFileSync(
 );
 
 describe("game_assist_ad dismiss/error 배선 (#321)", () => {
-  it("AC-1: src/App.tsx requestRewardedHint의 onFailure에서 실패는 error, 유저 취소는 dismiss로 game_assist_ad를 발화한다", () => {
-    // onFailure 블록이 실재하고(가드), 그 안에서 game_assist_ad를 core 매핑 결과로
-    // 발화한다(정확 문자열 근거).
+  it('AC-1: src/App.tsx requestRewardedHint의 onFailure에서 실패 status(failed/timeout 등)는 game_assist_ad result:"error", 유저 취소(dismiss status)는 result:"dismiss"를 발화한다', () => {
+    // (1) 배선: onFailure 블록이 실재하고, 그 안에서 game_assist_ad를 core 매핑 결과로
+    //     발화한다(정확 문자열 근거).
     assert.ok(webOnFailure.length > 0, "src/App.tsx에 onFailure 블록이 있어야 한다");
     assert.ok(
       webOnFailure.includes('gameAnalytics.track("game_assist_ad"'),
@@ -54,6 +54,12 @@ describe("game_assist_ad dismiss/error 배선 (#321)", () => {
       ),
       "result를 core 매핑(mapRewardedAdFailureToAssistResult) 결과로 실어야 한다",
     );
+    // (2) 결과 값: 웹 실패 status(failed/timeout/unsupported)는 error, 유저 취소
+    //     (dismissed)는 dismiss가 되어 game_assist_ad.result로 실린다.
+    assert.equal(mapRewardedAdFailureToAssistResult("failed"), "error");
+    assert.equal(mapRewardedAdFailureToAssistResult("timeout"), "error");
+    assert.equal(mapRewardedAdFailureToAssistResult("unsupported"), "error");
+    assert.equal(mapRewardedAdFailureToAssistResult("dismissed"), "dismiss");
   });
 
   it("AC-2: apps/mobile/App.tsx의 대응 onFailure 지점에도 동일하게 game_assist_ad를 배선한다", () => {
