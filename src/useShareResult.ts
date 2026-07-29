@@ -2,9 +2,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { TelemetryParams } from "../packages/crossword-core/src";
 import { telemetry } from "./adapters/telemetry";
+import { shareViaAitSheet } from "./adapters/aitShare";
 
-// 결과 공유 전달 공통 로직. navigator.share(공유 시트)를 우선 시도하고,
-// 미지원·실패 시 클립보드 복사로 폴백한다. ResultScreen과 완료 축하
+// 결과 공유 전달 공통 로직. AIT 네이티브 공유 시트를 우선 시도하고(#320), 미지원이면
+// navigator.share(공유 시트) → 클립보드 복사 순서로 폴백한다. ResultScreen과 완료 축하
 // 다이얼로그가 같은 동작을 공유하도록 화면 밖으로 추출했다(#202).
 export type ShareDeliveryOutcome = "shared" | "aborted" | "copied" | "failed";
 
@@ -15,6 +16,13 @@ export type ShareSurface = "result_screen" | "completion_dialog";
 export async function deliverShareText(
   text: string,
 ): Promise<ShareDeliveryOutcome> {
+  // AIT 웹뷰에는 navigator.share가 없어 항상 클립보드로 떨어진다(#320). 네이티브
+  // 공유 시트를 먼저 시도하고, 성공하면 shared로 종료한다. 미지원(로컬 브라우저 등)
+  // 이면 아래 기존 순서(navigator.share → 클립보드)로 폴백한다.
+  if ((await shareViaAitSheet(text)) === "shared") {
+    return "shared";
+  }
+
   if (typeof navigator !== "undefined" && navigator.share != null) {
     try {
       await navigator.share({ text });

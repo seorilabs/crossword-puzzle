@@ -20,6 +20,17 @@ vi.mock("./adapters/telemetry", () => ({
   },
 }));
 
+// AIT 네이티브 공유 시트 어댑터를 목킹한다(#320). 기본값은 unsupported로, 기존
+// navigator.share→클립보드 분기가 그대로 검증되게 한다. AIT shared 경로는 개별
+// 테스트에서 mockResolvedValueOnce로 덮어쓴다.
+const { aitShareMock } = vi.hoisted(() => ({
+  aitShareMock: vi.fn(() => Promise.resolve("unsupported")),
+}));
+
+vi.mock("./adapters/aitShare", () => ({
+  shareViaAitSheet: aitShareMock,
+}));
+
 type NavigatorPatch = {
   share?: (data: { text: string }) => Promise<void>;
   clipboard?: { writeText?: (text: string) => Promise<void> };
@@ -34,6 +45,9 @@ afterEach(() => {
   vi.unstubAllGlobals();
   clickMock.mockReset();
   impressionMock.mockReset();
+  // AIT 어댑터 목은 기본 unsupported로 원복한다(개별 테스트 격리).
+  aitShareMock.mockReset();
+  aitShareMock.mockResolvedValue("unsupported");
 });
 
 // share()가 예약한 deliverShareText 프라미스 체인이 끝나도록 마이크로/매크로태스크를 비운다.
@@ -97,6 +111,29 @@ describe("deliverShareText", () => {
       clipboard: { writeText: vi.fn(() => Promise.reject(new Error("nope"))) },
     });
     await expect(deliverShareText("본문")).resolves.toBe("failed");
+  });
+
+  it("AIT 네이티브 공유 시트 성공 시 shared를 반환하고 navigator/클립보드를 쓰지 않는다 (#320)", async () => {
+    aitShareMock.mockResolvedValueOnce("shared");
+    const navShare = vi.fn(() => Promise.resolve());
+    const writeText = vi.fn(() => Promise.resolve());
+    patchNavigator({ share: navShare, clipboard: { writeText } });
+
+    await expect(deliverShareText("본문")).resolves.toBe("shared");
+    expect(aitShareMock).toHaveBeenCalledWith("본문");
+    expect(navShare).not.toHaveBeenCalled();
+    expect(writeText).not.toHaveBeenCalled();
+  });
+
+  it("AIT 미지원이면 기존 navigator.share→클립보드 순서로 폴백한다 (#320)", async () => {
+    aitShareMock.mockResolvedValueOnce("unsupported");
+    const writeText = vi.fn(() => Promise.resolve());
+    // navigator.share 미존재 → 클립보드 복사로 폴백(copied).
+    patchNavigator({ clipboard: { writeText } });
+
+    await expect(deliverShareText("본문")).resolves.toBe("copied");
+    expect(aitShareMock).toHaveBeenCalledWith("본문");
+    expect(writeText).toHaveBeenCalledWith("본문");
   });
 });
 
@@ -227,6 +264,26 @@ describe("useShareResult 텔레메트리(#299)", () => {
       outcome: "failed",
     });
     failed.unmount();
+  });
+
+  it("AIT 네이티브 공유 시트 성공 시 outcome=shared 발화 + 토스트 없음 (#320)", async () => {
+    aitShareMock.mockResolvedValueOnce("shared");
+    // navigator.share가 없어도(AIT 웹뷰) AIT 어댑터 성공으로 shared가 나온다.
+    patchNavigator({ clipboard: { writeText: vi.fn(() => Promise.resolve()) } });
+    const { result } = renderHook(() => useShareResult("completion_dialog"));
+
+    act(() => {
+      result.current.share("본문", { puzzle_id: "p9" });
+    });
+    await flushShare();
+
+    expect(impressionMock).toHaveBeenCalledWith("share_result_outcome", {
+      surface: "completion_dialog",
+      outcome: "shared",
+    });
+    // shared는 클립보드 폴백이 아니므로 어떤 토스트도 켜지 않는다.
+    expect(result.current.shareCopied).toBe(false);
+    expect(result.current.shareFailed).toBe(false);
   });
 
   it("공유 시트 전달(shared) 시 surface·outcome을 share_result_outcome으로 발화한다", async () => {
