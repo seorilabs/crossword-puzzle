@@ -9,8 +9,21 @@ import { shareViaAitSheet } from "./aitShare";
 type ShareImpl = Parameters<typeof shareViaAitSheet>[1];
 
 describe("shareViaAitSheet (#320)", () => {
-  it("AC-1: src/adapters/aitShare 어댑터가 share({ message })를 try/catch로 감싸 성공 시 shared, 미지원 환경 throw 시 unsupported를 반환한다 (mock SDK) (#320)", async () => {
-    // 성공: mock SDK가 resolve하면 shared를 반환하고 { message }를 그대로 넘긴다.
+  it("AC-1: src/adapters/aitShare 어댑터가 @apps-in-toss/web-framework의 share({ message })를 try/catch로 감싸 성공 시 shared, 미지원 환경 throw 시 unsupported를 반환한다 (mock SDK 단위 테스트) (#320)", async () => {
+    // 구조 근거: 어댑터가 @apps-in-toss/web-framework의 share를 기본 SDK로 import해
+    // share({ message })를 try/catch로 감싸고, catch에서 unsupported를 반환한다.
+    const source = readFileSync("src/adapters/aitShare.ts", "utf8");
+    expect(source).toMatch(
+      /import\s*\{\s*share\s*\}\s*from\s*["']@apps-in-toss\/web-framework["']/,
+    );
+    // 기본 SDK 인자가 실제 share다(주입 미지정 시 실제 SDK 사용).
+    expect(source).toMatch(/shareImpl:\s*typeof share\s*=\s*share/);
+    // share({ message }) 호출을 try/catch로 감싼다.
+    expect(source).toMatch(/try\s*\{[\s\S]*shareImpl\(\{\s*message\s*\}\)/);
+    expect(source).toMatch(/\}\s*catch\s*\{[\s\S]*return\s*"unsupported"/);
+    expect(source).toMatch(/return\s*"shared"/);
+
+    // 행위 근거(mock SDK): 성공하면 shared를 반환하고 { message }를 그대로 넘긴다.
     let received: { message: string } | undefined;
     const ok = (async (options: { message: string }) => {
       received = options;
