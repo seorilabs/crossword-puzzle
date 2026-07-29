@@ -269,8 +269,8 @@ VITE_RETURN_REMINDER_TEMPLATE_CODE=<콘솔 발급 코드> npm run build
 
 1. [앱인토스 콘솔](https://apps-in-toss.toss.im/) > 미니앱 > 스마트 발송에서 "오늘의 퍼즐" 복귀 리마인드용 알림 동의문과 기능성 캠페인을 확인합니다.
 2. 문구 검수가 **승인** 상태인지, 발급된 `templateCode`가 무엇인지 확인합니다.
-3. 확인된 코드를 배포 환경의 `VITE_RETURN_REMINDER_TEMPLATE_CODE`(GitHub Actions는 repository variable/secret)에 반영합니다.
-4. 배포 후 GA4 `return_reminder_result`의 `outcome`·`error_code` 분포를 모니터링해 최초의 `agreed`/`declined`가 관측되는지 확인합니다.
+3. 확인된 코드를 GitHub 저장소의 **repository variable `RETURN_REMINDER_TEMPLATE_CODE`**(Settings > Secrets and variables > Actions > Variables)로 등록합니다. `Deploy AIT` 워크플로우가 이 값을 `VITE_RETURN_REMINDER_TEMPLATE_CODE`로 주입합니다. 미설정이면 폴백 코드로 빌드되며 배포 로그에 경고가 남고 리마인더 동의가 전건 실패합니다(#319).
+4. 배포 후 GA4 `return_reminder_result`의 `template_code_source`(`env`/`default`), `outcome`·`error_code` 분포를 모니터링해 `template_code_source=env`가 관측되는지, 그리고 최초의 `agreed`/`rejected`가 관측되는지 확인합니다.
 
 ## 배포하기
 

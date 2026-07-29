@@ -40,6 +40,41 @@ describe("returnReminderRepository", () => {
     });
   });
 
+  it("error 결과의 errorReason·errorCode를 라운드트립에서 보존한다 (#319)", () => {
+    saveReturnReminderState(
+      {
+        promptCount: 3,
+        lastPromptDate: "2026-07-13",
+        outcome: "error",
+        errorReason: "잘못된 요청입니다.",
+        errorCode: "4000",
+      },
+      storage,
+    );
+    assert.deepEqual(loadReturnReminderState(storage), {
+      promptCount: 3,
+      lastPromptDate: "2026-07-13",
+      outcome: "error",
+      errorReason: "잘못된 요청입니다.",
+      errorCode: "4000",
+    });
+  });
+
+  it("error가 아닌 결과에서는 errorReason·errorCode를 버린다 (#319)", () => {
+    storage.raw.set(
+      "crossword:return-reminder",
+      JSON.stringify({
+        promptCount: 1,
+        outcome: "agreed",
+        errorReason: "stale",
+        errorCode: "4000",
+      }),
+    );
+    const loaded = loadReturnReminderState(storage);
+    assert.equal(loaded.errorReason, undefined);
+    assert.equal(loaded.errorCode, undefined);
+  });
+
   it("알 수 없는 outcome 문자열은 제거하고 복원한다", () => {
     storage.raw.set(
       "crossword:return-reminder",

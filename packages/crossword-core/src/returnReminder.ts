@@ -42,6 +42,28 @@ export const RETURN_REMINDER_PROMPT_EVENT = "return_reminder_prompt";
 export const RETURN_REMINDER_RESULT_EVENT = "return_reminder_result";
 export const RETURN_REMINDER_MAX_PROMPT_COUNT = 3;
 
+// 프롬프트/결과 이벤트에 실제 사용된 템플릿 코드의 출처. 환경변수(VITE_RETURN_
+// REMINDER_TEMPLATE_CODE) 주입값이면 "env", 미주입 폴백이면 "default". 프로덕션이
+// 어떤 코드로 나갔는지를 데이터로 구분하기 위함이다(#319).
+export type ReturnReminderTemplateCodeSource = "env" | "default";
+
+// 배포 설정 오류(콘솔 미발급 템플릿 코드 등)로 서버가 요청 자체를 거절할 때 SDK가
+// 주는 error_code. 이 실패는 유저 노출·일시 오류가 아니라 배포 문제이므로 재유도
+// 예산(promptCount 상한)을 소진시키지 않는다 — 설정이 고쳐지면 상한과 무관하게 다시
+// 유도되어야 한다(#319). 같은 날 반복 노출은 날짜 가드가 계속 막는다.
+export const RETURN_REMINDER_CONFIG_ERROR_CODES: ReadonlySet<string> = new Set([
+  "4000",
+]);
+
+// error_code가 배포 설정 오류 코드인지 판정한다(트림 후 대조). 순수 함수라 core에
+// 두고 단위 테스트로 고정한다(#319).
+export function isReturnReminderConfigErrorCode(errorCode?: string): boolean {
+  if (errorCode == null) {
+    return false;
+  }
+  return RETURN_REMINDER_CONFIG_ERROR_CODES.has(errorCode.trim());
+}
+
 export const initialReturnReminderState: ReturnReminderState = {
   promptCount: 0,
 };
@@ -140,7 +162,8 @@ export type ShouldPromptReturnReminderInput = {
 // - enabled=false면 절대 노출하지 않는다(원격 설정/시장 게이트).
 // - 이미 동의/거부/미지원으로 종결됐으면 다시 묻지 않는다.
 // - error/timeout은 익일에만 재유도하고, 같은 날에는 다시 묻지 않는다.
-// - 총 유도 상한에 도달하면 일시 실패여도 다시 묻지 않는다.
+// - 총 유도 상한에 도달하면 일시 실패여도 다시 묻지 않는다. 단, 배포 설정 오류
+//   (config error_code)로 인한 실패는 예산을 소진하지 않아 상한 가드를 건너뛴다(#319).
 export function shouldPromptReturnReminder({
   enabled,
   promptDate,
@@ -152,7 +175,15 @@ export function shouldPromptReturnReminder({
   if (isReturnReminderResolved(state)) {
     return false;
   }
-  if (state.promptCount >= RETURN_REMINDER_MAX_PROMPT_COUNT) {
+  // 배포 설정 오류로 인한 직전 실패는 상한 가드를 건너뛴다(예산 미소진). 같은 날
+  // 반복 노출은 아래 날짜 가드가 계속 막으므로 하루 1회로 제한된다(#319).
+  const lastWasConfigError =
+    state.outcome === "error" &&
+    isReturnReminderConfigErrorCode(state.errorCode);
+  if (
+    !lastWasConfigError &&
+    state.promptCount >= RETURN_REMINDER_MAX_PROMPT_COUNT
+  ) {
     return false;
   }
   if (state.promptCount === 0) {
@@ -211,24 +242,45 @@ export function applyReturnReminderOutcome(
   return next;
 }
 
+// return_reminder_prompt 이벤트 파라미터(영문 키 유지). 프로덕션이 어떤 템플릿 코드
+// 출처(env/default)로 나갔는지 프롬프트 시점에도 남긴다(#319).
+export function buildReturnReminderPromptParams(
+  trigger: string,
+  templateCodeSource: ReturnReminderTemplateCodeSource,
+): {
+  trigger: string;
+  template_code_source: ReturnReminderTemplateCodeSource;
+} {
+  return { trigger, template_code_source: templateCodeSource };
+}
+
 // return_reminder_result 이벤트 파라미터(영문 키 유지). error 결과에 요약이 있으면
 // error_reason(#253)을, 구조화 코드가 있으면 error_code(#288)를 덧붙여 실패 원인을
-// 데이터로 남긴다.
-export function buildReturnReminderResultParams(state: ReturnReminderState): {
+// 데이터로 남긴다. templateCodeSource를 주면 template_code_source를 함께 적재해
+// 실제 사용된 템플릿 코드 출처(env/default)를 결과에도 남긴다(#319).
+export function buildReturnReminderResultParams(
+  state: ReturnReminderState,
+  templateCodeSource?: ReturnReminderTemplateCodeSource,
+): {
   outcome: ReturnReminderOutcome;
   prompt_count: number;
+  template_code_source?: ReturnReminderTemplateCodeSource;
   error_reason?: string;
   error_code?: string;
 } {
   const params: {
     outcome: ReturnReminderOutcome;
     prompt_count: number;
+    template_code_source?: ReturnReminderTemplateCodeSource;
     error_reason?: string;
     error_code?: string;
   } = {
     outcome: state.outcome ?? "error",
     prompt_count: state.promptCount,
   };
+  if (templateCodeSource != null) {
+    params.template_code_source = templateCodeSource;
+  }
   if (state.errorReason != null && state.errorReason !== "") {
     params.error_reason = state.errorReason;
   }

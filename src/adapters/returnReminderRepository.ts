@@ -47,8 +47,26 @@ function normalizeState(value: unknown): ReturnReminderState {
       : undefined;
   const lastPromptDate =
     typeof raw.lastPromptDate === "string" ? raw.lastPromptDate : undefined;
+  // errorReason/errorCode는 error 결과에서만 의미가 있다. 특히 errorCode는 익일
+  // 재유도 판정에서 배포 설정 오류 여부를 가리는 데 필요하므로(#319) 라운드트립에서
+  // 보존한다.
+  const errorReason =
+    outcome === "error" && typeof raw.errorReason === "string"
+      ? raw.errorReason
+      : undefined;
+  const errorCode =
+    outcome === "error" && typeof raw.errorCode === "string"
+      ? raw.errorCode
+      : undefined;
 
-  return { promptCount, lastPromptDate, outcome };
+  const state: ReturnReminderState = { promptCount, lastPromptDate, outcome };
+  if (errorReason != null) {
+    state.errorReason = errorReason;
+  }
+  if (errorCode != null) {
+    state.errorCode = errorCode;
+  }
+  return state;
 }
 
 export function loadReturnReminderState(

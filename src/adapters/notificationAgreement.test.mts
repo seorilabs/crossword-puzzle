@@ -7,8 +7,11 @@ import {
   requestReturnReminderAgreement,
   resolveReturnReminderTemplateCode,
   pickReturnReminderTemplateCode,
+  pickReturnReminderTemplateCodeSource,
+  resolveReturnReminderTemplateCodeSource,
   DEFAULT_RETURN_REMINDER_TEMPLATE_CODE,
   RETURN_REMINDER_TEMPLATE_CODE,
+  RETURN_REMINDER_TEMPLATE_CODE_SOURCE,
 } from "./notificationAgreement.ts";
 import {
   applyReturnReminderOutcome,
@@ -133,6 +136,20 @@ describe("requestReturnReminderAgreement (#253)", () => {
         DEFAULT_RETURN_REMINDER_TEMPLATE_CODE,
       );
     }
+  });
+
+  it("템플릿 코드 출처는 주입값 유무로 env/default를 판정한다 (#319)", () => {
+    assert.equal(pickReturnReminderTemplateCodeSource("real-code"), "env");
+    assert.equal(pickReturnReminderTemplateCodeSource("  padded  "), "env");
+    for (const value of [undefined, "", "   "]) {
+      assert.equal(pickReturnReminderTemplateCodeSource(value), "default");
+    }
+  });
+
+  it("환경변수 미설정(node)에서는 출처가 default로 폴백한다 (#319)", () => {
+    // import.meta.env 부재(node) 환경이므로 옵셔널 체이닝으로 default를 쓴다.
+    assert.equal(resolveReturnReminderTemplateCodeSource(), "default");
+    assert.equal(RETURN_REMINDER_TEMPLATE_CODE_SOURCE, "default");
   });
 
   it("onError 코드/메시지가 return_reminder_result 파라미터(error_reason+error_code)까지 전달된다 (#288)", async () => {

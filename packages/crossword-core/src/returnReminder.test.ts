@@ -4,12 +4,15 @@ import { strict as assert } from "node:assert";
 
 import {
   applyReturnReminderOutcome,
+  buildReturnReminderPromptParams,
   buildReturnReminderResultParams,
   initialReturnReminderState,
+  isReturnReminderConfigErrorCode,
   isReturnReminderResolved,
   mapNotificationAgreementResult,
   markReturnReminderPrompted,
   RETURN_REMINDER_MAX_PROMPT_COUNT,
+  RETURN_REMINDER_PROMPT_EVENT,
   RETURN_REMINDER_RESULT_EVENT,
   shouldPromptReturnReminder,
   summarizeAgreementError,
@@ -322,6 +325,117 @@ describe("returnReminder 정책", () => {
   it("outcome 미정이면 결과 파라미터 outcome은 error로 채운다", () => {
     const state: ReturnReminderState = { promptCount: 1 };
     assert.equal(buildReturnReminderResultParams(state).outcome, "error");
+  });
+
+  it("templateCodeSource를 주면 결과 파라미터에 template_code_source를 적재한다 (#319)", () => {
+    const state: ReturnReminderState = { promptCount: 1, outcome: "agreed" };
+    assert.deepEqual(buildReturnReminderResultParams(state, "env"), {
+      outcome: "agreed",
+      prompt_count: 1,
+      template_code_source: "env",
+    });
+    assert.deepEqual(buildReturnReminderResultParams(state, "default"), {
+      outcome: "agreed",
+      prompt_count: 1,
+      template_code_source: "default",
+    });
+  });
+
+  it("templateCodeSource를 생략하면 template_code_source를 넣지 않는다(하위호환) (#319)", () => {
+    const state: ReturnReminderState = { promptCount: 1, outcome: "agreed" };
+    const params = buildReturnReminderResultParams(state);
+    assert.equal("template_code_source" in params, false);
+  });
+
+  it("buildReturnReminderPromptParams는 trigger·template_code_source를 담는다 (#319)", () => {
+    assert.deepEqual(
+      buildReturnReminderPromptParams("mission_complete", "env"),
+      { trigger: "mission_complete", template_code_source: "env" },
+    );
+    assert.deepEqual(
+      buildReturnReminderPromptParams("mission_complete", "default"),
+      { trigger: "mission_complete", template_code_source: "default" },
+    );
+  });
+
+  it("AC-3: buildReturnReminderResultParams의 template_code_source env/default를 return_reminder_prompt·return_reminder_result 양쪽에 적재한다 (#319)", () => {
+    // App.tsx emit부가 두 이벤트에 쓰는 파라미터 빌더가 허용된 두 출처 값을
+    // 동일하게 전달하는지 한 실행 테스트에서 폐곡한다.
+    for (const source of ["env", "default"] as const) {
+      const promptParams = buildReturnReminderPromptParams(
+        "mission_complete",
+        source,
+      );
+      const resultParams = buildReturnReminderResultParams(
+        { promptCount: 1, outcome: "agreed" },
+        source,
+      );
+      // 두 이벤트가 실재하고(상수) 각 파라미터에 동일 출처가 실린다.
+      assert.equal(RETURN_REMINDER_PROMPT_EVENT, "return_reminder_prompt");
+      assert.equal(RETURN_REMINDER_RESULT_EVENT, "return_reminder_result");
+      assert.equal(promptParams.template_code_source, source);
+      assert.equal(resultParams.template_code_source, source);
+    }
+  });
+});
+
+describe("설정 오류(config error_code)는 예산을 소진하지 않는다 (#319)", () => {
+  it("isReturnReminderConfigErrorCode는 4000(트림 포함)을 설정 오류로 본다", () => {
+    assert.equal(isReturnReminderConfigErrorCode("4000"), true);
+    assert.equal(isReturnReminderConfigErrorCode("  4000  "), true);
+    assert.equal(isReturnReminderConfigErrorCode("E_BRIDGE"), false);
+    assert.equal(isReturnReminderConfigErrorCode(undefined), false);
+  });
+
+  it("설정 오류(4000)로 상한에 도달해도 익일이면 재유도한다", () => {
+    const state: ReturnReminderState = {
+      promptCount: RETURN_REMINDER_MAX_PROMPT_COUNT,
+      lastPromptDate: "2026-07-12",
+      outcome: "error",
+      errorCode: "4000",
+    };
+    assert.equal(
+      shouldPromptReturnReminder({
+        enabled: true,
+        promptDate: "2026-07-13",
+        state,
+      }),
+      true,
+    );
+  });
+
+  it("설정 오류(4000)여도 같은 날에는 재유도하지 않는다", () => {
+    const state: ReturnReminderState = {
+      promptCount: RETURN_REMINDER_MAX_PROMPT_COUNT,
+      lastPromptDate: "2026-07-13",
+      outcome: "error",
+      errorCode: "4000",
+    };
+    assert.equal(
+      shouldPromptReturnReminder({
+        enabled: true,
+        promptDate: "2026-07-13",
+        state,
+      }),
+      false,
+    );
+  });
+
+  it("설정 오류가 아닌 일반 error는 상한에 도달하면 종결한다(기존 정책 유지)", () => {
+    const state: ReturnReminderState = {
+      promptCount: RETURN_REMINDER_MAX_PROMPT_COUNT,
+      lastPromptDate: "2026-07-12",
+      outcome: "error",
+      errorCode: "E_BRIDGE",
+    };
+    assert.equal(
+      shouldPromptReturnReminder({
+        enabled: true,
+        promptDate: "2026-07-13",
+        state,
+      }),
+      false,
+    );
   });
 });
 

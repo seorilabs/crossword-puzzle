@@ -45,6 +45,7 @@ jobs:
       VITE_FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID || '' }}
       VITE_FIREBASE_STORAGE_BUCKET: ${{ vars.FIREBASE_STORAGE_BUCKET || '' }}
       VITE_PUZZLE_PACK_BASE_URL: ${{ vars.PUZZLE_PACK_BASE_URL || 'https://crossword-puzzle-79ae0.web.app' }}
+      VITE_RETURN_REMINDER_TEMPLATE_CODE: ${{ vars.RETURN_REMINDER_TEMPLATE_CODE || '' }}
 
     steps:
       - name: Checkout release tag
@@ -99,6 +100,11 @@ jobs:
 
       - name: Lint
         run: npm run lint
+
+      - name: Warn on missing return reminder template code
+        if: ${{ vars.RETURN_REMINDER_TEMPLATE_CODE == '' }}
+        run: |
+          echo "::warning::repo variable RETURN_REMINDER_TEMPLATE_CODE 미설정 — 폴백 템플릿 코드로 빌드됨 — 리마인더 동의가 전건 실패함(#319). README '복귀 리마인더 템플릿 코드' 절차 참고."
 
       - name: Build .ait bundle
         env:

@@ -7,6 +7,7 @@ import {
   mapNotificationAgreementResult,
   summarizeAgreementFailure,
   type ReturnReminderOutcome,
+  type ReturnReminderTemplateCodeSource,
 } from "../../packages/crossword-core/src/returnReminder.ts";
 
 // 동의 요청 결과. outcome이 error일 때만 errorReason(SDK 에러 요약, ≤100자, #253)과
@@ -42,6 +43,28 @@ export function resolveReturnReminderTemplateCode(): string {
 
 // 현재 빌드에 적용된 템플릿 코드(환경변수 또는 기본값).
 export const RETURN_REMINDER_TEMPLATE_CODE = resolveReturnReminderTemplateCode();
+
+// 주입된 코드 문자열로부터 템플릿 코드 출처(env/default)를 판정한다. pick~와 동일한
+// 트림 규칙을 써서 "실제로 env 코드가 쓰였는가"와 일관되게 한다. 순수 함수로 두어
+// 헤드리스로 검증한다(#319).
+export function pickReturnReminderTemplateCodeSource(
+  configured?: string,
+): ReturnReminderTemplateCodeSource {
+  const trimmed = configured?.trim();
+  return trimmed != null && trimmed !== "" ? "env" : "default";
+}
+
+// 빌드타임 환경변수 주입 여부로 출처를 해석한다(import.meta.env 부재 시 default).
+export function resolveReturnReminderTemplateCodeSource(): ReturnReminderTemplateCodeSource {
+  const env = import.meta.env as ImportMetaEnv | undefined;
+  return pickReturnReminderTemplateCodeSource(
+    env?.VITE_RETURN_REMINDER_TEMPLATE_CODE,
+  );
+}
+
+// 현재 빌드에 적용된 템플릿 코드의 출처. 프롬프트/결과 이벤트에 적재한다(#319).
+export const RETURN_REMINDER_TEMPLATE_CODE_SOURCE =
+  resolveReturnReminderTemplateCodeSource();
 
 // 동의 다이얼로그 콜백이 전혀 돌아오지 않는(브리지 미연결) 상황에서 Promise가
 // 영원히 미해결로 남지 않도록 두는 안전망.
