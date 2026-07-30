@@ -75,14 +75,14 @@ flowchart TD
 ## 완료 직후 다음 퍼즐 연결 (#274)
 
 - 다음 퍼즐 선택은 `packages/crossword-core/src/recommendation.ts`가 세 시장에 동일하게 적용한다. 한 단계 높은 난이도, 같은 난이도, 그 외 미완료 순으로 고르며 미완료 후보가 없으면 완료 퍼즐을 재추천하지 않는다.
-- AIT/Web과 Android/iOS 완료 축하 오버레이는 추천 후보가 있을 때 난이도·퍼즐 라벨을 포함한 `다음 퍼즐 풀기`를 primary CTA로 먼저 노출하고, 탭하면 목록 없이 풀이 화면으로 진입한다. 후보가 없으면 기존 결과·홈·보너스 동선을 유지한다.
+- AIT/Web과 Android/iOS 완료 축하 오버레이는 추천 후보가 있을 때 난이도·퍼즐 라벨을 포함한 `다음 퍼즐 풀기`를 primary CTA로 먼저 노출하고, 탭하면 목록 없이 풀이 화면으로 진입한다. 후보가 없으면 기존 결과·홈 동선을 유지한다.
 - `next_puzzle_cta` 이벤트는 공용 이름을 유지하고 `source=result_overlay|result_screen`, `next_puzzle_id`, `next_difficulty`를 같은 계약으로 기록한다.
 
-## 보너스 퍼즐 패널 노출 계측 (#278)
+## 보너스 퍼즐 제거 상태 (#326)
 
-- `bonus_puzzle_panel_impression` 이벤트와 `status=waiting|available|used|unlocked` 계약은 `packages/crossword-core/src/gameAnalytics.ts`에 두고 AIT/Web과 Android/iOS가 동일하게 사용한다.
-- 패널이 실제 렌더되는 홈·결과 화면에서만 기록하며, 데이터 로딩 중인 `loading` 상태는 노출에서 제외한다.
-- 앱 세션 안에서 같은 상태는 최초 한 번만 기록하고, 패널 상태가 바뀌면 변경된 상태를 각각 한 번 새로 기록한다.
+- `bonus_puzzle_panel_impression` 계약은 f992a61(2026-07-25)에서 기능과 함께 제거됨. 1.0.9+ 론칭 사용자에게서 미발화하는 것이 현재 정상 상태다.
+- `rewarded_bonus_puzzle` 광고·Remote Config 계약도 f992a61에서 제거됨. 광고 퍼널과 마켓 파리티 대상에 포함하지 않는다.
+- 복원 여부는 제품 결정 대기 상태다. 제거 전 표본이 개발자 1~2명뿐이라 리텐션 효과 근거가 없으며, 별도 결정과 검증 계획 없이 기능을 복원하지 않는다.
 
 ## 복귀 리마인드 푸시 동의 (D1 재방문)
 

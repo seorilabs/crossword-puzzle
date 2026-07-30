@@ -14,7 +14,6 @@
 | placement | 이벤트 prefix | 활성 여부 |
 | --- | --- | --- |
 | `rewarded_hint` | `rewarded_hint_ad_*` | ✅ 활성(힌트 보상형) |
-| `rewarded_bonus_puzzle` | `rewarded_bonus_puzzle_ad_*` | ✅ 활성(보너스 퍼즐 보상형) |
 | `result_interstitial` | `result_interstitial_ad_*` | ❌ 비활성 — 호출부 없음(parity로 차단, #98). 데이터에 나오면 구버전 잔존 |
 
 단계(stage) 이벤트와 파라미터:
@@ -67,7 +66,7 @@ bq query \
 
 | 컬럼 | 의미 |
 | --- | --- |
-| `placement` | 광고 위치(`rewarded_hint`/`rewarded_bonus_puzzle`/`result_interstitial`) |
+| `placement` | 광고 위치(`rewarded_hint`/`result_interstitial`) |
 | `requests` | `*_ad_request` 건수(분모) |
 | `results` | `*_ad_result` 건수 |
 | `filled` | 노출 성공(status rewarded+dismissed) 건수 |
