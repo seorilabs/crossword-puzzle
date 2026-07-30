@@ -120,7 +120,9 @@ export const defaultLaunchConfig: LaunchConfig = {
   // 기존과 같은 3회로 동작한다.
   dailyAttemptLimit: DAILY_ATTEMPT_LIMIT,
   rewardedHintAdsEnabled: true,
-  leaderboardEnabled: false,
+  // 완료율 78% 대비 D1 10%·D2 2.4%로 재방문이 병목이라 결과 화면 리더보드를
+  // 기본 개방한다(#325). 승인/운영 문제가 생기면 Remote Config로 즉시 끈다.
+  leaderboardEnabled: true,
   // 복귀 리마인드 푸시 동의 유도(D1 재방문) 기본 활성. 스마트발송 템플릿이 등록돼
   // AIT/Web 동의 요청 경로가 갖춰졌고, D1 잔존(8.6%) 개선을 위해 켠다(#162). 필요 시
   // Remote Config `return_reminder_enabled`로 끌 수 있다. mobile(RN)은 알림 동의

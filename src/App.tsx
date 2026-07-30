@@ -140,6 +140,7 @@ import { MissionHistoryCard } from "./components/MissionHistoryCard";
 import { PuzzleMetaChips } from "./components/PuzzleMetaChips";
 import { formatDifficultyLabel } from "./puzzleLabels";
 import { useShareResult } from "./useShareResult";
+import { useLeaderboard } from "./useLeaderboard";
 import {
   useFirstRunAutoStart,
   type FirstRunSnapshot,
@@ -610,6 +611,15 @@ function App() {
   const earnedHintCredits = dailyHintWallet.earnedCredits;
   const [launchConfig, setLaunchConfig] =
     useState<LaunchConfig>(defaultLaunchConfig);
+  const {
+    visible: leaderboardVisible,
+    submitScore: submitLeaderboardScore,
+    openLeaderboard,
+  } = useLeaderboard({
+    enabled: launchConfig.leaderboardEnabled,
+    adapter: leaderboardAdapter,
+    telemetry,
+  });
   // 원격 설정 fetch가 끝났는지(성공/실패 무관). 첫 실행 자동 진입(#205)은 게이트
   // 값이 확정된 뒤에만 판정해, 원격에서 끈 상태로 자동 진입하는 레이스를 막는다.
   const [launchConfigResolved, setLaunchConfigResolved] = useState(false);
@@ -1619,8 +1629,7 @@ function App() {
     // 점수를 제출한다. 완료 effect는 시도당 1회 실행되지만, ref로 puzzleId 단위
     // 중복 제출까지 막는다(미완료/revealUsed는 shouldSubmitLeaderboardScore가 제외).
     if (
-      launchConfig.leaderboardEnabled &&
-      leaderboardAdapter.supported &&
+      leaderboardVisible &&
       shouldSubmitLeaderboardScore({
         completed: true,
         revealUsed,
@@ -1652,12 +1661,7 @@ function App() {
           timeDecayPerSecond: launchConfig.leaderboardScoreTimeDecayPerSecond,
         },
       );
-      telemetry.impression("leaderboard_score_submit", {
-        puzzle_id: puzzle.puzzleId,
-        difficulty: puzzle.difficulty,
-        score: leaderboardScore,
-      });
-      void leaderboardAdapter.submitScore(leaderboardScore, {
+      void submitLeaderboardScore(leaderboardScore, {
         puzzleId: puzzle.puzzleId,
         difficulty: puzzle.difficulty,
         elapsedSeconds: submissionElapsedSeconds,
@@ -1710,6 +1714,8 @@ function App() {
     savePuzzleSnapshot,
     route,
     soundEnabled,
+    leaderboardVisible,
+    submitLeaderboardScore,
     viewModel.completedEntries.length,
     viewModel.isComplete,
   ]);
@@ -2887,9 +2893,7 @@ function App() {
           consecutiveStreak={consecutiveStreak}
           hintCount={hintCount}
           isNewBestTime={isNewBestTime}
-          leaderboardVisible={
-            launchConfig.leaderboardEnabled && leaderboardAdapter.supported
-          }
+          leaderboardVisible={leaderboardVisible}
           mission={mission}
           navigate={navigate}
           onboardingDifficultyRampEnabled={
@@ -2900,7 +2904,7 @@ function App() {
               puzzle_id: puzzle.puzzleId,
               difficulty: puzzle.difficulty,
             });
-            void leaderboardAdapter.openLeaderboard();
+            void openLeaderboard();
           }}
           pause={pause}
           progressPercent={progressPercent}
