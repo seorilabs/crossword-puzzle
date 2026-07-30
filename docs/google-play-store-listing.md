@@ -59,7 +59,6 @@ npm run check:play
 | Android AdMob app ID            | `ca-app-pub-2444587584524186~5456766418` |
 | `android_rewarded_hint`         | `ca-app-pub-2444587584524186/7533141122` |
 | `android_interstitial_result`   | `ca-app-pub-2444587584524186/4930691809` |
-| `android_rewarded_bonus_puzzle` | `ca-app-pub-2444587584524186/2299285882` |
 
 ## 2026-06-07 API 반영 결과
 

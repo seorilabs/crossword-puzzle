@@ -3699,36 +3699,6 @@ const styles = StyleSheet.create({
     gap: 8,
     padding: 14,
   },
-  bonusEyebrow: {
-    color: '#0f766e',
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  bonusNotice: {
-    color: '#64748b',
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 18,
-  },
-  bonusPanel: {
-    backgroundColor: '#ffffff',
-    borderColor: '#dbe4ee',
-    borderRadius: 8,
-    borderWidth: 1,
-    gap: 12,
-    padding: 14,
-  },
-  bonusPanelAvailable: {
-    borderColor: '#99f6e4',
-  },
-  bonusPanelText: {
-    gap: 5,
-  },
-  bonusTitle: {
-    color: '#0f172a',
-    fontSize: 17,
-    fontWeight: '900',
-  },
   board: {
     alignSelf: 'center',
     backgroundColor: '#1f2937',

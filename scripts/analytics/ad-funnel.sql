@@ -8,7 +8,6 @@
 --
 -- placement는 현재 이벤트명 prefix로 구분된다(별도 placement 파라미터는 없음):
 --   rewarded_hint_ad_*          → placement = 'rewarded_hint'
---   rewarded_bonus_puzzle_ad_*  → placement = 'rewarded_bonus_puzzle'
 --   result_interstitial_ad_*    → 현재 호출부 없음(parity로 차단). 데이터에 나오면
 --                                  구버전 잔존이므로 함께 집계해 가시화한다.
 --
@@ -46,7 +45,6 @@ SELECT
   event_name,
   CASE
     WHEN STARTS_WITH(event_name, 'rewarded_hint_ad') THEN 'rewarded_hint'
-    WHEN STARTS_WITH(event_name, 'rewarded_bonus_puzzle_ad') THEN 'rewarded_bonus_puzzle'
     WHEN STARTS_WITH(event_name, 'result_interstitial_ad') THEN 'result_interstitial'
     ELSE '(other)'
   END AS placement,
@@ -71,6 +69,10 @@ WHERE (
     OR REGEXP_EXTRACT(_TABLE_SUFFIX, r'^intraday_(\d{8})$') BETWEEN from_suffix AND to_suffix
   )
   AND REGEXP_CONTAINS(event_name, r'_ad_(request|result|reward|cancel|disabled|event)$')
+  AND (
+    STARTS_WITH(event_name, 'rewarded_hint_ad')
+    OR STARTS_WITH(event_name, 'result_interstitial_ad')
+  )
   AND user_pseudo_id IS NOT NULL;
 
 -- 결과 1) placement별 퍼널: 요청→fill(노출)→완주(reward) 단계 건수와 fill/완주율.

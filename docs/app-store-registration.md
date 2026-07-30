@@ -98,7 +98,6 @@ App Store 앱 이름은 iOS용으로 `가로세로 퍼즐`을 사용한다. `--u
 | iOS AdMob app ID            | `ca-app-pub-2444587584524186~4715406099` |
 | `ios_rewarded_hint`         | `ca-app-pub-2444587584524186/6151776694` |
 | `ios_interstitial_result`   | `ca-app-pub-2444587584524186/3402324424` |
-| `ios_rewarded_bonus_puzzle` | `ca-app-pub-2444587584524186/2089242756` |
 
 `GADApplicationIdentifier`와 `SKAdNetworkItems`는 `app.json`의 `react-native-google-mobile-ads` 설정을 CocoaPods build phase가 빌드 산출물 `Info.plist`에 주입한다. 로컬/App Store archive 경로는 업로드 전에 산출물 `Info.plist`에서 iOS AdMob app ID와 Google SKAdNetwork ID를 다시 검증한다. AdMob 개인화 광고, IDFA, cross-app ad measurement를 켜면 App Store Connect Tracking 답변, ATT/UMP 동선, `NSUserTrackingUsageDescription`도 같이 구현한다.
 

@@ -46,7 +46,6 @@ GitHub Actions AIT 배포는 같은 값을 GitHub Variables에서 읽는다. 미
 | `puzzle_generation_interval_hours`  |     `1` | 사용자 안내용 난이도별 슬롯 간격                          |
 | `puzzle_keep_count`                 |    `21` | 사용자 안내용 원격 퍼즐팩 보관 개수                       |
 | `rewarded_hint_ads_enabled`         |  `true` | 힌트 보상형 광고 CTA 노출 여부                            |
-| `rewarded_bonus_puzzle_ads_enabled` |  `true` | 보너스 퍼즐 보상형 광고 CTA 노출 여부                     |
 | `result_interstitial_ads_enabled`   | `false` | 결과 화면 진입 후 전면 광고 노출 여부. 현재 기본 비활성   |
 | `leaderboard_enabled`               |  `true` | 리더보드 UI 노출 여부. 승인/운영 문제 시 `false` 킬스위치 |
 
@@ -55,7 +54,7 @@ GitHub Actions AIT 배포는 같은 값을 GitHub Variables에서 읽는다. 미
 않는다. 구버전의 퍼즐별 `hintCount`와 `earnedHintCredits`는 해당 날짜의 공용 지갑이
 처음 만들어질 때 합산 이관해 업데이트 직후 중복 지급을 막는다.
 
-`ios_app_store_review_ads_off` 조건은 iOS Firebase app `1:547625965706:ios:1b21e504c7895f959ef573`에만 적용한다. App Store 최초 심사 중 AdMob 앱 검토 전 `no-fill` 실패 CTA가 보이지 않도록 `rewarded_hint_ads_enabled`, `rewarded_bonus_puzzle_ads_enabled`를 조건부 `false`로 둔다. AdMob 앱 상태가 `Ready`가 되면 이 조건부 값을 제거하거나 `true`로 되돌린다.
+`ios_app_store_review_ads_off` 조건은 iOS Firebase app `1:547625965706:ios:1b21e504c7895f959ef573`에만 적용한다. App Store 최초 심사 중 AdMob 앱 검토 전 `no-fill` 실패 CTA가 보이지 않도록 `rewarded_hint_ads_enabled`를 조건부 `false`로 둔다. AdMob 앱 상태가 `Ready`가 되면 이 조건부 값을 제거하거나 `true`로 되돌린다.
 
 Remote Config는 보안 결정이나 정답 검증의 source가 아니다. UI 노출 개수, 힌트 지급량, 광고 on/off 같은 운영 튜닝에만 사용한다. 힌트 출처/라이선스 표시는 Remote Config 대상이 아니며 앱 안에서 항상 접근 가능한 정적 고지로 둔다.
 
@@ -74,9 +73,6 @@ AIT는 AppsInToss Analytics와 Firebase Analytics를 함께 호출한다. 샌드
 | `rewarded_hint_ad_request`         | 보상형 광고 요청                                  |
 | `rewarded_hint_ad_event`           | 보상형 광고 load/show 이벤트                      |
 | `rewarded_hint_ad_reward`          | `userEarnedReward` 수신 후 힌트 지급              |
-| `rewarded_bonus_puzzle_ad_request` | 보너스 퍼즐 보상형 광고 요청                      |
-| `rewarded_bonus_puzzle_ad_event`   | 보너스 퍼즐 보상형 광고 load/show 이벤트          |
-| `rewarded_bonus_puzzle_ad_reward`  | `userEarnedReward` 수신 후 보너스 퍼즐 해금       |
 | `mission_complete`                 | 퍼즐 완료. 완료자 집계 기준                       |
 | `puzzle_abandon`                   | 시작 후 미완료로 보드 이탈(시도당 1회)            |
 | `result_interstitial_ad_request`   | 결과 전면 광고 요청. 현재 기본 비활성             |
