@@ -1,4 +1,5 @@
 import type { Difficulty } from "./difficultyProfiles";
+import type { TelemetryParams } from "./platformContracts";
 
 // 리더보드 정책의 공유 계약(3마켓 공통). 점수 산식과 제출 가드는 core에 두고,
 // 플랫폼 SDK(AIT 게임센터 / Google Play Games / Apple Game Center)는 앱 adapter에만
@@ -134,6 +135,24 @@ export type LeaderboardContext = {
   difficulty?: Difficulty | null;
   elapsedSeconds?: number;
 };
+
+export const LEADERBOARD_SCORE_SUBMIT_EVENT = "leaderboard_score_submit";
+
+export type LeaderboardOperationOutcome = "success" | "failure" | "unsupported";
+
+export function buildLeaderboardScoreSubmitParams(
+  score: number,
+  context: LeaderboardContext,
+  outcome: Exclude<LeaderboardOperationOutcome, "unsupported">,
+): TelemetryParams {
+  return {
+    puzzle_id: context.puzzleId,
+    difficulty: context.difficulty,
+    elapsed_seconds: context.elapsedSeconds,
+    score,
+    outcome,
+  };
+}
 
 /**
  * 플랫폼 리더보드 계약. AIT/Android/iOS adapter가 각각 구현한다.

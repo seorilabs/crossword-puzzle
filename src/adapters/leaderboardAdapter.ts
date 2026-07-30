@@ -18,6 +18,19 @@ type GameCenterBridge = {
   open: () => Promise<void>;
 };
 
+const GAME_CENTER_MIN_VERSION = [5, 221, 0] as const;
+
+function isMinimumGameCenterVersion(version: string): boolean {
+  const parts = version.split(".").map((part) => Number.parseInt(part, 10));
+  return GAME_CENTER_MIN_VERSION.every((minimum, index) => {
+    const current = parts[index] ?? 0;
+    const previousEqual = GAME_CENTER_MIN_VERSION.slice(0, index).every(
+      (value, previousIndex) => (parts[previousIndex] ?? 0) === value,
+    );
+    return !previousEqual || current >= minimum;
+  });
+}
+
 // 게임센터 브리지를 접근 시점에 다시 해석한다. 네임스페이스 import로 접근해, 일부
 // 환경에서 게임센터 함수가 export되지 않아도 import 단계에서 throw하지 않는다.
 // 또한 supported를 모듈 평가 시점에 고정하지 않고 호출/렌더 시점마다 재판정해
@@ -29,7 +42,16 @@ function getGameCenterBridge(): GameCenterBridge | null {
     >;
     const submit = framework.submitGameCenterLeaderBoardScore;
     const open = framework.openGameCenterLeaderboard;
-    if (typeof submit === "function" && typeof open === "function") {
+    const environment = framework.getOperationalEnvironment?.();
+    const versionSupported =
+      environment === "sandbox" ||
+      (typeof framework.getTossAppVersion === "function" &&
+        isMinimumGameCenterVersion(framework.getTossAppVersion()));
+    if (
+      versionSupported &&
+      typeof submit === "function" &&
+      typeof open === "function"
+    ) {
       return { submit, open };
     }
   } catch {
@@ -49,28 +71,20 @@ export const leaderboardAdapter: LeaderboardAdapter = {
   async submitScore(score: number) {
     const bridge = getGameCenterBridge();
     if (bridge == null) {
-      return;
+      throw new Error("AppsInToss Game Center is not supported");
     }
 
-    try {
-      // 앱 버전이 낮으면 undefined를 반환하고, 미승인 시 statusCode로 사유가 온다.
-      // 어떤 실패도 결과 화면 흐름을 막지 않도록 조용히 무시한다.
-      await bridge.submit({ score: toScoreString(score) });
-    } catch {
-      // 리더보드 제출 실패가 퍼즐 완료 경험을 깨뜨리지 않게 한다.
-    }
+    // 네이티브 오류는 useLeaderboard가 완료 플로우 밖에서 종결하고 failure 계측한다.
+    await bridge.submit({ score: toScoreString(score) });
   },
 
   async openLeaderboard() {
     const bridge = getGameCenterBridge();
     if (bridge == null) {
-      return;
+      throw new Error("AppsInToss Game Center is not supported");
     }
 
-    try {
-      await bridge.open();
-    } catch {
-      // 리더보드 웹뷰 호출 실패는 무시한다.
-    }
+    // 게임센터 미승인·조회 오류는 useLeaderboard가 받아 세션 진입점을 숨긴다.
+    await bridge.open();
   },
 };

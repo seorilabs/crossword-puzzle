@@ -84,9 +84,9 @@
     },
     "leaderboard_enabled": {
       "defaultValue": {
-        "value": "false"
+        "value": "true"
       },
-      "description": "게임센터/스토어 리더보드 UI 노출 여부",
+      "description": "게임센터/스토어 리더보드 UI 노출 여부. 완료율 78% 대비 D1 10%·D2 2.4% 재방문 병목 대응으로 기본 활성, 승인/운영 문제 시 false로 즉시 중단",
       "valueType": "BOOLEAN"
     },
     "return_reminder_enabled": {
