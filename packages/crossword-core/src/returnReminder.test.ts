@@ -219,11 +219,9 @@ describe("returnReminder 정책", () => {
 
   it("error 결과면 errorReason을 상태에 담는다 (#253)", () => {
     const prompted: ReturnReminderState = { promptCount: 1 };
-    const resolved = applyReturnReminderOutcome(
-      prompted,
-      "error",
-      "E_BRIDGE: not connected",
-    );
+    const resolved = applyReturnReminderOutcome(prompted, "error", {
+      errorReason: "E_BRIDGE: not connected",
+    });
     assert.equal(resolved.outcome, "error");
     assert.equal(resolved.errorReason, "E_BRIDGE: not connected");
   });
@@ -299,26 +297,69 @@ describe("returnReminder 정책", () => {
   });
 
   it("applyReturnReminderOutcome은 error에서만 errorCode를 보존한다 (#288)", () => {
-    const withCode = applyReturnReminderOutcome(
-      { promptCount: 1 },
-      "error",
-      "E_X: msg",
-      "E_X",
-    );
+    const withCode = applyReturnReminderOutcome({ promptCount: 1 }, "error", {
+      errorReason: "E_X: msg",
+      errorCode: "E_X",
+    });
     assert.equal(withCode.errorCode, "E_X");
     // 다른 결과로 넘어가면 이전 코드가 남지 않는다.
     const agreed = applyReturnReminderOutcome(withCode, "agreed");
     assert.equal(agreed.errorCode, undefined);
     // error여도 코드가 없으면 비운다.
-    const noCode = applyReturnReminderOutcome(withCode, "error", "msg");
+    const noCode = applyReturnReminderOutcome(withCode, "error", {
+      errorReason: "msg",
+    });
     assert.equal(noCode.errorCode, undefined);
   });
 
+  it("실패 메타데이터를 보존하고 성공·거부 결과에서는 이전 값을 제거한다", () => {
+    const failed = applyReturnReminderOutcome({ promptCount: 1 }, "error", {
+      errorReason: "4000: invalid template",
+      errorCode: "4000",
+      errorWrapperCode: "NAF_ERROR",
+      failureStage: "sdk_callback",
+    });
+    assert.equal(failed.errorWrapperCode, "NAF_ERROR");
+    assert.equal(failed.failureStage, "sdk_callback");
+
+    for (const outcome of ["agreed", "rejected"] as const) {
+      const resolved = applyReturnReminderOutcome(failed, outcome);
+      assert.equal(resolved.errorReason, undefined);
+      assert.equal(resolved.errorCode, undefined);
+      assert.equal(resolved.errorWrapperCode, undefined);
+      assert.equal(resolved.failureStage, undefined);
+    }
+  });
+
   it("timeout outcome은 error_reason 없이 그대로 기록된다 (#253)", () => {
-    const state: ReturnReminderState = { promptCount: 1, outcome: "timeout" };
+    const state: ReturnReminderState = {
+      promptCount: 1,
+      outcome: "timeout",
+      failureStage: "timeout",
+    };
     assert.deepEqual(buildReturnReminderResultParams(state), {
       outcome: "timeout",
       prompt_count: 1,
+      stage: "timeout",
+    });
+  });
+
+  it("결과 파라미터에 error_wrapper_code와 stage를 추가한다", () => {
+    const state: ReturnReminderState = {
+      promptCount: 1,
+      outcome: "error",
+      errorReason: "4000: invalid template",
+      errorCode: "4000",
+      errorWrapperCode: "NAF_ERROR",
+      failureStage: "sdk_callback",
+    };
+    assert.deepEqual(buildReturnReminderResultParams(state), {
+      outcome: "error",
+      prompt_count: 1,
+      error_reason: "4000: invalid template",
+      error_code: "4000",
+      error_wrapper_code: "NAF_ERROR",
+      stage: "sdk_callback",
     });
   });
 
@@ -421,6 +462,37 @@ describe("설정 오류(config error_code)는 예산을 소진하지 않는다 (
     );
   });
 
+  it("중첩 NAF 래퍼의 4000도 설정 오류 정책이 인식한다", () => {
+    const summary = summarizeAgreementFailure({
+      code: "NAF_ERROR",
+      message: "notification agreement failed",
+      data: { code: "4000", message: "invalid template code" },
+    });
+    const state = applyReturnReminderOutcome(
+      {
+        promptCount: RETURN_REMINDER_MAX_PROMPT_COUNT,
+        lastPromptDate: "2026-07-12",
+      },
+      "error",
+      {
+        errorReason: summary.reason,
+        errorCode: summary.code,
+        errorWrapperCode: summary.wrapperCode,
+        failureStage: "sdk_callback",
+      },
+    );
+    assert.equal(state.errorCode, "4000");
+    assert.equal(state.errorWrapperCode, "NAF_ERROR");
+    assert.equal(
+      shouldPromptReturnReminder({
+        enabled: true,
+        promptDate: "2026-07-13",
+        state,
+      }),
+      true,
+    );
+  });
+
   it("설정 오류가 아닌 일반 error는 상한에 도달하면 종결한다(기존 정책 유지)", () => {
     const state: ReturnReminderState = {
       promptCount: RETURN_REMINDER_MAX_PROMPT_COUNT,
@@ -474,7 +546,10 @@ describe("summarizeAgreementError (#253)", () => {
 describe("summarizeAgreementFailure / error_code (#288)", () => {
   it("{code, message} 객체는 reason 합성 + code 보존", () => {
     assert.deepEqual(
-      summarizeAgreementFailure({ code: "E_UNSUPPORTED", message: "no bridge" }),
+      summarizeAgreementFailure({
+        code: "E_UNSUPPORTED",
+        message: "no bridge",
+      }),
       { reason: "E_UNSUPPORTED: no bridge", code: "E_UNSUPPORTED" },
     );
   });
@@ -506,5 +581,77 @@ describe("summarizeAgreementFailure / error_code (#288)", () => {
   it("code가 100자를 넘으면 상한을 지킨다", () => {
     const code = extractAgreementErrorCode({ code: "e".repeat(250) });
     assert.equal(code?.length, 100);
+  });
+
+  it("중첩 NAF 래퍼에서 가장 구체적인 4000 코드·메시지와 래퍼 코드를 보존한다", () => {
+    assert.deepEqual(
+      summarizeAgreementFailure({
+        code: "NAF_ERROR",
+        message: "notification agreement failed",
+        data: { code: "4000", message: "invalid template code" },
+      }),
+      {
+        reason: "4000: invalid template code",
+        code: "4000",
+        wrapperCode: "NAF_ERROR",
+      },
+    );
+  });
+
+  it("cause 경로의 구체적인 하위 오류를 탐색한다", () => {
+    assert.deepEqual(
+      summarizeAgreementFailure({
+        code: "WRAPPED",
+        cause: { status: 503, message: "service unavailable" },
+      }),
+      {
+        reason: "503: service unavailable",
+        code: "503",
+        wrapperCode: "WRAPPED",
+      },
+    );
+  });
+
+  it("순환 참조를 만나도 한 번만 탐색하고 종료한다", () => {
+    const cyclic: Record<string, unknown> = {
+      code: "E_CYCLE",
+      message: "cyclic error",
+    };
+    cyclic.cause = cyclic;
+    assert.deepEqual(summarizeAgreementFailure(cyclic), {
+      reason: "E_CYCLE: cyclic error",
+      code: "E_CYCLE",
+    });
+  });
+
+  it("깊이 3까지만 탐색해 더 깊은 코드는 무시한다", () => {
+    const failure = {
+      code: "WRAPPER",
+      cause: {
+        code: "LEVEL_1",
+        cause: {
+          code: "LEVEL_2",
+          cause: {
+            code: "LEVEL_3",
+            message: "depth three",
+            cause: { code: "4000", message: "too deep" },
+          },
+        },
+      },
+    };
+    assert.deepEqual(summarizeAgreementFailure(failure), {
+      reason: "LEVEL_3: depth three",
+      code: "LEVEL_3",
+      wrapperCode: "WRAPPER",
+    });
+  });
+
+  it("중첩 메시지도 공백을 정리하고 최종 요약을 100자로 제한한다", () => {
+    const summary = summarizeAgreementFailure({
+      error: { code: "4000", message: ` invalid\n ${"x".repeat(200)} ` },
+    });
+    assert.equal(summary.code, "4000");
+    assert.equal(summary.reason.includes("\n"), false);
+    assert.equal(summary.reason.length, 100);
   });
 });

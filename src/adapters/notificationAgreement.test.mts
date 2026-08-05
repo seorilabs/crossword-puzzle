@@ -29,9 +29,10 @@ type RequestAgreement = Parameters<typeof requestReturnReminderAgreement>[0];
 
 // 실제 AIT SDK 처럼 콜백을 비동기로(호출부가 cleanup 을 받은 뒤에) 발화하는 fake.
 // drive 는 config 를 받아 어떤 콜백을 언제 부를지 정한다. cleanup 호출 여부를 센다.
-function makeFake(
-  drive: (config: AgreementConfig) => void,
-): { fake: RequestAgreement; cleanupCalls: () => number } {
+function makeFake(drive: (config: AgreementConfig) => void): {
+  fake: RequestAgreement;
+  cleanupCalls: () => number;
+} {
   let cleaned = 0;
   const fake = ((config: AgreementConfig) => {
     // 마이크로태스크로 미뤄, 어댑터가 cleanup 을 할당하고 타이머를 건 뒤 콜백이
@@ -69,6 +70,7 @@ describe("requestReturnReminderAgreement (#253)", () => {
     assert.equal(result.outcome, "error");
     assert.equal(result.errorReason, "E_BRIDGE: not connected");
     assert.equal(result.errorCode, "E_BRIDGE");
+    assert.equal(result.failureStage, "sdk_callback");
   });
 
   it("코드 없는 onError(Error 인스턴스)는 error_code 없이 error_reason만 담는다 (#288)", async () => {
@@ -86,14 +88,17 @@ describe("requestReturnReminderAgreement (#253)", () => {
       throw new Error("unsupported host");
     }) as unknown as RequestAgreement;
     const result = await requestReturnReminderAgreement(fake);
-    assert.deepEqual(result, { outcome: "unsupported" });
+    assert.deepEqual(result, {
+      outcome: "unsupported",
+      failureStage: "preflight",
+    });
   });
 
   it("콜백이 돌아오지 않으면 안전망 타이머가 timeout 으로 종료한다", async () => {
     // onEvent/onError 를 호출하지 않는 fake + 짧은 timeoutMs.
     const { fake } = makeFake(() => {});
     const result = await requestReturnReminderAgreement(fake, 5);
-    assert.deepEqual(result, { outcome: "timeout" });
+    assert.deepEqual(result, { outcome: "timeout", failureStage: "timeout" });
   });
 
   it("결과 확정 시 cleanup 을 한 번 호출한다", async () => {
@@ -161,13 +166,49 @@ describe("requestReturnReminderAgreement (#253)", () => {
     const state = applyReturnReminderOutcome(
       { promptCount: 1 },
       result.outcome,
-      result.errorReason,
-      result.errorCode,
+      {
+        errorReason: result.errorReason,
+        errorCode: result.errorCode,
+        errorWrapperCode: result.errorWrapperCode,
+        failureStage: result.failureStage,
+      },
     );
     const params = buildReturnReminderResultParams(state);
     assert.equal(params.outcome, "error");
     assert.equal(params.error_reason, "E_REJECTED: 잘못된 요청입니다.");
     assert.equal(params.error_code, "E_REJECTED");
+    assert.equal(params.stage, "sdk_callback");
+  });
+
+  it("중첩 NAF 오류의 하위 코드와 래퍼 코드를 결과 이벤트까지 전달한다", async () => {
+    const { fake } = makeFake((config) =>
+      config.onError({
+        code: "NAF_ERROR",
+        message: "notification agreement failed",
+        response: {
+          details: { code: "4000", message: "invalid template code" },
+        },
+      }),
+    );
+    const result = await requestReturnReminderAgreement(fake);
+    const state = applyReturnReminderOutcome(
+      { promptCount: 1 },
+      result.outcome,
+      {
+        errorReason: result.errorReason,
+        errorCode: result.errorCode,
+        errorWrapperCode: result.errorWrapperCode,
+        failureStage: result.failureStage,
+      },
+    );
+    assert.deepEqual(buildReturnReminderResultParams(state), {
+      outcome: "error",
+      prompt_count: 1,
+      error_reason: "4000: invalid template code",
+      error_code: "4000",
+      error_wrapper_code: "NAF_ERROR",
+      stage: "sdk_callback",
+    });
   });
 
   it("해석된 템플릿 코드를 SDK 동의 요청 options에 넘긴다 (#288)", async () => {

@@ -58,16 +58,29 @@ describe("복귀 리마인더 배포 배선 설정 (#319)", () => {
     assert.match(deployWorkflow, /run:\s*npm run build/);
   });
 
-  it("AC-2: repo variable 미설정 시 폴백 빌드 경고 스텝을 조건부로 실행한다", () => {
-    // 조건: repo variable가 비어 있을 때만 경고 스텝을 돌린다.
-    assert.match(
-      deployWorkflow,
-      /if:\s*\$\{\{\s*vars\.RETURN_REMINDER_TEMPLATE_CODE\s*==\s*''\s*\}\}/,
+  it("AC-2: repo variable가 비어 있거나 공백이면 빌드 전에 exit 1로 차단한다", () => {
+    assert.ok(
+      deployWorkflow.includes(
+        'if [ -z "${VITE_RETURN_REMINDER_TEMPLATE_CODE//[[:space:]]/}" ]; then',
+      ),
+      "공백 제거 후 빈 템플릿 코드를 검증해야 한다",
     );
-    // 경고 메시지: 폴백 빌드로 리마인더 동의가 전건 실패함을 알린다.
-    assert.match(deployWorkflow, /::warning::/);
-    assert.match(deployWorkflow, /폴백 템플릿 코드로 빌드됨/);
-    assert.match(deployWorkflow, /리마인더 동의가 전건 실패함/);
+    assert.match(deployWorkflow, /::error::RETURN_REMINDER_TEMPLATE_CODE/);
+    assert.match(deployWorkflow, /exit 1/);
+    assert.ok(
+      deployWorkflow.indexOf("Validate Apps in Toss deployment configuration") <
+        deployWorkflow.indexOf("Build .ait bundle"),
+      "필수 변수 검증은 빌드보다 먼저 실행해야 한다",
+    );
+    assert.doesNotMatch(deployWorkflow, /Warn on missing return reminder/);
+    assert.doesNotMatch(deployWorkflow, /::warning::/);
+  });
+
+  it("AIT workflow는 RPI runner와 공식 stable action v7을 사용한다", () => {
+    assert.match(deployWorkflow, /runs-on:\s*seorilabs-rpi-arm64/);
+    assert.match(deployWorkflow, /uses:\s*actions\/checkout@v7/);
+    assert.match(deployWorkflow, /uses:\s*actions\/setup-node@v7/);
+    assert.doesNotMatch(deployWorkflow, /actions\/(checkout|setup-node)@v6/);
   });
 
   it("AC-5: README에 repo variable RETURN_REMINDER_TEMPLATE_CODE 등록 절차를 반영한다", () => {

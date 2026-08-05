@@ -1545,13 +1545,13 @@ function App() {
     );
 
     void requestReturnReminderAgreement().then(
-      ({ outcome, errorReason, errorCode }) => {
-        const resolved = applyReturnReminderOutcome(
-          prompted,
-          outcome,
+      ({ outcome, errorReason, errorCode, errorWrapperCode, failureStage }) => {
+        const resolved = applyReturnReminderOutcome(prompted, outcome, {
           errorReason,
           errorCode,
-        );
+          errorWrapperCode,
+          failureStage,
+        });
         saveReturnReminderState(resolved);
         telemetry.impression(
           RETURN_REMINDER_RESULT_EVENT,

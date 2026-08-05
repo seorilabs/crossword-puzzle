@@ -6,6 +6,8 @@ import { requestNotificationAgreement } from "@apps-in-toss/web-framework";
 import {
   mapNotificationAgreementResult,
   summarizeAgreementFailure,
+  type ReturnReminderFailureMetadata,
+  type ReturnReminderFailureStage,
   type ReturnReminderOutcome,
   type ReturnReminderTemplateCodeSource,
 } from "../../packages/crossword-core/src/returnReminder.ts";
@@ -16,6 +18,8 @@ export type ReturnReminderAgreementResult = {
   outcome: ReturnReminderOutcome;
   errorReason?: string;
   errorCode?: string;
+  errorWrapperCode?: string;
+  failureStage?: ReturnReminderFailureStage;
 };
 
 // 앱인토스 콘솔 > 미니앱 > 스마트발송에서 알림 동의문·기능성 캠페인을 만들고 검수
@@ -38,11 +42,14 @@ export function pickReturnReminderTemplateCode(configured?: string): string {
 // 에서도 안전하게 기본값으로 폴백한다(옵셔널 체이닝).
 export function resolveReturnReminderTemplateCode(): string {
   const env = import.meta.env as ImportMetaEnv | undefined;
-  return pickReturnReminderTemplateCode(env?.VITE_RETURN_REMINDER_TEMPLATE_CODE);
+  return pickReturnReminderTemplateCode(
+    env?.VITE_RETURN_REMINDER_TEMPLATE_CODE,
+  );
 }
 
 // 현재 빌드에 적용된 템플릿 코드(환경변수 또는 기본값).
-export const RETURN_REMINDER_TEMPLATE_CODE = resolveReturnReminderTemplateCode();
+export const RETURN_REMINDER_TEMPLATE_CODE =
+  resolveReturnReminderTemplateCode();
 
 // 주입된 코드 문자열로부터 템플릿 코드 출처(env/default)를 판정한다. pick~와 동일한
 // 트림 규칙을 써서 "실제로 env 코드가 쓰였는가"와 일관되게 한다. 순수 함수로 두어
@@ -84,8 +91,7 @@ export function requestReturnReminderAgreement(
 
     const finish = (
       outcome: ReturnReminderOutcome,
-      errorReason?: string,
-      errorCode?: string,
+      metadata: ReturnReminderFailureMetadata = {},
     ) => {
       if (settled) {
         return;
@@ -100,11 +106,17 @@ export function requestReturnReminderAgreement(
         // cleanup 실패는 무시한다.
       }
       const result: ReturnReminderAgreementResult = { outcome };
-      if (errorReason != null) {
-        result.errorReason = errorReason;
+      if (metadata.errorReason != null) {
+        result.errorReason = metadata.errorReason;
       }
-      if (errorCode != null) {
-        result.errorCode = errorCode;
+      if (metadata.errorCode != null) {
+        result.errorCode = metadata.errorCode;
+      }
+      if (metadata.errorWrapperCode != null) {
+        result.errorWrapperCode = metadata.errorWrapperCode;
+      }
+      if (metadata.failureStage != null) {
+        result.failureStage = metadata.failureStage;
       }
       resolve(result);
     };
@@ -112,16 +124,23 @@ export function requestReturnReminderAgreement(
     try {
       cleanup = requestAgreement({
         options: { templateCode: RETURN_REMINDER_TEMPLATE_CODE },
-        onEvent: (result) => finish(mapNotificationAgreementResult(result.type)),
+        onEvent: (result) =>
+          finish(mapNotificationAgreementResult(result.type)),
         // SDK onError(일시 오류): 에러 정보를 error_reason 요약과 error_code로 남긴다.
         onError: (error: unknown) => {
-          const { reason, code } = summarizeAgreementFailure(error);
-          finish("error", reason, code);
+          const { reason, code, wrapperCode } =
+            summarizeAgreementFailure(error);
+          finish("error", {
+            errorReason: reason,
+            errorCode: code,
+            errorWrapperCode: wrapperCode,
+            failureStage: "sdk_callback",
+          });
         },
       });
     } catch {
       // 미지원 환경(로컬 브라우저 등)에서는 동기 throw가 날 수 있다.
-      finish("unsupported");
+      finish("unsupported", { failureStage: "preflight" });
       return;
     }
 
@@ -129,7 +148,10 @@ export function requestReturnReminderAgreement(
     // timeout으로 기록한다. 콜백이 이미 동기적으로 결과를 확정했다면(settled)
     // 타이머를 걸지 않아 불필요한 대기·핸들 누수를 막는다.
     if (!settled) {
-      timer = setTimeout(() => finish("timeout"), timeoutMs);
+      timer = setTimeout(
+        () => finish("timeout", { failureStage: "timeout" }),
+        timeoutMs,
+      );
     }
   });
 }

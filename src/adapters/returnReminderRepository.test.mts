@@ -40,7 +40,7 @@ describe("returnReminderRepository", () => {
     });
   });
 
-  it("error 결과의 errorReason·errorCode를 라운드트립에서 보존한다 (#319)", () => {
+  it("error 결과의 오류 코드·래퍼·단계를 라운드트립에서 보존한다", () => {
     saveReturnReminderState(
       {
         promptCount: 3,
@@ -48,6 +48,8 @@ describe("returnReminderRepository", () => {
         outcome: "error",
         errorReason: "잘못된 요청입니다.",
         errorCode: "4000",
+        errorWrapperCode: "NAF_ERROR",
+        failureStage: "sdk_callback",
       },
       storage,
     );
@@ -56,6 +58,37 @@ describe("returnReminderRepository", () => {
       lastPromptDate: "2026-07-13",
       outcome: "error",
       errorReason: "잘못된 요청입니다.",
+      errorCode: "4000",
+      errorWrapperCode: "NAF_ERROR",
+      failureStage: "sdk_callback",
+    });
+  });
+
+  it("timeout 단계와 기존 필드가 없는 저장값을 하위 호환으로 복원한다", () => {
+    storage.raw.set(
+      "crossword:return-reminder",
+      JSON.stringify({
+        promptCount: 2,
+        lastPromptDate: "2026-07-14",
+        outcome: "timeout",
+        failureStage: "timeout",
+      }),
+    );
+    assert.deepEqual(loadReturnReminderState(storage), {
+      promptCount: 2,
+      lastPromptDate: "2026-07-14",
+      outcome: "timeout",
+      failureStage: "timeout",
+    });
+
+    storage.raw.set(
+      "crossword:return-reminder",
+      JSON.stringify({ promptCount: 1, outcome: "error", errorCode: "4000" }),
+    );
+    assert.deepEqual(loadReturnReminderState(storage), {
+      promptCount: 1,
+      lastPromptDate: undefined,
+      outcome: "error",
       errorCode: "4000",
     });
   });
@@ -68,11 +101,15 @@ describe("returnReminderRepository", () => {
         outcome: "agreed",
         errorReason: "stale",
         errorCode: "4000",
+        errorWrapperCode: "NAF_ERROR",
+        failureStage: "sdk_callback",
       }),
     );
     const loaded = loadReturnReminderState(storage);
     assert.equal(loaded.errorReason, undefined);
     assert.equal(loaded.errorCode, undefined);
+    assert.equal(loaded.errorWrapperCode, undefined);
+    assert.equal(loaded.failureStage, undefined);
   });
 
   it("알 수 없는 outcome 문자열은 제거하고 복원한다", () => {

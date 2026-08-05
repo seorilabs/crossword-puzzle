@@ -96,6 +96,13 @@
       "description": "복귀 리마인드(D1 재방문) 푸시 동의 유도 노출 여부. 스마트발송 템플릿 등록 완료로 기본 활성. 필요 시 false로 끈다",
       "valueType": "BOOLEAN"
     },
+    "onboarding_difficulty_ramp_enabled": {
+      "defaultValue": {
+        "value": "true"
+      },
+      "description": "기완료 퍼즐이 없는 사용자의 첫 easy 완료 후 easy 1판을 추가 추천한다. 회귀 시 false로 기존 추천을 복원한다",
+      "valueType": "BOOLEAN"
+    },
     "first_run_auto_start_enabled": {
       "defaultValue": {
         "value": "true"

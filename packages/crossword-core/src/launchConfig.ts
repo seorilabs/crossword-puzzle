@@ -36,8 +36,8 @@ export type LaunchConfig = {
   returnReminderEnabled: boolean;
   // 신규 사용자 온보딩 난이도 램프(#291). easy(온보딩) 완료 직후 normal 급점프
   // (완료 중앙값 73초→18분, 약 14배) 대신 완화된 다음 단계(추가 easy)를 배정해
-  // 두 번째 퍼즐 완주·복귀를 돕는다. 데이터 확인 전이라 기본 OFF이며 Remote Config
-  // `onboarding_difficulty_ramp_enabled`로만 켠다(기본값은 기존 동작 유지).
+  // 두 번째 퍼즐 완주·복귀를 돕는다. 기본 ON이며 Remote Config의 명시적 false를
+  // 긴급 킬스위치로 유지한다.
   onboardingDifficultyRampEnabled: boolean;
   // 신규 첫 실행에서 홈을 건너뛰고 온보딩 퍼즐 풀이 화면으로 자동 진입할지(#205).
   firstRunAutoStartEnabled: boolean;
@@ -128,10 +128,9 @@ export const defaultLaunchConfig: LaunchConfig = {
   // Remote Config `return_reminder_enabled`로 끌 수 있다. mobile(RN)은 알림 동의
   // adapter가 없어 이 값과 무관하게 no-op이다(docs/market-parity.md 참고).
   returnReminderEnabled: true,
-  // 온보딩 난이도 램프(#291) 기본 OFF. easy→normal 절벽 완화 효과를 데이터로 확인하기
-  // 전이라 기존 동작(easy 완료 → normal 추천)을 유지하고, Remote Config
-  // `onboarding_difficulty_ramp_enabled`로만 켠다.
-  onboardingDifficultyRampEnabled: false,
+  // 온보딩 난이도 램프(#291) 기본 ON. easy→easy→normal로 첫 난이도 절벽만 늦추며,
+  // Remote Config `onboarding_difficulty_ramp_enabled=false`로 즉시 끌 수 있다.
+  onboardingDifficultyRampEnabled: true,
   // 신규 첫 실행 온보딩 퍼즐 자동 진입 기본 활성(#205). 신규의 today 화면 도달률
   // (62%)·attempt_start 도달률(57%) 개선용. 회귀 시 Remote Config
   // `first_run_auto_start_enabled`로 즉시 끈다.

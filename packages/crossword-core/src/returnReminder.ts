@@ -24,6 +24,20 @@ export type ReturnReminderOutcome =
   | "error"
   | "timeout";
 
+// 실패가 발생한 실행 단계. SDK 호출 전 동기 실패(preflight), SDK 오류 콜백
+// (sdk_callback), 콜백 무응답 안전망(timeout)을 구분해 운영 원인을 좁힌다.
+export type ReturnReminderFailureStage =
+  | "preflight"
+  | "sdk_callback"
+  | "timeout";
+
+export type ReturnReminderFailureMetadata = {
+  errorReason?: string;
+  errorCode?: string;
+  errorWrapperCode?: string;
+  failureStage?: ReturnReminderFailureStage;
+};
+
 export type ReturnReminderState = {
   // 동의 유도(알림 동의 화면 노출)를 시도한 횟수.
   promptCount: number;
@@ -36,6 +50,10 @@ export type ReturnReminderState = {
   // outcome이 error일 때 SDK가 준 구조화 에러 코드(code/status, ≤100자). 서버 거절
   // 사유(요청 자체 거절)를 사람이 읽는 errorReason과 별개로 식별한다(#288).
   errorCode?: string;
+  // 중첩 오류의 가장 구체적인 errorCode와 다른 최상위 래퍼 코드.
+  errorWrapperCode?: string;
+  // 실패가 발생한 실행 단계. 기존 저장값에는 없을 수 있어 선택 필드로 유지한다.
+  failureStage?: ReturnReminderFailureStage;
 };
 
 export const RETURN_REMINDER_PROMPT_EVENT = "return_reminder_prompt";
@@ -78,6 +96,200 @@ const RESOLVED_OUTCOMES: ReadonlySet<ReturnReminderOutcome> = new Set([
 
 // error_reason 요약 최대 길이(이벤트 파라미터 안전 상한).
 const ERROR_REASON_MAX_LENGTH = 100;
+const AGREEMENT_ERROR_MAX_DEPTH = 3;
+const AGREEMENT_ERROR_CONTAINER_KEYS = [
+  "cause",
+  "data",
+  "error",
+  "reason",
+  "response",
+  "details",
+] as const;
+const AGREEMENT_ERROR_CODE_KEYS = [
+  "code",
+  "status",
+  "statusCode",
+  "errorCode",
+] as const;
+const AGREEMENT_ERROR_MESSAGE_KEYS = [
+  "message",
+  "reason",
+  "detail",
+  "description",
+  "errorMessage",
+] as const;
+
+type AgreementErrorCandidate = {
+  depth: number;
+  order: number;
+  code?: string;
+  message?: string;
+};
+
+function normalizeAgreementErrorText(
+  value: unknown,
+  maxLength: number,
+): string | undefined {
+  if (
+    value == null ||
+    (typeof value === "object" && value !== null) ||
+    typeof value === "function"
+  ) {
+    return undefined;
+  }
+  let raw: string;
+  try {
+    raw = String(value);
+  } catch {
+    return undefined;
+  }
+  const text = raw.replace(/\s+/g, " ").trim();
+  if (text.length === 0) {
+    return undefined;
+  }
+  return text.length > maxLength ? text.slice(0, maxLength) : text;
+}
+
+function readAgreementErrorField(value: object, key: string): unknown {
+  try {
+    return (value as Record<string, unknown>)[key];
+  } catch {
+    return undefined;
+  }
+}
+
+function firstAgreementErrorText(
+  value: object,
+  keys: readonly string[],
+  maxLength: number,
+): string | undefined {
+  for (const key of keys) {
+    const candidate = normalizeAgreementErrorText(
+      readAgreementErrorField(value, key),
+      maxLength,
+    );
+    if (candidate != null) {
+      return candidate;
+    }
+  }
+  return undefined;
+}
+
+function inspectAgreementError(
+  error: unknown,
+  maxLength: number,
+): AgreementErrorSummary {
+  const candidates: AgreementErrorCandidate[] = [];
+  const visited = new WeakSet<object>();
+  let order = 0;
+
+  const visit = (value: unknown, depth: number): void => {
+    if (value == null) {
+      return;
+    }
+    if (typeof value !== "object") {
+      const message = normalizeAgreementErrorText(value, maxLength);
+      if (message != null) {
+        candidates.push({ depth, order: order++, message });
+      }
+      return;
+    }
+    if (visited.has(value)) {
+      return;
+    }
+    visited.add(value);
+
+    const code = firstAgreementErrorText(
+      value,
+      AGREEMENT_ERROR_CODE_KEYS,
+      maxLength,
+    );
+    const message = firstAgreementErrorText(
+      value,
+      AGREEMENT_ERROR_MESSAGE_KEYS,
+      maxLength,
+    );
+    candidates.push({ depth, order: order++, code, message });
+
+    if (depth >= AGREEMENT_ERROR_MAX_DEPTH) {
+      return;
+    }
+    for (const key of AGREEMENT_ERROR_CONTAINER_KEYS) {
+      const nested = readAgreementErrorField(value, key);
+      if (nested != null && nested !== value) {
+        visit(nested, depth + 1);
+      }
+    }
+  };
+
+  visit(error, 0);
+
+  const codeCandidates = candidates.filter(
+    (candidate) => candidate.code != null,
+  );
+  const codeCandidate = codeCandidates.reduce<
+    AgreementErrorCandidate | undefined
+  >(
+    (selected, candidate) =>
+      selected == null || candidate.depth > selected.depth
+        ? candidate
+        : selected,
+    undefined,
+  );
+  const wrapperCandidate = codeCandidates.reduce<
+    AgreementErrorCandidate | undefined
+  >(
+    (selected, candidate) =>
+      selected == null ||
+      candidate.depth < selected.depth ||
+      (candidate.depth === selected.depth && candidate.order < selected.order)
+        ? candidate
+        : selected,
+    undefined,
+  );
+  const messageCandidate =
+    (codeCandidate?.message != null ? codeCandidate : undefined) ??
+    candidates.reduce<AgreementErrorCandidate | undefined>(
+      (selected, candidate) =>
+        candidate.message != null &&
+        (selected == null || candidate.depth > selected.depth)
+          ? candidate
+          : selected,
+      undefined,
+    );
+
+  const parts = [codeCandidate?.code, messageCandidate?.message].filter(
+    (part, index, values): part is string =>
+      part != null && part !== "" && values.indexOf(part) === index,
+  );
+  let reason = parts.join(": ");
+  if (reason === "" && error != null && typeof error === "object") {
+    try {
+      reason = String(error);
+    } catch {
+      reason = "unknown";
+    }
+  }
+  reason = reason.replace(/\s+/g, " ").trim() || "unknown";
+  if (reason.length > maxLength) {
+    reason = reason.slice(0, maxLength);
+  }
+
+  const code = codeCandidate?.code;
+  const wrapperCode =
+    code != null &&
+    codeCandidate != null &&
+    wrapperCandidate?.code != null &&
+    wrapperCandidate.depth < codeCandidate.depth &&
+    wrapperCandidate.code !== code
+      ? wrapperCandidate.code
+      : undefined;
+  return {
+    reason,
+    ...(code == null ? {} : { code }),
+    ...(wrapperCode == null ? {} : { wrapperCode }),
+  };
+}
 
 // SDK onError가 전달하는 임의 에러 값을 error_reason 파라미터용 문자열(≤100자)로
 // 요약한다. 코드/메시지를 우선 뽑고, 개행·연속 공백을 접어 한 줄로 만든다. 순수
@@ -86,28 +298,7 @@ export function summarizeAgreementError(
   error: unknown,
   maxLength: number = ERROR_REASON_MAX_LENGTH,
 ): string {
-  let raw: string;
-  if (error == null) {
-    raw = "unknown";
-  } else if (typeof error === "string") {
-    raw = error;
-  } else if (error instanceof Error) {
-    raw = error.message || error.name || "Error";
-  } else if (typeof error === "object") {
-    const record = error as { code?: unknown; message?: unknown };
-    const parts = [record.code, record.message]
-      .filter((part) => part != null && part !== "")
-      .map((part) => String(part));
-    raw = parts.length > 0 ? parts.join(": ") : String(error);
-  } else {
-    raw = String(error);
-  }
-
-  const text = raw.replace(/\s+/g, " ").trim();
-  if (text.length === 0) {
-    return "unknown";
-  }
-  return text.length > maxLength ? text.slice(0, maxLength) : text;
+  return inspectAgreementError(error, maxLength).reason;
 }
 
 // SDK onError가 구조화 필드(code/status)를 준 경우 이를 error_code용 문자열로 보존한다.
@@ -117,19 +308,7 @@ export function extractAgreementErrorCode(
   error: unknown,
   maxLength: number = ERROR_REASON_MAX_LENGTH,
 ): string | undefined {
-  if (error == null || typeof error !== "object") {
-    return undefined;
-  }
-  const record = error as { code?: unknown; status?: unknown };
-  const candidate = record.code ?? record.status;
-  if (candidate == null || candidate === "") {
-    return undefined;
-  }
-  const text = String(candidate).replace(/\s+/g, " ").trim();
-  if (text.length === 0) {
-    return undefined;
-  }
-  return text.length > maxLength ? text.slice(0, maxLength) : text;
+  return inspectAgreementError(error, maxLength).code;
 }
 
 // error_reason(요약 문자열)과 error_code(구조화 코드)를 함께 산출한다. 어댑터가 SDK
@@ -137,15 +316,14 @@ export function extractAgreementErrorCode(
 export type AgreementErrorSummary = {
   reason: string;
   code?: string;
+  wrapperCode?: string;
 };
 
 export function summarizeAgreementFailure(
   error: unknown,
   maxLength: number = ERROR_REASON_MAX_LENGTH,
 ): AgreementErrorSummary {
-  const reason = summarizeAgreementError(error, maxLength);
-  const code = extractAgreementErrorCode(error, maxLength);
-  return code == null ? { reason } : { reason, code };
+  return inspectAgreementError(error, maxLength);
 }
 
 export function isReturnReminderResolved(state: ReturnReminderState): boolean {
@@ -223,21 +401,47 @@ export function markReturnReminderPrompted(
 export function applyReturnReminderOutcome(
   state: ReturnReminderState,
   outcome: ReturnReminderOutcome,
-  errorReason?: string,
-  errorCode?: string,
+  metadata: ReturnReminderFailureMetadata = {},
 ): ReturnReminderState {
   const next: ReturnReminderState = { ...state, outcome };
-  // errorReason/errorCode는 error 결과에서만 의미가 있다. 다른 결과로 넘어가면
-  // 이전 오류 정보가 남지 않도록 항상 비운다.
-  if (outcome === "error" && errorReason != null && errorReason !== "") {
-    next.errorReason = errorReason;
+  // 오류 상세는 error 결과에서만 의미가 있다. 성공·거부·다른 실패로 넘어가면
+  // 이전 SDK 오류 정보가 남지 않도록 항상 비운다.
+  if (
+    outcome === "error" &&
+    metadata.errorReason != null &&
+    metadata.errorReason !== ""
+  ) {
+    next.errorReason = metadata.errorReason;
   } else {
     delete next.errorReason;
   }
-  if (outcome === "error" && errorCode != null && errorCode !== "") {
-    next.errorCode = errorCode;
+  if (
+    outcome === "error" &&
+    metadata.errorCode != null &&
+    metadata.errorCode !== ""
+  ) {
+    next.errorCode = metadata.errorCode;
   } else {
     delete next.errorCode;
+  }
+  if (
+    outcome === "error" &&
+    metadata.errorWrapperCode != null &&
+    metadata.errorWrapperCode !== ""
+  ) {
+    next.errorWrapperCode = metadata.errorWrapperCode;
+  } else {
+    delete next.errorWrapperCode;
+  }
+  if (
+    (outcome === "error" ||
+      outcome === "timeout" ||
+      outcome === "unsupported") &&
+    metadata.failureStage != null
+  ) {
+    next.failureStage = metadata.failureStage;
+  } else {
+    delete next.failureStage;
   }
   return next;
 }
@@ -267,6 +471,8 @@ export function buildReturnReminderResultParams(
   template_code_source?: ReturnReminderTemplateCodeSource;
   error_reason?: string;
   error_code?: string;
+  error_wrapper_code?: string;
+  stage?: ReturnReminderFailureStage;
 } {
   const params: {
     outcome: ReturnReminderOutcome;
@@ -274,6 +480,8 @@ export function buildReturnReminderResultParams(
     template_code_source?: ReturnReminderTemplateCodeSource;
     error_reason?: string;
     error_code?: string;
+    error_wrapper_code?: string;
+    stage?: ReturnReminderFailureStage;
   } = {
     outcome: state.outcome ?? "error",
     prompt_count: state.promptCount,
@@ -286,6 +494,12 @@ export function buildReturnReminderResultParams(
   }
   if (state.errorCode != null && state.errorCode !== "") {
     params.error_code = state.errorCode;
+  }
+  if (state.errorWrapperCode != null && state.errorWrapperCode !== "") {
+    params.error_wrapper_code = state.errorWrapperCode;
+  }
+  if (state.failureStage != null) {
+    params.stage = state.failureStage;
   }
   return params;
 }

@@ -24,11 +24,28 @@ import {
 } from "./launchConfig.ts";
 import type { PuzzleManifestItem } from "./types.ts";
 
+const remoteConfigTemplate = JSON.parse(
+  readFileSync(
+    new URL("../../../remoteconfig.template.json", import.meta.url),
+    "utf8",
+  ),
+) as {
+  parameters: Record<
+    string,
+    { defaultValue?: { value?: string }; valueType?: string }
+  >;
+};
+
 function summary(
   puzzleId: string,
   difficulty: PuzzleManifestItem["difficulty"],
 ): PuzzleManifestItem {
-  return { puzzleId, date: "2026-06-29", path: `/${puzzleId}.json`, difficulty };
+  return {
+    puzzleId,
+    date: "2026-06-29",
+    path: `/${puzzleId}.json`,
+    difficulty,
+  };
 }
 
 describe("온보딩 난이도 램프 수락 조건 (#291)", () => {
@@ -48,7 +65,9 @@ describe("온보딩 난이도 램프 수락 조건 (#291)", () => {
         medium.minWordCount < normal.minWordCount,
       `easy(${easy.minWordCount}) < medium(${medium.minWordCount}) < normal(${normal.minWordCount})`,
     );
-    assert.ok(medium.maxWords >= easy.maxWords && medium.maxWords < normal.maxWords);
+    assert.ok(
+      medium.maxWords >= easy.maxWords && medium.maxWords < normal.maxWords,
+    );
 
     // (3) "normal 완화": 교차율은 normal보다 높거나 같아(단서 연결↑) 체감 난도를 낮추고,
     // 고급(hard) 어휘를 배제해 어휘 편향도 normal보다 완화한다.
@@ -62,10 +81,18 @@ describe("온보딩 난이도 램프 수락 조건 (#291)", () => {
       { answer: "평면", difficulty: "normal" },
       { answer: "정정", difficulty: "hard" },
     ];
-    const mediumWords = filterWordsByDifficulty(words, medium).map((w) => w.answer);
-    const normalWords = filterWordsByDifficulty(words, normal).map((w) => w.answer);
+    const mediumWords = filterWordsByDifficulty(words, medium).map(
+      (w) => w.answer,
+    );
+    const normalWords = filterWordsByDifficulty(words, normal).map(
+      (w) => w.answer,
+    );
     assert.deepEqual(mediumWords, ["가게", "평면"], "중간: hard 배제");
-    assert.deepEqual(normalWords, ["가게", "평면", "정정"], "normal: hard 포함");
+    assert.deepEqual(
+      normalWords,
+      ["가게", "평면", "정정"],
+      "normal: hard 포함",
+    );
     assert.ok(
       mediumWords.length < normalWords.length,
       "중간 프로파일이 normal보다 어휘를 완화(축소)한다",
@@ -86,6 +113,7 @@ describe("온보딩 난이도 램프 수락 조건 (#291)", () => {
       summaries,
       new Set(["onboarding"]),
       current,
+      { onboardingRampEnabled: false },
     );
     const on = getNextRecommendedPuzzleSummary(
       summaries,
@@ -98,26 +126,35 @@ describe("온보딩 난이도 램프 수락 조건 (#291)", () => {
     assert.equal(on?.difficulty, "easy", "램프 on: 완화된 난이도 배정");
   });
 
-  it("AC-3: launchConfig 플래그로 on/off 가능하고 기본값은 기존 동작 유지(false)다", () => {
-    assert.equal(defaultLaunchConfig.onboardingDifficultyRampEnabled, false);
+  it("AC-3: launchConfig 기본값은 ON이고 명시적 false 킬스위치를 유지한다", () => {
+    assert.equal(defaultLaunchConfig.onboardingDifficultyRampEnabled, true);
     assert.equal(
       getLaunchConfigDefaultsForRemoteConfig()[
         launchConfigKeys.onboardingDifficultyRampEnabled
       ],
-      false,
+      true,
     );
     assert.equal(
       launchConfigKeys.onboardingDifficultyRampEnabled,
       "onboarding_difficulty_ramp_enabled",
     );
     assert.equal(
-      normalizeLaunchConfig({ onboardingDifficultyRampEnabled: true })
+      normalizeLaunchConfig({ onboardingDifficultyRampEnabled: false })
         .onboardingDifficultyRampEnabled,
-      true,
+      false,
     );
     assert.equal(
       normalizeLaunchConfig({}).onboardingDifficultyRampEnabled,
-      false,
+      true,
+    );
+    assert.deepEqual(
+      remoteConfigTemplate.parameters.onboarding_difficulty_ramp_enabled,
+      {
+        defaultValue: { value: "true" },
+        description:
+          "기완료 퍼즐이 없는 사용자의 첫 easy 완료 후 easy 1판을 추가 추천한다. 회귀 시 false로 기존 추천을 복원한다",
+        valueType: "BOOLEAN",
+      },
     );
   });
 
@@ -152,12 +189,12 @@ describe("온보딩 난이도 램프 수락 조건 (#291)", () => {
     ];
     const current = { puzzleId: "onboarding", difficulty: "easy" as const };
 
-    // 신규 케이스 1(실행 경로): 램프 off(기본)면 기존 난이도 상승(easy→normal)을 유지 —
-    // 기존 동작 회귀 가드.
+    // 신규 케이스 1(실행 경로): 명시적 false 킬스위치는 기존 난이도 상승을 유지한다.
     const rampOff = getNextRecommendedPuzzleSummary(
       summaries,
       new Set(["onboarding"]),
       current,
+      { onboardingRampEnabled: false },
     );
     assert.equal(rampOff?.difficulty, "normal");
 
@@ -181,5 +218,14 @@ describe("온보딩 난이도 램프 수락 조건 (#291)", () => {
       { onboardingRampEnabled: true },
     );
     assert.equal(noEasyLeft?.difficulty, "normal");
+
+    // 신규 케이스 4(실행 경로): 첫 후속으로 hard만 남으면 CTA를 숨긴다.
+    const hardOnly = getNextRecommendedPuzzleSummary(
+      [summary("onboarding", "easy"), summary("hard1", "hard")],
+      new Set(["onboarding"]),
+      current,
+      { onboardingRampEnabled: true },
+    );
+    assert.equal(hardOnly, undefined);
   });
 });
