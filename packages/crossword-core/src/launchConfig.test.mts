@@ -527,30 +527,30 @@ describe("launchConfig: 날짜별 공용 힌트", () => {
 // 온보딩 난이도 램프 Remote Config 플래그 수락 조건(#291). it 이름의 AC-N 은 이슈
 // 인수조건 번호와 대응한다.
 describe("온보딩 난이도 램프 Remote Config 플래그 수락 조건 (#291)", () => {
-  it("AC-3: 기본값이 기존 동작 유지(false)이고 Remote Config로 on/off 할 수 있다", () => {
-    // 기본 비활성(기존 동작 유지).
-    assert.equal(defaultLaunchConfig.onboardingDifficultyRampEnabled, false);
-    // Remote Config 기본값 맵에도 비활성으로 반영.
+  it("AC-3: 기본값은 true이고 Remote Config의 명시적 false로 끌 수 있다", () => {
+    // 첫 easy 완료 후 easy 1판 추가를 기본 활성화한다.
+    assert.equal(defaultLaunchConfig.onboardingDifficultyRampEnabled, true);
+    // Remote Config 기본값 맵에도 활성으로 반영.
     const defaults = getLaunchConfigDefaultsForRemoteConfig();
     assert.equal(
       defaults[launchConfigKeys.onboardingDifficultyRampEnabled],
-      false,
+      true,
     );
     // 영문 스네이크 키.
     assert.equal(
       launchConfigKeys.onboardingDifficultyRampEnabled,
       "onboarding_difficulty_ramp_enabled",
     );
-    // 명시적으로 true면 켤 수 있다(원격 제어).
+    // 명시적으로 false면 끌 수 있다(원격 킬스위치).
     assert.equal(
-      normalizeLaunchConfig({ onboardingDifficultyRampEnabled: true })
+      normalizeLaunchConfig({ onboardingDifficultyRampEnabled: false })
         .onboardingDifficultyRampEnabled,
-      true,
+      false,
     );
-    // 값이 없으면 기본값(비활성)으로 폴백.
+    // 값이 없으면 기본값(활성)으로 폴백.
     assert.equal(
       normalizeLaunchConfig({}).onboardingDifficultyRampEnabled,
-      false,
+      true,
     );
     // Remote Config 기본값 맵에 키가 실제로 존재한다(원격 노출 보장).
     assert.ok(

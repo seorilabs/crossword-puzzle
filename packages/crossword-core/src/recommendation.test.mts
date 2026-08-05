@@ -12,7 +12,12 @@ function summary(
   puzzleId: string,
   difficulty?: PuzzleManifestItem["difficulty"],
 ): PuzzleManifestItem {
-  return { puzzleId, date: "2026-06-29", path: `/${puzzleId}.json`, difficulty };
+  return {
+    puzzleId,
+    date: "2026-06-29",
+    path: `/${puzzleId}.json`,
+    difficulty,
+  };
 }
 
 const SET = (...ids: string[]) => new Set(ids);
@@ -50,7 +55,11 @@ describe("getNextRecommendedPuzzleSummary", () => {
       puzzleId: "normal1",
       difficulty: "normal",
     });
-    assert.equal(next?.puzzleId, "normal2", "위 티어(hard) 완료됨 → 동일 normal");
+    assert.equal(
+      next?.puzzleId,
+      "normal2",
+      "위 티어(hard) 완료됨 → 동일 normal",
+    );
   });
 
   it("최고 난이도(hard) 완료 시 같은 hard 미완료를 추천한다", () => {
@@ -106,10 +115,7 @@ describe("getNextRecommendedPuzzleSummary", () => {
   it("최고 티어(hard) 완료 시 난이도 불명 후보를 '한 단계 위'로 오인하지 않는다", () => {
     // hard 완료(rank 2): 한 단계 위는 없다. 난이도 불명 후보(rank -1)가 섞여 있어도
     // 동일 티어(hard) 미완료를 우선 추천해야 한다.
-    const summaries = [
-      summary("unknown1"),
-      summary("hard2", "hard"),
-    ];
+    const summaries = [summary("unknown1"), summary("hard2", "hard")];
     const next = getNextRecommendedPuzzleSummary(summaries, SET(), {
       puzzleId: "hard1",
       difficulty: "hard",
@@ -138,21 +144,32 @@ describe("온보딩 난이도 램프 배정 수락 조건 (#291)", () => {
   it("AC-2: 램프 on + 신규(첫 완료)면 easy 완료 직후 normal 대신 완화(남은 easy)를 배정한다", () => {
     const current = { puzzleId: "onboarding", difficulty: "easy" as const };
     // 같은 입력에서 램프 off는 normal(급점프), 램프 on은 easy(완화)로 갈린다.
-    const off = getNextRecommendedPuzzleSummary(summaries, SET("onboarding"), current);
-    const next = getNextRecommendedPuzzleSummary(summaries, SET("onboarding"), current, {
-      onboardingRampEnabled: true,
-    });
+    const off = getNextRecommendedPuzzleSummary(
+      summaries,
+      SET("onboarding"),
+      current,
+      { onboardingRampEnabled: false },
+    );
+    const next = getNextRecommendedPuzzleSummary(
+      summaries,
+      SET("onboarding"),
+      current,
+      {
+        onboardingRampEnabled: true,
+      },
+    );
     assert.equal(off?.difficulty, "normal", "램프 off: 기존 normal 급점프");
     assert.equal(next?.puzzleId, "easy2", "easy→easy로 절벽 완화");
     assert.equal(next?.difficulty, "easy", "램프 on: 더 낮은 난이도로 배정");
   });
 
-  it("AC-3: 램프 off(옵션 미전달)면 easy 완료 → normal 급점프로 기존 동작을 유지한다", () => {
-    // Remote Config 기본 off 시 배정이 불변임을 배정 계층에서도 회귀 가드한다.
+  it("AC-3: 램프를 명시적으로 끄면 easy 완료 → normal 기존 동작을 유지한다", () => {
+    // Remote Config 명시적 false 킬스위치가 기존 추천 정책을 복원한다.
     const next = getNextRecommendedPuzzleSummary(
       summaries,
       SET("onboarding"),
       { puzzleId: "onboarding", difficulty: "easy" },
+      { onboardingRampEnabled: false },
     );
     assert.equal(next?.puzzleId, "normal1");
   });
@@ -190,6 +207,16 @@ describe("온보딩 난이도 램프 배정 수락 조건 (#291)", () => {
       { onboardingRampEnabled: true },
     );
     assert.equal(next?.puzzleId, "normal1");
+  });
+
+  it("첫 후속 후보가 hard뿐이면 추천을 숨긴다", () => {
+    const next = getNextRecommendedPuzzleSummary(
+      [summary("onboarding", "easy"), summary("hard1", "hard")],
+      SET("onboarding"),
+      { puzzleId: "onboarding", difficulty: "easy" },
+      { onboardingRampEnabled: true },
+    );
+    assert.equal(next, undefined);
   });
 
   it("현재가 easy가 아니면(예: normal 완료) 램프가 개입하지 않는다", () => {

@@ -76,4 +76,22 @@ describe("복귀 리마인더 이벤트 template_code_source 배선 (#319)", () 
     // 출처가 default로 해석된다.
     expect(RETURN_REMINDER_TEMPLATE_CODE_SOURCE).toBe("default");
   });
+
+  it("중첩 오류 코드·래퍼·실패 단계를 GA4 sink까지 전달한다", () => {
+    const failed = applyReturnReminderOutcome({ promptCount: 1 }, "error", {
+      errorReason: "4000: invalid template code",
+      errorCode: "4000",
+      errorWrapperCode: "NAF_ERROR",
+      failureStage: "sdk_callback",
+    });
+    telemetry.impression(
+      RETURN_REMINDER_RESULT_EVENT,
+      buildReturnReminderResultParams(failed, "env"),
+    );
+
+    const event = dispatchMock.mock.calls[0]?.[0];
+    expect(event?.params.error_code).toBe("4000");
+    expect(event?.params.error_wrapper_code).toBe("NAF_ERROR");
+    expect(event?.params.stage).toBe("sdk_callback");
+  });
 });

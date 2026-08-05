@@ -3,6 +3,7 @@
 
 import {
   initialReturnReminderState,
+  type ReturnReminderFailureStage,
   type ReturnReminderOutcome,
   type ReturnReminderState,
 } from "../../packages/crossword-core/src/returnReminder.ts";
@@ -19,6 +20,12 @@ const KNOWN_OUTCOMES: ReadonlySet<ReturnReminderOutcome> = new Set([
   "rejected",
   "unsupported",
   "error",
+  "timeout",
+]);
+
+const KNOWN_FAILURE_STAGES: ReadonlySet<ReturnReminderFailureStage> = new Set([
+  "preflight",
+  "sdk_callback",
   "timeout",
 ]);
 
@@ -47,9 +54,8 @@ function normalizeState(value: unknown): ReturnReminderState {
       : undefined;
   const lastPromptDate =
     typeof raw.lastPromptDate === "string" ? raw.lastPromptDate : undefined;
-  // errorReason/errorCode는 error 결과에서만 의미가 있다. 특히 errorCode는 익일
-  // 재유도 판정에서 배포 설정 오류 여부를 가리는 데 필요하므로(#319) 라운드트립에서
-  // 보존한다.
+  // 오류 상세는 error 결과에서만 의미가 있다. 특히 errorCode는 익일 재유도 판정에서
+  // 배포 설정 오류 여부를 가리는 데 필요하므로(#319) 라운드트립에서 보존한다.
   const errorReason =
     outcome === "error" && typeof raw.errorReason === "string"
       ? raw.errorReason
@@ -58,6 +64,18 @@ function normalizeState(value: unknown): ReturnReminderState {
     outcome === "error" && typeof raw.errorCode === "string"
       ? raw.errorCode
       : undefined;
+  const errorWrapperCode =
+    outcome === "error" && typeof raw.errorWrapperCode === "string"
+      ? raw.errorWrapperCode
+      : undefined;
+  const failureStage =
+    (outcome === "error" ||
+      outcome === "timeout" ||
+      outcome === "unsupported") &&
+    typeof raw.failureStage === "string" &&
+    KNOWN_FAILURE_STAGES.has(raw.failureStage as ReturnReminderFailureStage)
+      ? (raw.failureStage as ReturnReminderFailureStage)
+      : undefined;
 
   const state: ReturnReminderState = { promptCount, lastPromptDate, outcome };
   if (errorReason != null) {
@@ -65,6 +83,12 @@ function normalizeState(value: unknown): ReturnReminderState {
   }
   if (errorCode != null) {
     state.errorCode = errorCode;
+  }
+  if (errorWrapperCode != null) {
+    state.errorWrapperCode = errorWrapperCode;
+  }
+  if (failureStage != null) {
+    state.failureStage = failureStage;
   }
   return state;
 }

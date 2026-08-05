@@ -75,6 +75,7 @@ flowchart TD
 ## 완료 직후 다음 퍼즐 연결 (#274)
 
 - 다음 퍼즐 선택은 `packages/crossword-core/src/recommendation.ts`가 세 시장에 동일하게 적용한다. 한 단계 높은 난이도, 같은 난이도, 그 외 미완료 순으로 고르며 미완료 후보가 없으면 완료 퍼즐을 재추천하지 않는다.
+- `onboarding_difficulty_ramp_enabled`는 기본 `true`다. 기완료 퍼즐이 없는 사용자의 첫 easy 완료 직후에는 남은 easy를 한 판 더 추천하고, easy가 없으면 normal까지만 폴백한다. hard만 남으면 CTA를 숨긴다. 두 번째 완료부터는 기존 난이도 상승 정책으로 복귀하며, Remote Config의 명시적 `false`가 3마켓 공통 킬스위치다.
 - AIT/Web과 Android/iOS 완료 축하 오버레이는 추천 후보가 있을 때 난이도·퍼즐 라벨을 포함한 `다음 퍼즐 풀기`를 primary CTA로 먼저 노출하고, 탭하면 목록 없이 풀이 화면으로 진입한다. 후보가 없으면 기존 결과·홈 동선을 유지한다.
 - `next_puzzle_cta` 이벤트는 공용 이름을 유지하고 `source=result_overlay|result_screen`, `next_puzzle_id`, `next_difficulty`를 같은 계약으로 기록한다.
 
@@ -89,8 +90,8 @@ flowchart TD
 - 결정 로직(언제·몇 번 동의를 유도할지)은 코어 `packages/crossword-core/src/returnReminder.ts`에 두어 3개 시장이 같은 정책으로 동작한다. 노출 게이트는 Remote Config 키 `return_reminder_enabled`(기본값 `true`, #162)이다. 필요 시 Remote Config에서 `false`로 끌 수 있다.
 - 실제 동의 요청(시장별 알림 SDK)은 adapter로 분리한다. **AIT/Web**은 `src/adapters/notificationAgreement.ts`가 `@apps-in-toss/web-framework`의 `requestNotificationAgreement`(스마트발송 캠페인 동의)를 호출하고, 다음날 "오늘의 퍼즐" 리마인드는 서버(스마트발송)가 발송한다.
 - **Android/iOS(RN)**는 아직 알림 SDK 의존성이 없어 동의 요청 adapter가 없다(후속 작업). 기본값이 `true`로 바뀌면서 **AIT/Web만 완료 시 동의를 유도**하고, mobile은 이 값과 무관하게 동의 유도/이벤트가 없는 no-op으로 동작한다(`apps/mobile/firebaseClient.ts`는 키를 읽지만 prompt 호출부가 없음). mobile에서 동일 동작을 켜려면 RN 알림 동의 adapter를 먼저 추가해야 한다. 이 시장 차이는 의도된 상태다.
-- 동의 유도/결과는 텔레메트리 `return_reminder_prompt`, `return_reminder_result`(영문 키 유지)로 계측한다. 동의/거부/미지원은 1회 결과로 종결하고, `error`/`timeout`만 다음 날짜에 총 3회 상한으로 재유도한다. 결과의 `prompt_count`에는 실제 유도 회차를 기록한다. `error` 결과에는 사람이 읽는 `error_reason`(#253)과 SDK 구조화 코드 `error_code`(#288)를 함께 남겨 서버 거절 사유를 식별한다.
-- AIT/Web의 `templateCode`는 콘솔에서 발급되는 실제 코드여야 하며, 빌드 환경변수 `VITE_RETURN_REMINDER_TEMPLATE_CODE`로 주입한다(미설정 시 기본값 `crossword-daily-reminder`). 발급 코드 확인·반영 절차는 README를 참고한다(#288).
+- 동의 유도/결과는 텔레메트리 `return_reminder_prompt`, `return_reminder_result`(영문 키 유지)로 계측한다. 동의/거부/미지원은 1회 결과로 종결하고, `error`/`timeout`만 다음 날짜에 총 3회 상한으로 재유도한다. 결과에는 `prompt_count`, `error_reason`, 가장 구체적인 `error_code`, 다른 최상위 래퍼가 있으면 `error_wrapper_code`, 실패 단계 `stage=preflight|sdk_callback|timeout`을 기록한다. 중첩 코드 `4000`도 배포 설정 오류로 인식해 프롬프트 예산 상한을 우회한다.
+- AIT/Web의 `templateCode`는 콘솔에서 발급되는 실제 코드여야 하며, 빌드 환경변수 `VITE_RETURN_REMINDER_TEMPLATE_CODE`로 주입한다. 로컬 개발은 기본값 `crossword-daily-reminder`로 폴백할 수 있지만 `Deploy AIT`는 repository variable이 없거나 공백이면 빌드 전에 실패한다. 발급 코드 확인·반영 절차는 README를 참고한다.
 
 ## 신규 첫 실행 온보딩 퍼즐 자동 진입 (#205)
 

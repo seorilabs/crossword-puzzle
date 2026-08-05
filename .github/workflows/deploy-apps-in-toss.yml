@@ -49,7 +49,7 @@ jobs:
 
     steps:
       - name: Checkout release tag
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.release_tag || github.ref }}
           fetch-depth: 0
@@ -74,10 +74,25 @@ jobs:
           git -c advice.detachedHead=false checkout "$tag"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
+      - name: Validate Apps in Toss deployment configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "$APPS_IN_TOSS_API_KEY" ]; then
+            echo "::error::APPS_IN_TOSS_API_KEY secret is required."
+            exit 1
+          fi
+          if [ -z "${VITE_RETURN_REMINDER_TEMPLATE_CODE//[[:space:]]/}" ]; then
+            echo "::error::RETURN_REMINDER_TEMPLATE_CODE repository variable is required."
+            exit 1
+          fi
+
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version: 24.16.0
+          check-latest: false
           cache: npm
 
       - name: Resolve release version
@@ -91,20 +106,8 @@ jobs:
       - name: Set package version for release build
         run: npm version --no-git-tag-version --allow-same-version "${{ steps.release.outputs.version }}"
 
-      - name: Validate Apps in Toss secrets
-        run: |
-          if [ -z "$APPS_IN_TOSS_API_KEY" ]; then
-            echo "APPS_IN_TOSS_API_KEY secret is required." >&2
-            exit 1
-          fi
-
       - name: Lint
         run: npm run lint
-
-      - name: Warn on missing return reminder template code
-        if: ${{ vars.RETURN_REMINDER_TEMPLATE_CODE == '' }}
-        run: |
-          echo "::warning::repo variable RETURN_REMINDER_TEMPLATE_CODE 미설정 — 폴백 템플릿 코드로 빌드됨 — 리마인더 동의가 전건 실패함(#319). README '복귀 리마인더 템플릿 코드' 절차 참고."
 
       - name: Build .ait bundle
         env:

@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 
 const sharedPolicyPath = "packages/crossword-core/src/uiPolicy.ts";
 const sharedLaunchConfigPath = "packages/crossword-core/src/launchConfig.ts";
+const sharedRecommendationPath =
+  "packages/crossword-core/src/recommendation.ts";
 const sharedPlatformContractsPath =
   "packages/crossword-core/src/platformContracts.ts";
 const sharedIndexPath = "packages/crossword-core/src/index.ts";
@@ -207,6 +209,7 @@ function assertNoLocalDefinitions(content, names, path) {
 
 const sharedPolicy = read(sharedPolicyPath);
 const sharedLaunchConfig = read(sharedLaunchConfigPath);
+const sharedRecommendation = read(sharedRecommendationPath);
 const sharedPlatformContracts = read(sharedPlatformContractsPath);
 const sharedIndex = read(sharedIndexPath);
 const webApp = read(webAppPath);
@@ -221,6 +224,7 @@ const featureParityMarkers = [
   "answerInputMode",
   "selectAnswerInputMode",
   "getNextRecommendedPuzzleSummary",
+  "onboardingDifficultyRampEnabled",
   "buildNextPuzzleCtaEvent",
   "result_overlay",
   "runRewardedHintAdFlow",
@@ -281,6 +285,18 @@ assertImported(
   mobileAppPath,
   "../../packages/crossword-core/src",
 );
+assertMatches(
+  webApp,
+  /getNextRecommendedPuzzleSummary\(\s*puzzleSummaries,\s*getCompletedPuzzleIds\(dateCardStates\),\s*current,\s*\{\s*onboardingRampEnabled\s*\}/,
+  webAppPath,
+  "shared onboarding recommendation policy call",
+);
+assertMatches(
+  mobileApp,
+  /getNextRecommendedPuzzleSummary\([\s\S]*?onboardingRampEnabled:\s*launchConfig\.onboardingDifficultyRampEnabled/,
+  mobileAppPath,
+  "shared onboarding recommendation policy call",
+);
 assertIncludes(
   launchConfig,
   'export * from "../../packages/crossword-core/src/launchConfig";',
@@ -315,6 +331,7 @@ assertNoLocalDefinitions(mobileApp, forbiddenLocalDefinitions, mobileAppPath);
 for (const [path, content] of [
   [sharedPolicyPath, sharedPolicy],
   [sharedLaunchConfigPath, sharedLaunchConfig],
+  [sharedRecommendationPath, sharedRecommendation],
   [sharedPlatformContractsPath, sharedPlatformContracts],
   [sharedIndexPath, sharedIndex],
 ]) {

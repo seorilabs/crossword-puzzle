@@ -18,7 +18,8 @@ export type NextRecommendationContext = {
 };
 
 // 온보딩 난이도 램프(#291) 옵션. 켜지면 신규 사용자의 easy(온보딩) 완료 직후 추천을
-// 완화한다. 기본(옵션 미전달/false)은 기존 동작과 완전히 동일하다.
+// 완화한다. 옵션 자체는 순수 함수 호출자가 명시하며, 제품 기본값은 launchConfig가
+// true로 전달한다.
 export type NextRecommendationOptions = {
   onboardingRampEnabled?: boolean;
 };
@@ -107,15 +108,18 @@ export function getNextRecommendedPuzzleSummary(
 
     // 온보딩 램프(#291): 램프가 켜져 있고 신규 사용자(현재 제외 기완료 ≤ 상한)가
     // easy(온보딩)를 막 끝냈다면, normal 급점프 대신 같은 easy 티어를 한 단계 더
-    // 배정해 easy→normal 난이도 절벽을 완화한다. 남은 easy 후보가 없으면 아래 기존
-    // 상승 규칙으로 자연 폴백한다. 램프 off 시 이 분기는 건너뛰어 동작이 불변이다.
+    // 배정해 easy→normal 난이도 절벽을 완화한다. 남은 easy가 없으면 normal까지만
+    // 허용하며, 첫 후속 후보가 hard뿐이면 CTA를 숨긴다. 램프 off 시 기존 규칙을 쓴다.
     const softenOnboarding =
       options?.onboardingRampEnabled === true &&
       current.difficulty === "easy" &&
       countPriorCompleted(completedPuzzleIds, current.puzzleId) <=
         ONBOARDING_RAMP_MAX_COMPLETIONS;
-    if (softenOnboarding && sameTier != null) {
-      return sameTier;
+    if (softenOnboarding) {
+      if (sameTier != null) {
+        return sameTier;
+      }
+      return uncompleted.find((summary) => summary.difficulty === "normal");
     }
 
     if (nextTierUp != null) {
