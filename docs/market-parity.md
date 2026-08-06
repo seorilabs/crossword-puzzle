@@ -91,7 +91,7 @@ flowchart TD
 - 세 시장은 `packages/crossword-core`의 완료 제출 조건, 점수 산식, `leaderboard_enabled`, `leaderboard_score_submit` 계약을 공유한다. 결과 화면에서 완료한 퍼즐에만 `순위 보기`를 노출한다.
 - **AIT/Web**은 AppsInToss Game Center adapter, **Android**는 Play Games Services v2, **iOS**는 GameKit을 사용한다. Android/iOS는 React Native Codegen의 `NativeLeaderboard` TurboModule을 통해 같은 mobile adapter에 연결한다.
 - AIT, Google, Apple의 순위 데이터 풀은 서로 분리된다. 세 마켓 사용자를 한 표에 합치는 기능은 Firebase custom leaderboard를 별도 설계해야 한다.
-- Android 빌드에는 `PLAY_GAMES_PROJECT_ID`와 `PLAY_GAMES_LEADERBOARD_ID`, iOS 빌드에는 `GAME_CENTER_LEADERBOARD_ID`가 필요하다. 값이 없거나 Remote Config가 `false`면 안전하게 CTA를 숨긴다.
+- Android 빌드에는 `PLAY_GAMES_PROJECT_ID`와 `PLAY_GAMES_LEADERBOARD_ID`가 필요하다. iOS는 App Store Connect의 실제 공개 ID를 Xcode project의 `GAME_CENTER_LEADERBOARD_ID` 기본값으로 유지하고 GitHub Actions variable로 동일 값을 검증한다. 플랫폼 설정이 없거나 Remote Config가 `false`면 안전하게 CTA를 숨긴다.
 
 ## 복귀 리마인드 푸시 동의 (D1 재방문)
 

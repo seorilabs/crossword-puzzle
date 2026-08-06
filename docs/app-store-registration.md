@@ -40,7 +40,7 @@ flowchart TD
 | SKU                        | `crossword-puzzle-app`                                                |
 | 광고                       | `yes`. `apps/mobile`에 AdMob native adapter 연결                      |
 | 추적/ATT                   | 현재 native mobile 기준 `no` 후보                                     |
-| Game Center                | iOS adapter와 entitlement 구현 완료. 콘솔 리더보드 ID 확정 필요       |
+| Game Center                | iOS adapter·entitlement·콘솔 리더보드 설정 완료                       |
 | CocoaPods                  | `bundle exec pod install` 완료                                        |
 | unsigned iOS Release build | `CODE_SIGNING_ALLOWED=NO build` 통과                                  |
 | TestFlight CI              | `.github/workflows/deploy-app-store.yml` 준비 및 `v0.1.5` 업로드 성공 |
@@ -51,19 +51,19 @@ flowchart TD
 
 ## 확정 필요
 
-| 항목               | 후보/메모                                                                                               |
-| ------------------ | ------------------------------------------------------------------------------------------------------- |
-| Support URL        | 후보 `https://www.seorilabs.com/support`. 실제 페이지 존재와 앱별 문의 동선 확인 필요                   |
-| Privacy Policy URL | 후보 `https://www.seorilabs.com/privacy`. RNFirebase Analytics/Remote Config 사용 여부와 일치 확인 필요 |
-| App Privacy        | RNFirebase Analytics/Remote Config와 AdMob SDK 기준으로 App Store Connect 답변 재확인 필요              |
-| Age Rating         | 낱말 퍼즐 게임 기준 설문 완료 필요                                                                      |
-| Content Rights     | 힌트 자체 작성, 단어 후보 출처/라이선스 검수 완료 후 답변 확정                                          |
-| Export Compliance  | 표준 OS/HTTPS 외 비표준 암호화 없음 후보. `Info.plist` 반영 및 콘솔 답변 필요                           |
-| DSA/trader         | EU 배포/조직 계정/수익화 정책 기준 확인 필요                                                            |
-| Review contact     | 이름/전화번호 확정 필요                                                                                 |
-| TestFlight         | build processing 확인, 내부 테스트 그룹/빌드 선택 필요                                                  |
-| Game Center        | App Store Connect에서 리더보드를 생성하고 `GAME_CENTER_LEADERBOARD_ID` 빌드 입력 확정 필요              |
-| Provisioning       | Game Center capability를 켠 뒤 `com.apple.developer.game-center`가 포함된 배포 profile 재발급 필요      |
+| 항목               | 후보/메모                                                                                                 |
+| ------------------ | --------------------------------------------------------------------------------------------------------- |
+| Support URL        | 후보 `https://www.seorilabs.com/support`. 실제 페이지 존재와 앱별 문의 동선 확인 필요                     |
+| Privacy Policy URL | 후보 `https://www.seorilabs.com/privacy`. RNFirebase Analytics/Remote Config 사용 여부와 일치 확인 필요   |
+| App Privacy        | RNFirebase Analytics/Remote Config와 AdMob SDK 기준으로 App Store Connect 답변 재확인 필요                |
+| Age Rating         | 낱말 퍼즐 게임 기준 설문 완료 필요                                                                        |
+| Content Rights     | 힌트 자체 작성, 단어 후보 출처/라이선스 검수 완료 후 답변 확정                                            |
+| Export Compliance  | 표준 OS/HTTPS 외 비표준 암호화 없음 후보. `Info.plist` 반영 및 콘솔 답변 필요                             |
+| DSA/trader         | EU 배포/조직 계정/수익화 정책 기준 확인 필요                                                              |
+| Review contact     | 이름/전화번호 확정 필요                                                                                   |
+| TestFlight         | build processing 확인, 내부 테스트 그룹/빌드 선택 필요                                                    |
+| Game Center        | ID `com.seorilabs.crosswordpuzzle.global_score` 생성 완료. App Review 제출은 별도 gate                    |
+| Provisioning       | Bundle ID Game Center capability 활성화 완료. 새 Xcode Cloud archive에서 managed profile 재생성 확인 필요 |
 
 ## 로컬 등록/빌드 명령
 
