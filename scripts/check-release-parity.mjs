@@ -16,13 +16,24 @@ const webTelemetryPath = "src/adapters/telemetry.ts";
 const mobileFirebaseClientPath = "apps/mobile/firebaseClient.ts";
 const mobileTelemetryPath = "apps/mobile/telemetry.ts";
 const mobileAdsPath = "apps/mobile/mobileAds.ts";
+const mobileLeaderboardAdapterPath = "apps/mobile/leaderboardAdapter.ts";
+const mobileLeaderboardSpecPath = "apps/mobile/specs/NativeLeaderboard.ts";
 const mobileAppJsonPath = "apps/mobile/app.json";
 const androidBuildGradlePath = "apps/mobile/android/build.gradle";
 const androidAppBuildGradlePath = "apps/mobile/android/app/build.gradle";
 const androidManifestPath =
   "apps/mobile/android/app/src/main/AndroidManifest.xml";
+const androidMainApplicationPath =
+  "apps/mobile/android/app/src/main/java/com/seorilabs/crosswordpuzzle/MainApplication.kt";
+const androidLeaderboardModulePath =
+  "apps/mobile/android/app/src/main/java/com/seorilabs/crosswordpuzzle/NativeLeaderboardModule.kt";
 const appDelegatePath =
   "apps/mobile/ios/CrosswordPuzzleMobile/AppDelegate.swift";
+const iosLeaderboardModulePath =
+  "apps/mobile/ios/CrosswordPuzzleMobile/RCTNativeLeaderboard.mm";
+const iosLeaderboardEntitlementsPath =
+  "apps/mobile/ios/CrosswordPuzzleMobile/CrosswordPuzzleMobile.entitlements";
+const iosInfoPlistPath = "apps/mobile/ios/CrosswordPuzzleMobile/Info.plist";
 const mobilePodfilePath = "apps/mobile/ios/Podfile";
 const mobilePackagePath = "apps/mobile/package.json";
 const gitignorePath = ".gitignore";
@@ -230,6 +241,8 @@ const featureParityMarkers = [
   "runRewardedHintAdFlow",
   "retry:",
   "selectedPuzzleScaffold",
+  "computeLeaderboardScore",
+  "leaderboardVisible",
 ];
 for (const marker of featureParityMarkers) {
   assertIncludes(webApp, marker, webAppPath);
@@ -240,11 +253,18 @@ const webTelemetry = read(webTelemetryPath);
 const mobileFirebaseClient = read(mobileFirebaseClientPath);
 const mobileTelemetry = read(mobileTelemetryPath);
 const mobileAds = read(mobileAdsPath);
+const mobileLeaderboardAdapter = read(mobileLeaderboardAdapterPath);
+const mobileLeaderboardSpec = read(mobileLeaderboardSpecPath);
 const mobileAppJson = read(mobileAppJsonPath);
 const androidBuildGradle = read(androidBuildGradlePath);
 const androidAppBuildGradle = read(androidAppBuildGradlePath);
 const androidManifest = read(androidManifestPath);
+const androidMainApplication = read(androidMainApplicationPath);
+const androidLeaderboardModule = read(androidLeaderboardModulePath);
 const appDelegate = read(appDelegatePath);
+const iosLeaderboardModule = read(iosLeaderboardModulePath);
+const iosLeaderboardEntitlements = read(iosLeaderboardEntitlementsPath);
+const iosInfoPlist = read(iosInfoPlistPath);
 const mobilePodfile = read(mobilePodfilePath);
 const mobilePackage = read(mobilePackagePath);
 const gitignore = read(gitignorePath);
@@ -362,6 +382,16 @@ assertIncludes(
   mobilePackagePath,
 );
 assertIncludes(
+  mobilePackage,
+  '"name": "NativeLeaderboardSpec"',
+  mobilePackagePath,
+);
+assertIncludes(
+  mobilePackage,
+  '"NativeLeaderboard": "RCTNativeLeaderboard"',
+  mobilePackagePath,
+);
+assertIncludes(
   mobileAppJson,
   '"react-native-google-mobile-ads"',
   mobileAppJsonPath,
@@ -405,6 +435,24 @@ assertIncludes(mobileAds, "requestNonPersonalizedAdsOnly: true", mobileAdsPath);
 assertIncludes(mobileAds, "setRequestConfiguration", mobileAdsPath);
 assertIncludes(mobileApp, "showRewardedAd", mobileAppPath);
 assertNotIncludes(mobileApp, "showInterstitialAd", mobileAppPath);
+assertIncludes(
+  mobileLeaderboardAdapter,
+  "createNativeLeaderboardAdapter",
+  mobileLeaderboardAdapterPath,
+);
+assertNotIncludes(
+  mobileLeaderboardAdapter,
+  "supported: false",
+  mobileLeaderboardAdapterPath,
+);
+assertIncludes(
+  mobileLeaderboardSpec,
+  "TurboModuleRegistry.get<Spec>('NativeLeaderboard')",
+  mobileLeaderboardSpecPath,
+);
+assertIncludes(mobileApp, "shouldSubmitLeaderboardScore", mobileAppPath);
+assertIncludes(mobileApp, "computeLeaderboardScore", mobileAppPath);
+assertIncludes(mobileApp, ">순위 보기</Text>", mobileAppPath);
 assertIncludes(
   mobileApp,
   "const HOME_HEADER_TITLE = '가로세로 낱말 퍼즐';",
@@ -455,6 +503,31 @@ assertIncludes(
   androidAppBuildGradlePath,
 );
 assertIncludes(
+  androidAppBuildGradle,
+  "com.google.android.gms:play-services-games-v2:22.0.0",
+  androidAppBuildGradlePath,
+);
+assertIncludes(
+  androidAppBuildGradle,
+  "PLAY_GAMES_LEADERBOARD_ID",
+  androidAppBuildGradlePath,
+);
+assertIncludes(
+  androidMainApplication,
+  "PlayGamesSdk.initialize(this)",
+  androidMainApplicationPath,
+);
+assertIncludes(
+  androidLeaderboardModule,
+  "submitScoreImmediate",
+  androidLeaderboardModulePath,
+);
+assertIncludes(
+  androidLeaderboardModule,
+  "getLeaderboardIntent",
+  androidLeaderboardModulePath,
+);
+assertIncludes(
   androidManifest,
   'android:name="com.google.android.gms.permission.AD_ID"',
   androidManifestPath,
@@ -495,6 +568,26 @@ assertIncludes(
 );
 assertIncludes(appDelegate, "import Firebase", appDelegatePath);
 assertIncludes(appDelegate, "FirebaseApp.configure()", appDelegatePath);
+assertIncludes(
+  iosLeaderboardModule,
+  "[GKLeaderboard submitScore",
+  iosLeaderboardModulePath,
+);
+assertIncludes(
+  iosLeaderboardModule,
+  "GKGameCenterViewController",
+  iosLeaderboardModulePath,
+);
+assertIncludes(
+  iosLeaderboardEntitlements,
+  "com.apple.developer.game-center",
+  iosLeaderboardEntitlementsPath,
+);
+assertIncludes(
+  iosInfoPlist,
+  "GameCenterLeaderboardIdentifier",
+  iosInfoPlistPath,
+);
 assertIncludes(
   mobilePodfile,
   "$RNFirebaseAsStaticFramework = true",
@@ -553,6 +646,16 @@ assertIncludes(
   deployGooglePlayWorkflowPath,
 );
 assertIncludes(
+  deployGooglePlayWorkflow,
+  "PLAY_GAMES_PROJECT_ID repository variable is required.",
+  deployGooglePlayWorkflowPath,
+);
+assertIncludes(
+  deployGooglePlayWorkflow,
+  "PLAY_GAMES_LEADERBOARD_ID repository variable is required.",
+  deployGooglePlayWorkflowPath,
+);
+assertIncludes(
   deployAppStoreWorkflow,
   "node scripts/restore-mobile-firebase-config.mjs --ios --require",
   deployAppStoreWorkflowPath,
@@ -561,6 +664,28 @@ assertIncludes(
   deployAppStoreWorkflow,
   "FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64",
   deployAppStoreWorkflowPath,
+);
+assertIncludes(
+  deployAppStoreWorkflow,
+  "GAME_CENTER_LEADERBOARD_ID repository variable is required.",
+  deployAppStoreWorkflowPath,
+);
+assertIncludes(
+  deployAppStoreWorkflow,
+  "App Store provisioning profile must include the Game Center entitlement.",
+  deployAppStoreWorkflowPath,
+);
+for (const [path, content] of [
+  [deployGooglePlayWorkflowPath, deployGooglePlayWorkflow],
+  [deployAppStoreWorkflowPath, deployAppStoreWorkflow],
+]) {
+  assertIncludes(content, "actions/checkout@v7", path);
+  assertIncludes(content, "actions/setup-node@v7", path);
+}
+assertIncludes(
+  appStoreLocalBuild,
+  "GAME_CENTER_LEADERBOARD_ID",
+  appStoreLocalBuildPath,
 );
 assertIncludes(agents, "3마켓 패리티", agentsPath);
 assertIncludes(agents, "packages/crossword-core", agentsPath);

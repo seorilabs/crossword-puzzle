@@ -68,7 +68,9 @@ body {
 .todayStartButtons {
   display: flex;
   gap: 8px;
-  margin: 8px 0 18px;
+  /* 홈의 다른 카드·헤더와 같은 20px 거터를 적용해 AIT 좁은 WebView에서도
+     난이도 카드가 화면 가장자리에 붙지 않게 한다. */
+  margin: 8px 20px 18px;
 }
 .todayStartButton {
   flex: 1 1 0;

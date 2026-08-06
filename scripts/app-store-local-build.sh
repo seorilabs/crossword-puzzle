@@ -33,6 +33,7 @@ Options:
 Signing env for --archive:
   APPLE_TEAM_ID
   IOS_PROVISIONING_PROFILE_NAME
+  GAME_CENTER_LEADERBOARD_ID
   Optional: APPLE_DISTRIBUTION_CERTIFICATE_BASE64, APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD,
             APPLE_PROVISIONING_PROFILE_BASE64, APPLE_KEYCHAIN_PASSWORD
 
@@ -117,6 +118,7 @@ bundle_id="$(read_config 'c.bundleId')"
 admob_app_id="$(read_config 'c.adMob.appId')"
 config_team_id="$(read_config 'c.ios.teamId')"
 config_profile_name="$(read_config 'c.ios.provisioningProfileSpecifier')"
+game_center_leaderboard_id="${GAME_CENTER_LEADERBOARD_ID:-}"
 
 app_store_connect_env="$HOME/.config/seorilabs/app-store-connect.env"
 if [[ -f "$app_store_connect_env" ]] && {
@@ -189,6 +191,7 @@ if [[ "$mode" == "unsigned" ]]; then
     -configuration Release \
     -destination 'generic/platform=iOS' \
     -derivedDataPath "$repo_root/tmp/xcode-derived-data" \
+    GAME_CENTER_LEADERBOARD_ID="$game_center_leaderboard_id" \
     CODE_SIGNING_ALLOWED=NO \
     build
   exit 0
@@ -238,8 +241,8 @@ prepare_app_store_connect_api_key() {
   chmod 600 "$api_key_path"
 }
 
-if [[ -z "$team_id" || -z "$profile_name" ]]; then
-  echo "APPLE_TEAM_ID and IOS_PROVISIONING_PROFILE_NAME are required for --archive." >&2
+if [[ -z "$team_id" || -z "$profile_name" || -z "${game_center_leaderboard_id//[[:space:]]/}" ]]; then
+  echo "APPLE_TEAM_ID, IOS_PROVISIONING_PROFILE_NAME, and GAME_CENTER_LEADERBOARD_ID are required for --archive." >&2
   exit 1
 fi
 
@@ -307,14 +310,21 @@ APPLE_TEAM_ID="$team_id" IOS_PROVISIONING_PROFILE_NAME="$profile_name" xcodebuil
   "${archive_auth_flags[@]}" \
   MARKETING_VERSION="$marketing_version" \
   CURRENT_PROJECT_VERSION="$build_number" \
+  GAME_CENTER_LEADERBOARD_ID="$game_center_leaderboard_id" \
   ${code_sign_flags:+"${code_sign_flags[@]}"}
 
 app_info_plist="$archive_path/Products/Applications/CrosswordPuzzleMobile.app/Info.plist"
 actual_marketing_version="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$app_info_plist")"
 actual_build_number="$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$app_info_plist")"
+actual_game_center_leaderboard_id="$(/usr/libexec/PlistBuddy -c 'Print :GameCenterLeaderboardIdentifier' "$app_info_plist" 2>/dev/null || true)"
 
 if [[ "$actual_marketing_version" != "$marketing_version" || "$actual_build_number" != "$build_number" ]]; then
   echo "Archive version mismatch: $actual_marketing_version/$actual_build_number != $marketing_version/$build_number" >&2
+  exit 1
+fi
+
+if [[ "$actual_game_center_leaderboard_id" != "$game_center_leaderboard_id" ]]; then
+  echo "Archive Game Center leaderboard ID mismatch: ${actual_game_center_leaderboard_id:-missing} != $game_center_leaderboard_id" >&2
   exit 1
 fi
 

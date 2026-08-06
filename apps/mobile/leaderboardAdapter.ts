@@ -2,23 +2,51 @@ import type {
   LeaderboardAdapter,
   LeaderboardContext,
 } from '../../packages/crossword-core/src';
+import NativeLeaderboard from './specs/NativeLeaderboard';
 
 // React Native(Android/iOS) 리더보드 adapter. core의 LeaderboardAdapter 계약을
-// 구현하지만, 현재 모바일 앱에는 Google Play Games Services / Apple Game Center
-// 네이티브 모듈이 통합돼 있지 않다. 따라서 supported=false 로 보고 점수 제출과
-// 리더보드 열기는 no-op 으로 둔다. 공통 UI는 supported=false 이면 리더보드 진입점을
-// 노출하지 않으므로, AIT(웹) 우선 출시 정책(docs/leaderboard-strategy.md)과
-// 3마켓 패리티(미지원 시장은 동일하게 숨김)를 유지한다. 네이티브 모듈을 붙이면
-// 이 파일만 교체해 지원하도록 확장한다.
+// Android Play Games Services / iOS GameKit TurboModule로 연결한다. 점수 산식과
+// 제출 조건은 계속 core가 소유하고, 이 adapter는 네이티브 호출만 담당한다.
 
-export const leaderboardAdapter: LeaderboardAdapter = {
-  supported: false,
-
-  async submitScore(_score: number, _context: LeaderboardContext) {
-    // 네이티브 리더보드 모듈 미통합. 지원 전까지는 제출하지 않는다.
-  },
-
-  async openLeaderboard() {
-    // 네이티브 리더보드 모듈 미통합. 지원 전까지는 열지 않는다.
-  },
+export type NativeLeaderboardModule = {
+  isSupported(): boolean;
+  submitScore(score: number): Promise<void>;
+  openLeaderboard(): Promise<void>;
 };
+
+function normalizeScore(score: number): number {
+  return Number.isFinite(score) && score > 0 ? Math.round(score) : 0;
+}
+
+export function createNativeLeaderboardAdapter(
+  nativeModule: NativeLeaderboardModule | null,
+): LeaderboardAdapter {
+  return {
+    get supported() {
+      try {
+        return nativeModule?.isSupported() === true;
+      } catch {
+        return false;
+      }
+    },
+
+    async submitScore(score: number, _context: LeaderboardContext) {
+      if (nativeModule == null || !nativeModule.isSupported()) {
+        throw new Error('Native leaderboard is not configured');
+      }
+
+      await nativeModule.submitScore(normalizeScore(score));
+    },
+
+    async openLeaderboard() {
+      if (nativeModule == null || !nativeModule.isSupported()) {
+        throw new Error('Native leaderboard is not configured');
+      }
+
+      await nativeModule.openLeaderboard();
+    },
+  };
+}
+
+export const leaderboardAdapter =
+  createNativeLeaderboardAdapter(NativeLeaderboard);

@@ -40,7 +40,7 @@ flowchart TD
 | SKU                        | `crossword-puzzle-app`                                                |
 | 광고                       | `yes`. `apps/mobile`에 AdMob native adapter 연결                      |
 | 추적/ATT                   | 현재 native mobile 기준 `no` 후보                                     |
-| Game Center                | `no`                                                                  |
+| Game Center                | iOS adapter와 entitlement 구현 완료. 콘솔 리더보드 ID 확정 필요       |
 | CocoaPods                  | `bundle exec pod install` 완료                                        |
 | unsigned iOS Release build | `CODE_SIGNING_ALLOWED=NO build` 통과                                  |
 | TestFlight CI              | `.github/workflows/deploy-app-store.yml` 준비 및 `v0.1.5` 업로드 성공 |
@@ -62,6 +62,8 @@ flowchart TD
 | DSA/trader         | EU 배포/조직 계정/수익화 정책 기준 확인 필요                                                            |
 | Review contact     | 이름/전화번호 확정 필요                                                                                 |
 | TestFlight         | build processing 확인, 내부 테스트 그룹/빌드 선택 필요                                                  |
+| Game Center        | App Store Connect에서 리더보드를 생성하고 `GAME_CENTER_LEADERBOARD_ID` 빌드 입력 확정 필요              |
+| Provisioning       | Game Center capability를 켠 뒤 `com.apple.developer.game-center`가 포함된 배포 profile 재발급 필요      |
 
 ## 로컬 등록/빌드 명령
 
@@ -93,11 +95,11 @@ App Store 앱 이름은 iOS용으로 `가로세로 퍼즐`을 사용한다. `--u
 
 현재 `react-native-google-mobile-ads` adapter에 연결되어 있다. 개발/QA 빌드는 Google test ad unit을 사용하고, release 빌드는 adapter QA 후 아래 운영 ID를 사용한다. 1차 출시는 개인화 광고를 끄고 비개인화 광고 요청으로 운영하며, global request configuration은 아동 대상/동의연령 미만 대상 플래그를 false로 명시하고 simulator/emulator를 test device로 allowlist한다.
 
-| 항목                        | 값                                       |
-| --------------------------- | ---------------------------------------- |
-| iOS AdMob app ID            | `ca-app-pub-2444587584524186~4715406099` |
-| `ios_rewarded_hint`         | `ca-app-pub-2444587584524186/6151776694` |
-| `ios_interstitial_result`   | `ca-app-pub-2444587584524186/3402324424` |
+| 항목                      | 값                                       |
+| ------------------------- | ---------------------------------------- |
+| iOS AdMob app ID          | `ca-app-pub-2444587584524186~4715406099` |
+| `ios_rewarded_hint`       | `ca-app-pub-2444587584524186/6151776694` |
+| `ios_interstitial_result` | `ca-app-pub-2444587584524186/3402324424` |
 
 `GADApplicationIdentifier`와 `SKAdNetworkItems`는 `app.json`의 `react-native-google-mobile-ads` 설정을 CocoaPods build phase가 빌드 산출물 `Info.plist`에 주입한다. 로컬/App Store archive 경로는 업로드 전에 산출물 `Info.plist`에서 iOS AdMob app ID와 Google SKAdNetwork ID를 다시 검증한다. AdMob 개인화 광고, IDFA, cross-app ad measurement를 켜면 App Store Connect Tracking 답변, ATT/UMP 동선, `NSUserTrackingUsageDescription`도 같이 구현한다.
 
@@ -271,12 +273,12 @@ App Store 앱 이름은 iOS용으로 `가로세로 퍼즐`을 사용한다. `--u
 
 ## 이미지
 
-| 용도               | 파일                                                                       | 상태                               |
-| ------------------ | -------------------------------------------------------------------------- | ---------------------------------- |
-| Store icon         | `app-store/assets/icon-1024.png`                                           | 생성됨, 디자인 QA 필요             |
-| Xcode AppIcon      | `apps/mobile/ios/CrosswordPuzzleMobile/Images.xcassets/AppIcon.appiconset` | iPhone/iPad/marketing PNG 생성됨   |
-| iPhone screenshots | `app-store/screenshots/iphone/*.png`                                       | 3장 생성됨, 1320 x 2868            |
-| iPad screenshots   | `app-store/screenshots/ipad/*.png`                                         | 3장 생성됨, 2064 x 2752            |
+| 용도               | 파일                                                                       | 상태                             |
+| ------------------ | -------------------------------------------------------------------------- | -------------------------------- |
+| Store icon         | `app-store/assets/icon-1024.png`                                           | 생성됨, 디자인 QA 필요           |
+| Xcode AppIcon      | `apps/mobile/ios/CrosswordPuzzleMobile/Images.xcassets/AppIcon.appiconset` | iPhone/iPad/marketing PNG 생성됨 |
+| iPhone screenshots | `app-store/screenshots/iphone/*.png`                                       | 3장 생성됨, 1320 x 2868          |
+| iPad screenshots   | `app-store/screenshots/ipad/*.png`                                         | 3장 생성됨, 2064 x 2752          |
 
 ## 주의
 
