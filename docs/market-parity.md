@@ -31,6 +31,7 @@ flowchart TD
 | Remote Config 키/기본값 | `packages/crossword-core/src/launchConfig.ts`               | AIT는 Firebase Web SDK, mobile은 RNFirebase                              |
 | telemetry 파라미터 정리 | `packages/crossword-core/src/platformContracts.ts`          | AIT는 AppsInToss Analytics + Firebase Web, mobile은 RNFirebase Analytics |
 | 광고 adapter            | `src/adapters/appsInTossAds.ts`, `apps/mobile/mobileAds.ts` | AIT는 AppsInToss 광고, mobile은 AdMob                                    |
+| 리더보드 정책/점수      | `packages/crossword-core/src/leaderboard.ts`                | AIT Game Center, Android Play Games Services, iOS GameKit                |
 | AIT adapter             | `src/adapters`                                              | AppsInToss SDK, Web Firebase, localStorage                               |
 | Android/iOS adapter     | `apps/mobile`                                               | RNFirebase, AsyncStorage, native projects                                |
 
@@ -84,6 +85,13 @@ flowchart TD
 - `bonus_puzzle_panel_impression` 계약은 f992a61(2026-07-25)에서 기능과 함께 제거됨. 1.0.9+ 론칭 사용자에게서 미발화하는 것이 현재 정상 상태다.
 - `rewarded_bonus_puzzle` 광고·Remote Config 계약도 f992a61에서 제거됨. 광고 퍼널과 마켓 파리티 대상에 포함하지 않는다.
 - 복원 여부는 제품 결정 대기 상태다. 제거 전 표본이 개발자 1~2명뿐이라 리텐션 효과 근거가 없으며, 별도 결정과 검증 계획 없이 기능을 복원하지 않는다.
+
+## 리더보드
+
+- 세 시장은 `packages/crossword-core`의 완료 제출 조건, 점수 산식, `leaderboard_enabled`, `leaderboard_score_submit` 계약을 공유한다. 결과 화면에서 완료한 퍼즐에만 `순위 보기`를 노출한다.
+- **AIT/Web**은 AppsInToss Game Center adapter, **Android**는 Play Games Services v2, **iOS**는 GameKit을 사용한다. Android/iOS는 React Native Codegen의 `NativeLeaderboard` TurboModule을 통해 같은 mobile adapter에 연결한다.
+- AIT, Google, Apple의 순위 데이터 풀은 서로 분리된다. 세 마켓 사용자를 한 표에 합치는 기능은 Firebase custom leaderboard를 별도 설계해야 한다.
+- Android 빌드에는 `PLAY_GAMES_PROJECT_ID`와 `PLAY_GAMES_LEADERBOARD_ID`, iOS 빌드에는 `GAME_CENTER_LEADERBOARD_ID`가 필요하다. 값이 없거나 Remote Config가 `false`면 안전하게 CTA를 숨긴다.
 
 ## 복귀 리마인드 푸시 동의 (D1 재방문)
 

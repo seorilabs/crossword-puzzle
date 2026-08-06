@@ -44,10 +44,11 @@ jobs:
       IOS_WORKSPACE: apps/mobile/ios/CrosswordPuzzleMobile.xcworkspace
       IOS_BUNDLE_ID: com.seorilabs.crosswordpuzzle
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID || vars.APPLE_TEAM_ID }}
+      GAME_CENTER_LEADERBOARD_ID: ${{ vars.GAME_CENTER_LEADERBOARD_ID }}
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.release_tag || github.ref }}
           fetch-depth: 0
@@ -100,7 +101,7 @@ jobs:
           fi
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -118,6 +119,16 @@ jobs:
         env:
           FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64: ${{ secrets.FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64 }}
         run: node scripts/restore-mobile-firebase-config.mjs --ios --require
+
+      - name: Validate Game Center leaderboard config
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "${GAME_CENTER_LEADERBOARD_ID//[[:space:]]/}" ]; then
+            echo "GAME_CENTER_LEADERBOARD_ID repository variable is required." >&2
+            exit 1
+          fi
 
       - name: Resolve release version
         id: release
@@ -238,6 +249,7 @@ jobs:
           profile_team_identifier="$(plutil -extract TeamIdentifier.0 raw -o - "$profile_plist")"
           profile_app_identifier="$(plutil -extract Entitlements.application-identifier raw -o - "$profile_plist")"
           profile_get_task_allow="$(plutil -extract Entitlements.get-task-allow raw -o - "$profile_plist")"
+          profile_game_center="$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:com.apple.developer.game-center' "$profile_plist" 2>/dev/null || true)"
           profile_provisions_all_devices="$(plutil -extract ProvisionsAllDevices raw -o - "$profile_plist" 2>/dev/null || true)"
           profile_has_devices="false"
           if /usr/libexec/PlistBuddy -c 'Print :ProvisionedDevices' "$profile_plist" >/dev/null 2>&1; then
@@ -275,6 +287,7 @@ jobs:
           echo "  bundle matches IOS_BUNDLE_ID: $profile_bundle_match"
           echo "  get-task-allow: $profile_get_task_allow"
           echo "  has provisioned devices: $profile_has_devices"
+          echo "  Game Center entitlement: ${profile_game_center:-missing}"
           echo "  provisions all devices: ${profile_provisions_all_devices:-false}"
           echo "  imported Apple Distribution certificate fingerprints: ${imported_cert_fingerprints:-none}"
           echo "Imported signing identities:"
@@ -290,6 +303,7 @@ jobs:
             echo "- bundle matches IOS_BUNDLE_ID: $profile_bundle_match"
             echo "- get-task-allow: $profile_get_task_allow"
             echo "- has provisioned devices: $profile_has_devices"
+            echo "- Game Center entitlement: ${profile_game_center:-missing}"
             echo "- provisions all devices: ${profile_provisions_all_devices:-false}"
             echo "- imported Apple Distribution certificate fingerprints: ${imported_cert_fingerprints:-none}"
           } >> "$GITHUB_STEP_SUMMARY"
@@ -311,6 +325,11 @@ jobs:
 
           if [ "$profile_has_devices" = "true" ] || [ "$profile_provisions_all_devices" = "true" ]; then
             echo "App Store provisioning profile must not include devices or provision all devices." >&2
+            exit 1
+          fi
+
+          if [ "$profile_game_center" != "true" ]; then
+            echo "App Store provisioning profile must include the Game Center entitlement." >&2
             exit 1
           fi
 
@@ -341,6 +360,7 @@ jobs:
             -showBuildSettings \
             MARKETING_VERSION="$APPLE_MARKETING_VERSION" \
             CURRENT_PROJECT_VERSION="$APPLE_BUILD_NUMBER" \
+            GAME_CENTER_LEADERBOARD_ID="$GAME_CENTER_LEADERBOARD_ID" \
             APPLE_TEAM_ID="$APPLE_TEAM_ID" \
             IOS_PROVISIONING_PROFILE_NAME="$RESOLVED_IOS_PROFILE_NAME" \
             OTHER_CODE_SIGN_FLAGS="--keychain $KEYCHAIN_PATH" \
@@ -371,6 +391,7 @@ jobs:
             -archivePath "$archive_path" \
             MARKETING_VERSION="$APPLE_MARKETING_VERSION" \
             CURRENT_PROJECT_VERSION="$APPLE_BUILD_NUMBER" \
+            GAME_CENTER_LEADERBOARD_ID="$GAME_CENTER_LEADERBOARD_ID" \
             APPLE_TEAM_ID="$APPLE_TEAM_ID" \
             IOS_PROVISIONING_PROFILE_NAME="$RESOLVED_IOS_PROFILE_NAME" \
             OTHER_CODE_SIGN_FLAGS="--keychain $KEYCHAIN_PATH"
@@ -378,6 +399,7 @@ jobs:
           app_info_plist="$archive_path/Products/Applications/CrosswordPuzzleMobile.app/Info.plist"
           actual_marketing_version="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$app_info_plist")"
           actual_build_number="$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$app_info_plist")"
+          actual_game_center_leaderboard_id="$(/usr/libexec/PlistBuddy -c 'Print :GameCenterLeaderboardIdentifier' "$app_info_plist" 2>/dev/null || true)"
 
           if [ "$actual_marketing_version" != "$APPLE_MARKETING_VERSION" ]; then
             echo "Archive marketing version mismatch: $actual_marketing_version != $APPLE_MARKETING_VERSION" >&2
@@ -386,6 +408,11 @@ jobs:
 
           if [ "$actual_build_number" != "$APPLE_BUILD_NUMBER" ]; then
             echo "Archive build number mismatch: $actual_build_number != $APPLE_BUILD_NUMBER" >&2
+            exit 1
+          fi
+
+          if [ "$actual_game_center_leaderboard_id" != "$GAME_CENTER_LEADERBOARD_ID" ]; then
+            echo "Archive Game Center leaderboard ID mismatch: ${actual_game_center_leaderboard_id:-missing} != $GAME_CENTER_LEADERBOARD_ID" >&2
             exit 1
           fi
 

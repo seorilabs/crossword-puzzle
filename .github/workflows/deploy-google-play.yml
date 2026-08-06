@@ -63,7 +63,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.release_tag || github.ref }}
           fetch-depth: 0
@@ -94,7 +94,7 @@ jobs:
         run: node scripts/resolve-release-version.mjs --tag "${{ steps.tag.outputs.tag }}"
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -118,6 +118,24 @@ jobs:
         env:
           FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64 }}
         run: node scripts/restore-mobile-firebase-config.mjs --android --require
+
+      - name: Validate Play Games leaderboard config
+        shell: bash
+        env:
+          PLAY_GAMES_PROJECT_ID: ${{ vars.PLAY_GAMES_PROJECT_ID }}
+          PLAY_GAMES_LEADERBOARD_ID: ${{ vars.PLAY_GAMES_LEADERBOARD_ID }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${PLAY_GAMES_PROJECT_ID//[[:space:]]/}" ]; then
+            echo "PLAY_GAMES_PROJECT_ID repository variable is required." >&2
+            exit 1
+          fi
+
+          if [ -z "${PLAY_GAMES_LEADERBOARD_ID//[[:space:]]/}" ]; then
+            echo "PLAY_GAMES_LEADERBOARD_ID repository variable is required." >&2
+            exit 1
+          fi
 
       - name: Lint
         run: npm run lint
@@ -227,6 +245,8 @@ jobs:
         env:
           APP_VERSION_NAME: ${{ steps.release.outputs.version }}
           APP_VERSION_CODE: ${{ steps.release.outputs.android_version_code }}
+          PLAY_GAMES_PROJECT_ID: ${{ vars.PLAY_GAMES_PROJECT_ID }}
+          PLAY_GAMES_LEADERBOARD_ID: ${{ vars.PLAY_GAMES_LEADERBOARD_ID }}
         run: ./gradlew :app:bundleRelease --no-daemon
 
       - name: Upload AAB artifact

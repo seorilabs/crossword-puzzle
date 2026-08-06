@@ -31,6 +31,7 @@ import {
   buildNextPuzzleCtaEvent,
   buildStartLabels,
   completeMission,
+  computeLeaderboardScore,
   computeElapsedSeconds,
   consumeDailyHintCredit,
   createDailyMissionState,
@@ -80,6 +81,7 @@ import {
   trackRewardedHintAdResult,
   sortPuzzleSummariesByRecency,
   startMissionAttempt,
+  shouldSubmitLeaderboardScore,
   uniquePuzzleSummaries,
   validatePuzzleSlots,
   REWARDED_HINT_AD_REWARD_EVENT,
@@ -119,6 +121,8 @@ import {
 } from './mobileAds';
 import { telemetry } from './telemetry';
 import { gameAnalytics } from './gameAnalytics';
+import { leaderboardAdapter } from './leaderboardAdapter';
+import { useLeaderboard } from './useLeaderboard';
 import manifestData from '../../public/puzzles/manifest.json';
 import puzzle20260525 from '../../public/puzzles/2026-05-25-normal-01.json';
 import puzzle20260526 from '../../public/puzzles/2026-05-26-normal-02.json';
@@ -898,6 +902,15 @@ function AppContent() {
   );
   const [launchConfig, setLaunchConfig] =
     useState<LaunchConfig>(defaultLaunchConfig);
+  const {
+    visible: leaderboardVisible,
+    submitScore: submitLeaderboardScore,
+    openLeaderboard,
+  } = useLeaderboard({
+    enabled: launchConfig.leaderboardEnabled,
+    adapter: leaderboardAdapter,
+    telemetry,
+  });
   const [completionCelebrationPuzzleId, setCompletionCelebrationPuzzleId] =
     useState<string | null>(null);
   const [rewardedAdPlacement, setRewardedAdPlacement] =
@@ -911,6 +924,7 @@ function AppContent() {
     },
   );
   const hasLoggedFirstAnswerInputRef = useRef(false);
+  const submittedLeaderboardPuzzleIdsRef = useRef(new Set<string>());
   const playScreenScrollRef = useRef<React.ElementRef<typeof ScrollView>>(null);
   const boardInputRef = useRef<React.ElementRef<typeof TextInput>>(null);
   const answerCommitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
@@ -1463,6 +1477,44 @@ function AppContent() {
       attemptNumber: mission.attemptsUsed,
       completedWordCount: viewModel.completedEntries.length,
     });
+
+    if (
+      leaderboardVisible &&
+      shouldSubmitLeaderboardScore({
+        completed: true,
+        revealUsed: false,
+        alreadySubmitted: submittedLeaderboardPuzzleIdsRef.current.has(
+          puzzle.puzzleId,
+        ),
+      })
+    ) {
+      submittedLeaderboardPuzzleIdsRef.current.add(puzzle.puzzleId);
+      const elapsedSeconds = getElapsedSeconds(
+        nextMission.lastStartedAt,
+        nextMission.completedAt,
+      );
+      const score = computeLeaderboardScore(
+        {
+          completedWordCount: viewModel.completedEntries.length,
+          remainingAttempts: getRemainingAttempts(nextMission),
+          hintCount,
+          elapsedSeconds,
+        },
+        {
+          completedWord: launchConfig.leaderboardScoreCompletedWord,
+          remainingAttempt: launchConfig.leaderboardScoreRemainingAttempt,
+          hint: launchConfig.leaderboardScoreHint,
+          timeBonusBase: launchConfig.leaderboardScoreTimeBonusBase,
+          timeDecayPerSecond: launchConfig.leaderboardScoreTimeDecayPerSecond,
+        },
+      );
+
+      submitLeaderboardScore(score, {
+        puzzleId: puzzle.puzzleId,
+        difficulty: puzzle.difficulty,
+        elapsedSeconds,
+      }).catch(() => undefined);
+    }
     Keyboard.dismiss();
     setNotice('퍼즐을 완료했습니다. 정답판을 확인한 뒤 결과를 볼 수 있습니다.');
     if (route === 'today') {
@@ -1471,12 +1523,19 @@ function AppContent() {
   }, [
     hintCount,
     isLoading,
+    launchConfig.leaderboardScoreCompletedWord,
+    launchConfig.leaderboardScoreHint,
+    launchConfig.leaderboardScoreRemainingAttempt,
+    launchConfig.leaderboardScoreTimeBonusBase,
+    launchConfig.leaderboardScoreTimeDecayPerSecond,
+    leaderboardVisible,
     mission,
     puzzle,
     remainingAttempts,
     route,
     savePuzzleSnapshot,
     selectedPuzzleSummary,
+    submitLeaderboardScore,
     viewModel.completedEntries.length,
     viewModel.isComplete,
   ]);
@@ -3329,6 +3388,17 @@ function AppContent() {
             >
               <Text style={styles.secondaryButtonText}>홈으로</Text>
             </Pressable>
+            {leaderboardVisible && isCompleted && (
+              <Pressable
+                accessibilityLabel="순위 보기"
+                onPress={() => {
+                  openLeaderboard().catch(() => undefined);
+                }}
+                style={styles.secondaryButton}
+              >
+                <Text style={styles.secondaryButtonText}>순위 보기</Text>
+              </Pressable>
+            )}
             {!isCompleted && remainingAttempts > 0 && (
               <Pressable
                 onPress={restartMissionAttempt}

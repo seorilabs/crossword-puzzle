@@ -44,5 +44,18 @@
   },
   "engines": {
     "node": ">= 22.11.0"
+  },
+  "codegenConfig": {
+    "name": "NativeLeaderboardSpec",
+    "type": "modules",
+    "jsSrcsDir": "specs",
+    "android": {
+      "javaPackageName": "com.seorilabs.crosswordpuzzle"
+    },
+    "ios": {
+      "modulesProvider": {
+        "NativeLeaderboard": "RCTNativeLeaderboard"
+      }
+    }
   }
 }
