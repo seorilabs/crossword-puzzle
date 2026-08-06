@@ -306,6 +306,7 @@
 				CODE_SIGN_ENTITLEMENTS = CrosswordPuzzleMobile/CrosswordPuzzleMobile.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_BITCODE = NO;
+				GAME_CENTER_LEADERBOARD_ID = com.seorilabs.crosswordpuzzle.global_score;
 				INFOPLIST_FILE = CrosswordPuzzleMobile/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -339,6 +340,7 @@
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "$(APPLE_TEAM_ID)";
+				GAME_CENTER_LEADERBOARD_ID = com.seorilabs.crosswordpuzzle.global_score;
 				INFOPLIST_FILE = CrosswordPuzzleMobile/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (

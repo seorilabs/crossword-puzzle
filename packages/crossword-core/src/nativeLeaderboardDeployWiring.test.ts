@@ -11,6 +11,13 @@ const iosWorkflow = readFileSync(
   new URL(".github/workflows/deploy-app-store.yml", repoRoot),
   "utf8",
 );
+const iosProject = readFileSync(
+  new URL(
+    "apps/mobile/ios/CrosswordPuzzleMobile.xcodeproj/project.pbxproj",
+    repoRoot,
+  ),
+  "utf8",
+);
 const strategy = readFileSync(
   new URL("docs/leaderboard-strategy.md", repoRoot),
   "utf8",
@@ -56,6 +63,12 @@ describe("네이티브 리더보드 배포 배선", () => {
       iosWorkflow.indexOf("Validate Game Center leaderboard config") <
         iosWorkflow.indexOf("Archive iOS app"),
     );
+  });
+
+  it("Xcode Cloud도 실제 Game Center 리더보드 ID를 기본 build setting으로 사용한다", () => {
+    const expected =
+      "GAME_CENTER_LEADERBOARD_ID = com.seorilabs.crosswordpuzzle.global_score;";
+    assert.equal(iosProject.split(expected).length - 1, 2);
   });
 
   it("native release workflow는 공식 stable action과 플랫폼별 runner를 유지한다", () => {
