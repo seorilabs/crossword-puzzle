@@ -10,8 +10,6 @@ import {
 import {
   isDifficulty,
   resolveDifficultyProfile,
-  selectWordsForProfile,
-  summarizeWordDifficulties,
 } from "../../packages/crossword-core/src/difficultyProfiles.ts";
 import {
   buildThemeMeta,
@@ -92,7 +90,6 @@ function parseArgs(argv) {
   options.minWordCount = profile.minWordCount;
   options.minCrossRatio = profile.minCrossRatio;
   options.minBboxDensity = profile.minBboxDensity;
-  options.wordDifficulties = profile.wordDifficulties;
 
   for (const arg of argv) {
     const [key, rawValue] = arg.replace(/^--/, "").split("=");
@@ -863,27 +860,19 @@ async function run() {
   const generationReport = [];
   const wordBank = await loadConfiguredWordBank(options.wordBankPath);
   const profile = resolveDifficultyProfile(options.difficulty);
-  const wordSelection = selectWordsForProfile(wordBank.words, profile);
-  // 주제 퍼즐이면 난이도 필터 결과를 해당 themeTag 단어로 다시 제약한다(#236).
+  // 난이도는 보드 크기와 배치 단어 수로만 가르므로, 모든 티어가 워드뱅크 전체를
+  // 후보로 쓴다. 주제 퍼즐이면 해당 themeTag 단어로만 제약한다(#236).
   const themeLabel = await resolveThemeLabel(options);
-  const difficultyFilteredWords =
+  const generationWords =
     options.theme == null
-      ? wordSelection.words
-      : filterWordsByTheme(wordSelection.words, options.theme);
-  // 한국어기초사전 뜻풀이는 기본 사용 가능하다. 여기서 앞쪽 600개로 자르면
-  // 워드뱅크 정렬 순서에 따라 쉬운 단어만 고정될 수 있으므로 전체 난이도 풀을
-  // 생성기에 넘긴다. generateBoards가 seed별로 섞은 뒤 candidateWordLimit만큼
-  // 추출해 날짜마다 폭넓은 후보를 사용한다.
-  const generationWords = difficultyFilteredWords;
-  const wordBankDifficultyCounts = summarizeWordDifficulties(
-    difficultyFilteredWords,
-  );
+      ? wordBank.words
+      : filterWordsByTheme(wordBank.words, options.theme);
 
-  if (difficultyFilteredWords.length === 0) {
+  if (generationWords.length === 0) {
     throw new Error(
       options.theme == null
-        ? `No words match difficulty profile ${profile.difficulty} (allowed=${profile.wordDifficulties.join(",")})`
-        : `No words match theme "${options.theme}" within difficulty profile ${profile.difficulty}. Run "npm run wordbank:themes" and check themeCategories.`,
+        ? `Wordbank is empty: ${options.wordBankPath}`
+        : `No words match theme "${options.theme}". Run "npm run wordbank:themes" and check themeCategories.`,
     );
   }
 
@@ -895,13 +884,7 @@ async function run() {
 
   if (options.theme != null) {
     console.log(
-      `Theme constraint theme=${options.theme} label=${themeLabel} words=${difficultyFilteredWords.length}`,
-    );
-  }
-
-  if (wordSelection.broadened) {
-    console.warn(
-      `Difficulty profile ${profile.difficulty} pool below ${profile.wordDifficulties.join(",")} threshold; broadened with [${wordSelection.broadenedWith.join(",")}] -> ${difficultyFilteredWords.length} words`,
+      `Theme constraint theme=${options.theme} label=${themeLabel} words=${generationWords.length}`,
     );
   }
 
@@ -951,7 +934,7 @@ async function run() {
     `Generator options append=${options.append} keep=${options.keepPuzzles} intervalHours=${options.intervalHours} attempts=${options.attempts} retries=${options.retries} samples=${options.samples} beam=${options.beamWidth} branch=${options.branchLimit} candidates=${options.candidateWordLimit}`,
   );
   console.log(
-    `Difficulty profile=${profile.difficulty} boardSize=${options.boardSize} maxWords=${options.maxWords} minWordLength=${options.minWordLength} minWordCount=${options.minWordCount} wordBank allowed=[${wordSelection.difficulties.join(",")}] words=${difficultyFilteredWords.length}/${wordBank.words.length} generationCandidates=${generationWords.length} candidateNeedsManualClueRatio=${needsManualClueRatio(generationWords).toFixed(3)} byDifficulty=${JSON.stringify(wordBankDifficultyCounts)}`,
+    `Difficulty profile=${profile.difficulty} boardSize=${options.boardSize} maxWords=${options.maxWords} minWordLength=${options.minWordLength} minWordCount=${options.minWordCount} generationCandidates=${generationWords.length}/${wordBank.words.length} candidateNeedsManualClueRatio=${needsManualClueRatio(generationWords).toFixed(3)}`,
   );
   console.log(
     `Diversity gate history=${diversityHistory.length}/${Math.max(0, Math.floor(options.diversityHistoryLimit))} maxAnswerReuse=${diversityThresholds.maxSharedAnswerRatio} maxScaffoldSimilarity=${diversityThresholds.maxScaffoldSimilarity}`,
@@ -1159,7 +1142,7 @@ async function run() {
       board,
       slotInfo,
       packId,
-      difficultyFilteredWords,
+      generationWords,
       wordBank.metadata,
       selectedQuality,
       options.difficulty,
@@ -1271,9 +1254,6 @@ async function run() {
       maxWords: options.maxWords,
       minWordLength: options.minWordLength,
       minWordCount: options.minWordCount,
-      wordDifficulties: profile.wordDifficulties,
-      effectiveWordDifficulties: wordSelection.difficulties,
-      broadened: wordSelection.broadened,
     },
     wordBank: {
       path: options.wordBankPath,
@@ -1282,8 +1262,7 @@ async function run() {
       license: wordBank.metadata?.license,
       rawWordCount: wordBank.rawWordCount,
       wordCount: wordBank.words.length,
-      difficultyWordCount: difficultyFilteredWords.length,
-      byDifficulty: wordBankDifficultyCounts,
+      generationWordCount: generationWords.length,
     },
     qualityThresholds,
     diversityThresholds: {

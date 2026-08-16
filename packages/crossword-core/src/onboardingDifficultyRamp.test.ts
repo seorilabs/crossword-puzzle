@@ -8,9 +8,7 @@ import { readFileSync } from "node:fs";
 import {
   DIFFICULTY_PROFILES,
   ONBOARDING_MEDIUM_PROFILE,
-  filterWordsByDifficulty,
   isDifficulty,
-  selectWordsForProfile,
 } from "./difficultyProfiles.ts";
 import {
   ONBOARDING_RAMP_MAX_COMPLETIONS,
@@ -69,36 +67,10 @@ describe("온보딩 난이도 램프 수락 조건 (#291)", () => {
       medium.maxWords >= easy.maxWords && medium.maxWords < normal.maxWords,
     );
 
-    // (3) "normal 완화": 교차율은 normal보다 높거나 같아(단서 연결↑) 체감 난도를 낮추고,
-    // 고급(hard) 어휘를 배제해 어휘 편향도 normal보다 완화한다.
+    // (3) "normal 완화": 교차율은 normal보다 높거나 같아(단서 연결↑) 체감 난도를 낮춘다.
+    // 어휘는 모든 티어가 워드뱅크 전체를 공유하므로, 완화 수단은 단어 수와 교차율뿐이다.
     assert.ok(medium.minCrossRatio >= normal.minCrossRatio);
-    assert.deepEqual([...medium.wordDifficulties], ["easy", "normal"]);
-
-    // (4) 실행 경로: 생성 파이프라인 함수에 넣으면 normal(=easy·normal·hard 허용) 대비
-    // hard 어휘를 배제한 완화 프로파일로 동작한다.
-    const words = [
-      { answer: "가게", difficulty: "easy" },
-      { answer: "평면", difficulty: "normal" },
-      { answer: "정정", difficulty: "hard" },
-    ];
-    const mediumWords = filterWordsByDifficulty(words, medium).map(
-      (w) => w.answer,
-    );
-    const normalWords = filterWordsByDifficulty(words, normal).map(
-      (w) => w.answer,
-    );
-    assert.deepEqual(mediumWords, ["가게", "평면"], "중간: hard 배제");
-    assert.deepEqual(
-      normalWords,
-      ["가게", "평면", "정정"],
-      "normal: hard 포함",
-    );
-    assert.ok(
-      mediumWords.length < normalWords.length,
-      "중간 프로파일이 normal보다 어휘를 완화(축소)한다",
-    );
-    const selection = selectWordsForProfile(words, medium, 0);
-    assert.equal(selection.difficulties.includes("hard"), false);
+    assert.equal("wordDifficulties" in medium, false);
   });
 
   it("AC-2: 배정 로직이 신규 사용자의 easy 완료 직후 완화(중간) 난이도를 제공한다", () => {

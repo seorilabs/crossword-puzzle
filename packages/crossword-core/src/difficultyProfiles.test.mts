@@ -1,4 +1,4 @@
-// 난이도 티어 프로파일/워드뱅크 필터 단위 테스트
+// 난이도 티어 프로파일 단위 테스트
 // Node.js 22+ built-in test runner + --experimental-strip-types
 import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
@@ -6,22 +6,10 @@ import { strict as assert } from "node:assert";
 import {
   DIFFICULTY_ORDER,
   DIFFICULTY_PROFILES,
-  MIN_GENERATION_WORD_POOL,
   ONBOARDING_MEDIUM_PROFILE,
-  filterWordsByDifficulty,
-  getWordDifficulty,
   isDifficulty,
   resolveDifficultyProfile,
-  selectWordsForProfile,
-  summarizeWordDifficulties,
 } from "./difficultyProfiles.ts";
-
-function makeWords(difficulty: string, count: number) {
-  return Array.from({ length: count }, (_, index) => ({
-    answer: `${difficulty}${index}`,
-    difficulty,
-  }));
-}
 
 describe("resolveDifficultyProfile", () => {
   it("유효한 난이도는 해당 프로파일을 반환한다", () => {
@@ -129,6 +117,33 @@ describe("DIFFICULTY_PROFILES 단조성", () => {
   it("DIFFICULTY_ORDER 는 easy→normal→hard 순이다", () => {
     assert.deepEqual([...DIFFICULTY_ORDER], ["easy", "normal", "hard"]);
   });
+
+  it("어떤 티어도 어휘를 제한하지 않는다(난이도는 개수로만 가른다)", () => {
+    for (const difficulty of DIFFICULTY_ORDER) {
+      assert.equal(
+        "wordDifficulties" in DIFFICULTY_PROFILES[difficulty],
+        false,
+        `${difficulty} 는 어휘 등급을 선택하지 않아야 한다`,
+      );
+    }
+  });
+
+  it("배치 단어 수는 easy < normal < hard 로 단조 증가한다", () => {
+    assert.ok(
+      DIFFICULTY_PROFILES.easy.minWordCount <
+        DIFFICULTY_PROFILES.normal.minWordCount,
+    );
+    assert.ok(
+      DIFFICULTY_PROFILES.normal.minWordCount <
+        DIFFICULTY_PROFILES.hard.minWordCount,
+    );
+    assert.ok(
+      DIFFICULTY_PROFILES.easy.maxWords < DIFFICULTY_PROFILES.normal.maxWords,
+    );
+    assert.ok(
+      DIFFICULTY_PROFILES.normal.maxWords < DIFFICULTY_PROFILES.hard.maxWords,
+    );
+  });
 });
 
 // 온보딩 난이도 램프 수락 조건(#291). it 이름의 AC-N 은 이슈 인수조건 번호와 대응한다.
@@ -155,8 +170,8 @@ describe("온보딩 중간 난이도 프로파일 수락 조건 (#291)", () => {
     assert.equal(medium.minCrossRatio, easy.minCrossRatio);
     // 보드 크기는 단조성 유지를 위해 normal 과 동일(8).
     assert.equal(medium.boardSize, normal.boardSize);
-    // 고급(hard) 어휘 배제로 어휘 편향도 완화.
-    assert.deepEqual([...medium.wordDifficulties], ["easy", "normal"]);
+    // 어휘는 모든 티어가 워드뱅크 전체를 공유한다(난이도는 개수로만 가른다).
+    assert.equal("wordDifficulties" in medium, false);
     // 최소 글자 수는 normal 과 동일하게 유지(정책 일관성).
     assert.equal(medium.minWordLength, normal.minWordLength);
   });
@@ -165,100 +180,6 @@ describe("온보딩 중간 난이도 프로파일 수락 조건 (#291)", () => {
     // 이 describe 자체가 difficultyProfiles 테스트의 신규 케이스다(AC-4 커버리지 앵커).
     assert.equal(typeof medium.boardSize, "number");
     assert.equal(medium.minWordLength, 2);
-  });
-});
-
-describe("getWordDifficulty", () => {
-  it("정상 difficulty 는 그대로, 없거나 비정상이면 normal", () => {
-    assert.equal(getWordDifficulty({ difficulty: "easy" }), "easy");
-    assert.equal(getWordDifficulty({ difficulty: "hard" }), "hard");
-    assert.equal(getWordDifficulty({ difficulty: null }), "normal");
-    assert.equal(getWordDifficulty({ difficulty: "??" }), "normal");
-    assert.equal(getWordDifficulty({}), "normal");
-  });
-});
-
-describe("filterWordsByDifficulty", () => {
-  const words = [
-    { answer: "가게", difficulty: "easy" },
-    { answer: "평면", difficulty: "normal" },
-    { answer: "정정", difficulty: "hard" },
-    { answer: "미상", difficulty: null },
-  ];
-
-  it("easy 프로파일은 easy 단어로 편향된다", () => {
-    const result = filterWordsByDifficulty(words, DIFFICULTY_PROFILES.easy);
-    assert.deepEqual(
-      result.map((word) => word.answer),
-      ["가게"],
-    );
-  });
-
-  it("hard 프로파일은 easy 단어를 제외한다", () => {
-    const result = filterWordsByDifficulty(words, DIFFICULTY_PROFILES.hard);
-    const answers = result.map((word) => word.answer).sort();
-    // normal(평면)·hard(정정)·difficulty 미상(normal 취급, 미상) 포함, easy(가게) 제외
-    assert.deepEqual(answers, ["미상", "정정", "평면"]);
-  });
-
-  it("normal 프로파일은 모든 단어를 허용한다", () => {
-    const result = filterWordsByDifficulty(words, DIFFICULTY_PROFILES.normal);
-    assert.equal(result.length, words.length);
-  });
-});
-
-describe("selectWordsForProfile", () => {
-  it("1차 풀이 충분하면 보강 없이 순수 티어 풀을 쓴다(easy=easy만)", () => {
-    const words = [
-      ...makeWords("easy", MIN_GENERATION_WORD_POOL + 50),
-      ...makeWords("normal", 1000),
-      ...makeWords("hard", 1000),
-    ];
-    const selection = selectWordsForProfile(words, DIFFICULTY_PROFILES.easy);
-    assert.equal(selection.broadened, false);
-    assert.deepEqual(selection.broadenedWith, []);
-    assert.deepEqual(selection.difficulties, ["easy"]);
-    const counts = summarizeWordDifficulties(selection.words);
-    assert.ok(counts.easy > 0);
-    assert.equal(counts.normal, 0);
-    assert.equal(counts.hard, 0);
-  });
-
-  it("1차 풀이 임계값 미만이면 인접 티어로 보강한다", () => {
-    const words = [
-      ...makeWords("easy", 10),
-      ...makeWords("normal", 1000),
-      ...makeWords("hard", 1000),
-    ];
-    const selection = selectWordsForProfile(words, DIFFICULTY_PROFILES.easy);
-    assert.equal(selection.broadened, true);
-    // easy 다음 난이도(normal)부터 더해 임계값을 채운다
-    assert.equal(selection.broadenedWith[0], "normal");
-    assert.ok(selection.words.length >= MIN_GENERATION_WORD_POOL);
-    assert.ok(summarizeWordDifficulties(selection.words).normal > 0);
-  });
-
-  it("minPool 을 0 으로 주면 보강 없이 빈 풀도 그대로 반환(테스트 편의)", () => {
-    const selection = selectWordsForProfile(
-      makeWords("hard", 5),
-      DIFFICULTY_PROFILES.easy,
-      0,
-    );
-    assert.equal(selection.broadened, false);
-    assert.equal(selection.words.length, 0);
-  });
-});
-
-describe("summarizeWordDifficulties", () => {
-  it("difficulty 분포를 집계한다(미상은 normal 로 계수)", () => {
-    const counts = summarizeWordDifficulties([
-      { difficulty: "easy" },
-      { difficulty: "easy" },
-      { difficulty: "normal" },
-      { difficulty: "hard" },
-      { difficulty: null },
-    ]);
-    assert.deepEqual(counts, { easy: 2, normal: 2, hard: 1 });
   });
 });
 

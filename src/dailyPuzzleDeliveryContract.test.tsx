@@ -27,6 +27,10 @@ const validatorSource = readFileSync(
   join(root, "scripts/validate-puzzle-pack.mjs"),
   "utf8",
 );
+const profileSource = readFileSync(
+  join(root, "packages/crossword-core/src/difficultyProfiles.ts"),
+  "utf8",
+);
 const webSource = readFileSync(join(root, "src/App.tsx"), "utf8");
 const webLabelSource = readFileSync(join(root, "src/puzzleLabels.ts"), "utf8");
 const mobileSource = readFileSync(join(root, "apps/mobile/App.tsx"), "utf8");
@@ -96,10 +100,17 @@ describe("일간 퍼즐 전달 계약", () => {
   });
 
   it("AC-7: 사전 뜻풀이 전체 풀을 seed별 후보 추출에 사용한다", () => {
-    expect(generatorSource).toContain(
-      "const generationWords = difficultyFilteredWords;",
-    );
+    expect(generatorSource).toContain("? wordBank.words");
     expect(generatorSource).not.toContain("selectWordsForManualClueCoverage(");
+  });
+
+  it("AC-11: 모든 난이도가 어휘 제한 없이 같은 워드뱅크를 후보로 쓴다", () => {
+    // 난이도는 보드 크기와 배치 단어 수로만 가른다. 어휘 등급으로 후보를 나누던
+    // 경로(selectWordsForProfile/filterWordsByDifficulty)가 남아 있으면 안 된다.
+    expect(generatorSource).not.toContain("selectWordsForProfile");
+    expect(generatorSource).not.toContain("filterWordsByDifficulty");
+    expect(generatorSource).not.toContain("wordDifficulties");
+    expect(profileSource).not.toContain("wordDifficulties");
   });
 
   it("AC-6: manifest와 생성 리포트에 다양성 기준과 채택 지표를 기록한다", () => {
