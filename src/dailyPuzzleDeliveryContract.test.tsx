@@ -112,11 +112,32 @@ describe("일간 퍼즐 전달 계약", () => {
 
   it("AC-8: 같은 날짜의 앞 난이도 정답은 다음 난이도 후보에서 제외한다", () => {
     expect(generatorSource).toContain(
-      "const slotGenerationWords = excludePreviouslyUsedAnswers(",
+      "const slotGenerationWords = excludeAnswersSharingFragments(",
     );
     expect(generatorSource).toContain(
       "sameDateAnswerHistory.answers.has(answer)",
     );
     expect(generatorSource).toContain("maxSameDateSharedAnswers: 0");
+  });
+
+  it("AC-9: 최근 발행 정답과 어근을 공유하는 후보도 제외한다", () => {
+    expect(generatorSource).toContain(
+      "...slotDiversityHistory.flatMap((snapshot) => snapshot.answers),",
+    );
+    expect(generatorSource).toContain(
+      "answerVarietyThresholds.sharedFragmentLength,",
+    );
+  });
+
+  it("AC-10: 한 판 안의 어근 군집을 배치 단계와 발행 직전에 모두 막는다", () => {
+    expect(prototypeSource).toContain(
+      "violatesAnswerVariety(runAnalysis.runs, options)",
+    );
+    expect(prototypeSource).toContain(
+      "!violatesAnswerVariety(boardRuns, options)",
+    );
+    expect(generatorSource).toContain("if (!publishedVariety.pass) {");
+    expect(generatorSource).toContain('"sharedAnswerFragment"');
+    expect(generatorSource).toContain('"maxAnswersPerSyllable"');
   });
 });

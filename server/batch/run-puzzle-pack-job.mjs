@@ -208,6 +208,7 @@ function getGeneratorArgs(options) {
     ["PUZZLE_MAX_AUTO", "maxAuto"],
     ["PUZZLE_MAX_ANSWER_REUSE", "maxAnswerReuse"],
     ["PUZZLE_MAX_SCAFFOLD_SIMILARITY", "maxScaffoldSimilarity"],
+    ["PUZZLE_MAX_SYLLABLE_ANSWERS", "maxSyllableAnswers"],
     ["PUZZLE_MIN_CROSS", "minCross"],
     ["PUZZLE_MIN_DENSITY", "minDensity"],
     ["PUZZLE_MIN_ENTRIES", "minEntries"],
