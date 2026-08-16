@@ -5,7 +5,7 @@ import { DAILY_PUZZLE_TIERS } from "./dailyPuzzleTiers.ts";
 import { DIFFICULTY_PROFILES } from "./difficultyProfiles.ts";
 
 describe("일간 퍼즐 난이도 구성", () => {
-  it("매일 easy, normal, hard를 서로 다른 슬롯으로 한 판씩 발행한다", () => {
+  it("매일 easy, hard를 서로 다른 슬롯으로 한 판씩 발행한다", () => {
     assert.deepEqual(DAILY_PUZZLE_TIERS, [
       { difficulty: "easy", slotHour: 0 },
       { difficulty: "hard", slotHour: 1 },

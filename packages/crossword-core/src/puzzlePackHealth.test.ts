@@ -136,7 +136,7 @@ describe("evaluatePublishedPuzzlePackHealth", () => {
     );
   });
 
-  it("AC-4 당일 세 난이도 정답 교집합이 있으면 shared_answer로 실패한다", () => {
+  it("AC-4 당일 두 난이도 정답 교집합이 있으면 shared_answer로 실패한다", () => {
     const fixture = createFixture();
     fixture.puzzles.hard.entries[0].answer =
       fixture.puzzles.easy.entries[0].answer;

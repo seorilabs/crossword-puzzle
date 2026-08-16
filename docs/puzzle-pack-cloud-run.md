@@ -115,7 +115,7 @@ Cloud Run Job은 다음 환경 변수를 사용한다.
 | `PUZZLE_HOSTING_BASE_URL`        | `https://<site>.web.app` | 앱/운영자가 참조할 base URL                                                                                               |
 | `PUZZLE_APPEND`                  |                   `true` | 기존 manifest를 불러와 새 퍼즐을 append할지 여부                                                                          |
 | `PUZZLE_KEEP`                    |                     `14` | manifest에 유지할 최근 퍼즐 수. 일간 2판 기준 7일치                                                                       |
-| `PUZZLE_INTERVAL_HOURS`          |                      `1` | Easy/Normal/Hard의 내부 `slotId`를 h00/h01/h02로 분리하는 간격                                                            |
+| `PUZZLE_INTERVAL_HOURS`          |                      `1` | Easy/Hard의 내부 `slotId`를 h00/h01로 분리하는 간격                                                                       |
 | `PUZZLE_DIFFICULTY`              |                     비움 | 지정하면 모든 슬롯을 해당 난이도(`easy`/`hard`)로 고정                                                           |
 | `PUZZLE_DAILY_TIERS`             |                   `true` | 고정 난이도가 없을 때 매일 Easy 5×5, Hard 8×8을 한 판씩 생성                                                  |
 | `PUZZLE_DIFFICULTY_ROTATION`     |                  `false` | `PUZZLE_DAILY_TIERS=false`인 레거시 다회 실행에서만 `easy/hard` 순환                                        |
@@ -178,7 +178,7 @@ Firebase Hosting을 AIT 앱 origin과 다른 도메인에서 읽기 때문에 CO
 생성 Job과 별도로 매일 `00:30 KST`에 공개 Firebase Hosting 결과를 다시 읽는
 `crossword-puzzle-pack-health` Job을 실행한다.
 
-- 오늘 날짜에 Easy, Normal, Hard가 정확히 한 판씩 있는지 확인한다.
+- 오늘 날짜에 Easy, Hard가 정확히 한 판씩 있는지 확인한다.
 - Easy는 5×5, Normal과 Hard는 8×8인지 확인한다.
 - manifest와 puzzle metadata, 격자 slot과 entry를 다시 검증한다.
 - 당일 두 난이도 정답 교집합이 0개인지 확인한다.

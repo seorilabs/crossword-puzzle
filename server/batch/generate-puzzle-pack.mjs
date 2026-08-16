@@ -26,6 +26,7 @@ import {
   evaluatePuzzleDiversity,
   selectComparableDiversityHistory,
 } from "../../packages/crossword-core/src/puzzleDiversity.ts";
+import { PUZZLE_KEEP_COUNT } from "../../packages/crossword-core/src/uiPolicy.ts";
 import {
   DEFAULT_MAX_ANSWERS_PER_SYLLABLE,
   DEFAULT_SHARED_FRAGMENT_LENGTH,
@@ -47,7 +48,7 @@ const DEFAULT_BATCH_OPTIONS = {
   denseCandidateLimit: 96,
   hostingBaseUrl: undefined,
   intervalHours: 1,
-  keepPuzzles: 21,
+  keepPuzzles: PUZZLE_KEEP_COUNT,
   // maxWords/minWordCount/boardSize 는 parseArgs 에서 난이도 프로파일(기본 easy)이
   // 먼저 덮어쓰고, 이후 개별 CLI 플래그(--words/--minEntries/--size)로 다시 덮어쓸 수
   // 있다.

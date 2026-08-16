@@ -311,8 +311,8 @@ async function run() {
   }
 
   // 당일 2판(easy 5×5 + hard 8×8) 생성 모드. 자정 1회 실행에서
-  // 세 난이도를 서로 다른 내부 슬롯(h00/h01/h02)으로 append 생성해, 같은 날짜에
-  // 세 퍼즐이 모두 발행되도록 한다. 명시 난이도(PUZZLE_DIFFICULTY)가 주어지면
+  // 두 난이도를 서로 다른 내부 슬롯(h00/h01)으로 append 생성해, 같은 날짜에
+  // 두 퍼즐이 모두 발행되도록 한다. 명시 난이도(PUZZLE_DIFFICULTY)가 주어지면
   // 단일 생성(기존 경로)으로 폴백한다.
   const dailyTiers =
     readEnvBooleanWithDefault("PUZZLE_DAILY_TIERS", true) &&
