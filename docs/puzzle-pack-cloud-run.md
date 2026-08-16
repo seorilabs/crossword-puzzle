@@ -75,7 +75,7 @@ scripts/setup-puzzle-pack-cloud-run-job.sh \
   --schedule "5 0 * * *" \
   --time-zone Asia/Seoul \
   --puzzle-days 1 \
-  --puzzle-keep 21 \
+  --puzzle-keep 14 \
   --puzzle-interval-hours 1
 ```
 
