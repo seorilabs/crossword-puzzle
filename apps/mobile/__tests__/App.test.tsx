@@ -40,7 +40,7 @@ import {
 function createPuzzle(puzzleId: string, date = '2026-06-01'): Puzzle {
   return {
     date,
-    difficulty: 'normal',
+    difficulty: 'hard',
     entries: [
       {
         answer: '가나',
@@ -128,7 +128,7 @@ test('maps Android hardware back targets through the app scene graph', () => {
 test('formats generated puzzle aliases as yyMMddHH labels', () => {
   const baseSummary: PuzzleManifestItem = {
     date: '2026-06-12',
-    difficulty: 'normal',
+    difficulty: 'hard',
     metrics: {
       autoRunCount: 0,
       bboxDensity: 1,
@@ -163,7 +163,7 @@ test('formats generated puzzle aliases as yyMMddHH labels', () => {
 test('formats mobile home puzzle labels without exposing remote ids', () => {
   const summary: PuzzleManifestItem = {
     date: '2026-06-12',
-    difficulty: 'normal',
+    difficulty: 'hard',
     metrics: {
       autoRunCount: 0,
       bboxDensity: 1,
@@ -187,7 +187,7 @@ test('formats mobile home puzzle labels without exposing remote ids', () => {
 test('formats two-digit puzzle sequence labels from one-hour tier slots', () => {
   const summary: PuzzleManifestItem = {
     date: '2026-06-12',
-    difficulty: 'normal',
+    difficulty: 'hard',
     metrics: {
       autoRunCount: 0,
       bboxDensity: 1,
@@ -240,7 +240,7 @@ test('formats history titles with home sequence labels for remote puzzles', () =
   const summary: PuzzleManifestItem = {
     alias: '2026061222',
     date: '2026-06-12',
-    difficulty: 'normal',
+    difficulty: 'hard',
     metrics: {
       autoRunCount: 0,
       bboxDensity: 1,
