@@ -8,7 +8,7 @@ afterEach(cleanup);
 describe("PuzzleMetaChips (#248)", () => {
   it("renders a theme chip with icon + label when themeLabel is present", () => {
     const { container } = render(
-      <PuzzleMetaChips difficulty="normal" themeLabel="음식" themeTag="food" />,
+      <PuzzleMetaChips difficulty="hard" themeLabel="음식" themeTag="food" />,
     );
 
     const themeChip = container.querySelector(".puzzleChipTheme");
@@ -27,18 +27,17 @@ describe("PuzzleMetaChips (#248)", () => {
   });
 
   it("does not render a theme chip when themeLabel is absent", () => {
-    const { container } = render(<PuzzleMetaChips difficulty="normal" />);
+    const { container } = render(<PuzzleMetaChips difficulty="hard" />);
 
     expect(container.querySelector(".puzzleChipTheme")).toBeNull();
     expect(container.querySelector(".puzzleChipDifficulty")?.textContent).toBe(
-      "보통",
+      "어려움",
     );
   });
 
   it("renders the difficulty chip in Korean for each tier", () => {
     for (const [difficulty, label] of [
       ["easy", "쉬움"],
-      ["normal", "보통"],
       ["hard", "어려움"],
     ] as const) {
       const { container } = render(

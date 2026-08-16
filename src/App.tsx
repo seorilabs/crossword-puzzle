@@ -491,7 +491,8 @@ function getPuzzlePackLoadState(summaries: PuzzleManifestItem[]): LoadState {
   return summaries.some(isRemotePuzzlePackSummary) ? "remote" : "fallback";
 }
 
-// 난이도 정렬 순위(당일 서빙 목록·홈 난이도 선택에서 easy→normal→hard 순으로 노출).
+// 난이도 정렬 순위(당일 서빙 목록·홈 난이도 선택에서 쉬움→어려움 순으로 노출).
+// normal 은 2단계 전환 전에 발행된 퍼즐이 기기에 남아 있을 때만 쓰이는 레거시 값이다.
 const DIFFICULTY_RANK: Record<string, number> = { easy: 0, normal: 1, hard: 2 };
 
 function getInitialPuzzleId(
@@ -1341,8 +1342,8 @@ function App() {
     () => getDailyFreePuzzleSummary(puzzleSummaries, todayKey),
     [puzzleSummaries, todayKey],
   );
-  // 당일 서빙: 오늘 발행된 퍼즐(easy 5×5 · normal/hard 8×8)만 노출한다. 난이도 오름차순
-  // (easy→normal→hard)으로 정렬해 홈에서 원하는 난이도를 고를 수 있게 한다.
+  // 당일 서빙: 오늘 발행된 퍼즐(easy 5×5 · hard 8×8)만 노출한다. 난이도 오름차순
+  // (쉬움→어려움)으로 정렬해 홈에서 원하는 난이도를 고를 수 있게 한다.
   const todayPuzzleSummaries = useMemo(
     () =>
       puzzleSummaries

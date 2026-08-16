@@ -27,6 +27,10 @@ const validatorSource = readFileSync(
   join(root, "scripts/validate-puzzle-pack.mjs"),
   "utf8",
 );
+const profileSource = readFileSync(
+  join(root, "packages/crossword-core/src/difficultyProfiles.ts"),
+  "utf8",
+);
 const webSource = readFileSync(join(root, "src/App.tsx"), "utf8");
 const webLabelSource = readFileSync(join(root, "src/puzzleLabels.ts"), "utf8");
 const mobileSource = readFileSync(join(root, "apps/mobile/App.tsx"), "utf8");
@@ -36,15 +40,14 @@ const aitWorkflowSource = readFileSync(
 );
 
 describe("일간 퍼즐 전달 계약", () => {
-  it("AC-3: Job은 매일 세 난이도를 생성하고 최근 7일치 21판을 유지한다", () => {
+  it("AC-3: Job은 매일 두 난이도를 생성하고 최근 7일치 14판을 유지한다", () => {
     expect(DAILY_PUZZLE_TIERS.map((tier) => tier.difficulty)).toEqual([
       "easy",
-      "normal",
       "hard",
     ]);
     expect(PUZZLE_KEEP_COUNT).toBe(DAILY_PUZZLE_TIERS.length * 7);
     expect(runnerSource).toContain("DAILY_PUZZLE_TIERS.entries()");
-    expect(runnerSource).toContain('process.env.PUZZLE_KEEP ?? "21"');
+    expect(runnerSource).toContain('process.env.PUZZLE_KEEP ?? "14"');
   });
 
   it("AC-2: 검수 제한 완화 뒤에도 출처·차단·길이·구조 검증을 유지한다", () => {
@@ -70,7 +73,7 @@ describe("일간 퍼즐 전달 계약", () => {
   it("AC-4: Web과 Mobile은 난이도 선택을 퍼즐 변경과 스캐폴드 렌더에 연결한다", () => {
     expect(
       DAILY_PUZZLE_TIERS.map((tier) => formatDifficultyLabel(tier.difficulty)),
-    ).toEqual(["쉬움", "보통", "어려움"]);
+    ).toEqual(["쉬움", "어려움"]);
     expect(webSource).toContain(
       "onClick={() => selectPuzzle(summary.puzzleId)}",
     );
@@ -96,10 +99,17 @@ describe("일간 퍼즐 전달 계약", () => {
   });
 
   it("AC-7: 사전 뜻풀이 전체 풀을 seed별 후보 추출에 사용한다", () => {
-    expect(generatorSource).toContain(
-      "const generationWords = difficultyFilteredWords;",
-    );
+    expect(generatorSource).toContain("? wordBank.words");
     expect(generatorSource).not.toContain("selectWordsForManualClueCoverage(");
+  });
+
+  it("AC-11: 모든 난이도가 어휘 제한 없이 같은 워드뱅크를 후보로 쓴다", () => {
+    // 난이도는 보드 크기와 배치 단어 수로만 가른다. 어휘 등급으로 후보를 나누던
+    // 경로(selectWordsForProfile/filterWordsByDifficulty)가 남아 있으면 안 된다.
+    expect(generatorSource).not.toContain("selectWordsForProfile");
+    expect(generatorSource).not.toContain("filterWordsByDifficulty");
+    expect(generatorSource).not.toContain("wordDifficulties");
+    expect(profileSource).not.toContain("wordDifficulties");
   });
 
   it("AC-6: manifest와 생성 리포트에 다양성 기준과 채택 지표를 기록한다", () => {

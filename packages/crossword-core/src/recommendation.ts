@@ -107,19 +107,16 @@ export function getNextRecommendedPuzzleSummary(
     );
 
     // 온보딩 램프(#291): 램프가 켜져 있고 신규 사용자(현재 제외 기완료 ≤ 상한)가
-    // easy(온보딩)를 막 끝냈다면, normal 급점프 대신 같은 easy 티어를 한 단계 더
-    // 배정해 easy→normal 난이도 절벽을 완화한다. 남은 easy가 없으면 normal까지만
-    // 허용하며, 첫 후속 후보가 hard뿐이면 CTA를 숨긴다. 램프 off 시 기존 규칙을 쓴다.
+    // easy(온보딩)를 막 끝냈다면, hard 급점프 대신 같은 easy 티어를 한 판 더
+    // 배정해 난이도 절벽을 완화한다. 남은 easy가 없으면 CTA를 숨긴다(hard 로 밀지
+    // 않는다). 램프 off 시 기존 규칙을 쓴다.
     const softenOnboarding =
       options?.onboardingRampEnabled === true &&
       current.difficulty === "easy" &&
       countPriorCompleted(completedPuzzleIds, current.puzzleId) <=
         ONBOARDING_RAMP_MAX_COMPLETIONS;
     if (softenOnboarding) {
-      if (sameTier != null) {
-        return sameTier;
-      }
-      return uncompleted.find((summary) => summary.difficulty === "normal");
+      return sameTier ?? undefined;
     }
 
     if (nextTierUp != null) {

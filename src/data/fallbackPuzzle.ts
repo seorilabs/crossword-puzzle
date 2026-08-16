@@ -3,7 +3,7 @@ import type { Puzzle } from "../../packages/crossword-core/src";
 export const fallbackPuzzle: Puzzle = {
   puzzleId: "2026-05-25-normal-01",
   date: "2026-05-25",
-  difficulty: "normal",
+  difficulty: "hard",
   gridSize: 8,
   grid: [
     ["차", "", "", "가", "방", "", "다", ""],

@@ -18,7 +18,7 @@
       "defaultValue": {
         "value": "3"
       },
-      "description": "구버전 클라이언트용 퍼즐별 기본 무료 힌트 개수(normal·난이도 미상)",
+      "description": "구버전 클라이언트용 퍼즐별 기본 무료 힌트 개수(난이도 미상)",
       "valueType": "NUMBER"
     },
     "default_hint_credits_easy": {
@@ -58,9 +58,9 @@
     },
     "puzzle_keep_count": {
       "defaultValue": {
-        "value": "21"
+        "value": "14"
       },
-      "description": "일간 3판 기준 최근 7일 원격 퍼즐팩 보관 개수",
+      "description": "일간 2판 기준 최근 7일 원격 퍼즐팩 보관 개수",
       "valueType": "NUMBER"
     },
     "daily_attempt_limit": {

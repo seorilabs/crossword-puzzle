@@ -10,18 +10,16 @@ import type {
 export const DAILY_ATTEMPT_LIMIT = 3;
 export const DEFAULT_HINT_CREDITS = 3;
 
-// 난이도별 기본 힌트 크레딧(#251). easy 는 단어가 적어(8~9개) 3크레딧이면 과다,
-// hard 는 많아(13~14개) 부족하므로 완료 난도에 비례해 기본 크레딧을 스케일한다.
-// normal 은 기존 DEFAULT_HINT_CREDITS 와 동일하게 둬 회귀가 없다. 이 표는 원격
-// 오버라이드(launchConfig)가 없을 때 쓰는 코드 기본값이다.
+// 난이도별 기본 힌트 크레딧(#251). easy 는 단어가 적어(9~10개) 3크레딧이면 과다,
+// hard 는 많아(19~20개) 부족하므로 완료 난도에 비례해 기본 크레딧을 스케일한다.
+// 이 표는 원격 오버라이드(launchConfig)가 없을 때 쓰는 코드 기본값이다.
 export const DEFAULT_HINT_CREDITS_BY_DIFFICULTY: Record<Difficulty, number> = {
   easy: 2,
-  normal: DEFAULT_HINT_CREDITS,
   hard: 5,
 };
 
 // 난이도에 맞는 기본 힌트 크레딧을 돌려준다. 난이도가 없거나 비정상이면
-// normal(=DEFAULT_HINT_CREDITS)로 폴백한다.
+// DEFAULT_HINT_CREDITS 로 폴백한다(레거시 normal 퍼즐 포함).
 export function getDefaultHintCreditsForDifficulty(
   difficulty: string | undefined | null,
 ): number {
@@ -32,7 +30,8 @@ export function getDefaultHintCreditsForDifficulty(
 
 export const DEFAULT_VISIBLE_PUZZLE_COUNT = 7;
 export const PUZZLE_GENERATION_INTERVAL_HOURS = 1;
-export const PUZZLE_KEEP_COUNT = 21;
+// 하루 두 판 × 7일. 난이도 티어 수와 함께 움직인다.
+export const PUZZLE_KEEP_COUNT = 14;
 
 type PuzzleAliasSource = {
   alias?: string;

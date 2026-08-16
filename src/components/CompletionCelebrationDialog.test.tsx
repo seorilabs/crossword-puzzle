@@ -236,7 +236,7 @@ describe("CompletionCelebrationDialog 공유 CTA 계측(#299)", () => {
     vi.stubGlobal("navigator", {
       clipboard: { writeText: vi.fn(() => Promise.resolve()) },
     });
-    renderDialog({ puzzleId: "26060114", difficulty: "normal" });
+    renderDialog({ puzzleId: "26060114", difficulty: "hard" });
 
     fireEvent.click(screen.getByRole("button", { name: "결과 공유하기" }));
     await flushShare();

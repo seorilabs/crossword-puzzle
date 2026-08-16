@@ -180,7 +180,7 @@
     },
     {
       "date": "2026-05-31",
-      "difficulty": "normal",
+      "difficulty": "hard",
       "puzzleId": "2026-05-31-normal-07",
       "path": "/puzzles/2026-05-31-normal-07.json",
       "quality": {
@@ -243,7 +243,7 @@
     },
     {
       "date": "2026-05-30",
-      "difficulty": "normal",
+      "difficulty": "hard",
       "puzzleId": "2026-05-30-normal-06",
       "path": "/puzzles/2026-05-30-normal-06.json",
       "quality": {
@@ -306,7 +306,7 @@
     },
     {
       "date": "2026-05-29",
-      "difficulty": "normal",
+      "difficulty": "hard",
       "puzzleId": "2026-05-29-normal-05",
       "path": "/puzzles/2026-05-29-normal-05.json",
       "quality": {
@@ -369,7 +369,7 @@
     },
     {
       "date": "2026-05-28",
-      "difficulty": "normal",
+      "difficulty": "hard",
       "puzzleId": "2026-05-28-normal-04",
       "path": "/puzzles/2026-05-28-normal-04.json",
       "quality": {
@@ -432,7 +432,7 @@
     },
     {
       "date": "2026-05-27",
-      "difficulty": "normal",
+      "difficulty": "hard",
       "puzzleId": "2026-05-27-normal-03",
       "path": "/puzzles/2026-05-27-normal-03.json",
       "quality": {
@@ -495,7 +495,7 @@
     },
     {
       "date": "2026-05-26",
-      "difficulty": "normal",
+      "difficulty": "hard",
       "puzzleId": "2026-05-26-normal-02",
       "path": "/puzzles/2026-05-26-normal-02.json",
       "quality": {
@@ -558,7 +558,7 @@
     },
     {
       "date": "2026-05-25",
-      "difficulty": "normal",
+      "difficulty": "hard",
       "puzzleId": "2026-05-25-normal-01",
       "path": "/puzzles/2026-05-25-normal-01.json",
       "quality": {
