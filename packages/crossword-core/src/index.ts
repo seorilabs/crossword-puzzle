@@ -1,4 +1,5 @@
 export * from "./answerInput";
+export * from "./answerVariety";
 export * from "./boardNavigation";
 export * from "./clueCuration";
 export * from "./dailyPuzzleTiers";

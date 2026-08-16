@@ -2,6 +2,12 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import {
+  DEFAULT_MAX_ANSWERS_PER_SYLLABLE,
+  DEFAULT_SHARED_FRAGMENT_LENGTH,
+  evaluateAnswerVariety,
+} from "../packages/crossword-core/src/answerVariety.ts";
+
 export const DEFAULT_OPTIONS = {
   attempts: 80,
   allowAdjacent: true,
@@ -11,6 +17,8 @@ export const DEFAULT_OPTIONS = {
   candidateWordLimit: 600,
   denseCandidateLimit: 96,
   maxWords: 13,
+  // 한 판에서 같은 음절이 등장해도 되는 최대 정답 수(어휘 군집 차단).
+  maxAnswersPerSyllable: DEFAULT_MAX_ANSWERS_PER_SYLLABLE,
   minWordLength: 2,
   samples: 5,
   seed: 20260524,
@@ -342,6 +350,20 @@ function hasDuplicateAnswers(runs) {
   return false;
 }
 
+// 정답이 완전히 같지 않아도 어근을 공유하면(대학생/여학생/학생) 플레이어에게는
+// 같은 단어의 반복으로 읽힌다. 교차 점수는 음절을 공유하는 단어를 선호하므로,
+// 배치 후보를 만드는 단계에서 군집을 잘라 탐색이 다른 어휘로 향하게 한다.
+function violatesAnswerVariety(runs, options) {
+  return !evaluateAnswerVariety(
+    runs.map((run) => run.answer),
+    {
+      sharedFragmentLength: DEFAULT_SHARED_FRAGMENT_LENGTH,
+      maxAnswersPerSyllable:
+        options.maxAnswersPerSyllable ?? DEFAULT_MAX_ANSWERS_PER_SYLLABLE,
+    },
+  ).pass;
+}
+
 function bridgesNewAndExistingCells(autoRun, state, validated) {
   const newCellKeys = new Set(
     validated.cells
@@ -412,7 +434,11 @@ function findPlacementCandidates(state, words, random, options) {
           const nextState = applyPlacement(state, word, row, col, direction, validated);
           const runAnalysis = analyzeRuns(nextState, options.wordMap);
 
-          if (runAnalysis.invalidRuns.length > 0 || hasDuplicateAnswers(runAnalysis.runs)) {
+          if (
+            runAnalysis.invalidRuns.length > 0 ||
+            hasDuplicateAnswers(runAnalysis.runs) ||
+            violatesAnswerVariety(runAnalysis.runs, options)
+          ) {
             continue;
           }
 
@@ -462,7 +488,11 @@ function findPlacementCandidates(state, words, random, options) {
           const nextState = applyPlacement(state, word, row, col, direction, validated);
           const runAnalysis = analyzeRuns(nextState, options.wordMap);
 
-          if (runAnalysis.invalidRuns.length > 0 || hasDuplicateAnswers(runAnalysis.runs)) {
+          if (
+            runAnalysis.invalidRuns.length > 0 ||
+            hasDuplicateAnswers(runAnalysis.runs) ||
+            violatesAnswerVariety(runAnalysis.runs, options)
+          ) {
             continue;
           }
 
@@ -557,7 +587,11 @@ function findPlacementCandidates(state, words, random, options) {
             const nextState = applyPlacement(state, word, row, col, direction, validated);
             const runAnalysis = analyzeRuns(nextState, options.wordMap);
 
-            if (runAnalysis.invalidRuns.length > 0 || hasDuplicateAnswers(runAnalysis.runs)) {
+            if (
+              runAnalysis.invalidRuns.length > 0 ||
+              hasDuplicateAnswers(runAnalysis.runs) ||
+              violatesAnswerVariety(runAnalysis.runs, options)
+            ) {
               continue;
             }
 
@@ -982,12 +1016,14 @@ export function generateBoards(inputOptions = {}) {
 
   for (let attempt = 0; attempt < options.attempts; attempt += 1) {
     const board = runAttempt(candidateWords, random, options);
+    const boardRuns = analyzeRuns(board, options.wordMap).runs;
 
     if (
       board.metrics.wordCount >= 6 &&
       board.metrics.connectedComponents === 1 &&
       board.metrics.accidentalRuns.length === 0 &&
-      !hasDuplicateAnswers(analyzeRuns(board, options.wordMap).runs)
+      !hasDuplicateAnswers(boardRuns) &&
+      !violatesAnswerVariety(boardRuns, options)
     ) {
       const key = renderGrid(board.grid);
       if (seen.has(key)) {

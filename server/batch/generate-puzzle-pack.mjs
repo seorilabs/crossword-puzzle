@@ -26,9 +26,14 @@ import {
   DEFAULT_MAX_SCAFFOLD_SIMILARITY,
   DEFAULT_MAX_SHARED_ANSWER_RATIO,
   evaluatePuzzleDiversity,
-  excludePreviouslyUsedAnswers,
   selectComparableDiversityHistory,
 } from "../../packages/crossword-core/src/puzzleDiversity.ts";
+import {
+  DEFAULT_MAX_ANSWERS_PER_SYLLABLE,
+  DEFAULT_SHARED_FRAGMENT_LENGTH,
+  evaluateAnswerVariety,
+  excludeAnswersSharingFragments,
+} from "../../packages/crossword-core/src/answerVariety.ts";
 
 const DEFAULT_BATCH_OPTIONS = {
   append: false,
@@ -49,6 +54,7 @@ const DEFAULT_BATCH_OPTIONS = {
   // 먼저 덮어쓰고, 이후 개별 CLI 플래그(--words/--minEntries/--size)로 다시 덮어쓸 수
   // 있다. 여기 기본값은 normal 프로파일과 동일하게 맞춰 둔다(완료 시간 단축 튜닝 반영).
   maxWords: 10,
+  maxAnswersPerSyllable: DEFAULT_MAX_ANSWERS_PER_SYLLABLE,
   maxAutoRunRatio: 0.5,
   maxScaffoldSimilarity: DEFAULT_MAX_SCAFFOLD_SIMILARITY,
   maxSharedAnswerRatio: DEFAULT_MAX_SHARED_ANSWER_RATIO,
@@ -134,6 +140,9 @@ function parseArgs(argv) {
     }
     if (key === "maxAnswerReuse" && Number.isFinite(numericValue)) {
       options.maxSharedAnswerRatio = numericValue;
+    }
+    if (key === "maxSyllableAnswers" && Number.isFinite(numericValue)) {
+      options.maxAnswersPerSyllable = numericValue;
     }
     if (key === "maxScaffoldSimilarity" && Number.isFinite(numericValue)) {
       options.maxScaffoldSimilarity = numericValue;
@@ -333,6 +342,17 @@ function makeDiversityThresholds(options) {
       options.maxScaffoldSimilarity,
       DEFAULT_MAX_SCAFFOLD_SIMILARITY,
     ),
+  };
+}
+
+// 어휘 군집 게이트 임계값. 정답 문자열이 달라도 어근을 공유하면 같은 단어의
+// 반복으로 읽히므로, 한 판 안의 공유 조각과 음절 과다 사용을 함께 막는다.
+function makeAnswerVarietyThresholds(options) {
+  return {
+    sharedFragmentLength: DEFAULT_SHARED_FRAGMENT_LENGTH,
+    maxAnswersPerSyllable: Number.isFinite(options.maxAnswersPerSyllable)
+      ? Math.max(1, Math.floor(options.maxAnswersPerSyllable))
+      : DEFAULT_MAX_ANSWERS_PER_SYLLABLE,
   };
 }
 
@@ -887,6 +907,7 @@ async function run() {
 
   const qualityThresholds = makeQualityThresholds(options);
   const diversityThresholds = makeDiversityThresholds(options);
+  const answerVarietyThresholds = makeAnswerVarietyThresholds(options);
   const existingManifest = await loadExistingManifest(options, outDir);
   const existingPuzzles = (existingManifest?.puzzles ?? []).filter((puzzle) => {
     const keep = isDifficulty(puzzle.difficulty);
@@ -961,15 +982,23 @@ async function run() {
       slotInfo.slotId,
       slotInfo.alias,
     );
-    const slotGenerationWords = excludePreviouslyUsedAnswers(
+    // 같은 날 다른 난이도가 쓴 정답과, 같은 난이도의 최근 발행 정답을 함께 배제한다.
+    // 문자열이 같은 정답만 빼면 어제 "대학생"을 쓰고 오늘 "학생"이 나오는 반복을
+    // 막지 못하므로, 어근(2음절 조각)을 공유하는 후보까지 후보 풀에서 제외한다.
+    const recentAnswers = [
+      ...sameDateAnswerHistory.answers,
+      ...slotDiversityHistory.flatMap((snapshot) => snapshot.answers),
+    ];
+    const slotGenerationWords = excludeAnswersSharingFragments(
       generationWords,
-      sameDateAnswerHistory.answers,
+      recentAnswers,
+      answerVarietyThresholds.sharedFragmentLength,
     );
     const slotGenerationWordMap = makeWordMap(slotGenerationWords);
 
     if (slotGenerationWords.length < profile.minWordCount) {
       throw new Error(
-        `Not enough unused same-date answers for ${profile.difficulty}: candidates=${slotGenerationWords.length} minEntries=${profile.minWordCount}`,
+        `Not enough unused recent answers for ${profile.difficulty}: candidates=${slotGenerationWords.length} minEntries=${profile.minWordCount}`,
       );
     }
 
@@ -977,7 +1006,7 @@ async function run() {
       `[${slotInfo.slotId}] generation started (${dayIndex + 1}/${options.days}) packId=${packId}`,
     );
     console.log(
-      `[${slotInfo.slotId}] same-date answer gate comparedPuzzles=${sameDateAnswerHistory.puzzleCount} excludedAnswers=${sameDateAnswerHistory.answers.size} candidates=${slotGenerationWords.length}/${generationWords.length}`,
+      `[${slotInfo.slotId}] recent answer gate sameDatePuzzles=${sameDateAnswerHistory.puzzleCount} sameDateAnswers=${sameDateAnswerHistory.answers.size} recentPuzzles=${slotDiversityHistory.length} excludedAnswers=${recentAnswers.length} candidates=${slotGenerationWords.length}/${generationWords.length}`,
     );
 
     for (let retryIndex = 0; retryIndex < options.retries; retryIndex += 1) {
@@ -995,6 +1024,7 @@ async function run() {
         branchLimit: options.branchLimit,
         candidateWordLimit: options.candidateWordLimit,
         denseCandidateLimit: options.denseCandidateLimit,
+        maxAnswersPerSyllable: answerVarietyThresholds.maxAnswersPerSyllable,
         maxWords: options.maxWords,
         minWordLength: options.minWordLength,
         samples: options.samples,
@@ -1022,11 +1052,23 @@ async function run() {
           slotDiversityHistory,
           diversityThresholds,
         );
+        // 생성기가 배치 단계에서 이미 군집을 거르지만, 발행 직전 최종 검증으로 한 번
+        // 더 확인해 어떤 사유로 후보가 탈락했는지 리포트에 남긴다.
+        const variety = evaluateAnswerVariety(
+          candidateEntries.map((entry) => entry.answer),
+          answerVarietyThresholds,
+        );
         return {
           candidateIndex,
           failureReasons: [
             ...summarizeFailureReasons(quality),
             ...(manualClueGatePass ? [] : ["maxNeedsManualClueRatio"]),
+            ...(variety.sharedFragments.length === 0
+              ? []
+              : ["sharedAnswerFragment"]),
+            ...(variety.overusedSyllables.length === 0
+              ? []
+              : ["maxAnswersPerSyllable"]),
             ...(diversity.maxSharedAnswerRatio <=
             diversityThresholds.maxSharedAnswerRatio
               ? []
@@ -1047,6 +1089,12 @@ async function run() {
             sameDateComparedPuzzleCount: sameDateAnswerHistory.puzzleCount,
             sameDateExcludedAnswerCount: sameDateAnswerHistory.answers.size,
             sameDateSharedAnswerCount: 0,
+            sharedAnswerFragments: variety.sharedFragments.map(
+              (entry) => entry.fragment,
+            ),
+            overusedSyllables: variety.overusedSyllables.map(
+              (entry) => entry.syllable,
+            ),
           },
           metrics: {
             autoRunCount: candidate.metrics.autoRunCount,
@@ -1056,7 +1104,11 @@ async function run() {
             multiCrossEntries: candidate.metrics.multiIntersectionPlacements,
             wordCount: candidate.metrics.wordCount,
           },
-          pass: quality.pass && manualClueGatePass && diversity.pass,
+          pass:
+            quality.pass &&
+            manualClueGatePass &&
+            diversity.pass &&
+            variety.pass,
           ratios: quality.ratios,
         };
       });
@@ -1124,6 +1176,21 @@ async function run() {
     if (sameDateSharedAnswers.length > 0) {
       throw new Error(
         `Same-date answers leaked into ${slotInfo.slotId}: ${sameDateSharedAnswers.join(",")}`,
+      );
+    }
+
+    const publishedVariety = evaluateAnswerVariety(
+      puzzle.entries.map((entry) => entry.answer),
+      answerVarietyThresholds,
+    );
+
+    if (!publishedVariety.pass) {
+      throw new Error(
+        `Answer variety violated in ${slotInfo.slotId}: fragments=[${publishedVariety.sharedFragments
+          .map((entry) => `${entry.fragment}:${entry.answers.join("/")}`)
+          .join(",")}] syllables=[${publishedVariety.overusedSyllables
+          .map((entry) => `${entry.syllable}:${entry.answers.join("/")}`)
+          .join(",")}]`,
       );
     }
     const filename = `${puzzle.puzzleId}.json`;
@@ -1223,6 +1290,7 @@ async function run() {
       historyLimit: Math.max(0, Math.floor(options.diversityHistoryLimit)),
       maxSameDateSharedAnswers: 0,
       ...diversityThresholds,
+      ...answerVarietyThresholds,
     },
     puzzles: manifestPuzzles,
   };
