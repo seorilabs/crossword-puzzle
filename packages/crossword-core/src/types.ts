@@ -56,7 +56,7 @@ export type Puzzle = {
   alias?: string;
   puzzleId: string;
   date: string;
-  difficulty: "easy" | "normal" | "hard";
+  difficulty: "easy" | "hard";
   gridSize: number;
   grid: string[][];
   entries: PuzzleEntry[];

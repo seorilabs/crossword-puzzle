@@ -47,7 +47,6 @@ function createPuzzle(
 function createFixture() {
   const puzzles = {
     easy: createPuzzle("easy", "가나다"),
-    normal: createPuzzle("normal", "라마바"),
     hard: createPuzzle("hard", "사아자"),
   };
   const items = Object.values(puzzles).map<PuzzleManifestItem>((puzzle) => ({
@@ -89,7 +88,6 @@ describe("evaluatePublishedPuzzlePackHealth", () => {
     assert.deepEqual(result.issues, []);
     assert.deepEqual(result.puzzleIds, {
       easy: "puzzle-easy",
-      normal: "puzzle-normal",
       hard: "puzzle-hard",
     });
   });
@@ -140,7 +138,7 @@ describe("evaluatePublishedPuzzlePackHealth", () => {
 
   it("AC-4 당일 세 난이도 정답 교집합이 있으면 shared_answer로 실패한다", () => {
     const fixture = createFixture();
-    fixture.puzzles.normal.entries[0].answer =
+    fixture.puzzles.hard.entries[0].answer =
       fixture.puzzles.easy.entries[0].answer;
 
     const result = evaluatePublishedPuzzlePackHealth({
@@ -155,7 +153,7 @@ describe("evaluatePublishedPuzzlePackHealth", () => {
 
   it("AC-3 manifest와 puzzle metadata가 다르면 실패한다", () => {
     const fixture = createFixture();
-    fixture.puzzles.normal.puzzleId = "unexpected-normal-id";
+    fixture.puzzles.hard.puzzleId = "unexpected-hard-id";
 
     const result = evaluatePublishedPuzzlePackHealth({
       expectedDate: DATE,
@@ -168,12 +166,12 @@ describe("evaluatePublishedPuzzlePackHealth", () => {
       result.issues.some(
         (issue) =>
           issue.code === "puzzle_metadata_mismatch" &&
-          issue.difficulty === "normal",
+          issue.difficulty === "hard",
       ),
     );
   });
 
-  it("AC-2 Easy는 5x5 Normal과 Hard는 8x8 규격을 강제한다", () => {
+  it("AC-2 Easy는 5x5 Hard는 8x8 규격을 강제한다", () => {
     const fixture = createFixture();
     fixture.puzzles.hard.gridSize = 7;
     fixture.manifest.diversityThresholds = {

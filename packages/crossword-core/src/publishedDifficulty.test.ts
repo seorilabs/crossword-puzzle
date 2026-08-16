@@ -24,14 +24,19 @@ describe("번들 발행 팩 난이도 계약 (#151)", () => {
     );
   });
 
-  it("번들 발행 팩에 easy와 hard 퍼즐을 각각 1개 포함한다", () => {
-    assert.equal(
-      manifest.puzzles.filter((item) => item.difficulty === "easy").length,
-      1,
+  it("번들 발행 팩에 easy와 hard 퍼즐을 각각 1개 이상 포함한다", () => {
+    assert.ok(
+      manifest.puzzles.filter((item) => item.difficulty === "easy").length >= 1,
     );
+    assert.ok(
+      manifest.puzzles.filter((item) => item.difficulty === "hard").length >= 1,
+    );
+  });
+
+  it("번들 발행 팩에 폐지된 normal 난이도가 남아 있지 않다", () => {
     assert.equal(
-      manifest.puzzles.filter((item) => item.difficulty === "hard").length,
-      1,
+      manifest.puzzles.some((item) => item.difficulty === "normal"),
+      false,
     );
   });
 

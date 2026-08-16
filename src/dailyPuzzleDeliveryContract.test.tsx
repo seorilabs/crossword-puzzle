@@ -40,15 +40,14 @@ const aitWorkflowSource = readFileSync(
 );
 
 describe("일간 퍼즐 전달 계약", () => {
-  it("AC-3: Job은 매일 세 난이도를 생성하고 최근 7일치 21판을 유지한다", () => {
+  it("AC-3: Job은 매일 두 난이도를 생성하고 최근 7일치 14판을 유지한다", () => {
     expect(DAILY_PUZZLE_TIERS.map((tier) => tier.difficulty)).toEqual([
       "easy",
-      "normal",
       "hard",
     ]);
     expect(PUZZLE_KEEP_COUNT).toBe(DAILY_PUZZLE_TIERS.length * 7);
     expect(runnerSource).toContain("DAILY_PUZZLE_TIERS.entries()");
-    expect(runnerSource).toContain('process.env.PUZZLE_KEEP ?? "21"');
+    expect(runnerSource).toContain('process.env.PUZZLE_KEEP ?? "14"');
   });
 
   it("AC-2: 검수 제한 완화 뒤에도 출처·차단·길이·구조 검증을 유지한다", () => {
@@ -74,7 +73,7 @@ describe("일간 퍼즐 전달 계약", () => {
   it("AC-4: Web과 Mobile은 난이도 선택을 퍼즐 변경과 스캐폴드 렌더에 연결한다", () => {
     expect(
       DAILY_PUZZLE_TIERS.map((tier) => formatDifficultyLabel(tier.difficulty)),
-    ).toEqual(["쉬움", "보통", "어려움"]);
+    ).toEqual(["쉬움", "어려움"]);
     expect(webSource).toContain(
       "onClick={() => selectPuzzle(summary.puzzleId)}",
     );

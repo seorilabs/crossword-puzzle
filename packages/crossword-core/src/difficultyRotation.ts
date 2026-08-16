@@ -1,12 +1,10 @@
 import type { Difficulty } from "./difficultyProfiles";
 
-// 2시간 슬롯 네 개를 한 주기로 묶어 normal 비중을 50%로 유지하면서
-// easy/hard를 각각 25% 공급한다. AIT/Web과 Android/iOS가 같은 manifest를
+// 슬롯을 번갈아 easy/hard로 채운다. 일간 티어(DAILY_PUZZLE_TIERS)를 끄고 여러 번
+// 실행하는 레거시 경로에서만 쓰이며, AIT/Web과 Android/iOS가 같은 manifest를
 // 읽으므로 발행 난이도 정책도 core에서 단일 출처로 관리한다.
 export const PUBLISHED_DIFFICULTY_ROTATION: readonly Difficulty[] = [
-  "normal",
   "easy",
-  "normal",
   "hard",
 ];
 

@@ -181,7 +181,7 @@ function getGeneratorArgs(options) {
     process.env.PUZZLE_OUT_DIR ?? "public/puzzles",
   );
   args = ensureArg(args, "timeZone", timeZone);
-  args = ensureArg(args, "keep", process.env.PUZZLE_KEEP ?? "21");
+  args = ensureArg(args, "keep", process.env.PUZZLE_KEEP ?? "14");
   args = ensureArg(
     args,
     "intervalHours",
@@ -223,7 +223,7 @@ function getGeneratorArgs(options) {
   }
 
   // PUZZLE_DAILY_TIERS=false인 레거시 실행에서만 명시 난이도를 우선하고,
-  // 없으면 2시간 슬롯 시각으로 normal/easy/normal/hard 로테이션을 적용한다(#151).
+  // 없으면 슬롯 시각으로 easy/hard 로테이션을 적용한다(#151).
   args = ensureArg(args, "difficulty", process.env.PUZZLE_DIFFICULTY);
   if (
     getArgValue(args, "difficulty") == null &&
@@ -310,7 +310,7 @@ async function run() {
     }
   }
 
-  // 당일 3판(easy 5×5 + normal 8×8 + hard 8×8) 생성 모드. 자정 1회 실행에서
+  // 당일 2판(easy 5×5 + hard 8×8) 생성 모드. 자정 1회 실행에서
   // 세 난이도를 서로 다른 내부 슬롯(h00/h01/h02)으로 append 생성해, 같은 날짜에
   // 세 퍼즐이 모두 발행되도록 한다. 명시 난이도(PUZZLE_DIFFICULTY)가 주어지면
   // 단일 생성(기존 경로)으로 폴백한다.

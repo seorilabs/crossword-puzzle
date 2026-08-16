@@ -5,11 +5,7 @@ import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
 import { readFileSync } from "node:fs";
 
-import {
-  DIFFICULTY_PROFILES,
-  ONBOARDING_MEDIUM_PROFILE,
-  isDifficulty,
-} from "./difficultyProfiles.ts";
+import { DIFFICULTY_PROFILES, isDifficulty } from "./difficultyProfiles.ts";
 import {
   ONBOARDING_RAMP_MAX_COMPLETIONS,
   getNextRecommendedPuzzleSummary,
@@ -47,40 +43,27 @@ function summary(
 }
 
 describe("온보딩 난이도 램프 수락 조건 (#291)", () => {
-  it("AC-1: difficultyProfiles.ts에 easy와 normal 사이의 중간 프로파일(normal 완화 파라미터 세트)을 추가한다", () => {
-    const { easy, normal } = DIFFICULTY_PROFILES;
-    const medium = ONBOARDING_MEDIUM_PROFILE;
+  it("AC-1: 난이도가 쉬움/어려움 두 단계이므로 중간 프로파일 없이 easy 반복으로 램프를 만든다", () => {
+    // 난이도를 2단계로 줄이면서 중간 티어(ONBOARDING_MEDIUM_PROFILE)는 폐지했다.
+    // 급점프 완화 수단은 "easy 를 한 판 더 배정"뿐이므로, 티어 구성이 두 개인지와
+    // 두 티어의 완료 부담이 실제로 벌어져 있는지를 계약으로 고정한다.
+    const { easy, hard } = DIFFICULTY_PROFILES;
 
-    // (1) difficultyProfiles.ts에 프로파일이 실제로 추가·export 되었다.
-    assert.ok(medium, "ONBOARDING_MEDIUM_PROFILE 이 존재한다");
-    // 새 티어(enum)를 만들지 않으려고 difficulty는 normal 유지(파급 0).
-    assert.equal(medium.difficulty, "normal");
+    assert.deepEqual(Object.keys(DIFFICULTY_PROFILES).sort(), ["easy", "hard"]);
+    assert.equal(isDifficulty("normal"), false);
     assert.equal(isDifficulty("medium"), false);
-
-    // (2) "easy와 normal 사이": 완료 부담(단어 수)이 easy 이상 normal 미만 사이에 위치.
-    assert.ok(
-      easy.minWordCount < medium.minWordCount &&
-        medium.minWordCount < normal.minWordCount,
-      `easy(${easy.minWordCount}) < medium(${medium.minWordCount}) < normal(${normal.minWordCount})`,
-    );
-    assert.ok(
-      medium.maxWords >= easy.maxWords && medium.maxWords < normal.maxWords,
-    );
-
-    // (3) "normal 완화": 교차율은 normal보다 높거나 같아(단서 연결↑) 체감 난도를 낮춘다.
-    // 어휘는 모든 티어가 워드뱅크 전체를 공유하므로, 완화 수단은 단어 수와 교차율뿐이다.
-    assert.ok(medium.minCrossRatio >= normal.minCrossRatio);
-    assert.equal("wordDifficulties" in medium, false);
+    assert.ok(easy.minWordCount < hard.minWordCount);
+    assert.ok(easy.boardSize < hard.boardSize);
   });
 
   it("AC-2: 배정 로직이 신규 사용자의 easy 완료 직후 완화(중간) 난이도를 제공한다", () => {
     const summaries = [
       summary("onboarding", "easy"),
       summary("easy2", "easy"),
-      summary("normal1", "normal"),
+      summary("hard1", "hard"),
     ];
     const current = { puzzleId: "onboarding", difficulty: "easy" as const };
-    // 같은 입력에서 램프 off는 normal 급점프, 램프 on은 완화된 easy로 갈린다.
+    // 같은 입력에서 램프 off는 hard 급점프, 램프 on은 완화된 easy로 갈린다.
     const off = getNextRecommendedPuzzleSummary(
       summaries,
       new Set(["onboarding"]),
@@ -93,7 +76,7 @@ describe("온보딩 난이도 램프 수락 조건 (#291)", () => {
       current,
       { onboardingRampEnabled: true },
     );
-    assert.equal(off?.difficulty, "normal", "램프 off: 기존 동작(normal 상승)");
+    assert.equal(off?.difficulty, "hard", "램프 off: 기존 동작(난이도 상승)");
     assert.equal(on?.puzzleId, "easy2");
     assert.equal(on?.difficulty, "easy", "램프 on: 완화된 난이도 배정");
   });
@@ -144,8 +127,8 @@ describe("온보딩 난이도 램프 수락 조건 (#291)", () => {
     );
     assert.match(
       profilesTest,
-      /온보딩 중간 난이도 프로파일 수락 조건 \(#291\)/,
-      "difficultyProfiles.test.mts 에 #291 신규 케이스가 있어야 한다",
+      /어떤 티어도 어휘를 제한하지 않는다\(난이도는 개수로만 가른다\)/,
+      "difficultyProfiles.test.mts 에 티어 구성 계약 케이스가 있어야 한다",
     );
     assert.match(
       rotationTest,
@@ -157,7 +140,7 @@ describe("온보딩 난이도 램프 수락 조건 (#291)", () => {
     const summaries = [
       summary("onboarding", "easy"),
       summary("easy2", "easy"),
-      summary("normal1", "normal"),
+      summary("hard1", "hard"),
     ];
     const current = { puzzleId: "onboarding", difficulty: "easy" as const };
 
@@ -168,28 +151,28 @@ describe("온보딩 난이도 램프 수락 조건 (#291)", () => {
       current,
       { onboardingRampEnabled: false },
     );
-    assert.equal(rampOff?.difficulty, "normal");
+    assert.equal(rampOff?.difficulty, "hard");
 
     // 신규 케이스 2(실행 경로): 두 번째 완료(현재 제외 기완료 1 > 상한 0)부터는 완화하지
-    // 않고 기존 normal 상승으로 돌아간다 — 첫 급점프만 1회 늦춘다.
+    // 않고 기존 난이도 상승으로 돌아간다 — 첫 급점프만 1회 늦춘다.
     const secondCompletion = getNextRecommendedPuzzleSummary(
       summaries,
       new Set(["easy2", "onboarding"]),
       current,
       { onboardingRampEnabled: true },
     );
-    assert.equal(secondCompletion?.difficulty, "normal");
+    assert.equal(secondCompletion?.difficulty, "hard");
     assert.equal(ONBOARDING_RAMP_MAX_COMPLETIONS, 0);
 
-    // 신규 케이스 3(실행 경로): 램프가 켜져도 남은 easy가 없으면 기존 상승(normal)으로
-    // 안전하게 폴백한다.
+    // 신규 케이스 3(실행 경로): 램프가 켜졌는데 남은 easy가 없으면 CTA를 숨긴다.
+    // 2단계에서 남은 후보는 hard 뿐이라 폴백이 곧 급점프가 되기 때문이다.
     const noEasyLeft = getNextRecommendedPuzzleSummary(
-      [summary("onboarding", "easy"), summary("normal1", "normal")],
+      [summary("onboarding", "easy"), summary("hard1", "hard")],
       new Set(["onboarding"]),
       current,
       { onboardingRampEnabled: true },
     );
-    assert.equal(noEasyLeft?.difficulty, "normal");
+    assert.equal(noEasyLeft, undefined);
 
     // 신규 케이스 4(실행 경로): 첫 후속으로 hard만 남으면 CTA를 숨긴다.
     const hardOnly = getNextRecommendedPuzzleSummary(

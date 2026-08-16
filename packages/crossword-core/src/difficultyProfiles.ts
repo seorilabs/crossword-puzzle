@@ -1,6 +1,6 @@
 import type { Puzzle } from "./types";
 
-// 퍼즐 난이도 티어(easy/normal/hard)의 공통 정책. 3마켓(AIT/Android/iOS)이 같은
+// 퍼즐 난이도 티어(easy/hard)의 공통 정책. 3마켓(AIT/Android/iOS)이 같은
 // 티어 정의를 공유하도록 생성 튜닝 파라미터를 한곳에 둔다. 생성기(server/batch)는
 // 이 프로파일로 보드 크기·단어 수·최소 단어 길이를 정한다.
 //
@@ -28,49 +28,31 @@ export type DifficultyProfile = {
   minBboxDensity: number;
 };
 
-export const DIFFICULTY_ORDER: readonly Difficulty[] = [
-  "easy",
-  "normal",
-  "hard",
-];
+export const DIFFICULTY_ORDER: readonly Difficulty[] = ["easy", "hard"];
 
-// easy < normal <= hard 로 보드 크기를 유지한다. "사이즈와 난이도를 동시에 올리지
-// 말 것" 원칙에 따라 easy 는 작은 보드에 적은 단어로, hard 는 normal 과 같은 8×8
-// 에서 더 많은 단어와 완화된 교차율로 구성한다. normal 은 기존 기본 생성값과
-// 동일하게 유지해 회귀가 없도록 한다.
+// 두 단계는 "가볍게 한 판"과 "제대로 한 판"으로 갈린다. 어휘는 같은 풀을 쓰므로
+// 차이를 만드는 것은 보드 크기와 배치 단어 수뿐이다. easy 5×5 는 실제 생성에서
+// 9~10단어, hard 8×8 은 19~20단어가 나와 완료 부담이 약 두 배로 벌어진다.
 export const DIFFICULTY_PROFILES: Record<Difficulty, DifficultyProfile> = {
   easy: {
     difficulty: "easy",
-    // 매일 5×5 easy를 서빙하는 방향(일간 easy 5×5 + normal/hard 8×8)에 맞춰
+    // 매일 두 판을 서빙하는 방향(easy 5×5 + hard 8×8)에 맞춰
     // 보드를 5로 낮춘다. 온보딩 퍼즐과 같은 5×5 규격으로, 적은 단어와 촘촘한
     // 교차로 1~2분 안에 푸는 가벼운 데일리를 목표로 한다.
     boardSize: 5,
     maxWords: 7,
     minWordLength: 2,
     minWordCount: 6,
-    // easy 는 더 촘촘한 교차(쉬운 단서 연결)가 유리해 교차율을 normal 보다 약간
-    // 상향한다. 작은 보드라 밀도는 normal 과 동일하게 둔다(생성 리포트로 보정).
+    // easy 는 더 촘촘한 교차(쉬운 단서 연결)가 유리해 hard 보다 교차율을 올린다.
+    // 작은 보드라 밀도 하한은 hard 보다 높게 둔다(생성 리포트로 보정).
     minCrossRatio: 0.6,
-    minBboxDensity: 0.5,
-  },
-  normal: {
-    difficulty: "normal",
-    boardSize: 8,
-    // 첫 완료 소요(중앙값 ~10분)를 줄이기 위해 normal 단어 수를 낮춘다. 보드 크기는
-    // easy(7)와의 단조성(easy<normal<hard)을 지켜야 하므로 8로 유지하고, 대신 단어
-    // 수 상한(maxWords)을 낮춰 한 판당 채울 단어를 줄인다. 같은 8x8에서 maxWords 12→10
-    // 은 생성 단어 수를 ~22→~18로 낮추면서도 교차율·밀도 게이트는 그대로 통과한다.
-    maxWords: 10,
-    minWordLength: 2,
-    minWordCount: 10,
-    minCrossRatio: 0.55,
     minBboxDensity: 0.5,
   },
   hard: {
     difficulty: "hard",
-    // 모바일에서 normal과 같은 물리 크기로 비교·선택할 수 있도록 hard도 8×8로
-    // 고정한다. 13개 배치를 8×8에 강제하면 유효 후보가 고갈되므로 실제 생성
-    // 검증을 통과한 11개 배치로 조정하고, 어휘 편향·교차율·단어 수로 난도를 올린다.
+    // 모바일 난이도 선택에서 두 티어를 나란히 비교할 수 있도록 8×8로 고정한다.
+    // 13개 배치를 8×8에 강제하면 유효 후보가 고갈되므로 실제 생성 검증을 통과한
+    // 11개 배치로 조정하고, 교차율과 단어 수로 난도를 올린다.
     boardSize: 8,
     maxWords: 11,
     minWordLength: 2,
@@ -81,33 +63,13 @@ export const DIFFICULTY_PROFILES: Record<Difficulty, DifficultyProfile> = {
   },
 };
 
-// 온보딩 난이도 램프(#291)의 "중간" 생성 프로파일 — easy 와 normal 사이의 완화된
-// normal 파라미터 세트다. easy(73초) 대비 normal(약 18분) 완료 시간 절벽을 낮추기
-// 위해, 단어 수를 normal 보다 줄이고 교차율(easy 수준)로 촘촘히 얽어 체감 난도를
-// 낮춘다. 새 티어(enum) 를 추가하지 않으려고 difficulty 는 "normal" 로 유지하므로
-// (isDifficulty("medium") 는 계속 false) Puzzle 타입·검증·계측에 파급이 없다.
-//
-// 단조성: boardSize 는 easy(5)<normal(8) 사이에 정수가 없어 normal 과 같은 8 로 두되,
-// maxWords·minWordCount 를 easy 이상 normal 미만으로, 교차율은 easy 와 동일(0.6)하게
-// 상향해 "사이즈가 아니라 단어 수·교차로 난도를 낮춘다".
-export const ONBOARDING_MEDIUM_PROFILE: DifficultyProfile = {
-  difficulty: "normal",
-  boardSize: 8,
-  // easy(7) 이상 normal(10) 미만인 9로 두어 normal보다 한 단어 적게 배치한다.
-  maxWords: 9,
-  minWordLength: 2,
-  // minWordCount 는 easy(6)<9<normal(10) 로 엄밀히 중간에 둔다.
-  minWordCount: 9,
-  // 교차율은 easy 수준(0.6)으로 올려(normal 0.55 대비) 단서 연결을 쉽게 한다.
-  minCrossRatio: 0.6,
-  minBboxDensity: 0.5,
-};
-
 export function isDifficulty(value: unknown): value is Difficulty {
-  return value === "easy" || value === "normal" || value === "hard";
+  return value === "easy" || value === "hard";
 }
 
-// 입력 difficulty 가 유효하지 않으면 normal 프로파일로 폴백한다.
+// 입력 difficulty 가 유효하지 않으면 가벼운 쪽(easy)으로 폴백한다. 생성 배치는
+// 항상 난이도를 명시하므로, 이 폴백은 잘못된 입력이 어려운 판으로 새지 않게 하는
+// 안전장치다.
 export function resolveDifficultyProfile(
   difficulty: string | undefined | null,
 ): DifficultyProfile {
@@ -115,5 +77,5 @@ export function resolveDifficultyProfile(
     return DIFFICULTY_PROFILES[difficulty];
   }
 
-  return DIFFICULTY_PROFILES.normal;
+  return DIFFICULTY_PROFILES.easy;
 }

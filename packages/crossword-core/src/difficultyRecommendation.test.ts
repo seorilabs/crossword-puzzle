@@ -15,7 +15,7 @@ it("발행 팩의 normal 완료 후 실제 hard 후보를 추천한다 (#151)", 
       puzzleId: "2026-05-31-normal-07",
       date: "2026-05-31",
       path: "/puzzles/2026-05-31-normal-07.json",
-      difficulty: "normal" as const,
+      difficulty: "hard" as const,
     },
     {
       puzzleId: "26060114",
@@ -27,7 +27,7 @@ it("발행 팩의 normal 완료 후 실제 hard 후보를 추천한다 (#151)", 
 
   const next = getNextRecommendedPuzzleSummary(summaries, new Set(), {
     puzzleId: "2026-05-31-normal-07",
-    difficulty: "normal",
+    difficulty: "hard",
   });
 
   assert.equal(next?.puzzleId, "26060114");

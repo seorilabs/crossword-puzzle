@@ -39,7 +39,7 @@ const DEFAULT_BATCH_OPTIONS = {
   attempts: 30,
   boardSize: 8,
   diversityHistoryLimit: DEFAULT_DIVERSITY_HISTORY_LIMIT,
-  difficulty: "normal",
+  difficulty: "easy",
   beamWidth: 16,
   branchLimit: 14,
   candidateWordLimit: 600,
@@ -48,9 +48,9 @@ const DEFAULT_BATCH_OPTIONS = {
   hostingBaseUrl: undefined,
   intervalHours: 1,
   keepPuzzles: 21,
-  // maxWords/minWordCount/boardSize 는 parseArgs 에서 난이도 프로파일(기본 normal)이
+  // maxWords/minWordCount/boardSize 는 parseArgs 에서 난이도 프로파일(기본 easy)이
   // 먼저 덮어쓰고, 이후 개별 CLI 플래그(--words/--minEntries/--size)로 다시 덮어쓸 수
-  // 있다. 여기 기본값은 normal 프로파일과 동일하게 맞춰 둔다(완료 시간 단축 튜닝 반영).
+  // 있다.
   maxWords: 10,
   maxAnswersPerSyllable: DEFAULT_MAX_ANSWERS_PER_SYLLABLE,
   maxAutoRunRatio: 0.5,

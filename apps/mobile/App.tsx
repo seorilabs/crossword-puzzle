@@ -314,7 +314,7 @@ function dedupePuzzleSummaries(puzzles: PuzzleManifestItem[]) {
   return result;
 }
 
-// 난이도 정렬 순위(당일 서빙 목록·홈 난이도 선택에서 easy→normal→hard 순).
+// 난이도 정렬 순위(쉬움→어려움 순). normal 은 2단계 전환 전 퍼즐용 레거시 값이다.
 const DIFFICULTY_RANK: Record<string, number> = { easy: 0, normal: 1, hard: 2 };
 
 function getInitialPuzzleId(puzzles: PuzzleManifestItem[]) {

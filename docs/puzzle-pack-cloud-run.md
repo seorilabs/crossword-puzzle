@@ -114,11 +114,11 @@ Cloud Run Job은 다음 환경 변수를 사용한다.
 | `PUZZLE_OUT_DIR`                 |         `public/puzzles` | 생성 결과 출력 폴더                                                                                                       |
 | `PUZZLE_HOSTING_BASE_URL`        | `https://<site>.web.app` | 앱/운영자가 참조할 base URL                                                                                               |
 | `PUZZLE_APPEND`                  |                   `true` | 기존 manifest를 불러와 새 퍼즐을 append할지 여부                                                                          |
-| `PUZZLE_KEEP`                    |                     `21` | manifest에 유지할 최근 퍼즐 수. 일간 3판 기준 7일치                                                                       |
+| `PUZZLE_KEEP`                    |                     `14` | manifest에 유지할 최근 퍼즐 수. 일간 2판 기준 7일치                                                                       |
 | `PUZZLE_INTERVAL_HOURS`          |                      `1` | Easy/Normal/Hard의 내부 `slotId`를 h00/h01/h02로 분리하는 간격                                                            |
-| `PUZZLE_DIFFICULTY`              |                     비움 | 지정하면 모든 슬롯을 해당 난이도(`easy`/`normal`/`hard`)로 고정                                                           |
-| `PUZZLE_DAILY_TIERS`             |                   `true` | 고정 난이도가 없을 때 매일 Easy 5×5, Normal 8×8, Hard 8×8을 한 판씩 생성                                                  |
-| `PUZZLE_DIFFICULTY_ROTATION`     |                  `false` | `PUZZLE_DAILY_TIERS=false`인 레거시 다회 실행에서만 `normal/easy/normal/hard` 순환                                        |
+| `PUZZLE_DIFFICULTY`              |                     비움 | 지정하면 모든 슬롯을 해당 난이도(`easy`/`hard`)로 고정                                                           |
+| `PUZZLE_DAILY_TIERS`             |                   `true` | 고정 난이도가 없을 때 매일 Easy 5×5, Hard 8×8을 한 판씩 생성                                                  |
+| `PUZZLE_DIFFICULTY_ROTATION`     |                  `false` | `PUZZLE_DAILY_TIERS=false`인 레거시 다회 실행에서만 `easy/hard` 순환                                        |
 | `PUZZLE_DIVERSITY_HISTORY`       |                      `7` | 같은 난이도에서 다양성을 비교할 최근 퍼즐 수                                                                              |
 | `PUZZLE_MAX_ANSWER_REUSE`        |                    `0.5` | 최근 동일 난이도 한 판과 겹쳐도 되는 후보 정답 비율 상한                                                                  |
 | `PUZZLE_MAX_SCAFFOLD_SIMILARITY` |                   `0.75` | 최근 동일 난이도 한 판과 겹쳐도 되는 채운 칸 골격 Jaccard 유사도 상한                                                     |
@@ -129,11 +129,11 @@ Cloud Run Job은 다음 환경 변수를 사용한다.
 
 ## Append manifest
 
-매일 00:05 KST에 한 번 실행해 같은 날짜의 Easy, Normal, Hard 세 판을 만든다. Job은 새 퍼즐을 기존 manifest에 append하고, `PUZZLE_KEEP` 개수만 남긴다.
+매일 00:05 KST에 한 번 실행해 같은 날짜의 Easy, Hard 두 판을 만든다. Job은 새 퍼즐을 기존 manifest에 append하고, `PUZZLE_KEEP` 개수만 남긴다.
 
 - 기본 스케줄은 `5 0 * * *`이다.
-- 기본 유지 개수는 `21`개다. 일간 3판 기준 최근 7일치다.
-- 기본 일간 구성은 easy 5×5, normal 8×8, hard 8×8 각 1개다.
+- 기본 유지 개수는 `14`개다. 일간 2판 기준 최근 7일치다.
+- 기본 일간 구성은 easy 5×5, hard 8×8 각 1개다. 난이도는 어휘가 아니라 보드 크기와 배치 단어 수(easy 9~10단어 · hard 18~22단어)로 가른다.
 - 각 생성물은 `packId`, `puzzleId`, `slotId`, `publishedAt`를 가진다.
 - `puzzleId`는 로컬 진행 상태 key로 쓰이므로 같은 날짜에 여러 퍼즐이 있어도 진행 상태가 섞이지 않는다.
 - `PUZZLE_SEED`를 고정하지 않으면 기본 seed가 실행 시각을 포함해 날짜마다 바뀐다.
@@ -181,7 +181,7 @@ Firebase Hosting을 AIT 앱 origin과 다른 도메인에서 읽기 때문에 CO
 - 오늘 날짜에 Easy, Normal, Hard가 정확히 한 판씩 있는지 확인한다.
 - Easy는 5×5, Normal과 Hard는 8×8인지 확인한다.
 - manifest와 puzzle metadata, 격자 slot과 entry를 다시 검증한다.
-- 당일 세 난이도 정답 교집합이 0개인지 확인한다.
+- 당일 두 난이도 정답 교집합이 0개인지 확인한다.
 - 실패하면 stderr와 non-zero exit를 남겨 Cloud Run Job을 실패 처리한다.
 
 로컬 또는 운영 공개본을 직접 확인할 수 있다.

@@ -9,8 +9,10 @@ import {
 import type { Puzzle } from "./types.ts";
 
 // AIT WebView와 Android/iOS React Native가 같은 한글 난이도 라벨을 노출한다.
+// 난이도는 쉬움/어려움 두 단계지만, 2단계 전환 전에 발행된 퍼즐이 기기에 남아
+// 있을 수 있으므로 레거시 "normal" 도 계속 라벨링한다.
 export function formatDifficultyLabel(
-  difficulty?: Puzzle["difficulty"],
+  difficulty?: Puzzle["difficulty"] | "normal",
 ): string {
   if (difficulty === "easy") return "쉬움";
   if (difficulty === "normal") return "보통";
