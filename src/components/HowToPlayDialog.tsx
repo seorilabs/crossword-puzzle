@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import type { HowToPlayOutcome } from "../../packages/crossword-core/src";
+
 // 첫 실행 사용법 안내(#234). 기존 정적 텍스트 목록 대신, 온보딩 퍼즐의 좌상단
 // 코너(가로 "토끼" · 세로 "토마토"가 "토"를 공유)를 소형 예시 격자로 재사용해
 // (1) 칸 탭으로 단어 선택, (2) 재탭으로 방향 전환, (3) 글자 입력을 스텝형으로
@@ -44,7 +46,7 @@ type DemoStep = {
 const ACROSS_KEYS = new Set([cellKey(0, 0), cellKey(0, 1)]);
 const DOWN_KEYS = new Set([cellKey(0, 0), cellKey(1, 0), cellKey(2, 0)]);
 
-const STEPS: DemoStep[] = [
+const HOW_TO_PLAY_STEPS: DemoStep[] = [
   {
     title: "칸을 탭해 단어를 선택해요",
     description:
@@ -74,30 +76,58 @@ const STEPS: DemoStep[] = [
   },
 ];
 
-export function HowToPlayDialog({ onClose }: { onClose: () => void }) {
+export type HowToPlayCloseContext = {
+  outcome: HowToPlayOutcome;
+  stepIndex: number;
+  stepCount: number;
+};
+
+export function HowToPlayDialog({
+  onClose,
+  onShown,
+}: {
+  onClose: (context: HowToPlayCloseContext) => void;
+  // 노출 시점을 상위에 알린다. 단계 수를 상수로 내보내면 Fast Refresh 가 깨지고,
+  // 마운트 시점과 계측 시점이 어긋날 수 있어 콜백으로 전달한다.
+  onShown?: (stepCount: number) => void;
+}) {
   const [stepIndex, setStepIndex] = useState(0);
   const dialogRef = useRef<HTMLElement>(null);
   const primaryButtonRef = useRef<HTMLButtonElement>(null);
 
-  const step = STEPS[stepIndex];
-  const isLastStep = stepIndex === STEPS.length - 1;
+  const step = HOW_TO_PLAY_STEPS[stepIndex];
+  const isLastStep = stepIndex === HOW_TO_PLAY_STEPS.length - 1;
 
   const goNext = useCallback(() => {
     setStepIndex((prev) => {
-      if (prev >= STEPS.length - 1) {
+      if (prev >= HOW_TO_PLAY_STEPS.length - 1) {
         return prev;
       }
       return prev + 1;
     });
   }, []);
 
+  // 어디까지 보고 떠났는지가 이탈 지점 분석의 핵심이라, 닫기 사유와 단계를 함께 넘긴다.
+  const close = useCallback(
+    (outcome: HowToPlayOutcome) => {
+      onClose({ outcome, stepIndex, stepCount: HOW_TO_PLAY_STEPS.length });
+    },
+    [onClose, stepIndex],
+  );
+
   const handlePrimary = useCallback(() => {
     if (isLastStep) {
-      onClose();
+      close("complete");
       return;
     }
     goNext();
-  }, [goNext, isLastStep, onClose]);
+  }, [close, goNext, isLastStep]);
+
+  useEffect(() => {
+    onShown?.(HOW_TO_PLAY_STEPS.length);
+    // 마운트 1회만 알린다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 스텝이 바뀔 때마다 주 액션 버튼으로 포커스를 이동해, 키보드/스크린리더
   // 사용자가 진행 상태를 따라갈 수 있게 한다.
@@ -111,7 +141,7 @@ export function HowToPlayDialog({ onClose }: { onClose: () => void }) {
     (event: React.KeyboardEvent<HTMLElement>) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        onClose();
+        close("dismiss");
         return;
       }
       if (event.key !== "Tab") {
@@ -140,7 +170,7 @@ export function HowToPlayDialog({ onClose }: { onClose: () => void }) {
         first.focus();
       }
     },
-    [onClose],
+    [close],
   );
 
   return (
@@ -215,9 +245,9 @@ export function HowToPlayDialog({ onClose }: { onClose: () => void }) {
         <div
           className="howToPlayDots"
           role="group"
-          aria-label={`전체 ${STEPS.length}단계 중 ${stepIndex + 1}단계`}
+          aria-label={`전체 ${HOW_TO_PLAY_STEPS.length}단계 중 ${stepIndex + 1}단계`}
         >
-          {STEPS.map((_, index) => (
+          {HOW_TO_PLAY_STEPS.map((_, index) => (
             <span
               key={index}
               className={[
@@ -232,7 +262,11 @@ export function HowToPlayDialog({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="rewardDialogActions howToPlayActions">
-          <button className="ghostButton" type="button" onClick={onClose}>
+          <button
+            className="ghostButton"
+            type="button"
+            onClick={() => close("dismiss")}
+          >
             건너뛰기
           </button>
           <button

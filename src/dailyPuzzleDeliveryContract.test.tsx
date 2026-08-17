@@ -103,6 +103,19 @@ describe("일간 퍼즐 전달 계약", () => {
     expect(generatorSource).not.toContain("selectWordsForManualClueCoverage(");
   });
 
+  it("AC-12: 플레이 방법 안내의 노출·이탈 단계를 Web/Mobile 모두 계측한다", () => {
+    // 무입력 이탈(93명·중앙 7초)이 이 구간에 몰려 있어, 안내를 어디까지 보고
+    // 떠났는지를 두 마켓이 같은 이벤트·파라미터로 보내야 한다.
+    for (const source of [webSource, mobileSource]) {
+      expect(source).toContain("HOW_TO_PLAY_SHOWN_EVENT");
+      expect(source).toContain("getHowToPlayOutcomeEvent(");
+      expect(source).toContain("buildHowToPlayParams({");
+    }
+    // 완료와 중도 이탈이 구분되어야 이탈 지점 분석이 성립한다.
+    expect(webSource).toContain("type HowToPlayCloseContext");
+    expect(mobileSource).toContain("dismissHowToPlay('complete')");
+  });
+
   it("AC-11: 모든 난이도가 어휘 제한 없이 같은 워드뱅크를 후보로 쓴다", () => {
     // 난이도는 보드 크기와 배치 단어 수로만 가른다. 어휘 등급으로 후보를 나누던
     // 경로(selectWordsForProfile/filterWordsByDifficulty)가 남아 있으면 안 된다.
