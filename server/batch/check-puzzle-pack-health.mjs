@@ -1,4 +1,5 @@
 import { evaluatePublishedPuzzlePackHealth } from "../../packages/crossword-core/src/puzzlePackHealth.ts";
+import { DIFFICULTY_ORDER } from "../../packages/crossword-core/src/difficultyProfiles.ts";
 import { validatePuzzle } from "../../scripts/validate-puzzle-pack.mjs";
 
 const DEFAULT_BASE_URL = "https://crossword-puzzle-79ae0.web.app";
@@ -107,9 +108,13 @@ async function run() {
     );
   }
 
-  console.log(
-    `[puzzle-pack-health] PASS date=${expectedDate} easy=${health.puzzleIds.easy} normal=${health.puzzleIds.normal} hard=${health.puzzleIds.hard}`,
-  );
+  // 난이도 티어 구성을 하드코딩하면 티어가 바뀔 때 로그에 normal=undefined 같은
+  // 잔재가 남는다. 검사와 같은 출처(DIFFICULTY_ORDER)를 쓴다.
+  const summary = DIFFICULTY_ORDER.map(
+    (difficulty) => `${difficulty}=${health.puzzleIds[difficulty]}`,
+  ).join(" ");
+
+  console.log(`[puzzle-pack-health] PASS date=${expectedDate} ${summary}`);
 }
 
 run().catch((error) => {

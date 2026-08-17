@@ -179,7 +179,7 @@ Firebase Hosting을 AIT 앱 origin과 다른 도메인에서 읽기 때문에 CO
 `crossword-puzzle-pack-health` Job을 실행한다.
 
 - 오늘 날짜에 Easy, Hard가 정확히 한 판씩 있는지 확인한다.
-- Easy는 5×5, Normal과 Hard는 8×8인지 확인한다.
+- Easy는 5×5, Hard는 8×8인지 확인한다.
 - manifest와 puzzle metadata, 격자 slot과 entry를 다시 검증한다.
 - 당일 두 난이도 정답 교집합이 0개인지 확인한다.
 - 실패하면 stderr와 non-zero exit를 남겨 Cloud Run Job을 실패 처리한다.
@@ -205,3 +205,23 @@ scripts/setup-puzzle-pack-monitoring.sh \
 알림 대상은 generator와 health Job의 `severity>=ERROR` 로그다. health Job이
 오늘 퍼즐 누락, 난이도 누락, 중복 정답, 공개 JSON 구조 오류를 같은 경로로
 오류 로그에 기록하므로 하나의 정책으로 생성 장애와 발행 결과 장애를 감시한다.
+
+### 두 Job은 같은 이미지를 쓴다
+
+`crossword-puzzle-pack-generator` 와 `crossword-puzzle-pack-health` 는 같은
+`puzzle-pack-job` 이미지를 공유한다. **generator 이미지를 바꾸면 health 도 같이
+갱신해야 한다.** 한쪽만 올리면 health 가 옛 코드로 검사해 실패한다. 실제로
+난이도를 2단계로 줄인 배포에서 generator 만 갱신해 health 가 `missing_difficulty:
+normal puzzle is missing` 으로 실패했다.
+
+`setup-puzzle-pack-monitoring.sh` 는 `--image` 를 생략하면 generator 의 현재
+이미지를 그대로 따라가므로, 이미지 교체 후 이 스크립트를 다시 돌리는 것이 가장
+안전하다. 두 Job 만 빠르게 맞추려면 아래처럼 같은 태그를 지정한다.
+
+```bash
+IMAGE=asia-northeast3-docker.pkg.dev/crossword-puzzle-79ae0/crossword-puzzle/puzzle-pack-job:<commit>
+for job in crossword-puzzle-pack-generator crossword-puzzle-pack-health; do
+  gcloud run jobs update "$job" \
+    --project crossword-puzzle-79ae0 --region asia-northeast3 --image "$IMAGE"
+done
+```
