@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 import { evaluatePublishedPuzzlePackHealth } from "./puzzlePackHealth.ts";
@@ -194,5 +195,38 @@ describe("evaluatePublishedPuzzlePackHealth", () => {
         (issue) => issue.code === "manifest_threshold_mismatch",
       ),
     );
+  });
+});
+
+// 운영 장애 회귀 가드(2026-08-18). 난이도를 2단계로 줄인 배포에서 generator 이미지만
+// 갱신하고 health Job 을 두는 바람에 health 가 옛 코드로 검사해 실패했다. 고친 뒤에도
+// PASS 로그에 easy/normal/hard 가 하드코딩돼 있어 normal=undefined 가 찍혔다.
+describe("health 검사 운영 계약", () => {
+  const healthSource = readFileSync(
+    new URL("../../../server/batch/check-puzzle-pack-health.mjs", import.meta.url),
+    "utf8",
+  );
+  const runbook = readFileSync(
+    new URL("../../../docs/puzzle-pack-cloud-run.md", import.meta.url),
+    "utf8",
+  );
+
+  it("PASS 로그가 티어 구성을 하드코딩하지 않는다", () => {
+    // 티어가 바뀌면 로그도 따라가야 한다. 출처는 DIFFICULTY_ORDER 하나여야 한다.
+    assert.match(healthSource, /DIFFICULTY_ORDER/);
+    assert.equal(
+      /easy=\$\{|normal=\$\{|hard=\$\{/.test(healthSource),
+      false,
+      "PASS 로그에 티어 이름을 직접 박아 두면 티어 변경 때 잔재가 남는다",
+    );
+  });
+
+  it("폐지된 normal 을 로그·검사에서 참조하지 않는다", () => {
+    assert.equal(healthSource.includes("puzzleIds.normal"), false);
+  });
+
+  it("두 Job 이 같은 이미지를 쓴다는 배포 주의가 런북에 있다", () => {
+    assert.match(runbook, /두 Job은 같은 이미지를 쓴다/);
+    assert.match(runbook, /crossword-puzzle-pack-health/);
   });
 });
