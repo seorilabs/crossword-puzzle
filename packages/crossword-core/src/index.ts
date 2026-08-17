@@ -8,6 +8,7 @@ export * from "./difficultyProfiles";
 export * from "./difficultyRotation";
 export * from "./feedbackPolicy";
 export * from "./gameAnalytics";
+export * from "./howToPlayInstrumentation";
 export * from "./launchConfig";
 export * from "./leaderboard";
 export * from "./mission";

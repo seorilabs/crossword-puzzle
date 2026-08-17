@@ -99,6 +99,10 @@ import {
   type LaunchConfig,
   type NextPuzzleCtaSource,
   type RewardedAdRetryAttempt,
+  HOW_TO_PLAY_SHOWN_EVENT,
+  buildHowToPlayParams,
+  getHowToPlayOutcomeEvent,
+  type HowToPlayOutcome,
 } from '../../packages/crossword-core/src';
 
 import {
@@ -942,6 +946,9 @@ function AppContent() {
   const [isClueListOpen, setIsClueListOpen] = useState(false);
   const [hasSeenHowToPlay, setHasSeenHowToPlay] = useState(true);
   const howToPlayDismissedRef = useRef(false);
+  // 플레이 방법 안내: 노출 1회 보장과 체류 시간 측정용.
+  const howToPlayShownRef = useRef(false);
+  const howToPlayShownAtRef = useRef<number | null>(null);
 
   const persistDailyHintWallet = useCallback((wallet: DailyHintWallet) => {
     setDailyHintWallet(wallet);
@@ -1660,7 +1667,30 @@ function AppContent() {
     };
   }, []);
 
-  function dismissHowToPlay() {
+  // 안내를 어떻게 떠났는지 남긴다. RN 은 단일 화면 안내라 stepCount 는 1이다.
+  useEffect(() => {
+    if (route !== 'today' || hasSeenHowToPlay || howToPlayShownRef.current) {
+      return;
+    }
+    howToPlayShownRef.current = true;
+    howToPlayShownAtRef.current = Date.now();
+    telemetry.impression(HOW_TO_PLAY_SHOWN_EVENT, {
+      ...getPuzzleTelemetryParams(puzzle, selectedPuzzleSummary),
+      ...buildHowToPlayParams({ stepIndex: 0, stepCount: 1 }),
+    });
+  }, [hasSeenHowToPlay, puzzle, route, selectedPuzzleSummary]);
+
+  function dismissHowToPlay(outcome: HowToPlayOutcome = 'dismiss') {
+    const shownAt = howToPlayShownAtRef.current;
+    telemetry.click(getHowToPlayOutcomeEvent(outcome), {
+      ...getPuzzleTelemetryParams(puzzle, selectedPuzzleSummary),
+      ...buildHowToPlayParams({
+        stepIndex: 0,
+        stepCount: 1,
+        elapsedSeconds:
+          shownAt == null ? undefined : (Date.now() - shownAt) / 1000,
+      }),
+    });
     howToPlayDismissedRef.current = true;
     setHasSeenHowToPlay(true);
     // Fire-and-forget: write failure means session-only dismissal; modal may reappear on next launch.
@@ -3143,7 +3173,7 @@ function AppContent() {
     return (
       <Modal
         animationType="fade"
-        onRequestClose={dismissHowToPlay}
+        onRequestClose={() => dismissHowToPlay('dismiss')}
         transparent
         visible={route === 'today' && !hasSeenHowToPlay}
       >
@@ -3173,7 +3203,7 @@ function AppContent() {
             </View>
             <View style={styles.completionDialogActions}>
               <Pressable
-                onPress={dismissHowToPlay}
+                onPress={() => dismissHowToPlay('complete')}
                 style={[styles.primaryButton, { flex: 1 }]}
               >
                 <Text style={styles.primaryButtonText}>

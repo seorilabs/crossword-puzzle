@@ -127,13 +127,19 @@ import {
   type RewardedAdRetryAttempt,
   type SavedProgress,
   type TextScale,
+  HOW_TO_PLAY_SHOWN_EVENT,
+  buildHowToPlayParams,
+  getHowToPlayOutcomeEvent,
 } from "../packages/crossword-core/src";
 import { useStuckHintPrompt } from "./useStuckHintPrompt";
 import { MiniPuzzlePreview } from "./components/MiniPuzzlePreview";
 import { PersonalStatsCard } from "./components/PersonalStatsCard";
 import { StreakHeatmap } from "./components/StreakHeatmap";
 import { PuzzleBoard } from "./components/PuzzleBoard";
-import { HowToPlayDialog } from "./components/HowToPlayDialog";
+import {
+  HowToPlayDialog,
+  type HowToPlayCloseContext,
+} from "./components/HowToPlayDialog";
 import { SettingsSheet } from "./components/SettingsSheet";
 import { CompletionCelebrationDialog } from "./components/CompletionCelebrationDialog";
 import { MissionHistoryCard } from "./components/MissionHistoryCard";
@@ -704,6 +710,9 @@ function App() {
   );
   const firstAnswerInputKeysRef = useRef<Set<string>>(new Set());
   const firstInputGuideShownRef = useRef(false);
+  // 플레이 방법 안내: 노출 1회 보장과 체류 시간 측정용.
+  const howToPlayShownRef = useRef(false);
+  const howToPlayShownAtRef = useRef<number | null>(null);
   // 진행 마일스톤(부분 완료) 추적: 동일 퍼즐·시도 안에서 새로 넘어선 마일스톤만
   // 보상 피드백·이벤트로 노출하고, 이어풀기(resume)·재시작 시 이미 도달한 구간은
   // 다시 emit하지 않도록 baseline을 초기화한다.
@@ -2409,7 +2418,30 @@ function App() {
     markFirstInputGuideSeen();
   }
 
-  function dismissHowToPlay() {
+  // 플레이 방법 안내 노출(최초 1회). 무입력 이탈이 이 구간에 몰려 있어 노출·이탈
+  // 단계를 함께 남긴다.
+  function handleHowToPlayShown(stepCount: number) {
+    if (howToPlayShownRef.current) {
+      return;
+    }
+    howToPlayShownRef.current = true;
+    howToPlayShownAtRef.current = Date.now();
+    telemetry.impression(HOW_TO_PLAY_SHOWN_EVENT, {
+      ...puzzleTelemetryParams,
+      ...buildHowToPlayParams({ stepIndex: 0, stepCount }),
+    });
+  }
+
+  function dismissHowToPlay(context: HowToPlayCloseContext) {
+    const shownAt = howToPlayShownAtRef.current;
+    telemetry.click(getHowToPlayOutcomeEvent(context.outcome), {
+      ...puzzleTelemetryParams,
+      ...buildHowToPlayParams({
+        stepIndex: context.stepIndex,
+        stepCount: context.stepCount,
+        elapsedSeconds: shownAt == null ? undefined : (Date.now() - shownAt) / 1000,
+      }),
+    });
     persistHowToPlaySeen();
     setHasSeenHowToPlay(true);
   }
@@ -3046,7 +3078,10 @@ function App() {
         </div>
       ) : null}
       {route === "today" && !hasSeenHowToPlay ? (
-        <HowToPlayDialog onClose={dismissHowToPlay} />
+        <HowToPlayDialog
+          onClose={dismissHowToPlay}
+          onShown={handleHowToPlayShown}
+        />
       ) : null}
     </main>
   );
