@@ -111,6 +111,10 @@ describe("일간 퍼즐 전달 계약", () => {
       expect(source).toContain("getHowToPlayOutcomeEvent(");
       expect(source).toContain("buildHowToPlayParams({");
     }
+    // 노출은 최초 1회만 남아야 재노출/리렌더로 지표가 부풀지 않는다.
+    for (const source of [webSource, mobileSource]) {
+      expect(source).toContain("howToPlayShownRef.current");
+    }
     // 완료와 중도 이탈이 구분되어야 이탈 지점 분석이 성립한다.
     expect(webSource).toContain("type HowToPlayCloseContext");
     expect(mobileSource).toContain("dismissHowToPlay('complete')");
