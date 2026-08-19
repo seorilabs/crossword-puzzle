@@ -4,6 +4,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import config from "../granite.config.ts";
+import { ensurePlatformAuth } from "./adapters/platformAuth.ts";
 import App from "./App.tsx";
 import { AppErrorBoundary } from "./components/AppErrorBoundary.tsx";
 import "./index.css";
@@ -15,6 +16,10 @@ const localUserAgent = {
   isAndroid: false,
   isIOS: false,
 } as const;
+
+// platform 인증(ADR 0013). 게임 진행을 막지 않는 부가 기능이므로 렌더를 기다리게 하지
+// 않고 배경에서 시작한다. 실패는 어댑터가 계측만 하고 흡수한다.
+void ensurePlatformAuth();
 
 const isTossApp =
   typeof window !== "undefined" &&

@@ -19,6 +19,7 @@ type AnalyticsParams = Record<string, string | number | boolean>;
 const firebaseAppName = "crossword-puzzle";
 const remoteConfigFetchIntervalMs = 6 * 60 * 60 * 1000;
 
+let firebaseAppPromise: Promise<FirebaseApp | null> | null = null;
 let firebaseRuntimePromise: Promise<FirebaseRuntime | null> | null = null;
 
 function getOptionalEnvValue(value?: string) {
@@ -97,6 +98,33 @@ async function createRemoteConfig(app: FirebaseApp) {
   }
 }
 
+/**
+ * 이 빌드의 Firebase app. 설정 env가 없으면 null이다(로컬 브라우저·QR 샌드박스).
+ *
+ * analytics/remote-config 런타임과 platform 인증 어댑터가 같은 인스턴스를 공유해야
+ * 하므로 app 생성만 따로 memoize한다.
+ */
+export async function getFirebaseApp(): Promise<FirebaseApp | null> {
+  if (firebaseAppPromise != null) {
+    return firebaseAppPromise;
+  }
+
+  firebaseAppPromise = (async () => {
+    const options = getFirebaseOptions();
+    if (options == null) {
+      return null;
+    }
+
+    try {
+      return await getOrCreateFirebaseApp(options);
+    } catch {
+      return null;
+    }
+  })();
+
+  return firebaseAppPromise;
+}
+
 async function getFirebaseRuntime() {
   if (firebaseRuntimePromise != null) {
     return firebaseRuntimePromise;
@@ -104,12 +132,12 @@ async function getFirebaseRuntime() {
 
   firebaseRuntimePromise = (async () => {
     const options = getFirebaseOptions();
-    if (options == null) {
+    const app = await getFirebaseApp();
+    if (options == null || app == null) {
       return null;
     }
 
     try {
-      const app = await getOrCreateFirebaseApp(options);
       const [analytics, remoteConfig] = await Promise.all([
         createAnalytics(app, options),
         createRemoteConfig(app),
