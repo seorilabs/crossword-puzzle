@@ -25,6 +25,18 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
   },
 }));
 
+jest.mock('@react-native-firebase/auth', () => ({
+  __esModule: true,
+  default: jest.fn(() => ({
+    // 기본값은 "복원 결과 미로그인". 개별 테스트가 필요하면 덮어쓴다.
+    onAuthStateChanged: jest.fn(listener => {
+      listener(null);
+      return jest.fn();
+    }),
+    signInWithCustomToken: jest.fn(() => Promise.resolve()),
+  })),
+}));
+
 jest.mock('@react-native-firebase/analytics', () => ({
   __esModule: true,
   default: jest.fn(() => ({

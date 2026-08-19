@@ -13,6 +13,7 @@ export * from "./launchConfig";
 export * from "./leaderboard";
 export * from "./mission";
 export * from "./personalStats";
+export * from "./platformAuth";
 export * from "./platformContracts";
 export * from "./puzzle";
 export * from "./puzzleDiversity";
