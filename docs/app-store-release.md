@@ -2,7 +2,11 @@
 
 ## 현재 상태
 
-`crossword-puzzle`의 App Store 릴리스는 GitHub Actions 기반 TestFlight 업로드 체계와 로컬 build/archive/upload 체계를 함께 둔다. Apple signing secrets, App Store Connect API key, App Store Connect app shell/profile 준비 후 `.github/workflows/deploy-app-store.yml`에서 `v0.1.5` / build `1005` 업로드까지 성공했다. GitHub Actions minutes가 소진된 경우에는 아래 로컬 명령을 사용한다.
+`crossword-puzzle`의 iOS archive와 App Store Connect 업로드는 **Xcode Cloud**가 담당한다. `.github/workflows/deploy-app-store.yml`은 릴리즈 태그를 대상으로 Xcode Cloud 빌드를 트리거하고 완료를 기다리는 진입점이고, 서명은 Xcode Cloud 매니지드 서명이 처리한다.
+
+GitHub Actions macOS runner에서 archive하던 방식은 걷어냈다. Xcode 26.5부터 Firebase가 정적 라이브러리 지원을 끝내 `use_frameworks!` + RNFB 혼합 링키지가 필요해졌고, macOS Action minutes도 유한하기 때문이다.
+
+아래 로컬 build/archive/upload 체계는 Xcode Cloud를 쓸 수 없을 때의 대체 경로로 남겨 둔다.
 
 ## 1. 로컬 점검
 
@@ -121,37 +125,48 @@ xcodebuild \
   archive
 ```
 
-## 6. GitHub Actions TestFlight 업로드
+## 6. Xcode Cloud 업로드
 
 Workflow:
 
 ```text
-.github/workflows/deploy-app-store.yml
+.github/workflows/deploy-app-store.yml   # Xcode Cloud 빌드 트리거(ARC runner)
+scripts/trigger-xcode-cloud-build.mjs    # ASC API: 제품·workflow·태그 ref 해석 후 ciBuildRuns
+apps/mobile/ios/ci_scripts/              # Xcode Cloud 안에서 도는 빌드 준비·검증
 ```
 
 Trigger:
 
 - 수동 실행 `workflow_dispatch` + `release_tag=vX.Y.Z` (비우면 최신 태그 사용)
 - `Deploy All` 묶음 workflow에서 `workflow_call`로 호출
+- Backoffice `/releases` 또는 Discord 배포 명령 (같은 ASC 경로를 직접 호출한다)
+
+`ci_scripts` 역할:
+
+| 훅 | 하는 일 |
+| --- | --- |
+| `ci_post_clone.sh` | Node/CocoaPods 설치, `npm ci`(root + apps/mobile), `GoogleService-Info.plist` 복원, `pod install` |
+| `ci_pre_xcodebuild.sh` | `CI_TAG` → marketing/build 버전 산출 후 `agvtool` 반영 |
+| `ci_post_xcodebuild.sh` | 아카이브 `Info.plist` 검증 — 버전, Game Center 리더보드 ID, AdMob app ID, SKAdNetwork ID |
 
 릴리스 버전:
 
 - `MARKETING_VERSION`: `vX.Y.Z`에서 `X.Y.Z`
 - `CURRENT_PROJECT_VERSION`: `major * 1000000 + minor * 1000 + patch`
 
-필수 GitHub Secrets/Variables:
+필수 GitHub Secrets/Variables (`app-store` environment):
 
-| 이름                                            | 용도                                                     |
-| ----------------------------------------------- | -------------------------------------------------------- |
-| `APPLE_TEAM_ID`                                 | Team ID. secret 또는 repository variable                 |
-| `APPLE_DISTRIBUTION_CERTIFICATE_BASE64`         | Apple Distribution `.p12` base64                         |
-| `APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD`       | `.p12` 비밀번호                                          |
-| `APPLE_PROVISIONING_PROFILE_BASE64`             | App Store provisioning profile `.mobileprovision` base64 |
-| `APPLE_KEYCHAIN_PASSWORD`                       | CI 임시 keychain 비밀번호                                |
-| `APP_STORE_CONNECT_API_KEY_ID`                  | App Store Connect API key ID                             |
-| `APP_STORE_CONNECT_ISSUER_ID`                   | App Store Connect issuer ID                              |
-| `APP_STORE_CONNECT_PRIVATE_KEY_BASE64`          | `AuthKey_*.p8` base64                                    |
-| `FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64` | `GoogleService-Info.plist` base64                        |
+| 이름                                   | 용도                                              |
+| -------------------------------------- | ------------------------------------------------- |
+| `APP_STORE_CONNECT_API_KEY_ID`         | App Store Connect API key ID                      |
+| `APP_STORE_CONNECT_ISSUER_ID`          | App Store Connect issuer ID                       |
+| `APP_STORE_CONNECT_PRIVATE_KEY_BASE64` | `AuthKey_*.p8` base64. ASC JWT 서명에 쓴다        |
+
+Apple 배포 인증서와 프로비저닝 프로파일 시크릿(`APPLE_DISTRIBUTION_CERTIFICATE_*`, `APPLE_PROVISIONING_PROFILE_BASE64`, `APPLE_KEYCHAIN_PASSWORD`)은 **이 경로에 필요 없다.** Xcode Cloud 매니지드 서명이 처리한다. 아래 로컬 대체 경로(`app-store:build:local`)는 계속 이 값들을 쓰므로 시크릿 자체는 남겨 둔다.
+
+`FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64`는 Xcode Cloud 환경변수로 설정하면 `ci_post_clone.sh`가 복원하고, 없으면 저장소에 커밋된 `GoogleService-Info.plist`를 쓴다.
+
+workflow 성공은 **업로드 경로가 끝까지 돈 증거**다. TestFlight 처리 상태와 심사 상태는 App Store Connect에서 따로 확인한다.
 
 2026-06-07 확인 기준, `seorilabs/crossword-puzzle` GitHub repo에는 `app-store` environment가 생성되어 있고 TestFlight 업로드에 필요한 Apple signing/App Store Connect environment secrets와 `APPLE_TEAM_ID=HCDUXX4Z3X` variable이 등록되어 있다. `v0.1.5` / build `1005`는 GitHub Actions run `27087313726`, job `79945275484`에서 App Store Connect 업로드까지 성공했다.
 

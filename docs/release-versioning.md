@@ -93,10 +93,19 @@ gh workflow run deploy-google-play.yml \
 
 ## App Store
 
-`Deploy App Store` workflow는 `release_tag`(비우면 최신 태그)를 checkout해 iOS archive를 만들고, `upload_to_testflight=true`이면 App Store Connect/TestFlight에 업로드한다.
+iOS archive와 App Store Connect 업로드는 **Xcode Cloud**가 한다. `Deploy App Store` workflow는 `release_tag`(비우면 최신 태그)를 대상으로 Xcode Cloud 빌드를 트리거하고 완료까지 기다리는 얇은 진입점이다. 서명은 Xcode Cloud 매니지드 서명이 처리하므로 인증서·프로비저닝 프로파일 시크릿이 이 경로에 필요 없다.
 
 ```bash
 gh workflow run deploy-app-store.yml \
-  -f release_tag=v0.1.1 \
-  -f upload_to_testflight=true
+  -f release_tag=v0.1.1
 ```
+
+빌드 준비와 검증은 저장소의 `apps/mobile/ios/ci_scripts/`가 Xcode Cloud 안에서 수행한다.
+
+| 훅 | 하는 일 |
+|---|---|
+| `ci_post_clone.sh` | Node/CocoaPods 설치, `npm ci`, `GoogleService-Info.plist` 복원, `pod install` |
+| `ci_pre_xcodebuild.sh` | 태그(`CI_TAG`) → marketing/build 버전 산출 후 `agvtool` 반영 |
+| `ci_post_xcodebuild.sh` | 아카이브 Info.plist 검증(버전, Game Center, AdMob app ID, SKAdNetwork) |
+
+workflow 성공은 **업로드 경로가 끝까지 돈 증거**다. TestFlight 처리와 심사 상태는 App Store Connect에서 따로 확인한다.
