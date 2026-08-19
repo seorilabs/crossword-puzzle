@@ -60,7 +60,7 @@ type LeaderboardAdapter = {
 | Android    | Play Console의 Play Games Services 프로젝트와 리더보드 생성·앱 연결    | `PLAY_GAMES_PROJECT_ID`, `PLAY_GAMES_LEADERBOARD_ID` |
 | iOS        | App Store Connect Game Center 리더보드 생성·Bundle ID 연결·entitlement | `GAME_CENTER_LEADERBOARD_ID`                         |
 
-- Android 설정값이 비어 있으면 native adapter는 `supported=false`로 보고 CTA와 점수 제출을 숨긴다. iOS는 App Store Connect에서 확정한 공개 ID `com.seorilabs.crosswordpuzzle.global_score`를 Xcode project 기본 build setting으로 유지하고, GitHub Actions의 `GAME_CENTER_LEADERBOARD_ID`가 같은 값으로 덮어쓰고 archive에서 일치 여부를 검증한다.
+- Android 설정값이 비어 있으면 native adapter는 `supported=false`로 보고 CTA와 점수 제출을 숨긴다. iOS는 App Store Connect에서 확정한 공개 ID `com.seorilabs.crosswordpuzzle.global_score`를 Xcode project 기본 build setting(`GAME_CENTER_LEADERBOARD_ID`)으로 유지한다. archive는 Xcode Cloud가 만들고, `apps/mobile/ios/ci_scripts/ci_post_xcodebuild.sh`가 산출물 `Info.plist`의 `GameCenterLeaderboardIdentifier`가 이 값과 같은지 업로드 전에 검증한다.
 - AppsInToss 게임 리더보드는 게임 카테고리 미니앱에서만 정상 동작하며, 미니앱 정보 승인 전에는 `LeaderBoard not found`가 날 수 있다.
 - Android는 앱 시작 시 프로젝트 ID가 있을 때만 `PlayGamesSdk.initialize`를 호출하고, 순위 기능을 요청한 시점에 인증을 확인한다.
 - iOS는 Game Center 인증과 시스템 순위 화면을 GameKit에 위임한다. Bundle ID capability, App Store Connect Game Center detail, 리더보드, entitlement가 함께 필요하다.

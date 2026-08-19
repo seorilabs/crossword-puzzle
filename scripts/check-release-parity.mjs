@@ -42,6 +42,10 @@ const deployAllWorkflowPath = ".github/workflows/deploy-all.yml";
 const deployGooglePlayWorkflowPath = ".github/workflows/deploy-google-play.yml";
 const deployAppStoreWorkflowPath = ".github/workflows/deploy-app-store.yml";
 const appStoreLocalBuildPath = "scripts/app-store-local-build.sh";
+const xcodeCloudPostClonePath = "apps/mobile/ios/ci_scripts/ci_post_clone.sh";
+const xcodeCloudPreBuildPath = "apps/mobile/ios/ci_scripts/ci_pre_xcodebuild.sh";
+const xcodeCloudPostBuildPath =
+  "apps/mobile/ios/ci_scripts/ci_post_xcodebuild.sh";
 const agentsPath = "AGENTS.md";
 const marketParityDocPath = "docs/market-parity.md";
 const playStoreConfigPath = "play-store/google-play.config.json";
@@ -273,6 +277,9 @@ const deployAllWorkflow = read(deployAllWorkflowPath);
 const deployGooglePlayWorkflow = read(deployGooglePlayWorkflowPath);
 const deployAppStoreWorkflow = read(deployAppStoreWorkflowPath);
 const appStoreLocalBuild = read(appStoreLocalBuildPath);
+const xcodeCloudPostClone = read(xcodeCloudPostClonePath);
+const xcodeCloudPreBuild = read(xcodeCloudPreBuildPath);
+const xcodeCloudPostBuild = read(xcodeCloudPostBuildPath);
 const agents = read(agentsPath);
 const marketParityDoc = read(marketParityDocPath);
 const playStoreConfig = read(playStoreConfigPath);
@@ -419,14 +426,14 @@ assertIncludes(
   appStoreLocalBuildPath,
 );
 assertIncludes(
-  deployAppStoreWorkflow,
+  xcodeCloudPostBuild,
   "GADApplicationIdentifier",
-  deployAppStoreWorkflowPath,
+  xcodeCloudPostBuildPath,
 );
 assertIncludes(
-  deployAppStoreWorkflow,
+  xcodeCloudPostBuild,
   "SKAdNetworkItems:0:SKAdNetworkIdentifier",
-  deployAppStoreWorkflowPath,
+  xcodeCloudPostBuildPath,
 );
 assertIncludes(mobileAds, "initializeMobileAds", mobileAdsPath);
 assertIncludes(mobileAds, "showRewardedAd", mobileAdsPath);
@@ -656,23 +663,57 @@ assertIncludes(
   deployGooglePlayWorkflowPath,
 );
 assertIncludes(
-  deployAppStoreWorkflow,
-  "node scripts/restore-mobile-firebase-config.mjs --ios --require",
-  deployAppStoreWorkflowPath,
+  xcodeCloudPostClone,
+  "GoogleService-Info.plist",
+  xcodeCloudPostClonePath,
 );
 assertIncludes(
-  deployAppStoreWorkflow,
+  xcodeCloudPostClone,
   "FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64",
+  xcodeCloudPostClonePath,
+);
+assertIncludes(
+  xcodeCloudPostBuild,
+  "GameCenterLeaderboardIdentifier",
+  xcodeCloudPostBuildPath,
+);
+assertIncludes(
+  xcodeCloudPostBuild,
+  "com.seorilabs.crosswordpuzzle.global_score",
+  xcodeCloudPostBuildPath,
+);
+// 태그 → 버전 반영은 Xcode Cloud pre-build가 하고, 실제 아카이브에 들어갔는지는
+// post-build가 확인한다. 둘 중 하나만 있으면 버전이 조용히 어긋난다.
+assertIncludes(
+  xcodeCloudPreBuild,
+  "scripts/resolve-release-version.mjs",
+  xcodeCloudPreBuildPath,
+);
+assertIncludes(
+  xcodeCloudPostBuild,
+  "CFBundleShortVersionString",
+  xcodeCloudPostBuildPath,
+);
+assertIncludes(
+  xcodeCloudPostBuild,
+  "CFBundleVersion",
+  xcodeCloudPostBuildPath,
+);
+// App Store archive는 Xcode Cloud가 담당한다. GitHub Actions 경로가 macOS runner로
+// 되돌아가면(회귀) 여기서 막는다.
+assertIncludes(
+  deployAppStoreWorkflow,
+  "scripts/trigger-xcode-cloud-build.mjs",
   deployAppStoreWorkflowPath,
 );
 assertIncludes(
   deployAppStoreWorkflow,
-  "GAME_CENTER_LEADERBOARD_ID repository variable is required.",
+  "runs-on: seorilabs-rpi-arm64",
   deployAppStoreWorkflowPath,
 );
-assertIncludes(
+assertNotIncludes(
   deployAppStoreWorkflow,
-  "App Store provisioning profile must include the Game Center entitlement.",
+  "macos-",
   deployAppStoreWorkflowPath,
 );
 for (const [path, content] of [

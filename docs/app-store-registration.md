@@ -22,9 +22,10 @@ flowchart TD
   Assets["app-store assets/screenshots"] --> Listing["App Store Connect listing"]
   Checker --> Console["Manual App Store Connect gates"]
   Archive --> Upload["TestFlight/App Store upload"]
-  Workflow[".github/workflows/deploy-app-store.yml"] --> Archive
-  Workflow --> Upload
-  LocalBuild["scripts/app-store-local-build.sh"] --> Archive
+  Workflow[".github/workflows/deploy-app-store.yml"] --> XcodeCloud["Xcode Cloud - 매니지드 서명"]
+  XcodeCloud --> Archive
+  XcodeCloud --> Upload
+  LocalBuild["scripts/app-store-local-build.sh - 대체 경로"] --> Archive
   LocalDeliver["scripts/app-store-local-deliver.sh"] --> Listing
 ```
 
@@ -43,7 +44,7 @@ flowchart TD
 | Game Center                | iOS adapter·entitlement·콘솔 리더보드 설정 완료                       |
 | CocoaPods                  | `bundle exec pod install` 완료                                        |
 | unsigned iOS Release build | `CODE_SIGNING_ALLOWED=NO build` 통과                                  |
-| TestFlight CI              | `.github/workflows/deploy-app-store.yml` 준비 및 `v0.1.5` 업로드 성공 |
+| App Store CI               | `.github/workflows/deploy-app-store.yml`이 Xcode Cloud 빌드를 트리거한다 |
 | 로컬 iOS build             | `npm run app-store:build:local` 준비                                  |
 | 로컬 metadata 등록         | `npm run app-store:deliver:upload` 준비                               |
 | App Store profile          | `AppStore Crossword Puzzle Profile` secret 등록                       |

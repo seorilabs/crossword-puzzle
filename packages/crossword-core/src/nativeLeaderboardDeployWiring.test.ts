@@ -18,6 +18,10 @@ const iosProject = readFileSync(
   ),
   "utf8",
 );
+const xcodeCloudPostBuild = readFileSync(
+  new URL("apps/mobile/ios/ci_scripts/ci_post_xcodebuild.sh", repoRoot),
+  "utf8",
+);
 const strategy = readFileSync(
   new URL("docs/leaderboard-strategy.md", repoRoot),
   "utf8",
@@ -45,24 +49,20 @@ describe("네이티브 리더보드 배포 배선", () => {
     );
   });
 
-  it("iOS 필수 GitHub Variable과 Game Center profile을 archive 전에 검증한다", () => {
+  // iOS archive는 Xcode Cloud가 만든다. 리더보드 ID가 실제로 아카이브에 들어갔는지는
+  // GitHub Actions가 볼 수 없으므로, 검증 책임도 Xcode Cloud 훅으로 함께 옮겼다.
+  it("iOS는 Game Center 리더보드 ID를 아카이브 산출물에서 업로드 전에 검증한다", () => {
+    assert.match(xcodeCloudPostBuild, /GameCenterLeaderboardIdentifier/);
     assert.match(
-      iosWorkflow,
-      /GAME_CENTER_LEADERBOARD_ID:\s*\$\{\{ vars\.GAME_CENTER_LEADERBOARD_ID \}\}/,
+      xcodeCloudPostBuild,
+      /com\.seorilabs\.crosswordpuzzle\.global_score/,
     );
     assert.ok(
-      iosWorkflow.includes(
-        'if [ -z "${GAME_CENTER_LEADERBOARD_ID//[[:space:]]/}" ]; then',
-      ),
+      xcodeCloudPostBuild.indexOf("GameCenterLeaderboardIdentifier") <
+        xcodeCloudPostBuild.indexOf("아카이브 산출물 검증 완료"),
     );
-    assert.match(
-      iosWorkflow,
-      /App Store provisioning profile must include the Game Center entitlement/,
-    );
-    assert.ok(
-      iosWorkflow.indexOf("Validate Game Center leaderboard config") <
-        iosWorkflow.indexOf("Archive iOS app"),
-    );
+    // 값이 어긋나면 경고로 넘기지 않고 빌드를 실패시켜야 한다.
+    assert.match(xcodeCloudPostBuild, /exit 1/);
   });
 
   it("Xcode Cloud도 실제 Game Center 리더보드 ID를 기본 build setting으로 사용한다", () => {
@@ -78,7 +78,9 @@ describe("네이티브 리더보드 배포 배선", () => {
       assert.doesNotMatch(workflow, /actions\/(checkout|setup-node)@v6/);
     }
     assert.match(androidWorkflow, /runs-on:\s*ubuntu-latest/);
-    assert.match(iosWorkflow, /runs-on:\s*macos-26/);
+    // Apple archive/업로드는 Xcode Cloud가 한다. macOS runner로 되돌아가면 실패시킨다.
+    assert.match(iosWorkflow, /runs-on:\s*seorilabs-rpi-arm64/);
+    assert.doesNotMatch(iosWorkflow, /runs-on:\s*macos/);
   });
 
   it("운영 문서에 마켓별 리더보드 ID와 분리된 데이터 풀을 명시한다", () => {
