@@ -50,6 +50,7 @@ echo "▸ 아카이브 산출물 검증"
 # 확인한다. 어긋나면 App Store Connect가 기존 version train과 충돌시킨다.
 if [ -n "${CI_TAG}" ]; then
   OUTFILE="$(mktemp)"
+  trap 'rm -f "${OUTFILE}"' EXIT
   GITHUB_OUTPUT="${OUTFILE}" node "${REPO}/scripts/resolve-release-version.mjs" --tag "${CI_TAG}"
   expect "CFBundleShortVersionString" "$(read_plist CFBundleShortVersionString)" \
     "$(grep '^apple_marketing_version=' "${OUTFILE}" | cut -d= -f2)"

@@ -141,32 +141,35 @@ function selectWorkflowForRepository(candidates, repoFullName) {
 
 async function pickWorkflowId(asc, productId, repoFullName) {
   const doc = await asc(`/v1/ciProducts/${productId}/workflows?limit=200`);
-  const candidates = await Promise.all(
-    asArray(doc.data).map(async (workflow) => {
-      let workflowRepo = null;
-      try {
-        const repoDoc = await asc(
-          `/v1/ciWorkflows/${encodeURIComponent(workflow.id)}/repository`,
-        );
-        const repo = asArray(repoDoc.data)[0];
-        const owner = repo?.attributes?.ownerName;
-        const name = repo?.attributes?.repositoryName;
-        if (typeof owner === "string" && typeof name === "string") {
-          workflowRepo = `${owner}/${name}`;
-        }
-      } catch {
-        // 관계가 깨진 잔존 workflow는 후보에서 제외한다.
-      }
 
-      return {
-        id: workflow.id,
-        name: workflow.attributes?.name ?? workflow.id,
-        repoFullName: workflowRepo,
-        isEnabled: workflow.attributes?.isEnabled === true,
-        actions: workflow.attributes?.actions,
-      };
-    }),
-  );
+  // workflow마다 /repository를 한 번씩 더 부른다. 제품에 workflow가 많으면 병렬
+  // 호출이 ASC rate limit에 걸리므로 순차로 돈다. 배포 1회의 준비 단계라 이 정도
+  // 지연은 문제가 되지 않는다.
+  const candidates = [];
+  for (const workflow of asArray(doc.data)) {
+    let workflowRepo = null;
+    try {
+      const repoDoc = await asc(
+        `/v1/ciWorkflows/${encodeURIComponent(workflow.id)}/repository`,
+      );
+      const repo = asArray(repoDoc.data)[0];
+      const owner = repo?.attributes?.ownerName;
+      const name = repo?.attributes?.repositoryName;
+      if (typeof owner === "string" && typeof name === "string") {
+        workflowRepo = `${owner}/${name}`;
+      }
+    } catch {
+      // 관계가 깨진 잔존 workflow는 후보에서 제외한다.
+    }
+
+    candidates.push({
+      id: workflow.id,
+      name: workflow.attributes?.name ?? workflow.id,
+      repoFullName: workflowRepo,
+      isEnabled: workflow.attributes?.isEnabled === true,
+      actions: workflow.attributes?.actions,
+    });
+  }
 
   return selectWorkflowForRepository(candidates, repoFullName);
 }
@@ -264,6 +267,13 @@ async function main() {
   if (!bundleId) fail("--bundle-id가 필요합니다.");
   if (!repoFullName) fail("--repo가 필요합니다(owner/name).");
 
+  const timeoutMinutes = Number(values["timeout-minutes"]);
+  if (!Number.isFinite(timeoutMinutes) || timeoutMinutes <= 0) {
+    fail(
+      `--timeout-minutes는 양수여야 합니다. 받은 값: ${values["timeout-minutes"]}`,
+    );
+  }
+
   const asc = createAscClient(
     createAscToken({
       keyId: requireEnv("APP_STORE_CONNECT_API_KEY_ID"),
@@ -313,7 +323,7 @@ async function main() {
   const completion = await waitForBuildRun(
     asc,
     buildRunId,
-    Number(values["timeout-minutes"]) * 60_000,
+    timeoutMinutes * 60_000,
   );
 
   writeSummary(`- 완료 상태: ${completion}`);
