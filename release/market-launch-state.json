@@ -1,0 +1,359 @@
+{
+  "schemaVersion": 1,
+  "app": {
+    "name": "가로세로 퍼즐",
+    "repo": "seorilabs/crossword-puzzle",
+    "sourceRevision": "2d05c6af701d2893d2c127d35db51eb6027eeced"
+  },
+  "release": {
+    "version": "1.1.6",
+    "tag": "v1.1.6",
+    "objective": "submitted",
+    "countries": [
+      "기존 마켓 가용 국가 유지"
+    ],
+    "rolloutMode": "manual"
+  },
+  "deploymentApproval": {
+    "status": "approved",
+    "markets": [
+      "apps_in_toss",
+      "google_play",
+      "app_store"
+    ],
+    "objective": "submitted",
+    "approvedAt": "2026-08-20T21:11:00+09:00",
+    "evidence": [
+      "사용자가 GitHub Actions minutes 소진 상황에서 로컬 빌드, 3마켓 업로드 및 심사 제출을 명시적으로 요청함"
+    ]
+  },
+  "commonGates": {
+    "candidate": {
+      "status": "pass",
+      "evidence": [
+        "origin/main과 v1.1.6 peeled commit이 2d05c6af701d2893d2c127d35db51eb6027eeced로 일치"
+      ],
+      "checkedAt": "2026-08-20T22:12:10+09:00",
+      "blocker": null
+    },
+    "quality": {
+      "status": "pass",
+      "evidence": [
+        "로컬 정적 CI 전체 통과: lint, typecheck, puzzle validation, adapters 101, core 554, components 192, build, release parity, mobile 43"
+      ],
+      "checkedAt": "2026-08-20T21:37:00+09:00",
+      "blocker": null
+    },
+    "production_dependencies": {
+      "status": "blocked",
+      "evidence": [
+        "Apple 배포 인증서와 프로파일, App Store Connect API, AppsInToss API, Play publisher API는 확인됨",
+        "Play용 기존 upload keystore의 로컬 원본과 catalog 항목이 없음"
+      ],
+      "checkedAt": "2026-08-20T22:12:10+09:00",
+      "blocker": "app/crossword-puzzle/google-play/upload-key 원본 복구 또는 해당 GitHub Secret을 사용하는 승인된 실행 경로 필요"
+    },
+    "observability": {
+      "status": "pass",
+      "evidence": [
+        "현재 후보의 Firebase Analytics 및 플랫폼 adapter 계약을 release parity와 mobile 테스트에서 검증"
+      ],
+      "checkedAt": "2026-08-20T21:37:00+09:00",
+      "blocker": null
+    }
+  },
+  "markets": {
+    "apps_in_toss": {
+      "objective": "submitted",
+      "state": "processing",
+      "identity": {
+        "applicationId": "crossword-puzzle-game",
+        "version": "1.1.6",
+        "build": "20260820-15"
+      },
+      "gates": {
+        "candidate": {
+          "status": "pass",
+          "evidence": [
+            "v1.1.6 sourceRevision 2d05c6a"
+          ],
+          "checkedAt": "2026-08-20T21:40:00+09:00",
+          "blocker": null
+        },
+        "artifact": {
+          "status": "pass",
+          "evidence": [
+            "crossword-puzzle-game.ait sha256 b55c8be38b3373a5e9d8fa09a171ef417b4e890f5d420feaf6dc19c088ec748b"
+          ],
+          "checkedAt": "2026-08-20T21:40:00+09:00",
+          "blocker": null
+        },
+        "upload": {
+          "status": "pass",
+          "evidence": [
+            "deployment 01a01f30-12c3-79eb-99e4-6b712ce74b54 업로드 완료"
+          ],
+          "checkedAt": "2026-08-20T21:40:00+09:00",
+          "blocker": null
+        },
+        "processing": {
+          "status": "pass",
+          "evidence": [
+            "콘솔 readback: bundle 20260820-15, SDK 2.10.7, 상태 검토 필요"
+          ],
+          "checkedAt": "2026-08-20T22:01:00+09:00",
+          "blocker": null
+        },
+        "qa": {
+          "status": "blocked",
+          "evidence": [
+            "업로드 아티팩트의 web payload에서 온보딩, 퍼즐 정답 입력, 1/6 진행 저장 복원과 console error 없음 확인",
+            "Android AppsInToss sandbox가 사용자 이름, 전화번호, 생년월일 로그인을 요구함"
+          ],
+          "checkedAt": "2026-08-20T22:06:00+09:00",
+          "blocker": "사용자가 연결된 Android AppsInToss sandbox에 직접 로그인해야 exact deployment device QA 가능"
+        },
+        "metadata": {
+          "status": "pass",
+          "evidence": [
+            "라이브 콘솔 applicationId crossword-puzzle-game 및 기존 공개 버전 20260818-14 확인"
+          ],
+          "checkedAt": "2026-08-20T21:40:00+09:00",
+          "blocker": null
+        },
+        "policy": {
+          "status": "pass",
+          "evidence": [
+            "기존 공개 앱 정보와 지원, 광고 및 플랫폼 adapter 설정 유지"
+          ],
+          "checkedAt": "2026-08-20T21:40:00+09:00",
+          "blocker": null
+        },
+        "submission": {
+          "status": "blocked",
+          "evidence": [
+            "검토 요청 버튼 활성화 확인, 아직 클릭하지 않음"
+          ],
+          "checkedAt": "2026-08-20T22:01:00+09:00",
+          "blocker": "exact deployment sandbox QA와 브라우저 최종 제출 확인 필요"
+        },
+        "approval": {
+          "status": "na",
+          "evidence": [
+            "현재 목표는 submitted이며 심사 승인과 공개 출시는 범위 밖"
+          ],
+          "checkedAt": "2026-08-20T22:12:10+09:00",
+          "blocker": null
+        },
+        "release": {
+          "status": "na",
+          "evidence": [
+            "현재 목표는 submitted이며 공개 출시는 요청되지 않음"
+          ],
+          "checkedAt": "2026-08-20T22:12:10+09:00",
+          "blocker": null
+        },
+        "live_smoke": {
+          "status": "na",
+          "evidence": [
+            "현재 목표는 submitted이며 공개 버전 smoke는 범위 밖"
+          ],
+          "checkedAt": "2026-08-20T22:12:10+09:00",
+          "blocker": null
+        }
+      }
+    },
+    "google_play": {
+      "objective": "submitted",
+      "state": "candidate",
+      "identity": {
+        "applicationId": "com.seorilabs.crosswordpuzzle",
+        "version": "1.1.6",
+        "build": "1001006"
+      },
+      "gates": {
+        "candidate": {
+          "status": "pass",
+          "evidence": [
+            "v1.1.6 sourceRevision 2d05c6a"
+          ],
+          "checkedAt": "2026-08-20T21:37:00+09:00",
+          "blocker": null
+        },
+        "artifact": {
+          "status": "blocked",
+          "evidence": [
+            "Play publisher API 인증과 next versionCode 1001006 확인",
+            "catalog와 로컬 백업에 기존 crossword upload keystore 없음"
+          ],
+          "checkedAt": "2026-08-20T21:37:00+09:00",
+          "blocker": "정식 서명용 기존 upload keystore를 복구해야 AAB 생성 가능"
+        },
+        "upload": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "processing": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "qa": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "metadata": {
+          "status": "pass",
+          "evidence": [
+            "Play API readback: internal 및 production 현재 1.1.5 build 1001005 completed"
+          ],
+          "checkedAt": "2026-08-20T21:20:00+09:00",
+          "blocker": null
+        },
+        "policy": {
+          "status": "pass",
+          "evidence": [
+            "라이브 Play 공개 선언과 기존 production release 유지 확인"
+          ],
+          "checkedAt": "2026-08-20T21:20:00+09:00",
+          "blocker": null
+        },
+        "submission": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "approval": {
+          "status": "na",
+          "evidence": [
+            "현재 목표는 submitted이며 승인과 공개 출시는 범위 밖"
+          ],
+          "checkedAt": "2026-08-20T22:12:10+09:00",
+          "blocker": null
+        },
+        "release": {
+          "status": "na",
+          "evidence": [
+            "현재 목표는 submitted이며 공개 출시는 요청되지 않음"
+          ],
+          "checkedAt": "2026-08-20T22:12:10+09:00",
+          "blocker": null
+        },
+        "live_smoke": {
+          "status": "na",
+          "evidence": [
+            "현재 목표는 submitted이며 공개 버전 smoke는 범위 밖"
+          ],
+          "checkedAt": "2026-08-20T22:12:10+09:00",
+          "blocker": null
+        }
+      }
+    },
+    "app_store": {
+      "objective": "submitted",
+      "state": "live_smoke",
+      "identity": {
+        "applicationId": "com.seorilabs.crosswordpuzzle",
+        "version": "1.1.6",
+        "build": "1001006"
+      },
+      "gates": {
+        "candidate": {
+          "status": "pass",
+          "evidence": [
+            "v1.1.6 sourceRevision 2d05c6a"
+          ],
+          "checkedAt": "2026-08-20T21:37:00+09:00",
+          "blocker": null
+        },
+        "artifact": {
+          "status": "pass",
+          "evidence": [
+            "archive /private/tmp/crossword-v1.1.6-build1001006.xcarchive 서명 검증과 version 1.1.6 build 1001006 확인"
+          ],
+          "checkedAt": "2026-08-20T21:58:00+09:00",
+          "blocker": null
+        },
+        "upload": {
+          "status": "pass",
+          "evidence": [
+            "xcodebuild export upload succeeded"
+          ],
+          "checkedAt": "2026-08-20T21:57:55+09:00",
+          "blocker": null
+        },
+        "processing": {
+          "status": "pass",
+          "evidence": [
+            "App Store Connect build 74d5bbc5-0069-47ca-a9fa-23e1c353b209 processingState VALID"
+          ],
+          "checkedAt": "2026-08-20T22:00:00+09:00",
+          "blocker": null
+        },
+        "qa": {
+          "status": "pass",
+          "evidence": [
+            "동일 소스의 iPhone 개발 서명 build 1.1.6 (1001006)을 iPhone 12 Pro에 설치하고 실행 프로세스 확인",
+            "공유 web core에서 온보딩, 정답 입력, 진행 저장 복원과 console error 없음 확인"
+          ],
+          "checkedAt": "2026-08-20T22:09:38+09:00",
+          "blocker": null
+        },
+        "metadata": {
+          "status": "pass",
+          "evidence": [
+            "1.1.6 버전에 한국어 설명, 새 버전 문구, iPhone 3장, iPad 3장, 심사 연락처를 readback"
+          ],
+          "checkedAt": "2026-08-20T22:05:00+09:00",
+          "blocker": null
+        },
+        "policy": {
+          "status": "pass",
+          "evidence": [
+            "App Privacy 공개 선언 8개 데이터 유형 유지, build usesNonExemptEncryption=false, manual release 설정"
+          ],
+          "checkedAt": "2026-08-20T22:05:00+09:00",
+          "blocker": null
+        },
+        "submission": {
+          "status": "pass",
+          "evidence": [
+            "submission f75a269b-859e-4746-a08e-f86dfeb5f9e2, version af003eba-245f-42ed-81a2-86515523a9fb, WAITING_FOR_REVIEW"
+          ],
+          "checkedAt": "2026-08-20T22:11:10+09:00",
+          "blocker": null
+        },
+        "approval": {
+          "status": "na",
+          "evidence": [
+            "현재 목표는 submitted이며 Apple 심사 승인은 아직 발생하지 않았고 범위 밖"
+          ],
+          "checkedAt": "2026-08-20T22:12:10+09:00",
+          "blocker": null
+        },
+        "release": {
+          "status": "na",
+          "evidence": [
+            "수동 출시로 설정했으며 공개 출시는 요청되지 않음"
+          ],
+          "checkedAt": "2026-08-20T22:12:10+09:00",
+          "blocker": null
+        },
+        "live_smoke": {
+          "status": "na",
+          "evidence": [
+            "현재 목표는 submitted이며 공개 버전 smoke는 범위 밖"
+          ],
+          "checkedAt": "2026-08-20T22:12:10+09:00",
+          "blocker": null
+        }
+      }
+    }
+  }
+}
