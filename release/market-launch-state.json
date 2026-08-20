@@ -24,7 +24,9 @@
     "objective": "submitted",
     "approvedAt": "2026-08-20T21:11:00+09:00",
     "evidence": [
-      "사용자가 GitHub Actions minutes 소진 상황에서 로컬 빌드, 3마켓 업로드 및 심사 제출을 명시적으로 요청함"
+      "사용자가 GitHub Actions minutes 소진 상황에서 로컬 빌드, 3마켓 업로드 및 심사 제출을 명시적으로 요청함",
+      "사용자가 AppsInToss 20260820-15 검토 요청과 App Store 심사 제출을 승인함",
+      "Google Play는 업로드 키 재설정 없이 GitHub Actions 사용 가능 시점까지 배포를 보류하기로 함"
     ]
   },
   "commonGates": {
@@ -48,10 +50,10 @@
       "status": "blocked",
       "evidence": [
         "Apple 배포 인증서와 프로파일, App Store Connect API, AppsInToss API, Play publisher API는 확인됨",
-        "Play용 기존 upload keystore의 로컬 원본과 catalog 항목이 없음"
+        "Play용 기존 upload keystore의 로컬 원본과 catalog 항목이 없고, 사용자가 키 재설정 대신 GitHub Actions 복구 후 배포하기로 결정함"
       ],
-      "checkedAt": "2026-08-20T22:12:10+09:00",
-      "blocker": "app/crossword-puzzle/google-play/upload-key 원본 복구 또는 해당 GitHub Secret을 사용하는 승인된 실행 경로 필요"
+      "checkedAt": "2026-08-20T22:45:43+09:00",
+      "blocker": "GitHub-hosted Actions minutes가 다시 사용 가능해져 기존 Google Play signing Secret을 소비하는 x64 Android release workflow를 실행할 수 있어야 함"
     },
     "observability": {
       "status": "pass",
@@ -99,19 +101,20 @@
         "processing": {
           "status": "pass",
           "evidence": [
-            "콘솔 readback: bundle 20260820-15, SDK 2.10.7, 상태 검토 필요"
+            "콘솔 API readback: bundle 20260820-15, SDK 2.10.7, deployment 상태 REVIEWING"
           ],
-          "checkedAt": "2026-08-20T22:01:00+09:00",
+          "checkedAt": "2026-08-20T22:42:21+09:00",
           "blocker": null
         },
         "qa": {
           "status": "blocked",
           "evidence": [
             "업로드 아티팩트의 web payload에서 온보딩, 퍼즐 정답 입력, 1/6 진행 저장 복원과 console error 없음 확인",
-            "Android AppsInToss sandbox가 사용자 이름, 전화번호, 생년월일 로그인을 요구함"
+            "Android AppsInToss sandbox가 사용자 이름, 전화번호, 생년월일 로그인을 요구함",
+            "사용자가 exact deployment sandbox device QA 생략을 명시적으로 승인함"
           ],
-          "checkedAt": "2026-08-20T22:06:00+09:00",
-          "blocker": "사용자가 연결된 Android AppsInToss sandbox에 직접 로그인해야 exact deployment device QA 가능"
+          "checkedAt": "2026-08-20T22:45:43+09:00",
+          "blocker": "사용자 승인으로 제출은 진행했지만 exact deployment의 AppsInToss sandbox device QA는 실행하지 않음"
         },
         "metadata": {
           "status": "pass",
@@ -130,12 +133,13 @@
           "blocker": null
         },
         "submission": {
-          "status": "blocked",
+          "status": "pass",
           "evidence": [
-            "검토 요청 버튼 활성화 확인, 아직 클릭하지 않음"
+            "reviewRequestId 148673, deployment 01a01f30-12c3-79eb-99e4-6b712ce74b54, version 20260820-15",
+            "콘솔 API readback: reviewStatus PENDING, deploymentReviewStatus REVIEWING, requestedAt 2026-08-20T22:42:21+09:00"
           ],
-          "checkedAt": "2026-08-20T22:01:00+09:00",
-          "blocker": "exact deployment sandbox QA와 브라우저 최종 제출 확인 필요"
+          "checkedAt": "2026-08-20T22:42:21+09:00",
+          "blocker": null
         },
         "approval": {
           "status": "na",
@@ -184,10 +188,11 @@
           "status": "blocked",
           "evidence": [
             "Play publisher API 인증과 next versionCode 1001006 확인",
-            "catalog와 로컬 백업에 기존 crossword upload keystore 없음"
+            "catalog와 로컬 백업에 기존 crossword upload keystore 없음",
+            "사용자가 upload key 재설정을 거절하고 GitHub Actions minutes 복구 후 기존 signing Secret 경로로 배포하기로 결정함"
           ],
-          "checkedAt": "2026-08-20T21:37:00+09:00",
-          "blocker": "정식 서명용 기존 upload keystore를 복구해야 AAB 생성 가능"
+          "checkedAt": "2026-08-20T22:45:43+09:00",
+          "blocker": "GitHub-hosted Actions minutes 복구 후 기존 app-scoped signing Secret을 사용하는 x64 Android release workflow 실행 필요"
         },
         "upload": {
           "status": "pending",
@@ -293,7 +298,7 @@
           "evidence": [
             "App Store Connect build 74d5bbc5-0069-47ca-a9fa-23e1c353b209 processingState VALID"
           ],
-          "checkedAt": "2026-08-20T22:00:00+09:00",
+          "checkedAt": "2026-08-20T22:45:43+09:00",
           "blocker": null
         },
         "qa": {
@@ -324,9 +329,10 @@
         "submission": {
           "status": "pass",
           "evidence": [
-            "submission f75a269b-859e-4746-a08e-f86dfeb5f9e2, version af003eba-245f-42ed-81a2-86515523a9fb, WAITING_FOR_REVIEW"
+            "submission f75a269b-859e-4746-a08e-f86dfeb5f9e2, version af003eba-245f-42ed-81a2-86515523a9fb, WAITING_FOR_REVIEW",
+            "App Store Connect API readback: selected build 74d5bbc5-0069-47ca-a9fa-23e1c353b209 / 1001006, releaseType MANUAL, submittedDate 2026-08-20T13:11:10.297Z"
           ],
-          "checkedAt": "2026-08-20T22:11:10+09:00",
+          "checkedAt": "2026-08-20T22:45:43+09:00",
           "blocker": null
         },
         "approval": {
