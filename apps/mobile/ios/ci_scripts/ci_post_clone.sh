@@ -7,8 +7,10 @@
 # Node/CocoaPods 가 기본 제공되지 않으므로 여기서 설치하고 의존성 + Pods 를 구성한다.
 # 코드 서명은 Xcode Cloud 매니지드 서명이 처리한다.
 #
-# 필요 환경변수(선택): FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64 —
-#   미설정 시 저장소에 커밋된 GoogleService-Info.plist 를 사용한다.
+# 필요 환경변수(Xcode Cloud workflow의 Secret):
+#   GITHUB_PACKAGES_TOKEN — (필수) GitHub Packages read:packages token.
+#   FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64 — (선택)
+#     미설정 시 저장소에 커밋된 GoogleService-Info.plist 를 사용한다.
 
 set -e
 
@@ -21,6 +23,14 @@ IOS="${MOBILE}/ios"
 
 echo "▸ Node / CocoaPods 설치 (Homebrew)"
 brew install node cocoapods
+
+echo "▸ GitHub Packages 인증 (@seorilabs 비공개 패키지)"
+if [ -z "${GITHUB_PACKAGES_TOKEN}" ]; then
+  echo "❌ GITHUB_PACKAGES_TOKEN 이 없습니다. Xcode Cloud workflow의 Secret으로" >&2
+  echo "   read:packages token을 추가하세요. 없으면 npm ci가 실패합니다." >&2
+  exit 1
+fi
+printf '//npm.pkg.github.com/:_authToken=%s\n' "${GITHUB_PACKAGES_TOKEN}" >> "${HOME}/.npmrc"
 
 echo "▸ JS 의존성 설치 (npm ci — root + apps/mobile)"
 npm --prefix "${REPO}" ci

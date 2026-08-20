@@ -7,9 +7,15 @@ const sharedRecommendationPath =
   "packages/crossword-core/src/recommendation.ts";
 const sharedPlatformContractsPath =
   "packages/crossword-core/src/platformContracts.ts";
+const sharedPlatformAuthPath = "packages/crossword-core/src/platformAuth.ts";
 const sharedIndexPath = "packages/crossword-core/src/index.ts";
+const rootPackagePath = "package.json";
 const webAppPath = "src/App.tsx";
+const webMainPath = "src/main.tsx";
+const webPlatformAuthPath = "src/adapters/platformAuth.ts";
 const mobileAppPath = "apps/mobile/App.tsx";
+const mobileIndexPath = "apps/mobile/index.js";
+const mobilePlatformAuthPath = "apps/mobile/platformAuth.ts";
 const mobileAppTestPath = "apps/mobile/__tests__/App.test.tsx";
 const launchConfigPath = "src/adapters/launchConfig.ts";
 const webTelemetryPath = "src/adapters/telemetry.ts";
@@ -39,11 +45,14 @@ const mobilePackagePath = "apps/mobile/package.json";
 const gitignorePath = ".gitignore";
 const staticChecksWorkflowPath = ".github/workflows/static-checks.yml";
 const deployAllWorkflowPath = ".github/workflows/deploy-all.yml";
+const deployAppsInTossWorkflowPath =
+  ".github/workflows/deploy-apps-in-toss.yml";
 const deployGooglePlayWorkflowPath = ".github/workflows/deploy-google-play.yml";
 const deployAppStoreWorkflowPath = ".github/workflows/deploy-app-store.yml";
 const appStoreLocalBuildPath = "scripts/app-store-local-build.sh";
 const xcodeCloudPostClonePath = "apps/mobile/ios/ci_scripts/ci_post_clone.sh";
-const xcodeCloudPreBuildPath = "apps/mobile/ios/ci_scripts/ci_pre_xcodebuild.sh";
+const xcodeCloudPreBuildPath =
+  "apps/mobile/ios/ci_scripts/ci_pre_xcodebuild.sh";
 const xcodeCloudPostBuildPath =
   "apps/mobile/ios/ci_scripts/ci_post_xcodebuild.sh";
 const agentsPath = "AGENTS.md";
@@ -226,9 +235,15 @@ const sharedPolicy = read(sharedPolicyPath);
 const sharedLaunchConfig = read(sharedLaunchConfigPath);
 const sharedRecommendation = read(sharedRecommendationPath);
 const sharedPlatformContracts = read(sharedPlatformContractsPath);
+const sharedPlatformAuth = read(sharedPlatformAuthPath);
 const sharedIndex = read(sharedIndexPath);
+const rootPackage = read(rootPackagePath);
 const webApp = read(webAppPath);
+const webMain = read(webMainPath);
+const webPlatformAuth = read(webPlatformAuthPath);
 const mobileApp = read(mobileAppPath);
+const mobileIndex = read(mobileIndexPath);
+const mobilePlatformAuth = read(mobilePlatformAuthPath);
 const mobileAppTest = read(mobileAppTestPath);
 
 // Feature parity: user-facing features must exist in BOTH the web and mobile
@@ -274,6 +289,7 @@ const mobilePackage = read(mobilePackagePath);
 const gitignore = read(gitignorePath);
 const staticChecksWorkflow = read(staticChecksWorkflowPath);
 const deployAllWorkflow = read(deployAllWorkflowPath);
+const deployAppsInTossWorkflow = read(deployAppsInTossWorkflowPath);
 const deployGooglePlayWorkflow = read(deployGooglePlayWorkflowPath);
 const deployAppStoreWorkflow = read(deployAppStoreWorkflowPath);
 const appStoreLocalBuild = read(appStoreLocalBuildPath);
@@ -300,6 +316,7 @@ assertIncludes(
   'export * from "./platformContracts";',
   sharedIndexPath,
 );
+assertIncludes(sharedIndex, 'export * from "./platformAuth";', sharedIndexPath);
 assertImported(
   webApp,
   requiredWebImports,
@@ -360,13 +377,45 @@ for (const [path, content] of [
   [sharedLaunchConfigPath, sharedLaunchConfig],
   [sharedRecommendationPath, sharedRecommendation],
   [sharedPlatformContractsPath, sharedPlatformContracts],
+  [sharedPlatformAuthPath, sharedPlatformAuth],
   [sharedIndexPath, sharedIndex],
 ]) {
   assertNotIncludes(content, "@apps-in-toss", path);
   assertNotIncludes(content, "@react-native-firebase", path);
   assertNotIncludes(content, "react-native", path);
   assertNotIncludes(content, "firebase/", path);
+  assertNotIncludes(content, "@seorilabs/platform-sdk", path);
 }
+
+// Platform 인증 정책은 core에 한 벌만 두고, 각 표면은 같은 app_id로 SDK/Firebase
+// adapter를 제공한다. 렌더와 병렬로 시작해야 인증 장애가 플레이를 막지 않는다.
+assertIncludes(
+  rootPackage,
+  '"@seorilabs/platform-sdk": "0.3.0"',
+  rootPackagePath,
+);
+assertIncludes(
+  mobilePackage,
+  '"@seorilabs/platform-sdk": "0.3.0"',
+  mobilePackagePath,
+);
+assertIncludes(
+  mobilePackage,
+  '"@react-native-firebase/auth":',
+  mobilePackagePath,
+);
+for (const [path, content] of [
+  [webPlatformAuthPath, webPlatformAuth],
+  [mobilePlatformAuthPath, mobilePlatformAuth],
+]) {
+  assertIncludes(content, "createPlatform", path);
+  assertIncludes(content, "PLATFORM_AUTH_APP_ID", path);
+  assertIncludes(content, ".identity.firebaseCustomToken", path);
+  assertIncludes(content, ".signIn(", path);
+  assertIncludes(content, "signInPromise ??= runPlatformAuth()", path);
+}
+assertIncludes(webMain, "void ensurePlatformAuth();", webMainPath);
+assertIncludes(mobileIndex, "void ensurePlatformAuth();", mobileIndexPath);
 
 assertIncludes(
   mobilePackage,
@@ -643,6 +692,25 @@ assertIncludes(
   staticChecksWorkflowPath,
 );
 assertIncludes(
+  staticChecksWorkflow,
+  "npm_registry_url: https://npm.pkg.github.com",
+  staticChecksWorkflowPath,
+);
+assertIncludes(
+  staticChecksWorkflow,
+  'npm_scope: "@seorilabs"',
+  staticChecksWorkflowPath,
+);
+for (const [path, content] of [
+  [deployAppsInTossWorkflowPath, deployAppsInTossWorkflow],
+  [deployGooglePlayWorkflowPath, deployGooglePlayWorkflow],
+]) {
+  assertIncludes(content, "packages: read", path);
+  assertIncludes(content, "registry-url: https://npm.pkg.github.com", path);
+  assertIncludes(content, 'scope: "@seorilabs"', path);
+  assertIncludes(content, "NODE_AUTH_TOKEN: ${{ github.token }}", path);
+}
+assertIncludes(
   deployGooglePlayWorkflow,
   "node scripts/restore-mobile-firebase-config.mjs --android --require",
   deployGooglePlayWorkflowPath,
@@ -673,6 +741,16 @@ assertIncludes(
   xcodeCloudPostClonePath,
 );
 assertIncludes(
+  xcodeCloudPostClone,
+  "GITHUB_PACKAGES_TOKEN",
+  xcodeCloudPostClonePath,
+);
+assertIncludes(
+  xcodeCloudPostClone,
+  "//npm.pkg.github.com/:_authToken=",
+  xcodeCloudPostClonePath,
+);
+assertIncludes(
   xcodeCloudPostBuild,
   "GameCenterLeaderboardIdentifier",
   xcodeCloudPostBuildPath,
@@ -694,11 +772,7 @@ assertIncludes(
   "CFBundleShortVersionString",
   xcodeCloudPostBuildPath,
 );
-assertIncludes(
-  xcodeCloudPostBuild,
-  "CFBundleVersion",
-  xcodeCloudPostBuildPath,
-);
+assertIncludes(xcodeCloudPostBuild, "CFBundleVersion", xcodeCloudPostBuildPath);
 // App Store archive는 Xcode Cloud가 담당한다. GitHub Actions 경로가 macOS runner로
 // 되돌아가면(회귀) 여기서 막는다.
 assertIncludes(
@@ -711,11 +785,7 @@ assertIncludes(
   "runs-on: seorilabs-rpi-arm64",
   deployAppStoreWorkflowPath,
 );
-assertNotIncludes(
-  deployAppStoreWorkflow,
-  "macos-",
-  deployAppStoreWorkflowPath,
-);
+assertNotIncludes(deployAppStoreWorkflow, "macos-", deployAppStoreWorkflowPath);
 for (const [path, content] of [
   [deployGooglePlayWorkflowPath, deployGooglePlayWorkflow],
   [deployAppStoreWorkflowPath, deployAppStoreWorkflow],

@@ -1,130 +1,163 @@
-import {PLATFORM_AUTH_EVENT} from '../../../packages/crossword-core/src';
+import {
+  PLATFORM_API_BASE_URL,
+  PLATFORM_AUTH_APP_ID,
+  PLATFORM_AUTH_EVENT,
+} from '../../../packages/crossword-core/src';
 
 jest.mock('../analyticsSinks', () => ({
   dispatchAnalytics: jest.fn(),
 }));
 
-type AuthStateListener = (user: {uid: string} | null) => void;
+const mockFirebaseCustomToken = jest.fn();
+const mockPlatformSignIn = jest.fn();
+const mockCreatePlatform = jest.fn((_options: unknown) => ({
+  identity: { firebaseCustomToken: mockFirebaseCustomToken },
+  signIn: mockPlatformSignIn,
+}));
+
+jest.mock('@seorilabs/platform-sdk', () => ({
+  __esModule: true,
+  createPlatform: (options: unknown) => mockCreatePlatform(options),
+}));
+
+type FirebaseUserStub = {
+  uid: string;
+  getIdToken: jest.Mock;
+};
+
+type AuthStateListener = (user: FirebaseUserStub | null) => void;
 
 type AuthStub = {
   onAuthStateChanged: jest.Mock;
   signInWithCustomToken: jest.Mock;
 };
 
+function user(uid: string, idToken: string): FirebaseUserStub {
+  return {
+    uid,
+    getIdToken: jest.fn(() => Promise.resolve(idToken)),
+  };
+}
+
 function authStub(options: {
-  restoredUid?: string | null;
+  restoredUser?: FirebaseUserStub | null;
+  signedInUser?: FirebaseUserStub;
   onAuthStateChanged?: jest.Mock;
 }): AuthStub {
+  const signedInUser =
+    options.signedInUser ?? user('pb_abc', 'firebase-id-token');
   return {
     onAuthStateChanged:
       options.onAuthStateChanged ??
       jest.fn((listener: AuthStateListener) => {
-        listener(options.restoredUid == null ? null : {uid: options.restoredUid});
+        listener(options.restoredUser ?? null);
         return jest.fn();
       }),
-    signInWithCustomToken: jest.fn(() => Promise.resolve()),
+    signInWithCustomToken: jest.fn(() =>
+      Promise.resolve({ user: signedInUser }),
+    ),
   };
 }
 
-/**
- * 어댑터는 모듈 수준에서 결과를 memoize한다. 테스트마다 모듈 레지스트리를 비우고
- * 새로 만들어진 auth mock에 stub을 다시 물린 뒤 로드해야 한다.
- */
 function loadAdapter(stub: AuthStub) {
   jest.resetModules();
   const auth = require('@react-native-firebase/auth').default as jest.Mock;
   auth.mockReturnValue(stub);
   const dispatchAnalytics = require('../analyticsSinks')
     .dispatchAnalytics as jest.Mock;
-  const {ensurePlatformAuth} = require('../platformAuth');
+  const { ensurePlatformAuth } = require('../platformAuth');
 
-  return {ensurePlatformAuth, dispatchAnalytics};
+  return { ensurePlatformAuth, dispatchAnalytics };
 }
-
-function bridgeResponse(body: unknown, status = 200) {
-  return Promise.resolve({
-    ok: status >= 200 && status < 300,
-    status,
-    json: () => Promise.resolve(body),
-  } as Response);
-}
-
-function stubBridge(body: unknown, status = 200) {
-  (globalThis.fetch as unknown as jest.Mock).mockImplementation(() =>
-    bridgeResponse(body, status),
-  );
-}
-
-const signedInBody = {
-  ok: true,
-  result: {firebaseCustomToken: 'custom-token', appUserId: 'pb_abc'},
-};
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockFirebaseCustomToken.mockResolvedValue({
+    firebaseCustomToken: 'custom-token',
+    appUserId: 'pb_abc',
+  });
+  mockPlatformSignIn.mockResolvedValue({ appUserId: 'pb_abc' });
 });
 
-test('미로그인 상태면 브리지 토큰으로 로그인하고 결과를 계측한다', async () => {
-  const stub = authStub({restoredUid: null});
-  stubBridge(signedInBody);
-  const {ensurePlatformAuth, dispatchAnalytics} = loadAdapter(stub);
+test('같은 appId로 SDK를 만들고 firebase-id-token 세션을 한 번 연다', async () => {
+  const stub = authStub({ restoredUser: null });
+  const { ensurePlatformAuth, dispatchAnalytics } = loadAdapter(stub);
 
   await expect(ensurePlatformAuth()).resolves.toEqual({
     status: 'signed-in',
     appUserId: 'pb_abc',
   });
+
+  expect(mockCreatePlatform).toHaveBeenCalledWith({
+    appId: PLATFORM_AUTH_APP_ID,
+    baseUrl: PLATFORM_API_BASE_URL,
+  });
+  expect(mockFirebaseCustomToken).toHaveBeenCalledWith();
   expect(stub.signInWithCustomToken).toHaveBeenCalledWith('custom-token');
+  expect(mockPlatformSignIn).toHaveBeenCalledTimes(1);
+  expect(mockPlatformSignIn).toHaveBeenCalledWith({
+    kind: 'firebase-id-token',
+    value: 'firebase-id-token',
+  });
 
   const event = dispatchAnalytics.mock.calls[0][0];
   expect(event.name).toBe(PLATFORM_AUTH_EVENT);
   expect(event.params.outcome).toBe('signed-in');
-  // appUserId는 platform 사용자 식별자다. 계측으로 새어 나가면 안 된다.
   expect(Object.values(event.params)).not.toContain('pb_abc');
+  expect(Object.values(event.params)).not.toContain('custom-token');
 });
 
-test('영속 복원으로 이미 로그인 상태면 브리지를 부르지 않는다', async () => {
-  const stub = authStub({restoredUid: 'pb_existing'});
-  const {ensurePlatformAuth} = loadAdapter(stub);
+test('영속 복원 후 bridge 없이 기존 uid로 Platform session을 연다', async () => {
+  const existing = user('pb_existing', 'existing-id-token');
+  const stub = authStub({
+    restoredUser: existing,
+  });
+  mockPlatformSignIn.mockResolvedValue({ appUserId: 'pb_existing' });
+  const { ensurePlatformAuth } = loadAdapter(stub);
 
   await expect(ensurePlatformAuth()).resolves.toEqual({
-    status: 'skipped',
-    reason: 'already-signed-in',
+    status: 'signed-in',
+    appUserId: 'pb_existing',
   });
-  expect(globalThis.fetch).not.toHaveBeenCalled();
+
+  expect(existing.getIdToken).toHaveBeenCalledWith(false);
+  expect(mockFirebaseCustomToken).not.toHaveBeenCalled();
   expect(stub.signInWithCustomToken).not.toHaveBeenCalled();
+  expect(mockPlatformSignIn).toHaveBeenCalledWith({
+    kind: 'firebase-id-token',
+    value: 'existing-id-token',
+  });
 });
 
-// 인증은 부가 기능이다. platform 장애가 퍼즐 풀이를 멈춰서는 안 된다.
-test('브리지가 에러 봉투를 주면 code를 보존한 failed가 되고 예외는 새지 않는다', async () => {
-  stubBridge({ok: false, error: {code: 'app_paused'}}, 403);
-  const {ensurePlatformAuth, dispatchAnalytics} = loadAdapter(
-    authStub({restoredUid: null}),
+test('네트워크 실패를 흡수하고 퍼즐 진입 Promise를 reject하지 않는다', async () => {
+  mockFirebaseCustomToken.mockRejectedValue({ code: 'network_error' });
+  const { ensurePlatformAuth, dispatchAnalytics } = loadAdapter(
+    authStub({ restoredUser: null }),
   );
 
   await expect(ensurePlatformAuth()).resolves.toEqual({
     status: 'failed',
-    code: 'app_paused',
+    code: 'network_error',
   });
-  expect(dispatchAnalytics.mock.calls[0][0].params.code).toBe('app_paused');
+  expect(mockPlatformSignIn).not.toHaveBeenCalled();
+  expect(dispatchAnalytics.mock.calls[0][0].params.code).toBe('network_error');
 });
 
-test('한 세션에서 여러 번 불러도 브리지 호출은 한 번이다', async () => {
-  stubBridge(signedInBody);
-  const {ensurePlatformAuth, dispatchAnalytics} = loadAdapter(
-    authStub({restoredUid: null}),
+test('한 런타임에서 여러 번 불러도 bridge와 세션 발급은 각각 한 번이다', async () => {
+  const { ensurePlatformAuth, dispatchAnalytics } = loadAdapter(
+    authStub({ restoredUser: null }),
   );
 
   await Promise.all([ensurePlatformAuth(), ensurePlatformAuth()]);
 
-  expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+  expect(mockFirebaseCustomToken).toHaveBeenCalledTimes(1);
+  expect(mockPlatformSignIn).toHaveBeenCalledTimes(1);
   expect(dispatchAnalytics).toHaveBeenCalledTimes(1);
 });
 
-// 구독 즉시 동기 호출되는 구현에서도 unsubscribe 참조가 준비된 뒤 해제해야 한다.
 test('onAuthStateChanged가 동기로 호출돼도 구독을 해제한다', async () => {
   const unsubscribe = jest.fn();
-  stubBridge(signedInBody);
-  const {ensurePlatformAuth} = loadAdapter(
+  const { ensurePlatformAuth } = loadAdapter(
     authStub({
       onAuthStateChanged: jest.fn((listener: AuthStateListener) => {
         listener(null);

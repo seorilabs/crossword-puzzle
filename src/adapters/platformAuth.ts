@@ -1,7 +1,11 @@
+import { createPlatform } from "@seorilabs/platform-sdk";
 import {
   buildPlatformAuthParams,
   ensurePlatformSignIn,
+  PLATFORM_API_BASE_URL,
+  PLATFORM_AUTH_APP_ID,
   PLATFORM_AUTH_EVENT,
+  type FirebaseIdentity,
   type PlatformAuthOutcome,
 } from "../../packages/crossword-core/src";
 import { getFirebaseApp } from "./firebaseClient";
@@ -15,9 +19,14 @@ import { telemetry } from "./telemetry";
 // 인증은 게임 진행을 막지 않는다. 실패해도 결과를 계측만 하고 그대로 진행한다.
 
 type FirebaseAuthHandle = {
-  currentUserId: () => Promise<string | null>;
-  signIn: (customToken: string) => Promise<void>;
+  currentIdentity: (forceRefresh?: boolean) => Promise<FirebaseIdentity | null>;
+  signIn: (customToken: string) => Promise<FirebaseIdentity>;
 };
+
+const webPlatform = createPlatform({
+  appId: PLATFORM_AUTH_APP_ID,
+  baseUrl: PLATFORM_API_BASE_URL,
+});
 
 let signInPromise: Promise<PlatformAuthOutcome> | null = null;
 
@@ -33,13 +42,24 @@ async function resolveFirebaseAuth(): Promise<FirebaseAuthHandle | null> {
 
     return {
       // 영속된 로그인 복원이 끝나기 전의 currentUser는 항상 null이다. 기다리지 않으면
-      // 재실행마다 새 계정을 만들게 된다.
-      currentUserId: async () => {
+      // 기존 uid를 그대로 Platform session에 연결할 수 없다.
+      currentIdentity: async (forceRefresh = false) => {
         await auth.authStateReady();
-        return auth.currentUser?.uid ?? null;
+        const user = auth.currentUser;
+        if (user == null) {
+          return null;
+        }
+        return {
+          uid: user.uid,
+          idToken: await user.getIdToken(forceRefresh),
+        };
       },
       signIn: async (customToken) => {
-        await signInWithCustomToken(auth, customToken);
+        const credential = await signInWithCustomToken(auth, customToken);
+        return {
+          uid: credential.user.uid,
+          idToken: await credential.user.getIdToken(),
+        };
       },
     };
   } catch {
@@ -63,9 +83,11 @@ async function runPlatformAuth(): Promise<PlatformAuthOutcome> {
     handle == null
       ? { status: "skipped", reason: "unsupported" }
       : await ensurePlatformSignIn({
-          getCurrentUserId: handle.currentUserId,
+          getFirebaseIdentity: handle.currentIdentity,
+          requestFirebaseCustomToken: () =>
+            webPlatform.identity.firebaseCustomToken(),
           signInWithCustomToken: handle.signIn,
-          fetchImpl: (input, init) => fetch(input, init),
+          signInPlatform: (credential) => webPlatform.signIn(credential),
         });
 
   telemetry.impression(

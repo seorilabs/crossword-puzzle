@@ -1,57 +1,40 @@
-// Seorilabs platform 인증 브리지(ADR 0013).
+// Seorilabs Platform 인증 순서의 3마켓 공통 정책.
 //
-// 왜 platform을 거치는가: 이 앱은 인증이 없어 기기별 익명 상태로만 동작했다. platform
-// identity가 없으니 신규 사용자 운영 알림(identity.created)도 발생하지 않았다. platform이
-// 앱 Firebase 프로젝트의 service account로 custom token을 원격 서명(IAM signJwt)해 주면,
-// private key를 어디에도 두지 않고 인증 진입점만 통일할 수 있다.
-//
-// 왜 core에 두는가: HTTP 호출 자체는 마켓 무관이다(fetch는 WebView와 RN 양쪽의 표준
-// 전역). 이걸 adapter에 두면 src/adapters와 apps/mobile에 같은 코드가 두 벌 생긴다.
-// core는 SDK import 금지 규칙만 지키면 되므로(AGENTS.md) 브리지 호출과 결과 해석은
-// 여기 두고, Firebase SDK가 필요한 signInWithCustomToken만 각 adapter가 주입한다.
-//
-// 중요: 이 앱에서 인증은 **게임 진행을 막지 않는 부가 기능**이다. 네트워크 실패나 platform
-// 장애가 퍼즐 풀이를 멈춰서는 안 된다. 그래서 실패를 예외로 던지지 않고 결과 상태로
-// 표현한다. 진행 상태·힌트·스트릭은 계속 기기 로컬 저장소가 소유한다.
+// SDK와 Firebase 구현은 Web/AIT와 RN adapter가 각각 주입한다. core에는 어느 SDK도
+// import하지 않고 다음 불변식만 둔다.
+// - 영속 복원된 Firebase 신원이 있으면 그대로 쓰고, 없을 때만 bridge로 만든다.
+// - bridge uid, Firebase uid, Platform session appUserId는 항상 같아야 한다.
+// - custom token은 즉시 Firebase 로그인에만 쓰고 저장하거나 계측하지 않는다.
+// - 인증 실패는 결과 상태로 흡수해 퍼즐 플레이를 막지 않는다.
 
 export const PLATFORM_AUTH_APP_ID = "crossword-puzzle";
 
 export const PLATFORM_API_BASE_URL =
   "https://platform-api-306278488979.asia-northeast3.run.app";
 
-export const PLATFORM_CUSTOM_TOKEN_PATH = "/v1/auth/firebase-custom-token";
-
-// 어느 앱의 요청인지 고르는 힌트 헤더. 권한이 아니다. 실제 검증은 서버가 발급 토큰의
-// aud로 한다(platform docs/03-architecture/identity.md).
-export const PLATFORM_APP_HEADER = "X-Seori-App";
-
 export type PlatformCustomTokenResult = {
   firebaseCustomToken: string;
   appUserId: string;
 };
 
-/** 브리지 호출 실패. 계측에 실을 code를 담는다. */
-export class PlatformAuthError extends Error {
-  readonly code: string;
-  readonly status: number;
+export type FirebaseIdentity = {
+  uid: string;
+  idToken: string;
+};
 
-  constructor(code: string, message: string, status: number) {
-    super(message);
-    this.name = "PlatformAuthError";
-    this.code = code;
-    this.status = status;
-  }
-}
+export type FirebaseIdTokenCredential = {
+  kind: "firebase-id-token";
+  value: string;
+};
 
-// 인증 결과. 실패해도 게임은 계속되어야 하므로 예외 대신 상태로 표현한다.
+export type PlatformSessionIdentity = {
+  appUserId: string;
+};
+
 export type PlatformAuthOutcome =
   | { status: "signed-in"; appUserId: string }
-  | { status: "skipped"; reason: PlatformAuthSkipReason }
+  | { status: "skipped"; reason: "unsupported" }
   | { status: "failed"; code: string };
-
-// 인증을 시도조차 하지 않은 이유. 실패(failed)와 구분해야 계측에서 장애와 정상적인
-// 미시도를 섞지 않는다.
-export type PlatformAuthSkipReason = "already-signed-in" | "unsupported";
 
 export const PLATFORM_AUTH_EVENT = "platform_auth_result";
 
@@ -81,6 +64,30 @@ export function buildPlatformAuthParams(
   return params;
 }
 
+export type PlatformSignInDependencies = {
+  // Firebase SDK의 영속 복원이 끝난 뒤 현재 uid와 ID token을 함께 돌려준다.
+  // forceRefresh=true면 만료된 ID token을 서버에 다시 보내지 않도록 강제 갱신한다.
+  getFirebaseIdentity: (
+    forceRefresh?: boolean,
+  ) => Promise<FirebaseIdentity | null>;
+  requestFirebaseCustomToken: () => Promise<PlatformCustomTokenResult>;
+  // custom token은 이 함수 호출 외에는 어디에도 전달하거나 저장하지 않는다.
+  signInWithCustomToken: (customToken: string) => Promise<FirebaseIdentity>;
+  signInPlatform: (
+    credential: FirebaseIdTokenCredential,
+  ) => Promise<PlatformSessionIdentity>;
+};
+
+class PlatformAuthFlowError extends Error {
+  readonly code: string;
+
+  constructor(code: string) {
+    super(code);
+    this.name = "PlatformAuthFlowError";
+    this.code = code;
+  }
+}
+
 function nonEmptyString(value: unknown): string | null {
   if (typeof value !== "string") {
     return null;
@@ -89,111 +96,85 @@ function nonEmptyString(value: unknown): string | null {
   return trimmed === "" ? null : trimmed;
 }
 
-// platform 응답 봉투(불변식 12): { ok: true, result } 또는 { ok: false, error }.
-type PlatformEnvelope = {
-  ok?: unknown;
-  result?: unknown;
-  error?: { code?: unknown; message?: unknown };
-};
-
-function decodeCustomTokenEnvelope(
-  status: number,
-  ok: boolean,
-  body: unknown,
-): PlatformCustomTokenResult {
-  const envelope: PlatformEnvelope =
-    body != null && typeof body === "object" ? (body as PlatformEnvelope) : {};
-
-  if (!ok || envelope.ok !== true) {
-    throw new PlatformAuthError(
-      nonEmptyString(envelope.error?.code) ?? "platform_unavailable",
-      nonEmptyString(envelope.error?.message) ?? "인증 서버에 연결하지 못했어요.",
-      status,
+function errorCode(error: unknown): string {
+  if (error instanceof PlatformAuthFlowError) {
+    return error.code;
+  }
+  if (error != null && typeof error === "object" && "code" in error) {
+    return (
+      nonEmptyString((error as { code?: unknown }).code) ??
+      "platform_unavailable"
     );
   }
-
-  const result =
-    envelope.result != null && typeof envelope.result === "object"
-      ? (envelope.result as Record<string, unknown>)
-      : {};
-  const firebaseCustomToken = nonEmptyString(result.firebaseCustomToken);
-  const appUserId = nonEmptyString(result.appUserId);
-
-  if (firebaseCustomToken == null || appUserId == null) {
-    throw new PlatformAuthError(
-      "platform_response_invalid",
-      "인증 서버 응답을 확인하지 못했어요.",
-      status,
-    );
-  }
-
-  return { firebaseCustomToken, appUserId };
+  return "platform_unavailable";
 }
 
-/** 브리지에서 custom token을 받아온다. 실패는 PlatformAuthError로 던진다. */
-export async function requestPlatformCustomToken(
-  fetchImpl: typeof fetch,
-): Promise<PlatformCustomTokenResult> {
-  const response = await fetchImpl(
-    `${PLATFORM_API_BASE_URL}${PLATFORM_CUSTOM_TOKEN_PATH}`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        [PLATFORM_APP_HEADER]: PLATFORM_AUTH_APP_ID,
-      },
-      body: JSON.stringify({ appId: PLATFORM_AUTH_APP_ID }),
-    },
-  );
+function assertSameUid(actual: string, expected: string, code: string): void {
+  if (nonEmptyString(actual) == null || actual !== expected) {
+    throw new PlatformAuthFlowError(code);
+  }
+}
 
-  let body: unknown;
+async function openPlatformSession(
+  deps: PlatformSignInDependencies,
+  identity: FirebaseIdentity,
+): Promise<PlatformSessionIdentity> {
+  const credential: FirebaseIdTokenCredential = {
+    kind: "firebase-id-token",
+    value: identity.idToken,
+  };
+
   try {
-    body = await response.json();
-  } catch {
-    throw new PlatformAuthError(
-      "platform_response_invalid",
-      "인증 서버 응답을 확인하지 못했어요.",
-      response.status,
-    );
+    return await deps.signInPlatform(credential);
+  } catch (error) {
+    if (errorCode(error) !== "auth_invalid") {
+      throw error;
+    }
+
+    // Firebase ID token이 서버 도착 전에 만료된 경계도 같은 uid의 강제 갱신 token으로
+    // 한 번만 복구한다. 첫 요청은 거절됐으므로 Platform session은 성공 시 한 번만 발급된다.
+    const refreshed = await deps.getFirebaseIdentity(true);
+    if (refreshed == null) {
+      throw new PlatformAuthFlowError("firebase_identity_missing");
+    }
+    assertSameUid(refreshed.uid, identity.uid, "firebase_uid_changed");
+    return deps.signInPlatform({
+      kind: "firebase-id-token",
+      value: refreshed.idToken,
+    });
   }
-
-  return decodeCustomTokenEnvelope(response.status, response.ok, body);
 }
-
-export type PlatformSignInDependencies = {
-  // 이미 로그인한 사용자의 uid. 없으면 null. 로그인 상태는 Firebase SDK가 기기에
-  // 영속하므로 재실행마다 브리지를 다시 부르지 않는다. 영속 복원이 끝나기를 기다려야
-  // 하므로 비동기다(웹은 authStateReady, RN은 첫 onAuthStateChanged).
-  getCurrentUserId: () => Promise<string | null>;
-  signInWithCustomToken: (customToken: string) => Promise<void>;
-  fetchImpl: typeof fetch;
-};
 
 /**
- * 인증을 보장한다. 어떤 경로로도 예외를 던지지 않는다. 호출부는 결과를 계측만 하고
- * 게임 흐름은 그대로 진행한다.
+ * Firebase custom-token bridge와 Platform session을 순서대로 연다.
+ * 어떤 경로로도 예외를 내보내지 않으므로 호출부는 렌더/게임 진행과 병렬 실행할 수 있다.
  */
 export async function ensurePlatformSignIn(
   deps: PlatformSignInDependencies,
 ): Promise<PlatformAuthOutcome> {
   try {
-    if (nonEmptyString(await deps.getCurrentUserId()) != null) {
-      return { status: "skipped", reason: "already-signed-in" };
+    let firebaseIdentity = await deps.getFirebaseIdentity(false);
+    if (firebaseIdentity == null) {
+      const bridge = await deps.requestFirebaseCustomToken();
+      firebaseIdentity = await deps.signInWithCustomToken(
+        bridge.firebaseCustomToken,
+      );
+      assertSameUid(
+        firebaseIdentity.uid,
+        bridge.appUserId,
+        "firebase_uid_mismatch",
+      );
     }
 
-    const { firebaseCustomToken, appUserId } = await requestPlatformCustomToken(
-      deps.fetchImpl,
+    const platformSession = await openPlatformSession(deps, firebaseIdentity);
+    assertSameUid(
+      platformSession.appUserId,
+      firebaseIdentity.uid,
+      "platform_uid_mismatch",
     );
-    await deps.signInWithCustomToken(firebaseCustomToken);
-    return { status: "signed-in", appUserId };
-  } catch (error) {
-    return { status: "failed", code: toPlatformAuthCode(error) };
-  }
-}
 
-function toPlatformAuthCode(error: unknown): string {
-  if (error instanceof PlatformAuthError) {
-    return error.code;
+    return { status: "signed-in", appUserId: platformSession.appUserId };
+  } catch (error) {
+    return { status: "failed", code: errorCode(error) };
   }
-  return "platform_unavailable";
 }

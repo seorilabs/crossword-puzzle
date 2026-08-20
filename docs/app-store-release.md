@@ -143,11 +143,11 @@ Trigger:
 
 `ci_scripts` 역할:
 
-| 훅 | 하는 일 |
-| --- | --- |
-| `ci_post_clone.sh` | Node/CocoaPods 설치, `npm ci`(root + apps/mobile), `GoogleService-Info.plist` 복원, `pod install` |
-| `ci_pre_xcodebuild.sh` | `CI_TAG` → marketing/build 버전 산출 후 `agvtool` 반영 |
-| `ci_post_xcodebuild.sh` | 아카이브 `Info.plist` 검증 — 버전, Game Center 리더보드 ID, AdMob app ID, SKAdNetwork ID |
+| 훅                      | 하는 일                                                                                                                 |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `ci_post_clone.sh`      | GitHub Packages 인증, Node/CocoaPods 설치, `npm ci`(root + apps/mobile), `GoogleService-Info.plist` 복원, `pod install` |
+| `ci_pre_xcodebuild.sh`  | `CI_TAG` → marketing/build 버전 산출 후 `agvtool` 반영                                                                  |
+| `ci_post_xcodebuild.sh` | 아카이브 `Info.plist` 검증 — 버전, Game Center 리더보드 ID, AdMob app ID, SKAdNetwork ID                                |
 
 릴리스 버전:
 
@@ -156,15 +156,17 @@ Trigger:
 
 필수 GitHub Secrets/Variables (`app-store` environment):
 
-| 이름                                   | 용도                                              |
-| -------------------------------------- | ------------------------------------------------- |
-| `APP_STORE_CONNECT_API_KEY_ID`         | App Store Connect API key ID                      |
-| `APP_STORE_CONNECT_ISSUER_ID`          | App Store Connect issuer ID                       |
-| `APP_STORE_CONNECT_PRIVATE_KEY_BASE64` | `AuthKey_*.p8` base64. ASC JWT 서명에 쓴다        |
+| 이름                                   | 용도                                       |
+| -------------------------------------- | ------------------------------------------ |
+| `APP_STORE_CONNECT_API_KEY_ID`         | App Store Connect API key ID               |
+| `APP_STORE_CONNECT_ISSUER_ID`          | App Store Connect issuer ID                |
+| `APP_STORE_CONNECT_PRIVATE_KEY_BASE64` | `AuthKey_*.p8` base64. ASC JWT 서명에 쓴다 |
 
 Apple 배포 인증서와 프로비저닝 프로파일 시크릿(`APPLE_DISTRIBUTION_CERTIFICATE_*`, `APPLE_PROVISIONING_PROFILE_BASE64`, `APPLE_KEYCHAIN_PASSWORD`)은 **이 경로에 필요 없다.** Xcode Cloud 매니지드 서명이 처리한다. 아래 로컬 대체 경로(`app-store:build:local`)는 계속 이 값들을 쓰므로 시크릿 자체는 남겨 둔다.
 
 `FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64`는 Xcode Cloud 환경변수로 설정하면 `ci_post_clone.sh`가 복원하고, 없으면 저장소에 커밋된 `GoogleService-Info.plist`를 쓴다.
+
+`GITHUB_PACKAGES_TOKEN`은 Xcode Cloud workflow의 Secret으로 설정해야 한다. `@seorilabs/platform-sdk`를 받는 데 필요한 `read:packages` 권한만 사용하며, `ci_post_clone.sh`는 값을 저장소가 아닌 빌드 머신의 `${HOME}/.npmrc`에만 기록한다.
 
 workflow 성공은 **업로드 경로가 끝까지 돈 증거**다. TestFlight 처리 상태와 심사 상태는 App Store Connect에서 따로 확인한다.
 
