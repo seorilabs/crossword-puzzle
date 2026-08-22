@@ -258,6 +258,7 @@ const featureParityMarkers = [
   "buildNextPuzzleCtaEvent",
   "result_overlay",
   "runRewardedHintAdFlow",
+  "pickHintCellIndex",
   "retry:",
   "selectedPuzzleScaffold",
   "computeLeaderboardScore",

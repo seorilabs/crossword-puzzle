@@ -63,15 +63,20 @@ describe("pickHintCellIndex", () => {
     assert.equal(index, 0);
   });
 
+  it("이미 입력한 오답 교차 칸보다 아직 입력하지 않은 칸을 먼저 공개한다", () => {
+    // 교차 칸(0,2)은 사용자가 이미 입력했지만 오답이고, (0,0)과 (0,1)은 빈칸이다.
+    const values = { "0:2": "오" };
+    assert.equal(pickHintCellIndex(a1, values, cellEntries), 0);
+  });
+
   it("모든 칸이 정답이면 -1", () => {
     const values = { "0:0": "가", "0:1": "나", "0:2": "다" };
     assert.equal(pickHintCellIndex(a1, values, cellEntries), -1);
   });
 
-  it("오답으로 채워진 칸도 미충족으로 보고 후보에 포함한다", () => {
-    // (0,0) 오답, 교차 칸(0,2)은 정답 → 교차 소진, 앞 미충족(0,0) 선택.
-    const values = { "0:0": "오", "0:2": "다" };
-    assert.equal(pickHintCellIndex(a1, values, cellEntries), 0);
+  it("빈칸 없이 오답만 남으면 오답 교차 칸을 우선 교정한다", () => {
+    const values = { "0:0": "오", "0:1": "답", "0:2": "틀" };
+    assert.equal(pickHintCellIndex(a1, values, cellEntries), 2);
   });
 });
 
