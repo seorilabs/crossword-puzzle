@@ -190,10 +190,10 @@ export function buildCellEntries(entries: PuzzleEntry[]) {
 }
 
 // 한 글자 힌트로 공개할 칸의 인덱스를 고른다(선택 단어의 셀 배열 기준).
-// 미충족(빈칸 또는 오답) 칸만 후보로 하고, 교차 칸(해당 셀을 지나는 entry가 2개
-// 이상)을 우선한다. 교차 칸을 공개하면 세로·가로 두 단어에 모두 도움이 되어 힌트
-// 1개의 체감 가치와 연쇄 해금 기대값이 커진다. 교차 후보가 여럿이면 위치가 앞선
-// 칸을, 교차 후보가 없으면 기존대로 앞선 미충족 칸을 고른다. 미충족 칸이 없으면 -1.
+// 아직 입력하지 않은 칸을 먼저 공개하고, 빈칸이 없을 때만 오답 칸을 교정한다.
+// 사용자가 이미 입력한 칸에 힌트가 먼저 쓰이는 일을 막으면서도, 모든 칸을 채웠지만
+// 오답이 있는 경우에는 힌트로 막힘을 해소할 수 있다. 같은 상태의 후보끼리는 교차
+// 칸을 우선해 세로·가로 두 단어에 함께 도움을 준다. 모든 칸이 정답이면 -1.
 export function pickHintCellIndex(
   entry: PuzzleEntry,
   cellValues: Record<string, string>,
@@ -202,22 +202,40 @@ export function pickHintCellIndex(
   const cells = getEntryCells(entry);
   const answerLetters = [...entry.answer];
 
-  let firstUnmetIndex = -1;
+  let firstEmptyIndex = -1;
+  let firstWrongIndex = -1;
+  let firstWrongCrossingIndex = -1;
   for (let index = 0; index < cells.length; index += 1) {
     const key = getCellKey(cells[index].row, cells[index].col);
-    if (cellValues[key] === answerLetters[index]) {
+    const value = cellValues[key];
+    if (value === answerLetters[index]) {
       continue; // 이미 정답인 칸은 건너뛴다.
     }
-    if (firstUnmetIndex === -1) {
-      firstUnmetIndex = index;
+
+    const isCrossing = (cellEntries.get(key)?.length ?? 0) >= 2;
+    if (value == null || value === "") {
+      if (firstEmptyIndex === -1) {
+        firstEmptyIndex = index;
+      }
+      if (isCrossing) {
+        return index; // 빈 교차 칸이 최우선이다.
+      }
+      continue;
     }
-    if ((cellEntries.get(key)?.length ?? 0) >= 2) {
-      // 앞선 교차 미충족 칸을 찾으면 즉시 채택한다(위치 우선).
-      return index;
+
+    if (firstWrongIndex === -1) {
+      firstWrongIndex = index;
+    }
+    if (firstWrongCrossingIndex === -1 && isCrossing) {
+      firstWrongCrossingIndex = index;
     }
   }
 
-  return firstUnmetIndex;
+  return firstEmptyIndex !== -1
+    ? firstEmptyIndex
+    : firstWrongCrossingIndex !== -1
+      ? firstWrongCrossingIndex
+      : firstWrongIndex;
 }
 
 export function buildStartLabels(entries: PuzzleEntry[]) {

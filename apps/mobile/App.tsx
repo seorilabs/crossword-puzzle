@@ -76,6 +76,7 @@ import {
   getTodayDateKey,
   grantDailyHintCredits,
   loadOrMigrateDailyHintWallet,
+  pickHintCellIndex,
   runRewardedHintAdFlow,
   trackRewardedHintAdRequest,
   trackRewardedHintAdResult,
@@ -2103,9 +2104,10 @@ function AppContent() {
 
     const cells = getEntryCells(selectedEntry);
     const answerLetters = [...selectedEntry.answer];
-    const targetIndex = cells.findIndex(
-      (cell, index) =>
-        cellValues[getCellKey(cell.row, cell.col)] !== answerLetters[index],
+    const targetIndex = pickHintCellIndex(
+      selectedEntry,
+      cellValues,
+      viewModel.cellEntries,
     );
 
     if (targetIndex === -1) {
