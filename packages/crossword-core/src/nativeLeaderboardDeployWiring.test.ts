@@ -37,15 +37,14 @@ describe("네이티브 리더보드 배포 배선", () => {
       androidWorkflow,
       /PLAY_GAMES_LEADERBOARD_ID:\s*\$\{\{ vars\.PLAY_GAMES_LEADERBOARD_ID \}\}/,
     );
-    assert.ok(
-      androidWorkflow.includes(
-        'if [ -z "${PLAY_GAMES_PROJECT_ID//[[:space:]]/}" ]; then',
-      ),
+    assert.match(
+      androidWorkflow,
+      /required=\([\s\S]*PLAY_GAMES_PROJECT_ID[\s\S]*PLAY_GAMES_LEADERBOARD_ID[\s\S]*\)/,
     );
     assert.match(androidWorkflow, /exit 1/);
     assert.ok(
-      androidWorkflow.indexOf("Validate Play Games leaderboard config") <
-        androidWorkflow.indexOf("Build signed Android AAB"),
+      androidWorkflow.indexOf("Validate build configuration") <
+        androidWorkflow.indexOf("Build signed Android AAB on Cloud Build"),
     );
   });
 
@@ -77,7 +76,12 @@ describe("네이티브 리더보드 배포 배선", () => {
       assert.match(workflow, /uses:\s*actions\/setup-node@v7/);
       assert.doesNotMatch(workflow, /actions\/(checkout|setup-node)@v6/);
     }
-    assert.match(androidWorkflow, /runs-on:\s*ubuntu-latest/);
+    assert.equal(
+      (androidWorkflow.match(/runs-on:\s*seorilabs-rpi-arm64/g) ?? []).length,
+      2,
+    );
+    assert.match(androidWorkflow, /gcloud builds submit/);
+    assert.doesNotMatch(androidWorkflow, /runs-on:\s*ubuntu-latest/);
     // Apple archive/업로드는 Xcode Cloud가 한다. macOS runner로 되돌아가면 실패시킨다.
     assert.match(iosWorkflow, /runs-on:\s*seorilabs-rpi-arm64/);
     assert.doesNotMatch(iosWorkflow, /runs-on:\s*macos/);

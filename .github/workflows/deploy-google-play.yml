@@ -54,24 +54,40 @@ permissions:
 
 concurrency:
   group: google-play-aab-${{ inputs.release_tag || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build-aab:
-    name: Build signed Android App Bundle
-    runs-on: ubuntu-latest
-    timeout-minutes: 35
+    name: Build signed AAB on x86 Cloud Build
+    runs-on: seorilabs-rpi-arm64
+    timeout-minutes: 55
+    environment: google-play
+    outputs:
+      android_version_code: ${{ steps.release.outputs.android_version_code }}
+      artifact_name: ${{ steps.meta.outputs.artifact_name }}
+      release_name: ${{ steps.release.outputs.release_name }}
+      release_tag: ${{ steps.tag.outputs.tag }}
+      source_sha: ${{ steps.meta.outputs.source_sha }}
 
     steps:
-      - name: Checkout
+      - name: Checkout release tooling
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          path: release-tooling
+          fetch-depth: 1
+
+      - name: Checkout release source
         uses: actions/checkout@v7
         with:
           ref: ${{ inputs.release_tag || github.ref }}
+          path: release-source
           fetch-depth: 0
           fetch-tags: true
 
       - name: Resolve release tag
         id: tag
+        working-directory: release-source
         shell: bash
         run: |
           set -euo pipefail
@@ -86,246 +102,282 @@ jobs:
             echo "release_tag가 비어 있어 최신 태그 $tag 를 사용합니다."
           fi
 
-          git -c advice.detachedHead=false checkout "$tag"
+          git -c advice.detachedHead=false checkout --detach "$tag"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
-
-      - name: Resolve release version
-        id: release
-        shell: bash
-        run: node scripts/resolve-release-version.mjs --tag "${{ steps.tag.outputs.tag }}"
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            apps/mobile/package-lock.json
-          registry-url: https://npm.pkg.github.com
-          scope: "@seorilabs"
+          node-version: 24.16.0
+          check-latest: false
 
-      - name: Setup Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "17"
-
-      - name: Install dependencies
-        env:
-          NODE_AUTH_TOKEN: ${{ github.token }}
-        run: npm ci
-
-      - name: Install mobile dependencies
-        env:
-          NODE_AUTH_TOKEN: ${{ github.token }}
-        run: npm ci --prefix apps/mobile
-
-      - name: Restore Android Firebase config
-        env:
-          FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64 }}
-        run: node scripts/restore-mobile-firebase-config.mjs --android --require
-
-      - name: Validate Play Games leaderboard config
+      - name: Resolve release version
+        id: release
+        working-directory: release-source
         shell: bash
-        env:
-          PLAY_GAMES_PROJECT_ID: ${{ vars.PLAY_GAMES_PROJECT_ID }}
-          PLAY_GAMES_LEADERBOARD_ID: ${{ vars.PLAY_GAMES_LEADERBOARD_ID }}
-        run: |
-          set -euo pipefail
+        run: node scripts/resolve-release-version.mjs --tag "${{ steps.tag.outputs.tag }}"
 
-          if [ -z "${PLAY_GAMES_PROJECT_ID//[[:space:]]/}" ]; then
-            echo "PLAY_GAMES_PROJECT_ID repository variable is required." >&2
-            exit 1
-          fi
-
-          if [ -z "${PLAY_GAMES_LEADERBOARD_ID//[[:space:]]/}" ]; then
-            echo "PLAY_GAMES_LEADERBOARD_ID repository variable is required." >&2
-            exit 1
-          fi
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Print current Google Play readiness
-        continue-on-error: true
-        run: npm run check:play -- --json
-
-      - name: Resolve Android project
-        id: android
+      - name: Prepare Cloud Build source
+        id: meta
         shell: bash
         run: |
           set -euo pipefail
 
-          if [ -x apps/mobile/android/gradlew ]; then
-            android_dir="apps/mobile/android"
-            aab_path="apps/mobile/android/app/build/outputs/bundle/release/app-release.aab"
-          elif [ -x android/gradlew ]; then
-            android_dir="android"
-            aab_path="android/app/build/outputs/bundle/release/app-release.aab"
-          else
-            echo "No Android Gradle project found. Add apps/mobile/android or android before building a Google Play AAB." >&2
-            exit 1
-          fi
+          install -m 0644 release-tooling/build.env release-source/build.env
+          install -m 0644 release-tooling/cloudbuild-android.yaml release-source/cloudbuild-android.yaml
+          install -m 0644 release-tooling/.gcloudignore release-source/.gcloudignore
+          install -m 0755 release-tooling/scripts/build-android.sh release-source/scripts/build-android.sh
 
+          # shellcheck disable=SC1091
+          source release-tooling/build.env
+          source_sha="$(git -C release-source rev-parse HEAD)"
+          run_key="${{ github.run_id }}-${{ github.run_attempt }}"
+          artifact_name="crossword-puzzle-google-play-aab-${{ steps.release.outputs.release_name }}"
+          artifact_bucket="gs://seorilabs-ci-build-artifacts/${{ github.repository }}/$run_key/artifacts"
+          credential_bucket="gs://seorilabs-ci-build-artifacts/${{ github.repository }}/$run_key/credentials"
           {
-            echo "android_dir=$android_dir"
-            echo "aab_path=$aab_path"
+            echo "aab_path=$AAB_PATH"
+            echo "artifact_bucket=$artifact_bucket"
+            echo "artifact_name=$artifact_name"
+            echo "builder=$ANDROID_BUILDER_IMAGE:$ANDROID_BUILDER_TAG"
+            echo "credential_bucket=$credential_bucket"
+            echo "source_sha=$source_sha"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Prepare Android SDK
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          sdkmanager_bin="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
-          if [ ! -x "$sdkmanager_bin" ]; then
-            echo "sdkmanager not found at $sdkmanager_bin" >&2
-            exit 1
-          fi
-
-          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
-          set +o pipefail
-          yes 2>/dev/null | "$sdkmanager_bin" --licenses >/dev/null
-          licenses_status="${PIPESTATUS[1]}"
-          set -o pipefail
-          if [ "$licenses_status" -ne 0 ]; then
-            exit "$licenses_status"
-          fi
-
-          "$sdkmanager_bin" \
-            "platform-tools" \
-            "platforms;android-35" \
-            "platforms;android-36" \
-            "build-tools;35.0.0" \
-            "build-tools;36.0.0" \
-            "cmdline-tools;latest"
-
-      - name: Validate signing secrets
+      - name: Validate build configuration
         shell: bash
         env:
-          GOOGLE_PLAY_UPLOAD_KEYSTORE_BASE64: ${{ secrets.GOOGLE_PLAY_UPLOAD_KEYSTORE_BASE64 }}
-          GOOGLE_PLAY_UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.GOOGLE_PLAY_UPLOAD_KEYSTORE_PASSWORD }}
-        run: |
-          set -euo pipefail
-
-          if [ -z "$GOOGLE_PLAY_UPLOAD_KEYSTORE_BASE64" ]; then
-            echo "GOOGLE_PLAY_UPLOAD_KEYSTORE_BASE64 secret is required." >&2
-            exit 1
-          fi
-
-          if [ -z "$GOOGLE_PLAY_UPLOAD_KEYSTORE_PASSWORD" ]; then
-            echo "GOOGLE_PLAY_UPLOAD_KEYSTORE_PASSWORD secret is required." >&2
-            exit 1
-          fi
-
-      - name: Restore Google Play upload keystore
-        shell: bash
-        env:
+          FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64 }}
           GOOGLE_PLAY_UPLOAD_KEYSTORE_BASE64: ${{ secrets.GOOGLE_PLAY_UPLOAD_KEYSTORE_BASE64 }}
           GOOGLE_PLAY_UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.GOOGLE_PLAY_UPLOAD_KEYSTORE_PASSWORD }}
           GOOGLE_PLAY_UPLOAD_KEY_PASSWORD: ${{ secrets.GOOGLE_PLAY_UPLOAD_KEY_PASSWORD }}
           GOOGLE_PLAY_UPLOAD_KEY_ALIAS: ${{ vars.GOOGLE_PLAY_UPLOAD_KEY_ALIAS }}
-          ANDROID_DIR: ${{ steps.android.outputs.android_dir }}
-        run: |
-          set -euo pipefail
-
-          signing_dir="$RUNNER_TEMP/crossword-puzzle-signing"
-          keystore_path="$signing_dir/crossword-puzzle-upload-key.jks"
-          key_alias="${GOOGLE_PLAY_UPLOAD_KEY_ALIAS:-crossword-puzzle-upload}"
-          key_password="${GOOGLE_PLAY_UPLOAD_KEY_PASSWORD:-$GOOGLE_PLAY_UPLOAD_KEYSTORE_PASSWORD}"
-
-          mkdir -p "$signing_dir"
-          printf '%s' "$GOOGLE_PLAY_UPLOAD_KEYSTORE_BASE64" | base64 --decode > "$keystore_path"
-          chmod 600 "$keystore_path"
-
-          {
-            printf 'storeFile=%s\n' "$keystore_path"
-            printf 'storePassword=%s\n' "$GOOGLE_PLAY_UPLOAD_KEYSTORE_PASSWORD"
-            printf 'keyAlias=%s\n' "$key_alias"
-            printf 'keyPassword=%s\n' "$key_password"
-          } > "$ANDROID_DIR/key.properties"
-          chmod 600 "$ANDROID_DIR/key.properties"
-
-      - name: Build signed Android AAB
-        working-directory: ${{ steps.android.outputs.android_dir }}
-        env:
-          APP_VERSION_NAME: ${{ steps.release.outputs.version }}
-          APP_VERSION_CODE: ${{ steps.release.outputs.android_version_code }}
-          PLAY_GAMES_PROJECT_ID: ${{ vars.PLAY_GAMES_PROJECT_ID }}
-          PLAY_GAMES_LEADERBOARD_ID: ${{ vars.PLAY_GAMES_LEADERBOARD_ID }}
-        run: ./gradlew :app:bundleRelease --no-daemon
-
-      - name: Upload AAB artifact
-        if: ${{ !inputs.upload_to_internal }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: crossword-puzzle-google-play-aab-${{ steps.release.outputs.release_name }}
-          path: ${{ steps.android.outputs.aab_path }}
-          if-no-files-found: error
-          retention-days: 3
-
-      - name: Validate Google Play WIF config
-        if: ${{ inputs.upload_to_internal }}
-        shell: bash
-        env:
           GOOGLE_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL: ${{ vars.GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL }}
+          PLAY_GAMES_PROJECT_ID: ${{ vars.PLAY_GAMES_PROJECT_ID }}
+          PLAY_GAMES_LEADERBOARD_ID: ${{ vars.PLAY_GAMES_LEADERBOARD_ID }}
         run: |
           set -euo pipefail
 
-          if [ -z "$GOOGLE_WORKLOAD_IDENTITY_PROVIDER" ]; then
-            echo "GOOGLE_WORKLOAD_IDENTITY_PROVIDER repository variable is required to upload to Google Play." >&2
-            exit 1
-          fi
-
-          if [ -z "$GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL" ]; then
-            echo "GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL repository variable is required to upload to Google Play." >&2
-            exit 1
-          fi
+          required=(
+            FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64
+            GOOGLE_PLAY_UPLOAD_KEYSTORE_BASE64
+            GOOGLE_PLAY_UPLOAD_KEYSTORE_PASSWORD
+            GOOGLE_PLAY_UPLOAD_KEY_PASSWORD
+            GOOGLE_PLAY_UPLOAD_KEY_ALIAS
+            GOOGLE_WORKLOAD_IDENTITY_PROVIDER
+            GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL
+            PLAY_GAMES_PROJECT_ID
+            PLAY_GAMES_LEADERBOARD_ID
+          )
+          for name in "${required[@]}"; do
+            value="${!name:-}"
+            if [ -z "${value//[[:space:]]/}" ]; then
+              echo "$name repository secret or variable is required." >&2
+              exit 1
+            fi
+          done
 
       - name: Authenticate to Google Cloud
-        if: ${{ inputs.upload_to_internal }}
         uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: ${{ vars.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ vars.GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL }}
           create_credentials_file: true
 
-      - name: Install Google Play API client
-        if: ${{ inputs.upload_to_internal }}
-        run: |
-          python3 -m pip install --upgrade pip
-          python3 -m pip install google-api-python-client google-auth google-auth-httplib2 httplib2
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v3
+        with:
+          project_id: seorilabs-ci
 
-      - name: Upload AAB to Google Play internal track
-        if: ${{ inputs.upload_to_internal }}
+      - name: Set Cloud Build quota project
+        run: gcloud config set billing/quota_project seorilabs-ci
+
+      - name: Stage ephemeral build credentials
+        shell: bash
+        env:
+          CREDENTIAL_BUCKET: ${{ steps.meta.outputs.credential_bucket }}
+          FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64 }}
+          GOOGLE_PLAY_UPLOAD_KEYSTORE_BASE64: ${{ secrets.GOOGLE_PLAY_UPLOAD_KEYSTORE_BASE64 }}
+          GOOGLE_PLAY_UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.GOOGLE_PLAY_UPLOAD_KEYSTORE_PASSWORD }}
+          GOOGLE_PLAY_UPLOAD_KEY_PASSWORD: ${{ secrets.GOOGLE_PLAY_UPLOAD_KEY_PASSWORD }}
+          GITHUB_PACKAGES_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          umask 077
+
+          secret_dir="$RUNNER_TEMP/crossword-cloud-build-secrets"
+          mkdir -p "$secret_dir"
+          printf '%s' "$FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64" > "$secret_dir/firebase-android-config.b64"
+          printf '%s' "$GOOGLE_PLAY_UPLOAD_KEYSTORE_BASE64" > "$secret_dir/play-keystore.b64"
+          printf '%s' "$GOOGLE_PLAY_UPLOAD_KEYSTORE_PASSWORD" > "$secret_dir/play-keystore-password"
+          printf '%s' "$GOOGLE_PLAY_UPLOAD_KEY_PASSWORD" > "$secret_dir/play-key-password"
+          printf '%s' "$GITHUB_PACKAGES_TOKEN" > "$secret_dir/github-packages-token"
+
+          for path in "$secret_dir"/*; do
+            gcloud storage cp "$path" "$CREDENTIAL_BUCKET/$(basename "$path")"
+          done
+
+      - name: Build signed Android AAB on Cloud Build
+        working-directory: release-source
+        shell: bash
+        env:
+          AAB_ARTIFACT_BUCKET: ${{ steps.meta.outputs.artifact_bucket }}
+          BUILD_CREDENTIAL_BUCKET: ${{ steps.meta.outputs.credential_bucket }}
+          GOOGLE_PLAY_UPLOAD_KEY_ALIAS: ${{ vars.GOOGLE_PLAY_UPLOAD_KEY_ALIAS }}
+          PLAY_GAMES_PROJECT_ID: ${{ vars.PLAY_GAMES_PROJECT_ID }}
+          PLAY_GAMES_LEADERBOARD_ID: ${{ vars.PLAY_GAMES_LEADERBOARD_ID }}
+          RELEASE_TAG: ${{ steps.tag.outputs.tag }}
+          VERSION_CODE: ${{ steps.release.outputs.android_version_code }}
+          VERSION_NAME: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          # shellcheck disable=SC1091
+          source build.env
+          gcloud builds submit . \
+            --project=seorilabs-ci \
+            --region=asia-northeast3 \
+            --config=cloudbuild-android.yaml \
+            --ignore-file=.gcloudignore \
+            --substitutions="_ANDROID_BUILDER_IMAGE=$ANDROID_BUILDER_IMAGE,_ANDROID_BUILDER_TAG=$ANDROID_BUILDER_TAG,_RELEASE_TAG=$RELEASE_TAG,_ANDROID_VERSION_NAME=$VERSION_NAME,_ANDROID_VERSION_CODE=$VERSION_CODE,_GOOGLE_PLAY_UPLOAD_KEY_ALIAS=$GOOGLE_PLAY_UPLOAD_KEY_ALIAS,_PLAY_GAMES_PROJECT_ID=$PLAY_GAMES_PROJECT_ID,_PLAY_GAMES_LEADERBOARD_ID=$PLAY_GAMES_LEADERBOARD_ID,_CREDENTIAL_BUCKET=$BUILD_CREDENTIAL_BUCKET,_ARTIFACT_BUCKET=$AAB_ARTIFACT_BUCKET"
+
+      - name: Fetch signed AAB
+        shell: bash
+        env:
+          AAB_PATH: ${{ steps.meta.outputs.aab_path }}
+          ARTIFACT_BUCKET: ${{ steps.meta.outputs.artifact_bucket }}
+        run: |
+          set -euo pipefail
+          mkdir -p "release-source/$(dirname "$AAB_PATH")"
+          gcloud storage cp \
+            "$ARTIFACT_BUCKET/$(basename "$AAB_PATH")" \
+            "release-source/$AAB_PATH"
+          test -s "release-source/$AAB_PATH"
+
+      - name: Upload signed AAB artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.meta.outputs.artifact_name }}
+          path: release-source/${{ steps.meta.outputs.aab_path }}
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Clean up ephemeral Cloud Build objects
+        if: ${{ always() && steps.meta.outputs.credential_bucket != '' }}
+        shell: bash
+        env:
+          ARTIFACT_BUCKET: ${{ steps.meta.outputs.artifact_bucket }}
+          CREDENTIAL_BUCKET: ${{ steps.meta.outputs.credential_bucket }}
+        run: |
+          rm -rf -- "$RUNNER_TEMP/crossword-cloud-build-secrets"
+          gcloud storage rm --recursive "$CREDENTIAL_BUCKET" || true
+          gcloud storage rm --recursive "$ARTIFACT_BUCKET" || true
+
+      - name: Build summary
+        if: ${{ success() }}
+        shell: bash
+        run: |
+          {
+            echo "### Google Play signed AAB"
+            echo "- source tag: \`${{ steps.tag.outputs.tag }}\`"
+            echo "- source SHA: \`${{ steps.meta.outputs.source_sha }}\`"
+            echo "- versionCode: \`${{ steps.release.outputs.android_version_code }}\`"
+            echo "- builder: \`${{ steps.meta.outputs.builder }}\`"
+            echo "- artifact: \`${{ steps.meta.outputs.artifact_name }}\`"
+            echo "- internal upload requested: \`${{ inputs.upload_to_internal }}\`"
+            echo "- production promotion: \`false\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  upload:
+    name: Upload AAB to Google Play internal
+    needs: build-aab
+    if: ${{ inputs.upload_to_internal }}
+    runs-on: seorilabs-rpi-arm64
+    timeout-minutes: 25
+    environment: google-play
+
+    steps:
+      - name: Checkout release source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.build-aab.outputs.release_tag }}
+
+      - name: Download signed AAB
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ needs.build-aab.outputs.artifact_name }}
+          path: artifacts/android
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL }}
+          create_credentials_file: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+          architecture: arm64
+
+      - name: Install Google Play API client
+        run: >-
+          python3 -m pip install --disable-pip-version-check
+          google-api-python-client google-auth google-auth-httplib2 httplib2
+
+      - name: Load release notes
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ steps.tag.outputs.tag }}
+          TAG: ${{ needs.build-aab.outputs.release_tag }}
         run: |
           set -euo pipefail
 
-          # Backoffice 가 Release 에 첨부한 정형 출시노트(전체 언어)를 받아 언어별로 반영.
           notes="$RUNNER_TEMP/release-notes.json"
-          if [ -n "$TAG" ] && gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern release-notes.json --output "$notes" --clobber 2>/dev/null \
+          if gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern release-notes.json --output "$notes" --clobber 2>/dev/null \
             && [ "$(jq -r '(.notes // {}) | length' "$notes")" -gt 0 ]; then
-            export RELEASE_NOTES_JSON="$notes"
+            echo "RELEASE_NOTES_JSON=$notes" >> "$GITHUB_ENV"
             echo "release-notes.json 로드: $(jq -r '.notes | keys_unsorted | join(", ")' "$notes")"
           fi
 
-          args=(
-            --aab-path "${{ steps.android.outputs.aab_path }}"
-            --release-name "${{ steps.release.outputs.release_name }}"
-            --release-status "${{ inputs.release_status }}"
-          )
-          if [ "${{ inputs.changes_not_sent_for_review }}" = "true" ]; then
-            args+=(--changes-not-sent-for-review)
+      - name: Upload internal release
+        shell: bash
+        env:
+          CHANGES_NOT_SENT_FOR_REVIEW: ${{ inputs.changes_not_sent_for_review }}
+          EXPECTED_VERSION_CODE: ${{ needs.build-aab.outputs.android_version_code }}
+          RELEASE_NAME: ${{ needs.build-aab.outputs.release_name }}
+          RELEASE_STATUS: ${{ inputs.release_status }}
+          GOOGLE_PLAY_API_TIMEOUT_SECONDS: "900"
+        run: |
+          set -euo pipefail
+          mapfile -t aabs < <(find artifacts/android -type f -name '*.aab' -print)
+          if [ "${#aabs[@]}" -ne 1 ]; then
+            echo "정확히 하나의 AAB가 필요합니다: ${#aabs[@]}" >&2
+            exit 1
           fi
 
+          args=(
+            --aab-path "${aabs[0]}"
+            --expected-version-code "$EXPECTED_VERSION_CODE"
+            --release-name "$RELEASE_NAME"
+            --release-status "$RELEASE_STATUS"
+            --track internal
+          )
+          if [ "$CHANGES_NOT_SENT_FOR_REVIEW" = "true" ]; then
+            args+=(--changes-not-sent-for-review)
+          fi
           python3 scripts/upload-google-play-internal.py "${args[@]}"
 
-      - name: Print remaining Google Play readiness blockers
-        continue-on-error: true
-        run: npm run check:play -- --json
+      - name: Upload summary
+        shell: bash
+        run: |
+          {
+            echo "### Google Play internal 업로드"
+            echo "- source tag: \`${{ needs.build-aab.outputs.release_tag }}\`"
+            echo "- source SHA: \`${{ needs.build-aab.outputs.source_sha }}\`"
+            echo "- versionCode: \`${{ needs.build-aab.outputs.android_version_code }}\`"
+            echo "- track: \`internal\`"
+            echo "- status: \`${{ inputs.release_status }}\`"
+            echo "- production promotion: \`false\`"
+          } >> "$GITHUB_STEP_SUMMARY"
