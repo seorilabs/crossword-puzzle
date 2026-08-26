@@ -819,6 +819,11 @@ for (const input of [
 }
 assertIncludes(
   promoteGooglePlayWorkflow,
+  "upload_script: scripts/upload-google-play-internal.py",
+  promoteGooglePlayWorkflowPath,
+);
+assertIncludes(
+  promoteGooglePlayWorkflow,
   "workflow_dispatch:",
   promoteGooglePlayWorkflowPath,
 );
