@@ -49,6 +49,9 @@ const deployAppsInTossWorkflowPath =
   ".github/workflows/deploy-apps-in-toss.yml";
 const deployGooglePlayWorkflowPath = ".github/workflows/deploy-google-play.yml";
 const deployAppStoreWorkflowPath = ".github/workflows/deploy-app-store.yml";
+const androidBuildEnvPath = "build.env";
+const androidCloudBuildPath = "cloudbuild-android.yaml";
+const androidBuildScriptPath = "scripts/build-android.sh";
 const appStoreLocalBuildPath = "scripts/app-store-local-build.sh";
 const xcodeCloudPostClonePath = "apps/mobile/ios/ci_scripts/ci_post_clone.sh";
 const xcodeCloudPreBuildPath =
@@ -293,6 +296,9 @@ const deployAllWorkflow = read(deployAllWorkflowPath);
 const deployAppsInTossWorkflow = read(deployAppsInTossWorkflowPath);
 const deployGooglePlayWorkflow = read(deployGooglePlayWorkflowPath);
 const deployAppStoreWorkflow = read(deployAppStoreWorkflowPath);
+const androidBuildEnv = read(androidBuildEnvPath);
+const androidCloudBuild = read(androidCloudBuildPath);
+const androidBuildScript = read(androidBuildScriptPath);
 const appStoreLocalBuild = read(appStoreLocalBuildPath);
 const xcodeCloudPostClone = read(xcodeCloudPostClonePath);
 const xcodeCloudPreBuild = read(xcodeCloudPreBuildPath);
@@ -705,19 +711,45 @@ assertIncludes(
 // Reusable workflows cannot elevate permissions granted by their caller. AIT와
 // Google Play 배포가 private package를 설치하므로 Deploy All도 read 권한을 연다.
 assertIncludes(deployAllWorkflow, "packages: read", deployAllWorkflowPath);
-for (const [path, content] of [
-  [deployAppsInTossWorkflowPath, deployAppsInTossWorkflow],
-  [deployGooglePlayWorkflowPath, deployGooglePlayWorkflow],
-]) {
-  assertIncludes(content, "packages: read", path);
-  assertIncludes(content, "registry-url: https://npm.pkg.github.com", path);
-  assertIncludes(content, 'scope: "@seorilabs"', path);
-  assertIncludes(content, "NODE_AUTH_TOKEN: ${{ github.token }}", path);
-}
+assertIncludes(
+  deployAppsInTossWorkflow,
+  "packages: read",
+  deployAppsInTossWorkflowPath,
+);
+assertIncludes(
+  deployAppsInTossWorkflow,
+  "registry-url: https://npm.pkg.github.com",
+  deployAppsInTossWorkflowPath,
+);
+assertIncludes(
+  deployAppsInTossWorkflow,
+  'scope: "@seorilabs"',
+  deployAppsInTossWorkflowPath,
+);
+assertIncludes(
+  deployAppsInTossWorkflow,
+  "NODE_AUTH_TOKEN: ${{ github.token }}",
+  deployAppsInTossWorkflowPath,
+);
 assertIncludes(
   deployGooglePlayWorkflow,
-  "node scripts/restore-mobile-firebase-config.mjs --android --require",
+  "packages: read",
   deployGooglePlayWorkflowPath,
+);
+assertIncludes(
+  deployGooglePlayWorkflow,
+  "GITHUB_PACKAGES_TOKEN: ${{ github.token }}",
+  deployGooglePlayWorkflowPath,
+);
+assertIncludes(
+  androidBuildScript,
+  "//npm.pkg.github.com/:_authToken=",
+  androidBuildScriptPath,
+);
+assertIncludes(
+  androidBuildScript,
+  "node scripts/restore-mobile-firebase-config.mjs --android --require",
+  androidBuildScriptPath,
 );
 assertIncludes(
   deployGooglePlayWorkflow,
@@ -726,13 +758,73 @@ assertIncludes(
 );
 assertIncludes(
   deployGooglePlayWorkflow,
-  "PLAY_GAMES_PROJECT_ID repository variable is required.",
+  "PLAY_GAMES_PROJECT_ID",
   deployGooglePlayWorkflowPath,
 );
 assertIncludes(
   deployGooglePlayWorkflow,
-  "PLAY_GAMES_LEADERBOARD_ID repository variable is required.",
+  "PLAY_GAMES_LEADERBOARD_ID",
   deployGooglePlayWorkflowPath,
+);
+assertIncludes(
+  deployGooglePlayWorkflow,
+  "runs-on: seorilabs-rpi-arm64",
+  deployGooglePlayWorkflowPath,
+);
+assertNotIncludes(
+  deployGooglePlayWorkflow,
+  "runs-on: ubuntu-latest",
+  deployGooglePlayWorkflowPath,
+);
+assertIncludes(
+  deployGooglePlayWorkflow,
+  "gcloud builds submit",
+  deployGooglePlayWorkflowPath,
+);
+assertIncludes(
+  deployGooglePlayWorkflow,
+  "gcloud config set billing/quota_project seorilabs-ci",
+  deployGooglePlayWorkflowPath,
+);
+assertIncludes(
+  deployGooglePlayWorkflow,
+  "gcloud storage rm --recursive",
+  deployGooglePlayWorkflowPath,
+);
+assertIncludes(
+  deployGooglePlayWorkflow,
+  'gcloud storage rm --recursive "$ARTIFACT_BUCKET"',
+  deployGooglePlayWorkflowPath,
+);
+assertIncludes(
+  deployGooglePlayWorkflow,
+  "actions/download-artifact@v8",
+  deployGooglePlayWorkflowPath,
+);
+assertIncludes(
+  androidBuildEnv,
+  "ANDROID_BUILDER_TAG=node24-jdk17-android36",
+  androidBuildEnvPath,
+);
+assertIncludes(
+  androidCloudBuild,
+  "name: ${_ANDROID_BUILDER_IMAGE}:${_ANDROID_BUILDER_TAG}",
+  androidCloudBuildPath,
+);
+assertIncludes(
+  androidBuildScript,
+  ":app:bundleRelease",
+  androidBuildScriptPath,
+);
+assertIncludes(
+  androidBuildScript,
+  "EXPECTED_PLAY_UPLOAD_CERT_SHA256",
+  androidBuildScriptPath,
+);
+assertIncludes(
+  androidBuildScript,
+  "jarsigner -verify -strict",
+  androidBuildScriptPath,
 );
 assertIncludes(
   xcodeCloudPostClone,

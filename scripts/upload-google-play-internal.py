@@ -224,6 +224,10 @@ def upload_internal_release(args):
             args.api_retries,
         )
         version_code = int(bundle["versionCode"])
+        if args.expected_version_code is not None and version_code != args.expected_version_code:
+            raise RuntimeError(
+                f"Uploaded AAB versionCode mismatch: expected {args.expected_version_code}, got {version_code}."
+            )
         release = {
             "name": args.release_name,
             "versionCodes": [str(version_code)],
@@ -341,6 +345,7 @@ def main():
     parser.add_argument("--track", default=release_config.get("track", config.get("targetTrack", "internal")))
     parser.add_argument("--release-status", choices=["draft", "completed"], default="draft")
     parser.add_argument("--release-name", default=release_config.get("name", "0.1.0-internal"))
+    parser.add_argument("--expected-version-code", type=positive_int, default=None)
     parser.add_argument("--release-notes-language", default=default_language)
     parser.add_argument("--release-notes", default=default_release_notes(release_config, default_language))
     parser.add_argument(

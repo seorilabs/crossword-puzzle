@@ -2,25 +2,27 @@
 
 ## 현재 판정
 
-현재 `crossword-puzzle`의 1차 론칭 목표는 AppsInToss WebView다. Google Play/App Store용 React Native `apps/mobile` 타깃은 앱인토스와 같은 퍼즐 UI를 네이티브로 빌드할 수 있는 상태를 우선한다.
+Google Play용 React Native `apps/mobile` 타깃은 RPI ARC가 릴리즈를 조정하고 x86 Cloud Build가 signed AAB를 만드는 경로를 사용한다. ARC는 Android 바이너리를 직접 빌드하지 않는다. 빌드 성공, GitHub Artifact 보관, internal track 업로드, 처리, QA, production 승격은 각각 별도 gate다.
 
-제출용 release upload key가 없으면 Android release 빌드는 repo-local `debug.keystore` fallback으로 서명해 산출물을 만든다. 이 fallback AAB는 빌드 확인용이며, Play 제출용으로는 upload key 기반 서명이 필요하다. AIT 론칭 전에는 Play internal testing draft release를 필수 blocker로 보지 않고, 빌드/업로드 체계와 남은 blocker를 문서로 유지한다.
+기존 Play upload key의 로컬 원본과 catalog 항목은 없고 GitHub Actions Secret 실행 복제본만 남아 있다. 워크플로는 사용자가 승인한 복구 경로로 이 Secret을 소비하되, Play Console에 등록된 공개 SHA-256 지문과 빌드 안에서 대조한다. 값은 Cloud Build substitution이나 로그에 넣지 않고 비공개 GCS 임시 객체로 전달하며, Cloud Build가 받은 뒤와 ARC job 종료 시 각각 삭제를 시도한다. Cloud Build가 만든 임시 AAB도 GitHub Artifact로 옮긴 뒤 삭제한다. 다른 앱 키 대체나 upload key 재설정은 이 경로에 포함하지 않는다.
 
 ```mermaid
 flowchart TD
   Config["play-store/google-play.config.json"]
   Assets["play-store assets/screenshots"]
   Android["apps/mobile/android"]
-  Build["GitHub Actions signed AAB build"]
+  ARC["RPI ARC release caller"]
+  Build["x86 Cloud Build signed AAB"]
   WIF["GitHub OIDC + Google Cloud WIF"]
   PlaySA["Play Console service account access"]
   Upload["Android Publisher API edits.bundles.upload"]
   Internal["Internal testing draft release"]
 
-  Config --> Build
+  Config --> ARC
   Assets --> Config
   Android --> Build
-  WIF --> Upload
+  ARC --> Build
+  WIF --> ARC
   PlaySA --> Upload
   Build --> Upload
   Upload --> Internal
@@ -28,15 +30,18 @@ flowchart TD
 
 ## 현재 추가된 자동화
 
-| 파일                                      | 역할                                                                          |
-| ----------------------------------------- | ----------------------------------------------------------------------------- |
-| `play-store/google-play.config.json`      | Play 등록/출시 source of truth                                                |
-| `scripts/check-google-play-readiness.mjs` | packageName, 정책값, 이미지, Android 프로젝트, AAB, upload workflow 상태 점검 |
-| `scripts/setup-google-play-wif.sh`        | shared Play publisher service account에 repo별 WIF impersonation 권한 추가    |
-| `scripts/apply-google-play-listing.py`    | API로 쓰기 가능한 Play listing/details/images 적용                            |
-| `scripts/upload-google-play-internal.py`  | Android Publisher API로 AAB를 internal track에 업로드                         |
-| `.github/workflows/deploy-google-play.yml` | signed AAB build, artifact 보관, 선택적 internal upload                       |
-| `docs/google-play-store-listing.md`       | 스토어 등록값과 미확정 항목                                                   |
+| 파일                                       | 역할                                                                           |
+| ------------------------------------------ | ------------------------------------------------------------------------------ |
+| `play-store/google-play.config.json`       | Play 등록/출시 source of truth                                                 |
+| `scripts/check-google-play-readiness.mjs`  | packageName, 정책값, 이미지, Android 프로젝트, AAB, upload workflow 상태 점검  |
+| `scripts/setup-google-play-wif.sh`         | shared Play publisher service account에 repo별 WIF impersonation 권한 추가     |
+| `scripts/apply-google-play-listing.py`     | API로 쓰기 가능한 Play listing/details/images 적용                             |
+| `scripts/upload-google-play-internal.py`   | Android Publisher API로 AAB를 internal track에 업로드                          |
+| `build.env`                                | Node, JDK, Android SDK, x86 builder image, AAB 경로, Play 인증서 지문 계약     |
+| `scripts/build-android.sh`                 | 태그 버전, Firebase, 서명 지문을 검증하고 signed AAB 생성                      |
+| `cloudbuild-android.yaml`                  | x86 builder 실행과 GCS artifact 전달                                           |
+| `.github/workflows/deploy-google-play.yml` | RPI ARC 조정, 임시 credential 전달/삭제, artifact 보관, 선택적 internal upload |
+| `docs/google-play-store-listing.md`        | 스토어 등록값과 미확정 항목                                                    |
 
 ## 1. Package Name
 
@@ -138,6 +143,10 @@ JAVA_HOME=$(/usr/libexec/java_home -v 17) npm run build:android
 
 ## 5. Upload Key와 GitHub Secrets
 
+현재 운영 키는 새로 만들지 않는다. GitHub Secret 속 기존 키는 Play Console `업로드 키 인증서`의 SHA-256과 일치해야 하며, 불일치하면 AAB 생성 전에 실패한다. `build.env`에는 공개 인증서 지문만 기록한다.
+
+로컬 source of truth를 새로 복구하거나 upload key를 재설정하는 작업은 별도 승인과 자격증명 백업/복원 검증이 필요하다. 아래 생성 명령은 신규 또는 명시적으로 승인된 재설정 때만 사용한다.
+
 Android 타깃을 만든 뒤 upload key를 만든다. 예시는 alias 후보값이다.
 
 ```bash
@@ -173,7 +182,7 @@ base64 -i apps/mobile/android/app/google-services.json | tr -d '\n' | gh secret 
 
 ## 6. Internal Track 업로드
 
-Android 타깃과 service account 권한이 준비되면 먼저 artifact build만 실행한다.
+워크플로는 태그의 제품 소스와 실행 중인 workflow SHA의 빌드 도구를 별도 checkout한다. 따라서 v1.1.7처럼 빌드 도구 도입 전 태그도 제품 소스 변경 없이 복구할 수 있다. 먼저 RPI ARC → x86 Cloud Build signed artifact만 검증한다.
 
 ```bash
 gh workflow run deploy-google-play.yml \
@@ -190,8 +199,7 @@ gh workflow run deploy-google-play.yml \
   -f release_status=draft
 ```
 
-첫 목표는 production rollout이 아니라 internal testing draft release다.
-`upload_to_internal=true`일 때는 `release_tag`가 필수이며, Android `versionName`, `versionCode`, Play release name은 해당 태그에서 계산한다.
+`upload_to_internal=true`이면 별도 RPI ARC job이 signed artifact를 받아 internal track에만 올린다. Android `versionName`, `versionCode`, Play release name은 해당 태그에서 계산하고, 업로드 API가 반환한 versionCode도 예상값과 일치해야 한다. 이 단계는 production 승격이나 공개 출시를 수행하지 않는다.
 
 ## 7. API listing/details/images 적용
 
