@@ -702,6 +702,9 @@ assertIncludes(
   'npm_scope: "@seorilabs"',
   staticChecksWorkflowPath,
 );
+// Reusable workflows cannot elevate permissions granted by their caller. AIT와
+// Google Play 배포가 private package를 설치하므로 Deploy All도 read 권한을 연다.
+assertIncludes(deployAllWorkflow, "packages: read", deployAllWorkflowPath);
 for (const [path, content] of [
   [deployAppsInTossWorkflowPath, deployAppsInTossWorkflow],
   [deployGooglePlayWorkflowPath, deployGooglePlayWorkflow],
