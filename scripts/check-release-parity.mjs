@@ -48,6 +48,7 @@ const deployAllWorkflowPath = ".github/workflows/deploy-all.yml";
 const deployAppsInTossWorkflowPath =
   ".github/workflows/deploy-apps-in-toss.yml";
 const deployGooglePlayWorkflowPath = ".github/workflows/deploy-google-play.yml";
+const promoteGooglePlayWorkflowPath = ".github/workflows/promote-google-play.yml";
 const deployAppStoreWorkflowPath = ".github/workflows/deploy-app-store.yml";
 const androidBuildEnvPath = "build.env";
 const androidCloudBuildPath = "cloudbuild-android.yaml";
@@ -295,6 +296,7 @@ const staticChecksWorkflow = read(staticChecksWorkflowPath);
 const deployAllWorkflow = read(deployAllWorkflowPath);
 const deployAppsInTossWorkflow = read(deployAppsInTossWorkflowPath);
 const deployGooglePlayWorkflow = read(deployGooglePlayWorkflowPath);
+const promoteGooglePlayWorkflow = read(promoteGooglePlayWorkflowPath);
 const deployAppStoreWorkflow = read(deployAppStoreWorkflowPath);
 const androidBuildEnv = read(androidBuildEnvPath);
 const androidCloudBuild = read(androidCloudBuildPath);
@@ -791,6 +793,47 @@ assertIncludes(
   "gcloud storage rm --recursive",
   deployGooglePlayWorkflowPath,
 );
+assertMatches(
+  promoteGooglePlayWorkflow,
+  /uses: seorilabs\/\.github\/\.github\/workflows\/promote-google-play\.yml@[0-9a-f]{40}/,
+  promoteGooglePlayWorkflowPath,
+  "immutable org promotion workflow SHA",
+);
+assertNotIncludes(
+  promoteGooglePlayWorkflow,
+  "promote-google-play.yml@main",
+  promoteGooglePlayWorkflowPath,
+);
+for (const input of [
+  "release_tag",
+  "from_track",
+  "to_track",
+  "release_status",
+  "rollout",
+]) {
+  assertIncludes(
+    promoteGooglePlayWorkflow,
+    `${input}: \${{ inputs.${input} }}`,
+    promoteGooglePlayWorkflowPath,
+  );
+}
+assertIncludes(
+  promoteGooglePlayWorkflow,
+  "workflow_dispatch:",
+  promoteGooglePlayWorkflowPath,
+);
+assertIncludes(
+  promoteGooglePlayWorkflow,
+  "workflow_call:",
+  promoteGooglePlayWorkflowPath,
+);
+for (const automaticTrigger of ["push:", "pull_request:", "schedule:"]) {
+  assertNotIncludes(
+    promoteGooglePlayWorkflow,
+    automaticTrigger,
+    promoteGooglePlayWorkflowPath,
+  );
+}
 assertIncludes(
   deployGooglePlayWorkflow,
   'gcloud storage rm --recursive "$ARTIFACT_BUCKET"',
