@@ -801,6 +801,14 @@ assertIncludes(
   "actions/download-artifact@v8",
   deployGooglePlayWorkflowPath,
 );
+const googlePlayToolingCheckoutCount = (
+  deployGooglePlayWorkflow.match(/ref:\s*\$\{\{ github\.sha \}\}/g) ?? []
+).length;
+if (googlePlayToolingCheckoutCount !== 2) {
+  fail(
+    `${deployGooglePlayWorkflowPath}: build와 upload는 모두 현재 workflow tooling SHA를 checkout해야 합니다.`,
+  );
+}
 assertIncludes(
   androidBuildEnv,
   "ANDROID_BUILDER_TAG=node24-jdk17-android36",

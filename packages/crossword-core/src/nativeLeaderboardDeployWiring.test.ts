@@ -80,6 +80,10 @@ describe("네이티브 리더보드 배포 배선", () => {
       (androidWorkflow.match(/runs-on:\s*seorilabs-rpi-arm64/g) ?? []).length,
       2,
     );
+    assert.equal(
+      (androidWorkflow.match(/ref:\s*\$\{\{ github\.sha \}\}/g) ?? []).length,
+      2,
+    );
     assert.match(androidWorkflow, /gcloud builds submit/);
     assert.doesNotMatch(androidWorkflow, /runs-on:\s*ubuntu-latest/);
     // Apple archive/업로드는 Xcode Cloud가 한다. macOS runner로 되돌아가면 실패시킨다.
