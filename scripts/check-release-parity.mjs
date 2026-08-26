@@ -804,6 +804,36 @@ assertNotIncludes(
   "promote-google-play.yml@main",
   promoteGooglePlayWorkflowPath,
 );
+for (const input of [
+  "release_tag",
+  "from_track",
+  "to_track",
+  "release_status",
+  "rollout",
+]) {
+  assertIncludes(
+    promoteGooglePlayWorkflow,
+    `${input}: \${{ inputs.${input} }}`,
+    promoteGooglePlayWorkflowPath,
+  );
+}
+assertIncludes(
+  promoteGooglePlayWorkflow,
+  "workflow_dispatch:",
+  promoteGooglePlayWorkflowPath,
+);
+assertIncludes(
+  promoteGooglePlayWorkflow,
+  "workflow_call:",
+  promoteGooglePlayWorkflowPath,
+);
+for (const automaticTrigger of ["push:", "pull_request:", "schedule:"]) {
+  assertNotIncludes(
+    promoteGooglePlayWorkflow,
+    automaticTrigger,
+    promoteGooglePlayWorkflowPath,
+  );
+}
 assertIncludes(
   deployGooglePlayWorkflow,
   'gcloud storage rm --recursive "$ARTIFACT_BUCKET"',
