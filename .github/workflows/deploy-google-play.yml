@@ -297,10 +297,10 @@ jobs:
     environment: google-play
 
     steps:
-      - name: Checkout release source
+      - name: Checkout release tooling
         uses: actions/checkout@v7
         with:
-          ref: ${{ needs.build-aab.outputs.release_tag }}
+          ref: ${{ github.sha }}
 
       - name: Download signed AAB
         uses: actions/download-artifact@v8

@@ -80,11 +80,40 @@ describe("네이티브 리더보드 배포 배선", () => {
       (androidWorkflow.match(/runs-on:\s*seorilabs-rpi-arm64/g) ?? []).length,
       2,
     );
+    assert.equal(
+      (androidWorkflow.match(/ref:\s*\$\{\{ github\.sha \}\}/g) ?? []).length,
+      2,
+    );
     assert.match(androidWorkflow, /gcloud builds submit/);
     assert.doesNotMatch(androidWorkflow, /runs-on:\s*ubuntu-latest/);
     // Apple archive/업로드는 Xcode Cloud가 한다. macOS runner로 되돌아가면 실패시킨다.
     assert.match(iosWorkflow, /runs-on:\s*seorilabs-rpi-arm64/);
     assert.doesNotMatch(iosWorkflow, /runs-on:\s*macos/);
+  });
+
+  it("Google Play upload job은 현재 tooling과 internal-only 계약을 유지한다", () => {
+    const uploadJobStart = androidWorkflow.indexOf("\n  upload:\n");
+    assert.notEqual(uploadJobStart, -1);
+    const uploadJob = androidWorkflow.slice(uploadJobStart);
+
+    assert.match(
+      uploadJob,
+      /- name: Checkout release tooling[\s\S]*?ref:\s*\$\{\{ github\.sha \}\}/,
+    );
+    assert.match(
+      uploadJob,
+      /name:\s*\$\{\{ needs\.build-aab\.outputs\.artifact_name \}\}/,
+    );
+    assert.match(
+      uploadJob,
+      /EXPECTED_VERSION_CODE:\s*\$\{\{ needs\.build-aab\.outputs\.android_version_code \}\}/,
+    );
+    assert.match(
+      uploadJob,
+      /--expected-version-code "\$EXPECTED_VERSION_CODE"/,
+    );
+    assert.match(uploadJob, /--track internal/);
+    assert.doesNotMatch(uploadJob, /--track\s+production|--promote/);
   });
 
   it("운영 문서에 마켓별 리더보드 ID와 분리된 데이터 풀을 명시한다", () => {
