@@ -217,6 +217,14 @@ export async function loadFirebaseLaunchConfig(): Promise<LaunchConfig> {
         remoteConfig,
         launchConfigKeys.firstRunAutoStartEnabled,
       ),
+      firstInputGuideEnabled: getBoolean(
+        remoteConfig,
+        launchConfigKeys.firstInputGuideEnabled,
+      ),
+      stuckHintPromptEnabled: getBoolean(
+        remoteConfig,
+        launchConfigKeys.stuckHintPromptEnabled,
+      ),
       stuckHintIdleMs: getNumber(
         remoteConfig,
         launchConfigKeys.stuckHintIdleMs,
