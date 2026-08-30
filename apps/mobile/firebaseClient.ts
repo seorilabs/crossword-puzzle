@@ -90,3 +90,21 @@ export async function logFirebaseAnalyticsEvent(
     // Analytics must never interrupt puzzle play.
   }
 }
+
+export async function logFirebaseScreenView(
+  screenName: string,
+  params: AnalyticsParams = {},
+) {
+  try {
+    const customParams = Object.fromEntries(
+      Object.entries(params).filter(([key]) => !key.startsWith('firebase_')),
+    );
+    await analytics().logScreenView({
+      ...customParams,
+      screen_name: screenName,
+      screen_class: screenName,
+    });
+  } catch {
+    // Analytics must never interrupt puzzle play.
+  }
+}

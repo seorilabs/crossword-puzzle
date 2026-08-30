@@ -381,6 +381,26 @@ assertImported(
   mobileTelemetryPath,
   "../../packages/crossword-core/src",
 );
+assertIncludes(
+  mobileFirebaseClient,
+  "analytics().logScreenView({",
+  mobileFirebaseClientPath,
+);
+assertIncludes(
+  mobileFirebaseClient,
+  "screen_name: screenName",
+  mobileFirebaseClientPath,
+);
+assertIncludes(
+  mobileFirebaseClient,
+  "screen_class: screenName",
+  mobileFirebaseClientPath,
+);
+assertIncludes(
+  mobileFirebaseClient,
+  "!key.startsWith('firebase_')",
+  mobileFirebaseClientPath,
+);
 assertNoLocalDefinitions(webApp, forbiddenLocalDefinitions, webAppPath);
 assertNoLocalDefinitions(mobileApp, forbiddenLocalDefinitions, mobileAppPath);
 
