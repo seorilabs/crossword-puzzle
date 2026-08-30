@@ -60,6 +60,12 @@ test('권한 허용 시 기존 예약을 취소하고 다음 날 09:00 KST 알�
     scheduleLocalReturnReminder('2026-08-31', client),
   ).resolves.toEqual({ outcome: 'agreed' });
 
+  expect(client.requestPermission).toHaveBeenCalledTimes(1);
+  expect(client.requestPermission).toHaveBeenCalledWith({
+    alert: true,
+    badge: false,
+    sound: true,
+  });
   expect(client.cancelTriggerNotification).toHaveBeenCalledWith(
     RETURN_REMINDER_NOTIFICATION_ID,
   );
