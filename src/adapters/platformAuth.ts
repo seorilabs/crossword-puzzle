@@ -1,13 +1,16 @@
 import { createPlatform } from "@seorilabs/platform-sdk";
 import {
   buildPlatformAuthParams,
+  createFailOpenPlatformPresenceLifecycle,
   ensurePlatformSignIn,
   PLATFORM_API_BASE_URL,
   PLATFORM_AUTH_APP_ID,
   PLATFORM_AUTH_EVENT,
+  PLATFORM_PRESENCE_ENABLED,
   type FirebaseIdentity,
   type PlatformAuthOutcome,
 } from "../../packages/crossword-core/src";
+import { RELEASE_VERSION } from "./analyticsSinks";
 import { getFirebaseApp } from "./firebaseClient";
 import { telemetry } from "./telemetry";
 
@@ -26,7 +29,14 @@ type FirebaseAuthHandle = {
 const webPlatform = createPlatform({
   appId: PLATFORM_AUTH_APP_ID,
   baseUrl: PLATFORM_API_BASE_URL,
+  presenceEnabled: PLATFORM_PRESENCE_ENABLED,
+  presenceContext: {
+    appVersion: RELEASE_VERSION,
+    platform: "ait",
+  },
 });
+const platformPresence =
+  createFailOpenPlatformPresenceLifecycle(webPlatform.presence);
 
 let signInPromise: Promise<PlatformAuthOutcome> | null = null;
 
@@ -75,6 +85,10 @@ export function ensurePlatformAuth(): Promise<PlatformAuthOutcome> {
   signInPromise ??= runPlatformAuth();
   return signInPromise;
 }
+
+export const startPlatformPresence = platformPresence.start;
+export const stopPlatformPresence = platformPresence.stop;
+export const resumePlatformPresence = platformPresence.resume;
 
 async function runPlatformAuth(): Promise<PlatformAuthOutcome> {
   const startedAt = Date.now();

@@ -4,6 +4,7 @@ import {
   PLATFORM_API_BASE_URL,
   PLATFORM_AUTH_APP_ID,
   PLATFORM_AUTH_EVENT,
+  PLATFORM_PRESENCE_ENABLED,
 } from "../../packages/crossword-core/src";
 
 const getFirebaseApp = vi.fn();
@@ -12,8 +13,16 @@ const firebaseCustomToken = vi.fn();
 const platformSignIn = vi.fn();
 const signInWithCustomToken = vi.fn();
 const impression = vi.fn();
+const presenceStart = vi.fn();
+const presenceStop = vi.fn();
+const presenceResume = vi.fn();
 const createPlatform = vi.fn<(options: unknown) => unknown>(() => ({
   identity: { firebaseCustomToken },
+  presence: {
+    start: presenceStart,
+    stop: presenceStop,
+    resume: presenceResume,
+  },
   signIn: platformSignIn,
 }));
 
@@ -60,7 +69,7 @@ function user(uid: string, idToken: string): FirebaseUserStub {
 
 async function loadAdapter() {
   vi.resetModules();
-  return (await import("./platformAuth")).ensurePlatformAuth;
+  return await import("./platformAuth");
 }
 
 describe("ensurePlatformAuth (웹/AIT adapter)", () => {
@@ -80,7 +89,7 @@ describe("ensurePlatformAuth (웹/AIT adapter)", () => {
   });
 
   it("같은 appId로 SDK를 만들고 firebase-id-token 세션을 한 번 연다", async () => {
-    const ensurePlatformAuth = await loadAdapter();
+    const { ensurePlatformAuth } = await loadAdapter();
 
     await expect(ensurePlatformAuth()).resolves.toEqual({
       status: "signed-in",
@@ -90,6 +99,11 @@ describe("ensurePlatformAuth (웹/AIT adapter)", () => {
     expect(createPlatform).toHaveBeenCalledWith({
       appId: PLATFORM_AUTH_APP_ID,
       baseUrl: PLATFORM_API_BASE_URL,
+      presenceEnabled: PLATFORM_PRESENCE_ENABLED,
+      presenceContext: {
+        appVersion: expect.any(String),
+        platform: "ait",
+      },
     });
     expect(firebaseCustomToken).toHaveBeenCalledWith();
     expect(signInWithCustomToken).toHaveBeenCalledWith("custom-token");
@@ -113,7 +127,7 @@ describe("ensurePlatformAuth (웹/AIT adapter)", () => {
       return Promise.resolve();
     });
     platformSignIn.mockResolvedValue({ appUserId: "pb_existing" });
-    const ensurePlatformAuth = await loadAdapter();
+    const { ensurePlatformAuth } = await loadAdapter();
 
     await expect(ensurePlatformAuth()).resolves.toEqual({
       status: "signed-in",
@@ -132,7 +146,7 @@ describe("ensurePlatformAuth (웹/AIT adapter)", () => {
 
   it("Firebase 설정이 없으면 실패가 아니라 unsupported로 건너뛴다", async () => {
     getFirebaseApp.mockResolvedValue(null);
-    const ensurePlatformAuth = await loadAdapter();
+    const { ensurePlatformAuth } = await loadAdapter();
 
     await expect(ensurePlatformAuth()).resolves.toEqual({
       status: "skipped",
@@ -145,7 +159,7 @@ describe("ensurePlatformAuth (웹/AIT adapter)", () => {
 
   it("네트워크 실패를 흡수하고 퍼즐 진입 Promise를 reject하지 않는다", async () => {
     firebaseCustomToken.mockRejectedValue({ code: "network_error" });
-    const ensurePlatformAuth = await loadAdapter();
+    const { ensurePlatformAuth } = await loadAdapter();
 
     await expect(ensurePlatformAuth()).resolves.toEqual({
       status: "failed",
@@ -156,12 +170,47 @@ describe("ensurePlatformAuth (웹/AIT adapter)", () => {
   });
 
   it("한 런타임에서 여러 번 불러도 bridge와 세션 발급은 각각 한 번이다", async () => {
-    const ensurePlatformAuth = await loadAdapter();
+    const { ensurePlatformAuth } = await loadAdapter();
 
     await Promise.all([ensurePlatformAuth(), ensurePlatformAuth()]);
 
     expect(firebaseCustomToken).toHaveBeenCalledTimes(1);
     expect(platformSignIn).toHaveBeenCalledTimes(1);
     expect(impression).toHaveBeenCalledTimes(1);
+  });
+
+  it("비활성 기본값을 유지하면서 lifecycle을 SDK Presence에 연결한다", async () => {
+    const {
+      resumePlatformPresence,
+      startPlatformPresence,
+      stopPlatformPresence,
+    } = await loadAdapter();
+
+    startPlatformPresence();
+    stopPlatformPresence();
+    resumePlatformPresence();
+
+    expect(presenceStart).toHaveBeenCalledTimes(2);
+    expect(presenceStop).toHaveBeenCalledTimes(1);
+    expect(presenceResume).toHaveBeenCalledTimes(1);
+    expect(createPlatform.mock.calls[0][0]).not.toHaveProperty("userId");
+    expect(createPlatform.mock.calls[0][0]).not.toHaveProperty("sessionId");
+  });
+
+  it("SDK lifecycle 오류가 제품 호출자에게 전파되지 않는다", async () => {
+    presenceStart.mockImplementation(() => {
+      throw new Error("503");
+    });
+    presenceStop.mockImplementation(() => {
+      throw new Error("TLS");
+    });
+    presenceResume.mockImplementation(() => {
+      throw new Error("timeout");
+    });
+    const lifecycle = await loadAdapter();
+
+    expect(() => lifecycle.startPlatformPresence()).not.toThrow();
+    expect(() => lifecycle.stopPlatformPresence()).not.toThrow();
+    expect(() => lifecycle.resumePlatformPresence()).not.toThrow();
   });
 });

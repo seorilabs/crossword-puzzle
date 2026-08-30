@@ -46,7 +46,7 @@
   "dependencies": {
     "@apps-in-toss/web-framework": "^2.10.7",
     "@emotion/react": "^11.14.0",
-    "@seorilabs/platform-sdk": "0.3.0",
+    "@seorilabs/platform-sdk": "0.4.0",
     "@toss/tds-colors": "^0.1.0",
     "@toss/tds-mobile": "^2.3.0",
     "@toss/tds-mobile-ait": "^2.3.0",
