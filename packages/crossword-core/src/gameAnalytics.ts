@@ -11,6 +11,7 @@
 
 import {
   compactTelemetryParams,
+  normalizePuzzleIdentifierTelemetryParam,
   type CompactTelemetryParams,
   type MarketTarget,
   type TelemetryParam,
@@ -38,12 +39,13 @@ export const GAME_ANALYTICS_EVENT_PREFIX = "game_";
  * 채워 넘긴다(코어는 Puzzle import 순환을 피하려 필요한 값만 받는다).
  */
 export type GamePuzzleContext = {
-  puzzleId: string;
+  puzzleId: string | number;
+  puzzleAlias?: string | number | null;
   difficulty: string;
   gridSize: number;
   wordCount: number;
-  packId?: string | null;
-  slotId?: string | null;
+  packId?: string | number | null;
+  slotId?: string | number | null;
   themeTag?: string | null;
 };
 
@@ -173,6 +175,7 @@ export type GameAnalyticsSink = {
 
 const CONTEXT_KEYS: Array<[keyof GamePuzzleContext, string]> = [
   ["puzzleId", "puzzle_id"],
+  ["puzzleAlias", "puzzle_alias"],
   ["difficulty", "difficulty"],
   ["gridSize", "grid_size"],
   ["wordCount", "word_count"],
@@ -191,7 +194,10 @@ function contextParams(
 ): Record<string, TelemetryParam> {
   const params: Record<string, TelemetryParam> = {};
   for (const [key, paramKey] of CONTEXT_KEYS) {
-    params[paramKey] = context[key];
+    params[paramKey] = normalizePuzzleIdentifierTelemetryParam(
+      paramKey,
+      context[key],
+    );
   }
   return params;
 }

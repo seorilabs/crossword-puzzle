@@ -76,6 +76,10 @@ import {
   getTodayDateKey,
   grantDailyHintCredits,
   loadOrMigrateDailyHintWallet,
+  normalizeOptionalPuzzleIdentifier,
+  normalizePuzzleIdentifier,
+  normalizePuzzleIdentifiers,
+  normalizePuzzleManifestIdentifiers,
   pickHintCellIndex,
   runRewardedHintAdFlow,
   trackRewardedHintAdRequest,
@@ -340,11 +344,15 @@ function getPuzzleTelemetryParams(
   return {
     difficulty: summary?.difficulty ?? puzzle.difficulty,
     grid_size: puzzle.gridSize,
-    pack_id: summary?.packId ?? puzzle.packId,
+    pack_id: normalizeOptionalPuzzleIdentifier(
+      summary?.packId ?? puzzle.packId,
+    ),
     published_at: summary?.publishedAt ?? puzzle.publishedAt,
-    puzzle_alias: getPuzzlePackAlias(aliasSource),
-    puzzle_id: puzzle.puzzleId,
-    slot_id: summary?.slotId ?? puzzle.slotId,
+    puzzle_alias: normalizePuzzleIdentifier(getPuzzlePackAlias(aliasSource)),
+    puzzle_id: normalizePuzzleIdentifier(puzzle.puzzleId),
+    slot_id: normalizeOptionalPuzzleIdentifier(
+      summary?.slotId ?? puzzle.slotId,
+    ),
     word_count: summary?.metrics?.wordCount ?? puzzle.metrics.wordCount,
   };
 }
@@ -354,6 +362,7 @@ function getPuzzleTelemetryParams(
 function getGamePuzzleContext(puzzle: Puzzle): GamePuzzleContext {
   return {
     puzzleId: puzzle.puzzleId,
+    puzzleAlias: getPuzzlePackAlias(puzzle),
     difficulty: puzzle.difficulty,
     gridSize: puzzle.gridSize,
     wordCount: puzzle.entries.length,
@@ -721,8 +730,10 @@ async function fetchJson<T>(url: string): Promise<T> {
 
 async function loadRemotePuzzlePack(): Promise<PuzzlePack> {
   const assetBaseUrl = REMOTE_PUZZLE_PACK_BASE_URL;
-  const manifest = await fetchJson<PuzzleManifest>(
-    `${assetBaseUrl.replace(/\/+$/, '')}/puzzles/manifest.json`,
+  const manifest = normalizePuzzleManifestIdentifiers(
+    await fetchJson<PuzzleManifest>(
+      `${assetBaseUrl.replace(/\/+$/, '')}/puzzles/manifest.json`,
+    ),
   );
 
   return {
@@ -747,7 +758,9 @@ async function loadPuzzleFromPack(puzzleId: string, pack: PuzzlePack) {
   }
 
   try {
-    return await fetchJson<Puzzle>(resolveRemotePuzzleUrl(pack, summary.path));
+    return normalizePuzzleIdentifiers(
+      await fetchJson<Puzzle>(resolveRemotePuzzleUrl(pack, summary.path)),
+    );
   } catch {
     return bundledPuzzle ?? null;
   }

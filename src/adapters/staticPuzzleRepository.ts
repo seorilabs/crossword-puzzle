@@ -4,6 +4,10 @@ import type {
   PuzzleManifestItem,
   PuzzleRepository,
 } from "../../packages/crossword-core/src";
+import {
+  normalizePuzzleIdentifiers,
+  normalizePuzzleManifestIdentifiers,
+} from "../../packages/crossword-core/src/puzzleIdentifiers.ts";
 
 type Fetcher = typeof fetch;
 
@@ -142,7 +146,9 @@ export function createStaticPuzzleRepository({
   });
 
   async function loadManifest() {
-    return fetchJson<PuzzleManifest>(fetcher, resolvedManifestUrl);
+    return normalizePuzzleManifestIdentifiers(
+      await fetchJson<PuzzleManifest>(fetcher, resolvedManifestUrl),
+    );
   }
 
   return {
@@ -161,13 +167,15 @@ export function createStaticPuzzleRepository({
         return null;
       }
 
-      return fetchJson<Puzzle>(
-        fetcher,
-        resolvePuzzleUrl({
-          assetBaseUrl,
-          manifestUrl: resolvedManifestUrl,
-          puzzlePath: selectedPuzzle.path,
-        }),
+      return normalizePuzzleIdentifiers(
+        await fetchJson<Puzzle>(
+          fetcher,
+          resolvePuzzleUrl({
+            assetBaseUrl,
+            manifestUrl: resolvedManifestUrl,
+            puzzlePath: selectedPuzzle.path,
+          }),
+        ),
       );
     },
 
@@ -183,13 +191,15 @@ export function createStaticPuzzleRepository({
         return null;
       }
 
-      return fetchJson<Puzzle>(
-        fetcher,
-        resolvePuzzleUrl({
-          assetBaseUrl,
-          manifestUrl: resolvedManifestUrl,
-          puzzlePath: selectedPuzzle.path,
-        }),
+      return normalizePuzzleIdentifiers(
+        await fetchJson<Puzzle>(
+          fetcher,
+          resolvePuzzleUrl({
+            assetBaseUrl,
+            manifestUrl: resolvedManifestUrl,
+            puzzlePath: selectedPuzzle.path,
+          }),
+        ),
       );
     },
   };

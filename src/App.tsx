@@ -69,6 +69,8 @@ import {
   grantDailyHintCredits,
   loadOrMigrateDailyHintWallet,
   getPuzzlePackAlias,
+  normalizeOptionalPuzzleIdentifier,
+  normalizePuzzleIdentifier,
   getNextFocusEntryAfterCompletion,
   getRemainingAttempts,
   getTodayDateKey,
@@ -370,11 +372,11 @@ function getPuzzleTelemetryParams(puzzle: Puzzle) {
   return {
     difficulty: puzzle.difficulty,
     grid_size: puzzle.gridSize,
-    pack_id: puzzle.packId,
+    pack_id: normalizeOptionalPuzzleIdentifier(puzzle.packId),
     published_at: puzzle.publishedAt,
-    puzzle_alias: getPuzzlePackAlias(puzzle),
-    puzzle_id: puzzle.puzzleId,
-    slot_id: puzzle.slotId,
+    puzzle_alias: normalizePuzzleIdentifier(getPuzzlePackAlias(puzzle)),
+    puzzle_id: normalizePuzzleIdentifier(puzzle.puzzleId),
+    slot_id: normalizeOptionalPuzzleIdentifier(puzzle.slotId),
     word_count: puzzle.entries.length,
   };
 }
@@ -384,6 +386,7 @@ function getPuzzleTelemetryParams(puzzle: Puzzle) {
 function getGamePuzzleContext(puzzle: Puzzle): GamePuzzleContext {
   return {
     puzzleId: puzzle.puzzleId,
+    puzzleAlias: getPuzzlePackAlias(puzzle),
     difficulty: puzzle.difficulty,
     gridSize: puzzle.gridSize,
     wordCount: puzzle.entries.length,

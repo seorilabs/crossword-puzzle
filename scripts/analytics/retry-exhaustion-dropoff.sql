@@ -49,7 +49,7 @@ SELECT
   user_pseudo_id,
   event_name,
   (
-    SELECT value.string_value
+    SELECT COALESCE(value.string_value, CAST(value.int_value AS STRING))
     FROM UNNEST(event_params)
     WHERE key = 'puzzle_id'
     LIMIT 1

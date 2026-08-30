@@ -20,6 +20,7 @@ export * from "./puzzle";
 export * from "./puzzleDiversity";
 export * from "./puzzlePackHealth";
 export * from "./puzzleLabels";
+export * from "./puzzleIdentifiers";
 export * from "./recommendation";
 export * from "./releaseVersion";
 export * from "./repositories";
