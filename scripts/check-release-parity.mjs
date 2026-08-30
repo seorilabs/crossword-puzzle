@@ -19,6 +19,7 @@ const webMainPath = "src/main.tsx";
 const webPlatformAuthPath = "src/adapters/platformAuth.ts";
 const webPuzzleRepositoryPath = "src/adapters/staticPuzzleRepository.ts";
 const mobileAppPath = "apps/mobile/App.tsx";
+const mobileGameplayTelemetryPath = "apps/mobile/gameplayTelemetry.ts";
 const mobileIndexPath = "apps/mobile/index.js";
 const mobilePlatformAuthPath = "apps/mobile/platformAuth.ts";
 const mobileAppTestPath = "apps/mobile/__tests__/App.test.tsx";
@@ -254,6 +255,7 @@ const webApp = read(webAppPath);
 const webMain = read(webMainPath);
 const webPlatformAuth = read(webPlatformAuthPath);
 const mobileApp = read(mobileAppPath);
+const mobileGameplayTelemetry = read(mobileGameplayTelemetryPath);
 const mobileIndex = read(mobileIndexPath);
 const mobilePlatformAuth = read(mobilePlatformAuthPath);
 const mobileAppTest = read(mobileAppTestPath);
@@ -282,6 +284,20 @@ for (const marker of featureParityMarkers) {
   assertIncludes(webApp, marker, webAppPath);
   assertIncludes(mobileApp, marker, mobileAppPath);
 }
+for (const eventName of ["game_progress", "puzzle_progress"]) {
+  assertIncludes(webApp, eventName, webAppPath);
+  assertIncludes(mobileApp, eventName, mobileAppPath);
+}
+for (const eventName of ["game_puzzle_abandon", "puzzle_abandon"]) {
+  assertIncludes(webApp, eventName, webAppPath);
+  assertIncludes(
+    mobileGameplayTelemetry,
+    eventName,
+    mobileGameplayTelemetryPath,
+  );
+}
+assertIncludes(mobileApp, "state === 'background'", mobileAppPath);
+assertIncludes(mobileApp, "emitPuzzleAbandon('today')", mobileAppPath);
 const launchConfig = read(launchConfigPath);
 const webTelemetry = read(webTelemetryPath);
 const mobileFirebaseClient = read(mobileFirebaseClientPath);
