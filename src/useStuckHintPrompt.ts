@@ -5,6 +5,7 @@ import {
   getStuckHintDelayMs,
   isNearFinishNudge,
   shouldScheduleStuckHintPrompt,
+  type StuckHintTrigger,
 } from "../packages/crossword-core/src";
 
 // 막힘(stuck) 힌트 CTA 노출 타이머를 캡슐화한 훅.
@@ -24,6 +25,9 @@ export interface UseStuckHintPromptInput {
   active: boolean;
   // 활동 신호: 값이 바뀌면 타이머를 리셋한다(예: cellValues 참조, 선택 단서 id).
   resetKeys: readonly unknown[];
+  // 보드가 비어 있고 이번 attempt에 첫 입력 이벤트가 아직 없는 상태(#346).
+  firstInputPending?: boolean;
+  firstInputIdleMs?: number;
   wrongCellCount: number;
   wrongCellThreshold: number;
   idleMs: number;
@@ -51,7 +55,7 @@ export interface UseStuckHintPromptInput {
   // 노출)·dismissCount(그 전까지 닫은 횟수)를 함께 전달한다(#254). near-finish 발화면
   // nearFinish=true와 발화 시점 잔여 단어 수(wordsRemaining)를 함께 준다(#280).
   onShow: (info: {
-    trigger: "idle" | "wrong_answer";
+    trigger: StuckHintTrigger;
     delayMs: number;
     promptSeq: number;
     dismissCount: number;
@@ -62,6 +66,9 @@ export interface UseStuckHintPromptInput {
 
 export interface UseStuckHintPromptResult {
   isVisible: boolean;
+  // 현재 노출 중인 프롬프트의 발화 원인. 첫 입력 전에는 hint CTA가 아닌 입력 개시
+  // 동작으로 분기하는 데 쓴다(#346).
+  trigger: StuckHintTrigger;
   // 현재 노출 중인 프롬프트가 완료 직전 마무리 넛지 모드인지(#280). 호출부가 문구·CTA·
   // 텔레메트리 분기를 이 값으로 결정한다.
   nearFinish: boolean;
@@ -83,6 +90,8 @@ export function useStuckHintPrompt(
     wrongCellThreshold,
     idleMs,
     wrongIdleMs,
+    firstInputPending = false,
+    firstInputIdleMs = idleMs,
     puzzleKey,
     maxPromptsPerAttempt = 0,
     maxDismissals = 0,
@@ -98,9 +107,10 @@ export function useStuckHintPrompt(
   const [isVisible, setIsVisible] = useState(false);
   // 현재(발화 시점에 고정된) near-finish 모드·잔여 단어 수(#280). 렌더·텔레메트리 분기용.
   const [nearFinishInfo, setNearFinishInfo] = useState<{
+    trigger: StuckHintTrigger;
     nearFinish: boolean;
     wordsRemaining: number;
-  }>({ nearFinish: false, wordsRemaining: 0 });
+  }>({ trigger: "idle", nearFinish: false, wordsRemaining: 0 });
 
   // 이번 퍼즐의 노출/닫기/직전 노출 시각(#254, #265). 렌더를 유발하지 않도록 ref로 둔다.
   const promptSeqRef = useRef(0);
@@ -161,9 +171,14 @@ export function useStuckHintPrompt(
       return;
     }
 
-    const trigger: "idle" | "wrong_answer" =
-      wrongCellCount >= wrongCellThreshold ? "wrong_answer" : "idle";
+    const trigger: StuckHintTrigger = firstInputPending
+      ? "first_input"
+      : wrongCellCount >= wrongCellThreshold
+        ? "wrong_answer"
+        : "idle";
     const baseDelayMs = getStuckHintDelayMs({
+      firstInputPending,
+      firstInputIdleMs,
       wrongCellCount,
       wrongCellThreshold,
       idleMs,
@@ -179,10 +194,7 @@ export function useStuckHintPrompt(
       lastShownAtRef.current == null
         ? Number.POSITIVE_INFINITY
         : Math.max(0, Date.now() - lastShownAtRef.current);
-    const cooldownDelayMs = Math.max(
-      0,
-      minCooldownMs - elapsedSinceLastShowMs,
-    );
+    const cooldownDelayMs = Math.max(0, minCooldownMs - elapsedSinceLastShowMs);
     const delayMs = Math.max(backoffDelayMs, cooldownDelayMs);
 
     setIsVisible(false);
@@ -191,13 +203,19 @@ export function useStuckHintPrompt(
       promptSeqRef.current += 1;
       // 발화 시점의 최신 진행 상태로 near-finish 모드를 판별한다(#280).
       const nudge = nudgeInputsRef.current;
-      const nearFinish = isNearFinishNudge({
-        progressPercent: nudge.progressPercent,
+      const nearFinish =
+        trigger !== "first_input" &&
+        isNearFinishNudge({
+          progressPercent: nudge.progressPercent,
+          wordsRemaining: nudge.wordsRemaining,
+          progressThreshold: nudge.finishNudgeProgressThreshold,
+          wordsRemainingThreshold: nudge.finishNudgeWordsRemaining,
+        });
+      setNearFinishInfo({
+        trigger,
+        nearFinish,
         wordsRemaining: nudge.wordsRemaining,
-        progressThreshold: nudge.finishNudgeProgressThreshold,
-        wordsRemainingThreshold: nudge.finishNudgeWordsRemaining,
       });
-      setNearFinishInfo({ nearFinish, wordsRemaining: nudge.wordsRemaining });
       setIsVisible(true);
       onShowRef.current({
         trigger,
@@ -214,6 +232,8 @@ export function useStuckHintPrompt(
     // 경유이므로 의도적으로 제외한다. dismissTick은 닫기 후 재스케줄 트리거.
   }, [
     active,
+    firstInputPending,
+    firstInputIdleMs,
     wrongCellCount,
     wrongCellThreshold,
     idleMs,
@@ -239,6 +259,7 @@ export function useStuckHintPrompt(
 
   return {
     isVisible,
+    trigger: nearFinishInfo.trigger,
     nearFinish: nearFinishInfo.nearFinish,
     wordsRemaining: nearFinishInfo.wordsRemaining,
     hide,

@@ -22,6 +22,98 @@ afterEach(() => {
 });
 
 describe("useStuckHintPrompt", () => {
+  it("첫 입력 전에는 6초 뒤 first_input으로 발화하고 near-finish로 오인하지 않는다(#346)", () => {
+    const onShow = vi.fn();
+    const emptyBoard = {};
+    const { result } = renderHook(() =>
+      useStuckHintPrompt({
+        active: true,
+        resetKeys: [emptyBoard],
+        firstInputPending: true,
+        firstInputIdleMs: 6000,
+        wrongCellCount: 0,
+        ...baseConfig,
+        progressPercent: 0,
+        wordsRemaining: 1,
+        finishNudgeProgressThreshold: 90,
+        finishNudgeWordsRemaining: 2,
+        onShow,
+      }),
+    );
+
+    act(() => vi.advanceTimersByTime(5999));
+    expect(result.current.isVisible).toBe(false);
+    act(() => vi.advanceTimersByTime(1));
+    expect(result.current.isVisible).toBe(true);
+    expect(result.current.trigger).toBe("first_input");
+    expect(result.current.nearFinish).toBe(false);
+    expect(onShow).toHaveBeenCalledWith({
+      trigger: "first_input",
+      delayMs: 6000,
+      promptSeq: 1,
+      dismissCount: 0,
+      nearFinish: false,
+      wordsRemaining: 1,
+    });
+  });
+
+  it("첫 입력 후에는 기존 20초 idle 타이머로 재스케줄한다(#346)", () => {
+    const onShow = vi.fn();
+    const makeProps = (firstInputPending: boolean, resetKey: object) => ({
+      active: true,
+      resetKeys: [resetKey] as readonly unknown[],
+      firstInputPending,
+      firstInputIdleMs: 6000,
+      wrongCellCount: 0,
+      ...baseConfig,
+      onShow,
+    });
+    const { result, rerender } = renderHook(
+      (props) => useStuckHintPrompt(props),
+      { initialProps: makeProps(true, {}) },
+    );
+
+    act(() => vi.advanceTimersByTime(5000));
+    rerender(makeProps(false, { "0:0": "가" }));
+    act(() => vi.advanceTimersByTime(19999));
+    expect(result.current.isVisible).toBe(false);
+    expect(onShow).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(1));
+    expect(result.current.trigger).toBe("idle");
+    expect(onShow).toHaveBeenCalledWith(
+      expect.objectContaining({ trigger: "idle", delayMs: 20000 }),
+    );
+  });
+
+  it("첫 입력 프롬프트도 기존 퍼즐당 총 노출 상한을 공유한다(#346)", () => {
+    const onShow = vi.fn();
+    const makeProps = (firstInputPending: boolean, resetKey: object) => ({
+      active: true,
+      resetKeys: [resetKey] as readonly unknown[],
+      firstInputPending,
+      firstInputIdleMs: 6000,
+      wrongCellCount: 0,
+      ...baseConfig,
+      puzzleKey: "puzzle-1",
+      maxPromptsPerAttempt: 1,
+      maxDismissals: 1,
+      dismissBackoffFactor: 2,
+      minCooldownMs: 180000,
+      onShow,
+    });
+    const { result, rerender } = renderHook(
+      (props) => useStuckHintPrompt(props),
+      { initialProps: makeProps(true, {}) },
+    );
+
+    act(() => vi.advanceTimersByTime(6000));
+    expect(onShow).toHaveBeenCalledTimes(1);
+    rerender(makeProps(false, { "0:0": "가" }));
+    act(() => vi.advanceTimersByTime(60000));
+    expect(result.current.isVisible).toBe(false);
+    expect(onShow).toHaveBeenCalledTimes(1);
+  });
+
   it("비활성(active=false)이면 타이머를 걸지 않고 노출되지 않는다", () => {
     const onShow = vi.fn();
     const { result } = renderHook(() =>
@@ -103,17 +195,20 @@ describe("useStuckHintPrompt", () => {
 
   it("대기 중 임계값(idleMs)이 원격 조정되면 이전 타이머를 취소하고 새 지연으로 재스케줄한다", () => {
     const onShow = vi.fn();
-    const { result, rerender } = renderHook((props) => useStuckHintPrompt(props), {
-      initialProps: {
-        active: true,
-        resetKeys: ["k"] as readonly unknown[],
-        wrongCellCount: 0,
-        wrongCellThreshold: 2,
-        idleMs: 20000,
-        wrongIdleMs: 5000,
-        onShow,
+    const { result, rerender } = renderHook(
+      (props) => useStuckHintPrompt(props),
+      {
+        initialProps: {
+          active: true,
+          resetKeys: ["k"] as readonly unknown[],
+          wrongCellCount: 0,
+          wrongCellThreshold: 2,
+          idleMs: 20000,
+          wrongIdleMs: 5000,
+          onShow,
+        },
       },
-    });
+    );
 
     // 20000ms 타이머 대기 중 10000ms 경과
     act(() => {
@@ -157,17 +252,20 @@ describe("useStuckHintPrompt", () => {
 
   it("활동(resetKeys) 변경 시 정체 타이머를 리셋한다", () => {
     const onShow = vi.fn();
-    const { result, rerender } = renderHook((props) => useStuckHintPrompt(props), {
-      initialProps: {
-        active: true,
-        resetKeys: ["a"] as readonly unknown[],
-        wrongCellCount: 0,
-        wrongCellThreshold: 2,
-        idleMs: 20000,
-        wrongIdleMs: 5000,
-        onShow,
+    const { result, rerender } = renderHook(
+      (props) => useStuckHintPrompt(props),
+      {
+        initialProps: {
+          active: true,
+          resetKeys: ["a"] as readonly unknown[],
+          wrongCellCount: 0,
+          wrongCellThreshold: 2,
+          idleMs: 20000,
+          wrongIdleMs: 5000,
+          onShow,
+        },
       },
-    });
+    );
 
     act(() => {
       vi.advanceTimersByTime(19000);
@@ -476,7 +574,12 @@ describe("useStuckHintPrompt", () => {
   it("puzzleKey 가 바뀔 때만 노출/닫기 카운터가 리셋된다(#265)", () => {
     const onShow = vi.fn();
     const makeProps = (puzzleKey: string, key: string) =>
-      capProps({ puzzleKey, resetKeys: [key], maxPromptsPerAttempt: 1, onShow });
+      capProps({
+        puzzleKey,
+        resetKeys: [key],
+        maxPromptsPerAttempt: 1,
+        onShow,
+      });
     const { result, rerender } = renderHook((p) => useStuckHintPrompt(p), {
       initialProps: makeProps("puzzle-1", "a"),
     });

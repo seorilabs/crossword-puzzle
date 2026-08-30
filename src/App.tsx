@@ -90,7 +90,6 @@ import {
   trackRewardedHintAdResult,
   shouldCelebrateOnboardingWordCompletion,
   shouldOfferStuckWordReveal,
-  getStuckHintPromptText,
   shouldQuickStartActivePuzzle,
   shouldShowFirstInputGuide,
   shouldSubmitLeaderboardScore,
@@ -146,6 +145,7 @@ import { SettingsSheet } from "./components/SettingsSheet";
 import { CompletionCelebrationDialog } from "./components/CompletionCelebrationDialog";
 import { MissionHistoryCard } from "./components/MissionHistoryCard";
 import { PuzzleMetaChips } from "./components/PuzzleMetaChips";
+import { StuckHintPrompt } from "./components/StuckHintPrompt";
 import { formatDifficultyLabel } from "./puzzleLabels";
 import { useShareResult } from "./useShareResult";
 import { useLeaderboard } from "./useLeaderboard";
@@ -713,6 +713,9 @@ function App() {
   );
   const firstAnswerInputKeysRef = useRef<Set<string>>(new Set());
   const firstInputGuideShownRef = useRef(false);
+  // 첫 입력 넛지 수락 때 TodayScreen 내부 native input에 포커스를 재요청한다. 숫자
+  // 토큰으로 동일 퍼즐에서도 명시적 사용자 수락마다 effect가 다시 실행되게 한다.
+  const [stuckHintFocusRequestId, setStuckHintFocusRequestId] = useState(0);
   // 플레이 방법 안내: 노출 1회 보장과 체류 시간 측정용.
   const howToPlayShownRef = useRef(false);
   const howToPlayShownAtRef = useRef<number | null>(null);
@@ -1182,12 +1185,17 @@ function App() {
   // 입력 가이드를 노출한다(입력이 생기면 즉시 사라짐). how-to를 아직 보지 않은 신규에게도
   // 노출되도록 how-to 전제를 제거했다(#161). how-to 다이얼로그는 더 위 레이어로 떠
   // 가이드를 덮으므로 충돌이 없고, 닫으면 가이드가 드러난다.
+  const isBoardEmpty = Object.keys(cellValues).length === 0;
+  const currentAttemptFirstInputKey = `${puzzle.puzzleId}:${mission.attemptsUsed}`;
+  const isFirstInputPending =
+    isBoardEmpty &&
+    !firstAnswerInputKeysRef.current.has(currentAttemptFirstInputKey);
   const isFirstInputGuideVisible = shouldShowFirstInputGuide({
     route,
     hasStarted,
     isCompleted,
     hasSeenFirstInputGuide,
-    isBoardEmpty: Object.keys(cellValues).length === 0,
+    isBoardEmpty,
   });
 
   // 최신 상태 스냅샷(ref): pagehide/visibilitychange 리스너가 stale closure 없이
@@ -1470,6 +1478,7 @@ function App() {
     puzzle.entries.length - viewModel.completedEntries.length;
   const {
     isVisible: isStuckHintPromptVisible,
+    trigger: stuckHintTrigger,
     nearFinish: isStuckHintNearFinish,
     wordsRemaining: stuckHintShownWordsRemaining,
     hide: hideStuckHintPrompt,
@@ -1477,6 +1486,8 @@ function App() {
   } = useStuckHintPrompt({
     active: route === "today" && hasStarted && !isCompleted,
     resetKeys: [cellValues],
+    firstInputPending: isFirstInputPending,
+    firstInputIdleMs: launchConfig.stuckHintFirstInputIdleMs,
     wrongCellCount,
     wrongCellThreshold: launchConfig.stuckHintWrongCellThreshold,
     idleMs: launchConfig.stuckHintIdleMs,
@@ -2375,6 +2386,7 @@ function App() {
       attempt_number: mission.attemptsUsed,
       progress_percent: progressPercent,
       remaining_hint_credits: remainingHintCredits,
+      trigger: stuckHintTrigger,
       near_finish: isStuckHintNearFinish,
       words_remaining: stuckHintShownWordsRemaining,
     });
@@ -2384,6 +2396,31 @@ function App() {
     } else {
       setIsRewardedHintPromptOpen(true);
     }
+  }
+
+  // 첫 입력 전 넛지 수락(#346): 힌트를 소비하지 않고 실제로 입력 가능한 첫 빈 칸을
+  // 선택한 뒤 TodayScreen의 현재 입력 모드에 맞는 native input 포커스를 재요청한다.
+  function acceptFirstInputNudge() {
+    hideStuckHintPrompt();
+    telemetry.click(STUCK_HINT_PROMPT_ACCEPT_EVENT, {
+      ...puzzleTelemetryParams,
+      attempt_number: mission.attemptsUsed,
+      progress_percent: progressPercent,
+      remaining_hint_credits: remainingHintCredits,
+      trigger: "first_input",
+      near_finish: false,
+      words_remaining: stuckHintShownWordsRemaining,
+    });
+    const starter = resolveStarterCell({ cellValues, puzzle });
+    if (starter != null) {
+      const starterEntry = puzzle.entries.find(
+        (entry) => entry.id === starter.entryId,
+      );
+      if (starterEntry != null) {
+        selectEntry(starterEntry, starter.cellKey);
+      }
+    }
+    setStuckHintFocusRequestId((requestId) => requestId + 1);
   }
 
   // 완료 직전 마무리 넛지 수락(#280): 남은 미완성 단어 중 첫 단서를 선택·하이라이트로
@@ -2396,6 +2433,7 @@ function App() {
       attempt_number: mission.attemptsUsed,
       progress_percent: progressPercent,
       remaining_hint_credits: remainingHintCredits,
+      trigger: stuckHintTrigger,
       near_finish: true,
       words_remaining: stuckHintShownWordsRemaining,
     });
@@ -2413,6 +2451,7 @@ function App() {
       ...puzzleTelemetryParams,
       attempt_number: mission.attemptsUsed,
       progress_percent: progressPercent,
+      trigger: stuckHintTrigger,
       near_finish: isStuckHintNearFinish,
       words_remaining: stuckHintShownWordsRemaining,
     });
@@ -2426,6 +2465,7 @@ function App() {
       ...puzzleTelemetryParams,
       attempt_number: mission.attemptsUsed,
       progress_percent: progressPercent,
+      trigger: stuckHintTrigger,
       near_finish: isStuckHintNearFinish,
       words_remaining: stuckHintShownWordsRemaining,
     });
@@ -2930,6 +2970,7 @@ function App() {
           hasStarted={hasStarted}
           isCompleted={isCompleted}
           isFirstInputGuideVisible={isFirstInputGuideVisible}
+          stuckHintFocusRequestId={stuckHintFocusRequestId}
           isNewBestTime={isNewBestTime}
           isPaused={isPaused}
           navigate={navigate}
@@ -3033,58 +3074,24 @@ function App() {
         </div>
       ) : null}
       {route === "today" && isStuckHintPromptVisible ? (
-        <div className="stuckHintPrompt" role="status">
-          <span className="stuckHintPromptText">
-            {getStuckHintPromptText({
-              nearFinish: isStuckHintNearFinish,
-              wordsRemaining: stuckHintShownWordsRemaining,
-              hasHintCredits: remainingHintCredits > 0,
-            })}
-          </span>
-          <div className="stuckHintPromptActions">
-            {isStuckHintNearFinish ? (
-              // near-finish 발화: 남은 미완성 단어 중 첫 단서로 이동시키는 마무리 CTA(#280).
-              // 기존 한 글자 힌트/단어 공개 CTA는 아래에 그대로 유지한다.
-              <button
-                type="button"
-                className="stuckHintPromptCta"
-                onClick={acceptNearFinishNudge}
-              >
-                남은 단어 마저 풀기
-              </button>
-            ) : null}
-            <button
-              type="button"
-              className="stuckHintPromptCta"
-              onClick={acceptStuckHintPrompt}
-            >
-              {remainingHintCredits > 0 ? "무료 힌트 보기" : "힌트 보기"}
-            </button>
-            {shouldOfferStuckWordReveal({
-              hasSelectedEntry: viewModel.selectedEntry != null,
-              isSelectedEntryComplete:
-                viewModel.selectedEntry != null &&
-                getEntryAnswerValue(viewModel.selectedEntry, cellValues) ===
-                  viewModel.selectedEntry.answer,
-            }) ? (
-              <button
-                type="button"
-                className="stuckHintPromptReveal"
-                onClick={acceptStuckWordReveal}
-              >
-                이 단어 정답 보기
-              </button>
-            ) : null}
-            <button
-              type="button"
-              className="stuckHintPromptClose"
-              aria-label="힌트 안내 닫기"
-              onClick={dismissStuckHintPrompt}
-            >
-              ✕
-            </button>
-          </div>
-        </div>
+        <StuckHintPrompt
+          trigger={stuckHintTrigger}
+          nearFinish={isStuckHintNearFinish}
+          wordsRemaining={stuckHintShownWordsRemaining}
+          hasHintCredits={remainingHintCredits > 0}
+          offerWordReveal={shouldOfferStuckWordReveal({
+            hasSelectedEntry: viewModel.selectedEntry != null,
+            isSelectedEntryComplete:
+              viewModel.selectedEntry != null &&
+              getEntryAnswerValue(viewModel.selectedEntry, cellValues) ===
+                viewModel.selectedEntry.answer,
+          })}
+          onAcceptFirstInput={acceptFirstInputNudge}
+          onAcceptHint={acceptStuckHintPrompt}
+          onAcceptNearFinish={acceptNearFinishNudge}
+          onRevealWord={acceptStuckWordReveal}
+          onDismiss={dismissStuckHintPrompt}
+        />
       ) : null}
       {isFirstInputGuideVisible ? (
         <div className="firstInputGuide" role="status">
@@ -3888,6 +3895,7 @@ type TodayScreenProps = DateSelectionProps & {
   hintCount: number;
   isCompleted: boolean;
   isFirstInputGuideVisible: boolean;
+  stuckHintFocusRequestId: number;
   isNewBestTime: boolean;
   isPaused: boolean;
   hapticEnabled: boolean;
@@ -3945,6 +3953,7 @@ function TodayScreen({
   hintCount,
   isCompleted,
   isFirstInputGuideVisible,
+  stuckHintFocusRequestId,
   isNewBestTime,
   isPaused,
   hapticEnabled,
@@ -4305,6 +4314,21 @@ function TodayScreen({
     puzzle,
     selectEntry,
   ]);
+
+  // 첫 입력 넛지 CTA는 사용자 제스처이므로 초기 best-effort 포커스와 별도로 현재
+  // 입력 모드의 input을 다시 포커스한다. 선택 상태 반영 뒤 실행되도록 RAF로 미룬다.
+  useEffect(() => {
+    if (stuckHintFocusRequestId <= 0) {
+      return;
+    }
+    requestAnimationFrame(() => {
+      if (answerInputMode === "box") {
+        boxInputRef.current?.focus({ preventScroll: true });
+      } else {
+        boardInputRef.current?.focus({ preventScroll: true });
+      }
+    });
+  }, [answerInputMode, stuckHintFocusRequestId]);
 
   function focusPuzzleBoard() {
     requestAnimationFrame(() => {
@@ -6062,6 +6086,7 @@ type DevSimulatorScreenProps = Omit<
   | "dismissCompletionCelebration"
   | "pause"
   | "isFirstInputGuideVisible"
+  | "stuckHintFocusRequestId"
   | "isPaused"
   | "togglePause"
 > & {

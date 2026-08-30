@@ -84,9 +84,10 @@ flowchart TD
 
 ## 막힘 힌트 과다 노출 방어 (#265)
 
-- 막힘 판정 시간·오답 임계·퍼즐당 노출 상한·dismiss 상한·최소 쿨다운은 `packages/crossword-core/src/launchConfig.ts`의 공용 Remote Config 계약을 따른다. 기본 정책은 같은 퍼즐에서 최대 2회, 노출 간 최소 180초, 첫 dismiss 후 해당 퍼즐 재노출 금지다.
+- 막힘 판정 시간·첫 입력 전용 지연(`stuck_hint_first_input_idle_ms`, 기본 6초)·오답 임계·퍼즐당 노출 상한·dismiss 상한·최소 쿨다운은 `packages/crossword-core/src/launchConfig.ts`의 공용 Remote Config 계약을 따른다. 기본 정책은 같은 퍼즐에서 최대 2회, 노출 간 최소 180초, 첫 dismiss 후 해당 퍼즐 재노출 금지다.
 - **AIT/Web**은 `src/useStuckHintPrompt.ts`가 퍼즐 ID를 기준으로 상태를 유지하므로 같은 퍼즐의 재도전이나 홈 왕복으로 상한과 dismiss 억제를 초기화하지 않는다. 기존 `stuck_hint_prompt`, `stuck_hint_prompt_accept`, `stuck_hint_prompt_dismiss` 이벤트 이름은 유지한다.
-- **Android/iOS(RN)**는 아직 자동 막힘 힌트 CTA가 없어 설정값만 공용 Remote Config에서 읽고 화면 동작은 no-op이다. native에 CTA를 추가할 때 같은 코어 기본값과 이벤트 계약을 사용해야 한다.
+- **AIT/Web**은 보드가 비고 이번 attempt에 입력이 없으면 6초 뒤 `trigger=first_input` 입력 개시 안내를 띄운다. 수락은 힌트를 소비하지 않고 첫 빈 칸 선택·입력 포커스만 수행한다. 첫 입력 뒤에는 기존 20초 idle/5초 오답 분기로 돌아간다.
+- **Android/iOS(RN)**는 아직 자동 막힘 힌트 CTA가 없어 설정값만 공용 Remote Config에서 읽고 화면 동작은 no-op이다. #340에서 native CTA를 추가할 때 같은 코어 기본값·`first_input` 이벤트 계약·공유 상한을 적용해야 하며, 그 전까지 이 기능 차이는 release gate의 명시적 예외다.
 
 ## 리워드 힌트 광고 시스템 실패 재시도 (#277)
 
