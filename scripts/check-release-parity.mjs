@@ -298,6 +298,19 @@ for (const eventName of ["game_puzzle_abandon", "puzzle_abandon"]) {
 }
 assertIncludes(mobileApp, "state === 'background'", mobileAppPath);
 assertIncludes(mobileApp, "emitPuzzleAbandon('today')", mobileAppPath);
+assertIncludes(webApp, "const recommendationPuzzleSummaries", webAppPath);
+assertIncludes(mobileApp, "const recommendationPuzzleSummaries", mobileAppPath);
+assertIncludes(webApp, "...puzzleSummaries", webAppPath);
+assertIncludes(mobileApp, "...puzzlePack.summaries", mobileAppPath);
+assertIncludes(webApp, "recommendationPuzzleSummaries,", webAppPath);
+assertIncludes(mobileApp, "recommendationPuzzleSummaries,", mobileAppPath);
+const recommendationFallbackCtaMarkers =
+  mobileApp.match(/퍼즐 기록 보기/g) ?? [];
+if (recommendationFallbackCtaMarkers.length < 4) {
+  fail(
+    `${mobileAppPath}: completion overlay and result screen both need recommendation fallback CTA`,
+  );
+}
 const launchConfig = read(launchConfigPath);
 const webTelemetry = read(webTelemetryPath);
 const mobileFirebaseClient = read(mobileFirebaseClientPath);

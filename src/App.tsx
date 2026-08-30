@@ -1397,6 +1397,16 @@ function App() {
       ),
     [archivePuzzleSummaries, todayPuzzleSummaries, selectedPuzzleSummary],
   );
+  const recommendationPuzzleSummaries = useMemo(
+    () =>
+      uniquePuzzleSummaries([
+        ...puzzleSummaries,
+        ...puzzleArchiveRecords.map((record) =>
+          createPuzzleSummary(record.puzzle),
+        ),
+      ]),
+    [puzzleArchiveRecords, puzzleSummaries],
+  );
   // KST 날짜별 공용 지갑. 난이도·재시도·지난 퍼즐을 오가도 같은 잔액을 쓴다.
   const activeDailyHintWallet =
     dailyHintWallet.date === todayKey
@@ -2886,6 +2896,7 @@ function App() {
         onboardingDifficultyRampEnabled={
           launchConfig.onboardingDifficultyRampEnabled
         }
+        recommendationPuzzleSummaries={recommendationPuzzleSummaries}
         revealAll={revealAll}
         revealSelected={revealSelected}
         startOrResumeMission={startOrResumeMission}
@@ -2925,6 +2936,7 @@ function App() {
           onboardingDifficultyRampEnabled={
             launchConfig.onboardingDifficultyRampEnabled
           }
+          recommendationPuzzleSummaries={recommendationPuzzleSummaries}
           pause={pause}
           togglePause={togglePause}
           startOrResumeMission={startOrResumeMission}
@@ -2943,6 +2955,7 @@ function App() {
           onboardingDifficultyRampEnabled={
             launchConfig.onboardingDifficultyRampEnabled
           }
+          recommendationPuzzleSummaries={recommendationPuzzleSummaries}
           onOpenLeaderboard={() => {
             telemetry.click("leaderboard_open", {
               puzzle_id: puzzle.puzzleId,
@@ -3881,6 +3894,7 @@ type TodayScreenProps = DateSelectionProps & {
   mission: DailyMissionState;
   navigate: (route: AppRoute) => void;
   onboardingDifficultyRampEnabled: boolean;
+  recommendationPuzzleSummaries: PuzzleManifestItem[];
   pencilMode: boolean;
   pause: { pausedMs: number; pausedAt: string | null };
   togglePause: () => void;
@@ -3938,6 +3952,7 @@ function TodayScreen({
   mission,
   navigate,
   onboardingDifficultyRampEnabled,
+  recommendationPuzzleSummaries,
   pencilMode,
   pause,
   togglePause,
@@ -4025,7 +4040,7 @@ function TodayScreen({
     : "";
   const completionNextRecommendedSummary = showCompletionCelebration
     ? getNextRecommendedSummary(
-        puzzleSummaries,
+        recommendationPuzzleSummaries,
         dateCardStates,
         {
           puzzleId: puzzle.puzzleId,
@@ -5404,6 +5419,7 @@ type ResultScreenProps = DateSelectionProps & {
   mission: DailyMissionState;
   navigate: (route: AppRoute) => void;
   onboardingDifficultyRampEnabled: boolean;
+  recommendationPuzzleSummaries: PuzzleManifestItem[];
   onOpenLeaderboard: () => void;
   pause: { pausedMs: number; pausedAt: string | null };
   progressPercent: number;
@@ -5425,6 +5441,7 @@ function ResultScreen({
   mission,
   navigate,
   onboardingDifficultyRampEnabled,
+  recommendationPuzzleSummaries,
   onOpenLeaderboard,
   pause,
   progressPercent,
@@ -5441,7 +5458,7 @@ function ResultScreen({
   // 잇기 위한 연속 동선.
   const nextRecommendedSummary = isComplete
     ? getNextRecommendedSummary(
-        puzzleSummaries,
+        recommendationPuzzleSummaries,
         dateCardStates,
         {
           puzzleId: puzzle.puzzleId,
