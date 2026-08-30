@@ -73,14 +73,27 @@ describe("requestReturnReminderAgreement (#253)", () => {
     assert.equal(result.failureStage, "sdk_callback");
   });
 
-  it("코드 없는 onError(Error 인스턴스)는 error_code 없이 error_reason만 담는다 (#288)", async () => {
+  it("코드 없는 onError는 unmapped·error_shape·stage를 담는다 (#339)", async () => {
     const { fake } = makeFake((config) =>
       config.onError(new Error("알림 동의에 실패하였습니다.")),
     );
     const result = await requestReturnReminderAgreement(fake);
     assert.equal(result.outcome, "error");
     assert.equal(result.errorReason, "알림 동의에 실패하였습니다.");
-    assert.equal(result.errorCode, undefined);
+    assert.equal(result.errorCode, "unmapped");
+    assert.equal(result.errorShape, "message,stack");
+    assert.equal(result.failureStage, "sdk_callback");
+  });
+
+  it("알 수 없는 onEvent 결과도 error와 sdk_callback stage로 관측한다 (#339)", async () => {
+    const { fake } = makeFake((config) =>
+      config.onEvent({ type: "unexpectedResult" }),
+    );
+    const result = await requestReturnReminderAgreement(fake);
+    assert.equal(result.outcome, "error");
+    assert.equal(result.errorCode, "unmapped");
+    assert.equal(result.errorShape, "type");
+    assert.equal(result.failureStage, "sdk_callback");
   });
 
   it("동기 throw(미지원 환경)는 unsupported 로 폴백한다", async () => {
@@ -170,6 +183,7 @@ describe("requestReturnReminderAgreement (#253)", () => {
         errorReason: result.errorReason,
         errorCode: result.errorCode,
         errorWrapperCode: result.errorWrapperCode,
+        errorShape: result.errorShape,
         failureStage: result.failureStage,
       },
     );
@@ -198,6 +212,7 @@ describe("requestReturnReminderAgreement (#253)", () => {
         errorReason: result.errorReason,
         errorCode: result.errorCode,
         errorWrapperCode: result.errorWrapperCode,
+        errorShape: result.errorShape,
         failureStage: result.failureStage,
       },
     );

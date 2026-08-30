@@ -177,6 +177,7 @@ describe("returnReminder 정책", () => {
       mapNotificationAgreementResult("agreementRejected"),
       "rejected",
     );
+    assert.equal(mapNotificationAgreementResult("unexpected"), "error");
   });
 
   it("markReturnReminderPrompted는 횟수 증가·날짜 기록(불변 업데이트)", () => {
@@ -278,6 +279,7 @@ describe("returnReminder 정책", () => {
       outcome: "error",
       prompt_count: 1,
       error_reason: "E_TIMEOUT_BRIDGE",
+      stage: "sdk_callback",
     });
   });
 
@@ -293,6 +295,7 @@ describe("returnReminder 정책", () => {
       prompt_count: 1,
       error_reason: "E_UNSUPPORTED: no bridge",
       error_code: "E_UNSUPPORTED",
+      stage: "sdk_callback",
     });
   });
 
@@ -363,9 +366,34 @@ describe("returnReminder 정책", () => {
     });
   });
 
+  it("unmapped 오류의 error_shape를 결과 파라미터에 추가한다 (#339)", () => {
+    const state = applyReturnReminderOutcome({ promptCount: 1 }, "error", {
+      errorReason: "알림 동의에 실패하였습니다.",
+      errorCode: "unmapped",
+      errorShape: "message,stack",
+      failureStage: "sdk_callback",
+    });
+    assert.deepEqual(buildReturnReminderResultParams(state), {
+      outcome: "error",
+      prompt_count: 1,
+      error_reason: "알림 동의에 실패하였습니다.",
+      error_code: "unmapped",
+      error_shape: "message,stack",
+      stage: "sdk_callback",
+    });
+    assert.equal(
+      applyReturnReminderOutcome(state, "agreed").errorShape,
+      undefined,
+    );
+  });
+
   it("outcome 미정이면 결과 파라미터 outcome은 error로 채운다", () => {
     const state: ReturnReminderState = { promptCount: 1 };
-    assert.equal(buildReturnReminderResultParams(state).outcome, "error");
+    assert.deepEqual(buildReturnReminderResultParams(state), {
+      outcome: "error",
+      prompt_count: 1,
+      stage: "sdk_callback",
+    });
   });
 
   it("templateCodeSource를 주면 결과 파라미터에 template_code_source를 적재한다 (#319)", () => {
@@ -509,6 +537,34 @@ describe("설정 오류(config error_code)는 예산을 소진하지 않는다 (
       false,
     );
   });
+
+  it("unmapped는 일반 일시 실패처럼 익일 재시도·상한 정책을 유지한다 (#339)", () => {
+    const retryable: ReturnReminderState = {
+      promptCount: 1,
+      lastPromptDate: "2026-07-12",
+      outcome: "error",
+      errorCode: "unmapped",
+    };
+    assert.equal(
+      shouldPromptReturnReminder({
+        enabled: true,
+        promptDate: "2026-07-13",
+        state: retryable,
+      }),
+      true,
+    );
+    assert.equal(
+      shouldPromptReturnReminder({
+        enabled: true,
+        promptDate: "2026-07-13",
+        state: {
+          ...retryable,
+          promptCount: RETURN_REMINDER_MAX_PROMPT_COUNT,
+        },
+      }),
+      false,
+    );
+  });
 });
 
 describe("summarizeAgreementError (#253)", () => {
@@ -554,21 +610,47 @@ describe("summarizeAgreementFailure / error_code (#288)", () => {
     );
   });
 
-  it("Error 인스턴스는 message만 요약하고 code는 생략한다", () => {
+  it("Error 인스턴스는 unmapped 코드와 키 이름만 남긴다 (#339)", () => {
     assert.deepEqual(
       summarizeAgreementFailure(new Error("bridge disconnected")),
-      { reason: "bridge disconnected" },
+      {
+        reason: "bridge disconnected",
+        code: "unmapped",
+        shape: "message,stack",
+      },
     );
     assert.equal(
       extractAgreementErrorCode(new Error("bridge disconnected")),
-      undefined,
+      "unmapped",
     );
   });
 
-  it("문자열은 reason만 남기고 code는 생략한다", () => {
+  it("문자열 실패도 unmapped와 값 없는 타입 shape를 남긴다 (#339)", () => {
     assert.deepEqual(summarizeAgreementFailure("알림 동의에 실패하였습니다."), {
       reason: "알림 동의에 실패하였습니다.",
+      code: "unmapped",
+      shape: "type:string",
     });
+  });
+
+  it("error_shape는 최상위 키 이름만 포함하고 값·메시지 본문을 포함하지 않는다 (#339)", () => {
+    const secretMessage = "private-message-value";
+    const summary = summarizeAgreementFailure({
+      message: secretMessage,
+      requestId: "sensitive-id-value",
+      response: { token: "sensitive-token-value" },
+    });
+    assert.equal(summary.code, "unmapped");
+    assert.equal(summary.shape, "message,requestId,response");
+    assert.equal(summary.shape?.includes(secretMessage), false);
+    assert.equal(summary.shape?.includes("sensitive-id-value"), false);
+    assert.equal(summary.shape?.includes("sensitive-token-value"), false);
+  });
+
+  it("error_shape는 100자 상한을 지킨다 (#339)", () => {
+    const summary = summarizeAgreementFailure({ ["k".repeat(150)]: true });
+    assert.equal(summary.code, "unmapped");
+    assert.equal(summary.shape?.length, 100);
   });
 
   it("code가 없고 status만 있으면 status를 코드로 보존한다", () => {

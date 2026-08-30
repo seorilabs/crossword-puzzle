@@ -94,4 +94,23 @@ describe("복귀 리마인더 이벤트 template_code_source 배선 (#319)", () 
     expect(event?.params.error_wrapper_code).toBe("NAF_ERROR");
     expect(event?.params.stage).toBe("sdk_callback");
   });
+
+  it("unmapped 오류의 키 이름 shape를 GA4 sink까지 전달한다 (#339)", () => {
+    const failed = applyReturnReminderOutcome({ promptCount: 1 }, "error", {
+      errorReason: "알림 동의에 실패하였습니다.",
+      errorCode: "unmapped",
+      errorShape: "message,response",
+      failureStage: "sdk_callback",
+    });
+    telemetry.impression(
+      RETURN_REMINDER_RESULT_EVENT,
+      buildReturnReminderResultParams(failed, "env"),
+    );
+
+    const event = dispatchMock.mock.calls[0]?.[0];
+    expect(event?.params.error_code).toBe("unmapped");
+    expect(event?.params.error_shape).toBe("message,response");
+    expect(event?.params.error_reason).toBe("알림 동의에 실패하였습니다.");
+    expect(event?.params.stage).toBe("sdk_callback");
+  });
 });

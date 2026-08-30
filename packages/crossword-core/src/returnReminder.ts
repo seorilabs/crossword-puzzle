@@ -35,6 +35,7 @@ export type ReturnReminderFailureMetadata = {
   errorReason?: string;
   errorCode?: string;
   errorWrapperCode?: string;
+  errorShape?: string;
   failureStage?: ReturnReminderFailureStage;
 };
 
@@ -52,6 +53,8 @@ export type ReturnReminderState = {
   errorCode?: string;
   // 중첩 오류의 가장 구체적인 errorCode와 다른 최상위 래퍼 코드.
   errorWrapperCode?: string;
+  // 구조화 코드를 찾지 못한 오류의 최상위 키 이름 목록. 값은 저장하지 않는다.
+  errorShape?: string;
   // 실패가 발생한 실행 단계. 기존 저장값에는 없을 수 있어 선택 필드로 유지한다.
   failureStage?: ReturnReminderFailureStage;
 };
@@ -96,6 +99,7 @@ const RESOLVED_OUTCOMES: ReadonlySet<ReturnReminderOutcome> = new Set([
 
 // error_reason 요약 최대 길이(이벤트 파라미터 안전 상한).
 const ERROR_REASON_MAX_LENGTH = 100;
+const ERROR_SHAPE_MAX_LENGTH = 100;
 const AGREEMENT_ERROR_MAX_DEPTH = 3;
 const AGREEMENT_ERROR_CONTAINER_KEYS = [
   "cause",
@@ -156,6 +160,24 @@ function readAgreementErrorField(value: object, key: string): unknown {
   } catch {
     return undefined;
   }
+}
+
+function summarizeAgreementErrorShape(error: unknown): string {
+  if (error === null) {
+    return "type:null";
+  }
+  if (typeof error !== "object") {
+    return `type:${typeof error}`;
+  }
+
+  let keys: string[];
+  try {
+    keys = Object.getOwnPropertyNames(error).sort();
+  } catch {
+    return "uninspectable";
+  }
+  const shape = keys.length === 0 ? "no_keys" : keys.join(",");
+  return shape.slice(0, ERROR_SHAPE_MAX_LENGTH);
 }
 
 function firstAgreementErrorText(
@@ -275,9 +297,8 @@ function inspectAgreementError(
     reason = reason.slice(0, maxLength);
   }
 
-  const code = codeCandidate?.code;
+  const code = codeCandidate?.code ?? "unmapped";
   const wrapperCode =
-    code != null &&
     codeCandidate != null &&
     wrapperCandidate?.code != null &&
     wrapperCandidate.depth < codeCandidate.depth &&
@@ -286,8 +307,11 @@ function inspectAgreementError(
       : undefined;
   return {
     reason,
-    ...(code == null ? {} : { code }),
+    code,
     ...(wrapperCode == null ? {} : { wrapperCode }),
+    ...(codeCandidate == null
+      ? { shape: summarizeAgreementErrorShape(error) }
+      : {}),
   };
 }
 
@@ -303,20 +327,21 @@ export function summarizeAgreementError(
 
 // SDK onError가 구조화 필드(code/status)를 준 경우 이를 error_code용 문자열로 보존한다.
 // error_reason(사람이 읽는 요약)과 별개로, 서버 거절 사유를 코드로 식별하기 위함이다(#288).
-// 구조화 코드가 없으면(문자열/일반 Error 등) undefined를 돌려 error_code를 생략한다.
+// 구조화 코드가 없으면(문자열/일반 Error 등) unmapped를 돌려 결측을 막는다.
 export function extractAgreementErrorCode(
   error: unknown,
   maxLength: number = ERROR_REASON_MAX_LENGTH,
-): string | undefined {
+): string {
   return inspectAgreementError(error, maxLength).code;
 }
 
-// error_reason(요약 문자열)과 error_code(구조화 코드)를 함께 산출한다. 어댑터가 SDK
-// onError 값을 한 번에 두 필드로 변환하도록 core에 두고 단위 테스트로 고정한다(#288).
+// error_reason(요약 문자열), error_code(구조화 코드 또는 unmapped), error_shape(코드
+// 미매핑 시 최상위 키 이름만)를 함께 산출한다. 값은 shape에 넣지 않는다(#288, #339).
 export type AgreementErrorSummary = {
   reason: string;
-  code?: string;
+  code: string;
   wrapperCode?: string;
+  shape?: string;
 };
 
 export function summarizeAgreementFailure(
@@ -375,7 +400,7 @@ export function shouldPromptReturnReminder({
 
 // AIT 알림 동의 결과(원문)를 코어 outcome으로 매핑한다.
 export function mapNotificationAgreementResult(
-  type: NotificationAgreementResultType,
+  type: NotificationAgreementResultType | string,
 ): ReturnReminderOutcome {
   switch (type) {
     case "newAgreement":
@@ -383,6 +408,8 @@ export function mapNotificationAgreementResult(
       return "agreed";
     case "agreementRejected":
       return "rejected";
+    default:
+      return "error";
   }
 }
 
@@ -434,6 +461,16 @@ export function applyReturnReminderOutcome(
     delete next.errorWrapperCode;
   }
   if (
+    outcome === "error" &&
+    metadata.errorCode === "unmapped" &&
+    metadata.errorShape != null &&
+    metadata.errorShape !== ""
+  ) {
+    next.errorShape = metadata.errorShape;
+  } else {
+    delete next.errorShape;
+  }
+  if (
     (outcome === "error" ||
       outcome === "timeout" ||
       outcome === "unsupported") &&
@@ -458,10 +495,9 @@ export function buildReturnReminderPromptParams(
   return { trigger, template_code_source: templateCodeSource };
 }
 
-// return_reminder_result 이벤트 파라미터(영문 키 유지). error 결과에 요약이 있으면
-// error_reason(#253)을, 구조화 코드가 있으면 error_code(#288)를 덧붙여 실패 원인을
-// 데이터로 남긴다. templateCodeSource를 주면 template_code_source를 함께 적재해
-// 실제 사용된 템플릿 코드 출처(env/default)를 결과에도 남긴다(#319).
+// return_reminder_result 이벤트 파라미터(영문 키 유지). error 결과에 요약, 코드,
+// 미매핑 shape와 실패 단계를 덧붙여 원인 결측을 막는다. templateCodeSource를 주면
+// 실제 사용된 템플릿 코드 출처(env/default)를 결과에도 남긴다(#319, #339).
 export function buildReturnReminderResultParams(
   state: ReturnReminderState,
   templateCodeSource?: ReturnReminderTemplateCodeSource,
@@ -472,6 +508,7 @@ export function buildReturnReminderResultParams(
   error_reason?: string;
   error_code?: string;
   error_wrapper_code?: string;
+  error_shape?: string;
   stage?: ReturnReminderFailureStage;
 } {
   const params: {
@@ -481,6 +518,7 @@ export function buildReturnReminderResultParams(
     error_reason?: string;
     error_code?: string;
     error_wrapper_code?: string;
+    error_shape?: string;
     stage?: ReturnReminderFailureStage;
   } = {
     outcome: state.outcome ?? "error",
@@ -498,8 +536,18 @@ export function buildReturnReminderResultParams(
   if (state.errorWrapperCode != null && state.errorWrapperCode !== "") {
     params.error_wrapper_code = state.errorWrapperCode;
   }
+  if (
+    state.errorCode === "unmapped" &&
+    state.errorShape != null &&
+    state.errorShape !== ""
+  ) {
+    params.error_shape = state.errorShape;
+  }
   if (state.failureStage != null) {
     params.stage = state.failureStage;
+  } else if (params.outcome === "error") {
+    // 구버전 저장 상태나 방어적 error 폴백도 stage 결측 없이 관측한다.
+    params.stage = "sdk_callback";
   }
   return params;
 }

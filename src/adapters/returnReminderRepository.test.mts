@@ -64,6 +64,27 @@ describe("returnReminderRepository", () => {
     });
   });
 
+  it("unmapped error의 키 이름 shape를 라운드트립에서 보존한다 (#339)", () => {
+    saveReturnReminderState(
+      {
+        promptCount: 1,
+        outcome: "error",
+        errorCode: "unmapped",
+        errorShape: "message,response",
+        failureStage: "sdk_callback",
+      },
+      storage,
+    );
+    assert.deepEqual(loadReturnReminderState(storage), {
+      promptCount: 1,
+      lastPromptDate: undefined,
+      outcome: "error",
+      errorCode: "unmapped",
+      errorShape: "message,response",
+      failureStage: "sdk_callback",
+    });
+  });
+
   it("timeout 단계와 기존 필드가 없는 저장값을 하위 호환으로 복원한다", () => {
     storage.raw.set(
       "crossword:return-reminder",
@@ -102,6 +123,7 @@ describe("returnReminderRepository", () => {
         errorReason: "stale",
         errorCode: "4000",
         errorWrapperCode: "NAF_ERROR",
+        errorShape: "message,response",
         failureStage: "sdk_callback",
       }),
     );
@@ -109,6 +131,7 @@ describe("returnReminderRepository", () => {
     assert.equal(loaded.errorReason, undefined);
     assert.equal(loaded.errorCode, undefined);
     assert.equal(loaded.errorWrapperCode, undefined);
+    assert.equal(loaded.errorShape, undefined);
     assert.equal(loaded.failureStage, undefined);
   });
 

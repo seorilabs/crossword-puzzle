@@ -68,6 +68,12 @@ function normalizeState(value: unknown): ReturnReminderState {
     outcome === "error" && typeof raw.errorWrapperCode === "string"
       ? raw.errorWrapperCode
       : undefined;
+  const errorShape =
+    outcome === "error" &&
+    errorCode === "unmapped" &&
+    typeof raw.errorShape === "string"
+      ? raw.errorShape
+      : undefined;
   const failureStage =
     (outcome === "error" ||
       outcome === "timeout" ||
@@ -86,6 +92,9 @@ function normalizeState(value: unknown): ReturnReminderState {
   }
   if (errorWrapperCode != null) {
     state.errorWrapperCode = errorWrapperCode;
+  }
+  if (errorShape != null) {
+    state.errorShape = errorShape;
   }
   if (failureStage != null) {
     state.failureStage = failureStage;
