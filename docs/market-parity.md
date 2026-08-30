@@ -36,6 +36,12 @@ flowchart TD
 | AIT adapter             | `src/adapters`                                              | AppsInToss SDK, Web Firebase, localStorage                               |
 | Android/iOS adapter     | `apps/mobile`                                               | RNFirebase, AsyncStorage, native projects                                |
 
+## 퍼즐 식별자 telemetry 문자열 계약
+
+- `puzzle_id`, `puzzle_alias`, `next_puzzle_id`, `pack_id`, `slot_id`는 AppsInToss Web, Google Play Android, App Store iOS에서 모두 문자열로 전송한다. `packages/crossword-core/src/platformContracts.ts`가 일반 telemetry를, `gameAnalytics.ts`가 `game_*` 컨텍스트를 전송 전에 정규화한다.
+- Web과 mobile의 원격 퍼즐 loader는 manifest와 puzzle JSON의 숫자 식별자를 즉시 문자열로 바꿔 `Puzzle["puzzleId"]` 타입과 런타임 값을 일치시킨다.
+- 교정 전 GA4 데이터에는 같은 키가 `string_value`와 `int_value`로 나뉘어 있다. 과거 구간 쿼리는 `COALESCE(value.string_value, CAST(value.int_value AS STRING))`로 읽고, 교정 이후에도 연속 시계열을 위해 이 형태를 유지한다.
+
 ## Firebase
 
 | 시장        | Firebase 방식                  | 설정 파일/secret                                                               |

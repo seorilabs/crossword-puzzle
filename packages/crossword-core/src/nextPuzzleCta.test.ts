@@ -29,4 +29,16 @@ describe("next_puzzle_cta telemetry 계약 (#274)", () => {
       "result_screen",
     );
   });
+
+  it("숫자형 next_puzzle_id도 문자열로 정규화한다 (#351)", () => {
+    const numeric = {
+      ...nextPuzzle,
+      puzzleId: 26082100,
+    } as unknown as PuzzleManifestItem;
+
+    assert.equal(
+      buildNextPuzzleCtaEvent(numeric, "result_overlay").params.next_puzzle_id,
+      "26082100",
+    );
+  });
 });

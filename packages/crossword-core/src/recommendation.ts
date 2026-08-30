@@ -10,6 +10,7 @@
 //   3) 그 외 미완료 퍼즐(난이도 불명/하위 포함)
 //   4) 미완료가 없으면 undefined(완료 퍼즐을 다시 시작시키지 않고 홈/보너스 fallback)
 import { DIFFICULTY_ORDER, type Difficulty } from "./difficultyProfiles.ts";
+import { normalizePuzzleIdentifier } from "./puzzleIdentifiers.ts";
 import type { PuzzleManifestItem } from "./types.ts";
 
 export type NextRecommendationContext = {
@@ -53,7 +54,7 @@ export function buildNextPuzzleCtaParams(
 } {
   return {
     next_difficulty: next.difficulty,
-    next_puzzle_id: next.puzzleId,
+    next_puzzle_id: normalizePuzzleIdentifier(next.puzzleId),
     source,
   };
 }

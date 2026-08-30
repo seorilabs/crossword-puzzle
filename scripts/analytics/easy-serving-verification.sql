@@ -30,8 +30,8 @@ SELECT
     (SELECT COALESCE(value.string_value, CAST(value.int_value AS STRING)) FROM UNNEST(event_params) WHERE key = 'difficulty' LIMIT 1),
     '(unknown)'
   ) AS difficulty,
-  (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'puzzle_id' LIMIT 1) AS puzzle_id,
-  (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'puzzle_alias' LIMIT 1) AS puzzle_alias
+  (SELECT COALESCE(value.string_value, CAST(value.int_value AS STRING)) FROM UNNEST(event_params) WHERE key = 'puzzle_id' LIMIT 1) AS puzzle_id,
+  (SELECT COALESCE(value.string_value, CAST(value.int_value AS STRING)) FROM UNNEST(event_params) WHERE key = 'puzzle_alias' LIMIT 1) AS puzzle_alias
 FROM `crossword-puzzle-79ae0.analytics_539639687.events_*`
 WHERE (
     _TABLE_SUFFIX BETWEEN from_suffix AND to_suffix

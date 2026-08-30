@@ -10,11 +10,14 @@ const sharedPlatformContractsPath =
 const sharedPlatformAuthPath = "packages/crossword-core/src/platformAuth.ts";
 const sharedPlatformPresencePath =
   "packages/crossword-core/src/platformPresence.ts";
+const sharedPuzzleIdentifiersPath =
+  "packages/crossword-core/src/puzzleIdentifiers.ts";
 const sharedIndexPath = "packages/crossword-core/src/index.ts";
 const rootPackagePath = "package.json";
 const webAppPath = "src/App.tsx";
 const webMainPath = "src/main.tsx";
 const webPlatformAuthPath = "src/adapters/platformAuth.ts";
+const webPuzzleRepositoryPath = "src/adapters/staticPuzzleRepository.ts";
 const mobileAppPath = "apps/mobile/App.tsx";
 const mobileIndexPath = "apps/mobile/index.js";
 const mobilePlatformAuthPath = "apps/mobile/platformAuth.ts";
@@ -65,6 +68,8 @@ const agentsPath = "AGENTS.md";
 const marketParityDocPath = "docs/market-parity.md";
 const playStoreConfigPath = "play-store/google-play.config.json";
 const appStoreConfigPath = "app-store/app-store.config.json";
+const retryExhaustionSqlPath = "scripts/analytics/retry-exhaustion-dropoff.sql";
+const easyServingSqlPath = "scripts/analytics/easy-serving-verification.sql";
 
 const sharedPolicyExports = [
   "DAILY_ATTEMPT_LIMIT",
@@ -252,6 +257,8 @@ const mobileApp = read(mobileAppPath);
 const mobileIndex = read(mobileIndexPath);
 const mobilePlatformAuth = read(mobilePlatformAuthPath);
 const mobileAppTest = read(mobileAppTestPath);
+const sharedPuzzleIdentifiers = read(sharedPuzzleIdentifiersPath);
+const webPuzzleRepository = read(webPuzzleRepositoryPath);
 
 // Feature parity: user-facing features must exist in BOTH the web and mobile
 // App.tsx, not just in shared logic. These markers guard against regressions
@@ -312,6 +319,8 @@ const agents = read(agentsPath);
 const marketParityDoc = read(marketParityDocPath);
 const playStoreConfig = read(playStoreConfigPath);
 const appStoreConfig = read(appStoreConfigPath);
+const retryExhaustionSql = read(retryExhaustionSqlPath);
+const easyServingSql = read(easyServingSqlPath);
 
 for (const name of sharedPolicyExports) {
   assertNamedPolicyExport(sharedPolicy, name, sharedPolicyPath);
@@ -326,6 +335,11 @@ assertIncludes(sharedIndex, 'export * from "./launchConfig";', sharedIndexPath);
 assertIncludes(
   sharedIndex,
   'export * from "./platformContracts";',
+  sharedIndexPath,
+);
+assertIncludes(
+  sharedIndex,
+  'export * from "./puzzleIdentifiers";',
   sharedIndexPath,
 );
 assertIncludes(sharedIndex, 'export * from "./platformAuth";', sharedIndexPath);
@@ -381,6 +395,54 @@ assertImported(
   mobileTelemetryPath,
   "../../packages/crossword-core/src",
 );
+for (const [path, content] of [
+  [webAppPath, webApp],
+  [mobileAppPath, mobileApp],
+]) {
+  assertIncludes(content, "normalizePuzzleIdentifier", path);
+  assertIncludes(content, "normalizeOptionalPuzzleIdentifier", path);
+  assertIncludes(content, "puzzleAlias: getPuzzlePackAlias(puzzle)", path);
+}
+assertIncludes(
+  webPuzzleRepository,
+  "normalizePuzzleManifestIdentifiers",
+  webPuzzleRepositoryPath,
+);
+assertIncludes(
+  webPuzzleRepository,
+  "normalizePuzzleIdentifiers",
+  webPuzzleRepositoryPath,
+);
+assertIncludes(mobileApp, "normalizePuzzleManifestIdentifiers", mobileAppPath);
+assertIncludes(mobileApp, "normalizePuzzleIdentifiers", mobileAppPath);
+for (const key of [
+  "next_puzzle_id",
+  "pack_id",
+  "puzzle_alias",
+  "puzzle_id",
+  "slot_id",
+]) {
+  assertIncludes(
+    sharedPlatformContracts,
+    `"${key}"`,
+    sharedPlatformContractsPath,
+  );
+}
+assertIncludes(
+  marketParityDoc,
+  "퍼즐 식별자 telemetry 문자열 계약",
+  marketParityDocPath,
+);
+assertIncludes(
+  retryExhaustionSql,
+  "COALESCE(value.string_value, CAST(value.int_value AS STRING))",
+  retryExhaustionSqlPath,
+);
+assertIncludes(
+  easyServingSql,
+  "COALESCE(value.string_value, CAST(value.int_value AS STRING))",
+  easyServingSqlPath,
+);
 assertIncludes(
   mobileFirebaseClient,
   "analytics().logScreenView({",
@@ -411,6 +473,7 @@ for (const [path, content] of [
   [sharedPlatformContractsPath, sharedPlatformContracts],
   [sharedPlatformAuthPath, sharedPlatformAuth],
   [sharedPlatformPresencePath, sharedPlatformPresence],
+  [sharedPuzzleIdentifiersPath, sharedPuzzleIdentifiers],
   [sharedIndexPath, sharedIndex],
 ]) {
   assertNotIncludes(content, "@apps-in-toss", path);

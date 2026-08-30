@@ -20,6 +20,7 @@ function context(
     gridSize: 9,
     wordCount: 12,
     packId: "pack-a",
+    puzzleAlias: "alias-a",
     slotId: "slot-3",
     themeTag: "food",
     ...overrides,
@@ -38,6 +39,7 @@ describe("buildGameAnalyticsEvent", () => {
     assert.equal(params.market, "apps-in-toss");
     assert.equal(params.schema_version, GAME_ANALYTICS_SCHEMA_VERSION);
     assert.equal(params.puzzle_id, "puzzle-1");
+    assert.equal(params.puzzle_alias, "alias-a");
     assert.equal(params.difficulty, "normal");
     assert.equal(params.grid_size, 9);
     assert.equal(params.word_count, 12);
@@ -46,6 +48,24 @@ describe("buildGameAnalyticsEvent", () => {
     // 페이로드는 snake_case로 변환된다.
     assert.equal(params.attempt_kind, "first");
     assert.equal(params.attempt_number, 1);
+  });
+
+  it("숫자형 퍼즐·alias·pack·slot 식별자를 sink 전에 문자열로 정규화한다 (#351)", () => {
+    const { params } = buildGameAnalyticsEvent("game_puzzle_start", {
+      market: "apps-in-toss",
+      context: context({
+        puzzleId: 26082100,
+        puzzleAlias: 26082100,
+        packId: 260821,
+        slotId: 26082102,
+      }),
+      payload: { attemptKind: "first", attemptNumber: 1 },
+    });
+
+    assert.equal(params.puzzle_id, "26082100");
+    assert.equal(params.puzzle_alias, "26082100");
+    assert.equal(params.pack_id, "260821");
+    assert.equal(params.slot_id, "26082102");
   });
 
   it("완료 이벤트에 no_hint/first_try 파생값을 계산한다", () => {
