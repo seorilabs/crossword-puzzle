@@ -142,4 +142,15 @@ describe('RN 퍼즐 이탈·진행 계측 (#338)', () => {
       }),
     ).toEqual([75]);
   });
+
+  test('첫 입력 상태는 puzzleId:attempt 키별로 분리해 재시도를 오염시키지 않는다', () => {
+    const tracker = createMobileGameplayAttemptTracker();
+
+    expect(tracker.markFirstInput('26083000:1')).toBe(true);
+    expect(tracker.markFirstInput('26083000:1')).toBe(false);
+    expect(tracker.hasFirstInput('26083000:1')).toBe(true);
+    expect(tracker.hasFirstInput('26083000:2')).toBe(false);
+    expect(tracker.markFirstInput('26083000:2')).toBe(true);
+    expect(tracker.hasFirstInput('26083000:2')).toBe(true);
+  });
 });

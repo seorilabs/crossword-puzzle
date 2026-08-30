@@ -39,10 +39,13 @@ export type MobileGameplayAttemptTracker = {
     isCompleted: boolean;
     progressPercent: number;
   }): number[];
+  hasFirstInput(attemptKey: string): boolean;
+  markFirstInput(attemptKey: string): boolean;
 };
 
 export function createMobileGameplayAttemptTracker(): MobileGameplayAttemptTracker {
   const abandonedAttemptKeys = new Set<string>();
+  const firstInputAttemptKeys = new Set<string>();
   let progressAttemptKey = '';
   let reachedProgressMilestone = 0;
 
@@ -117,6 +120,18 @@ export function createMobileGameplayAttemptTracker(): MobileGameplayAttemptTrack
       reachedProgressMilestone =
         newlyReached[newlyReached.length - 1] ?? reachedProgressMilestone;
       return newlyReached;
+    },
+
+    hasFirstInput(attemptKey) {
+      return firstInputAttemptKeys.has(attemptKey);
+    },
+
+    markFirstInput(attemptKey) {
+      if (firstInputAttemptKeys.has(attemptKey)) {
+        return false;
+      }
+      firstInputAttemptKeys.add(attemptKey);
+      return true;
     },
   };
 }

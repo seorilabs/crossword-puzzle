@@ -945,7 +945,6 @@ function AppContent() {
       message: '대기 중',
     },
   );
-  const hasLoggedFirstAnswerInputRef = useRef(false);
   const submittedLeaderboardPuzzleIdsRef = useRef(new Set<string>());
   const playScreenScrollRef = useRef<React.ElementRef<typeof ScrollView>>(null);
   const boardInputRef = useRef<React.ElementRef<typeof TextInput>>(null);
@@ -1225,7 +1224,9 @@ function AppContent() {
     attemptsUsed: mission.attemptsUsed,
     elapsedSeconds: getElapsedSeconds(mission.lastStartedAt),
     gameContext: getGamePuzzleContext(puzzle),
-    hadFirstInput: hasLoggedFirstAnswerInputRef.current,
+    hadFirstInput: gameplayAttemptTrackerRef.current.hasFirstInput(
+      `${puzzle.puzzleId}:${mission.attemptsUsed}`,
+    ),
     hasStarted,
     hintCount,
     isCompleted,
@@ -1957,7 +1958,6 @@ function AppContent() {
     setCellValues(session.savedProgress.cellValues);
     setHintCount(session.savedProgress.hintCount);
     setMission(session.savedMission);
-    hasLoggedFirstAnswerInputRef.current = false;
     setSelectedDirection('across');
     setSelectedEntryId(getInitialEntryId(session.nextPuzzle));
     setSelectedCellKey(getInitialEntryStartCellKey(session.nextPuzzle));
@@ -2102,8 +2102,11 @@ function AppContent() {
       return;
     }
 
-    if (!hasLoggedFirstAnswerInputRef.current) {
-      hasLoggedFirstAnswerInputRef.current = true;
+    if (
+      gameplayAttemptTrackerRef.current.markFirstInput(
+        `${puzzle.puzzleId}:${mission.attemptsUsed}`,
+      )
+    ) {
       telemetry.impression('first_answer_input', {
         ...getPuzzleTelemetryParams(puzzle, selectedPuzzleSummary),
         attempt_number: mission.attemptsUsed,
@@ -2156,8 +2159,12 @@ function AppContent() {
     const cells = getEntryCells(entry);
     const letters = getAnswerInputLetters(value, cells.length);
 
-    if (!hasLoggedFirstAnswerInputRef.current && letters.length > 0) {
-      hasLoggedFirstAnswerInputRef.current = true;
+    if (
+      letters.length > 0 &&
+      gameplayAttemptTrackerRef.current.markFirstInput(
+        `${puzzle.puzzleId}:${mission.attemptsUsed}`,
+      )
+    ) {
       telemetry.impression('first_answer_input', {
         ...getPuzzleTelemetryParams(puzzle, selectedPuzzleSummary),
         attempt_number: mission.attemptsUsed,
@@ -2419,7 +2426,6 @@ function AppContent() {
 
     clearProgress();
     const nextMission = startMissionAttempt(mission);
-    hasLoggedFirstAnswerInputRef.current = false;
     setMission(nextMission);
     saveStoredMission(nextMission);
     savePuzzleSnapshot(puzzle, { startedAt: nextMission.lastStartedAt });

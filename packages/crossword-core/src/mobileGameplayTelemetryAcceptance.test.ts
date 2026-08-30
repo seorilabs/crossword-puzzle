@@ -45,7 +45,13 @@ describe("#338 RN 이탈·진행 계측 인수조건", () => {
     assert.match(trackerTests, /완료된 퍼즐에는 abandon을 발화하지 않는다/);
   });
 
-  it("AC-5·6: release parity와 RN 테스트가 양 표면 이벤트 및 중복 방지를 고정한다", () => {
+  it("AC-5: 첫 입력 상태를 puzzleId:attempt별로 분리하는 직접 테스트가 있다", () => {
+    assert.match(tracker, /firstInputAttemptKeys/);
+    assert.match(trackerTests, /재시도를 오염시키지 않는다/);
+    assert.match(trackerTests, /hasFirstInput\('26083000:2'\)\)\.toBe\(false\)/);
+  });
+
+  it("AC-6: release parity와 RN 테스트가 양 표면 이벤트 및 중복 방지를 고정한다", () => {
     for (const eventName of [
       "game_progress",
       "game_puzzle_abandon",
