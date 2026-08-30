@@ -130,6 +130,10 @@ import {
 } from './mobileAds';
 import { telemetry } from './telemetry';
 import { gameAnalytics } from './gameAnalytics';
+import {
+  createMobileGameplayAttemptTracker,
+  type MobilePuzzleAbandonSnapshot,
+} from './gameplayTelemetry';
 import { leaderboardAdapter } from './leaderboardAdapter';
 import { useLeaderboard } from './useLeaderboard';
 import manifestData from '../../public/puzzles/manifest.json';
@@ -963,6 +967,28 @@ function AppContent() {
   // 플레이 방법 안내: 노출 1회 보장과 체류 시간 측정용.
   const howToPlayShownRef = useRef(false);
   const howToPlayShownAtRef = useRef<number | null>(null);
+  // RN 퍼즐 진행·이탈 계측은 시도별 중복 방지와 resume baseline을 한 tracker에서
+  // 관리한다. 실제 lifecycle/화면 전환은 App에서 전달하고 이벤트 계약은 Web과 맞춘다.
+  const gameplayAttemptTrackerRef = useRef(
+    createMobileGameplayAttemptTracker(),
+  );
+  const previousRouteRef = useRef<AppRoute>('home');
+  const abandonSnapshotRef = useRef<MobilePuzzleAbandonSnapshot>({
+    attemptsUsed: 0,
+    elapsedSeconds: 0,
+    gameContext: getGamePuzzleContext(initialPuzzle),
+    hadFirstInput: false,
+    hasStarted: false,
+    hintCount: 0,
+    isCompleted: false,
+    progressPercent: 0,
+    puzzleId: initialPuzzle.puzzleId,
+    remainingAttempts: DAILY_ATTEMPT_LIMIT,
+    route: 'home',
+    telemetryParams: getPuzzleTelemetryParams(initialPuzzle),
+    totalWords: initialPuzzle.entries.length,
+    wordsFilled: 0,
+  });
 
   const persistDailyHintWallet = useCallback((wallet: DailyHintWallet) => {
     setDailyHintWallet(wallet);
@@ -1193,6 +1219,42 @@ function AppContent() {
           .filter(Boolean)
           .join(' · ');
 
+  // AppState와 route listener가 stale closure 없이 이탈 직전 상태를 사용하도록
+  // 최신 진행 스냅샷을 매 렌더 갱신한다.
+  abandonSnapshotRef.current = {
+    attemptsUsed: mission.attemptsUsed,
+    elapsedSeconds: getElapsedSeconds(mission.lastStartedAt),
+    gameContext: getGamePuzzleContext(puzzle),
+    hadFirstInput: hasLoggedFirstAnswerInputRef.current,
+    hasStarted,
+    hintCount,
+    isCompleted,
+    progressPercent,
+    puzzleId: puzzle.puzzleId,
+    remainingAttempts,
+    route,
+    telemetryParams: getPuzzleTelemetryParams(puzzle, selectedPuzzleSummary),
+    totalWords: puzzle.entries.length,
+    wordsFilled: viewModel.completedEntries.length,
+  };
+
+  const emitPuzzleAbandon = useCallback((lastScreen: AppRoute) => {
+    gameplayAttemptTrackerRef.current.emitPuzzleAbandon(
+      abandonSnapshotRef.current,
+      lastScreen,
+      { telemetry, gameAnalytics },
+    );
+  }, []);
+
+  // 보드에서 다른 화면으로 이동하는 경우 시도당 한 번만 이탈 스냅샷을 남긴다.
+  useEffect(() => {
+    const previousRoute = previousRouteRef.current;
+    if (previousRoute === 'today' && route !== 'today') {
+      emitPuzzleAbandon(previousRoute);
+    }
+    previousRouteRef.current = route;
+  }, [emitPuzzleAbandon, route]);
+
   const boardCellSize = Math.max(
     32,
     Math.min(
@@ -1335,11 +1397,16 @@ function AppContent() {
     const subscription = AppState.addEventListener('change', state => {
       if (state === 'active') {
         refreshDailyHintWallet().catch(() => {});
+      } else if (
+        state === 'background' &&
+        abandonSnapshotRef.current.route === 'today'
+      ) {
+        emitPuzzleAbandon('today');
       }
     });
 
     return () => subscription.remove();
-  }, [refreshDailyHintWallet, route]);
+  }, [emitPuzzleAbandon, refreshDailyHintWallet]);
 
   useEffect(() => {
     if (isLoading) {
@@ -1557,6 +1624,45 @@ function AppContent() {
     savePuzzleSnapshot,
     selectedPuzzleSummary,
     submitLeaderboardScore,
+    viewModel.completedEntries.length,
+    viewModel.isComplete,
+  ]);
+
+  useEffect(() => {
+    const milestones =
+      gameplayAttemptTrackerRef.current.getNewProgressMilestones({
+        attemptKey: `${puzzle.puzzleId}:${mission.attemptsUsed}`,
+        isCompleted: viewModel.isComplete,
+        progressPercent,
+      });
+
+    for (const milestone of milestones) {
+      telemetry.impression('puzzle_progress', {
+        ...getPuzzleTelemetryParams(puzzle, selectedPuzzleSummary),
+        attempt_number: mission.attemptsUsed,
+        completed_word_count: viewModel.completedEntries.length,
+        word_count: puzzle.entries.length,
+        progress_percent: progressPercent,
+        milestone,
+        elapsed_seconds: getElapsedSeconds(mission.lastStartedAt),
+        hint_count: hintCount,
+        remaining_attempts: remainingAttempts,
+      });
+      gameAnalytics.track('game_progress', getGamePuzzleContext(puzzle), {
+        completedWordCount: viewModel.completedEntries.length,
+        totalWordCount: puzzle.entries.length,
+        progressPercent,
+        attemptNumber: mission.attemptsUsed,
+      });
+    }
+  }, [
+    hintCount,
+    mission.attemptsUsed,
+    mission.lastStartedAt,
+    progressPercent,
+    puzzle,
+    remainingAttempts,
+    selectedPuzzleSummary,
     viewModel.completedEntries.length,
     viewModel.isComplete,
   ]);
@@ -1864,6 +1970,13 @@ function AppContent() {
   ) {
     if (isLoading) {
       return;
+    }
+
+    if (
+      abandonSnapshotRef.current.route === 'today' &&
+      abandonSnapshotRef.current.puzzleId !== puzzleId
+    ) {
+      emitPuzzleAbandon('today');
     }
 
     setIsLoading(true);
@@ -2306,6 +2419,7 @@ function AppContent() {
 
     clearProgress();
     const nextMission = startMissionAttempt(mission);
+    hasLoggedFirstAnswerInputRef.current = false;
     setMission(nextMission);
     saveStoredMission(nextMission);
     savePuzzleSnapshot(puzzle, { startedAt: nextMission.lastStartedAt });

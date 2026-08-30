@@ -11,8 +11,9 @@
 
 `puzzle_progress` emit은 현재 코드에 **정상 배선되어 있다**:
 
-- `src/App.tsx`에서 진행률이 새 마일스톤을 넘을 때마다 `telemetry.impression("puzzle_progress", { milestone, progress_percent, completed_word_count, word_count, attempt_number, elapsed_seconds, hint_count, remaining_attempts, ...puzzleTelemetryParams })`를 emit한다.
+- Web `src/App.tsx`와 RN `apps/mobile/App.tsx`에서 진행률이 새 마일스톤을 넘을 때마다 `puzzle_progress`와 `game_progress`를 같이 emit한다. 두 표면 모두 `milestone`, `progress_percent`, `completed_word_count`, `word_count`, `attempt_number`, `elapsed_seconds`, `hint_count`, `remaining_attempts`와 공통 퍼즐 파라미터를 사용한다.
 - 마일스톤 임계값은 `packages/crossword-core/src/uiPolicy.ts`의 `PUZZLE_PROGRESS_MILESTONES = [25, 50, 75]`. 100%는 `mission_complete`가 별도로 다루므로 `puzzle_progress`에 `milestone=100`은 emit되지 않는다(중복 방지).
+- RN의 이어풀기 첫 스냅샷은 baseline으로만 저장해, 이미 지난 마일스톤을 재발화하지 않는다.
 
 따라서 baseline의 `puzzle_progress` 데이터 0건은 emit 누락이 아니라 **릴리스/데이터 적재 지연**(#86 머지 6/23, 데이터 구간 ~6/24)으로 보인다. 데이터가 쌓이면 아래 쿼리로 재측정한다.
 

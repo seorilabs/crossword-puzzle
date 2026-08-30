@@ -9,14 +9,12 @@
 
 ## emit 배선 확인 (코드 점검 결과)
 
-`puzzle_abandon` emit은 현재 코드에 **정상 배선되어 있다**(`src/App.tsx`):
+`puzzle_abandon`과 `game_puzzle_abandon` emit은 Web(`src/App.tsx`)과 RN(`apps/mobile/App.tsx`, `apps/mobile/gameplayTelemetry.ts`)에 같은 파라미터 계약으로 배선되어 있다.
 
-- **트리거 (2경로)**:
-  1. 인앱 이동: 보드(`today`)에 있다가 다른 화면으로 라우트가 바뀔 때(`route` 변화 effect).
-  2. 앱 종료/백그라운드: `pagehide` 및 `visibilitychange=hidden` 리스너에서, 떠나는 화면이 `today`이면 기록.
-- **가드**: 시작했고(`hasStarted`) 아직 완료하지 않은 경우만 이탈로 본다. `puzzleId:attemptsUsed` 키로 **시도당 1회만** 기록(`abandonTrackedKeysRef`).
+- **트리거**: 두 표면 모두 보드(`today`)에서 다른 화면으로 이동할 때 기록한다. Web은 `pagehide` / `visibilitychange=hidden`을, RN은 `AppState=background`와 보드에서 다른 퍼즐을 선택하는 경로를 추가로 다룬다.
+- **가드**: 시작했고(`hasStarted`) 아직 완료하지 않은 경우만 이탈로 본다. `puzzleId:attemptsUsed` 키로 **시도당 1회만** 기록한다.
 - **파라미터**: `last_screen`, `progress_percent`, `words_filled`, `total_words`, `elapsed_seconds`, `had_first_input`, `attempt_number`, `hint_count`, `remaining_attempts` + 공통 퍼즐 파라미터(`puzzle_id`, `slot_id`, `pack_id`, `published_at`, `difficulty`, `grid_size`, `word_count`).
-- 최신 진행 상태는 매 렌더마다 `abandonSnapshotRef`에 갱신해, pagehide/visibilitychange 리스너가 stale closure 없이 이탈 시점 값을 읽는다.
+- 최신 진행 상태는 두 표면 모두 매 렌더마다 `abandonSnapshotRef`에 갱신해 lifecycle listener가 stale closure 없이 이탈 시점 값을 읽는다.
 
 따라서 baseline의 `puzzle_abandon` 데이터 0건은 emit 누락이 아니라 **릴리스/데이터 적재 지연**(#87 머지 6/23, 데이터 구간 ~6/24)으로 보인다. 데이터가 쌓이면 아래 쿼리로 재측정한다.
 
