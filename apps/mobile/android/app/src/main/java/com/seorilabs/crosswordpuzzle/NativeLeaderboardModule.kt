@@ -15,8 +15,17 @@ class NativeLeaderboardModule(
     BuildConfig.PLAY_GAMES_PROJECT_ID.isNotBlank() &&
       BuildConfig.PLAY_GAMES_LEADERBOARD_ID.isNotBlank()
 
+  override fun isAuthenticated(promise: Promise) {
+    val activity = getSupportedActivity(promise) ?: return
+    PlayGames.getGamesSignInClient(activity).isAuthenticated
+      .addOnSuccessListener { result -> promise.resolve(result.isAuthenticated) }
+      .addOnFailureListener { error ->
+        promise.reject(ERROR_AUTH_FAILED, error.message, error)
+      }
+  }
+
   override fun submitScore(score: Double, promise: Promise) {
-    withAuthenticatedActivity(promise) { activity ->
+    withAuthenticatedActivity(promise, requireInteractiveSignIn = false) { activity ->
       PlayGames.getLeaderboardsClient(activity)
         .submitScoreImmediate(
           BuildConfig.PLAY_GAMES_LEADERBOARD_ID,
@@ -30,7 +39,7 @@ class NativeLeaderboardModule(
   }
 
   override fun openLeaderboard(promise: Promise) {
-    withAuthenticatedActivity(promise) { activity ->
+    withAuthenticatedActivity(promise, requireInteractiveSignIn = true) { activity ->
       PlayGames.getLeaderboardsClient(activity)
         .getLeaderboardIntent(BuildConfig.PLAY_GAMES_LEADERBOARD_ID)
         .addOnSuccessListener { intent ->
@@ -47,18 +56,10 @@ class NativeLeaderboardModule(
 
   private fun withAuthenticatedActivity(
     promise: Promise,
+    requireInteractiveSignIn: Boolean,
     action: (Activity) -> Unit,
   ) {
-    if (!isSupported()) {
-      promise.reject(ERROR_NOT_CONFIGURED, "Play Games leaderboard is not configured")
-      return
-    }
-
-    val activity = reactApplicationContext.getCurrentActivity()
-    if (activity == null) {
-      promise.reject(ERROR_ACTIVITY_UNAVAILABLE, "Current Android activity is unavailable")
-      return
-    }
+    val activity = getSupportedActivity(promise) ?: return
 
     val signInClient = PlayGames.getGamesSignInClient(activity)
     signInClient.isAuthenticated
@@ -68,8 +69,13 @@ class NativeLeaderboardModule(
           return@addOnSuccessListener
         }
 
-        // 자동 인증이 끝나지 않은 경우 사용자가 순위 기능을 요청한 시점에만 계정
-        // 선택 UI를 연다. 퍼즐 시작/풀이 플로우에는 인증을 강제하지 않는다.
+        if (!requireInteractiveSignIn) {
+          promise.reject(ERROR_AUTH_REQUIRED, "Play Games authentication is required")
+          return@addOnSuccessListener
+        }
+
+        // 자동 인증이 끝나지 않은 경우 사용자가 순위 CTA를 누른 명시적 열람 경로에서만
+        // 계정 선택 UI를 연다. 완료 직후 자동 제출은 위 auth_required로 종결한다.
         signInClient.signIn()
           .addOnSuccessListener { signInResult ->
             if (signInResult.isAuthenticated) {
@@ -85,6 +91,20 @@ class NativeLeaderboardModule(
       .addOnFailureListener { error ->
         promise.reject(ERROR_AUTH_FAILED, error.message, error)
       }
+  }
+
+  private fun getSupportedActivity(promise: Promise): Activity? {
+    if (!isSupported()) {
+      promise.reject(ERROR_NOT_CONFIGURED, "Play Games leaderboard is not configured")
+      return null
+    }
+
+    val activity = reactApplicationContext.getCurrentActivity()
+    if (activity == null) {
+      promise.reject(ERROR_ACTIVITY_UNAVAILABLE, "Current Android activity is unavailable")
+      return null
+    }
+    return activity
   }
 
   companion object {

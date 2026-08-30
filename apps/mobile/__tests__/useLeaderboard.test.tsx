@@ -14,6 +14,7 @@ function createAdapter(
 ): LeaderboardAdapter {
   return {
     supported: true,
+    isAuthenticated: jest.fn(() => Promise.resolve(true)),
     submitScore: jest.fn(() => Promise.resolve()),
     openLeaderboard: jest.fn(() => Promise.resolve()),
     ...overrides,
@@ -64,9 +65,12 @@ test('네이티브 미지원이면 순위 UI와 제출을 비활성화한다', a
   expect(telemetry.impression).not.toHaveBeenCalled();
 });
 
-test('네이티브 제출 실패를 계측하고 현재 세션 CTA만 숨긴다', async () => {
+test('네이티브 자동 제출 실패를 원인 코드로 계측하고 CTA는 유지한다', async () => {
+  const error = Object.assign(new Error('not configured'), {
+    code: 'leaderboard_not_configured',
+  });
   const adapter = createAdapter({
-    submitScore: jest.fn(() => Promise.reject(new Error('not configured'))),
+    submitScore: jest.fn(() => Promise.reject(error)),
   });
   const telemetry = createTelemetry();
   let hookResult: HookResult | undefined;
@@ -93,7 +97,7 @@ test('네이티브 제출 실패를 계측하고 현재 세션 CTA만 숨긴다'
     ).resolves.toBe('failure');
   });
 
-  expect(hookResult?.visible).toBe(false);
+  expect(hookResult?.visible).toBe(true);
   expect(telemetry.impression).toHaveBeenCalledWith(
     'leaderboard_score_submit',
     {
@@ -102,6 +106,43 @@ test('네이티브 제출 실패를 계측하고 현재 세션 CTA만 숨긴다'
       elapsed_seconds: 90,
       score: 1200,
       outcome: 'failure',
+      error_code: 'leaderboard_not_configured',
     },
+  );
+});
+
+test('미인증 자동 제출은 PGS 로그인 UI 없이 skipped로 계측한다', async () => {
+  const adapter = createAdapter({
+    isAuthenticated: jest.fn(() => Promise.resolve(false)),
+  });
+  const telemetry = createTelemetry();
+  let hookResult: HookResult | undefined;
+
+  await ReactTestRenderer.act(() => {
+    ReactTestRenderer.create(
+      <HookHarness
+        adapter={adapter}
+        telemetry={telemetry}
+        onRender={result => {
+          hookResult = result;
+        }}
+      />,
+    );
+  });
+
+  await ReactTestRenderer.act(async () => {
+    await expect(
+      hookResult?.submitScore(1200, { puzzleId: 'daily-easy' }),
+    ).resolves.toBe('skipped');
+  });
+
+  expect(adapter.submitScore).not.toHaveBeenCalled();
+  expect(hookResult?.visible).toBe(true);
+  expect(telemetry.impression).toHaveBeenCalledWith(
+    'leaderboard_score_submit',
+    expect.objectContaining({
+      outcome: 'skipped',
+      error_code: 'leaderboard_auth_required',
+    }),
   );
 });

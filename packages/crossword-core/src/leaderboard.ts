@@ -138,12 +138,33 @@ export type LeaderboardContext = {
 
 export const LEADERBOARD_SCORE_SUBMIT_EVENT = "leaderboard_score_submit";
 
-export type LeaderboardOperationOutcome = "success" | "failure" | "unsupported";
+export type LeaderboardOperationOutcome =
+  | "success"
+  | "failure"
+  | "skipped"
+  | "unsupported";
+
+// 네이티브 Promise reject code만 안전하게 추출한다(#345). 오류 메시지는 기기/SDK
+// 세부정보를 포함할 수 있어 telemetry로 보내지 않고, 등록된 짧은 code만 사용한다.
+export function getLeaderboardErrorCode(error: unknown): string | undefined {
+  if (error == null || typeof error !== "object") {
+    return undefined;
+  }
+  const code = (error as { code?: unknown }).code;
+  if (typeof code !== "string") {
+    return undefined;
+  }
+  const normalized = code.trim();
+  return normalized.length > 0 && normalized.length <= 64
+    ? normalized
+    : undefined;
+}
 
 export function buildLeaderboardScoreSubmitParams(
   score: number,
   context: LeaderboardContext,
   outcome: Exclude<LeaderboardOperationOutcome, "unsupported">,
+  errorCode?: string,
 ): TelemetryParams {
   return {
     puzzle_id: context.puzzleId,
@@ -151,6 +172,7 @@ export function buildLeaderboardScoreSubmitParams(
     elapsed_seconds: context.elapsedSeconds,
     score,
     outcome,
+    ...(errorCode == null ? {} : { error_code: errorCode }),
   };
 }
 
@@ -161,6 +183,9 @@ export function buildLeaderboardScoreSubmitParams(
 export type LeaderboardAdapter = {
   // 현재 플랫폼/런타임이 리더보드를 지원하는지 여부(네이티브 모듈/게임 카테고리 등)
   supported: boolean;
+  // 자동 점수 제출 전에 UI 없이 현재 인증 상태만 확인한다. 미구현 adapter(AIT)는
+  // 기존 제출 경로를 유지한다. 대화형 로그인은 openLeaderboard 사용자 동작이 맡는다.
+  isAuthenticated?(): Promise<boolean>;
   submitScore(score: number, context: LeaderboardContext): Promise<void>;
   openLeaderboard(): Promise<void>;
 };

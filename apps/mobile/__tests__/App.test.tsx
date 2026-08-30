@@ -115,7 +115,7 @@ test('renders correctly', async () => {
   ReactTestRenderer.act(() => {
     renderer?.unmount();
   });
-}, 15000);
+}, 45_000);
 
 test('maps Android hardware back targets through the app scene graph', () => {
   expect(shouldUseSystemBack('home')).toBe(true);

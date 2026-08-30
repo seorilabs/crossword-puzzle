@@ -3,6 +3,7 @@ import { TurboModuleRegistry } from 'react-native';
 
 export interface Spec extends TurboModule {
   isSupported(): boolean;
+  isAuthenticated(): Promise<boolean>;
   submitScore(score: number): Promise<void>;
   openLeaderboard(): Promise<void>;
 }
