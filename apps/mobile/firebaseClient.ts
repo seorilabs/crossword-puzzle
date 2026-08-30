@@ -59,6 +59,18 @@ export async function loadFirebaseLaunchConfig(): Promise<LaunchConfig> {
         returnReminderEnabled: remoteConfigClient
           .getValue(launchConfigKeys.returnReminderEnabled)
           .asBoolean(),
+        stuckHintIdleMs: remoteConfigClient
+          .getValue(launchConfigKeys.stuckHintIdleMs)
+          .asNumber(),
+        stuckHintFirstInputIdleMs: remoteConfigClient
+          .getValue(launchConfigKeys.stuckHintFirstInputIdleMs)
+          .asNumber(),
+        stuckHintWrongIdleMs: remoteConfigClient
+          .getValue(launchConfigKeys.stuckHintWrongIdleMs)
+          .asNumber(),
+        stuckHintWrongCellThreshold: remoteConfigClient
+          .getValue(launchConfigKeys.stuckHintWrongCellThreshold)
+          .asNumber(),
         stuckHintMaxPromptsPerAttempt: remoteConfigClient
           .getValue(launchConfigKeys.stuckHintMaxPromptsPerAttempt)
           .asNumber(),

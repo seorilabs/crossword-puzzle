@@ -223,7 +223,32 @@ describe("resolveStarterCell", () => {
 });
 
 describe("getStuckHintDelayMs", () => {
-  const params = { wrongCellThreshold: 2, idleMs: 20000, wrongIdleMs: 5000 };
+  const params = {
+    firstInputPending: false,
+    firstInputIdleMs: 6000,
+    wrongCellThreshold: 2,
+    idleMs: 20000,
+    wrongIdleMs: 5000,
+  };
+
+  it("첫 입력 전에는 오답 수와 무관하게 전용 짧은 지연을 최우선으로 쓴다(#346)", () => {
+    assert.equal(
+      getStuckHintDelayMs({
+        ...params,
+        firstInputPending: true,
+        wrongCellCount: 0,
+      }),
+      6000,
+    );
+    assert.equal(
+      getStuckHintDelayMs({
+        ...params,
+        firstInputPending: true,
+        wrongCellCount: 2,
+      }),
+      6000,
+    );
+  });
 
   it("확정 오답이 임계치 이상이면 더 짧은 지연을 쓴다(빠르게 도움 노출)", () => {
     assert.equal(getStuckHintDelayMs({ ...params, wrongCellCount: 2 }), 5000);
@@ -239,7 +264,13 @@ describe("getStuckHintDelayMs", () => {
   // App.tsx의 막힘 힌트 effect는 이 순수 로직으로 지연을 계산하고, 임계/지연이 바뀌면
   // 타이머를 취소·재스케줄하므로 여기서 config 주입에 따른 지연 선택을 회귀로 고정한다.
   it("원격 조정된 지연·임계 값을 그대로 반영한다", () => {
-    const tuned = { wrongCellThreshold: 4, idleMs: 30000, wrongIdleMs: 8000 };
+    const tuned = {
+      firstInputPending: false,
+      firstInputIdleMs: 7000,
+      wrongCellThreshold: 4,
+      idleMs: 30000,
+      wrongIdleMs: 8000,
+    };
     // 임계(4) 미만이면 조정된 기본 지연(30000)
     assert.equal(getStuckHintDelayMs({ ...tuned, wrongCellCount: 3 }), 30000);
     // 임계(4) 이상이면 조정된 짧은 지연(8000)
@@ -365,6 +396,17 @@ describe("isNearFinishNudge (#280)", () => {
 });
 
 describe("getStuckHintPromptText (#280)", () => {
+  it("첫 입력 전에는 힌트 소비 대신 입력 개시 문구를 돌려준다(#346)", () => {
+    assert.equal(
+      getStuckHintPromptText({
+        trigger: "first_input",
+        nearFinish: true,
+        wordsRemaining: 1,
+        hasHintCredits: true,
+      }),
+      "반짝이는 칸을 탭해 글자를 입력해 보세요 ✏️",
+    );
+  });
   it("near-finish면 잔여 단어 수를 포함한 마무리 문구를 돌려준다", () => {
     assert.equal(
       getStuckHintPromptText({

@@ -746,15 +746,22 @@ export function resolveStarterCell(input: {
   };
 }
 
-// 막힘(stuck) 힌트 CTA를 띄우기까지의 정체 지연(ms)을 정한다. 확정 오답 셀이
-// 임계치 이상으로 쌓이면(막힌 신호) 더 짧은 지연으로 빠르게 띄워 힌트/정답 보기
-// 도움 접근성을 높인다(#163).
+export type StuckHintTrigger = "first_input" | "idle" | "wrong_answer";
+
+// 막힘(stuck) 프롬프트를 띄우기까지의 정체 지연(ms)을 정한다. 첫 입력 전에는 입력
+// 개시 안내용 짧은 지연을 최우선으로 쓰고(#346), 입력 뒤에는 기존 오답/일반 정체
+// 분기를 그대로 유지한다.
 export function getStuckHintDelayMs(input: {
+  firstInputPending: boolean;
+  firstInputIdleMs: number;
   wrongCellCount: number;
   wrongCellThreshold: number;
   idleMs: number;
   wrongIdleMs: number;
 }): number {
+  if (input.firstInputPending) {
+    return input.firstInputIdleMs;
+  }
   return input.wrongCellCount >= input.wrongCellThreshold
     ? input.wrongIdleMs
     : input.idleMs;
@@ -804,10 +811,14 @@ export function isNearFinishNudge(input: {
 // 막힘 프롬프트 본문 문구를 정한다. near-finish 발화면 잔여 단어 수를 포함한 마무리
 // 문구를, 아니면 힌트 보유 여부에 따라 기존 막힘 안내 문구를 돌려준다(#280).
 export function getStuckHintPromptText(input: {
+  trigger?: StuckHintTrigger;
   nearFinish: boolean;
   wordsRemaining: number;
   hasHintCredits: boolean;
 }): string {
+  if (input.trigger === "first_input") {
+    return "반짝이는 칸을 탭해 글자를 입력해 보세요 ✏️";
+  }
   if (input.nearFinish) {
     return `거의 다 왔어요! 남은 단어 ${input.wordsRemaining}개 ✨`;
   }

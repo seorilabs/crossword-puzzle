@@ -221,6 +221,10 @@ export async function loadFirebaseLaunchConfig(): Promise<LaunchConfig> {
         remoteConfig,
         launchConfigKeys.stuckHintIdleMs,
       ),
+      stuckHintFirstInputIdleMs: getNumber(
+        remoteConfig,
+        launchConfigKeys.stuckHintFirstInputIdleMs,
+      ),
       stuckHintWrongIdleMs: getNumber(
         remoteConfig,
         launchConfigKeys.stuckHintWrongIdleMs,

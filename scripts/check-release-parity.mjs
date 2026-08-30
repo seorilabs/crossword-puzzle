@@ -24,6 +24,7 @@ const mobileIndexPath = "apps/mobile/index.js";
 const mobilePlatformAuthPath = "apps/mobile/platformAuth.ts";
 const mobileAppTestPath = "apps/mobile/__tests__/App.test.tsx";
 const launchConfigPath = "src/adapters/launchConfig.ts";
+const webFirebaseClientPath = "src/adapters/firebaseClient.ts";
 const webTelemetryPath = "src/adapters/telemetry.ts";
 const mobileFirebaseClientPath = "apps/mobile/firebaseClient.ts";
 const mobileTelemetryPath = "apps/mobile/telemetry.ts";
@@ -67,6 +68,7 @@ const xcodeCloudPostBuildPath =
   "apps/mobile/ios/ci_scripts/ci_post_xcodebuild.sh";
 const agentsPath = "AGENTS.md";
 const marketParityDocPath = "docs/market-parity.md";
+const remoteConfigTemplatePath = "remoteconfig.template.json";
 const playStoreConfigPath = "play-store/google-play.config.json";
 const appStoreConfigPath = "app-store/app-store.config.json";
 const retryExhaustionSqlPath = "scripts/analytics/retry-exhaustion-dropoff.sql";
@@ -312,6 +314,7 @@ if (recommendationFallbackCtaMarkers.length < 4) {
   );
 }
 const launchConfig = read(launchConfigPath);
+const webFirebaseClient = read(webFirebaseClientPath);
 const webTelemetry = read(webTelemetryPath);
 const mobileFirebaseClient = read(mobileFirebaseClientPath);
 const mobileTelemetry = read(mobileTelemetryPath);
@@ -346,6 +349,7 @@ const xcodeCloudPreBuild = read(xcodeCloudPreBuildPath);
 const xcodeCloudPostBuild = read(xcodeCloudPostBuildPath);
 const agents = read(agentsPath);
 const marketParityDoc = read(marketParityDocPath);
+const remoteConfigTemplate = read(remoteConfigTemplatePath);
 const playStoreConfig = read(playStoreConfigPath);
 const appStoreConfig = read(appStoreConfigPath);
 const retryExhaustionSql = read(retryExhaustionSqlPath);
@@ -492,6 +496,19 @@ assertIncludes(
   "!key.startsWith('firebase_')",
   mobileFirebaseClientPath,
 );
+for (const [content, path] of [
+  [sharedLaunchConfig, sharedLaunchConfigPath],
+  [webFirebaseClient, webFirebaseClientPath],
+  [mobileFirebaseClient, mobileFirebaseClientPath],
+]) {
+  assertIncludes(content, "stuckHintFirstInputIdleMs", path);
+}
+assertIncludes(
+  remoteConfigTemplate,
+  '"stuck_hint_first_input_idle_ms"',
+  remoteConfigTemplatePath,
+);
+assertIncludes(marketParityDoc, "trigger=first_input", marketParityDocPath);
 assertNoLocalDefinitions(webApp, forbiddenLocalDefinitions, webAppPath);
 assertNoLocalDefinitions(mobileApp, forbiddenLocalDefinitions, mobileAppPath);
 

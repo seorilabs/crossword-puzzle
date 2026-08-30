@@ -117,6 +117,13 @@
       "description": "막힘 힌트 자동 노출: 입력 정체가 이 시간(ms)을 넘으면 비침습 힌트 CTA를 띄운다. 허용 3000~120000",
       "valueType": "NUMBER"
     },
+    "stuck_hint_first_input_idle_ms": {
+      "defaultValue": {
+        "value": "6000"
+      },
+      "description": "첫 입력 전 보드가 비어 있을 때 입력 개시 안내를 띄우는 지연(ms). 허용 3000~120000",
+      "valueType": "NUMBER"
+    },
     "stuck_hint_wrong_idle_ms": {
       "defaultValue": {
         "value": "5000"
