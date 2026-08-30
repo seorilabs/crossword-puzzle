@@ -8,6 +8,8 @@ const sharedRecommendationPath =
 const sharedPlatformContractsPath =
   "packages/crossword-core/src/platformContracts.ts";
 const sharedPlatformAuthPath = "packages/crossword-core/src/platformAuth.ts";
+const sharedPlatformPresencePath =
+  "packages/crossword-core/src/platformPresence.ts";
 const sharedIndexPath = "packages/crossword-core/src/index.ts";
 const rootPackagePath = "package.json";
 const webAppPath = "src/App.tsx";
@@ -240,6 +242,7 @@ const sharedLaunchConfig = read(sharedLaunchConfigPath);
 const sharedRecommendation = read(sharedRecommendationPath);
 const sharedPlatformContracts = read(sharedPlatformContractsPath);
 const sharedPlatformAuth = read(sharedPlatformAuthPath);
+const sharedPlatformPresence = read(sharedPlatformPresencePath);
 const sharedIndex = read(sharedIndexPath);
 const rootPackage = read(rootPackagePath);
 const webApp = read(webAppPath);
@@ -387,6 +390,7 @@ for (const [path, content] of [
   [sharedRecommendationPath, sharedRecommendation],
   [sharedPlatformContractsPath, sharedPlatformContracts],
   [sharedPlatformAuthPath, sharedPlatformAuth],
+  [sharedPlatformPresencePath, sharedPlatformPresence],
   [sharedIndexPath, sharedIndex],
 ]) {
   assertNotIncludes(content, "@apps-in-toss", path);
@@ -400,12 +404,12 @@ for (const [path, content] of [
 // adapter를 제공한다. 렌더와 병렬로 시작해야 인증 장애가 플레이를 막지 않는다.
 assertIncludes(
   rootPackage,
-  '"@seorilabs/platform-sdk": "0.3.0"',
+  '"@seorilabs/platform-sdk": "0.4.0"',
   rootPackagePath,
 );
 assertIncludes(
   mobilePackage,
-  '"@seorilabs/platform-sdk": "0.3.0"',
+  '"@seorilabs/platform-sdk": "0.4.0"',
   mobilePackagePath,
 );
 assertIncludes(
@@ -422,9 +426,17 @@ for (const [path, content] of [
   assertIncludes(content, ".identity.firebaseCustomToken", path);
   assertIncludes(content, ".signIn(", path);
   assertIncludes(content, "signInPromise ??= runPlatformAuth()", path);
+  assertIncludes(content, "presenceEnabled: PLATFORM_PRESENCE_ENABLED", path);
+  assertIncludes(content, "createFailOpenPlatformPresenceLifecycle", path);
 }
 assertIncludes(webMain, "void ensurePlatformAuth();", webMainPath);
+assertIncludes(webMain, "startPlatformPresence();", webMainPath);
+assertIncludes(webMain, "stopPlatformPresence();", webMainPath);
+assertIncludes(webMain, "resumePlatformPresence();", webMainPath);
 assertIncludes(mobileIndex, "void ensurePlatformAuth();", mobileIndexPath);
+assertIncludes(mobileIndex, "startPlatformPresence();", mobileIndexPath);
+assertIncludes(mobileIndex, "stopPlatformPresence();", mobileIndexPath);
+assertIncludes(mobileIndex, "resumePlatformPresence();", mobileIndexPath);
 
 assertIncludes(
   mobilePackage,

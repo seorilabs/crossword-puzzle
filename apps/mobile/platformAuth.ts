@@ -1,15 +1,19 @@
 import auth from '@react-native-firebase/auth';
 import { createPlatform } from '@seorilabs/platform-sdk';
+import { Platform } from 'react-native';
 
 import {
   buildPlatformAuthParams,
+  createFailOpenPlatformPresenceLifecycle,
   ensurePlatformSignIn,
   PLATFORM_API_BASE_URL,
   PLATFORM_AUTH_APP_ID,
   PLATFORM_AUTH_EVENT,
+  PLATFORM_PRESENCE_ENABLED,
   type FirebaseIdentity,
   type PlatformAuthOutcome,
 } from '../../packages/crossword-core/src';
+import { RELEASE_VERSION } from './analyticsSinks';
 import { telemetry } from './telemetry';
 
 // platform 인증 브리지의 Android/iOS RN adapter.
@@ -20,7 +24,15 @@ import { telemetry } from './telemetry';
 const mobilePlatform = createPlatform({
   appId: PLATFORM_AUTH_APP_ID,
   baseUrl: PLATFORM_API_BASE_URL,
+  presenceEnabled: PLATFORM_PRESENCE_ENABLED,
+  presenceContext: {
+    appVersion: RELEASE_VERSION,
+    platform: Platform.OS === 'ios' ? 'ios' : 'android',
+  },
 });
+const platformPresence = createFailOpenPlatformPresenceLifecycle(
+  mobilePlatform.presence,
+);
 
 let signInPromise: Promise<PlatformAuthOutcome> | null = null;
 
@@ -66,6 +78,10 @@ export function ensurePlatformAuth(): Promise<PlatformAuthOutcome> {
   signInPromise ??= runPlatformAuth();
   return signInPromise;
 }
+
+export const startPlatformPresence = platformPresence.start;
+export const stopPlatformPresence = platformPresence.stop;
+export const resumePlatformPresence = platformPresence.resume;
 
 async function runPlatformAuth(): Promise<PlatformAuthOutcome> {
   const startedAt = Date.now();

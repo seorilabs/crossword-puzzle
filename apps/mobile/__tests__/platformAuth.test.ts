@@ -2,16 +2,26 @@ import {
   PLATFORM_API_BASE_URL,
   PLATFORM_AUTH_APP_ID,
   PLATFORM_AUTH_EVENT,
+  PLATFORM_PRESENCE_ENABLED,
 } from '../../../packages/crossword-core/src';
 
 jest.mock('../analyticsSinks', () => ({
   dispatchAnalytics: jest.fn(),
+  RELEASE_VERSION: '1.1.7',
 }));
 
 const mockFirebaseCustomToken = jest.fn();
 const mockPlatformSignIn = jest.fn();
+const mockPresenceStart = jest.fn();
+const mockPresenceStop = jest.fn();
+const mockPresenceResume = jest.fn();
 const mockCreatePlatform = jest.fn((_options: unknown) => ({
   identity: { firebaseCustomToken: mockFirebaseCustomToken },
+  presence: {
+    start: mockPresenceStart,
+    stop: mockPresenceStop,
+    resume: mockPresenceResume,
+  },
   signIn: mockPlatformSignIn,
 }));
 
@@ -65,9 +75,9 @@ function loadAdapter(stub: AuthStub) {
   auth.mockReturnValue(stub);
   const dispatchAnalytics = require('../analyticsSinks')
     .dispatchAnalytics as jest.Mock;
-  const { ensurePlatformAuth } = require('../platformAuth');
+  const platformAuth = require('../platformAuth');
 
-  return { ensurePlatformAuth, dispatchAnalytics };
+  return { ...platformAuth, dispatchAnalytics };
 }
 
 beforeEach(() => {
@@ -91,6 +101,11 @@ test('같은 appId로 SDK를 만들고 firebase-id-token 세션을 한 번 연�
   expect(mockCreatePlatform).toHaveBeenCalledWith({
     appId: PLATFORM_AUTH_APP_ID,
     baseUrl: PLATFORM_API_BASE_URL,
+    presenceEnabled: PLATFORM_PRESENCE_ENABLED,
+    presenceContext: {
+      appVersion: '1.1.7',
+      platform: expect.stringMatching(/^(android|ios)$/),
+    },
   });
   expect(mockFirebaseCustomToken).toHaveBeenCalledWith();
   expect(stub.signInWithCustomToken).toHaveBeenCalledWith('custom-token');
@@ -169,4 +184,35 @@ test('onAuthStateChanged가 동기로 호출돼도 구독을 해제한다', asyn
   await ensurePlatformAuth();
 
   expect(unsubscribe).toHaveBeenCalledTimes(1);
+});
+
+test('비활성 기본값을 유지하면서 AppState lifecycle을 SDK Presence에 연결한다', () => {
+  const lifecycle = loadAdapter(authStub({ restoredUser: null }));
+
+  lifecycle.startPlatformPresence();
+  lifecycle.stopPlatformPresence();
+  lifecycle.resumePlatformPresence();
+
+  expect(mockPresenceStart).toHaveBeenCalledTimes(2);
+  expect(mockPresenceStop).toHaveBeenCalledTimes(1);
+  expect(mockPresenceResume).toHaveBeenCalledTimes(1);
+  expect(mockCreatePlatform.mock.calls[0][0]).not.toHaveProperty('userId');
+  expect(mockCreatePlatform.mock.calls[0][0]).not.toHaveProperty('sessionId');
+});
+
+test('SDK lifecycle 오류가 제품 호출자에게 전파되지 않는다', () => {
+  mockPresenceStart.mockImplementation(() => {
+    throw new Error('503');
+  });
+  mockPresenceStop.mockImplementation(() => {
+    throw new Error('TLS');
+  });
+  mockPresenceResume.mockImplementation(() => {
+    throw new Error('timeout');
+  });
+  const lifecycle = loadAdapter(authStub({ restoredUser: null }));
+
+  expect(() => lifecycle.startPlatformPresence()).not.toThrow();
+  expect(() => lifecycle.stopPlatformPresence()).not.toThrow();
+  expect(() => lifecycle.resumePlatformPresence()).not.toThrow();
 });
