@@ -40,11 +40,12 @@ describe("useLeaderboard 리더보드 개방 폴백 (#325)", () => {
     expect(telemetry.impression).not.toHaveBeenCalled();
   });
 
-  it("AC-2·3: 제출 실패를 삼키고 failure로 계측한 뒤 순위 UI만 숨긴다", async () => {
+  it("AC-2·3: 자동 제출 실패를 원인 코드와 계측하고 순위 CTA는 유지한다", async () => {
+    const error = Object.assign(new Error("LeaderBoard not found"), {
+      code: "leaderboard_submit_failed",
+    });
     const adapter = createAdapter({
-      submitScore: vi.fn(() =>
-        Promise.reject(new Error("LeaderBoard not found")),
-      ),
+      submitScore: vi.fn(() => Promise.reject(error)),
     });
     const telemetry = createTelemetry();
     const { result } = renderHook(() =>
@@ -61,7 +62,7 @@ describe("useLeaderboard 리더보드 개방 폴백 (#325)", () => {
     });
 
     expect(outcome).toBe("failure");
-    expect(result.current.visible).toBe(false);
+    expect(result.current.visible).toBe(true);
     expect(telemetry.impression).toHaveBeenCalledWith(
       "leaderboard_score_submit",
       {
@@ -70,7 +71,34 @@ describe("useLeaderboard 리더보드 개방 폴백 (#325)", () => {
         elapsed_seconds: 90,
         score: 1200,
         outcome: "failure",
+        error_code: "leaderboard_submit_failed",
       },
+    );
+  });
+
+  it("미인증 자동 제출은 실제 제출 없이 skipped로 계측하고 CTA를 유지한다(#345)", async () => {
+    const adapter = createAdapter({
+      isAuthenticated: vi.fn(() => Promise.resolve(false)),
+    });
+    const telemetry = createTelemetry();
+    const { result } = renderHook(() =>
+      useLeaderboard({ enabled: true, adapter, telemetry }),
+    );
+
+    await act(async () => {
+      await expect(
+        result.current.submitScore(1200, { puzzleId: "daily-easy" }),
+      ).resolves.toBe("skipped");
+    });
+
+    expect(adapter.submitScore).not.toHaveBeenCalled();
+    expect(result.current.visible).toBe(true);
+    expect(telemetry.impression).toHaveBeenCalledWith(
+      "leaderboard_score_submit",
+      expect.objectContaining({
+        outcome: "skipped",
+        error_code: "leaderboard_auth_required",
+      }),
     );
   });
 

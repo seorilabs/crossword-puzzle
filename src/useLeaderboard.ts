@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 
 import {
   buildLeaderboardScoreSubmitParams,
+  getLeaderboardErrorCode,
   LEADERBOARD_SCORE_SUBMIT_EVENT,
   type LeaderboardAdapter,
   type LeaderboardContext,
@@ -36,6 +37,34 @@ export function useLeaderboard({
         return "unsupported";
       }
 
+      if (adapter.isAuthenticated != null) {
+        try {
+          if (!(await adapter.isAuthenticated())) {
+            telemetry.impression(
+              LEADERBOARD_SCORE_SUBMIT_EVENT,
+              buildLeaderboardScoreSubmitParams(
+                score,
+                context,
+                "skipped",
+                "leaderboard_auth_required",
+              ),
+            );
+            return "skipped";
+          }
+        } catch (error) {
+          telemetry.impression(
+            LEADERBOARD_SCORE_SUBMIT_EVENT,
+            buildLeaderboardScoreSubmitParams(
+              score,
+              context,
+              "failure",
+              getLeaderboardErrorCode(error) ?? "unknown",
+            ),
+          );
+          return "failure";
+        }
+      }
+
       try {
         await adapter.submitScore(score, context);
         telemetry.impression(
@@ -43,14 +72,17 @@ export function useLeaderboard({
           buildLeaderboardScoreSubmitParams(score, context, "success"),
         );
         return "success";
-      } catch {
-        // 제출 오류는 완료 플로우 밖에서 종결하고, 같은 세션의 순위 CTA만 숨긴다.
-        setSessionAvailable(false);
+      } catch (error) {
+        const errorCode = getLeaderboardErrorCode(error) ?? "unknown";
+        const outcome =
+          errorCode === "leaderboard_auth_required" ? "skipped" : "failure";
+        // 자동 제출 실패는 완료 플로우 밖에서 종결하되, 사용자가 명시적으로 누를
+        // 순위 CTA는 유지한다. CTA 비활성화는 openLeaderboard 실패만 수행한다(#345).
         telemetry.impression(
           LEADERBOARD_SCORE_SUBMIT_EVENT,
-          buildLeaderboardScoreSubmitParams(score, context, "failure"),
+          buildLeaderboardScoreSubmitParams(score, context, outcome, errorCode),
         );
-        return "failure";
+        return outcome;
       }
     },
     [adapter, enabled, sessionAvailable, telemetry],

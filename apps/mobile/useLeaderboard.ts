@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 
 import {
   buildLeaderboardScoreSubmitParams,
+  getLeaderboardErrorCode,
   LEADERBOARD_SCORE_SUBMIT_EVENT,
   type LeaderboardAdapter,
   type LeaderboardContext,
@@ -36,6 +37,34 @@ export function useLeaderboard({
         return 'unsupported';
       }
 
+      if (adapter.isAuthenticated != null) {
+        try {
+          if (!(await adapter.isAuthenticated())) {
+            telemetry.impression(
+              LEADERBOARD_SCORE_SUBMIT_EVENT,
+              buildLeaderboardScoreSubmitParams(
+                score,
+                context,
+                'skipped',
+                'leaderboard_auth_required',
+              ),
+            );
+            return 'skipped';
+          }
+        } catch (error) {
+          telemetry.impression(
+            LEADERBOARD_SCORE_SUBMIT_EVENT,
+            buildLeaderboardScoreSubmitParams(
+              score,
+              context,
+              'failure',
+              getLeaderboardErrorCode(error) ?? 'unknown',
+            ),
+          );
+          return 'failure';
+        }
+      }
+
       try {
         await adapter.submitScore(score, context);
         telemetry.impression(
@@ -43,13 +72,15 @@ export function useLeaderboard({
           buildLeaderboardScoreSubmitParams(score, context, 'success'),
         );
         return 'success';
-      } catch {
-        setSessionAvailable(false);
+      } catch (error) {
+        const errorCode = getLeaderboardErrorCode(error) ?? 'unknown';
+        const outcome =
+          errorCode === 'leaderboard_auth_required' ? 'skipped' : 'failure';
         telemetry.impression(
           LEADERBOARD_SCORE_SUBMIT_EVENT,
-          buildLeaderboardScoreSubmitParams(score, context, 'failure'),
+          buildLeaderboardScoreSubmitParams(score, context, outcome, errorCode),
         );
-        return 'failure';
+        return outcome;
       }
     },
     [adapter, enabled, sessionAvailable, telemetry],

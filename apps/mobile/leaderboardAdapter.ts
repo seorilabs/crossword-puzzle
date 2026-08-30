@@ -10,6 +10,7 @@ import NativeLeaderboard from './specs/NativeLeaderboard';
 
 export type NativeLeaderboardModule = {
   isSupported(): boolean;
+  isAuthenticated(): Promise<boolean>;
   submitScore(score: number): Promise<void>;
   openLeaderboard(): Promise<void>;
 };
@@ -28,6 +29,15 @@ export function createNativeLeaderboardAdapter(
       } catch {
         return false;
       }
+    },
+
+    async isAuthenticated() {
+      if (nativeModule == null || !nativeModule.isSupported()) {
+        throw Object.assign(new Error('Native leaderboard is not configured'), {
+          code: 'leaderboard_not_configured',
+        });
+      }
+      return nativeModule.isAuthenticated();
     },
 
     async submitScore(score: number, _context: LeaderboardContext) {

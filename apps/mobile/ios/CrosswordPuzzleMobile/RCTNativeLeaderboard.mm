@@ -64,6 +64,16 @@ static UIViewController *_Nullable RCTLeaderboardPresenter(void)
   return @(RCTLeaderboardIdentifier().length > 0);
 }
 
+- (void)isAuthenticated:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject
+{
+  if (RCTLeaderboardIdentifier().length == 0) {
+    reject(@"leaderboard_not_configured", @"Game Center leaderboard is not configured", nil);
+    return;
+  }
+  resolve(@(GKLocalPlayer.localPlayer.isAuthenticated));
+}
+
 - (void)submitScore:(double)score
             resolve:(RCTPromiseResolveBlock)resolve
              reject:(RCTPromiseRejectBlock)reject

@@ -639,6 +639,11 @@ assertIncludes(
   "TurboModuleRegistry.get<Spec>('NativeLeaderboard')",
   mobileLeaderboardSpecPath,
 );
+assertIncludes(
+  mobileLeaderboardSpec,
+  "isAuthenticated(): Promise<boolean>",
+  mobileLeaderboardSpecPath,
+);
 assertIncludes(mobileApp, "shouldSubmitLeaderboardScore", mobileAppPath);
 assertIncludes(mobileApp, "computeLeaderboardScore", mobileAppPath);
 assertIncludes(mobileApp, ">순위 보기</Text>", mobileAppPath);
@@ -717,6 +722,16 @@ assertIncludes(
   androidLeaderboardModulePath,
 );
 assertIncludes(
+  androidLeaderboardModule,
+  "requireInteractiveSignIn = false",
+  androidLeaderboardModulePath,
+);
+assertIncludes(
+  androidLeaderboardModule,
+  "requireInteractiveSignIn = true",
+  androidLeaderboardModulePath,
+);
+assertIncludes(
   androidManifest,
   'android:name="com.google.android.gms.permission.AD_ID"',
   androidManifestPath,
@@ -765,6 +780,11 @@ assertIncludes(
 assertIncludes(
   iosLeaderboardModule,
   "GKGameCenterViewController",
+  iosLeaderboardModulePath,
+);
+assertIncludes(
+  iosLeaderboardModule,
+  "isAuthenticated:(RCTPromiseResolveBlock)resolve",
   iosLeaderboardModulePath,
 );
 assertIncludes(

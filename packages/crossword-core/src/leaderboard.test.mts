@@ -3,10 +3,54 @@ import { strict as assert } from "node:assert";
 
 import {
   LEADERBOARD_SCORE_WEIGHTS,
+  buildLeaderboardScoreSubmitParams,
   computeLeaderboardScore,
+  getLeaderboardErrorCode,
   shouldSubmitLeaderboardScore,
 } from "./leaderboard.ts";
 import type { LeaderboardSubmissionState } from "./leaderboard.ts";
+
+describe("leaderboard 점수 제출 진단(#345)", () => {
+  it("실패·건너뜀 계측에 네이티브 reject code를 보존한다", () => {
+    assert.deepEqual(
+      buildLeaderboardScoreSubmitParams(
+        1200,
+        { puzzleId: "daily-easy" },
+        "failure",
+        "leaderboard_submit_failed",
+      ),
+      {
+        puzzle_id: "daily-easy",
+        difficulty: undefined,
+        elapsed_seconds: undefined,
+        score: 1200,
+        outcome: "failure",
+        error_code: "leaderboard_submit_failed",
+      },
+    );
+    assert.equal(
+      buildLeaderboardScoreSubmitParams(
+        1200,
+        { puzzleId: "daily-easy" },
+        "skipped",
+        "leaderboard_auth_required",
+      ).outcome,
+      "skipped",
+    );
+  });
+
+  it("오류 객체의 짧은 code만 추출하고 메시지는 사용하지 않는다", () => {
+    assert.equal(
+      getLeaderboardErrorCode({
+        code: "leaderboard_auth_failed",
+        message: "sensitive detail",
+      }),
+      "leaderboard_auth_failed",
+    );
+    assert.equal(getLeaderboardErrorCode(new Error("message only")), undefined);
+    assert.equal(getLeaderboardErrorCode({ code: " ".repeat(65) }), undefined);
+  });
+});
 
 describe("computeLeaderboardScore", () => {
   it("applies the documented formula", () => {
