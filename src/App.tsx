@@ -1555,11 +1555,19 @@ function App() {
     );
 
     void requestReturnReminderAgreement().then(
-      ({ outcome, errorReason, errorCode, errorWrapperCode, failureStage }) => {
+      ({
+        outcome,
+        errorReason,
+        errorCode,
+        errorWrapperCode,
+        errorShape,
+        failureStage,
+      }) => {
         const resolved = applyReturnReminderOutcome(prompted, outcome, {
           errorReason,
           errorCode,
           errorWrapperCode,
+          errorShape,
           failureStage,
         });
         saveReturnReminderState(resolved);

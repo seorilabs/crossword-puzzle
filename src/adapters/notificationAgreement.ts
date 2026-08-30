@@ -12,13 +12,14 @@ import {
   type ReturnReminderTemplateCodeSource,
 } from "../../packages/crossword-core/src/returnReminder.ts";
 
-// 동의 요청 결과. outcome이 error일 때만 errorReason(SDK 에러 요약, ≤100자, #253)과
-// errorCode(SDK 구조화 코드, #288)를 함께 준다. timeout은 안전망 타이머가 종료시킨 경우다.
+// 동의 요청 결과. outcome이 error일 때 errorReason, errorCode(없으면 unmapped),
+// errorShape(최상위 키 이름만)를 함께 준다. timeout은 안전망 타이머가 종료시킨 경우다.
 export type ReturnReminderAgreementResult = {
   outcome: ReturnReminderOutcome;
   errorReason?: string;
   errorCode?: string;
   errorWrapperCode?: string;
+  errorShape?: string;
   failureStage?: ReturnReminderFailureStage;
 };
 
@@ -115,6 +116,9 @@ export function requestReturnReminderAgreement(
       if (metadata.errorWrapperCode != null) {
         result.errorWrapperCode = metadata.errorWrapperCode;
       }
+      if (metadata.errorShape != null) {
+        result.errorShape = metadata.errorShape;
+      }
       if (metadata.failureStage != null) {
         result.failureStage = metadata.failureStage;
       }
@@ -124,16 +128,31 @@ export function requestReturnReminderAgreement(
     try {
       cleanup = requestAgreement({
         options: { templateCode: RETURN_REMINDER_TEMPLATE_CODE },
-        onEvent: (result) =>
-          finish(mapNotificationAgreementResult(result.type)),
+        onEvent: (result) => {
+          const outcome = mapNotificationAgreementResult(result.type);
+          if (outcome !== "error") {
+            finish(outcome);
+            return;
+          }
+          const { reason, code, wrapperCode, shape } =
+            summarizeAgreementFailure(result);
+          finish("error", {
+            errorReason: reason,
+            errorCode: code,
+            errorWrapperCode: wrapperCode,
+            errorShape: shape,
+            failureStage: "sdk_callback",
+          });
+        },
         // SDK onError(일시 오류): 에러 정보를 error_reason 요약과 error_code로 남긴다.
         onError: (error: unknown) => {
-          const { reason, code, wrapperCode } =
+          const { reason, code, wrapperCode, shape } =
             summarizeAgreementFailure(error);
           finish("error", {
             errorReason: reason,
             errorCode: code,
             errorWrapperCode: wrapperCode,
+            errorShape: shape,
             failureStage: "sdk_callback",
           });
         },
