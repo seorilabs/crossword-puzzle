@@ -41,6 +41,9 @@ export type LaunchConfig = {
   onboardingDifficultyRampEnabled: boolean;
   // 신규 첫 실행에서 홈을 건너뛰고 온보딩 퍼즐 풀이 화면으로 자동 진입할지(#205).
   firstRunAutoStartEnabled: boolean;
+  // 첫 글자 입력 전 1회 안내와 자동 막힘 프롬프트의 공용 킬스위치(#340).
+  firstInputGuideEnabled: boolean;
+  stuckHintPromptEnabled: boolean;
   // 막힘 힌트 자동 노출: 입력 정체가 이 시간(ms)을 넘으면 비침습 힌트 CTA를 띄운다.
   stuckHintIdleMs: number;
   // 첫 입력 전에는 일반 풀이 정체보다 짧은 지연(ms)으로 입력 개시 안내를 띄운다.
@@ -91,6 +94,8 @@ export const launchConfigKeys = {
   returnReminderEnabled: "return_reminder_enabled",
   onboardingDifficultyRampEnabled: "onboarding_difficulty_ramp_enabled",
   firstRunAutoStartEnabled: "first_run_auto_start_enabled",
+  firstInputGuideEnabled: "first_input_guide_enabled",
+  stuckHintPromptEnabled: "stuck_hint_prompt_enabled",
   stuckHintIdleMs: "stuck_hint_idle_ms",
   stuckHintFirstInputIdleMs: "stuck_hint_first_input_idle_ms",
   stuckHintWrongIdleMs: "stuck_hint_wrong_idle_ms",
@@ -138,6 +143,10 @@ export const defaultLaunchConfig: LaunchConfig = {
   // (62%)·attempt_start 도달률(57%) 개선용. 회귀 시 Remote Config
   // `first_run_auto_start_enabled`로 즉시 끈다.
   firstRunAutoStartEnabled: true,
+  // Web에서 효과가 확인된 입력 보조 장치를 세 마켓에서 기본 활성화한다. 회귀 시
+  // 각 표면을 재배포하지 않고 Remote Config로 독립적으로 끌 수 있다(#340).
+  firstInputGuideEnabled: true,
+  stuckHintPromptEnabled: true,
   // 막힘 힌트/피드백 튜닝값(원격 조정 가능). 기존 App.tsx 하드코딩 값을 그대로 옮겼다.
   stuckHintIdleMs: 20000,
   // 무입력 이탈 중앙값(7초) 전에 입력 개시 안내를 노출한다(#346).
@@ -272,6 +281,12 @@ export function normalizeLaunchConfig(
     firstRunAutoStartEnabled:
       value.firstRunAutoStartEnabled ??
       defaultLaunchConfig.firstRunAutoStartEnabled,
+    firstInputGuideEnabled:
+      value.firstInputGuideEnabled ??
+      defaultLaunchConfig.firstInputGuideEnabled,
+    stuckHintPromptEnabled:
+      value.stuckHintPromptEnabled ??
+      defaultLaunchConfig.stuckHintPromptEnabled,
     stuckHintIdleMs: clampInteger(
       value.stuckHintIdleMs ?? defaultLaunchConfig.stuckHintIdleMs,
       defaultLaunchConfig.stuckHintIdleMs,
@@ -413,6 +428,10 @@ export function getLaunchConfigDefaultsForRemoteConfig() {
       defaultLaunchConfig.onboardingDifficultyRampEnabled,
     [launchConfigKeys.firstRunAutoStartEnabled]:
       defaultLaunchConfig.firstRunAutoStartEnabled,
+    [launchConfigKeys.firstInputGuideEnabled]:
+      defaultLaunchConfig.firstInputGuideEnabled,
+    [launchConfigKeys.stuckHintPromptEnabled]:
+      defaultLaunchConfig.stuckHintPromptEnabled,
     [launchConfigKeys.stuckHintIdleMs]: defaultLaunchConfig.stuckHintIdleMs,
     [launchConfigKeys.stuckHintFirstInputIdleMs]:
       defaultLaunchConfig.stuckHintFirstInputIdleMs,

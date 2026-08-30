@@ -59,6 +59,12 @@ export async function loadFirebaseLaunchConfig(): Promise<LaunchConfig> {
         returnReminderEnabled: remoteConfigClient
           .getValue(launchConfigKeys.returnReminderEnabled)
           .asBoolean(),
+        firstInputGuideEnabled: remoteConfigClient
+          .getValue(launchConfigKeys.firstInputGuideEnabled)
+          .asBoolean(),
+        stuckHintPromptEnabled: remoteConfigClient
+          .getValue(launchConfigKeys.stuckHintPromptEnabled)
+          .asBoolean(),
         stuckHintIdleMs: remoteConfigClient
           .getValue(launchConfigKeys.stuckHintIdleMs)
           .asNumber(),
@@ -82,6 +88,12 @@ export async function loadFirebaseLaunchConfig(): Promise<LaunchConfig> {
           .asNumber(),
         stuckHintMinCooldownMs: remoteConfigClient
           .getValue(launchConfigKeys.stuckHintMinCooldownMs)
+          .asNumber(),
+        finishNudgeProgressThreshold: remoteConfigClient
+          .getValue(launchConfigKeys.finishNudgeProgressThreshold)
+          .asNumber(),
+        finishNudgeWordsRemaining: remoteConfigClient
+          .getValue(launchConfigKeys.finishNudgeWordsRemaining)
           .asNumber(),
       });
     } catch {

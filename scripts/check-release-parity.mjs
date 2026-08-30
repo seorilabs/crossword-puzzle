@@ -20,6 +20,7 @@ const webPlatformAuthPath = "src/adapters/platformAuth.ts";
 const webPuzzleRepositoryPath = "src/adapters/staticPuzzleRepository.ts";
 const mobileAppPath = "apps/mobile/App.tsx";
 const mobileGameplayTelemetryPath = "apps/mobile/gameplayTelemetry.ts";
+const mobileStuckHintPromptPath = "apps/mobile/useStuckHintPrompt.ts";
 const mobileIndexPath = "apps/mobile/index.js";
 const mobilePlatformAuthPath = "apps/mobile/platformAuth.ts";
 const mobileReturnReminderPath = "apps/mobile/mobileReturnReminder.ts";
@@ -261,6 +262,7 @@ const webMain = read(webMainPath);
 const webPlatformAuth = read(webPlatformAuthPath);
 const mobileApp = read(mobileAppPath);
 const mobileGameplayTelemetry = read(mobileGameplayTelemetryPath);
+const mobileStuckHintPrompt = read(mobileStuckHintPromptPath);
 const mobileIndex = read(mobileIndexPath);
 const mobilePlatformAuth = read(mobilePlatformAuthPath);
 const mobileAppTest = read(mobileAppTestPath);
@@ -509,6 +511,8 @@ for (const [content, path] of [
   [mobileFirebaseClient, mobileFirebaseClientPath],
 ]) {
   assertIncludes(content, "stuckHintFirstInputIdleMs", path);
+  assertIncludes(content, "firstInputGuideEnabled", path);
+  assertIncludes(content, "stuckHintPromptEnabled", path);
 }
 assertIncludes(
   remoteConfigTemplate,
@@ -516,6 +520,36 @@ assertIncludes(
   remoteConfigTemplatePath,
 );
 assertIncludes(marketParityDoc, "trigger=first_input", marketParityDocPath);
+for (const marker of [
+  "onboarding_guide_shown",
+  "onboarding_guide_complete",
+  "onboarding_guide_dismiss",
+  "STUCK_HINT_PROMPT_EVENT",
+  "STUCK_HINT_PROMPT_ACCEPT_EVENT",
+  "STUCK_HINT_PROMPT_DISMISS_EVENT",
+  "useStuckHintPrompt",
+]) {
+  assertIncludes(mobileApp, marker, mobileAppPath);
+}
+for (const marker of [
+  "getStuckHintBackoffDelayMs",
+  "getStuckHintDelayMs",
+  "isNearFinishNudge",
+  "shouldScheduleStuckHintPrompt",
+]) {
+  assertIncludes(mobileStuckHintPrompt, marker, mobileStuckHintPromptPath);
+}
+assertIncludes(
+  remoteConfigTemplate,
+  '"first_input_guide_enabled"',
+  remoteConfigTemplatePath,
+);
+assertIncludes(
+  remoteConfigTemplate,
+  '"stuck_hint_prompt_enabled"',
+  remoteConfigTemplatePath,
+);
+assertIncludes(marketParityDoc, "Android/iOS(RN)", marketParityDocPath);
 assertNoLocalDefinitions(webApp, forbiddenLocalDefinitions, webAppPath);
 assertNoLocalDefinitions(mobileApp, forbiddenLocalDefinitions, mobileAppPath);
 

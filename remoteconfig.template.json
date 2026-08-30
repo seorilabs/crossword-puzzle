@@ -110,6 +110,20 @@
       "description": "신규(도전 이력 없음) 첫 실행에서 홈을 건너뛰고 온보딩 퍼즐 풀이 화면으로 자동 진입할지 여부(#205). 회귀 시 false로 끈다",
       "valueType": "BOOLEAN"
     },
+    "first_input_guide_enabled": {
+      "defaultValue": {
+        "value": "true"
+      },
+      "description": "첫 글자 입력 전 첫 입력 가이드를 노출할지 여부(#340). 회귀 시 false로 세 마켓에서 끈다",
+      "valueType": "BOOLEAN"
+    },
+    "stuck_hint_prompt_enabled": {
+      "defaultValue": {
+        "value": "true"
+      },
+      "description": "입력 정체·오답·첫 입력 전 자동 보조 프롬프트를 노출할지 여부(#340). 회귀 시 false로 세 마켓에서 끈다",
+      "valueType": "BOOLEAN"
+    },
     "stuck_hint_idle_ms": {
       "defaultValue": {
         "value": "20000"

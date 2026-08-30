@@ -1190,13 +1190,15 @@ function App() {
   const isFirstInputPending =
     isBoardEmpty &&
     !firstAnswerInputKeysRef.current.has(currentAttemptFirstInputKey);
-  const isFirstInputGuideVisible = shouldShowFirstInputGuide({
-    route,
-    hasStarted,
-    isCompleted,
-    hasSeenFirstInputGuide,
-    isBoardEmpty,
-  });
+  const isFirstInputGuideVisible =
+    launchConfig.firstInputGuideEnabled &&
+    shouldShowFirstInputGuide({
+      route,
+      hasStarted,
+      isCompleted,
+      hasSeenFirstInputGuide,
+      isBoardEmpty,
+    });
 
   // 최신 상태 스냅샷(ref): pagehide/visibilitychange 리스너가 stale closure 없이
   // 이탈 시점의 진행 상태를 읽을 수 있게 매 렌더마다 갱신한다.
@@ -1484,7 +1486,11 @@ function App() {
     hide: hideStuckHintPrompt,
     dismiss: dismissStuckHintPromptCta,
   } = useStuckHintPrompt({
-    active: route === "today" && hasStarted && !isCompleted,
+    active:
+      launchConfig.stuckHintPromptEnabled &&
+      route === "today" &&
+      hasStarted &&
+      !isCompleted,
     resetKeys: [cellValues],
     firstInputPending: isFirstInputPending,
     firstInputIdleMs: launchConfig.stuckHintFirstInputIdleMs,

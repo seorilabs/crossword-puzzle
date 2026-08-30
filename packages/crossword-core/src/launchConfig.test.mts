@@ -65,6 +65,30 @@ describe("launchConfig: firstRunAutoStartEnabled 기본값(#205)", () => {
 });
 
 describe("launchConfig: 막힘 힌트/피드백 튜닝값(#172)", () => {
+  it("#340 첫 입력 가이드와 막힘 프롬프트는 기본 ON이며 독립 킬스위치를 제공한다", () => {
+    assert.equal(defaultLaunchConfig.firstInputGuideEnabled, true);
+    assert.equal(defaultLaunchConfig.stuckHintPromptEnabled, true);
+    assert.equal(
+      launchConfigKeys.firstInputGuideEnabled,
+      "first_input_guide_enabled",
+    );
+    assert.equal(
+      launchConfigKeys.stuckHintPromptEnabled,
+      "stuck_hint_prompt_enabled",
+    );
+
+    const disabled = normalizeLaunchConfig({
+      firstInputGuideEnabled: false,
+      stuckHintPromptEnabled: false,
+    });
+    assert.equal(disabled.firstInputGuideEnabled, false);
+    assert.equal(disabled.stuckHintPromptEnabled, false);
+
+    const defaults = getLaunchConfigDefaultsForRemoteConfig();
+    assert.equal(defaults.first_input_guide_enabled, true);
+    assert.equal(defaults.stuck_hint_prompt_enabled, true);
+  });
+
   it("기본값이 기존 App.tsx 하드코딩 값과 일치한다", () => {
     assert.equal(defaultLaunchConfig.stuckHintIdleMs, 20000);
     assert.equal(defaultLaunchConfig.stuckHintFirstInputIdleMs, 6000);

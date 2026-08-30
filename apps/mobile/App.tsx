@@ -60,6 +60,7 @@ import {
   getEntryCellKeyAt,
   getEntryCells,
   getEntryStartCellKey,
+  getFirstIncompleteEntry,
   getInitialEntryId,
   getInitialEntryStartCellKey,
   getNextAnswerSlotCellKey,
@@ -67,6 +68,7 @@ import {
   getNextRecommendedPuzzleSummary,
   getPendingAnswerCellValues,
   getProgressPercent,
+  getStuckHintPromptText,
   isCellLocked,
   isHangulJamoInput,
   getNextStreakMilestoneHint,
@@ -82,15 +84,20 @@ import {
   normalizePuzzleManifestIdentifiers,
   pickHintCellIndex,
   runRewardedHintAdFlow,
+  resolveStarterCell,
   trackRewardedHintAdRequest,
   trackRewardedHintAdResult,
   sortPuzzleSummariesByRecency,
   startMissionAttempt,
   shouldSubmitLeaderboardScore,
+  shouldShowFirstInputGuide,
   uniquePuzzleSummaries,
   validatePuzzleSlots,
   REWARDED_HINT_AD_REWARD_EVENT,
   RETURN_REMINDER_OPENED_EVENT,
+  STUCK_HINT_PROMPT_ACCEPT_EVENT,
+  STUCK_HINT_PROMPT_DISMISS_EVENT,
+  STUCK_HINT_PROMPT_EVENT,
   type Bounds,
   type DailyMissionState,
   type DailyHintWallet,
@@ -137,6 +144,11 @@ import {
 } from './gameplayTelemetry';
 import { leaderboardAdapter } from './leaderboardAdapter';
 import { useLeaderboard } from './useLeaderboard';
+import { useStuckHintPrompt } from './useStuckHintPrompt';
+import {
+  loadFirstInputGuideSeen,
+  markFirstInputGuideSeen,
+} from './firstInputGuideRepository';
 import { maybeRequestMobileReturnReminder } from './mobileReturnReminder';
 import {
   consumeInitialReturnReminderOpen,
@@ -975,6 +987,10 @@ function AppContent() {
   // 플레이 방법 안내: 노출 1회 보장과 체류 시간 측정용.
   const howToPlayShownRef = useRef(false);
   const howToPlayShownAtRef = useRef<number | null>(null);
+  const [hasSeenFirstInputGuide, setHasSeenFirstInputGuide] = useState(true);
+  const firstInputGuideHydratedRef = useRef(false);
+  const firstInputGuideDismissedRef = useRef(false);
+  const firstInputGuideShownRef = useRef(false);
   // RN 퍼즐 진행·이탈 계측은 시도별 중복 방지와 resume baseline을 한 tracker에서
   // 관리한다. 실제 lifecycle/화면 전환은 App에서 전달하고 이벤트 계약은 Web과 맞춘다.
   const gameplayAttemptTrackerRef = useRef(
@@ -1262,6 +1278,88 @@ function AppContent() {
         ]
           .filter(Boolean)
           .join(' · ');
+
+  const isBoardEmpty = Object.keys(cellValues).length === 0;
+  const currentAttemptFirstInputKey = `${puzzle.puzzleId}:${mission.attemptsUsed}`;
+  const isFirstInputPending =
+    isBoardEmpty &&
+    !gameplayAttemptTrackerRef.current.hasFirstInput(
+      currentAttemptFirstInputKey,
+    );
+  const isFirstInputGuideVisible =
+    launchConfig.firstInputGuideEnabled &&
+    shouldShowFirstInputGuide({
+      route,
+      hasStarted,
+      isCompleted,
+      hasSeenFirstInputGuide,
+      isBoardEmpty,
+    });
+  const wrongCellCount = useMemo(
+    () =>
+      Object.entries(cellValues).filter(
+        ([key, value]) =>
+          value !== '' && value !== getCellAnswerLetter(puzzle, key),
+      ).length,
+    [cellValues, puzzle],
+  );
+  const stuckHintWordsRemaining =
+    puzzle.entries.length - viewModel.completedEntries.length;
+  const {
+    isVisible: isStuckHintPromptVisible,
+    trigger: stuckHintTrigger,
+    nearFinish: isStuckHintNearFinish,
+    wordsRemaining: stuckHintShownWordsRemaining,
+    hide: hideStuckHintPrompt,
+    dismiss: dismissStuckHintPromptCta,
+  } = useStuckHintPrompt({
+    active:
+      launchConfig.stuckHintPromptEnabled &&
+      route === 'today' &&
+      hasStarted &&
+      !isCompleted,
+    resetKeys: [cellValues],
+    firstInputPending: isFirstInputPending,
+    firstInputIdleMs: launchConfig.stuckHintFirstInputIdleMs,
+    wrongCellCount,
+    wrongCellThreshold: launchConfig.stuckHintWrongCellThreshold,
+    idleMs: launchConfig.stuckHintIdleMs,
+    wrongIdleMs: launchConfig.stuckHintWrongIdleMs,
+    puzzleKey: puzzle.puzzleId,
+    maxPromptsPerAttempt: launchConfig.stuckHintMaxPromptsPerAttempt,
+    maxDismissals: launchConfig.stuckHintMaxDismissals,
+    dismissBackoffFactor: launchConfig.stuckHintDismissBackoffFactor,
+    minCooldownMs: launchConfig.stuckHintMinCooldownMs,
+    progressPercent,
+    wordsRemaining: stuckHintWordsRemaining,
+    finishNudgeProgressThreshold: launchConfig.finishNudgeProgressThreshold,
+    finishNudgeWordsRemaining: launchConfig.finishNudgeWordsRemaining,
+    onShow: ({
+      trigger,
+      delayMs,
+      promptSeq,
+      dismissCount,
+      nearFinish,
+      wordsRemaining,
+    }) => {
+      telemetry.impression(STUCK_HINT_PROMPT_EVENT, {
+        ...getPuzzleTelemetryParams(puzzle, selectedPuzzleSummary),
+        attempt_number: mission.attemptsUsed,
+        hint_count: hintCount,
+        idle_seconds: delayMs / 1000,
+        progress_percent: progressPercent,
+        remaining_hint_credits: remainingHintCredits,
+        total_words: puzzle.entries.length,
+        trigger,
+        prompt_seq: promptSeq,
+        dismiss_count: dismissCount,
+        words_filled: viewModel.completedEntries.length,
+        wrong_cell_count: wrongCellCount,
+        near_finish: nearFinish,
+        words_remaining: wordsRemaining,
+      });
+    },
+  });
 
   // AppState와 route listener가 stale closure 없이 이탈 직전 상태를 사용하도록
   // 최신 진행 스냅샷을 매 렌더 갱신한다.
@@ -1850,6 +1948,32 @@ function AppContent() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    loadFirstInputGuideSeen()
+      .then(value => {
+        if (cancelled) {
+          return;
+        }
+        firstInputGuideHydratedRef.current = true;
+        if (!firstInputGuideDismissedRef.current) {
+          setHasSeenFirstInputGuide(value);
+        }
+      })
+      .catch(() => {
+        if (cancelled) {
+          return;
+        }
+        firstInputGuideHydratedRef.current = true;
+        if (!firstInputGuideDismissedRef.current) {
+          setHasSeenFirstInputGuide(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // 안내를 어떻게 떠났는지 남긴다. RN 은 단일 화면 안내라 stepCount 는 1이다.
   useEffect(() => {
     if (route !== 'today' || hasSeenHowToPlay || howToPlayShownRef.current) {
@@ -1862,6 +1986,22 @@ function AppContent() {
       ...buildHowToPlayParams({ stepIndex: 0, stepCount: 1 }),
     });
   }, [hasSeenHowToPlay, puzzle, route, selectedPuzzleSummary]);
+
+  useEffect(() => {
+    if (!isFirstInputGuideVisible || firstInputGuideShownRef.current) {
+      return;
+    }
+    firstInputGuideShownRef.current = true;
+    telemetry.impression('onboarding_guide_shown', {
+      ...getPuzzleTelemetryParams(puzzle, selectedPuzzleSummary),
+      attempt_number: mission.attemptsUsed,
+    });
+  }, [
+    isFirstInputGuideVisible,
+    mission.attemptsUsed,
+    puzzle,
+    selectedPuzzleSummary,
+  ]);
 
   function dismissHowToPlay(outcome: HowToPlayOutcome = 'dismiss') {
     const shownAt = howToPlayShownAtRef.current;
@@ -1878,6 +2018,34 @@ function AppContent() {
     setHasSeenHowToPlay(true);
     // Fire-and-forget: write failure means session-only dismissal; modal may reappear on next launch.
     AsyncStorage.setItem('crossword:how-to-play-seen', '1').catch(() => {});
+  }
+
+  function persistFirstInputGuideCompletion() {
+    firstInputGuideDismissedRef.current = true;
+    setHasSeenFirstInputGuide(true);
+    markFirstInputGuideSeen().catch(() => {});
+  }
+
+  function completeFirstInputGuide() {
+    if (hasSeenFirstInputGuide && firstInputGuideHydratedRef.current) {
+      return;
+    }
+    if (firstInputGuideShownRef.current) {
+      telemetry.click('onboarding_guide_complete', {
+        ...getPuzzleTelemetryParams(puzzle, selectedPuzzleSummary),
+        attempt_number: mission.attemptsUsed,
+        elapsed_seconds: getElapsedSeconds(mission.lastStartedAt),
+      });
+    }
+    persistFirstInputGuideCompletion();
+  }
+
+  function dismissFirstInputGuide() {
+    telemetry.click('onboarding_guide_dismiss', {
+      ...getPuzzleTelemetryParams(puzzle, selectedPuzzleSummary),
+      attempt_number: mission.attemptsUsed,
+    });
+    persistFirstInputGuideCompletion();
   }
 
   useEffect(() => {
@@ -2178,6 +2346,7 @@ function AppContent() {
         timeToFirstInputSec: getElapsedSeconds(mission.lastStartedAt),
         attemptNumber: mission.attemptsUsed,
       });
+      completeFirstInputGuide();
     }
 
     const nextValues = { ...cellValues };
@@ -2236,6 +2405,7 @@ function AppContent() {
         timeToFirstInputSec: getElapsedSeconds(mission.lastStartedAt),
         attemptNumber: mission.attemptsUsed,
       });
+      completeFirstInputGuide();
     }
 
     const nextValues = { ...cellValues };
@@ -2348,6 +2518,72 @@ function AppContent() {
     ) {
       moveToNextUncompletedEntry(selectedEntry, nextValues, targetKey);
     }
+  }
+
+  function acceptFirstInputNudge() {
+    hideStuckHintPrompt();
+    telemetry.click(STUCK_HINT_PROMPT_ACCEPT_EVENT, {
+      ...getPuzzleTelemetryParams(puzzle, selectedPuzzleSummary),
+      attempt_number: mission.attemptsUsed,
+      progress_percent: progressPercent,
+      remaining_hint_credits: remainingHintCredits,
+      trigger: 'first_input',
+      near_finish: false,
+      words_remaining: stuckHintShownWordsRemaining,
+    });
+    const starter = resolveStarterCell({ cellValues, puzzle });
+    if (starter == null) {
+      return;
+    }
+    const entry = puzzle.entries.find(item => item.id === starter.entryId);
+    if (entry != null) {
+      selectEntry(entry, starter.cellKey);
+      focusBoardInput(starter.cellKey);
+    }
+  }
+
+  function acceptStuckHintPrompt() {
+    hideStuckHintPrompt();
+    telemetry.click(STUCK_HINT_PROMPT_ACCEPT_EVENT, {
+      ...getPuzzleTelemetryParams(puzzle, selectedPuzzleSummary),
+      attempt_number: mission.attemptsUsed,
+      progress_percent: progressPercent,
+      remaining_hint_credits: remainingHintCredits,
+      trigger: stuckHintTrigger,
+      near_finish: isStuckHintNearFinish,
+      words_remaining: stuckHintShownWordsRemaining,
+    });
+    revealLetter();
+  }
+
+  function acceptNearFinishNudge() {
+    hideStuckHintPrompt();
+    telemetry.click(STUCK_HINT_PROMPT_ACCEPT_EVENT, {
+      ...getPuzzleTelemetryParams(puzzle, selectedPuzzleSummary),
+      attempt_number: mission.attemptsUsed,
+      progress_percent: progressPercent,
+      remaining_hint_credits: remainingHintCredits,
+      trigger: stuckHintTrigger,
+      near_finish: true,
+      words_remaining: stuckHintShownWordsRemaining,
+    });
+    const entry = getFirstIncompleteEntry(puzzle.entries, cellValues);
+    if (entry != null) {
+      selectEntry(entry);
+      focusBoardInput(getEntryStartCellKey(entry));
+    }
+  }
+
+  function dismissStuckHintPrompt() {
+    dismissStuckHintPromptCta();
+    telemetry.click(STUCK_HINT_PROMPT_DISMISS_EVENT, {
+      ...getPuzzleTelemetryParams(puzzle, selectedPuzzleSummary),
+      attempt_number: mission.attemptsUsed,
+      progress_percent: progressPercent,
+      trigger: stuckHintTrigger,
+      near_finish: isStuckHintNearFinish,
+      words_remaining: stuckHintShownWordsRemaining,
+    });
   }
 
   function clearProgress() {
@@ -3366,6 +3602,94 @@ function AppContent() {
     );
   }
 
+  function renderInputGuidance() {
+    if (!isFirstInputGuideVisible && !isStuckHintPromptVisible) {
+      return null;
+    }
+
+    return (
+      <View style={styles.inputGuidanceStack}>
+        {isFirstInputGuideVisible ? (
+          <View accessibilityRole="alert" style={styles.inputGuideBanner}>
+            <Text style={styles.inputGuideText}>
+              반짝이는 첫 칸을 탭해 글자를 입력하면 시작돼요 ✏️
+            </Text>
+            <Pressable
+              accessibilityLabel="첫 입력 안내 닫기"
+              accessibilityRole="button"
+              onPress={dismissFirstInputGuide}
+              style={styles.inputGuideClose}
+            >
+              <Text style={styles.inputGuideCloseText}>×</Text>
+            </Pressable>
+          </View>
+        ) : null}
+        {isStuckHintPromptVisible ? (
+          <View accessibilityRole="alert" style={styles.stuckHintPrompt}>
+            <Text style={styles.stuckHintPromptText}>
+              {getStuckHintPromptText({
+                trigger: stuckHintTrigger,
+                nearFinish: isStuckHintNearFinish,
+                wordsRemaining: stuckHintShownWordsRemaining,
+                hasHintCredits: remainingHintCredits > 0,
+              })}
+            </Text>
+            <View style={styles.stuckHintPromptActions}>
+              {stuckHintTrigger === 'first_input' ? (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={acceptFirstInputNudge}
+                  style={styles.stuckHintPromptPrimary}
+                >
+                  <Text style={styles.stuckHintPromptPrimaryText}>
+                    입력 시작하기
+                  </Text>
+                </Pressable>
+              ) : (
+                <>
+                  {isStuckHintNearFinish ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={acceptNearFinishNudge}
+                      style={styles.stuckHintPromptPrimary}
+                    >
+                      <Text style={styles.stuckHintPromptPrimaryText}>
+                        남은 단어 마저 풀기
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={acceptStuckHintPrompt}
+                    style={styles.stuckHintPromptSecondary}
+                  >
+                    <Text style={styles.stuckHintPromptSecondaryText}>
+                      {remainingHintCredits > 0
+                        ? '무료 힌트 보기'
+                        : '힌트 보기'}
+                    </Text>
+                  </Pressable>
+                </>
+              )}
+              <Pressable
+                accessibilityLabel={
+                  stuckHintTrigger === 'first_input'
+                    ? '입력 안내 닫기'
+                    : '힌트 안내 닫기'
+                }
+                accessibilityRole="button"
+                onPress={dismissStuckHintPrompt}
+                style={styles.stuckHintPromptClose}
+              >
+                <Text style={styles.stuckHintPromptCloseText}>×</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
+      </View>
+    );
+  }
+
   function renderHowToPlayModal() {
     return (
       <Modal
@@ -3488,6 +3812,7 @@ function AppContent() {
           {renderSelectedClues()}
           {renderCompletedReviewPanel()}
         </ScrollView>
+        {renderInputGuidance()}
         {renderClueListModal()}
         {renderCompletionCelebrationModal()}
         {renderHowToPlayModal()}
@@ -5017,6 +5342,105 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     lineHeight: 19,
+  },
+  inputGuidanceStack: {
+    backgroundColor: '#f8fafc',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  inputGuideBanner: {
+    alignItems: 'center',
+    backgroundColor: '#ecfdf5',
+    borderColor: '#99f6e4',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  inputGuideText: {
+    color: '#0f766e',
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '800',
+    lineHeight: 19,
+  },
+  inputGuideClose: {
+    alignItems: 'center',
+    borderRadius: 14,
+    height: 28,
+    justifyContent: 'center',
+    width: 28,
+  },
+  inputGuideCloseText: {
+    color: '#0f766e',
+    fontSize: 20,
+    fontWeight: '700',
+    lineHeight: 22,
+  },
+  stuckHintPrompt: {
+    backgroundColor: '#ffffff',
+    borderColor: '#99f6e4',
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 10,
+    padding: 12,
+  },
+  stuckHintPromptText: {
+    color: '#0f172a',
+    fontSize: 14,
+    fontWeight: '800',
+    lineHeight: 20,
+  },
+  stuckHintPromptActions: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  stuckHintPromptPrimary: {
+    alignItems: 'center',
+    backgroundColor: '#0f766e',
+    borderRadius: 7,
+    justifyContent: 'center',
+    minHeight: 38,
+    paddingHorizontal: 12,
+  },
+  stuckHintPromptPrimaryText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  stuckHintPromptSecondary: {
+    alignItems: 'center',
+    backgroundColor: '#f0fdfa',
+    borderColor: '#99f6e4',
+    borderRadius: 7,
+    borderWidth: 1,
+    justifyContent: 'center',
+    minHeight: 38,
+    paddingHorizontal: 12,
+  },
+  stuckHintPromptSecondaryText: {
+    color: '#0f766e',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  stuckHintPromptClose: {
+    alignItems: 'center',
+    borderRadius: 14,
+    height: 28,
+    justifyContent: 'center',
+    marginLeft: 'auto',
+    width: 28,
+  },
+  stuckHintPromptCloseText: {
+    color: '#64748b',
+    fontSize: 20,
+    fontWeight: '700',
+    lineHeight: 22,
   },
   howToPlayDialog: {
     alignItems: 'stretch',
