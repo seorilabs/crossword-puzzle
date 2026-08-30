@@ -217,6 +217,7 @@ describe("requestReturnReminderAgreement (#253)", () => {
       },
     );
     assert.deepEqual(buildReturnReminderResultParams(state), {
+      channel: "ait",
       outcome: "error",
       prompt_count: 1,
       error_reason: "4000: invalid template code",

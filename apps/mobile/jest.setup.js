@@ -70,12 +70,43 @@ jest.mock('@react-native-firebase/remote-config', () => {
   };
 });
 
+jest.mock('react-native-notify-kit', () => {
+  const client = {
+    cancelTriggerNotification: jest.fn(() => Promise.resolve()),
+    createChannel: jest.fn(() => Promise.resolve('daily-puzzle-reminder')),
+    createTriggerNotification: jest.fn(() =>
+      Promise.resolve('crossword-daily-puzzle-reminder'),
+    ),
+    getInitialNotification: jest.fn(() => Promise.resolve(null)),
+    onBackgroundEvent: jest.fn(),
+    onForegroundEvent: jest.fn(() => jest.fn()),
+    requestPermission: jest.fn(() =>
+      Promise.resolve({ authorizationStatus: 1 }),
+    ),
+  };
+
+  return {
+    __esModule: true,
+    default: client,
+    AndroidImportance: { DEFAULT: 3 },
+    AuthorizationStatus: {
+      NOT_DETERMINED: -1,
+      DENIED: 0,
+      AUTHORIZED: 1,
+      PROVISIONAL: 2,
+    },
+    EventType: { PRESS: 1 },
+    TriggerType: { TIMESTAMP: 0 },
+  };
+});
+
 jest.mock('react-native-safe-area-context', () => {
   const React = require('react');
   const { View } = require('react-native');
 
   return {
-    SafeAreaProvider: ({ children }) => React.createElement(View, null, children),
+    SafeAreaProvider: ({ children }) =>
+      React.createElement(View, null, children),
     SafeAreaView: ({ children, ...props }) =>
       React.createElement(View, props, children),
     useSafeAreaFrame: () => ({

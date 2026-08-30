@@ -5,10 +5,13 @@
 
 ## 설계
 
-- **발송 주체**: 앱인토스 스마트발송(Smart Message). 앱은 FCM/자체 푸시를 보내지
-  않고 `requestNotificationAgreement`로 알림 수신 동의만 수집한다
+- **AIT 발송 주체**: 앱인토스 스마트발송(Smart Message). AIT 앱은 FCM/자체 푸시를
+  보내지 않고 `requestNotificationAgreement`로 알림 수신 동의만 수집한다
   (`src/adapters/notificationAgreement.ts`, 코어 `returnReminder.ts`). 실제 발송·
   타겟팅·유저 토큰 관리는 앱인토스 플랫폼이 담당한다.
+- **Android/iOS 발송 주체**: RN 앱의 `returnReminderNotifications.ts`가 OS 로컬
+  알림을 다음 날 09:00 KST에 한 번 예약한다. 서버·FCM·APNs 토큰은 사용하지 않는다.
+  `return_reminder_enabled=false`면 권한 요청과 예약을 모두 건너뛴다.
 - **시각 분리**: 배치는 자정(00:05 KST)에 생성한다. 푸시는 그 시각이 아니라
   **오전 08:00 KST** 스케줄 발송으로 분리한다(자정 발송 금지 — 취침 시간).
   → 배치 코드에 푸시 훅을 넣지 않고, **콘솔 스케줄 발송**으로 구성한다.

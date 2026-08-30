@@ -22,6 +22,9 @@ const mobileAppPath = "apps/mobile/App.tsx";
 const mobileGameplayTelemetryPath = "apps/mobile/gameplayTelemetry.ts";
 const mobileIndexPath = "apps/mobile/index.js";
 const mobilePlatformAuthPath = "apps/mobile/platformAuth.ts";
+const mobileReturnReminderPath = "apps/mobile/mobileReturnReminder.ts";
+const mobileReturnReminderNotificationsPath =
+  "apps/mobile/returnReminderNotifications.ts";
 const mobileAppTestPath = "apps/mobile/__tests__/App.test.tsx";
 const launchConfigPath = "src/adapters/launchConfig.ts";
 const webFirebaseClientPath = "src/adapters/firebaseClient.ts";
@@ -321,6 +324,10 @@ const mobileTelemetry = read(mobileTelemetryPath);
 const mobileAds = read(mobileAdsPath);
 const mobileLeaderboardAdapter = read(mobileLeaderboardAdapterPath);
 const mobileLeaderboardSpec = read(mobileLeaderboardSpecPath);
+const mobileReturnReminder = read(mobileReturnReminderPath);
+const mobileReturnReminderNotifications = read(
+  mobileReturnReminderNotificationsPath,
+);
 const mobileAppJson = read(mobileAppJsonPath);
 const androidBuildGradle = read(androidBuildGradlePath);
 const androidAppBuildGradle = read(androidAppBuildGradlePath);
@@ -566,6 +573,11 @@ assertIncludes(mobileIndex, "void ensurePlatformAuth();", mobileIndexPath);
 assertIncludes(mobileIndex, "startPlatformPresence();", mobileIndexPath);
 assertIncludes(mobileIndex, "stopPlatformPresence();", mobileIndexPath);
 assertIncludes(mobileIndex, "resumePlatformPresence();", mobileIndexPath);
+assertIncludes(
+  mobileIndex,
+  "registerReturnReminderBackgroundHandler();",
+  mobileIndexPath,
+);
 
 assertIncludes(
   mobilePackage,
@@ -586,6 +598,41 @@ assertIncludes(
   mobilePackage,
   '"react-native-google-mobile-ads":',
   mobilePackagePath,
+);
+assertIncludes(
+  mobilePackage,
+  '"react-native-notify-kit": "10.6.0"',
+  mobilePackagePath,
+);
+assertIncludes(
+  mobileApp,
+  "enabled: launchConfig.returnReminderEnabled",
+  mobileAppPath,
+);
+assertIncludes(
+  mobileApp,
+  "RETURN_REMINDER_OPENED_EVENT",
+  mobileAppPath,
+);
+assertIncludes(
+  mobileReturnReminder,
+  "buildReturnReminderPromptParams('mission_complete', undefined, 'local')",
+  mobileReturnReminderPath,
+);
+assertIncludes(
+  mobileReturnReminderNotifications,
+  "client.requestPermission",
+  mobileReturnReminderNotificationsPath,
+);
+assertIncludes(
+  mobileReturnReminderNotifications,
+  "cancelTriggerNotification(RETURN_REMINDER_NOTIFICATION_ID)",
+  mobileReturnReminderNotificationsPath,
+);
+assertIncludes(
+  mobileReturnReminderNotifications,
+  "alarmManager: false",
+  mobileReturnReminderNotificationsPath,
 );
 assertIncludes(
   mobilePackage,
@@ -751,6 +798,11 @@ assertIncludes(
 assertIncludes(
   androidManifest,
   'android:name="com.google.android.gms.permission.AD_ID"',
+  androidManifestPath,
+);
+assertIncludes(
+  androidManifest,
+  'android:name="android.permission.POST_NOTIFICATIONS"',
   androidManifestPath,
 );
 assertNotMatches(

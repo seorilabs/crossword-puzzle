@@ -48,7 +48,7 @@ GitHub Actions AIT 배포는 같은 값을 GitHub Variables에서 읽는다. 미
 | `rewarded_hint_ads_enabled`          |  `true` | 힌트 보상형 광고 CTA 노출 여부                            |
 | `result_interstitial_ads_enabled`    | `false` | 결과 화면 진입 후 전면 광고 노출 여부. 현재 기본 비활성   |
 | `leaderboard_enabled`                |  `true` | 리더보드 UI 노출 여부. 승인/운영 문제 시 `false` 킬스위치 |
-| `return_reminder_enabled`            |  `true` | AIT 복귀 리마인더 동의 유도 여부                          |
+| `return_reminder_enabled`            |  `true` | AIT·Android·iOS 복귀 리마인더 동의 유도 여부              |
 | `onboarding_difficulty_ramp_enabled` |  `true` | 첫 easy 완료 후 easy 1판 추가. `false`면 기존 추천 복원   |
 
 힌트 잔액은 KST 날짜별 공용 지갑으로 저장한다. 쉬움·보통·어려움·지난 퍼즐과
@@ -82,12 +82,13 @@ AIT는 AppsInToss Analytics와 Firebase Analytics를 함께 호출한다. 샌드
 | `result_interstitial_ad_result`  | 결과 전면 광고 종료/실패. 현재 기본 비활성        |
 | `return_reminder_prompt`         | 퍼즐 완료 후 복귀 리마인더 동의 유도              |
 | `return_reminder_result`         | 동의 결과와 오류 코드·래퍼·실패 단계 기록         |
+| `notification_opened`            | RN 로컬 복귀 알림 탭 후 오늘의 퍼즐 진입          |
 
 집계용 이벤트는 공통으로 `puzzle_id`, `slot_id`, `pack_id`, `published_at`, `difficulty`, `grid_size`, `word_count`를 포함한다. 미션/시도 이벤트는 `attempt_number`, `remaining_attempts`, `hint_count`, `earned_hint_credits`를 추가한다. `mission_complete`는 `completed_at`, `elapsed_seconds`, `completed_word_count`도 포함한다.
 
 `first_answer_input`은 `elapsed_seconds`로 첫 입력까지 걸린 시간(TTFI)을 싣는다. `puzzle_abandon`은 `last_screen`, `progress_percent`, `words_filled`, `total_words`, `elapsed_seconds`와 함께 `had_first_input`(첫 입력 발생 여부)를 포함한다. `had_first_input=false`인 이탈은 무입력(침묵) 이탈이며, 그 `elapsed_seconds`가 첫 입력 없이 머문 시간이므로 TTFI 상한 분포 및 침묵 이탈 구간 정량화에 사용한다.
 
-`return_reminder_result`는 기존 `outcome`, `prompt_count`, `template_code_source`, `error_reason`, `error_code`에 `error_wrapper_code`와 `stage`를 추가한다. `stage`는 `preflight`, `sdk_callback`, `timeout` 중 하나다.
+`return_reminder_prompt`와 `return_reminder_result`는 `channel=ait|local`로 시장별 발송 경로를 구분한다. AIT만 실제 스마트발송 템플릿 출처인 `template_code_source=env|default`를 싣고, RN local은 이 파라미터를 생략한다. `return_reminder_result`는 `outcome`, `prompt_count`, `error_reason`, `error_code`에 `error_wrapper_code`와 `stage`를 추가한다. `stage`는 `preflight`, `sdk_callback`, `timeout` 중 하나다. `notification_opened`는 `channel=local`, `notification_kind=daily_puzzle`, 예약 대상 `reminder_date`를 싣는다.
 
 ## Android / iOS
 
