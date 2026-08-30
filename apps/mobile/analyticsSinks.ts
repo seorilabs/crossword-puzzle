@@ -7,7 +7,10 @@ import {
   type GameMarket,
 } from '../../packages/crossword-core/src';
 import {version as packageVersion} from './package.json';
-import {logFirebaseAnalyticsEvent} from './firebaseClient';
+import {
+  logFirebaseAnalyticsEvent,
+  logFirebaseScreenView,
+} from './firebaseClient';
 
 // 분석 이벤트 팬아웃 seam(Android/iOS RN). 웹(src/adapters/analyticsSinks.ts)과 같은 구조를
 // RN용으로 둔다: sink 레지스트리로 두어 자체 지표 서버 도입이 "sink 하나 추가"로 끝나게 한다.
@@ -40,10 +43,7 @@ const firebaseSink: AnalyticsSink = {
   id: 'firebase',
   track(event) {
     if (event.kind === 'screen') {
-      void logFirebaseAnalyticsEvent('screen_view', {
-        firebase_screen: event.name,
-        ...event.params,
-      });
+      void logFirebaseScreenView(event.name, event.params);
       return;
     }
     void logFirebaseAnalyticsEvent(event.name, event.params);
