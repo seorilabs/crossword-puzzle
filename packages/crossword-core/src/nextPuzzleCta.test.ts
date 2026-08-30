@@ -1,7 +1,10 @@
 import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
 
-import { buildNextPuzzleCtaEvent } from "./recommendation.ts";
+import {
+  buildNextPuzzleCtaEvent,
+  getNextRecommendedPuzzleSummary,
+} from "./recommendation.ts";
 import type { PuzzleManifestItem } from "./types.ts";
 
 const nextPuzzle: PuzzleManifestItem = {
@@ -40,5 +43,32 @@ describe("next_puzzle_cta telemetry 계약 (#274)", () => {
       buildNextPuzzleCtaEvent(numeric, "result_overlay").params.next_puzzle_id,
       "26082100",
     );
+  });
+
+  it("오늘 팩을 소진해도 manifest의 과거 미완료 퍼즐을 추천한다 (#347)", () => {
+    const current = {
+      ...nextPuzzle,
+      date: "2026-08-30",
+      puzzleId: "today-hard-1",
+    };
+    const completedToday = {
+      ...nextPuzzle,
+      date: "2026-08-30",
+      puzzleId: "today-hard-2",
+    };
+    const olderUncompleted = {
+      ...nextPuzzle,
+      date: "2026-08-29",
+      puzzleId: "older-hard-1",
+    };
+
+    const recommended = getNextRecommendedPuzzleSummary(
+      [current, completedToday, olderUncompleted],
+      new Set([current.puzzleId, completedToday.puzzleId]),
+      { puzzleId: current.puzzleId, difficulty: current.difficulty },
+      { onboardingRampEnabled: false },
+    );
+
+    assert.equal(recommended?.puzzleId, olderUncompleted.puzzleId);
   });
 });

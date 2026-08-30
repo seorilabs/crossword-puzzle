@@ -1183,11 +1183,21 @@ function AppContent() {
       ),
     [archivePuzzleSummaries, todayPuzzleSummaries, selectedPuzzleSummary],
   );
+  // 추천 후보는 화면 rail의 노출 제한과 분리한다. Web과 같이 원격 manifest 전체를
+  // 먼저 넘겨 오늘 팩 소진 뒤에도 과거 미완료 퍼즐을 이어서 추천한다.
+  const recommendationPuzzleSummaries = useMemo(
+    () =>
+      uniquePuzzleSummaries([
+        ...puzzlePack.summaries,
+        ...archivePuzzleSummaries,
+      ]),
+    [archivePuzzleSummaries, puzzlePack.summaries],
+  );
   const nextRecommendedSummary = useMemo(
     () =>
       isCompleted
         ? getNextRecommendedPuzzleSummary(
-            visiblePuzzleSummaries,
+            recommendationPuzzleSummaries,
             completedPuzzleIds,
             {
               puzzleId: puzzle.puzzleId,
@@ -1205,7 +1215,7 @@ function AppContent() {
       launchConfig.onboardingDifficultyRampEnabled,
       puzzle.difficulty,
       puzzle.puzzleId,
-      visiblePuzzleSummaries,
+      recommendationPuzzleSummaries,
     ],
   );
   const nextRecommendedLabel =
@@ -3240,7 +3250,7 @@ function AppContent() {
                 </Text>
               )}
             </View>
-            {nextRecommendedSummary != null && (
+            {nextRecommendedSummary != null ? (
               <Pressable
                 accessibilityLabel={`다음 퍼즐 풀기${
                   nextRecommendedLabel == null
@@ -3262,6 +3272,18 @@ function AppContent() {
                     : ` · ${nextRecommendedLabel}`}
                 </Text>
               </Pressable>
+            ) : (
+              <Pressable
+                accessibilityLabel="퍼즐 기록 보기"
+                accessibilityRole="button"
+                onPress={() => {
+                  setCompletionCelebrationPuzzleId(null);
+                  navigateTo('history');
+                }}
+                style={styles.primaryButton}
+              >
+                <Text style={styles.primaryButtonText}>퍼즐 기록 보기</Text>
+              </Pressable>
             )}
             <View style={styles.completionDialogActions}>
               <Pressable
@@ -3272,21 +3294,9 @@ function AppContent() {
               </Pressable>
               <Pressable
                 onPress={openCompletedResult}
-                style={
-                  nextRecommendedSummary == null
-                    ? styles.primaryButton
-                    : styles.secondaryButton
-                }
+                style={styles.secondaryButton}
               >
-                <Text
-                  style={
-                    nextRecommendedSummary == null
-                      ? styles.primaryButtonText
-                      : styles.secondaryButtonText
-                  }
-                >
-                  결과 보기
-                </Text>
+                <Text style={styles.secondaryButtonText}>결과 보기</Text>
               </Pressable>
             </View>
             <Pressable
@@ -3503,39 +3513,47 @@ function AppContent() {
             </Text>
           )}
           <View style={styles.actions}>
-            {isCompleted && nextRecommendedSummary != null && (
-              <Pressable
-                accessibilityLabel={`다음 퍼즐 풀기${
-                  nextRecommendedLabel == null
-                    ? ''
-                    : ` · ${nextRecommendedLabel}`
-                }`}
-                onPress={() => {
-                  startNextRecommendedPuzzle('result_screen').catch(
-                    () => undefined,
-                  );
-                }}
-                style={styles.primaryButton}
-              >
-                <Text style={styles.primaryButtonText}>
-                  다음 퍼즐 풀기
-                  {nextRecommendedLabel == null
-                    ? ''
-                    : ` · ${nextRecommendedLabel}`}
-                </Text>
-              </Pressable>
-            )}
+            {isCompleted &&
+              (nextRecommendedSummary != null ? (
+                <Pressable
+                  accessibilityLabel={`다음 퍼즐 풀기${
+                    nextRecommendedLabel == null
+                      ? ''
+                      : ` · ${nextRecommendedLabel}`
+                  }`}
+                  onPress={() => {
+                    startNextRecommendedPuzzle('result_screen').catch(
+                      () => undefined,
+                    );
+                  }}
+                  style={styles.primaryButton}
+                >
+                  <Text style={styles.primaryButtonText}>
+                    다음 퍼즐 풀기
+                    {nextRecommendedLabel == null
+                      ? ''
+                      : ` · ${nextRecommendedLabel}`}
+                  </Text>
+                </Pressable>
+              ) : (
+                <Pressable
+                  accessibilityLabel="퍼즐 기록 보기"
+                  accessibilityRole="button"
+                  onPress={() => navigateTo('history')}
+                  style={styles.primaryButton}
+                >
+                  <Text style={styles.primaryButtonText}>퍼즐 기록 보기</Text>
+                </Pressable>
+              ))}
             <Pressable
               onPress={isCompleted ? openCompletedBoard : startOrResumeMission}
               style={
-                isCompleted && nextRecommendedSummary != null
-                  ? styles.secondaryButton
-                  : styles.primaryButton
+                isCompleted ? styles.secondaryButton : styles.primaryButton
               }
             >
               <Text
                 style={
-                  isCompleted && nextRecommendedSummary != null
+                  isCompleted
                     ? styles.secondaryButtonText
                     : styles.primaryButtonText
                 }

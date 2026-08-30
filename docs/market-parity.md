@@ -42,6 +42,12 @@ flowchart TD
 - Web과 mobile의 원격 퍼즐 loader는 manifest와 puzzle JSON의 숫자 식별자를 즉시 문자열로 바꿔 `Puzzle["puzzleId"]` 타입과 런타임 값을 일치시킨다.
 - 교정 전 GA4 데이터에는 같은 키가 `string_value`와 `int_value`로 나뉘어 있다. 과거 구간 쿼리는 `COALESCE(value.string_value, CAST(value.int_value AS STRING))`로 읽고, 교정 이후에도 연속 시계열을 위해 이 형태를 유지한다.
 
+## 완료 후 다음 퍼즐 추천 계약
+
+- Web과 RN은 공용 `getNextRecommendedPuzzleSummary` 정책에 발행 manifest 전체, 완료 목록, 현재 퍼즐을 넘긴다. RN 홈 rail의 오늘·로컬 노출 제한은 추천 후보를 제한하지 않는다.
+- 오늘 발행분을 모두 완료해도 과거 미완료 발행분이 있으면 `다음 퍼즐 풀기` CTA를 노출한다.
+- 실제 미완료 후보가 없거나 온보딩 난이도 완화 정책이 추천을 보류하면 RN 완료 모달과 결과 화면은 `퍼즐 기록 보기` fallback CTA를 노출한다.
+
 ## Firebase
 
 | 시장        | Firebase 방식                  | 설정 파일/secret                                                               |
