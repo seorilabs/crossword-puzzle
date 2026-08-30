@@ -21,6 +21,7 @@
     "react": "19.2.3",
     "react-native": "0.85.3",
     "react-native-google-mobile-ads": "^16.3.3",
+    "react-native-notify-kit": "10.6.0",
     "react-native-safe-area-context": "^5.5.2"
   },
   "devDependencies": {

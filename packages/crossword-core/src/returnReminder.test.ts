@@ -18,6 +18,7 @@ import {
   summarizeAgreementError,
   summarizeAgreementFailure,
   extractAgreementErrorCode,
+  getNextLocalReturnReminderSchedule,
   type ReturnReminderState,
 } from "./returnReminder.ts";
 
@@ -243,6 +244,7 @@ describe("returnReminder 정책", () => {
   it("buildReturnReminderResultParams는 영문 키와 outcome/횟수를 담는다", () => {
     const state: ReturnReminderState = { promptCount: 2, outcome: "rejected" };
     assert.deepEqual(buildReturnReminderResultParams(state), {
+      channel: "ait",
       outcome: "rejected",
       prompt_count: 2,
     });
@@ -276,6 +278,7 @@ describe("returnReminder 정책", () => {
       errorReason: "E_TIMEOUT_BRIDGE",
     };
     assert.deepEqual(buildReturnReminderResultParams(state), {
+      channel: "ait",
       outcome: "error",
       prompt_count: 1,
       error_reason: "E_TIMEOUT_BRIDGE",
@@ -291,6 +294,7 @@ describe("returnReminder 정책", () => {
       errorCode: "E_UNSUPPORTED",
     };
     assert.deepEqual(buildReturnReminderResultParams(state), {
+      channel: "ait",
       outcome: "error",
       prompt_count: 1,
       error_reason: "E_UNSUPPORTED: no bridge",
@@ -341,6 +345,7 @@ describe("returnReminder 정책", () => {
       failureStage: "timeout",
     };
     assert.deepEqual(buildReturnReminderResultParams(state), {
+      channel: "ait",
       outcome: "timeout",
       prompt_count: 1,
       stage: "timeout",
@@ -357,6 +362,7 @@ describe("returnReminder 정책", () => {
       failureStage: "sdk_callback",
     };
     assert.deepEqual(buildReturnReminderResultParams(state), {
+      channel: "ait",
       outcome: "error",
       prompt_count: 1,
       error_reason: "4000: invalid template",
@@ -374,6 +380,7 @@ describe("returnReminder 정책", () => {
       failureStage: "sdk_callback",
     });
     assert.deepEqual(buildReturnReminderResultParams(state), {
+      channel: "ait",
       outcome: "error",
       prompt_count: 1,
       error_reason: "알림 동의에 실패하였습니다.",
@@ -390,6 +397,7 @@ describe("returnReminder 정책", () => {
   it("outcome 미정이면 결과 파라미터 outcome은 error로 채운다", () => {
     const state: ReturnReminderState = { promptCount: 1 };
     assert.deepEqual(buildReturnReminderResultParams(state), {
+      channel: "ait",
       outcome: "error",
       prompt_count: 1,
       stage: "sdk_callback",
@@ -399,11 +407,13 @@ describe("returnReminder 정책", () => {
   it("templateCodeSource를 주면 결과 파라미터에 template_code_source를 적재한다 (#319)", () => {
     const state: ReturnReminderState = { promptCount: 1, outcome: "agreed" };
     assert.deepEqual(buildReturnReminderResultParams(state, "env"), {
+      channel: "ait",
       outcome: "agreed",
       prompt_count: 1,
       template_code_source: "env",
     });
     assert.deepEqual(buildReturnReminderResultParams(state, "default"), {
+      channel: "ait",
       outcome: "agreed",
       prompt_count: 1,
       template_code_source: "default",
@@ -419,11 +429,34 @@ describe("returnReminder 정책", () => {
   it("buildReturnReminderPromptParams는 trigger·template_code_source를 담는다 (#319)", () => {
     assert.deepEqual(
       buildReturnReminderPromptParams("mission_complete", "env"),
-      { trigger: "mission_complete", template_code_source: "env" },
+      {
+        trigger: "mission_complete",
+        channel: "ait",
+        template_code_source: "env",
+      },
     );
     assert.deepEqual(
       buildReturnReminderPromptParams("mission_complete", "default"),
-      { trigger: "mission_complete", template_code_source: "default" },
+      {
+        trigger: "mission_complete",
+        channel: "ait",
+        template_code_source: "default",
+      },
+    );
+  });
+
+  it("RN 로컬 채널에는 템플릿 출처 없이 channel=local을 적재한다 (#352)", () => {
+    assert.deepEqual(
+      buildReturnReminderPromptParams("mission_complete", undefined, "local"),
+      { trigger: "mission_complete", channel: "local" },
+    );
+    assert.deepEqual(
+      buildReturnReminderResultParams(
+        { promptCount: 1, outcome: "agreed" },
+        undefined,
+        "local",
+      ),
+      { channel: "local", outcome: "agreed", prompt_count: 1 },
     );
   });
 
@@ -445,6 +478,28 @@ describe("returnReminder 정책", () => {
       assert.equal(promptParams.template_code_source, source);
       assert.equal(resultParams.template_code_source, source);
     }
+  });
+});
+
+describe("RN 로컬 복귀 알림 예약 시각 (#352)", () => {
+  it("완료일 다음 날 09:00 KST를 UTC timestamp로 계산한다", () => {
+    assert.deepEqual(getNextLocalReturnReminderSchedule("2026-08-31"), {
+      reminderDate: "2026-09-01",
+      timestamp: Date.UTC(2026, 8, 1, 0),
+    });
+  });
+
+  it("월말·연말을 넘겨도 다음 날짜를 계산한다", () => {
+    assert.deepEqual(getNextLocalReturnReminderSchedule("2026-12-31"), {
+      reminderDate: "2027-01-01",
+      timestamp: Date.UTC(2027, 0, 1, 0),
+    });
+  });
+
+  it("잘못된 날짜나 시간은 예약값을 만들지 않는다", () => {
+    assert.equal(getNextLocalReturnReminderSchedule("2026-02-30"), null);
+    assert.equal(getNextLocalReturnReminderSchedule("not-a-date"), null);
+    assert.equal(getNextLocalReturnReminderSchedule("2026-08-31", 24), null);
   });
 });
 

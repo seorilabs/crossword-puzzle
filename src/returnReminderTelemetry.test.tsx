@@ -63,6 +63,8 @@ describe("복귀 리마인더 이벤트 template_code_source 배선 (#319)", () 
     // 파라미터에 남아 두 이벤트에 실렸다.
     expect(promptEvent?.kind).toBe("impression");
     expect(resultEvent?.kind).toBe("impression");
+    expect(promptEvent?.params.channel).toBe("ait");
+    expect(resultEvent?.params.channel).toBe("ait");
     expect(promptEvent?.params.template_code_source).toBe(
       RETURN_REMINDER_TEMPLATE_CODE_SOURCE,
     );

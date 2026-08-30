@@ -3,8 +3,8 @@
 // "언제, 몇 번 알림 동의를 요청할지"의 결정 로직만 코어에 두어 3개 시장
 // (AIT/Web, Android, iOS)이 동일한 사용자 정책으로 동작하게 한다. 실제 동의
 // 요청(시장별 알림 SDK 호출)은 어댑터에 분리한다. AIT/Web은
-// `@apps-in-toss/web-framework`의 `requestNotificationAgreement`로 스마트발송
-// 캠페인 동의를 받고, 다음날 "오늘의 퍼즐" 리마인드를 서버(스마트발송)가 발송한다.
+// `@apps-in-toss/web-framework`로 스마트발송 캠페인 동의를 받고 서버가 발송한다.
+// Android/iOS는 RN adapter가 OS 권한을 받고 다음 날 로컬 알림 한 건을 예약한다.
 
 // AIT 알림 동의 결과 원문(@apps-in-toss):
 //   newAgreement | alreadyAgreed | agreementRejected
@@ -61,7 +61,53 @@ export type ReturnReminderState = {
 
 export const RETURN_REMINDER_PROMPT_EVENT = "return_reminder_prompt";
 export const RETURN_REMINDER_RESULT_EVENT = "return_reminder_result";
+export const RETURN_REMINDER_OPENED_EVENT = "notification_opened";
 export const RETURN_REMINDER_MAX_PROMPT_COUNT = 3;
+
+export type ReturnReminderChannel = "ait" | "local";
+
+export const RETURN_REMINDER_LOCAL_HOUR_KST = 9;
+
+export type LocalReturnReminderSchedule = {
+  reminderDate: string;
+  timestamp: number;
+};
+
+// RN 로컬 알림은 완료일 다음 날 오전 9시(Asia/Seoul)에 1회 예약한다. 입력은
+// 기존 getTodayDateKey와 같은 YYYY-MM-DD 계약이며, 잘못된 날짜는 SDK에 넘기지
+// 않도록 null로 거절한다. 09:00 KST는 UTC 자정이라 DST가 없는 한국 시간대에서
+// 결정적으로 계산할 수 있다.
+export function getNextLocalReturnReminderSchedule(
+  promptDate: string,
+  hourKst: number = RETURN_REMINDER_LOCAL_HOUR_KST,
+): LocalReturnReminderSchedule | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(promptDate);
+  if (
+    match == null ||
+    !Number.isInteger(hourKst) ||
+    hourKst < 0 ||
+    hourKst > 23
+  ) {
+    return null;
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const normalized = new Date(Date.UTC(year, month - 1, day));
+  if (
+    normalized.getUTCFullYear() !== year ||
+    normalized.getUTCMonth() !== month - 1 ||
+    normalized.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  const reminderDateValue = new Date(Date.UTC(year, month - 1, day + 1));
+  const reminderDate = reminderDateValue.toISOString().slice(0, 10);
+  const timestamp = Date.UTC(year, month - 1, day + 1, hourKst - 9);
+  return { reminderDate, timestamp };
+}
 
 // 프롬프트/결과 이벤트에 실제 사용된 템플릿 코드의 출처. 환경변수(VITE_RETURN_
 // REMINDER_TEMPLATE_CODE) 주입값이면 "env", 미주입 폴백이면 "default". 프로덕션이
@@ -487,12 +533,20 @@ export function applyReturnReminderOutcome(
 // 출처(env/default)로 나갔는지 프롬프트 시점에도 남긴다(#319).
 export function buildReturnReminderPromptParams(
   trigger: string,
-  templateCodeSource: ReturnReminderTemplateCodeSource,
+  templateCodeSource?: ReturnReminderTemplateCodeSource,
+  channel: ReturnReminderChannel = "ait",
 ): {
   trigger: string;
-  template_code_source: ReturnReminderTemplateCodeSource;
+  channel: ReturnReminderChannel;
+  template_code_source?: ReturnReminderTemplateCodeSource;
 } {
-  return { trigger, template_code_source: templateCodeSource };
+  return {
+    trigger,
+    channel,
+    ...(templateCodeSource == null
+      ? {}
+      : { template_code_source: templateCodeSource }),
+  };
 }
 
 // return_reminder_result 이벤트 파라미터(영문 키 유지). error 결과에 요약, 코드,
@@ -501,7 +555,9 @@ export function buildReturnReminderPromptParams(
 export function buildReturnReminderResultParams(
   state: ReturnReminderState,
   templateCodeSource?: ReturnReminderTemplateCodeSource,
+  channel: ReturnReminderChannel = "ait",
 ): {
+  channel: ReturnReminderChannel;
   outcome: ReturnReminderOutcome;
   prompt_count: number;
   template_code_source?: ReturnReminderTemplateCodeSource;
@@ -512,6 +568,7 @@ export function buildReturnReminderResultParams(
   stage?: ReturnReminderFailureStage;
 } {
   const params: {
+    channel: ReturnReminderChannel;
     outcome: ReturnReminderOutcome;
     prompt_count: number;
     template_code_source?: ReturnReminderTemplateCodeSource;
@@ -521,6 +578,7 @@ export function buildReturnReminderResultParams(
     error_shape?: string;
     stage?: ReturnReminderFailureStage;
   } = {
+    channel,
     outcome: state.outcome ?? "error",
     prompt_count: state.promptCount,
   };

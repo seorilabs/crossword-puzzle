@@ -121,8 +121,9 @@ flowchart TD
 
 - 결정 로직(언제·몇 번 동의를 유도할지)은 코어 `packages/crossword-core/src/returnReminder.ts`에 두어 3개 시장이 같은 정책으로 동작한다. 노출 게이트는 Remote Config 키 `return_reminder_enabled`(기본값 `true`, #162)이다. 필요 시 Remote Config에서 `false`로 끌 수 있다.
 - 실제 동의 요청(시장별 알림 SDK)은 adapter로 분리한다. **AIT/Web**은 `src/adapters/notificationAgreement.ts`가 `@apps-in-toss/web-framework`의 `requestNotificationAgreement`(스마트발송 캠페인 동의)를 호출하고, 다음날 "오늘의 퍼즐" 리마인드는 서버(스마트발송)가 발송한다.
-- **Android/iOS(RN)**는 아직 알림 SDK 의존성이 없어 동의 요청 adapter가 없다(후속 작업). 기본값이 `true`로 바뀌면서 **AIT/Web만 완료 시 동의를 유도**하고, mobile은 이 값과 무관하게 동의 유도/이벤트가 없는 no-op으로 동작한다(`apps/mobile/firebaseClient.ts`는 키를 읽지만 prompt 호출부가 없음). mobile에서 동일 동작을 켜려면 RN 알림 동의 adapter를 먼저 추가해야 한다. 이 시장 차이는 의도된 상태다.
-- 동의 유도/결과는 텔레메트리 `return_reminder_prompt`, `return_reminder_result`(영문 키 유지)로 계측한다. 동의/거부/미지원은 1회 결과로 종결하고, `error`/`timeout`만 다음 날짜에 총 3회 상한으로 재유도한다. 결과에는 `prompt_count`, `error_reason`, 가장 구체적인 `error_code`, 다른 최상위 래퍼가 있으면 `error_wrapper_code`, 실패 단계 `stage=preflight|sdk_callback|timeout`을 기록한다. 중첩 코드 `4000`도 배포 설정 오류로 인식해 프롬프트 예산 상한을 우회한다.
+- **Android/iOS(RN)**는 `react-native-notify-kit` adapter가 퍼즐 완료 직후 OS 알림 권한을 요청하고, 허용 시 다음 날 09:00 KST에 "오늘의 퍼즐" 로컬 알림 한 건을 예약한다. 같은 notification ID를 취소 후 재사용하고 Android는 `alarmManager=false`로 WorkManager를 사용하므로 exact-alarm 권한이 필요 없다. 앱이 꺼진 상태의 탭은 early background handler가 저장하고, foreground/cold-start 소비가 `today` 화면으로 이동시킨다.
+- Android 13+ 권한은 Manifest의 `POST_NOTIFICATIONS`와 SDK 런타임 요청으로 처리한다. iOS 알림 권한 문구는 OS가 앱 이름과 함께 표시하며 사용자 정의 purpose-string용 Info.plist 키가 없으므로 가짜 키를 추가하지 않는다. 양쪽 모두 퍼즐 완료라는 사용 맥락에서 요청한다.
+- 동의 유도/결과는 텔레메트리 `return_reminder_prompt`, `return_reminder_result`(영문 키 유지)로 계측하고 `channel=ait|local`로 구분한다. 동의/거부/미지원은 1회 결과로 종결하고, `error`/`timeout`만 다음 날짜에 총 3회 상한으로 재유도한다. 결과에는 `prompt_count`, `error_reason`, 가장 구체적인 `error_code`, 다른 최상위 래퍼가 있으면 `error_wrapper_code`, 실패 단계 `stage=preflight|sdk_callback|timeout`을 기록한다. 중첩 코드 `4000`도 AIT 배포 설정 오류로 인식해 프롬프트 예산 상한을 우회한다. RN 알림 탭은 `notification_opened(channel=local, notification_kind=daily_puzzle, reminder_date)`를 한 번 발화한다.
 - AIT/Web의 `templateCode`는 콘솔에서 발급되는 실제 코드여야 하며, 빌드 환경변수 `VITE_RETURN_REMINDER_TEMPLATE_CODE`로 주입한다. 로컬 개발은 기본값 `crossword-daily-reminder`로 폴백할 수 있지만 `Deploy AIT`는 repository variable이 없거나 공백이면 빌드 전에 실패한다. 발급 코드 확인·반영 절차는 README를 참고한다.
 
 ## 신규 첫 실행 온보딩 퍼즐 자동 진입 (#205)

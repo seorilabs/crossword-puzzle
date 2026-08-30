@@ -90,6 +90,7 @@ import {
   uniquePuzzleSummaries,
   validatePuzzleSlots,
   REWARDED_HINT_AD_REWARD_EVENT,
+  RETURN_REMINDER_OPENED_EVENT,
   type Bounds,
   type DailyMissionState,
   type DailyHintWallet,
@@ -136,6 +137,13 @@ import {
 } from './gameplayTelemetry';
 import { leaderboardAdapter } from './leaderboardAdapter';
 import { useLeaderboard } from './useLeaderboard';
+import { maybeRequestMobileReturnReminder } from './mobileReturnReminder';
+import {
+  consumeInitialReturnReminderOpen,
+  consumePendingReturnReminderOpen,
+  subscribeToReturnReminderOpened,
+  type ReturnReminderOpen,
+} from './returnReminderNotifications';
 import manifestData from '../../public/puzzles/manifest.json';
 import puzzle20260525 from '../../public/puzzles/2026-05-25-normal-01.json';
 import puzzle20260526 from '../../public/puzzles/2026-05-26-normal-02.json';
@@ -946,6 +954,7 @@ function AppContent() {
     },
   );
   const submittedLeaderboardPuzzleIdsRef = useRef(new Set<string>());
+  const returnReminderPromptedPuzzleIdsRef = useRef(new Set<string>());
   const playScreenScrollRef = useRef<React.ElementRef<typeof ScrollView>>(null);
   const boardInputRef = useRef<React.ElementRef<typeof TextInput>>(null);
   const answerCommitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
@@ -997,6 +1006,32 @@ function AppContent() {
   const navigateTo = useCallback((nextRoute: AppRoute) => {
     setRoute(nextRoute);
   }, []);
+
+  const handleReturnReminderOpen = useCallback(
+    ({ reminderDate }: ReturnReminderOpen) => {
+      telemetry.impression(RETURN_REMINDER_OPENED_EVENT, {
+        channel: 'local',
+        notification_kind: 'daily_puzzle',
+        reminder_date: reminderDate,
+      });
+      navigateTo('today');
+    },
+    [navigateTo],
+  );
+
+  useEffect(() => {
+    const unsubscribe = subscribeToReturnReminderOpened(
+      handleReturnReminderOpen,
+    );
+    consumeInitialReturnReminderOpen()
+      .then(open => {
+        if (open != null) {
+          handleReturnReminderOpen(open);
+        }
+      })
+      .catch(() => {});
+    return unsubscribe;
+  }, [handleReturnReminderOpen]);
 
   const goBackWithinSceneGraph = useCallback(() => {
     if (keyboardVisibleRef.current) {
@@ -1408,6 +1443,13 @@ function AppContent() {
     const subscription = AppState.addEventListener('change', state => {
       if (state === 'active') {
         refreshDailyHintWallet().catch(() => {});
+        consumePendingReturnReminderOpen()
+          .then(open => {
+            if (open != null) {
+              handleReturnReminderOpen(open);
+            }
+          })
+          .catch(() => {});
       } else if (
         state === 'background' &&
         abandonSnapshotRef.current.route === 'today'
@@ -1417,7 +1459,7 @@ function AppContent() {
     });
 
     return () => subscription.remove();
-  }, [emitPuzzleAbandon, refreshDailyHintWallet]);
+  }, [emitPuzzleAbandon, handleReturnReminderOpen, refreshDailyHintWallet]);
 
   useEffect(() => {
     if (isLoading) {
@@ -1577,6 +1619,15 @@ function AppContent() {
       completedWordCount: viewModel.completedEntries.length,
     });
 
+    if (!returnReminderPromptedPuzzleIdsRef.current.has(puzzle.puzzleId)) {
+      returnReminderPromptedPuzzleIdsRef.current.add(puzzle.puzzleId);
+      maybeRequestMobileReturnReminder({
+        enabled: launchConfig.returnReminderEnabled,
+        promptDate: getTodayDateKey(),
+        telemetry,
+      }).catch(() => {});
+    }
+
     if (
       leaderboardVisible &&
       shouldSubmitLeaderboardScore({
@@ -1627,6 +1678,7 @@ function AppContent() {
     launchConfig.leaderboardScoreRemainingAttempt,
     launchConfig.leaderboardScoreTimeBonusBase,
     launchConfig.leaderboardScoreTimeDecayPerSecond,
+    launchConfig.returnReminderEnabled,
     leaderboardVisible,
     mission,
     puzzle,
