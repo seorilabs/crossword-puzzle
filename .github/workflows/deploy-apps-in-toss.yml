@@ -4,136 +4,59 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "빌드/배포할 릴리즈 태그입니다. 비우면 최신 vX.Y.Z 태그를 사용합니다. 예: v0.1.1"
+        description: "배포할 exact stable vX.Y.Z 태그입니다. 비우면 최신 stable 태그를 사용합니다."
         required: false
         type: string
       memo:
-        description: "앱인토스 배포 메모입니다. 비우면 릴리즈 태그와 커밋이 자동으로 들어갑니다."
+        description: "canonical 릴리즈 메모 뒤에 붙일 운영 메모"
         required: false
         type: string
   workflow_call:
     inputs:
       release_tag:
-        description: "빌드/배포할 릴리즈 태그입니다. 비우면 최신 vX.Y.Z 태그를 사용합니다. 예: v0.1.1"
         required: false
+        default: ""
         type: string
       memo:
-        description: "앱인토스 배포 메모입니다. 비우면 릴리즈 태그와 커밋이 자동으로 들어갑니다."
         required: false
+        default: ""
         type: string
-
-concurrency:
-  group: crossword-puzzle-apps-in-toss-deploy-${{ inputs.release_tag || github.ref }}
-  cancel-in-progress: false
+    secrets:
+      APPS_IN_TOSS_API_KEY:
+        required: true
 
 permissions:
   contents: read
   packages: read
 
+concurrency:
+  group: crossword-puzzle-apps-in-toss-deploy-${{ inputs.release_tag || github.ref }}
+  cancel-in-progress: false
+
 jobs:
   deploy:
-    name: Build and deploy .ait bundle
-    runs-on: seorilabs-rpi-arm64
-
-    env:
+    uses: seorilabs/.github/.github/workflows/rn-deploy-ait.yml@8a11a145fed35479a4a89ebc7ca97edd0a0f05fd
+    secrets:
       APPS_IN_TOSS_API_KEY: ${{ secrets.APPS_IN_TOSS_API_KEY }}
-      APPS_IN_TOSS_INPUT_MEMO: ${{ inputs.memo || '' }}
-      VITE_FIREBASE_API_KEY: ${{ vars.FIREBASE_API_KEY || '' }}
-      VITE_FIREBASE_APP_ID: ${{ vars.FIREBASE_APP_ID || '' }}
-      VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.FIREBASE_AUTH_DOMAIN || '' }}
-      VITE_FIREBASE_MEASUREMENT_ID: ${{ vars.FIREBASE_MEASUREMENT_ID || '' }}
-      VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.FIREBASE_MESSAGING_SENDER_ID || '' }}
-      VITE_FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID || '' }}
-      VITE_FIREBASE_STORAGE_BUCKET: ${{ vars.FIREBASE_STORAGE_BUCKET || '' }}
-      VITE_PUZZLE_PACK_BASE_URL: ${{ vars.PUZZLE_PACK_BASE_URL || 'https://crossword-puzzle-79ae0.web.app' }}
-      VITE_RETURN_REMINDER_TEMPLATE_CODE: ${{ vars.RETURN_REMINDER_TEMPLATE_CODE || '' }}
-
-    steps:
-      - name: Checkout release tag
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ inputs.release_tag || github.ref }}
-          fetch-depth: 0
-          fetch-tags: true
-
-      - name: Resolve release tag
-        id: tag
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          tag="${{ inputs.release_tag }}"
-          if [ -z "$tag" ]; then
-            tag="$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n 1)"
-            if [ -z "$tag" ]; then
-              echo "release_tag가 비어 있고 vX.Y.Z 태그도 없습니다." >&2
-              exit 1
-            fi
-            echo "release_tag가 비어 있어 최신 태그 $tag 를 사용합니다."
-          fi
-
-          git -c advice.detachedHead=false checkout "$tag"
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
-
-      - name: Validate Apps in Toss deployment configuration
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          if [ -z "$APPS_IN_TOSS_API_KEY" ]; then
-            echo "::error::APPS_IN_TOSS_API_KEY secret is required."
-            exit 1
-          fi
-          if [ -z "${VITE_RETURN_REMINDER_TEMPLATE_CODE//[[:space:]]/}" ]; then
-            echo "::error::RETURN_REMINDER_TEMPLATE_CODE repository variable is required."
-            exit 1
-          fi
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24.16.0
-          check-latest: false
-          cache: npm
-          registry-url: https://npm.pkg.github.com
-          scope: "@seorilabs"
-
-      - name: Resolve release version
-        id: release
-        shell: bash
-        run: node scripts/resolve-release-version.mjs --tag "${{ steps.tag.outputs.tag }}"
-
-      - name: Install dependencies
-        env:
-          NODE_AUTH_TOKEN: ${{ github.token }}
-        run: npm ci
-
-      - name: Set package version for release build
-        run: npm version --no-git-tag-version --allow-same-version "${{ steps.release.outputs.version }}"
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Build .ait bundle
-        env:
-          VITE_APP_VERSION: ${{ steps.release.outputs.version }}
-          VITE_RELEASE_TAG: ${{ steps.release.outputs.tag }}
-        run: npm run build
-
-      - name: Deploy to Apps in Toss
-        env:
-          RELEASE_TAG: ${{ steps.release.outputs.tag }}
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          memo="$APPS_IN_TOSS_INPUT_MEMO"
-          short_sha="$(git rev-parse --short HEAD)"
-
-          if [ -z "$memo" ]; then
-            memo="릴리즈 ${RELEASE_TAG} (${short_sha})"
-          else
-            memo="${RELEASE_TAG} · ${memo}"
-          fi
-
-          npm run deploy -- --api-key "$APPS_IN_TOSS_API_KEY" --memo "$memo"
+    with:
+      release_tag: ${{ inputs.release_tag }}
+      memo: ${{ inputs.memo }}
+      ait_dir: .
+      package_manager: npm
+      node_version: 24.16.0
+      npm_registry_url: https://npm.pkg.github.com
+      npm_scope: "@seorilabs"
+      install_command: npm ci
+      build_command: |
+        export VITE_PUZZLE_PACK_BASE_URL="${{ vars.PUZZLE_PACK_BASE_URL || 'https://crossword-puzzle-79ae0.web.app' }}"
+        export VITE_RETURN_REMINDER_TEMPLATE_CODE="${{ vars.RETURN_REMINDER_TEMPLATE_CODE || '' }}"
+        export VITE_APP_VERSION="$SEORI_RELEASE_VERSION"
+        export VITE_RELEASE_TAG="$SEORI_RELEASE_TAG"
+        if [ -z "${VITE_RETURN_REMINDER_TEMPLATE_CODE//[[:space:]]/}" ]; then
+          echo "::error::RETURN_REMINDER_TEMPLATE_CODE repository variable is required."
+          exit 1
+        fi
+        npm run lint
+        npm run build
+      artifact_path: crossword-puzzle-game.ait
+      timeout_minutes: 25

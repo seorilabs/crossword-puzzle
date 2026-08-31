@@ -46,17 +46,16 @@ expect() {
 
 echo "▸ 아카이브 산출물 검증"
 
-# 릴리즈 태그 빌드는 ci_pre_xcodebuild.sh가 agvtool로 반영한 버전이 실제로 들어갔는지
-# 확인한다. 어긋나면 App Store Connect가 기존 version train과 충돌시킨다.
-if [ -n "${CI_TAG}" ]; then
-  OUTFILE="$(mktemp)"
-  trap 'rm -f "${OUTFILE}"' EXIT
-  GITHUB_OUTPUT="${OUTFILE}" node "${REPO}/scripts/resolve-release-version.mjs" --tag "${CI_TAG}"
-  expect "CFBundleShortVersionString" "$(read_plist CFBundleShortVersionString)" \
-    "$(grep '^apple_marketing_version=' "${OUTFILE}" | cut -d= -f2)"
-  expect "CFBundleVersion" "$(read_plist CFBundleVersion)" \
-    "$(grep '^apple_build_number=' "${OUTFILE}" | cut -d= -f2)"
+# App Store archive는 exact stable tag/source binding이 확인된 경우만 허용한다.
+if [ -z "${CI_TAG:-}" ] || ! printf '%s\n' "${CI_TAG}" | grep -Eq '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'; then
+  echo "archive 검증에는 exact stable CI_TAG가 필요합니다." >&2
+  exit 1
 fi
+TAG_COMMIT="$(git -C "${REPO}" rev-parse --verify "refs/tags/${CI_TAG}^{commit}")" || exit 1
+HEAD_COMMIT="$(git -C "${REPO}" rev-parse --verify 'HEAD^{commit}')"
+expect "release source commit" "${HEAD_COMMIT}" "${TAG_COMMIT}"
+expect "CFBundleShortVersionString" "$(read_plist CFBundleShortVersionString)" "${CI_TAG#v}"
+expect "CFBundleVersion" "$(read_plist CFBundleVersion)" "${CI_BUILD_NUMBER}"
 
 expect "GameCenterLeaderboardIdentifier" \
   "$(read_plist GameCenterLeaderboardIdentifier)" \

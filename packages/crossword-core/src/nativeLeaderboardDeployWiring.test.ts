@@ -11,6 +11,10 @@ const iosWorkflow = readFileSync(
   new URL(".github/workflows/deploy-app-store.yml", repoRoot),
   "utf8",
 );
+const androidBuild = readFileSync(
+  new URL("apps/mobile/android/app/build.gradle", repoRoot),
+  "utf8",
+);
 const iosProject = readFileSync(
   new URL(
     "apps/mobile/ios/CrosswordPuzzleMobile.xcodeproj/project.pbxproj",
@@ -28,23 +32,22 @@ const strategy = readFileSync(
 );
 
 describe("네이티브 리더보드 배포 배선", () => {
-  it("Android 필수 GitHub Variables를 AAB 빌드 전에 검증하고 주입한다", () => {
+  it("Android는 중앙 caller가 전달하는 Play Games 공개 바인딩을 Gradle에서 소비한다", () => {
     assert.match(
-      androidWorkflow,
-      /PLAY_GAMES_PROJECT_ID:\s*\$\{\{ vars\.PLAY_GAMES_PROJECT_ID \}\}/,
+      androidBuild,
+      /System\.getenv\("PLAY_GAMES_PROJECT_ID"\)/,
     );
     assert.match(
-      androidWorkflow,
-      /PLAY_GAMES_LEADERBOARD_ID:\s*\$\{\{ vars\.PLAY_GAMES_LEADERBOARD_ID \}\}/,
+      androidBuild,
+      /System\.getenv\("PLAY_GAMES_LEADERBOARD_ID"\)/,
     );
     assert.match(
-      androidWorkflow,
-      /required=\([\s\S]*PLAY_GAMES_PROJECT_ID[\s\S]*PLAY_GAMES_LEADERBOARD_ID[\s\S]*\)/,
+      androidBuild,
+      /project\.findProperty\("PLAY_GAMES_PROJECT_ID"\)/,
     );
-    assert.match(androidWorkflow, /exit 1/);
-    assert.ok(
-      androidWorkflow.indexOf("Validate build configuration") <
-        androidWorkflow.indexOf("Build signed Android AAB on Cloud Build"),
+    assert.match(
+      androidBuild,
+      /project\.findProperty\("PLAY_GAMES_LEADERBOARD_ID"\)/,
     );
   });
 
@@ -60,7 +63,6 @@ describe("네이티브 리더보드 배포 배선", () => {
       xcodeCloudPostBuild.indexOf("GameCenterLeaderboardIdentifier") <
         xcodeCloudPostBuild.indexOf("아카이브 산출물 검증 완료"),
     );
-    // 값이 어긋나면 경고로 넘기지 않고 빌드를 실패시켜야 한다.
     assert.match(xcodeCloudPostBuild, /exit 1/);
   });
 
@@ -70,50 +72,53 @@ describe("네이티브 리더보드 배포 배선", () => {
     assert.equal(iosProject.split(expected).length - 1, 2);
   });
 
-  it("native release workflow는 공식 stable action과 플랫폼별 runner를 유지한다", () => {
-    for (const workflow of [androidWorkflow, iosWorkflow]) {
-      assert.match(workflow, /uses:\s*actions\/checkout@v7/);
-      assert.match(workflow, /uses:\s*actions\/setup-node@v7/);
-      assert.doesNotMatch(workflow, /actions\/(checkout|setup-node)@v6/);
-    }
-    assert.equal(
-      (androidWorkflow.match(/runs-on:\s*seorilabs-rpi-arm64/g) ?? []).length,
-      2,
+  it("Google Play caller는 중앙 exact-SHA workflow와 stable tag build-only 계약을 유지한다", () => {
+    assert.match(
+      androidWorkflow,
+      /uses:\s*seorilabs\/\.github\/\.github\/workflows\/rn-deploy-google-play\.yml@c8db7834f6b72198a898f699b6f91e3a185fc7f5/,
     );
-    assert.equal(
-      (androidWorkflow.match(/ref:\s*\$\{\{ github\.sha \}\}/g) ?? []).length,
-      2,
+    assert.match(androidWorkflow, /tags:\s*\n\s*- "v\*\.\*\.\*"/);
+    assert.match(
+      androidWorkflow,
+      /upload:\s*\$\{\{ github\.event_name != 'push' && inputs\.upload_to_internal \}\}/,
     );
-    assert.match(androidWorkflow, /gcloud builds submit/);
-    assert.doesNotMatch(androidWorkflow, /runs-on:\s*ubuntu-latest/);
-    // Apple archive/업로드는 Xcode Cloud가 한다. macOS runner로 되돌아가면 실패시킨다.
-    assert.match(iosWorkflow, /runs-on:\s*seorilabs-rpi-arm64/);
-    assert.doesNotMatch(iosWorkflow, /runs-on:\s*macos/);
+    assert.match(
+      androidWorkflow,
+      /package_name:\s*com\.seorilabs\.crosswordpuzzle/,
+    );
+    assert.match(androidWorkflow, /track:\s*internal/);
+    assert.doesNotMatch(androidWorkflow, /secrets:\s*inherit/);
+    assert.doesNotMatch(androidWorkflow, /gcloud builds submit/);
+    assert.doesNotMatch(androidWorkflow, /scripts\/resolve-release-version/);
+    assert.doesNotMatch(androidWorkflow, /scripts\/upload-google-play-internal/);
   });
 
-  it("Google Play upload job은 현재 tooling과 internal-only 계약을 유지한다", () => {
-    const uploadJobStart = androidWorkflow.indexOf("\n  upload:\n");
-    assert.notEqual(uploadJobStart, -1);
-    const uploadJob = androidWorkflow.slice(uploadJobStart);
+  it("App Store caller는 exact source만 Xcode Cloud에 전달하고 macOS runner를 사용하지 않는다", () => {
+    assert.match(
+      iosWorkflow,
+      /uses:\s*seorilabs\/\.github\/\.github\/workflows\/resolve-release-version\.yml@c8db7834f6b72198a898f699b6f91e3a185fc7f5/,
+    );
+    assert.match(iosWorkflow, /runs-on:\s*seorilabs-rpi-arm64/);
+    assert.match(
+      iosWorkflow,
+      /ref:\s*\$\{\{ needs\.resolve\.outputs\.source_sha \}\}/,
+    );
+    assert.match(
+      iosWorkflow,
+      /--tag "\$\{\{ needs\.resolve\.outputs\.tag \}\}"/,
+    );
+    assert.match(iosWorkflow, /actions\/checkout@[0-9a-f]{40}/);
+    assert.match(iosWorkflow, /actions\/setup-node@[0-9a-f]{40}/);
+    assert.doesNotMatch(iosWorkflow, /runs-on:\s*macos/);
+    assert.doesNotMatch(iosWorkflow, /secrets:\s*inherit/);
+  });
 
-    assert.match(
-      uploadJob,
-      /- name: Checkout release tooling[\s\S]*?ref:\s*\$\{\{ github\.sha \}\}/,
-    );
-    assert.match(
-      uploadJob,
-      /name:\s*\$\{\{ needs\.build-aab\.outputs\.artifact_name \}\}/,
-    );
-    assert.match(
-      uploadJob,
-      /EXPECTED_VERSION_CODE:\s*\$\{\{ needs\.build-aab\.outputs\.android_version_code \}\}/,
-    );
-    assert.match(
-      uploadJob,
-      /--expected-version-code "\$EXPECTED_VERSION_CODE"/,
-    );
-    assert.match(uploadJob, /--track internal/);
-    assert.doesNotMatch(uploadJob, /--track\s+production|--promote/);
+  it("로컬 workflow에 uploader를 이중 구현하지 않는다", () => {
+    assert.doesNotMatch(androidWorkflow, /\n\s{2}upload:\n/);
+    assert.doesNotMatch(androidWorkflow, /runs-on:/);
+    assert.doesNotMatch(androidWorkflow, /actions\/checkout@/);
+    assert.doesNotMatch(androidWorkflow, /actions\/setup-node@/);
+    assert.doesNotMatch(androidWorkflow, /--track\s+production|--promote/);
   });
 
   it("운영 문서에 마켓별 리더보드 ID와 분리된 데이터 풀을 명시한다", () => {

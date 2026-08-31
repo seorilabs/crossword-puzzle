@@ -272,11 +272,24 @@ def upload_internal_release(args):
 
 
 def promote_release(args):
-    """from-track 최신 versionCode 를 재빌드 없이 to-track 으로 승격 + 언어별 노트 반영
-    + commit(=심사 제출). rollout 지정 시 단계적 출시."""
+    """중앙 태그 정본이 지정한 exact versionCode를 재빌드 없이 승격한다."""
     package_name = args.package_name
     if not package_name or "확정 필요" in package_name:
         raise RuntimeError("Google Play package name is required.")
+    expected_raw = os.environ.get("SEORI_EXPECTED_ANDROID_VERSION_CODE", "")
+    try:
+        expected_version_code = positive_int(expected_raw)
+    except (TypeError, ValueError, argparse.ArgumentTypeError) as error:
+        raise RuntimeError(
+            "SEORI_EXPECTED_ANDROID_VERSION_CODE is required for promotion."
+        ) from error
+    if args.promote_version_code is None:
+        raise RuntimeError("--promote-version-code is required for promotion.")
+    if args.promote_version_code != expected_version_code:
+        raise RuntimeError(
+            "--promote-version-code does not match "
+            "SEORI_EXPECTED_ANDROID_VERSION_CODE."
+        )
 
     publisher = make_android_publisher(args.api_timeout_seconds)
     edit = execute_request(publisher.edits().insert(packageName=package_name, body={}), args.api_retries)
@@ -293,12 +306,17 @@ def promote_release(args):
             version_codes.extend(int(v) for v in release.get("versionCodes", []) or [])
         if not version_codes:
             raise RuntimeError(f"No versionCode on '{from_track}' track to promote.")
-        latest = str(max(version_codes))
+        if args.promote_version_code not in version_codes:
+            raise RuntimeError(
+                f"versionCode={args.promote_version_code} is absent from "
+                f"'{from_track}' track."
+            )
+        selected = str(args.promote_version_code)
 
         release_notes = build_release_notes(publisher, package_name, edit_id, args, args.api_retries)
         release = {
             "name": args.release_name,
-            "versionCodes": [latest],
+            "versionCodes": [selected],
             "status": args.release_status,
         }
         if release_notes:
@@ -321,7 +339,7 @@ def promote_release(args):
             "packageName": package_name,
             "fromTrack": from_track,
             "toTrack": to_track,
-            "versionCode": int(latest),
+            "versionCode": int(selected),
             "releaseStatus": release["status"],
             "editId": committed_edit["id"],
         }
@@ -358,6 +376,7 @@ def main():
                         help="Promote an existing build from one track to another (no rebuild).")
     parser.add_argument("--promote-from-track", default="internal")
     parser.add_argument("--promote-to-track", default="production")
+    parser.add_argument("--promote-version-code", type=positive_int, default=None)
     parser.add_argument("--rollout", type=unit_fraction, default=None,
                         help="Staged rollout fraction (0,1] for promotion. Omit for full release.")
     parser.add_argument(

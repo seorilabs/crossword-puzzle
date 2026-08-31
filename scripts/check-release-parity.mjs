@@ -64,6 +64,8 @@ const deployAppStoreWorkflowPath = ".github/workflows/deploy-app-store.yml";
 const androidBuildEnvPath = "build.env";
 const androidCloudBuildPath = "cloudbuild-android.yaml";
 const androidBuildScriptPath = "scripts/build-android.sh";
+const googlePlayUploadScriptPath =
+  "scripts/upload-google-play-internal.py";
 const appStoreLocalBuildPath = "scripts/app-store-local-build.sh";
 const xcodeCloudPostClonePath = "apps/mobile/ios/ci_scripts/ci_post_clone.sh";
 const xcodeCloudPreBuildPath =
@@ -352,6 +354,7 @@ const deployAppStoreWorkflow = read(deployAppStoreWorkflowPath);
 const androidBuildEnv = read(androidBuildEnvPath);
 const androidCloudBuild = read(androidCloudBuildPath);
 const androidBuildScript = read(androidBuildScriptPath);
+const googlePlayUploadScript = read(googlePlayUploadScriptPath);
 const appStoreLocalBuild = read(appStoreLocalBuildPath);
 const xcodeCloudPostClone = read(xcodeCloudPostClonePath);
 const xcodeCloudPreBuild = read(xcodeCloudPreBuildPath);
@@ -967,17 +970,42 @@ assertIncludes(
 );
 assertIncludes(
   deployAppsInTossWorkflow,
-  "registry-url: https://npm.pkg.github.com",
+  "uses: seorilabs/.github/.github/workflows/rn-deploy-ait.yml@8a11a145fed35479a4a89ebc7ca97edd0a0f05fd",
   deployAppsInTossWorkflowPath,
 );
 assertIncludes(
   deployAppsInTossWorkflow,
-  'scope: "@seorilabs"',
+  "npm_registry_url: https://npm.pkg.github.com",
   deployAppsInTossWorkflowPath,
 );
 assertIncludes(
   deployAppsInTossWorkflow,
-  "NODE_AUTH_TOKEN: ${{ github.token }}",
+  'npm_scope: "@seorilabs"',
+  deployAppsInTossWorkflowPath,
+);
+assertIncludes(
+  deployAppsInTossWorkflow,
+  'export VITE_RETURN_REMINDER_TEMPLATE_CODE="${{ vars.RETURN_REMINDER_TEMPLATE_CODE || \'\' }}"',
+  deployAppsInTossWorkflowPath,
+);
+assertIncludes(
+  deployAppsInTossWorkflow,
+  'export VITE_APP_VERSION="$SEORI_RELEASE_VERSION"',
+  deployAppsInTossWorkflowPath,
+);
+assertIncludes(
+  deployAppsInTossWorkflow,
+  "artifact_path: crossword-puzzle-game.ait",
+  deployAppsInTossWorkflowPath,
+);
+assertNotIncludes(
+  deployAppsInTossWorkflow,
+  "runs-on:",
+  deployAppsInTossWorkflowPath,
+);
+assertNotIncludes(
+  deployAppsInTossWorkflow,
+  "secrets: inherit",
   deployAppsInTossWorkflowPath,
 );
 assertIncludes(
@@ -987,7 +1015,27 @@ assertIncludes(
 );
 assertIncludes(
   deployGooglePlayWorkflow,
-  "GITHUB_PACKAGES_TOKEN: ${{ github.token }}",
+  "uses: seorilabs/.github/.github/workflows/rn-deploy-google-play.yml@8a11a145fed35479a4a89ebc7ca97edd0a0f05fd",
+  deployGooglePlayWorkflowPath,
+);
+assertIncludes(
+  deployGooglePlayWorkflow,
+  "package_name: com.seorilabs.crosswordpuzzle",
+  deployGooglePlayWorkflowPath,
+);
+assertIncludes(
+  deployGooglePlayWorkflow,
+  "upload: ${{ github.event_name != 'push' && inputs.upload_to_internal }}",
+  deployGooglePlayWorkflowPath,
+);
+assertIncludes(
+  deployGooglePlayWorkflow,
+  "npm_registry_url: https://npm.pkg.github.com",
+  deployGooglePlayWorkflowPath,
+);
+assertIncludes(
+  deployGooglePlayWorkflow,
+  'npm_scope: "@seorilabs"',
   deployGooglePlayWorkflowPath,
 );
 assertIncludes(
@@ -1005,39 +1053,39 @@ assertIncludes(
   "FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64",
   deployGooglePlayWorkflowPath,
 );
-assertIncludes(
+assertNotIncludes(
   deployGooglePlayWorkflow,
-  "PLAY_GAMES_PROJECT_ID",
-  deployGooglePlayWorkflowPath,
-);
-assertIncludes(
-  deployGooglePlayWorkflow,
-  "PLAY_GAMES_LEADERBOARD_ID",
-  deployGooglePlayWorkflowPath,
-);
-assertIncludes(
-  deployGooglePlayWorkflow,
-  "runs-on: seorilabs-rpi-arm64",
+  "runs-on:",
   deployGooglePlayWorkflowPath,
 );
 assertNotIncludes(
   deployGooglePlayWorkflow,
-  "runs-on: ubuntu-latest",
-  deployGooglePlayWorkflowPath,
-);
-assertIncludes(
-  deployGooglePlayWorkflow,
   "gcloud builds submit",
   deployGooglePlayWorkflowPath,
 );
-assertIncludes(
+assertNotIncludes(
   deployGooglePlayWorkflow,
   "gcloud config set billing/quota_project seorilabs-ci",
   deployGooglePlayWorkflowPath,
 );
-assertIncludes(
+assertNotIncludes(
   deployGooglePlayWorkflow,
   "gcloud storage rm --recursive",
+  deployGooglePlayWorkflowPath,
+);
+assertNotIncludes(
+  deployGooglePlayWorkflow,
+  "scripts/resolve-release-version.mjs",
+  deployGooglePlayWorkflowPath,
+);
+assertNotIncludes(
+  deployGooglePlayWorkflow,
+  "scripts/upload-google-play-internal.py",
+  deployGooglePlayWorkflowPath,
+);
+assertNotIncludes(
+  deployGooglePlayWorkflow,
+  "secrets: inherit",
   deployGooglePlayWorkflowPath,
 );
 assertMatches(
@@ -1070,6 +1118,21 @@ assertIncludes(
   promoteGooglePlayWorkflowPath,
 );
 assertIncludes(
+  googlePlayUploadScript,
+  "--promote-version-code",
+  googlePlayUploadScriptPath,
+);
+assertIncludes(
+  googlePlayUploadScript,
+  "SEORI_EXPECTED_ANDROID_VERSION_CODE",
+  googlePlayUploadScriptPath,
+);
+assertIncludes(
+  googlePlayUploadScript,
+  "args.promote_version_code not in version_codes",
+  googlePlayUploadScriptPath,
+);
+assertIncludes(
   promoteGooglePlayWorkflow,
   "workflow_dispatch:",
   promoteGooglePlayWorkflowPath,
@@ -1084,24 +1147,6 @@ for (const automaticTrigger of ["push:", "pull_request:", "schedule:"]) {
     promoteGooglePlayWorkflow,
     automaticTrigger,
     promoteGooglePlayWorkflowPath,
-  );
-}
-assertIncludes(
-  deployGooglePlayWorkflow,
-  'gcloud storage rm --recursive "$ARTIFACT_BUCKET"',
-  deployGooglePlayWorkflowPath,
-);
-assertIncludes(
-  deployGooglePlayWorkflow,
-  "actions/download-artifact@v8",
-  deployGooglePlayWorkflowPath,
-);
-const googlePlayToolingCheckoutCount = (
-  deployGooglePlayWorkflow.match(/ref:\s*\$\{\{ github\.sha \}\}/g) ?? []
-).length;
-if (googlePlayToolingCheckoutCount !== 2) {
-  fail(
-    `${deployGooglePlayWorkflowPath}: build와 upload는 모두 현재 workflow tooling SHA를 checkout해야 합니다.`,
   );
 }
 assertIncludes(
@@ -1159,9 +1204,34 @@ assertIncludes(
   "com.seorilabs.crosswordpuzzle.global_score",
   xcodeCloudPostBuildPath,
 );
-// 태그 → 버전 반영은 Xcode Cloud pre-build가 하고, 실제 아카이브에 들어갔는지는
-// post-build가 확인한다. 둘 중 하나만 있으면 버전이 조용히 어긋난다.
+// exact stable tag와 peeled commit만 Xcode Cloud 버전 정본으로 허용한다.
+assertIncludes(xcodeCloudPreBuild, "CI_TAG", xcodeCloudPreBuildPath);
 assertIncludes(
+  xcodeCloudPreBuild,
+  'rev-parse --verify "refs/tags/${CI_TAG}^{commit}"',
+  xcodeCloudPreBuildPath,
+);
+assertIncludes(
+  xcodeCloudPreBuild,
+  'MARKETING="${CI_TAG#v}"',
+  xcodeCloudPreBuildPath,
+);
+assertIncludes(
+  xcodeCloudPreBuild,
+  'BUILD="${CI_BUILD_NUMBER:-}"',
+  xcodeCloudPreBuildPath,
+);
+assertIncludes(
+  xcodeCloudPreBuild,
+  'agvtool new-marketing-version "${MARKETING}"',
+  xcodeCloudPreBuildPath,
+);
+assertIncludes(
+  xcodeCloudPreBuild,
+  'agvtool new-version -all "${BUILD}"',
+  xcodeCloudPreBuildPath,
+);
+assertNotIncludes(
   xcodeCloudPreBuild,
   "scripts/resolve-release-version.mjs",
   xcodeCloudPreBuildPath,
@@ -1181,17 +1251,37 @@ assertIncludes(
 );
 assertIncludes(
   deployAppStoreWorkflow,
+  "uses: seorilabs/.github/.github/workflows/resolve-release-version.yml@8a11a145fed35479a4a89ebc7ca97edd0a0f05fd",
+  deployAppStoreWorkflowPath,
+);
+assertIncludes(
+  deployAppStoreWorkflow,
   "runs-on: seorilabs-rpi-arm64",
   deployAppStoreWorkflowPath,
 );
+assertIncludes(
+  deployAppStoreWorkflow,
+  "ref: ${{ needs.resolve.outputs.source_sha }}",
+  deployAppStoreWorkflowPath,
+);
 assertNotIncludes(deployAppStoreWorkflow, "macos-", deployAppStoreWorkflowPath);
-for (const [path, content] of [
-  [deployGooglePlayWorkflowPath, deployGooglePlayWorkflow],
-  [deployAppStoreWorkflowPath, deployAppStoreWorkflow],
-]) {
-  assertIncludes(content, "actions/checkout@v7", path);
-  assertIncludes(content, "actions/setup-node@v7", path);
-}
+assertMatches(
+  deployAppStoreWorkflow,
+  /actions\/checkout@[0-9a-f]{40}/,
+  deployAppStoreWorkflowPath,
+  "immutable checkout action SHA",
+);
+assertMatches(
+  deployAppStoreWorkflow,
+  /actions\/setup-node@[0-9a-f]{40}/,
+  deployAppStoreWorkflowPath,
+  "immutable setup-node action SHA",
+);
+assertNotIncludes(
+  deployAppStoreWorkflow,
+  "secrets: inherit",
+  deployAppStoreWorkflowPath,
+);
 assertIncludes(
   appStoreLocalBuild,
   "GAME_CENTER_LEADERBOARD_ID",
@@ -1226,6 +1316,13 @@ if (deployAllResolvedTagUsages < 3) {
     `${deployAllWorkflowPath}: Deploy All must pass the resolved tag to AIT, Google Play, and App Store jobs`,
   );
 }
+
+assertIncludes(
+  deployAllWorkflow,
+  "uses: seorilabs/.github/.github/workflows/resolve-release-version.yml@8a11a145fed35479a4a89ebc7ca97edd0a0f05fd",
+  deployAllWorkflowPath,
+);
+assertNotIncludes(deployAllWorkflow, "secrets: inherit", deployAllWorkflowPath);
 
 if (failures.length > 0) {
   console.error("Release parity check failed:");
