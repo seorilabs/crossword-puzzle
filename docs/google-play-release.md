@@ -37,10 +37,8 @@ flowchart TD
 | `scripts/setup-google-play-wif.sh`         | shared Play publisher service account에 repo별 WIF impersonation 권한 추가     |
 | `scripts/apply-google-play-listing.py`     | API로 쓰기 가능한 Play listing/details/images 적용                             |
 | `scripts/upload-google-play-internal.py`   | Android Publisher API로 AAB를 internal track에 업로드                          |
-| `build.env`                                | Node, JDK, Android SDK, x86 builder image, AAB 경로, Play 인증서 지문 계약     |
-| `scripts/build-android.sh`                 | 태그 버전, Firebase, 서명 지문을 검증하고 signed AAB 생성                      |
-| `cloudbuild-android.yaml`                  | x86 builder 실행과 GCS artifact 전달                                           |
-| `.github/workflows/deploy-google-play.yml` | RPI ARC 조정, 임시 credential 전달/삭제, artifact 보관, 선택적 internal upload |
+| `build.env`                                | Node, JDK, Android SDK와 기존 빌드 도구 기준                                   |
+| `.github/workflows/deploy-google-play.yml` | 고정된 중앙 RN workflow 호출과 선택적 internal upload                          |
 | `docs/google-play-store-listing.md`        | 스토어 등록값과 미확정 항목                                                    |
 
 ## 1. Package Name
@@ -182,7 +180,7 @@ base64 -i apps/mobile/android/app/google-services.json | tr -d '\n' | gh secret 
 
 ## 6. Internal Track 업로드
 
-워크플로는 태그의 제품 소스와 실행 중인 workflow SHA의 빌드 도구를 별도 checkout한다. 따라서 v1.1.7처럼 빌드 도구 도입 전 태그도 제품 소스 변경 없이 복구할 수 있다. 먼저 RPI ARC → x86 Cloud Build signed artifact만 검증한다.
+워크플로는 고정된 중앙 계약에서 exact stable 태그 commit을 checkout하고, 태그 파생 버전을 Gradle에 주입한 뒤 signed artifact를 검증한다.
 
 ```bash
 gh workflow run deploy-google-play.yml \
@@ -199,7 +197,7 @@ gh workflow run deploy-google-play.yml \
   -f release_status=draft
 ```
 
-`upload_to_internal=true`이면 별도 RPI ARC job이 signed artifact를 받아 internal track에만 올린다. Android `versionName`, `versionCode`, Play release name은 해당 태그에서 계산하고, 업로드 API가 반환한 versionCode도 예상값과 일치해야 한다. 이 단계는 production 승격이나 공개 출시를 수행하지 않는다.
+`upload_to_internal=true`이면 검증된 exact artifact만 internal track에 올린다. Android `versionName`, `versionCode`, Play release name은 해당 태그에서 계산하고, 업로드 API readback도 예상값과 일치해야 한다. 이 단계는 production 승격이나 공개 출시를 수행하지 않는다.
 
 ## 7. API listing/details/images 적용
 

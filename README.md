@@ -33,8 +33,6 @@ npm run dev
 | `npm run check:mobile`            | `apps/mobile` lint/test                                                           |
 | `npm run build:android`           | Google Play용 Android App Bundle 빌드. 제출용 키가 없으면 로컬 fallback 키로 서명 |
 | `npm run wordbank:krdict`         | 한국어기초사전 XML에서 퍼즐용 단어장 생성                                         |
-| `npm run release:next-tag`        | 다음 semver 릴리즈 태그 계산                                                      |
-| `npm run release:resolve-version` | 릴리즈 태그에서 앱 빌드 버전 계산                                                 |
 | `npm run prototype:crossword`     | 콘솔에서 퍼즐판 생성 알고리즘 샘플 출력                                           |
 | `npm run batch:puzzles`           | 날짜별 puzzle JSON pack 생성                                                      |
 | `npm run job:puzzle-pack`         | 생성/검증/publish를 묶은 배치잡 entrypoint                                        |

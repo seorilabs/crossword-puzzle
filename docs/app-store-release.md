@@ -107,23 +107,9 @@ APP_STORE_CONNECT_PRIVATE_KEY_BASE64="$APP_STORE_CONNECT_PRIVATE_KEY_BASE64" \
 npm run app-store:build:local -- --export-upload --tag v1.0.0
 ```
 
-수동 xcodebuild 참고 명령:
-
-```bash
-xcodebuild \
-  -workspace apps/mobile/ios/CrosswordPuzzleMobile.xcworkspace \
-  -scheme CrosswordPuzzleMobile \
-  -configuration Release \
-  -destination 'generic/platform=iOS' \
-  -archivePath tmp/crossword-puzzle.xcarchive \
-  MARKETING_VERSION=1.0.0 \
-  CURRENT_PROJECT_VERSION=1000000 \
-  DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
-  CODE_SIGN_STYLE=Manual \
-  CODE_SIGN_IDENTITY="Apple Distribution" \
-  PROVISIONING_PROFILE_SPECIFIER="$IOS_PROVISIONING_PROFILE_NAME" \
-  archive
-```
+로컬 archive도 임의 `MARKETING_VERSION`/`CURRENT_PROJECT_VERSION`을 받지 않는다. 현재 HEAD를
+가리키는 exact stable 태그와 SHA `9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5`의 중앙 정본이
+계산한 값만 `xcodebuild`에 전달한다.
 
 ## 6. Xcode Cloud 업로드
 
@@ -146,13 +132,13 @@ Trigger:
 | 훅                      | 하는 일                                                                                                                 |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | `ci_post_clone.sh`      | GitHub Packages 인증, Node/CocoaPods 설치, `npm ci`(root + apps/mobile), `GoogleService-Info.plist` 복원, `pod install` |
-| `ci_pre_xcodebuild.sh`  | `CI_TAG` → marketing/build 버전 산출 후 `agvtool` 반영                                                                  |
+| `ci_pre_xcodebuild.sh`  | `CI_TAG`를 중앙 정본으로 검증하고 Info.plist에 deterministic release binding 주입                                      |
 | `ci_post_xcodebuild.sh` | 아카이브 `Info.plist` 검증 — 버전, Game Center 리더보드 ID, AdMob app ID, SKAdNetwork ID                                |
 
 릴리스 버전:
 
 - `MARKETING_VERSION`: `vX.Y.Z`에서 `X.Y.Z`
-- `CURRENT_PROJECT_VERSION`: `major * 1000000 + minor * 1000 + patch`
+- `CURRENT_PROJECT_VERSION`: 중앙 `release-version-authority-v1`이 태그에서 파생한 Apple build number
 
 필수 GitHub Secrets/Variables (`app-store` environment):
 
@@ -178,17 +164,9 @@ workflow 성공은 **업로드 경로가 끝까지 돈 증거**다. TestFlight �
 npm run app-store:build:local -- --export-upload --tag v0.3.2 --skip-pods
 ```
 
-2026-06-13 로컬 확인 기준, iOS AdMob 설정을 점검한 뒤 아래 명령으로 `0.3.4` / build `3004`를 App Store Connect에 업로드했다. App Store Connect build ID는 `7adb7c92-7763-4046-9b42-119c0612c249`이고 processing state는 `VALID`다. archive 산출물 `Info.plist`에서 `GADApplicationIdentifier=ca-app-pub-2444587584524186~4715406099`와 Google Mobile Ads `SKAdNetworkItems`를 업로드 전에 검증했다. 업로드 중 `hermesvm.framework` dSYM 누락 경고가 있었지만 binary upload는 성공했다.
+2026-06-13 로컬 확인 기준, iOS AdMob 설정을 점검한 뒤 `0.3.4` / build `3004`를 App Store Connect에 업로드했다. App Store Connect build ID는 `7adb7c92-7763-4046-9b42-119c0612c249`이고 processing state는 `VALID`다. archive 산출물 `Info.plist`에서 `GADApplicationIdentifier=ca-app-pub-2444587584524186~4715406099`와 Google Mobile Ads `SKAdNetworkItems`를 업로드 전에 검증했다. 당시 직접 버전 입력 경로는 현재 중앙 태그 정본 경로로 제거됐다. 업로드 중 `hermesvm.framework` dSYM 누락 경고가 있었지만 binary upload는 성공했다.
 
-```bash
-npm run app-store:build:local -- --export-upload --marketing-version 0.3.4 --build-number 3004 --skip-pods
-```
-
-2026-06-13 로컬 확인 기준, 보상형 광고 진단 모드를 추가한 뒤 아래 명령으로 `0.3.5` / build `3005`를 App Store Connect에 업로드했다. App Store Connect build ID는 `28e5db1a-fc5d-4788-a1c8-beaa1481eda1`이고 processing state는 `VALID`다. archive 산출물 `Info.plist`에서 iOS AdMob app ID와 Google Mobile Ads SKAdNetwork ID를 다시 검증했다. 업로드 중 `hermesvm.framework` dSYM 누락 경고가 있었지만 binary upload는 성공했다.
-
-```bash
-npm run app-store:build:local -- --export-upload --marketing-version 0.3.5 --build-number 3005 --skip-pods
-```
+2026-06-13 로컬 확인 기준, 보상형 광고 진단 모드를 추가한 뒤 `0.3.5` / build `3005`를 App Store Connect에 업로드했다. App Store Connect build ID는 `28e5db1a-fc5d-4788-a1c8-beaa1481eda1`이고 processing state는 `VALID`다. archive 산출물 `Info.plist`에서 iOS AdMob app ID와 Google Mobile Ads SKAdNetwork ID를 다시 검증했다. 당시 직접 버전 입력 경로는 현재 중앙 태그 정본 경로로 제거됐다. 업로드 중 `hermesvm.framework` dSYM 누락 경고가 있었지만 binary upload는 성공했다.
 
 `0.3.5` 광고 진단은 `출처` 화면에서 `한국어기초사전` 제목을 7회 탭해 연다. `힌트 테스트`/`보너스 테스트`가 성공하면 SDK 통합은 정상이고, `힌트 운영`/`보너스 운영`이 `googleMobileAds/no-fill`이면 AdMob serving 또는 신규 광고 단위 fill 문제로 본다. `module_unavailable` 또는 `initialize_failed`면 앱 binary/native SDK 연결 문제다. Ad Inspector 버튼은 Google Mobile Ads SDK request log를 확인하는 데 사용한다.
 
@@ -228,7 +206,7 @@ metadata만 로컬 업로드:
 
 ```bash
 source "$HOME/.config/seorilabs/app-store-connect.env"
-npm run app-store:metadata:upload
+npm run app-store:deliver:upload -- --metadata-only --tag v1.0.0
 ```
 
 App Store 앱 이름은 iOS용으로 `가로세로 퍼즐`을 사용한다. `supportUrl`, `privacyPolicyUrl`, `marketingUrl` 후보를 실제 등록값으로 확정한 경우에만 `--use-suggested-urls`를 추가한다.
@@ -237,14 +215,14 @@ App Store 앱 이름은 iOS용으로 `가로세로 퍼즐`을 사용한다. `sup
 
 ```bash
 source "$HOME/.config/seorilabs/app-store-connect.env"
-npm run app-store:metadata:upload -- --verify-only
+npm run app-store:deliver:upload -- --metadata-only --tag v1.0.0 -- --verify_only true
 ```
 
 screenshot만 로컬 업로드:
 
 ```bash
 source "$HOME/.config/seorilabs/app-store-connect.env"
-npm run app-store:deliver:upload -- --screenshots-only
+npm run app-store:deliver:upload -- --screenshots-only --tag v1.0.0
 ```
 
 현재 `app-store/screenshots/iphone/iphone-{1,2,3}.png`와 `app-store/screenshots/ipad/ipad-{1,2,3}.png`를 시뮬레이터 Release build에서 생성했다. iPhone은 1320 x 2868, iPad는 2064 x 2752 PNG다.
