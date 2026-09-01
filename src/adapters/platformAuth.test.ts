@@ -104,6 +104,7 @@ describe("ensurePlatformAuth (웹/AIT adapter)", () => {
         appVersion: expect.any(String),
         platform: "ait",
       },
+      fetchImpl: expect.any(Function),
     });
     expect(firebaseCustomToken).toHaveBeenCalledWith();
     expect(signInWithCustomToken).toHaveBeenCalledWith("custom-token");
@@ -212,5 +213,62 @@ describe("ensurePlatformAuth (웹/AIT adapter)", () => {
     expect(() => lifecycle.startPlatformPresence()).not.toThrow();
     expect(() => lifecycle.stopPlatformPresence()).not.toThrow();
     expect(() => lifecycle.resumePlatformPresence()).not.toThrow();
+  });
+
+  // #374 회귀: 브라우저 fetch는 this가 전역 객체가 아니면 Illegal invocation을 던지고,
+  // SDK Transport는 `this.fetchImpl(url)` 형태(인스턴스 메서드)로 호출한다. adapter가
+  // 바인딩되지 않은 fetch를 넘기거나 아예 넘기지 않으면 웹에서 모든 요청이 즉시 실패한다.
+  it("this 바인딩을 요구하는 전역 fetch에서도 인증 경로가 network_error 없이 성공한다", async () => {
+    const fetchedUrls: string[] = [];
+    // Window.fetch의 this 검사 재현. bind(globalThis)를 거치지 않은 호출은 던진다.
+    function strictFetch(this: unknown, url: string): Promise<unknown> {
+      if (this !== globalThis) {
+        throw new TypeError(
+          "Failed to execute 'fetch' on 'Window': Illegal invocation",
+        );
+      }
+      fetchedUrls.push(url);
+      return Promise.resolve({ ok: true });
+    }
+    vi.stubGlobal("fetch", strictFetch);
+
+    try {
+      // SDK Transport의 실제 호출 형태를 재현: 옵션의 fetchImpl(없으면 전역 fetch)을
+      // 인스턴스에 저장해 두고 메서드로 호출한다.
+      createPlatform.mockImplementationOnce((options: unknown) => {
+        const transport = {
+          fetchImpl:
+            (options as { fetchImpl?: typeof fetch }).fetchImpl ??
+            globalThis.fetch,
+        };
+        return {
+          identity: {
+            firebaseCustomToken: async () => {
+              await transport.fetchImpl(
+                "https://platform.test/v1/identity/firebase-custom-token",
+              );
+              return firebaseCustomToken();
+            },
+          },
+          presence: {
+            start: presenceStart,
+            stop: presenceStop,
+            resume: presenceResume,
+          },
+          signIn: platformSignIn,
+        };
+      });
+      const { ensurePlatformAuth } = await loadAdapter();
+
+      await expect(ensurePlatformAuth()).resolves.toEqual({
+        status: "signed-in",
+        appUserId: "pb_abc",
+      });
+      expect(fetchedUrls).toEqual([
+        "https://platform.test/v1/identity/firebase-custom-token",
+      ]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

@@ -34,6 +34,10 @@ const webPlatform = createPlatform({
     appVersion: RELEASE_VERSION,
     platform: "ait",
   },
+  // SDK Transport/Presence는 fetchImpl을 인스턴스 메서드로 호출한다. 브라우저 fetch는
+  // this가 Window가 아니면 Illegal invocation을 던지므로 전역 객체에 바인딩해 넘긴다.
+  // 주입하지 않으면 웹(AIT)에서 인증·presence 요청이 네트워크 계층에서 전부 실패한다.
+  fetchImpl: globalThis.fetch.bind(globalThis),
 });
 const platformPresence =
   createFailOpenPlatformPresenceLifecycle(webPlatform.presence);
