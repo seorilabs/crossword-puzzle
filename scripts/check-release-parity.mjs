@@ -968,7 +968,7 @@ assertIncludes(
 );
 assertIncludes(
   deployAppsInTossWorkflow,
-  'scope: "@seorilabs"',
+  'npm_scope: "@seorilabs"',
   deployAppsInTossWorkflowPath,
 );
 assertIncludes(
@@ -1136,6 +1136,8 @@ assertIncludes(
   'tag_sha="$(git rev-parse "${tag}^{commit}"',
   appStoreLocalBuildPath,
 );
+assertIncludes(appStoreLocalBuild, "exact stable SemVer vX.Y.Z", appStoreLocalBuildPath);
+assertIncludes(xcodeCloudPreBuild, "exact stable SemVer CI_TAG", xcodeCloudPreBuildPath);
 assertNotIncludes(appStoreLocalBuild, "--marketing-version", appStoreLocalBuildPath);
 assertNotIncludes(appStoreLocalBuild, "--build-number", appStoreLocalBuildPath);
 assertIncludes(agents, "3마켓 패리티", agentsPath);

@@ -3,20 +3,19 @@
 ## 정책
 
 - `main`에 push되면 `CI`가 Web/AIT 경로의 `lint`, `validate:puzzles`, `check:release-parity`, `build`와 `apps/mobile`의 `check:mobile`을 함께 수행한다.
-- `CI`가 성공한 push commit에만 `Release Tag` workflow가 semver 태그를 만든다.
-- 자동 태그는 항상 patch 증가다. 예: `v0.1.1` -> `v0.1.2`.
-- minor/major 증가는 `Release Tag` workflow를 수동 실행할 때만 선택한다.
+- `Release Tag` workflow는 `workflow_dispatch`로 명시적으로 실행할 때만 semver 태그를 계산하거나 만든다. `main` push나 CI 성공만으로 태그를 만들지 않는다.
+- `tag`를 비우면 원격 최신 stable 태그에서 선택한 `bump`만큼 증가한다. stable 태그가 없으면 `v0.0.1`에서 시작하며 package version은 참조하지 않는다.
+- caller의 `dry_run` 기본값은 `true`다. 실제 태그 생성은 대상 ref와 결과 태그를 확인한 뒤 `dry_run=false`로 명시해야 한다.
 - 태그 생성 이후 실제 배포는 자동으로 트리거하지 않는다. 여러 마켓을 같은 릴리즈로 배포할 때는 `Deploy All`(묶음)을 사용한다.
 - 개별 `Deploy *` workflow는 단일 마켓 재배포용이다. AIT와 Google Play/App Store를 같이 내보낼 때 개별 workflow를 따로 실행하면 실행 사이에 최신 태그가 바뀔 수 있으므로 `Deploy All`로 같은 태그를 한 번만 해석한다.
 - 기존 `crossword-puzzle-release-*` 태그는 보존하되, 새 버전 계산에서는 제외한다.
-- semver 태그가 아직 없으면 `package.json`의 `version`을 기준으로 첫 patch 태그를 만든다.
 
 ```mermaid
 flowchart LR
-  Push["main push"] --> CI["CI (web build + mobile check + parity)"]
-  CI -->|success| Tag["Release Tag (patch 자동)"]
+  Push["main push"] --> CI["CI - web build와 mobile check와 parity"]
+  Manual["명시적 workflow dispatch"] --> Tag["Release Tag - dry-run 기본"]
   Tag --> Semver["vX.Y.Z tag"]
-  Semver --> DeployAll["Deploy All (수동)"]
+  Semver --> DeployAll["Deploy All - 수동"]
   DeployAll --> AIT["Deploy AIT"]
   DeployAll --> Play["Deploy Google Play"]
   DeployAll --> Store["Deploy App Store"]
@@ -27,7 +26,8 @@ flowchart LR
 ```bash
 gh workflow run release-tag.yml \
   -f bump=minor \
-  -f target_ref=main
+  -f target_ref=main \
+  -f dry_run=false
 ```
 
 `bump=major`도 같은 방식으로 실행한다.
@@ -104,7 +104,7 @@ gh workflow run deploy-app-store.yml \
 | 훅 | 하는 일 |
 |---|---|
 | `ci_post_clone.sh` | Node/CocoaPods 설치, `npm ci`, `GoogleService-Info.plist` 복원, `pod install` |
-| `ci_pre_xcodebuild.sh` | 태그(`CI_TAG`) → marketing/build 버전 산출 후 `agvtool` 반영 |
+| `ci_pre_xcodebuild.sh` | `CI_TAG`를 중앙 정본으로 검증하고 Info.plist에 deterministic release binding 주입 |
 | `ci_post_xcodebuild.sh` | 아카이브 Info.plist 검증(버전, Game Center, AdMob app ID, SKAdNetwork) |
 
 workflow 성공은 **업로드 경로가 끝까지 돈 증거**다. TestFlight 처리와 심사 상태는 App Store Connect에서 따로 확인한다.

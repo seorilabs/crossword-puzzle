@@ -132,7 +132,7 @@ Trigger:
 | 훅                      | 하는 일                                                                                                                 |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | `ci_post_clone.sh`      | GitHub Packages 인증, Node/CocoaPods 설치, `npm ci`(root + apps/mobile), `GoogleService-Info.plist` 복원, `pod install` |
-| `ci_pre_xcodebuild.sh`  | `CI_TAG` → marketing/build 버전 산출 후 `agvtool` 반영                                                                  |
+| `ci_pre_xcodebuild.sh`  | `CI_TAG`를 중앙 정본으로 검증하고 Info.plist에 deterministic release binding 주입                                      |
 | `ci_post_xcodebuild.sh` | 아카이브 `Info.plist` 검증 — 버전, Game Center 리더보드 ID, AdMob app ID, SKAdNetwork ID                                |
 
 릴리스 버전:

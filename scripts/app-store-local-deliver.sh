@@ -94,6 +94,10 @@ if [[ -z "$release_tag" ]]; then
   echo "App Store Connect 업로드에는 현재 HEAD를 가리키는 --tag vX.Y.Z가 필요합니다." >&2
   exit 1
 fi
+[[ "$release_tag" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || {
+  echo "--tag는 exact stable SemVer vX.Y.Z여야 합니다: $release_tag" >&2
+  exit 1
+}
 
 api_key_json_path="${APP_STORE_CONNECT_API_KEY_JSON_PATH:-}"
 temporary_dir=""

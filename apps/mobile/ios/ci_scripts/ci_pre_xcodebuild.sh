@@ -9,6 +9,9 @@ AUTHORITY_SHA="9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5"
 APPLIER_SHA256="b399afde0016e23947e173437e266aa83071079d1345b41ff580ebfe63357d6f"
 AUTHORITY_SHA256="ca9ef5b4fe326323840b171f9e6ed069cb182d2aee8e88b72e352c57514d466b"
 
+printf '%s\n' "$RELEASE_TAG" | grep -Eq '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' \
+  || { echo "exact stable SemVer CI_TAG가 필요합니다: $RELEASE_TAG" >&2; exit 1; }
+
 authority_dir="$(mktemp -d)"
 trap 'rm -rf -- "$authority_dir"' EXIT INT TERM
 base_url="https://raw.githubusercontent.com/seorilabs/.github/${AUTHORITY_SHA}/scripts/release"
