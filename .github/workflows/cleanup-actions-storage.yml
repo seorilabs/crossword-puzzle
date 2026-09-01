@@ -31,8 +31,7 @@ concurrency:
 
 jobs:
   cleanup:
-    uses: seorilabs/.github/.github/workflows/cleanup-actions-storage.yml@main
-    secrets: inherit
+    uses: seorilabs/.github/.github/workflows/cleanup-actions-storage.yml@9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5
     with:
       runs_on: ${{ github.event.repository.private && 'seorilabs-rpi-arm64' || 'ubuntu-latest' }}
       delete_artifacts: ${{ inputs.delete_artifacts }}

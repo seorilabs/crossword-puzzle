@@ -63,7 +63,6 @@ gh workflow run deploy-all.yml \
 
 `Deploy AIT` workflow는 `release_tag`(비우면 최신 태그)를 checkout하고 다음 값을 빌드/업로드에 사용한다.
 
-- `npm version --no-git-tag-version <version>`
 - `VITE_APP_VERSION=<version>`
 - `VITE_RELEASE_TAG=<tag>`
 - AppsInToss deploy memo: `<tag> · <memo>` 또는 `릴리즈 <tag> (<sha>)`
@@ -81,7 +80,7 @@ gh workflow run deploy-apps-in-toss.yml \
 `Deploy Google Play` workflow는 `release_tag`(비우면 최신 태그)에서 Android 빌드 버전을 계산한다.
 
 - `versionName`: `v`를 뺀 semver. 예: `0.1.1`
-- `versionCode`: `major * 1000000 + minor * 1000 + patch`. 예: `v0.1.1` -> `1001`
+- `versionCode`: `1,000,000,000 + major * 1,000,000 + minor * 1,000 + patch`. 예: `v0.1.1` -> `1000001001`
 - Android Publisher API release name: 태그 문자열. 예: `v0.1.1`
 
 ```bash

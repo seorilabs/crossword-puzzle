@@ -24,6 +24,13 @@ on:
         description: "배포할 릴리즈 태그입니다. 비우면 최신 vX.Y.Z 태그를 사용합니다. 예: v1.0.0"
         required: false
         type: string
+    secrets:
+      APP_STORE_CONNECT_API_KEY_ID:
+        required: true
+      APP_STORE_CONNECT_ISSUER_ID:
+        required: true
+      APP_STORE_CONNECT_PRIVATE_KEY_BASE64:
+        required: true
 
 permissions:
   contents: read
@@ -33,8 +40,14 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  resolve:
+    uses: seorilabs/.github/.github/workflows/resolve-release-version.yml@9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5
+    with:
+      release_tag: ${{ inputs.release_tag }}
+
   xcode-cloud:
     name: Trigger Xcode Cloud build
+    needs: resolve
     runs-on: seorilabs-rpi-arm64
     timeout-minutes: 100
     environment: app-store
@@ -46,32 +59,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.release_tag || github.ref }}
+          ref: ${{ needs.resolve.outputs.tag }}
           fetch-depth: 0
           fetch-tags: true
-
-      - name: Resolve release tag
-        id: tag
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          tag="${{ inputs.release_tag }}"
-          if [ -z "$tag" ]; then
-            tag="$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n 1)"
-            if [ -z "$tag" ]; then
-              echo "release_tag가 비어 있고 vX.Y.Z 태그도 없습니다." >&2
-              exit 1
-            fi
-            echo "release_tag가 비어 있어 최신 태그 $tag 를 사용합니다."
-          fi
-
-          if ! [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "App Store 배포는 vX.Y.Z 릴리즈 태그가 필요합니다. 받은 값: $tag" >&2
-            exit 1
-          fi
-
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -88,7 +78,7 @@ jobs:
           set -euo pipefail
 
           node scripts/trigger-xcode-cloud-build.mjs \
-            --tag "${{ steps.tag.outputs.tag }}" \
+            --tag "${{ needs.resolve.outputs.tag }}" \
             --bundle-id "$IOS_BUNDLE_ID" \
             --repo "${{ github.repository }}" \
             --timeout-minutes 90

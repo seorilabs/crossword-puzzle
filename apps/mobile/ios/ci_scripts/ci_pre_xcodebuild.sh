@@ -1,36 +1,34 @@
 #!/bin/sh
 
-# Xcode Cloud — archive 직전 릴리즈 버전 설정.
-#
-# 태그(vX.Y.Z) 트리거 빌드일 때 scripts/resolve-release-version.mjs 로
-# CFBundleShortVersionString(marketing)/CFBundleVersion(build)을 산출해 반영한다.
-# 없으면 프로젝트 기본값(1.0)이 아카이브돼 App Store Connect 의 기존 버전 train 과
-# 충돌해 TestFlight 업로드가 거부된다. (node 는 ci_post_clone 에서 설치됨.)
+# exact stable tag의 중앙 release binding을 archive Info.plist에 주입한다.
+set -eu
 
-set -e
+REPO="${CI_PRIMARY_REPOSITORY_PATH:?CI_PRIMARY_REPOSITORY_PATH is required}"
+RELEASE_TAG="${CI_TAG:?exact stable CI_TAG is required}"
+AUTHORITY_SHA="9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5"
+APPLIER_SHA256="b399afde0016e23947e173437e266aa83071079d1345b41ff580ebfe63357d6f"
+AUTHORITY_SHA256="ca9ef5b4fe326323840b171f9e6ed069cb182d2aee8e88b72e352c57514d466b"
 
-REPO="${CI_PRIMARY_REPOSITORY_PATH}"
+authority_dir="$(mktemp -d)"
+trap 'rm -rf -- "$authority_dir"' EXIT INT TERM
+base_url="https://raw.githubusercontent.com/seorilabs/.github/${AUTHORITY_SHA}/scripts/release"
+curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
+  "${base_url}/xcode-cloud-apply-tag-version.mjs" \
+  --output "${authority_dir}/xcode-cloud-apply-tag-version.mjs"
+curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
+  "${base_url}/tag-version-authority.mjs" \
+  --output "${authority_dir}/tag-version-authority.mjs"
+(
+  cd "$authority_dir"
+  printf '%s  %s\n' "$APPLIER_SHA256" xcode-cloud-apply-tag-version.mjs | shasum -a 256 -c
+  printf '%s  %s\n' "$AUTHORITY_SHA256" tag-version-authority.mjs | shasum -a 256 -c
+)
 
-if [ -z "${CI_TAG}" ]; then
-  echo "▸ CI_TAG 없음 — 릴리즈 버전 조정 생략(브랜치/검증 빌드)"
-  exit 0
-fi
+git -C "$REPO" fetch --force --tags origin >/dev/null 2>&1
+node "${authority_dir}/xcode-cloud-apply-tag-version.mjs" \
+  --tag "$RELEASE_TAG" \
+  --repository "$REPO" \
+  --info-plist "$REPO/apps/mobile/ios/CrosswordPuzzleMobile/Info.plist" \
+  > "$REPO/apps/mobile/ios/.seori-release-binding.json"
 
-echo "▸ 릴리즈 버전 산출 (tag=${CI_TAG})"
-OUTFILE="$(mktemp)"
-# resolve-release-version.mjs 는 GITHUB_OUTPUT 이 설정돼 있으면 key=value 를 그 파일에 쓴다.
-GITHUB_OUTPUT="${OUTFILE}" node "${REPO}/scripts/resolve-release-version.mjs" --tag "${CI_TAG}"
-
-MARKETING="$(grep '^apple_marketing_version=' "${OUTFILE}" | cut -d= -f2)"
-BUILD="$(grep '^apple_build_number=' "${OUTFILE}" | cut -d= -f2)"
-
-if [ -z "${MARKETING}" ] || [ -z "${BUILD}" ]; then
-  echo "  릴리즈 버전 산출 실패 (tag=${CI_TAG})" >&2
-  exit 1
-fi
-
-echo "  marketing=${MARKETING} build=${BUILD}"
-cd "${REPO}/apps/mobile/ios"
-agvtool new-marketing-version "${MARKETING}"
-agvtool new-version -all "${BUILD}"
-echo "✅ 버전 설정 완료: ${MARKETING} (${BUILD})"
+echo "✅ 중앙 release version 주입 완료: ${RELEASE_TAG}"

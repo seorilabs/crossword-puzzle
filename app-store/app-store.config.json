@@ -5,12 +5,6 @@
   "platform": "ios",
   "appType": "game",
   "freeOrPaid": "free",
-  "version": {
-    "marketingVersion": "1.0",
-    "buildNumber": "1",
-    "ciSource": "release_tag",
-    "ciBuildNumberRule": "major * 1000000 + minor * 1000 + patch"
-  },
   "storeListing": {
     "appName": {
       "ko-KR": "가로세로 퍼즐"
@@ -651,7 +645,7 @@
   },
   "automation": {
     "workflow": ".github/workflows/deploy-app-store.yml",
-    "runner": "macos-26",
+    "runner": "Xcode Cloud",
     "xcodeSdkRequirement": "Xcode 26 / iOS 26 SDK 이상",
     "releaseRef": "vX.Y.Z tag",
     "bundleId": "com.seorilabs.crosswordpuzzle",

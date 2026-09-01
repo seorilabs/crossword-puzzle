@@ -87,7 +87,7 @@ metadata/screenshot upload:
 
 ```bash
 source "$HOME/.config/seorilabs/app-store-connect.env"
-npm run app-store:metadata:upload
+npm run app-store:deliver:upload -- --metadata-only --tag v1.0.0
 ```
 
 App Store 앱 이름은 iOS용으로 `가로세로 퍼즐`을 사용한다. `--use-suggested-urls`는 `supportUrl`, `privacyPolicyUrl`, `marketingUrl` 후보를 실제 등록값으로 쓰기로 확정한 경우에만 사용한다.

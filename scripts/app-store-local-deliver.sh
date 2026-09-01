@@ -7,6 +7,7 @@ cd "$repo_root"
 mode="all"
 skip_upload="false"
 use_suggested_urls="false"
+release_tag=""
 deliver_args=()
 prepare_args=()
 
@@ -19,6 +20,7 @@ Options:
   --screenshots-only    screenshot만 업로드합니다.
   --skip-app-name       metadata 업로드에서 App Store 앱 이름을 제외합니다.
   --skip-upload         deliver 입력 파일만 생성하고 App Store Connect 업로드는 건너뜁니다.
+  --tag vX.Y.Z          현재 HEAD를 가리키는 exact stable 태그를 metadata 대상 버전으로 사용합니다.
   --use-suggested-urls  config의 suggestedSupportUrl/suggestedPrivacyPolicyUrl을 deliver에 포함합니다.
   --                    뒤 인자는 fastlane deliver에 그대로 전달합니다.
 
@@ -56,6 +58,14 @@ while [[ $# -gt 0 ]]; do
       prepare_args+=("--use-suggested-urls")
       shift
       ;;
+    --tag)
+      release_tag="${2:-}"
+      shift 2
+      ;;
+    --tag=*)
+      release_tag="${1#--tag=}"
+      shift
+      ;;
     -h|--help)
       usage
       exit 0
@@ -80,9 +90,15 @@ if [[ "$skip_upload" == "true" ]]; then
   exit 0
 fi
 
+if [[ -z "$release_tag" ]]; then
+  echo "App Store Connect 업로드에는 현재 HEAD를 가리키는 --tag vX.Y.Z가 필요합니다." >&2
+  exit 1
+fi
+
 api_key_json_path="${APP_STORE_CONNECT_API_KEY_JSON_PATH:-}"
 temporary_dir=""
 temporary_deliver_metadata_dir=""
+authority_dir=""
 
 cleanup() {
   if [[ -n "$temporary_dir" ]]; then
@@ -90,6 +106,9 @@ cleanup() {
   fi
   if [[ -n "$temporary_deliver_metadata_dir" ]]; then
     rm -rf "$temporary_deliver_metadata_dir"
+  fi
+  if [[ -n "$authority_dir" ]]; then
+    rm -rf "$authority_dir"
   fi
 }
 trap cleanup EXIT
@@ -141,7 +160,34 @@ if [[ ! -f "$api_key_json_path" ]]; then
 fi
 
 app_identifier="$(node --input-type=module -e "const c=JSON.parse(await import('node:fs').then(fs=>fs.readFileSync('app-store/app-store.config.json','utf8'))); console.log(c.bundleId)")"
-app_version="$(node --input-type=module -e "const c=JSON.parse(await import('node:fs').then(fs=>fs.readFileSync('app-store/app-store.config.json','utf8'))); console.log(c.version.marketingVersion)")"
+
+AUTHORITY_SHA="9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5"
+AUTHORITY_SHA256="ca9ef5b4fe326323840b171f9e6ed069cb182d2aee8e88b72e352c57514d466b"
+authority_dir="$(mktemp -d)"
+authority_path="$authority_dir/tag-version-authority.mjs"
+curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
+  "https://raw.githubusercontent.com/seorilabs/.github/${AUTHORITY_SHA}/scripts/release/tag-version-authority.mjs" \
+  --output "$authority_path"
+(
+  cd "$authority_dir"
+  printf '%s  %s\n' "$AUTHORITY_SHA256" tag-version-authority.mjs | shasum -a 256 -c
+)
+
+git fetch --force --tags origin >/dev/null 2>&1
+head_sha="$(git rev-parse HEAD)"
+tag_sha="$(git rev-parse "${release_tag}^{commit}" 2>/dev/null || true)"
+if [[ "$tag_sha" != "$head_sha" ]]; then
+  echo "release tag가 현재 HEAD를 가리키지 않습니다: ${release_tag}=${tag_sha:-missing}, HEAD=${head_sha}" >&2
+  exit 1
+fi
+
+app_version="$(node --input-type=module - "$authority_path" "$release_tag" <<'NODE'
+import { pathToFileURL } from "node:url";
+
+const authority = await import(pathToFileURL(process.argv[2]));
+console.log(authority.deriveReleaseVersion(process.argv[3]).appleMarketingVersion);
+NODE
+)"
 
 fastlane_deliver_args=(
   deliver

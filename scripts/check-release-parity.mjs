@@ -62,8 +62,6 @@ const deployGooglePlayWorkflowPath = ".github/workflows/deploy-google-play.yml";
 const promoteGooglePlayWorkflowPath = ".github/workflows/promote-google-play.yml";
 const deployAppStoreWorkflowPath = ".github/workflows/deploy-app-store.yml";
 const androidBuildEnvPath = "build.env";
-const androidCloudBuildPath = "cloudbuild-android.yaml";
-const androidBuildScriptPath = "scripts/build-android.sh";
 const appStoreLocalBuildPath = "scripts/app-store-local-build.sh";
 const xcodeCloudPostClonePath = "apps/mobile/ios/ci_scripts/ci_post_clone.sh";
 const xcodeCloudPreBuildPath =
@@ -350,8 +348,6 @@ const deployGooglePlayWorkflow = read(deployGooglePlayWorkflowPath);
 const promoteGooglePlayWorkflow = read(promoteGooglePlayWorkflowPath);
 const deployAppStoreWorkflow = read(deployAppStoreWorkflowPath);
 const androidBuildEnv = read(androidBuildEnvPath);
-const androidCloudBuild = read(androidCloudBuildPath);
-const androidBuildScript = read(androidBuildScriptPath);
 const appStoreLocalBuild = read(appStoreLocalBuildPath);
 const xcodeCloudPostClone = read(xcodeCloudPostClonePath);
 const xcodeCloudPreBuild = read(xcodeCloudPreBuildPath);
@@ -967,7 +963,7 @@ assertIncludes(
 );
 assertIncludes(
   deployAppsInTossWorkflow,
-  "registry-url: https://npm.pkg.github.com",
+  "npm_registry_url: https://npm.pkg.github.com",
   deployAppsInTossWorkflowPath,
 );
 assertIncludes(
@@ -977,7 +973,7 @@ assertIncludes(
 );
 assertIncludes(
   deployAppsInTossWorkflow,
-  "NODE_AUTH_TOKEN: ${{ github.token }}",
+  "rn-deploy-ait.yml@9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5",
   deployAppsInTossWorkflowPath,
 );
 assertIncludes(
@@ -987,18 +983,8 @@ assertIncludes(
 );
 assertIncludes(
   deployGooglePlayWorkflow,
-  "GITHUB_PACKAGES_TOKEN: ${{ github.token }}",
+  "rn-deploy-google-play.yml@9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5",
   deployGooglePlayWorkflowPath,
-);
-assertIncludes(
-  androidBuildScript,
-  "//npm.pkg.github.com/:_authToken=",
-  androidBuildScriptPath,
-);
-assertIncludes(
-  androidBuildScript,
-  "node scripts/restore-mobile-firebase-config.mjs --android --require",
-  androidBuildScriptPath,
 );
 assertIncludes(
   deployGooglePlayWorkflow,
@@ -1007,37 +993,12 @@ assertIncludes(
 );
 assertIncludes(
   deployGooglePlayWorkflow,
-  "PLAY_GAMES_PROJECT_ID",
-  deployGooglePlayWorkflowPath,
-);
-assertIncludes(
-  deployGooglePlayWorkflow,
-  "PLAY_GAMES_LEADERBOARD_ID",
-  deployGooglePlayWorkflowPath,
-);
-assertIncludes(
-  deployGooglePlayWorkflow,
-  "runs-on: seorilabs-rpi-arm64",
+  "package_name: com.seorilabs.crosswordpuzzle",
   deployGooglePlayWorkflowPath,
 );
 assertNotIncludes(
   deployGooglePlayWorkflow,
-  "runs-on: ubuntu-latest",
-  deployGooglePlayWorkflowPath,
-);
-assertIncludes(
-  deployGooglePlayWorkflow,
-  "gcloud builds submit",
-  deployGooglePlayWorkflowPath,
-);
-assertIncludes(
-  deployGooglePlayWorkflow,
-  "gcloud config set billing/quota_project seorilabs-ci",
-  deployGooglePlayWorkflowPath,
-);
-assertIncludes(
-  deployGooglePlayWorkflow,
-  "gcloud storage rm --recursive",
+  "secrets: inherit",
   deployGooglePlayWorkflowPath,
 );
 assertMatches(
@@ -1087,47 +1048,9 @@ for (const automaticTrigger of ["push:", "pull_request:", "schedule:"]) {
   );
 }
 assertIncludes(
-  deployGooglePlayWorkflow,
-  'gcloud storage rm --recursive "$ARTIFACT_BUCKET"',
-  deployGooglePlayWorkflowPath,
-);
-assertIncludes(
-  deployGooglePlayWorkflow,
-  "actions/download-artifact@v8",
-  deployGooglePlayWorkflowPath,
-);
-const googlePlayToolingCheckoutCount = (
-  deployGooglePlayWorkflow.match(/ref:\s*\$\{\{ github\.sha \}\}/g) ?? []
-).length;
-if (googlePlayToolingCheckoutCount !== 2) {
-  fail(
-    `${deployGooglePlayWorkflowPath}: build와 upload는 모두 현재 workflow tooling SHA를 checkout해야 합니다.`,
-  );
-}
-assertIncludes(
   androidBuildEnv,
   "ANDROID_BUILDER_TAG=node24-jdk17-android36",
   androidBuildEnvPath,
-);
-assertIncludes(
-  androidCloudBuild,
-  "name: ${_ANDROID_BUILDER_IMAGE}:${_ANDROID_BUILDER_TAG}",
-  androidCloudBuildPath,
-);
-assertIncludes(
-  androidBuildScript,
-  ":app:bundleRelease",
-  androidBuildScriptPath,
-);
-assertIncludes(
-  androidBuildScript,
-  "EXPECTED_PLAY_UPLOAD_CERT_SHA256",
-  androidBuildScriptPath,
-);
-assertIncludes(
-  androidBuildScript,
-  "jarsigner -verify -strict",
-  androidBuildScriptPath,
 );
 assertIncludes(
   xcodeCloudPostClone,
@@ -1163,9 +1086,11 @@ assertIncludes(
 // post-build가 확인한다. 둘 중 하나만 있으면 버전이 조용히 어긋난다.
 assertIncludes(
   xcodeCloudPreBuild,
-  "scripts/resolve-release-version.mjs",
+  'AUTHORITY_SHA="9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5"',
   xcodeCloudPreBuildPath,
 );
+assertIncludes(xcodeCloudPreBuild, "xcode-cloud-apply-tag-version.mjs", xcodeCloudPreBuildPath);
+assertNotIncludes(xcodeCloudPreBuild, "CI_BUILD_NUMBER", xcodeCloudPreBuildPath);
 assertIncludes(
   xcodeCloudPostBuild,
   "CFBundleShortVersionString",
@@ -1186,7 +1111,6 @@ assertIncludes(
 );
 assertNotIncludes(deployAppStoreWorkflow, "macos-", deployAppStoreWorkflowPath);
 for (const [path, content] of [
-  [deployGooglePlayWorkflowPath, deployGooglePlayWorkflow],
   [deployAppStoreWorkflowPath, deployAppStoreWorkflow],
 ]) {
   assertIncludes(content, "actions/checkout@v7", path);
@@ -1197,6 +1121,23 @@ assertIncludes(
   "GAME_CENTER_LEADERBOARD_ID",
   appStoreLocalBuildPath,
 );
+assertIncludes(
+  appStoreLocalBuild,
+  'AUTHORITY_SHA="9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5"',
+  appStoreLocalBuildPath,
+);
+assertIncludes(
+  appStoreLocalBuild,
+  'authority.deriveReleaseVersion(process.argv[3])',
+  appStoreLocalBuildPath,
+);
+assertIncludes(
+  appStoreLocalBuild,
+  'tag_sha="$(git rev-parse "${tag}^{commit}"',
+  appStoreLocalBuildPath,
+);
+assertNotIncludes(appStoreLocalBuild, "--marketing-version", appStoreLocalBuildPath);
+assertNotIncludes(appStoreLocalBuild, "--build-number", appStoreLocalBuildPath);
 assertIncludes(agents, "3마켓 패리티", agentsPath);
 assertIncludes(agents, "packages/crossword-core", agentsPath);
 assertIncludes(marketParityDoc, "AppsInToss", marketParityDocPath);

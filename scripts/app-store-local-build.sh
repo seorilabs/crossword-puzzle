@@ -6,12 +6,22 @@ cd "$repo_root"
 
 mode="unsigned"
 tag=""
-marketing_version=""
-build_number=""
 install_deps="false"
 skip_pods="false"
 export_upload="false"
 archive_path=""
+authority_dir=""
+temporary_dir=""
+
+cleanup() {
+  if [[ -n "$authority_dir" ]]; then
+    rm -rf "$authority_dir"
+  fi
+  if [[ -n "$temporary_dir" ]]; then
+    rm -rf "$temporary_dir"
+  fi
+}
+trap cleanup EXIT
 
 usage() {
   cat <<'EOF'
@@ -23,9 +33,7 @@ Default:
 Options:
   --archive             Apple Distribution signed archive를 생성합니다.
   --export-upload       --archive 후 App Store Connect로 export/upload합니다.
-  --tag vX.Y.Z          MARKETING_VERSION=X.Y.Z, build=major*1000000+minor*1000+patch
-  --marketing-version X 직접 MARKETING_VERSION을 지정합니다.
-  --build-number N      직접 CURRENT_PROJECT_VERSION을 지정합니다.
+  --tag vX.Y.Z          현재 HEAD를 가리키는 exact stable 태그를 중앙 정본으로 사용합니다.
   --archive-path PATH   archive 출력 경로를 지정합니다.
   --install-deps        npm ci / npm ci --prefix apps/mobile을 먼저 실행합니다.
   --skip-pods           bundle install / pod install을 건너뜁니다.
@@ -62,22 +70,6 @@ while [[ $# -gt 0 ]]; do
       ;;
     --tag=*)
       tag="${1#--tag=}"
-      shift
-      ;;
-    --marketing-version)
-      marketing_version="${2:-}"
-      shift 2
-      ;;
-    --marketing-version=*)
-      marketing_version="${1#--marketing-version=}"
-      shift
-      ;;
-    --build-number)
-      build_number="${2:-}"
-      shift 2
-      ;;
-    --build-number=*)
-      build_number="${1#--build-number=}"
       shift
       ;;
     --archive-path)
@@ -133,40 +125,6 @@ if [[ -f "$app_store_connect_env" ]] && {
   source "$app_store_connect_env"
 fi
 
-if [[ -n "$tag" ]]; then
-  version_values="$(TAG="$tag" node --input-type=module <<'NODE'
-const match = /^v(\d+)\.(\d+)\.(\d+)$/.exec(process.env.TAG);
-if (match == null) {
-  throw new Error(`release tag must match vX.Y.Z. Received: ${process.env.TAG}`);
-}
-const major = Number(match[1]);
-const minor = Number(match[2]);
-const patch = Number(match[3]);
-console.log(`${major}.${minor}.${patch} ${Math.max(major * 1000000 + minor * 1000 + patch, 1)}`);
-NODE
-)"
-  marketing_version="${version_values%% *}"
-  build_number="${version_values##* }"
-fi
-
-if [[ -z "$marketing_version" ]]; then
-  marketing_version="$(node --input-type=module -e "const p=JSON.parse(await import('node:fs').then(fs=>fs.readFileSync('package.json','utf8'))); console.log(p.version)")"
-fi
-
-if [[ -z "$build_number" ]]; then
-  build_number="$(VERSION="$marketing_version" node --input-type=module <<'NODE'
-const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(process.env.VERSION);
-if (match == null) {
-  throw new Error(`MARKETING_VERSION must match X.Y.Z. Received: ${process.env.VERSION}`);
-}
-const major = Number(match[1]);
-const minor = Number(match[2]);
-const patch = Number(match[3]);
-console.log(Math.max(major * 1000000 + minor * 1000 + patch, 1));
-NODE
-)"
-fi
-
 if [[ -n "${FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64:-}" ]]; then
   node scripts/restore-mobile-firebase-config.mjs --ios --require
 fi
@@ -197,18 +155,46 @@ if [[ "$mode" == "unsigned" ]]; then
   exit 0
 fi
 
+if [[ -z "$tag" ]]; then
+  echo "--archive/--export-upload에는 현재 HEAD를 가리키는 --tag vX.Y.Z가 필요합니다." >&2
+  exit 1
+fi
+
+AUTHORITY_SHA="9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5"
+AUTHORITY_SHA256="ca9ef5b4fe326323840b171f9e6ed069cb182d2aee8e88b72e352c57514d466b"
+authority_dir="$(mktemp -d)"
+authority_path="$authority_dir/tag-version-authority.mjs"
+curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
+  "https://raw.githubusercontent.com/seorilabs/.github/${AUTHORITY_SHA}/scripts/release/tag-version-authority.mjs" \
+  --output "$authority_path"
+(
+  cd "$authority_dir"
+  printf '%s  %s\n' "$AUTHORITY_SHA256" tag-version-authority.mjs | shasum -a 256 -c
+)
+
+git fetch --force --tags origin >/dev/null 2>&1
+head_sha="$(git rev-parse HEAD)"
+tag_sha="$(git rev-parse "${tag}^{commit}" 2>/dev/null || true)"
+if [[ "$tag_sha" != "$head_sha" ]]; then
+  echo "release tag가 현재 HEAD를 가리키지 않습니다: ${tag}=${tag_sha:-missing}, HEAD=${head_sha}" >&2
+  exit 1
+fi
+
+version_values="$(node --input-type=module - "$authority_path" "$tag" <<'NODE'
+import { pathToFileURL } from "node:url";
+
+const authority = await import(pathToFileURL(process.argv[2]));
+const binding = authority.deriveReleaseVersion(process.argv[3]);
+console.log(`${binding.appleMarketingVersion} ${binding.appleBuildNumber}`);
+NODE
+)"
+marketing_version="${version_values%% *}"
+build_number="${version_values##* }"
+
 team_id="${APPLE_TEAM_ID:-$config_team_id}"
 profile_name="${IOS_PROVISIONING_PROFILE_NAME:-$config_profile_name}"
-temporary_dir=""
 keychain_path=""
 api_key_path=""
-
-cleanup() {
-  if [[ -n "$temporary_dir" ]]; then
-    rm -rf "$temporary_dir"
-  fi
-}
-trap cleanup EXIT
 
 prepare_app_store_connect_api_key() {
   if [[ -n "$api_key_path" ]]; then
