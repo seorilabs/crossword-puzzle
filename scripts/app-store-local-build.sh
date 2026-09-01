@@ -172,7 +172,7 @@ curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
   printf '%s  %s\n' "$AUTHORITY_SHA256" tag-version-authority.mjs | shasum -a 256 -c
 )
 
-git fetch --force --tags origin >/dev/null 2>&1
+git fetch --force --tags origin >/dev/null
 head_sha="$(git rev-parse HEAD)"
 tag_sha="$(git rev-parse "${tag}^{commit}" 2>/dev/null || true)"
 if [[ "$tag_sha" != "$head_sha" ]]; then

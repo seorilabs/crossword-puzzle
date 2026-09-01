@@ -24,7 +24,7 @@ curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
   printf '%s  %s\n' "$AUTHORITY_SHA256" tag-version-authority.mjs | shasum -a 256 -c
 )
 
-git -C "$REPO" fetch --force --tags origin >/dev/null 2>&1
+git -C "$REPO" fetch --force --tags origin >/dev/null
 node "${authority_dir}/xcode-cloud-apply-tag-version.mjs" \
   --tag "$RELEASE_TAG" \
   --repository "$REPO" \
