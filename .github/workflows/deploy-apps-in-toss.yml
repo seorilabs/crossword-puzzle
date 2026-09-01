@@ -41,10 +41,14 @@ jobs:
       npm_registry_url: https://npm.pkg.github.com
       npm_scope: "@seorilabs"
       install_command: npm ci
-      build_command: >-
-        test -n "${{ vars.RETURN_REMINDER_TEMPLATE_CODE }}" &&
+      build_command: |
+        template_code="${{ vars.RETURN_REMINDER_TEMPLATE_CODE }}"
+        if [ -z "${template_code//[[:space:]]/}" ]; then
+          echo "::error::RETURN_REMINDER_TEMPLATE_CODE repository variable is required."
+          exit 1
+        fi
         VITE_PUZZLE_PACK_BASE_URL="${{ vars.PUZZLE_PACK_BASE_URL || 'https://crossword-puzzle-79ae0.web.app' }}"
-        VITE_RETURN_REMINDER_TEMPLATE_CODE="${{ vars.RETURN_REMINDER_TEMPLATE_CODE }}"
+        VITE_RETURN_REMINDER_TEMPLATE_CODE="$template_code"
         VITE_APP_VERSION="$SEORI_RELEASE_VERSION"
         VITE_RELEASE_TAG="$SEORI_RELEASE_TAG"
         npm run build

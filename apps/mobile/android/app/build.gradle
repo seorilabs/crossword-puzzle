@@ -16,8 +16,12 @@ def appVersionName = (System.getenv("APP_VERSION_NAME") ?: project.findProperty(
 def appVersionCode = (System.getenv("APP_VERSION_CODE") ?: project.findProperty("APP_VERSION_CODE") ?: "1000").toString().toInteger()
 def playGamesProjectId = (System.getenv("PLAY_GAMES_PROJECT_ID") ?: project.findProperty("PLAY_GAMES_PROJECT_ID") ?: "").toString().trim()
 def playGamesLeaderboardId = (System.getenv("PLAY_GAMES_LEADERBOARD_ID") ?: project.findProperty("PLAY_GAMES_LEADERBOARD_ID") ?: "").toString().trim()
+def releaseTaskRequested = gradle.startParameter.taskNames.any { it.toLowerCase().contains("release") }
 if (appVersionCode <= 0) {
     throw new GradleException("APP_VERSION_CODE must be greater than 0.")
+}
+if (releaseTaskRequested && (playGamesProjectId.isEmpty() || playGamesLeaderboardId.isEmpty())) {
+    throw new GradleException("PLAY_GAMES_PROJECT_ID and PLAY_GAMES_LEADERBOARD_ID are required for release builds.")
 }
 
 def googleServicesFile = file("google-services.json")

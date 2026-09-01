@@ -13,74 +13,40 @@ const deployWorkflow = readFileSync(
 const readme = readFileSync(new URL("README.md", repoRoot), "utf8");
 const appSource = readFileSync(new URL("src/App.tsx", repoRoot), "utf8");
 
-// 배포 잡의 잡 레벨 env 블록(`    env:` ~ `    steps:`)만 잘라, 주입 키가 실제로
-// 빌드 스텝이 process env로 받는 위치에 있는지 검증한다.
-const jobEnvBlock = deployWorkflow.slice(
-  deployWorkflow.indexOf("\n    env:"),
-  deployWorkflow.indexOf("\n    steps:"),
-);
-
-// 잡 레벨 env 블록을 key→value 맵으로 파싱한다. `      KEY: VALUE`(6칸 들여쓰기)
-// 라인만 취해, 텍스트 존재가 아니라 "구조상 env 키가 존재하고 그 값이 무엇인지"로
-// 인수조건을 검증한다.
-function parseJobEnv(block: string): Record<string, string> {
-  const env: Record<string, string> = {};
-  for (const line of block.split("\n")) {
-    const match = /^ {6}([A-Z0-9_]+):\s*(.*)$/.exec(line);
-    if (match) {
-      env[match[1]] = match[2].trim();
-    }
-  }
-  return env;
-}
-
-const jobEnv = parseJobEnv(jobEnvBlock);
-
 describe("복귀 리마인더 배포 배선 설정 (#319)", () => {
-  it("AC-1: .github/workflows/deploy-apps-in-toss.yml 빌드 env에 VITE_RETURN_REMINDER_TEMPLATE_CODE를 repo variable로 주입한다", () => {
-    // 슬라이스가 실제로 env 블록을 잡았는지(가드): 두 마커가 모두 존재해야 한다.
-    assert.ok(deployWorkflow.includes("\n    env:"));
-    assert.ok(deployWorkflow.includes("\n    steps:"));
-    // 구조 검증: env 맵에 해당 키가 존재하고, 값이 repo variable를 '' 폴백으로
-    // 참조하는 표현식이어야 한다(텍스트 존재가 아니라 파싱된 키/값으로 확인).
-    assert.ok(
-      Object.prototype.hasOwnProperty.call(
-        jobEnv,
-        "VITE_RETURN_REMINDER_TEMPLATE_CODE",
-      ),
-      "잡 env에 VITE_RETURN_REMINDER_TEMPLATE_CODE 키가 있어야 한다",
+  it("AC-1: 중앙 custom build 명령에 RETURN_REMINDER_TEMPLATE_CODE를 주입한다", () => {
+    assert.match(deployWorkflow, /build_command:\s*\|/);
+    assert.match(
+      deployWorkflow,
+      /template_code="\$\{\{ vars\.RETURN_REMINDER_TEMPLATE_CODE \}\}"/,
     );
-    assert.equal(
-      jobEnv.VITE_RETURN_REMINDER_TEMPLATE_CODE,
-      "${{ vars.RETURN_REMINDER_TEMPLATE_CODE || '' }}",
-    );
-    // 이 env를 소비하는 빌드 스텝이 존재한다(npm run build).
-    assert.match(deployWorkflow, /run:\s*npm run build/);
+    assert.match(deployWorkflow, /VITE_RETURN_REMINDER_TEMPLATE_CODE="\$template_code"/);
+    assert.match(deployWorkflow, /npm run build/);
   });
 
   it("AC-2: repo variable가 비어 있거나 공백이면 빌드 전에 exit 1로 차단한다", () => {
     assert.ok(
       deployWorkflow.includes(
-        'if [ -z "${VITE_RETURN_REMINDER_TEMPLATE_CODE//[[:space:]]/}" ]; then',
+        'if [ -z "${template_code//[[:space:]]/}" ]; then',
       ),
       "공백 제거 후 빈 템플릿 코드를 검증해야 한다",
     );
     assert.match(deployWorkflow, /::error::RETURN_REMINDER_TEMPLATE_CODE/);
     assert.match(deployWorkflow, /exit 1/);
-    assert.ok(
-      deployWorkflow.indexOf("Validate Apps in Toss deployment configuration") <
-        deployWorkflow.indexOf("Build .ait bundle"),
-      "필수 변수 검증은 빌드보다 먼저 실행해야 한다",
-    );
+    assert.ok(deployWorkflow.indexOf("if [ -z") < deployWorkflow.indexOf("npm run build"));
     assert.doesNotMatch(deployWorkflow, /Warn on missing return reminder/);
     assert.doesNotMatch(deployWorkflow, /::warning::/);
   });
 
-  it("AIT workflow는 RPI runner와 공식 stable action v7을 사용한다", () => {
-    assert.match(deployWorkflow, /runs-on:\s*seorilabs-rpi-arm64/);
-    assert.match(deployWorkflow, /uses:\s*actions\/checkout@v7/);
-    assert.match(deployWorkflow, /uses:\s*actions\/setup-node@v7/);
-    assert.doesNotMatch(deployWorkflow, /actions\/(checkout|setup-node)@v6/);
+  it("AIT workflow는 immutable 중앙 caller와 named secret 계약을 사용한다", () => {
+    assert.match(
+      deployWorkflow,
+      /rn-deploy-ait\.yml@9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5/,
+    );
+    assert.match(deployWorkflow, /APPS_IN_TOSS_API_KEY:\s*\$\{\{ secrets\.APPS_IN_TOSS_API_KEY \}\}/);
+    assert.doesNotMatch(deployWorkflow, /secrets:\s*inherit/);
+    assert.doesNotMatch(deployWorkflow, /uses:\s*actions\//);
+    assert.doesNotMatch(deployWorkflow, /runs-on:/);
   });
 
   it("AC-5: README에 repo variable RETURN_REMINDER_TEMPLATE_CODE 등록 절차를 반영한다", () => {
