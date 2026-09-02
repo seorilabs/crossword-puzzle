@@ -57,6 +57,7 @@
     },
     "ios": {
       "modulesProvider": {
+        "NativeAppInfo": "RCTNativeAppInfo",
         "NativeLeaderboard": "RCTNativeLeaderboard"
       }
     }
