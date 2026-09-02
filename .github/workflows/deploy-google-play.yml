@@ -62,8 +62,6 @@ jobs:
       changes_not_sent_for_review: ${{ inputs.changes_not_sent_for_review }}
       package_manager: npm
       node_version: 24.16.0
-      npm_registry_url: https://npm.pkg.github.com
-      npm_scope: "@seorilabs"
       java_version: 17
       android_dir: apps/mobile/android
       package_name: com.seorilabs.crosswordpuzzle

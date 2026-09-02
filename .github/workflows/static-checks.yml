@@ -23,8 +23,6 @@ jobs:
       runs_on: ${{ github.event.repository.private && 'seorilabs-rpi-arm64' || 'ubuntu-latest' }}
       node_version: "24"
       package_manager: npm
-      npm_registry_url: https://npm.pkg.github.com
-      npm_scope: "@seorilabs"
       install_command: |
         npm ci
         npm ci --prefix apps/mobile

@@ -943,32 +943,30 @@ assertIncludes(
   "npm run check:mobile",
   staticChecksWorkflowPath,
 );
-assertIncludes(
+// @seorilabs/platform-sdk 는 npm 공개 레지스트리에서 설치한다. GitHub Packages
+// 라우팅이 되살아나면 무인증 환경의 설치·검증이 다시 깨지므로 부재를 고정한다.
+assertNotIncludes(
   staticChecksWorkflow,
-  "npm_registry_url: https://npm.pkg.github.com",
+  "npm_registry_url:",
   staticChecksWorkflowPath,
 );
-assertIncludes(
-  staticChecksWorkflow,
-  'npm_scope: "@seorilabs"',
-  staticChecksWorkflowPath,
-);
-// Reusable workflows cannot elevate permissions granted by their caller. AIT와
-// Google Play 배포가 private package를 설치하므로 Deploy All도 read 권한을 연다.
+assertNotIncludes(staticChecksWorkflow, "npm_scope:", staticChecksWorkflowPath);
+// Reusable workflows cannot elevate permissions granted by their caller.
+// 재사용 배포 워크플로우가 packages: read 를 선언하므로 caller도 열어 둔다.
 assertIncludes(deployAllWorkflow, "packages: read", deployAllWorkflowPath);
 assertIncludes(
   deployAppsInTossWorkflow,
   "packages: read",
   deployAppsInTossWorkflowPath,
 );
-assertIncludes(
+assertNotIncludes(
   deployAppsInTossWorkflow,
-  "npm_registry_url: https://npm.pkg.github.com",
+  "npm_registry_url:",
   deployAppsInTossWorkflowPath,
 );
-assertIncludes(
+assertNotIncludes(
   deployAppsInTossWorkflow,
-  'npm_scope: "@seorilabs"',
+  "npm_scope:",
   deployAppsInTossWorkflowPath,
 );
 assertIncludes(
@@ -979,6 +977,16 @@ assertIncludes(
 assertIncludes(
   deployGooglePlayWorkflow,
   "packages: read",
+  deployGooglePlayWorkflowPath,
+);
+assertNotIncludes(
+  deployGooglePlayWorkflow,
+  "npm_registry_url:",
+  deployGooglePlayWorkflowPath,
+);
+assertNotIncludes(
+  deployGooglePlayWorkflow,
+  "npm_scope:",
   deployGooglePlayWorkflowPath,
 );
 assertIncludes(
@@ -1062,14 +1070,16 @@ assertIncludes(
   "FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64",
   xcodeCloudPostClonePath,
 );
-assertIncludes(
+// Xcode Cloud 도 npm 공개 레지스트리에서 설치한다 — 레지스트리 토큰 요구가
+// 되살아나면 Secret 없는 빌드가 깨지므로 부재를 고정한다.
+assertNotIncludes(
   xcodeCloudPostClone,
   "GITHUB_PACKAGES_TOKEN",
   xcodeCloudPostClonePath,
 );
-assertIncludes(
+assertNotIncludes(
   xcodeCloudPostClone,
-  "//npm.pkg.github.com/:_authToken=",
+  "_authToken",
   xcodeCloudPostClonePath,
 );
 assertIncludes(
