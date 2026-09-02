@@ -11,6 +11,7 @@ import {
   logFirebaseAnalyticsEvent,
   logFirebaseScreenView,
 } from './firebaseClient';
+import NativeAppInfo from './specs/NativeAppInfo';
 
 // 분석 이벤트 팬아웃 seam(Android/iOS RN). 웹(src/adapters/analyticsSinks.ts)과 같은 구조를
 // RN용으로 둔다: sink 레지스트리로 두어 자체 지표 서버 도입이 "sink 하나 추가"로 끝나게 한다.
@@ -23,10 +24,23 @@ import {
 export const currentMarket: GameMarket =
   Platform.OS === 'ios' ? 'app-store' : 'google-play';
 
-// 이 빌드의 릴리즈 버전(release_version 계측 값). RN JS 레이어에는 태그 유래 빌드 env
-// 브리지가 없으므로 패키지 유래 상수(apps/mobile/package.json version)를 쓴다. 값 형식은
-// core가 정규화한다. 태그 유래 주입(네이티브 버전 브리지)은 후속 과제다(#293).
-export const RELEASE_VERSION = resolveReleaseVersion(packageVersion);
+// 이 빌드의 릴리즈 버전(release_version 계측 값). 첫 후보는 네이티브 버전 브리지
+// (Android versionName / iOS CFBundleShortVersionString)로, 태그 유래 실제 릴리즈
+// 버전이다. 브리지가 주입되지 않았거나 값이 비면 apps/mobile/package.json version 으로
+// 폴백한다 — 그 값은 고정 상수라 릴리즈 버전 소스가 아니다. 값 형식은 core가 정규화한다.
+function readNativeAppVersion(): string | null {
+  try {
+    return NativeAppInfo?.getAppVersion() ?? null;
+  } catch {
+    // 브리지 호출 실패는 분석 축 하나가 부정확해질 뿐 플레이를 끊을 이유가 없다.
+    return null;
+  }
+}
+
+export const RELEASE_VERSION = resolveReleaseVersion(
+  readNativeAppVersion(),
+  packageVersion,
+);
 
 export type AnalyticsEvent =
   | {kind: 'screen'; name: string; params: CompactTelemetryParams}
