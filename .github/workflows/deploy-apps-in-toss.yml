@@ -38,8 +38,6 @@ jobs:
       ait_dir: .
       package_manager: npm
       node_version: 24.16.0
-      npm_registry_url: https://npm.pkg.github.com
-      npm_scope: "@seorilabs"
       install_command: npm ci
       build_command: |
         template_code="${{ vars.RETURN_REMINDER_TEMPLATE_CODE }}"
