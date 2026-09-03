@@ -2,6 +2,7 @@ export type RewardedAdRetryAttempt = 0 | 1;
 
 export type RewardedAdRetryStatus =
   | "dismissed"
+  | "error"
   | "failed"
   | "rewarded"
   | "timeout"
@@ -61,6 +62,10 @@ export function trackRewardedHintAdResult(
 export type RewardedHintAdFlowOptions<T> = {
   attempt: (retry: RewardedAdRetryAttempt) => Promise<T>;
   getStatus: (result: T) => RewardedAdRetryStatus;
+  // attempt()가 예외를 던지면(#381) 이 값으로 정규화해 기존 성공/실패 파이프라인
+  // (onAttemptResult → getStatus → onFailure)을 그대로 태운다. 반환값의
+  // getStatus 결과는 "error"처럼 기존 failed/closed 등과 구분 가능해야 한다.
+  mapError: (error: unknown, retry: RewardedAdRetryAttempt) => T;
   onAttemptResult: (result: T, retry: RewardedAdRetryAttempt) => void;
   onAttemptStart: (retry: RewardedAdRetryAttempt) => void;
   onFailure: (result: T, retry: RewardedAdRetryAttempt) => void;
@@ -96,6 +101,7 @@ export async function runRewardedAdWithSingleRetry<T>(
 export async function runRewardedHintAdFlow<T>({
   attempt,
   getStatus,
+  mapError,
   onAttemptResult,
   onAttemptStart,
   onFailure,
@@ -109,7 +115,15 @@ export async function runRewardedHintAdFlow<T>({
     const execution = await runRewardedAdWithSingleRetry(
       async (retry) => {
         onAttemptStart(retry);
-        const result = await attempt(retry);
+        // attempt()가 예외를 던져도 밖으로 전파하지 않는다(#381). 그러지 않으면
+        // onAttemptResult·onFailure가 전혀 호출되지 않고 결과 이벤트도, 실패
+        // 안내도 남지 않은 채 요청이 그대로 사라진다.
+        let result: T;
+        try {
+          result = await attempt(retry);
+        } catch (error) {
+          result = mapError(error, retry);
+        }
         onAttemptResult(result, retry);
         return result;
       },

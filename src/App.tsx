@@ -2307,6 +2307,13 @@ function App() {
           });
         }),
       getStatus: (result) => result.status,
+      // [#381] 웹 어댑터(loadAndShowFullScreenAd)는 항상 FullScreenAdResult로
+      // 정착하고 예외를 던지지 않는다. 공유 코어 인터페이스가 요구하는 안전망만
+      // 채운다 — 실제로 호출될 것으로 기대하지 않으며, 웹 광고 흐름은 바꾸지 않는다.
+      mapError: (): FullScreenAdResult => ({
+        reason: "exception",
+        status: "failed",
+      }),
       onAttemptResult: (result, retry) => {
         trackRewardedHintAdResult(
           telemetry,

@@ -16,13 +16,21 @@ import {
 
 type Result = { status: RewardedAdRetryStatus };
 
-function createAttempt(statuses: RewardedAdRetryStatus[]) {
+// [#381] 특정 시도에서 attempt()가 예외를 던지는 경우를 시뮬레이션하는 마커.
+const THROW = Symbol("throw");
+type AttemptOutcome = RewardedAdRetryStatus | typeof THROW;
+
+function createAttempt(outcomes: AttemptOutcome[]) {
   const retries: number[] = [];
 
   return {
     attempt: async (retry: 0 | 1): Promise<Result> => {
       retries.push(retry);
-      return { status: statuses[retry] ?? statuses.at(-1) ?? "failed" };
+      const outcome = outcomes[retry] ?? outcomes.at(-1) ?? "failed";
+      if (outcome === THROW) {
+        throw new Error("ad attempt threw");
+      }
+      return { status: outcome };
     },
     retries,
   };
@@ -95,13 +103,14 @@ type FlowEvent = {
   status?: RewardedAdRetryStatus;
 };
 
-async function runFlow(statuses: RewardedAdRetryStatus[]) {
+async function runFlow(outcomes: AttemptOutcome[]) {
   const events: FlowEvent[] = [];
-  const attempt = createAttempt(statuses);
+  const attempt = createAttempt(outcomes);
 
   const execution = await runRewardedHintAdFlow({
     attempt: attempt.attempt,
     getStatus: (result) => result.status,
+    mapError: (): Result => ({ status: "error" }),
     onAttemptResult: (result, retry) =>
       events.push({
         name: REWARDED_HINT_AD_RESULT_EVENT,
@@ -228,5 +237,34 @@ describe("runRewardedHintAdFlow lifecycle (#277)", () => {
       { name: "failure_notice", retry: 0, status: "dismissed" },
       { name: "idle" },
     ]);
+  });
+
+  it("#381: 첫 시도가 예외를 던지면 예외를 밖으로 전파하지 않고 error 상태로 실패 종료한다", async () => {
+    const { events, execution } = await runFlow([THROW]);
+
+    assert.deepEqual(events, [
+      { name: "loading" },
+      { name: "rewarded_hint_ad_request", retry: 0 },
+      { name: "rewarded_hint_ad_result", retry: 0, status: "error" },
+      { name: "failure_notice", retry: 0, status: "error" },
+      { name: "idle" },
+    ]);
+    assert.deepEqual(execution, { result: { status: "error" }, retry: 0 });
+  });
+
+  it("#381: 재시도 대상 실패 후 재시도 시도에서 예외를 던져도 error 상태로 실패 종료한다", async () => {
+    const { events, execution } = await runFlow(["failed", THROW]);
+
+    assert.deepEqual(events, [
+      { name: "loading" },
+      { name: "rewarded_hint_ad_request", retry: 0 },
+      { name: "rewarded_hint_ad_result", retry: 0, status: "failed" },
+      { name: "retry_notice", status: "failed" },
+      { name: "rewarded_hint_ad_request", retry: 1 },
+      { name: "rewarded_hint_ad_result", retry: 1, status: "error" },
+      { name: "failure_notice", retry: 1, status: "error" },
+      { name: "idle" },
+    ]);
+    assert.deepEqual(execution, { result: { status: "error" }, retry: 1 });
   });
 });
