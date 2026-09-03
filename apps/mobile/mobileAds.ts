@@ -41,7 +41,7 @@ export type MobileAdRequestOptions = {
 
 export type RewardedAdResult = {
   events: MobileAdEvent[];
-  status: 'closed' | 'failed' | 'rewarded';
+  status: 'closed' | 'error' | 'failed' | 'rewarded';
 };
 
 export type InterstitialAdResult = {
@@ -66,11 +66,25 @@ export function getMobileRewardedAdRetryStatus(
     return 'dismissed';
   }
 
+  if (result.status === 'error') {
+    return 'error';
+  }
+
   return result.events.some(event =>
     unsupportedRewardedEventTypes.has(event.type),
   )
     ? 'unsupported'
     : 'failed';
+}
+
+// [#381] showRewardedAd()가 예외를 던지면(로드 실패 등) runRewardedHintAdFlow의
+// mapError가 이 결과로 정규화한다. status를 'failed'가 아닌 'error'로 남겨야
+// rewarded_hint_ad_result의 ad_status에서 정상 실패 경로와 구분된다.
+export function mapRewardedAdRetryError(error: unknown): RewardedAdResult {
+  return {
+    events: [{ errorCode: getMobileAdErrorCode(error), type: 'error' }],
+    status: 'error',
+  };
 }
 
 const loadTimeoutMs = 15000;

@@ -130,6 +130,7 @@ import { createMobileDailyHintWalletRepository } from './dailyHintWalletReposito
 import {
   initializeMobileAds,
   getMobileRewardedAdRetryStatus,
+  mapRewardedAdRetryError,
   openMobileAdsInspector,
   showRewardedAd,
   type MobileAdUnitMode,
@@ -2101,6 +2102,7 @@ function AppContent() {
         return result;
       },
       getStatus: getMobileRewardedAdRetryStatus,
+      mapError: mapRewardedAdRetryError,
       onAttemptResult: (result, retry) => {
         trackRewardedHintAdResult(
           telemetry,
@@ -2463,7 +2465,9 @@ function AppContent() {
     }
 
     if (remainingHintCredits === 0) {
-      requestRewardedHintCredits();
+      // [#381] attempt() 예외는 runRewardedHintAdFlow 안에서 정규화되지만,
+      // 요청 진입점 자체가 미처리 rejection을 남기지 않도록 방어적으로 처리한다.
+      requestRewardedHintCredits().catch(() => {});
       return;
     }
 
