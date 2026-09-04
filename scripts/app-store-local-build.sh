@@ -164,7 +164,7 @@ fi
   exit 1
 }
 
-AUTHORITY_SHA="9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5"
+AUTHORITY_SHA="6db01149a7700c0557bbeaf2e045aac7df0e78f2"
 AUTHORITY_SHA256="ca9ef5b4fe326323840b171f9e6ed069cb182d2aee8e88b72e352c57514d466b"
 authority_dir="$(mktemp -d)"
 authority_path="$authority_dir/tag-version-authority.mjs"
