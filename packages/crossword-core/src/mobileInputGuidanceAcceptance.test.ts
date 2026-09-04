@@ -39,7 +39,7 @@ describe("#340 RN 첫 입력 가이드와 막힘 프롬프트 인수조건", () 
     assert.match(mobileApp, /attempt_number: mission\.attemptsUsed/);
     assert.match(
       mobileApp,
-      /elapsed_seconds: getElapsedSeconds\(mission\.lastStartedAt\)/,
+      /elapsed_seconds: getElapsedSeconds\(\s*mission\.lastStartedAt/,
     );
   });
 
