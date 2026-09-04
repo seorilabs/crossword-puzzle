@@ -1096,11 +1096,23 @@ assertIncludes(
 // post-build가 확인한다. 둘 중 하나만 있으면 버전이 조용히 어긋난다.
 assertIncludes(
   xcodeCloudPreBuild,
-  'AUTHORITY_SHA="9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5"',
+  'AUTHORITY_SHA="6db01149a7700c0557bbeaf2e045aac7df0e78f2"',
   xcodeCloudPreBuildPath,
 );
+assertIncludes(xcodeCloudPreBuild, "1da1dce81a5194a37f7a31475c29d899d95eb6da9ae1460927fe439aa329752c", xcodeCloudPreBuildPath);
 assertIncludes(xcodeCloudPreBuild, "xcode-cloud-apply-tag-version.mjs", xcodeCloudPreBuildPath);
-assertNotIncludes(xcodeCloudPreBuild, "CI_BUILD_NUMBER", xcodeCloudPreBuildPath);
+// Apple build number 정본은 Xcode Cloud의 CI_BUILD_NUMBER다(중앙 계약 schemaVersion 2의
+// appleBuildNumberExceptions). 값 검증과 중앙 binding 대조가 둘 다 있어야 한다. 예전에는
+// 이 문자열을 금지했는데, 그때는 실행 번호 파생을 막는 것이 계약이었다.
+assertIncludes(xcodeCloudPreBuild, 'CLOUD_BUILD_NUMBER="${CI_BUILD_NUMBER:-}"', xcodeCloudPreBuildPath);
+assertIncludes(
+  xcodeCloudPreBuild,
+  '"$binding_build_number" != "$CLOUD_BUILD_NUMBER"',
+  xcodeCloudPreBuildPath,
+);
+// 태그 파생 build number를 돌려주던 pin으로 되돌아가면 archive가 다시 어긋난다.
+assertNotIncludes(xcodeCloudPreBuild, "9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5", xcodeCloudPreBuildPath);
+assertNotIncludes(xcodeCloudPreBuild, "b399afde0016e23947e173437e266aa83071079d1345b41ff580ebfe63357d6f", xcodeCloudPreBuildPath);
 assertIncludes(
   xcodeCloudPostBuild,
   "CFBundleShortVersionString",
@@ -1139,9 +1151,12 @@ assertIncludes(
   "GAME_CENTER_LEADERBOARD_ID",
   appStoreLocalBuildPath,
 );
+// 로컬 xcodebuild 경로는 Xcode Cloud가 아니므로 Apple build number가 계속 태그 파생
+// encoded-version이다. pin만 같은 중앙 commit으로 맞춘다(tag-version-authority.mjs는
+// 두 commit에서 바이트 동일).
 assertIncludes(
   appStoreLocalBuild,
-  'AUTHORITY_SHA="9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5"',
+  'AUTHORITY_SHA="6db01149a7700c0557bbeaf2e045aac7df0e78f2"',
   appStoreLocalBuildPath,
 );
 assertIncludes(
