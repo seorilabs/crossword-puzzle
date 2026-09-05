@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 const sharedPolicyPath = "packages/crossword-core/src/uiPolicy.ts";
 const sharedLaunchConfigPath = "packages/crossword-core/src/launchConfig.ts";
@@ -53,6 +53,9 @@ const iosLeaderboardEntitlementsPath =
 const iosInfoPlistPath = "apps/mobile/ios/CrosswordPuzzleMobile/Info.plist";
 const mobilePodfilePath = "apps/mobile/ios/Podfile";
 const mobilePackagePath = "apps/mobile/package.json";
+const rootLockPath = "package-lock.json";
+const mobileLockPath = "apps/mobile/package-lock.json";
+const pnpmLockPath = "pnpm-lock.yaml";
 const gitignorePath = ".gitignore";
 const staticChecksWorkflowPath = ".github/workflows/static-checks.yml";
 const deployAllWorkflowPath = ".github/workflows/deploy-all.yml";
@@ -129,6 +132,8 @@ const sharedLaunchConfigExports = [
   "normalizeLaunchConfig",
 ];
 
+const platformSdkVersion = "0.4.0";
+
 const failures = [];
 
 function read(path) {
@@ -166,6 +171,31 @@ function assertMatches(content, pattern, label, description) {
 function assertNotMatches(content, pattern, label, description) {
   if (pattern.test(content)) {
     fail(`${label}: must not include ${description}`);
+  }
+}
+
+function assertLockPinsPlatformSdk(lockPath) {
+  let lock;
+
+  try {
+    lock = JSON.parse(read(lockPath));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    fail(`${lockPath}: unable to parse lockfile (${message})`);
+    return;
+  }
+
+  const entry = lock.packages?.["node_modules/@seorilabs/platform-sdk"];
+
+  if (!entry) {
+    fail(`${lockPath}: missing @seorilabs/platform-sdk entry`);
+    return;
+  }
+
+  if (entry.version !== platformSdkVersion) {
+    fail(
+      `${lockPath}: @seorilabs/platform-sdk must resolve to ${platformSdkVersion}, found ${entry.version}`,
+    );
   }
 }
 
@@ -570,14 +600,26 @@ for (const [path, content] of [
 // adapter를 제공한다. 렌더와 병렬로 시작해야 인증 장애가 플레이를 막지 않는다.
 assertIncludes(
   rootPackage,
-  '"@seorilabs/platform-sdk": "0.4.0"',
+  `"@seorilabs/platform-sdk": "${platformSdkVersion}"`,
   rootPackagePath,
 );
 assertIncludes(
   mobilePackage,
-  '"@seorilabs/platform-sdk": "0.4.0"',
+  `"@seorilabs/platform-sdk": "${platformSdkVersion}"`,
   mobilePackagePath,
 );
+// Platform discovery 는 선언과 lockfile 이 같은 exact 버전으로 해석될 때만 SDK
+// 연동으로 분류한다. 커밋된 lockfile 이 SDK 를 다른 버전으로 풀거나 아예 담고
+// 있지 않으면 캐럿 없이 고정해도 CUSTOM_HTTP 로 떨어진다.
+assertLockPinsPlatformSdk(rootLockPath);
+assertLockPinsPlatformSdk(mobileLockPath);
+// 이 저장소는 CI·스크립트·문서 모두 npm 으로 설치한다. pnpm lockfile 이 함께
+// 커밋되면 package manager 신호가 둘이 되어 discovery 감지가 흔들린다.
+if (existsSync(pnpmLockPath)) {
+  fail(
+    `${pnpmLockPath}: repository installs with npm, so the pnpm lockfile must not be committed`,
+  );
+}
 assertIncludes(
   mobilePackage,
   '"@react-native-firebase/auth":',
