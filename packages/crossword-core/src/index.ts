@@ -26,6 +26,7 @@ export * from "./releaseVersion";
 export * from "./repositories";
 export * from "./returnReminder";
 export * from "./rewardedAdRetry";
+export * from "./rewardedAdTrace";
 export * from "./shareGrid";
 export * from "./shareText";
 export * from "./streakCalendar";
