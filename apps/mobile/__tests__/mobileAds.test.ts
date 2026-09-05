@@ -2,6 +2,8 @@ import {
   createMobileAdsRequestConfiguration,
   getMobileAdErrorCode,
   getMobileRewardedAdRetryStatus,
+  mapMobileAdTraceEvent,
+  type MobileAdEvent,
 } from '../mobileAds';
 
 test('configures mobile ad requests for first-launch non-personalized ads', () => {
@@ -36,6 +38,77 @@ test('falls back to Error names when Google Mobile Ads code is missing', () => {
   error.name = 'TimeoutError';
 
   expect(getMobileAdErrorCode(error)).toBe('TimeoutError');
+});
+
+// [#385] AdMob 원본 이벤트 → 통일 어휘(ad_stage/ad_result) 대응표를 고정한다.
+function expectMappedTrace(
+  event: MobileAdEvent,
+  expected: ReturnType<typeof mapMobileAdTraceEvent>,
+) {
+  expect(mapMobileAdTraceEvent(event)).toEqual(expected);
+}
+
+test('request 이벤트는 request/requested로 대응한다', () => {
+  expectMappedTrace(
+    { type: 'request' },
+    { ad_result: 'requested', ad_stage: 'request' },
+  );
+});
+
+test('loaded 이벤트는 load/loaded로 대응한다', () => {
+  expectMappedTrace({ type: 'loaded' }, { ad_result: 'loaded', ad_stage: 'load' });
+});
+
+test('opened 이벤트는 show/shown으로 대응한다', () => {
+  expectMappedTrace({ type: 'opened' }, { ad_result: 'shown', ad_stage: 'show' });
+});
+
+test('earned_reward 이벤트는 show/rewarded로 대응한다', () => {
+  expectMappedTrace(
+    { type: 'earned_reward' },
+    { ad_result: 'rewarded', ad_stage: 'show' },
+  );
+});
+
+test('closed 이벤트는 show/dismissed로 대응한다', () => {
+  expectMappedTrace({ type: 'closed' }, { ad_result: 'dismissed', ad_stage: 'show' });
+});
+
+test('show_failed 이벤트는 에러 코드와 함께 show/failed_to_show로 대응한다', () => {
+  expectMappedTrace(
+    { errorCode: 'googleMobileAds/no-fill', type: 'show_failed' },
+    {
+      ad_error_code: 'googleMobileAds/no-fill',
+      ad_result: 'failed_to_show',
+      ad_stage: 'show',
+    },
+  );
+});
+
+test('error 이벤트는 에러 코드와 함께 error/load_error로 대응한다', () => {
+  expectMappedTrace(
+    { errorCode: 'googleMobileAds/network-error', type: 'error' },
+    {
+      ad_error_code: 'googleMobileAds/network-error',
+      ad_result: 'load_error',
+      ad_stage: 'error',
+    },
+  );
+});
+
+test('timeout 이벤트는 error/load_timeout으로 대응한다', () => {
+  expectMappedTrace({ type: 'timeout' }, { ad_result: 'load_timeout', ad_stage: 'error' });
+});
+
+test('module_unavailable/initialize_failed 이벤트는 error/unavailable로 대응한다', () => {
+  expectMappedTrace(
+    { type: 'module_unavailable' },
+    { ad_error_code: undefined, ad_result: 'unavailable', ad_stage: 'error' },
+  );
+  expectMappedTrace(
+    { errorCode: 'init-failed', type: 'initialize_failed' },
+    { ad_error_code: 'init-failed', ad_result: 'unavailable', ad_stage: 'error' },
+  );
 });
 
 test('normalizes rewarded mobile ad results for the shared retry policy', () => {

@@ -1,6 +1,9 @@
 import { Platform } from 'react-native';
 
-import type { RewardedAdRetryStatus } from '../../packages/crossword-core/src';
+import type {
+  RewardedAdRetryStatus,
+  RewardedAdTraceEvent,
+} from '../../packages/crossword-core/src';
 
 declare const __DEV__: boolean;
 declare const process:
@@ -75,6 +78,40 @@ export function getMobileRewardedAdRetryStatus(
   )
     ? 'unsupported'
     : 'failed';
+}
+
+// AdMob(RN) 원본 이벤트 → 통일 어휘 대응표(#385). 'error'는 이 통합에서
+// ad.addAdEventListener(AdEventType.ERROR)(로드 실패)에서만 발화하고, show()
+// 자체의 실패는 별도 'show_failed'로 갈리므로 각각 load_error/failed_to_show로
+// 대응한다. RN SDK는 로드·노출 타임아웃을 구분해 알려주지 않아 'timeout'
+// 하나뿐이라 load_timeout으로 대응한다(show 도중 멈추는 경우는 관측되지 않음).
+export function mapMobileAdTraceEvent(
+  event: MobileAdEvent,
+): RewardedAdTraceEvent {
+  const ad_error_code = event.errorCode;
+
+  switch (event.type) {
+    case 'request':
+      return { ad_result: 'requested', ad_stage: 'request' };
+    case 'loaded':
+      return { ad_result: 'loaded', ad_stage: 'load' };
+    case 'opened':
+      return { ad_result: 'shown', ad_stage: 'show' };
+    case 'earned_reward':
+      return { ad_result: 'rewarded', ad_stage: 'show' };
+    case 'closed':
+      return { ad_result: 'dismissed', ad_stage: 'show' };
+    case 'show_failed':
+      return { ad_error_code, ad_result: 'failed_to_show', ad_stage: 'show' };
+    case 'error':
+      return { ad_error_code, ad_result: 'load_error', ad_stage: 'error' };
+    case 'timeout':
+      return { ad_result: 'load_timeout', ad_stage: 'error' };
+    case 'initialize_failed':
+    case 'module_unavailable':
+    case 'unavailable':
+      return { ad_error_code, ad_result: 'unavailable', ad_stage: 'error' };
+  }
 }
 
 // [#381] showRewardedAd()가 예외를 던지면(로드 실패 등) runRewardedHintAdFlow의
