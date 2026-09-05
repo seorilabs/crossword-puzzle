@@ -88,6 +88,7 @@ import {
   resolveStarterCell,
   trackRewardedHintAdRequest,
   trackRewardedHintAdResult,
+  trackRewardedHintAdTrace,
   sortPuzzleSummariesByRecency,
   startMissionAttempt,
   shouldSubmitLeaderboardScore,
@@ -133,6 +134,7 @@ import { createMobileDailyHintWalletRepository } from './dailyHintWalletReposito
 import {
   initializeMobileAds,
   getMobileRewardedAdRetryStatus,
+  mapMobileAdTraceEvent,
   mapRewardedAdRetryError,
   openMobileAdsInspector,
   showRewardedAd,
@@ -2227,10 +2229,8 @@ function AppContent() {
       attempt: async (attempt: RewardedAdRetryAttempt) => {
         const result = await showRewardedAd('rewardedHint');
         result.events.forEach(event => {
-          telemetry.impression('rewarded_hint_ad_event', {
+          trackRewardedHintAdTrace(telemetry, mapMobileAdTraceEvent(event), {
             ...getMobileAdTelemetryParams('rewardedHint'),
-            ad_error_code: event.errorCode,
-            ad_event: event.type,
             retry: attempt,
           });
         });

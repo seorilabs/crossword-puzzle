@@ -131,6 +131,7 @@ import {
   HOW_TO_PLAY_SHOWN_EVENT,
   buildHowToPlayParams,
   getHowToPlayOutcomeEvent,
+  trackRewardedHintAdTrace,
 } from "../packages/crossword-core/src";
 import { useStuckHintPrompt } from "./useStuckHintPrompt";
 import { MiniPuzzlePreview } from "./components/MiniPuzzlePreview";
@@ -207,6 +208,7 @@ import {
 } from "./adapters/feedbackSettingsRepository";
 import { emitFeedback } from "./adapters/feedback";
 import {
+  mapFullScreenAdTraceEvent,
   showRewardedHintAd,
   type FullScreenAdResult,
 } from "./adapters/appsInTossAds";
@@ -2299,12 +2301,15 @@ function App() {
     await runRewardedHintAdFlow({
       attempt: async (attempt: RewardedAdRetryAttempt) =>
         showRewardedHintAd((event) => {
-          telemetry.impression("rewarded_hint_ad_event", {
-            phase: event.phase,
-            puzzle_id: puzzle.puzzleId,
-            retry: attempt,
-            type: event.type,
-          });
+          trackRewardedHintAdTrace(
+            telemetry,
+            mapFullScreenAdTraceEvent(event),
+            {
+              ad_placement: "rewardedHint",
+              puzzle_id: puzzle.puzzleId,
+              retry: attempt,
+            },
+          );
         }),
       getStatus: (result) => result.status,
       // [#381] 웹 어댑터(loadAndShowFullScreenAd)는 항상 FullScreenAdResult로
