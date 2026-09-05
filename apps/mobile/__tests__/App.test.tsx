@@ -7,8 +7,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import App, {
+  applyAppStateTransition,
   BOARD_TEXT_INPUT_REFOCUS_DELAY_MS,
   computeMobileStreakDays,
+  formatElapsedTime,
   formatPuzzleCardTitle,
   formatPuzzleHistoryTitle,
   formatPuzzleHomeSubtitle,
@@ -16,7 +18,10 @@ import App, {
   getBoardCellFocusScrollY,
   getBoardNativeInputPosition,
   getClearAnswerTargetIndex,
+  getElapsedSeconds,
   loadPuzzleSession,
+  type MissionState,
+  normalizeMission,
   scheduleBoardNativeInputFocus,
   shouldUseSystemBack,
 } from '../App';
@@ -565,6 +570,247 @@ test('archives started and completed puzzles with bounded ordered index', async 
   ).toBeNull();
   expect(await AsyncStorage.getItem(getArchiveKey('archive-0'))).toBeNull();
   expect(await AsyncStorage.getItem(getArchiveKey('archive-1'))).not.toBeNull();
+});
+
+describe('applyAppStateTransition', () => {
+  function missionAt(overrides: Partial<MissionState> = {}): MissionState {
+    return {
+      date: '2026-09-04',
+      puzzleId: 'p1',
+      attemptsUsed: 1,
+      maxAttempts: 3,
+      lastStartedAt: '2026-09-04T00:00:00.000Z',
+      pausedMs: 0,
+      pausedAt: null,
+      ...overrides,
+    };
+  }
+
+  test('background 전환 시 canAutoPause면 정지를 시작한다', () => {
+    const mission = missionAt();
+    const next = applyAppStateTransition(
+      'background',
+      mission,
+      true,
+      new Date('2026-09-04T00:05:00.000Z'),
+    );
+
+    expect(next).not.toBeNull();
+    expect(next?.pausedAt).toBe('2026-09-04T00:05:00.000Z');
+    expect(next?.pausedMs).toBe(0);
+  });
+
+  test('background 전환 시 canAutoPause가 아니면 아무 것도 바꾸지 않는다', () => {
+    const mission = missionAt();
+    const next = applyAppStateTransition(
+      'background',
+      mission,
+      false,
+      new Date('2026-09-04T00:05:00.000Z'),
+    );
+
+    expect(next).toBeNull();
+  });
+
+  test('이미 정지 중이면 background 전환이 다시 정지시키지 않는다', () => {
+    const mission = missionAt({
+      pausedAt: '2026-09-04T00:03:00.000Z',
+      pausedMs: 1_000,
+    });
+    const next = applyAppStateTransition(
+      'background',
+      mission,
+      true,
+      new Date('2026-09-04T00:05:00.000Z'),
+    );
+
+    expect(next).toBeNull();
+  });
+
+  test('active 복귀 시 정지 중이었으면 정지 구간을 pausedMs에 누적하고 재개한다', () => {
+    const mission = missionAt({
+      pausedAt: '2026-09-04T00:05:00.000Z',
+      pausedMs: 2_000,
+    });
+    const next = applyAppStateTransition(
+      'active',
+      mission,
+      false,
+      new Date('2026-09-04T00:05:30.000Z'),
+    );
+
+    expect(next).not.toBeNull();
+    expect(next?.pausedAt).toBeNull();
+    expect(next?.pausedMs).toBe(2_000 + 30_000);
+  });
+
+  test('active 복귀 시 정지 중이 아니었으면 아무 것도 바꾸지 않는다', () => {
+    const mission = missionAt();
+    const next = applyAppStateTransition(
+      'active',
+      mission,
+      false,
+      new Date('2026-09-04T00:05:00.000Z'),
+    );
+
+    expect(next).toBeNull();
+  });
+
+  test('배경↔포그라운드 왕복을 2회 반복해도 정지 구간이 모두 누적 제외된다', () => {
+    let mission = missionAt();
+
+    mission =
+      applyAppStateTransition(
+        'background',
+        mission,
+        true,
+        new Date('2026-09-04T00:01:00.000Z'),
+      ) ?? mission;
+    mission =
+      applyAppStateTransition(
+        'active',
+        mission,
+        false,
+        new Date('2026-09-04T00:01:10.000Z'),
+      ) ?? mission;
+    mission =
+      applyAppStateTransition(
+        'background',
+        mission,
+        true,
+        new Date('2026-09-04T00:02:00.000Z'),
+      ) ?? mission;
+    mission =
+      applyAppStateTransition(
+        'active',
+        mission,
+        false,
+        new Date('2026-09-04T00:02:45.000Z'),
+      ) ?? mission;
+
+    expect(mission.pausedAt).toBeNull();
+    expect(mission.pausedMs).toBe(10_000 + 45_000);
+    expect(
+      getElapsedSeconds(mission.lastStartedAt, '2026-09-04T00:03:00.000Z', mission),
+    ).toBe(180 - 55);
+  });
+
+  test('inactive 등 background/active가 아닌 전이는 무시한다', () => {
+    const mission = missionAt();
+    const next = applyAppStateTransition(
+      'inactive',
+      mission,
+      true,
+      new Date('2026-09-04T00:05:00.000Z'),
+    );
+
+    expect(next).toBeNull();
+  });
+});
+
+describe('normalizeMission', () => {
+  test('저장값이 없으면 정지 없이 시작하는 기본 상태를 만든다', () => {
+    const mission = normalizeMission(null, '2026-09-04', 'p1');
+
+    expect(mission.pausedMs).toBe(0);
+    expect(mission.pausedAt).toBeNull();
+    expect(mission.attemptsUsed).toBe(0);
+  });
+
+  test('날짜·퍼즐이 다르면 정지 상태도 함께 초기화한다', () => {
+    const mission = normalizeMission(
+      {
+        date: '2026-09-03',
+        puzzleId: 'other',
+        attemptsUsed: 1,
+        pausedMs: 5_000,
+        pausedAt: '2026-09-03T00:00:00.000Z',
+      },
+      '2026-09-04',
+      'p1',
+    );
+
+    expect(mission.pausedMs).toBe(0);
+    expect(mission.pausedAt).toBeNull();
+  });
+
+  test('정지 중이 아니었던 누적 pausedMs는 그대로 복원한다', () => {
+    const mission = normalizeMission(
+      {
+        date: '2026-09-04',
+        puzzleId: 'p1',
+        attemptsUsed: 1,
+        lastStartedAt: '2026-09-04T00:00:00.000Z',
+        pausedMs: 12_000,
+        pausedAt: null,
+      },
+      '2026-09-04',
+      'p1',
+    );
+
+    expect(mission.pausedMs).toBe(12_000);
+    expect(mission.pausedAt).toBeNull();
+  });
+
+  test('배경 상태에서 강제 종료돼 정지 중으로 저장된 값은 복원 시각까지 접어 재개한다', () => {
+    const savedAt = new Date('2026-09-04T00:10:00.000Z');
+    jest.useFakeTimers().setSystemTime(savedAt);
+
+    const mission = normalizeMission(
+      {
+        date: '2026-09-04',
+        puzzleId: 'p1',
+        attemptsUsed: 1,
+        lastStartedAt: '2026-09-04T00:00:00.000Z',
+        pausedMs: 1_000,
+        pausedAt: '2026-09-04T00:08:00.000Z',
+      },
+      '2026-09-04',
+      'p1',
+    );
+
+    expect(mission.pausedAt).toBeNull();
+    expect(mission.pausedMs).toBe(1_000 + 120_000);
+  });
+});
+
+describe('getElapsedSeconds', () => {
+  test('pause가 없으면 시작~종료 그대로 계산한다(기존 동작 회귀 없음)', () => {
+    expect(
+      getElapsedSeconds(
+        '2026-09-04T00:00:00.000Z',
+        '2026-09-04T00:02:00.000Z',
+      ),
+    ).toBe(120);
+  });
+
+  test('누적 pausedMs를 경과 시간에서 제외한다', () => {
+    expect(
+      getElapsedSeconds(
+        '2026-09-04T00:00:00.000Z',
+        '2026-09-04T00:02:00.000Z',
+        { pausedMs: 30_000, pausedAt: null },
+      ),
+    ).toBe(90);
+  });
+});
+
+describe('formatElapsedTime', () => {
+  test('pausedMs를 제외한 라벨을 만든다', () => {
+    expect(
+      formatElapsedTime(
+        '2026-09-04T00:00:00.000Z',
+        '2026-09-04T00:11:00.000Z',
+        60_000,
+      ),
+    ).toBe('10분 0초');
+  });
+
+  test('pausedMs 없이 호출해도 기존 동작과 같다', () => {
+    expect(
+      formatElapsedTime('2026-09-04T00:00:00.000Z', '2026-09-04T00:00:42.000Z'),
+    ).toBe('42초');
+  });
 });
 
 describe('computeMobileStreakDays', () => {

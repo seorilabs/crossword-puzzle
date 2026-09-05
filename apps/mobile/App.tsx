@@ -9,6 +9,7 @@ import React, {
 import {
   ActivityIndicator,
   AppState,
+  type AppStateStatus,
   BackHandler,
   Keyboard,
   KeyboardAvoidingView,
@@ -91,6 +92,7 @@ import {
   startMissionAttempt,
   shouldSubmitLeaderboardScore,
   shouldShowFirstInputGuide,
+  togglePauseState,
   uniquePuzzleSummaries,
   validatePuzzleSlots,
   REWARDED_HINT_AD_REWARD_EVENT,
@@ -103,6 +105,7 @@ import {
   type DailyHintWallet,
   type Direction,
   type GamePuzzleContext,
+  type PauseSessionState,
   mapRewardedAdFailureToAssistResult,
   type Puzzle,
   type PuzzleEntry,
@@ -198,9 +201,14 @@ type DateCardState = {
   hintCount: number;
 };
 
+// 모바일 미션 상태. 공유 코어 DailyMissionState에 일시정지 누적(pausedMs)과 진행
+// 중 정지 시작 시각(pausedAt)을 더한다. 웹은 이 정지 상태를 별도 useState로 두지만
+// 모바일은 AppState 전환마다 저장해야 해 미션과 함께 영속화한다.
+export type MissionState = DailyMissionState & PauseSessionState;
+
 type PuzzleSession = {
   nextPuzzle: Puzzle;
-  savedMission: DailyMissionState;
+  savedMission: MissionState;
   savedProgress: SavedProgress;
 };
 
@@ -397,10 +405,22 @@ function getGamePuzzleContext(puzzle: Puzzle): GamePuzzleContext {
   };
 }
 
-// 게임 세부 지표용 경과 초. 일시정지가 없는 모바일에서는 시작~종료(또는 now)만
-// 반영한다. 계산은 공유 코어(computeElapsedSeconds)에 위임한다(초 단위 통일).
-function getElapsedSeconds(startedAt?: string, endedAt?: string) {
-  return computeElapsedSeconds({ startedAt, endedAt }) ?? 0;
+// 게임 세부 지표·리더보드용 경과 초. 백그라운드 자동 일시정지 구간(pause)을
+// 제외한 순수 풀이 시간을 계산은 공유 코어(computeElapsedSeconds)에 위임한다
+// (초 단위 통일, 웹과 동일 규칙).
+export function getElapsedSeconds(
+  startedAt: string | undefined,
+  endedAt: string | undefined,
+  pause?: Partial<PauseSessionState>,
+) {
+  return (
+    computeElapsedSeconds({
+      startedAt,
+      endedAt,
+      pausedMs: pause?.pausedMs,
+      pausedAt: pause?.pausedAt ?? undefined,
+    }) ?? 0
+  );
 }
 
 export function formatPuzzleHomeSubtitle(
@@ -474,9 +494,10 @@ function formatEntryReference(
   return `${prefix}${directionLabels[entry.direction]} · ${entry.answer.length}글자`;
 }
 
-function formatElapsedTime(
+export function formatElapsedTime(
   startedAt: string | undefined,
   completedAt: string | undefined,
+  pausedMs = 0,
 ): string | null {
   if (startedAt == null) return null;
   const startMs = new Date(startedAt).getTime();
@@ -485,7 +506,10 @@ function formatElapsedTime(
   if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs < startMs) {
     return null;
   }
-  const totalSeconds = Math.floor((endMs - startMs) / 1000);
+  const totalSeconds = Math.max(
+    0,
+    Math.floor((endMs - startMs - pausedMs) / 1000),
+  );
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return minutes > 0 ? `${minutes}분 ${seconds}초` : `${seconds}초`;
@@ -680,14 +704,41 @@ async function loadDailyHintWalletForDate(
   });
 }
 
-function normalizeMission(
-  value: Partial<DailyMissionState> | null,
+function createMissionState(
   date: string,
   puzzleId: string,
-) {
+  maxAttempts: number,
+): MissionState {
+  return {
+    ...createDailyMissionState(date, puzzleId, maxAttempts),
+    pausedMs: 0,
+    pausedAt: null,
+  };
+}
+
+// 저장된 미션을 복원한다. pausedAt이 정지 중 상태로 저장돼 있으면(예: 배경 상태에서
+// 앱이 강제 종료됨) 지금(복원 시각)까지를 정지 구간으로 접어 pausedMs에 누적하고
+// pausedAt은 null로 되돌린다 — 복원 자체가 곧 재개이기 때문이다.
+export function normalizeMission(
+  value: Partial<MissionState> | null,
+  date: string,
+  puzzleId: string,
+): MissionState {
   if (value == null || value.date !== date || value.puzzleId !== puzzleId) {
-    return createDailyMissionState(date, puzzleId, DAILY_ATTEMPT_LIMIT);
+    return createMissionState(date, puzzleId, DAILY_ATTEMPT_LIMIT);
   }
+
+  const storedPause: PauseSessionState = {
+    pausedMs:
+      typeof value.pausedMs === 'number' && Number.isFinite(value.pausedMs)
+        ? Math.max(0, value.pausedMs)
+        : 0,
+    pausedAt: typeof value.pausedAt === 'string' ? value.pausedAt : null,
+  };
+  const pause =
+    storedPause.pausedAt == null
+      ? storedPause
+      : togglePauseState(storedPause, new Date());
 
   return {
     date,
@@ -701,6 +752,7 @@ function normalizeMission(
       typeof value.completedAt === 'string' ? value.completedAt : undefined,
     lastStartedAt:
       typeof value.lastStartedAt === 'string' ? value.lastStartedAt : undefined,
+    ...pause,
   };
 }
 
@@ -708,16 +760,43 @@ async function loadStoredMission(date: string, puzzleId: string) {
   try {
     const raw = await AsyncStorage.getItem(getMissionKey(date, puzzleId));
     return normalizeMission(
-      raw == null ? null : (JSON.parse(raw) as Partial<DailyMissionState>),
+      raw == null ? null : (JSON.parse(raw) as Partial<MissionState>),
       date,
       puzzleId,
     );
   } catch {
-    return createDailyMissionState(date, puzzleId, DAILY_ATTEMPT_LIMIT);
+    return createMissionState(date, puzzleId, DAILY_ATTEMPT_LIMIT);
   }
 }
 
-async function saveStoredMission(mission: DailyMissionState) {
+// AppState 전환에 따른 미션 일시정지 상태 갱신(순수 함수). background 전환에서는
+// canAutoPause(오늘 화면에서 시작·미완료 진행 중)일 때만 정지를 시작하고, active
+// 복귀에서는 정지 중이었으면 재개한다. 변경이 없으면 null을 반환해 호출부가
+// setMission/saveStoredMission을 건너뛸 수 있게 한다.
+export function applyAppStateTransition(
+  state: AppStateStatus,
+  mission: MissionState,
+  canAutoPause: boolean,
+  now: Date,
+): MissionState | null {
+  if (state === 'active') {
+    if (mission.pausedAt == null) {
+      return null;
+    }
+    return { ...mission, ...togglePauseState(mission, now) };
+  }
+
+  if (state === 'background') {
+    if (!canAutoPause || mission.pausedAt != null) {
+      return null;
+    }
+    return { ...mission, ...togglePauseState(mission, now) };
+  }
+
+  return null;
+}
+
+async function saveStoredMission(mission: MissionState) {
   try {
     await AsyncStorage.setItem(
       getMissionKey(mission.date, mission.puzzleId),
@@ -925,8 +1004,8 @@ function AppContent() {
     createDailyHintWallet(getTodayDateKey()),
   );
   const [hintCount, setHintCount] = useState(0);
-  const [mission, setMission] = useState(() =>
-    createDailyMissionState(
+  const [mission, setMission] = useState<MissionState>(() =>
+    createMissionState(
       initialPuzzle.date,
       initialPuzzle.puzzleId,
       DAILY_ATTEMPT_LIMIT,
@@ -1014,6 +1093,10 @@ function AppContent() {
     totalWords: initialPuzzle.entries.length,
     wordsFilled: 0,
   });
+  // AppState 리스너가 stale closure 없이 최신 미션(일시정지 상태 포함)을 읽도록
+  // 매 렌더 갱신하는 스냅샷.
+  const missionRef = useRef(mission);
+  missionRef.current = mission;
 
   const persistDailyHintWallet = useCallback((wallet: DailyHintWallet) => {
     setDailyHintWallet(wallet);
@@ -1366,7 +1449,11 @@ function AppContent() {
   // 최신 진행 스냅샷을 매 렌더 갱신한다.
   abandonSnapshotRef.current = {
     attemptsUsed: mission.attemptsUsed,
-    elapsedSeconds: getElapsedSeconds(mission.lastStartedAt),
+    elapsedSeconds: getElapsedSeconds(
+      mission.lastStartedAt,
+      undefined,
+      mission,
+    ),
     gameContext: getGamePuzzleContext(puzzle),
     hadFirstInput: gameplayAttemptTrackerRef.current.hasFirstInput(
       `${puzzle.puzzleId}:${mission.attemptsUsed}`,
@@ -1537,10 +1624,24 @@ function AppContent() {
     setDailyHintWallet(wallet);
   }, [dailyHintWallet.date, puzzleArchiveRecords, puzzlePack.summaries]);
 
+  // 백그라운드 전환 시 풀이 타이머 자동 일시정지/재개(#384, 웹 #232와 동일 규칙).
+  // "오늘" 화면에서 시작·미완료·시도 소진 전 진행 중일 때만 정지하고, active 복귀에서
+  // 정지 중이었으면 재개한다. 정지 구간은 pausedMs에 누적돼 완료·이탈·리더보드
+  // 계측과 완료 화면 경과 표시에서 제외된다.
   useEffect(() => {
     refreshDailyHintWallet().catch(() => {});
     const subscription = AppState.addEventListener('change', state => {
       if (state === 'active') {
+        const nextMission = applyAppStateTransition(
+          state,
+          missionRef.current,
+          false,
+          new Date(),
+        );
+        if (nextMission != null) {
+          setMission(nextMission);
+          saveStoredMission(nextMission);
+        }
         refreshDailyHintWallet().catch(() => {});
         consumePendingReturnReminderOpen()
           .then(open => {
@@ -1549,11 +1650,24 @@ function AppContent() {
             }
           })
           .catch(() => {});
-      } else if (
-        state === 'background' &&
-        abandonSnapshotRef.current.route === 'today'
-      ) {
-        emitPuzzleAbandon('today');
+      } else if (state === 'background') {
+        const canAutoPause =
+          abandonSnapshotRef.current.route === 'today' &&
+          abandonSnapshotRef.current.hasStarted &&
+          !abandonSnapshotRef.current.isCompleted;
+        const nextMission = applyAppStateTransition(
+          state,
+          missionRef.current,
+          canAutoPause,
+          new Date(),
+        );
+        if (nextMission != null) {
+          setMission(nextMission);
+          saveStoredMission(nextMission);
+        }
+        if (abandonSnapshotRef.current.route === 'today') {
+          emitPuzzleAbandon('today');
+        }
       }
     });
 
@@ -1695,7 +1809,17 @@ function AppContent() {
       return;
     }
 
-    const nextMission = completeMission(mission);
+    // 완료 시점에 진행 중 정지 구간이 남아 있으면(방어적 처리) 접어 마무리한 뒤
+    // completeMission에 넘긴다. pausedMs는 계측·리더보드가 그대로 쓰도록 보존한다.
+    const resolvedMission =
+      mission.pausedAt == null
+        ? mission
+        : { ...mission, ...togglePauseState(mission, new Date()) };
+    const nextMission: MissionState = {
+      ...completeMission(resolvedMission),
+      pausedMs: resolvedMission.pausedMs,
+      pausedAt: resolvedMission.pausedAt,
+    };
     setMission(nextMission);
     saveStoredMission(nextMission);
     savePuzzleSnapshot(puzzle, { completedAt: nextMission.completedAt });
@@ -1711,6 +1835,7 @@ function AppContent() {
       solveTimeSec: getElapsedSeconds(
         nextMission.lastStartedAt,
         nextMission.completedAt,
+        nextMission,
       ),
       hintCount,
       revealUsed: false,
@@ -1741,6 +1866,7 @@ function AppContent() {
       const elapsedSeconds = getElapsedSeconds(
         nextMission.lastStartedAt,
         nextMission.completedAt,
+        nextMission,
       );
       const score = computeLeaderboardScore(
         {
@@ -1806,7 +1932,10 @@ function AppContent() {
         word_count: puzzle.entries.length,
         progress_percent: progressPercent,
         milestone,
-        elapsed_seconds: getElapsedSeconds(mission.lastStartedAt),
+        elapsed_seconds: getElapsedSeconds(mission.lastStartedAt, undefined, {
+          pausedMs: mission.pausedMs,
+          pausedAt: mission.pausedAt,
+        }),
         hint_count: hintCount,
         remaining_attempts: remainingAttempts,
       });
@@ -1821,6 +1950,8 @@ function AppContent() {
     hintCount,
     mission.attemptsUsed,
     mission.lastStartedAt,
+    mission.pausedAt,
+    mission.pausedMs,
     progressPercent,
     puzzle,
     remainingAttempts,
@@ -2035,7 +2166,11 @@ function AppContent() {
       telemetry.click('onboarding_guide_complete', {
         ...getPuzzleTelemetryParams(puzzle, selectedPuzzleSummary),
         attempt_number: mission.attemptsUsed,
-        elapsed_seconds: getElapsedSeconds(mission.lastStartedAt),
+        elapsed_seconds: getElapsedSeconds(
+          mission.lastStartedAt,
+          undefined,
+          mission,
+        ),
       });
     }
     persistFirstInputGuideCompletion();
@@ -2345,7 +2480,11 @@ function AppContent() {
       });
       // 게임 세부 지표: 첫 입력(참여 시작). 시작→첫입력 소요로 초반 이탈을 본다.
       gameAnalytics.track('game_first_input', getGamePuzzleContext(puzzle), {
-        timeToFirstInputSec: getElapsedSeconds(mission.lastStartedAt),
+        timeToFirstInputSec: getElapsedSeconds(
+          mission.lastStartedAt,
+          undefined,
+          mission,
+        ),
         attemptNumber: mission.attemptsUsed,
       });
       completeFirstInputGuide();
@@ -2404,7 +2543,11 @@ function AppContent() {
       });
       // 게임 세부 지표: 첫 입력(참여 시작). 시작→첫입력 소요로 초반 이탈을 본다.
       gameAnalytics.track('game_first_input', getGamePuzzleContext(puzzle), {
-        timeToFirstInputSec: getElapsedSeconds(mission.lastStartedAt),
+        timeToFirstInputSec: getElapsedSeconds(
+          mission.lastStartedAt,
+          undefined,
+          mission,
+        ),
         attemptNumber: mission.attemptsUsed,
       });
       completeFirstInputGuide();
@@ -2696,7 +2839,12 @@ function AppContent() {
         return;
       }
 
-      const nextMission = startMissionAttempt(mission);
+      // 새 시도는 새 타이머다 — 이전 정지 누적을 이어받지 않는다(웹과 동일 규칙).
+      const nextMission: MissionState = {
+        ...startMissionAttempt(mission),
+        pausedMs: 0,
+        pausedAt: null,
+      };
       setMission(nextMission);
       saveStoredMission(nextMission);
       savePuzzleSnapshot(puzzle, { startedAt: nextMission.lastStartedAt });
@@ -2727,7 +2875,12 @@ function AppContent() {
     }
 
     clearProgress();
-    const nextMission = startMissionAttempt(mission);
+    // 새 시도는 새 타이머다 — 이전 정지 누적을 이어받지 않는다(웹과 동일 규칙).
+    const nextMission: MissionState = {
+      ...startMissionAttempt(mission),
+      pausedMs: 0,
+      pausedAt: null,
+    };
     setMission(nextMission);
     saveStoredMission(nextMission);
     savePuzzleSnapshot(puzzle, { startedAt: nextMission.lastStartedAt });
@@ -3482,7 +3635,11 @@ function AppContent() {
     const isVisible = completionCelebrationPuzzleId === puzzle.puzzleId;
     const elapsedLabel =
       isVisible && mission.lastStartedAt != null && mission.completedAt != null
-        ? formatElapsedTime(mission.lastStartedAt, mission.completedAt)
+        ? formatElapsedTime(
+            mission.lastStartedAt,
+            mission.completedAt,
+            mission.pausedMs,
+          )
         : null;
 
     return (
@@ -3832,6 +3989,7 @@ function AppContent() {
     const elapsedLabel = formatElapsedTime(
       mission.lastStartedAt,
       mission.completedAt,
+      mission.pausedMs,
     );
     const acrossEntries = viewModel.completedEntries.filter(
       e => e.direction === 'across',
