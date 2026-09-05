@@ -5,6 +5,8 @@ import {
   type ShowFullScreenAdEvent,
 } from "@apps-in-toss/web-framework";
 
+import type { RewardedAdTraceEvent } from "../../packages/crossword-core/src/rewardedAdTrace.ts";
+
 export const appsInTossAdGroupIds = {
   rewardedHint: "ait.v2.live.bf12924f4bf84b74",
 } as const;
@@ -199,4 +201,35 @@ export function showRewardedHintAd(
     dismissalDelayMs: 3000,
     onTrace,
   });
+}
+
+// AppsInToss SDK 원본 이벤트 → 통일 어휘 대응표(#385). show 단계의 "requested"는
+// SDK가 실제 노출 직전에 보내는 별도 신호이고, RN의 초기 "request"(광고 요청
+// 자체를 시작하는 시점)와는 발생 시점이 다르지만 같은 request 단계로 묶는다.
+export function mapFullScreenAdTraceEvent(
+  event: FullScreenAdTraceEvent,
+): RewardedAdTraceEvent {
+  if (event.phase === "load") {
+    return { ad_result: "loaded", ad_stage: "load" };
+  }
+
+  if (event.phase === "error") {
+    return { ad_result: event.type, ad_stage: "error" };
+  }
+
+  switch (event.type) {
+    case "requested":
+      return { ad_result: "requested", ad_stage: "request" };
+    case "clicked":
+      return { ad_result: "clicked", ad_stage: "show" };
+    case "userEarnedReward":
+      return { ad_result: "rewarded", ad_stage: "show" };
+    case "dismissed":
+      return { ad_result: "dismissed", ad_stage: "show" };
+    case "failedToShow":
+      return { ad_result: "failed_to_show", ad_stage: "show" };
+    case "show":
+    case "impression":
+      return { ad_result: "shown", ad_stage: "show" };
+  }
 }
