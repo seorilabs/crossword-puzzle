@@ -127,7 +127,7 @@ let dismissUpdateGate: (() => void) | null = null;
  * 설정 조회·DOM 마운트가 던져도 흡수한다 — 업데이트 안내는 부가 기능이고, 이
  * 실패가 로그인 결과나 퍼즐 진입을 막아서는 안 된다(#390).
  */
-async function checkPlatformUpdateGate(): Promise<void> {
+export async function checkPlatformUpdateGate(): Promise<void> {
   try {
     const state = await evaluateUpdateGate(webPlatform.config);
 

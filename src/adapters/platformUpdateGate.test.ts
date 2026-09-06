@@ -98,6 +98,24 @@ describe("#390 업데이트 게이트 (웹/AIT adapter)", () => {
     expect(markPrompted).not.toHaveBeenCalled();
   });
 
+  it("recommended로 띄운 뒤 ok로 바뀌면 떠 있던 안내가 내려간다", async () => {
+    const dismiss = vi.fn();
+    mountUpdateGate.mockReturnValue(dismiss);
+    const state = { kind: "recommended", message: "새 버전" };
+    gate.mockReturnValue(state);
+
+    const { checkPlatformUpdateGate } = await loadAdapter();
+    await checkPlatformUpdateGate();
+    expect(mountUpdateGate).toHaveBeenCalledTimes(1);
+    expect(dismiss).not.toHaveBeenCalled();
+
+    gate.mockReturnValue({ kind: "ok" });
+    await checkPlatformUpdateGate();
+
+    expect(dismiss).toHaveBeenCalledTimes(1);
+    expect(mountUpdateGate).toHaveBeenCalledTimes(1);
+  });
+
   it("설정 조회가 던져도 로그인 결과는 그대로 돌아온다", async () => {
     gate.mockImplementation(() => {
       throw new Error("config boom");
