@@ -3,6 +3,7 @@ import {
   buildPlatformAuthParams,
   createFailOpenPlatformPresenceLifecycle,
   ensurePlatformSignIn,
+  evaluateUpdateGate,
   PLATFORM_API_BASE_URL,
   PLATFORM_AUTH_APP_ID,
   PLATFORM_AUTH_EVENT,
@@ -113,5 +114,40 @@ async function runPlatformAuth(): Promise<PlatformAuthOutcome> {
     buildPlatformAuthParams(outcome, Date.now() - startedAt),
   );
 
+  await checkPlatformUpdateGate();
+
   return outcome;
+}
+
+let dismissUpdateGate: (() => void) | null = null;
+
+/**
+ * 로그인 뒤(성공 여부와 무관하게) 서버 판정을 화면에 반영한다.
+ *
+ * 설정 조회·DOM 마운트가 던져도 흡수한다 — 업데이트 안내는 부가 기능이고, 이
+ * 실패가 로그인 결과나 퍼즐 진입을 막아서는 안 된다(#390).
+ */
+async function checkPlatformUpdateGate(): Promise<void> {
+  try {
+    const state = await evaluateUpdateGate(webPlatform.config);
+
+    dismissUpdateGate?.();
+    dismissUpdateGate = null;
+    if (state == null) {
+      return;
+    }
+
+    const { mountUpdateGate } = await import(
+      "@seorilabs/platform-sdk/gate-dom"
+    );
+    dismissUpdateGate = mountUpdateGate({
+      state,
+      onLater: () => {
+        dismissUpdateGate = null;
+      },
+    });
+    await webPlatform.config.markPrompted(state);
+  } catch {
+    // 위 주석 참고.
+  }
 }
