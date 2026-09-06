@@ -16,6 +16,7 @@ export * from "./personalStats";
 export * from "./platformAuth";
 export * from "./platformContracts";
 export * from "./platformPresence";
+export * from "./platformUpdateGate";
 export * from "./puzzle";
 export * from "./puzzleDiversity";
 export * from "./puzzlePackHealth";

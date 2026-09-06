@@ -14,15 +14,15 @@ describe("#356 Platform Presence Phase A 인수조건", () => {
     const mobileLock = JSON.parse(read("apps/mobile/package-lock.json"));
     const integrationTest = read("src/adapters/platformPresence.test.mts");
 
-    assert.equal(rootPackage.dependencies["@seorilabs/platform-sdk"], "0.4.0");
-    assert.equal(mobilePackage.dependencies["@seorilabs/platform-sdk"], "0.4.0");
+    assert.equal(rootPackage.dependencies["@seorilabs/platform-sdk"], "0.5.0");
+    assert.equal(mobilePackage.dependencies["@seorilabs/platform-sdk"], "0.5.0");
     assert.equal(
       rootLock.packages["node_modules/@seorilabs/platform-sdk"].version,
-      "0.4.0",
+      "0.5.0",
     );
     assert.equal(
       mobileLock.packages["node_modules/@seorilabs/platform-sdk"].version,
-      "0.4.0",
+      "0.5.0",
     );
     assert.match(
       integrationTest,

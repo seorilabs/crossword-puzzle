@@ -106,6 +106,10 @@ test('같은 appId로 SDK를 만들고 firebase-id-token 세션을 한 번 연�
       appVersion: '1.1.7',
       platform: expect.stringMatching(/^(android|ios)$/),
     },
+    gateStore: expect.objectContaining({
+      load: expect.any(Function),
+      save: expect.any(Function),
+    }),
   });
   expect(mockFirebaseCustomToken).toHaveBeenCalledWith();
   expect(stub.signInWithCustomToken).toHaveBeenCalledWith('custom-token');
