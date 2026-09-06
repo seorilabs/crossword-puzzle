@@ -7,22 +7,27 @@ import { PLATFORM_PRESENCE_ENABLED } from "./platformPresence.ts";
 const read = (path: string) => readFileSync(path, "utf8");
 
 describe("#356 Platform Presence Phase A 인수조건", () => {
-  it("AC-1: SDK 0.4.0 exact dependency와 clean install/import 실행 경로를 고정한다", () => {
+  it("AC-1: SDK exact dependency와 clean install/import 실행 경로를 고정한다", () => {
     const rootPackage = JSON.parse(read("package.json"));
     const mobilePackage = JSON.parse(read("apps/mobile/package.json"));
     const rootLock = JSON.parse(read("package-lock.json"));
     const mobileLock = JSON.parse(read("apps/mobile/package-lock.json"));
     const integrationTest = read("src/adapters/platformPresence.test.mts");
 
-    assert.equal(rootPackage.dependencies["@seorilabs/platform-sdk"], "0.4.0");
-    assert.equal(mobilePackage.dependencies["@seorilabs/platform-sdk"], "0.4.0");
+    // Backoffice repository-discovery는 선언과 lock이 모두 같은 exact 버전일 때만
+    // integration=SDK로 판정한다. 범위 표기(^, ~, *)나 파일 간 불일치는 CUSTOM_HTTP가 된다.
+    // 버전 숫자 자체가 아니라 그 불변식을 고정하므로, SDK를 올릴 때 이 파일을 고치지 않는다.
+    const declared = rootPackage.dependencies["@seorilabs/platform-sdk"];
+    assert.match(declared, /^\d+\.\d+\.\d+$/);
+
+    assert.equal(mobilePackage.dependencies["@seorilabs/platform-sdk"], declared);
     assert.equal(
       rootLock.packages["node_modules/@seorilabs/platform-sdk"].version,
-      "0.4.0",
+      declared,
     );
     assert.equal(
       mobileLock.packages["node_modules/@seorilabs/platform-sdk"].version,
-      "0.4.0",
+      declared,
     );
     assert.match(
       integrationTest,
