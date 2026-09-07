@@ -6,7 +6,7 @@
 
 ## 배경 (easy 서빙 설계)
 
-- easy 퍼즐은 매일 회전하는 발행 퍼즐팩(`public/puzzles/*`)에 들어가지 않는다. 입문 티어는 **번들 상수**(`src/data/onboardingPuzzle.ts`, `ONBOARDING_PUZZLE_ID = "onboarding-easy-01"`, `difficulty: "easy"`)로만 제공되며, 날짜가 아니라 **신규 여부**로 라우팅된다.
+- (작성 당시) easy 퍼즐은 발행 퍼즐팩에 들어가지 않았고 입문 티어는 **번들 상수**(`src/data/onboardingPuzzle.ts`, `ONBOARDING_PUZZLE_ID = "onboarding-easy-01"`, `difficulty: "easy"`)로만 제공되며 날짜가 아니라 **신규 여부**로 라우팅됐다. 지금은 일간 팩이 매일 easy 5×5 와 hard 8×8 을 함께 발행하므로(`DAILY_PUZZLE_TIERS`), 아래 쿼리의 `difficulty=easy`에는 온보딩 퍼즐과 일간 easy 가 섞인다. 온보딩만 보려면 `puzzle_id = "onboarding-easy-01"`로 나눈다.
 - 따라서 easy `attempt_start` 의 정상 원천은 `puzzle_id = "onboarding-easy-01"`(`puzzle_alias = "입문"`) 한 종류다. 쿼리는 난이도 분포와 별도로 이 온보딩 퍼즐 기여를 분리해 교차검증한다.
 
 ## 표준 쿼리

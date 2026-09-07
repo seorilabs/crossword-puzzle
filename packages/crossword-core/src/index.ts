@@ -1,3 +1,4 @@
+export * from "./answerHistory";
 export * from "./answerInput";
 export * from "./answerVariety";
 export * from "./boardNavigation";

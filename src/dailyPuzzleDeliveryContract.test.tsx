@@ -147,6 +147,18 @@ describe("일간 퍼즐 전달 계약", () => {
     expect(generatorSource).toContain("maxSameDateSharedAnswers: 0");
   });
 
+  it("AC-13: 발행 정답 이력으로 두 난이도의 정확 반복(90일)과 어근 겹침(14일)을 모두 막는다", () => {
+    // manifest 14판 밖의 반복(어제 hard → 오늘 easy, 8일 이전 재등장)은 별도 이력
+    // 파일로만 막을 수 있다. 정확 일치 배제 → 어근 배제 순서와, 슬롯 확정 직후 이력
+    // 기록을 계약으로 고정한다.
+    expect(generatorSource).toContain("excludeExactAnswers(");
+    expect(generatorSource).toContain("writeAnswerHistory(outDir, answerHistory)");
+    expect(generatorSource).toContain("selectAnswerHistoryWindow(answerHistory, {");
+    expect(runnerSource).toContain('!arg.startsWith("--answerHistoryUrl=")');
+    expect(runnerSource).toContain('["PUZZLE_ANSWER_HISTORY_DAYS", "answerHistoryDays"]');
+    expect(runnerSource).toContain('["PUZZLE_FRAGMENT_HISTORY_DAYS", "fragmentHistoryDays"]');
+  });
+
   it("AC-9: 최근 발행 정답과 어근을 공유하는 후보도 제외한다", () => {
     expect(generatorSource).toContain(
       "...slotDiversityHistory.flatMap((snapshot) => snapshot.answers),",

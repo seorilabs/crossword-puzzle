@@ -34,6 +34,7 @@
     "job:puzzle-pack": "node server/batch/run-puzzle-pack-job.mjs",
     "publish:puzzles": "node server/batch/publish-puzzle-pack.mjs",
     "health:puzzles": "node server/batch/check-puzzle-pack-health.mjs",
+    "report:answer-repeats": "node scripts/report-answer-repeats.mjs",
     "prototype:crossword": "node scripts/crossword-generator-prototype.mjs",
     "validate:puzzles": "node scripts/validate-puzzle-pack.mjs",
     "clues:apply": "node scripts/apply-manual-clues.mjs",

@@ -123,9 +123,12 @@ Cloud Run Job은 다음 환경 변수를 사용한다.
 | `PUZZLE_MAX_ANSWER_REUSE`        |                    `0.5` | 최근 동일 난이도 한 판과 겹쳐도 되는 후보 정답 비율 상한                                                                  |
 | `PUZZLE_MAX_SCAFFOLD_SIMILARITY` |                   `0.75` | 최근 동일 난이도 한 판과 겹쳐도 되는 채운 칸 골격 Jaccard 유사도 상한                                                     |
 | `PUZZLE_MAX_SYLLABLE_ANSWERS`    |                      `3` | 한 판에서 같은 음절이 등장해도 되는 최대 정답 수                                                                          |
+| `PUZZLE_ANSWER_HISTORY_DAYS`     |                     `90` | 발행 정답 이력(`answer-history.json`)에서 정확히 같은 정답을 배제할 일수. 두 난이도 모두에 적용                            |
+| `PUZZLE_FRAGMENT_HISTORY_DAYS`   |                     `14` | 발행 정답 이력에서 어근(2음절 조각)이 겹치는 후보를 배제할 일수. 두 난이도 모두에 적용                                     |
+| `PUZZLE_EXISTING_ANSWER_HISTORY_URL` | `<base>/puzzles/answer-history.json` | 실행 시작 시 읽을 원격 정답 이력. 없으면(404) 로컬 파일 → manifest bootstrap 순으로 폴백                      |
 | `PUZZLE_CORS_ORIGIN`             |                      `*` | AIT WebView에서 JSON을 fetch할 수 있도록 `/puzzles/**` 응답에 넣을 CORS origin                                            |
 
-생성 옵션은 `PUZZLE_ATTEMPTS`, `PUZZLE_BEAM`, `PUZZLE_BRANCH`, `PUZZLE_CANDIDATES`, `PUZZLE_DENSE`, `PUZZLE_DIVERSITY_HISTORY`, `PUZZLE_MAX_ANSWER_REUSE`, `PUZZLE_MAX_SCAFFOLD_SIMILARITY`, `PUZZLE_MAX_SYLLABLE_ANSWERS`, `PUZZLE_MIN_CROSS`, `PUZZLE_MIN_DENSITY`, `PUZZLE_MIN_ENTRIES`, `PUZZLE_MIN_MULTI`, `PUZZLE_MAX_AUTO`, `PUZZLE_RETRIES`, `PUZZLE_SAMPLES`, `PUZZLE_SIZE`, `PUZZLE_WORDS`, `PUZZLE_WORDBANK`, `PUZZLE_PUBLISHED_AT`, `PUZZLE_EXISTING_MANIFEST_URL`로 override할 수 있다. `PUZZLE_SEED`를 지정하면 같은 입력에서 같은 퍼즐이 다시 생성될 수 있으므로, 운영 스케줄에서는 보통 비워 둔다.
+생성 옵션은 `PUZZLE_ATTEMPTS`, `PUZZLE_BEAM`, `PUZZLE_BRANCH`, `PUZZLE_CANDIDATES`, `PUZZLE_DENSE`, `PUZZLE_DIVERSITY_HISTORY`, `PUZZLE_MAX_ANSWER_REUSE`, `PUZZLE_MAX_SCAFFOLD_SIMILARITY`, `PUZZLE_MAX_SYLLABLE_ANSWERS`, `PUZZLE_MIN_CROSS`, `PUZZLE_MIN_DENSITY`, `PUZZLE_MIN_ENTRIES`, `PUZZLE_MIN_MULTI`, `PUZZLE_MAX_AUTO`, `PUZZLE_RETRIES`, `PUZZLE_SAMPLES`, `PUZZLE_SIZE`, `PUZZLE_WORDS`, `PUZZLE_WORDBANK`, `PUZZLE_PUBLISHED_AT`, `PUZZLE_EXISTING_MANIFEST_URL`, `PUZZLE_ANSWER_HISTORY_DAYS`, `PUZZLE_FRAGMENT_HISTORY_DAYS`, `PUZZLE_EXISTING_ANSWER_HISTORY_URL`로 override할 수 있다. `PUZZLE_SEED`를 지정하면 같은 입력에서 같은 퍼즐이 다시 생성될 수 있으므로, 운영 스케줄에서는 보통 비워 둔다.
 
 ## Append manifest
 
@@ -138,6 +141,10 @@ Cloud Run Job은 다음 환경 변수를 사용한다.
 - `puzzleId`는 로컬 진행 상태 key로 쓰이므로 같은 날짜에 여러 퍼즐이 있어도 진행 상태가 섞이지 않는다.
 - `PUZZLE_SEED`를 고정하지 않으면 기본 seed가 실행 시각을 포함해 날짜마다 바뀐다.
 - 같은 날짜의 앞 난이도에서 사용한 정답과, 같은 난이도의 최근 7판에서 사용한 정답은 후보 풀에서 제거한다. 정답 문자열이 같은 단어뿐 아니라 어근(2음절 연속 조각)을 공유하는 단어까지 함께 빼므로, 어제 `대학생`을 썼으면 오늘 `학생`도 후보에 오르지 않는다.
+- manifest 는 14판만 보관하므로 그 밖의 반복은 **발행 정답 이력** `public/puzzles/answer-history.json`으로 막는다. 이 파일은 두 난이도의 최근 `PUZZLE_ANSWER_HISTORY_DAYS`(기본 90)일치 `{puzzleId, date, difficulty, slotId, answers}`를 담고, 슬롯이 확정될 때마다 갱신·발행된다. 정확히 같은 정답은 90일 동안, 어근이 겹치는 후보는 `PUZZLE_FRAGMENT_HISTORY_DAYS`(기본 14)일 동안 난이도를 가리지 않고 후보에서 뺀다. 어근 배제를 90일까지 늘리면 워드뱅크의 1/3이 사라지므로 두 창을 분리한다.
+- 이력은 실행 시작 때 `PUZZLE_EXISTING_ANSWER_HISTORY_URL`(기본 `<base>/puzzles/answer-history.json`)을 **CDN 캐시를 우회해** 읽는다. 404면 로컬 파일, 그것도 없으면 manifest 의 퍼즐로 bootstrap 한다. 매 실행마다 manifest 퍼즐을 이력에 병합하므로 첫 도입과 manifest·이력 어긋남을 같은 경로로 처리한다. 404가 아닌 네트워크 오류는 run 을 실패시킨다(빈 이력으로 90일치를 덮어쓰는 사고 방지). 파일 형식이 깨졌으면 `severity>=ERROR` 로그를 남기고 manifest 로 다시 만든다.
+- 두 번째 티어(hard)는 앞 티어(easy)가 방금 로컬에 쓴 이력을 읽는다(manifest 와 같은 이유로 원격 URL 을 떼어낸다). 같은 슬롯을 재실행하면 이력 항목도 identity(`slotId ?? puzzleId`) 기준으로 교체되어 idempotent 하다.
+- 이력 배제 결과는 `generation-report.json` 의 `selected.diversity` 에 `historyExact*`/`historyFragment*` 카운트로 남고, 발행 직전 하드 게이트가 이력 정답 누수를 다시 확인한다.
 - 한 판 안에서도 어근을 공유하는 정답(`대학생`/`여학생`/`학생`)은 배치 단계에서 막고, 같은 음절이 `PUZZLE_MAX_SYLLABLE_ANSWERS`개를 넘는 정답에 등장하면 후보에서 제외한다. 발행 직전에도 같은 기준으로 다시 검사해 위반이 있으면 슬롯 생성을 실패시킨다.
 - 품질 게이트를 통과한 후보 중 최근 같은 난이도와 정답이 50% 초과로 겹치거나 채운 칸 골격 Jaccard 유사도가 75%를 초과하는 후보는 건너뛴다.
 - 같은 슬롯을 재실행할 때는 그 슬롯 자체를 다양성 비교에서 제외해 같은 seed의 재현성과 idempotency를 유지한다.
@@ -182,6 +189,7 @@ Firebase Hosting을 AIT 앱 origin과 다른 도메인에서 읽기 때문에 CO
 - Easy는 5×5, Hard는 8×8인지 확인한다.
 - manifest와 puzzle metadata, 격자 slot과 entry를 다시 검증한다.
 - 당일 두 난이도 정답 교집합이 0개인지 확인한다.
+- `answer-history.json`을 읽어 오늘 두 판의 정답이 최근 `PUZZLE_ANSWER_HISTORY_DAYS`(기본 90)일 안의 다른 퍼즐(난이도 무관)에 그대로 있었는지 확인한다(`repeated_answer`). 이력 파일이 없거나 깨졌으면 `missing_answer_history`로 실패한다 — 생성 Job(00:05)이 같은 이미지로 먼저 돌므로 00:30에 이력이 없다는 것은 발행 회귀다.
 - 실패하면 stderr와 non-zero exit를 남겨 Cloud Run Job을 실패 처리한다.
 
 로컬 또는 운영 공개본을 직접 확인할 수 있다.
@@ -190,6 +198,13 @@ Firebase Hosting을 AIT 앱 origin과 다른 도메인에서 읽기 때문에 CO
 npm run health:puzzles -- \
   --baseUrl=https://crossword-puzzle-79ae0.web.app \
   --date=2026-07-26
+```
+
+반복 정답만 표로 보려면 리포트 스크립트를 쓴다. manifest 14판과 이력을 대조해 `날짜 난이도 puzzleId "정답" <- 이전 날짜 난이도 puzzleId (간격)` 형식으로 출력하고, 반복이 있으면 exit 1이다(`--exitZero`로 끌 수 있다).
+
+```bash
+npm run report:answer-repeats -- --baseUrl=https://crossword-puzzle-79ae0.web.app --date=2026-09-08
+npm run report:answer-repeats -- --manifest=<dir>/puzzles/manifest.json --assetRoot=<dir> --history=<dir>/puzzles/answer-history.json
 ```
 
 Cloud Monitoring notification channel을 준비한 뒤 health Job, Scheduler, 로그

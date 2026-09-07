@@ -1,10 +1,14 @@
 import { evaluatePublishedPuzzlePackHealth } from "../../packages/crossword-core/src/puzzlePackHealth.ts";
 import { DIFFICULTY_ORDER } from "../../packages/crossword-core/src/difficultyProfiles.ts";
+import {
+  DEFAULT_ANSWER_HISTORY_DAYS,
+  parseAnswerHistory,
+} from "../../packages/crossword-core/src/answerHistory.ts";
 import { validatePuzzle } from "../../scripts/validate-puzzle-pack.mjs";
+import { fetchJsonFresh, resolveAnswerHistoryUrl } from "./puzzlePackIo.mjs";
 
 const DEFAULT_BASE_URL = "https://crossword-puzzle-79ae0.web.app";
 const DEFAULT_TIME_ZONE = "Asia/Seoul";
-const REQUIRED_FETCH_ATTEMPTS = 3;
 
 function readOption(name, fallback) {
   const prefix = `--${name}=`;
@@ -29,31 +33,12 @@ function getDateKey(timeZone, date = new Date()) {
   return `${values.year}-${values.month}-${values.day}`;
 }
 
-async function fetchJson(url) {
-  let lastError;
-
-  for (let attempt = 1; attempt <= REQUIRED_FETCH_ATTEMPTS; attempt += 1) {
-    try {
-      const target = new URL(url);
-      target.searchParams.set("healthCheck", `${Date.now()}-${attempt}`);
-      const response = await fetch(target, {
-        cache: "no-store",
-        signal: AbortSignal.timeout(15_000),
-      });
-      if (!response.ok) {
-        throw new Error(`${response.status} ${response.statusText}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      lastError = error;
-      console.warn(
-        `[puzzle-pack-health] fetch attempt ${attempt}/${REQUIRED_FETCH_ATTEMPTS} failed for ${url}: ${error.message}`,
-      );
-    }
-  }
-
-  throw lastError;
+// 발행 직후 검사이므로 CDN 캐시(max-age=300)를 우회해 원본을 읽는다.
+function fetchJson(url, { allowNotFound = false } = {}) {
+  return fetchJsonFresh(url.toString(), {
+    allowNotFound,
+    label: "healthCheck",
+  });
 }
 
 async function run() {
@@ -66,8 +51,25 @@ async function run() {
     process.env.PUZZLE_TIME_ZONE ?? DEFAULT_TIME_ZONE,
   );
   const expectedDate = readOption("date", getDateKey(timeZone));
+  const answerHistoryDays = Number(
+    readOption(
+      "answerHistoryDays",
+      process.env.PUZZLE_ANSWER_HISTORY_DAYS ??
+        String(DEFAULT_ANSWER_HISTORY_DAYS),
+    ),
+  );
   const manifestUrl = new URL("/puzzles/manifest.json", baseUrl);
   const manifest = await fetchJson(manifestUrl);
+  // 이력이 없거나(404) 형식이 깨졌으면 null 을 넘겨 missing_answer_history 로 실패시킨다.
+  // 생성 Job(00:05)이 같은 이미지로 먼저 돌므로 00:30 에 이력이 없다는 것은 발행
+  // 회귀다.
+  const rawAnswerHistory = await fetchJson(resolveAnswerHistoryUrl(baseUrl), {
+    allowNotFound: true,
+  });
+  const answerHistory =
+    rawAnswerHistory == null
+      ? null
+      : (parseAnswerHistory(rawAnswerHistory)?.history ?? null);
   const items =
     manifest.puzzles?.filter((item) => item.date === expectedDate) ?? [];
   const puzzlesByPath = {};
@@ -82,6 +84,8 @@ async function run() {
     expectedDate,
     manifest,
     puzzlesByPath,
+    answerHistory,
+    answerHistoryDays,
   });
   const structuralFailures = items.flatMap((item) => {
     const puzzle = puzzlesByPath[item.path];

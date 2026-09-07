@@ -197,14 +197,26 @@ function getGeneratorArgs(options) {
         ? undefined
         : `${hostingBaseUrl}/puzzles/manifest.json`),
   );
+  // 발행 정답 이력은 manifest 와 같은 곳에 산다. manifest 처럼 원격을 먼저 읽고,
+  // 없으면 생성기가 로컬 파일 → manifest bootstrap 순으로 폴백한다.
+  args = ensureArg(
+    args,
+    "answerHistoryUrl",
+    process.env.PUZZLE_EXISTING_ANSWER_HISTORY_URL ??
+      (hostingBaseUrl == null
+        ? undefined
+        : `${hostingBaseUrl}/puzzles/answer-history.json`),
+  );
 
   for (const [envName, argName] of [
+    ["PUZZLE_ANSWER_HISTORY_DAYS", "answerHistoryDays"],
     ["PUZZLE_ATTEMPTS", "attempts"],
     ["PUZZLE_BEAM", "beam"],
     ["PUZZLE_BRANCH", "branch"],
     ["PUZZLE_CANDIDATES", "candidates"],
     ["PUZZLE_DENSE", "dense"],
     ["PUZZLE_DIVERSITY_HISTORY", "diversityHistory"],
+    ["PUZZLE_FRAGMENT_HISTORY_DAYS", "fragmentHistoryDays"],
     ["PUZZLE_MAX_AUTO", "maxAuto"],
     ["PUZZLE_MAX_ANSWER_REUSE", "maxAnswerReuse"],
     ["PUZZLE_MAX_SCAFFOLD_SIMILARITY", "maxScaffoldSimilarity"],
@@ -334,10 +346,13 @@ async function run() {
       }
       // 두 번째 티어부터는 방금 로컬에 쓴 manifest(앞 티어 결과)에 누적해야 하므로
       // 원격 manifest(appendManifestUrl)를 다시 읽지 않게 한다. 원격을 다시 읽으면
-      // 앞 티어(easy)가 빠진 상태로 로드돼 덮어써진다.
+      // 앞 티어(easy)가 빠진 상태로 로드돼 덮어써진다. 정답 이력(answerHistoryUrl)도
+      // 같은 이유로 앞 티어가 로컬에 쓴 파일을 읽어야 한다.
       if (index > 0) {
         tierArgs = tierArgs.filter(
-          (arg) => !arg.startsWith("--appendManifestUrl="),
+          (arg) =>
+            !arg.startsWith("--appendManifestUrl=") &&
+            !arg.startsWith("--answerHistoryUrl="),
         );
       }
       console.log(
