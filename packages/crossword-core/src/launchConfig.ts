@@ -133,8 +133,9 @@ export const defaultLaunchConfig: LaunchConfig = {
   leaderboardEnabled: true,
   // 복귀 리마인드 푸시 동의 유도(D1 재방문) 기본 활성. 스마트발송 템플릿이 등록돼
   // AIT/Web 동의 요청 경로가 갖춰졌고, D1 잔존(8.6%) 개선을 위해 켠다(#162). 필요 시
-  // Remote Config `return_reminder_enabled`로 끌 수 있다. mobile(RN)은 알림 동의
-  // adapter가 없어 이 값과 무관하게 no-op이다(docs/market-parity.md 참고).
+  // Remote Config `return_reminder_enabled`로 끌 수 있다. mobile(RN)은
+  // apps/mobile/mobileReturnReminder.ts 가 같은 게이트로 OS 권한을 받고 D+1 09:00
+  // 로컬 알림을 예약한다(docs/market-parity.md 참고).
   returnReminderEnabled: true,
   // 온보딩 난이도 램프(#291) 기본 ON. easy→easy→normal로 첫 난이도 절벽만 늦추며,
   // Remote Config `onboarding_difficulty_ramp_enabled=false`로 즉시 끌 수 있다.

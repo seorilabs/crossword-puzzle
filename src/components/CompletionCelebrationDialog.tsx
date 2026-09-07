@@ -7,7 +7,16 @@ import {
 import { telemetry } from "../adapters/telemetry";
 import { formatThemeHeadline } from "../puzzleLabels";
 import { useShareResult } from "../useShareResult";
+import { ReturnReminderPrepromptCard } from "./ReturnReminderPrepromptCard";
 import { ShareGridPreview } from "./ShareGridPreview";
+
+// 복귀 알림 사전 안내. 값이 있으면 스트릭 배지 아래에 카드를 그린다. 카드에 답하지
+// 않고 다이얼로그를 닫거나 다른 동선으로 나가면 보류(onDecline)로 정리한다.
+export type CompletionReturnReminderPreprompt = {
+  body: string;
+  onAccept: () => void;
+  onDecline: () => void;
+};
 
 export type CompletionCelebrationDialogProps = {
   attemptsUsed: number;
@@ -19,6 +28,7 @@ export type CompletionCelebrationDialogProps = {
   isNewBestTime: boolean;
   nextPuzzleLabel?: string;
   puzzleId: string;
+  returnReminderPreprompt?: CompletionReturnReminderPreprompt;
   revealUsed: boolean;
   shareGrid: string;
   shareText: string;
@@ -41,6 +51,7 @@ export function CompletionCelebrationDialog({
   isNewBestTime,
   nextPuzzleLabel,
   puzzleId,
+  returnReminderPreprompt,
   revealUsed,
   shareGrid,
   shareText,
@@ -73,15 +84,28 @@ export function CompletionCelebrationDialog({
       ? "다음 퍼즐 풀기"
       : `다음 퍼즐 풀기 · ${nextPuzzleLabel}`;
 
+  // 사전 안내에 답하지 않고 다이얼로그를 떠나면 보류로 기록한다(익일 재안내).
+  function settleReturnReminderPreprompt() {
+    returnReminderPreprompt?.onDecline();
+  }
+
+  function leaveWith(action: () => void) {
+    return () => {
+      settleReturnReminderPreprompt();
+      action();
+    };
+  }
+
   // 완료 직후(고관여 시점) 기록 화면으로 잇는 보조 동선. 진입 소스를 구분해
   // 계측한 뒤(#300) 다이얼로그 닫힘·이동은 호출부(onSeeHistory)에 위임한다.
   function seeHistory() {
+    settleReturnReminderPreprompt();
     telemetry.click("history_open", { source: "completion_dialog" });
     onSeeHistory();
   }
 
   return (
-    <div className="rewardDialogScrim" onClick={onClose}>
+    <div className="rewardDialogScrim" onClick={leaveWith(onClose)}>
       <section
         className="rewardDialog completionDialog"
         role="dialog"
@@ -132,6 +156,13 @@ export function CompletionCelebrationDialog({
           {nextStreakHint != null && (
             <p className="streakNudge">{nextStreakHint}</p>
           )}
+          {returnReminderPreprompt != null && (
+            <ReturnReminderPrepromptCard
+              body={returnReminderPreprompt.body}
+              onAccept={returnReminderPreprompt.onAccept}
+              onDecline={returnReminderPreprompt.onDecline}
+            />
+          )}
         </div>
         <div className="shareContainer">
           <button
@@ -163,13 +194,17 @@ export function CompletionCelebrationDialog({
             <button
               className="primaryButton completionNextPuzzleButton"
               type="button"
-              onClick={onStartNextPuzzle}
+              onClick={leaveWith(onStartNextPuzzle)}
               autoFocus
             >
               {nextPuzzleButtonLabel}
             </button>
           )}
-          <button className="secondaryButton" type="button" onClick={onGoHome}>
+          <button
+            className="secondaryButton"
+            type="button"
+            onClick={leaveWith(onGoHome)}
+          >
             홈으로
           </button>
           <button
@@ -177,7 +212,7 @@ export function CompletionCelebrationDialog({
               onStartNextPuzzle == null ? "primaryButton" : "secondaryButton"
             }
             type="button"
-            onClick={onSeeResult}
+            onClick={leaveWith(onSeeResult)}
             autoFocus={onStartNextPuzzle == null}
           >
             결과 보기
@@ -193,7 +228,7 @@ export function CompletionCelebrationDialog({
         <button
           className="completionDialogReview"
           type="button"
-          onClick={onClose}
+          onClick={leaveWith(onClose)}
         >
           퍼즐 다시 보기
         </button>

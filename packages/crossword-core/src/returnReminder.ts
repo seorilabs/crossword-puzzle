@@ -17,12 +17,16 @@ export type NotificationAgreementResultType =
 // 샌드박스), error는 SDK onError(일시적 호출 오류), timeout은 콜백이 끝내
 // 돌아오지 않아 안전망 타이머가 종료시킨 경우(브리지 미연결 추정)다. error와
 // timeout을 나눠, 실패 원인(SDK 오류 vs 무응답)을 데이터로 구분한다(#253).
+// declined 는 앱 안 사전 안내(pre-prompt)에서 "괜찮아요"를 눌러 시스템 동의 다이얼로그
+// 를 띄우지 않은 경우다. 종결이 아니라 error/timeout 처럼 익일 재유도 대상이며 유도
+// 예산(promptCount)은 소진한다.
 export type ReturnReminderOutcome =
   | "agreed"
   | "rejected"
   | "unsupported"
   | "error"
-  | "timeout";
+  | "timeout"
+  | "declined";
 
 // 실패가 발생한 실행 단계. SDK 호출 전 동기 실패(preflight), SDK 오류 콜백
 // (sdk_callback), 콜백 무응답 안전망(timeout)을 구분해 운영 원인을 좁힌다.
@@ -59,6 +63,8 @@ export type ReturnReminderState = {
   failureStage?: ReturnReminderFailureStage;
 };
 
+export const RETURN_REMINDER_PREPROMPT_EVENT = "return_reminder_preprompt";
+export const RETURN_REMINDER_SCHEDULE_EVENT = "return_reminder_schedule";
 export const RETURN_REMINDER_PROMPT_EVENT = "return_reminder_prompt";
 export const RETURN_REMINDER_RESULT_EVENT = "return_reminder_result";
 export const RETURN_REMINDER_OPENED_EVENT = "notification_opened";
@@ -67,6 +73,72 @@ export const RETURN_REMINDER_MAX_PROMPT_COUNT = 3;
 export type ReturnReminderChannel = "ait" | "local";
 
 export const RETURN_REMINDER_LOCAL_HOUR_KST = 9;
+
+// 앱 안 사전 안내 카드 문구. 시스템 다이얼로그(AIT 스마트발송 동의·OS 알림 권한)는
+// 한 번 거부되면 되돌리기 어려우므로, 스트릭 프레이밍으로 가치를 먼저 보여 주고
+// 명시적으로 수락한 사용자에게만 시스템 다이얼로그를 띄운다. 3마켓이 같은 문구를 쓴다.
+export const RETURN_REMINDER_PREPROMPT_COPY = {
+  title: "내일 새 퍼즐이 나오면 알려드릴게요",
+  accept: "알림 받기",
+  decline: "괜찮아요",
+} as const;
+
+export type ReturnReminderPrepromptAction = "shown" | "accept" | "decline";
+
+export function formatReturnReminderPrepromptBody(streakDays: number): string {
+  const safeStreak = Number.isFinite(streakDays)
+    ? Math.max(0, Math.floor(streakDays))
+    : 0;
+  const streakLine =
+    safeStreak > 0 ? `🔥 ${safeStreak}일 연속 기록 지키기` : "🔥 연속 기록 시작하기";
+  return `${streakLine} · 매일 아침 ${RETURN_REMINDER_LOCAL_HOUR_KST}시 알림`;
+}
+
+// return_reminder_preprompt 이벤트 파라미터. shown/accept/decline 을 같은 이벤트에
+// action 으로 구분해 사전 안내 수락률을 바로 계산할 수 있게 한다.
+export function buildReturnReminderPrepromptParams(
+  action: ReturnReminderPrepromptAction,
+  state: ReturnReminderState,
+  channel: ReturnReminderChannel,
+  streakDays: number,
+): {
+  action: ReturnReminderPrepromptAction;
+  channel: ReturnReminderChannel;
+  prompt_count: number;
+  streak_days: number;
+} {
+  return {
+    action,
+    channel,
+    prompt_count: state.promptCount,
+    streak_days: Number.isFinite(streakDays)
+      ? Math.max(0, Math.floor(streakDays))
+      : 0,
+  };
+}
+
+// RN 로컬 알림은 동의 뒤 매 완료마다 D+1 로 다시 예약해야 한다(한 번만 예약하면 D1
+// 알림 한 건으로 끝난다). agreed 상태에서만 재예약한다.
+export function shouldRefreshLocalReturnReminder(
+  state: ReturnReminderState,
+): boolean {
+  return state.outcome === "agreed";
+}
+
+// 예약된 알림의 날짜가 오늘 이전·오늘이면 사용자는 이미 돌아온 것이므로 취소한다.
+// 오늘 다시 완료하면 refresh 가 D+1 로 새로 예약한다.
+export function shouldCancelLocalReturnReminder(
+  reminderDate: string,
+  today: string,
+): boolean {
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(reminderDate) ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(today)
+  ) {
+    return false;
+  }
+  return reminderDate <= today;
+}
 
 export type LocalReturnReminderSchedule = {
   reminderDate: string;
@@ -135,8 +207,8 @@ export const initialReturnReminderState: ReturnReminderState = {
   promptCount: 0,
 };
 
-// 다시 물어볼 필요가 없는(종결된) 동의 상태. error·timeout은 일시 실패로 보고
-// 종결로 치지 않는다(횟수 가드로만 재유도를 막는다).
+// 다시 물어볼 필요가 없는(종결된) 동의 상태. error·timeout·declined 는 일시 실패
+// 또는 보류로 보고 종결로 치지 않는다(횟수 가드로만 재유도를 막는다).
 const RESOLVED_OUTCOMES: ReadonlySet<ReturnReminderOutcome> = new Set([
   "agreed",
   "rejected",
@@ -410,7 +482,8 @@ export type ShouldPromptReturnReminderInput = {
 // 완료 직후(고관여 시점)에 최대 3회까지 푸시 동의를 유도한다.
 // - enabled=false면 절대 노출하지 않는다(원격 설정/시장 게이트).
 // - 이미 동의/거부/미지원으로 종결됐으면 다시 묻지 않는다.
-// - error/timeout은 익일에만 재유도하고, 같은 날에는 다시 묻지 않는다.
+// - error/timeout/declined(사전 안내 보류)는 익일에만 재유도하고, 같은 날에는 다시
+//   묻지 않는다.
 // - 총 유도 상한에 도달하면 일시 실패여도 다시 묻지 않는다. 단, 배포 설정 오류
 //   (config error_code)로 인한 실패는 예산을 소진하지 않아 상한 가드를 건너뛴다(#319).
 export function shouldPromptReturnReminder({
@@ -438,7 +511,15 @@ export function shouldPromptReturnReminder({
   if (state.promptCount === 0) {
     return true;
   }
-  if (state.outcome !== "error" && state.outcome !== "timeout") {
+  // outcome 이 없는데 유도 기록만 있으면 사전 안내를 띄운 채 앱이 종료된 경우다.
+  // 응답을 못 받았으므로 종결이 아니며, 익일에 다시 안내한다(예산은 이미 소진됐다).
+  const unanswered = state.outcome == null;
+  if (
+    !unanswered &&
+    state.outcome !== "error" &&
+    state.outcome !== "timeout" &&
+    state.outcome !== "declined"
+  ) {
     return false;
   }
   return state.lastPromptDate != null && state.lastPromptDate !== promptDate;

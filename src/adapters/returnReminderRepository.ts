@@ -21,6 +21,7 @@ const KNOWN_OUTCOMES: ReadonlySet<ReturnReminderOutcome> = new Set([
   "unsupported",
   "error",
   "timeout",
+  "declined",
 ]);
 
 const KNOWN_FAILURE_STAGES: ReadonlySet<ReturnReminderFailureStage> = new Set([

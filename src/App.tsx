@@ -103,10 +103,14 @@ import {
   shouldPromptReturnReminder,
   markReturnReminderPrompted,
   applyReturnReminderOutcome,
+  buildReturnReminderPrepromptParams,
   buildReturnReminderPromptParams,
   buildReturnReminderResultParams,
+  formatReturnReminderPrepromptBody,
+  RETURN_REMINDER_PREPROMPT_EVENT,
   RETURN_REMINDER_PROMPT_EVENT,
   RETURN_REMINDER_RESULT_EVENT,
+  type ReturnReminderState,
   STUCK_HINT_PROMPT_ACCEPT_EVENT,
   STUCK_HINT_PROMPT_DISMISS_EVENT,
   STUCK_HINT_PROMPT_EVENT,
@@ -143,7 +147,10 @@ import {
   type HowToPlayCloseContext,
 } from "./components/HowToPlayDialog";
 import { SettingsSheet } from "./components/SettingsSheet";
-import { CompletionCelebrationDialog } from "./components/CompletionCelebrationDialog";
+import {
+  CompletionCelebrationDialog,
+  type CompletionReturnReminderPreprompt,
+} from "./components/CompletionCelebrationDialog";
 import { MissionHistoryCard } from "./components/MissionHistoryCard";
 import { PuzzleMetaChips } from "./components/PuzzleMetaChips";
 import { StuckHintPrompt } from "./components/StuckHintPrompt";
@@ -1559,25 +1566,55 @@ function App() {
     });
   }, [puzzle.date, puzzle.puzzleId, route]);
 
-  // 퍼즐 완료(고관여 시점)에 "오늘의 퍼즐" 복귀 리마인드 푸시 동의를 유도한다.
-  // 결정 로직은 코어(shouldPromptReturnReminder)에, 실제 동의 요청은 AIT 어댑터
-  // (requestReturnReminderAgreement)에 위임한다. 동의/거부/미지원은 종결하고,
-  // error/timeout만 익일에 총 3회 상한으로 재유도한다.
-  const maybePromptReturnReminder = useCallback(() => {
-    const state = loadReturnReminderState();
-    const promptDate = getTodayDateKey();
-    if (
-      !shouldPromptReturnReminder({
-        enabled: launchConfig.returnReminderEnabled,
-        promptDate,
-        state,
-      })
-    ) {
+  // 퍼즐 완료(고관여 시점)에 "오늘의 퍼즐" 복귀 리마인드 사전 안내 카드를 띄운다.
+  // 게이트(원격 설정·종결·3회 예산·같은 날 1회)는 코어(shouldPromptReturnReminder)에
+  // 두고, 카드에서 "알림 받기"를 누른 뒤에만 AIT 어댑터(requestReturnReminderAgreement)로
+  // 시스템 동의 다이얼로그를 띄운다. 시스템 다이얼로그는 한 번 거부되면 되돌리기
+  // 어려워 스트릭 프레이밍으로 가치를 먼저 보여 준다. "괜찮아요"·미응답 닫기는 declined
+  // 로 기록해 익일에 다시 안내한다(예산은 소진).
+  // 카드 상태는 유도 기록(prompted)과, 완료 직후 확정한 스트릭(streakDays)을 함께
+  // 동결한다. shown/accept/decline 세 이벤트와 카드 본문이 같은 스트릭 값을 쓴다.
+  const [returnReminderPreprompt, setReturnReminderPreprompt] = useState<{
+    prompted: ReturnReminderState;
+    streakDays: number;
+  } | null>(null);
+  const completionCelebrationIdRef = useRef<string | null>(null);
+  completionCelebrationIdRef.current = completionCelebrationId;
+  const openReturnReminderPreprompt = useCallback(
+    (streakDays: number) => {
+      const state = loadReturnReminderState();
+      const promptDate = getTodayDateKey();
+      if (
+        !shouldPromptReturnReminder({
+          enabled: launchConfig.returnReminderEnabled,
+          promptDate,
+          state,
+        })
+      ) {
+        return;
+      }
+
+      const prompted = markReturnReminderPrompted(state, promptDate);
+      saveReturnReminderState(prompted);
+      telemetry.impression(
+        RETURN_REMINDER_PREPROMPT_EVENT,
+        buildReturnReminderPrepromptParams("shown", prompted, "ait", streakDays),
+      );
+      setReturnReminderPreprompt({ prompted, streakDays });
+    },
+    [launchConfig.returnReminderEnabled],
+  );
+
+  const acceptReturnReminder = useCallback(() => {
+    if (returnReminderPreprompt == null) {
       return;
     }
-
-    const prompted = markReturnReminderPrompted(state, promptDate);
-    saveReturnReminderState(prompted);
+    const { prompted, streakDays } = returnReminderPreprompt;
+    setReturnReminderPreprompt(null);
+    telemetry.impression(
+      RETURN_REMINDER_PREPROMPT_EVENT,
+      buildReturnReminderPrepromptParams("accept", prompted, "ait", streakDays),
+    );
     telemetry.impression(
       RETURN_REMINDER_PROMPT_EVENT,
       buildReturnReminderPromptParams(
@@ -1612,7 +1649,27 @@ function App() {
         );
       },
     );
-  }, [launchConfig.returnReminderEnabled]);
+  }, [returnReminderPreprompt]);
+
+  const declineReturnReminder = useCallback(() => {
+    if (returnReminderPreprompt == null) {
+      return;
+    }
+    const { prompted, streakDays } = returnReminderPreprompt;
+    setReturnReminderPreprompt(null);
+    telemetry.impression(
+      RETURN_REMINDER_PREPROMPT_EVENT,
+      buildReturnReminderPrepromptParams("decline", prompted, "ait", streakDays),
+    );
+    saveReturnReminderState(applyReturnReminderOutcome(prompted, "declined"));
+  }, [returnReminderPreprompt]);
+
+  // 축하 다이얼로그가 화면 이동 등으로 사라지면(카드에 답하지 않음) 보류로 정리한다.
+  useEffect(() => {
+    if (completionCelebrationId == null && returnReminderPreprompt != null) {
+      declineReturnReminder();
+    }
+  }, [completionCelebrationId, declineReturnReminder, returnReminderPreprompt]);
 
   useEffect(() => {
     if (!viewModel.isComplete || mission.completedAt != null) {
@@ -1639,6 +1696,12 @@ function App() {
       // 완료로 스트릭이 새 마일스톤(7/30/100일)에 도달하면 달성 이벤트를 1회 보낸다.
       // 발화 조건("이전 < 임계 ≤ 현재") 판정은 core 헬퍼가 담당한다(#292).
       emitStreakMilestoneIfReached(gameAnalytics, previousStreak, nextStreak);
+      // 복귀 리마인드 사전 안내는 축하 다이얼로그(오늘 화면 완료)에서만 그릴 수 있다.
+      // 다이얼로그가 아직 떠 있을 때만 유도로 기록해 카드 없이 예산이 소진되지 않게
+      // 하고, 완료 후 확정된 스트릭을 카드·계측이 함께 쓰도록 넘긴다.
+      if (completionCelebrationIdRef.current === puzzle.puzzleId) {
+        openReturnReminderPreprompt(nextStreak);
+      }
     });
     // 완료 시점의 노힌트 판정 신호(힌트 수·정답 보기 여부)를 archive 기록에 동결해,
     // 진행상태 저장소가 비워져도 히스토리 노힌트 집계가 결과 화면과 일치하게 한다.
@@ -1718,9 +1781,6 @@ function App() {
       });
     }
 
-    // 완료 직후 복귀 리마인드 푸시 동의 유도(원격 설정으로 게이트, 1회 한정).
-    maybePromptReturnReminder();
-
     // 정답 공개(revealUsed)면 무조건 최고 기록 갱신에서 제외한다(revealUsed를
     // 최우선 가드로 두어 정책 의도를 명시). bestTimeEligible === !revealUsed.
     if (
@@ -1755,7 +1815,7 @@ function App() {
     hapticEnabled,
     hintCount,
     launchConfig,
-    maybePromptReturnReminder,
+    openReturnReminderPreprompt,
     mission,
     pause.pausedMs,
     puzzle,
@@ -2985,6 +3045,17 @@ function App() {
           completionCelebrationId={completionCelebrationId}
           consecutiveStreak={consecutiveStreak}
           dismissCompletionCelebration={() => setCompletionCelebrationId(null)}
+          returnReminderPreprompt={
+            returnReminderPreprompt == null
+              ? undefined
+              : {
+                  body: formatReturnReminderPrepromptBody(
+                    returnReminderPreprompt.streakDays,
+                  ),
+                  onAccept: acceptReturnReminder,
+                  onDecline: declineReturnReminder,
+                }
+          }
           hasStarted={hasStarted}
           isCompleted={isCompleted}
           isFirstInputGuideVisible={isFirstInputGuideVisible}
@@ -3908,6 +3979,7 @@ type TodayScreenProps = DateSelectionProps & {
   completedEntries: PuzzleEntry[];
   completionCelebrationId: string | null;
   dismissCompletionCelebration: () => void;
+  returnReminderPreprompt?: CompletionReturnReminderPreprompt;
   hasStarted: boolean;
   hintBalance: HintBalance;
   hintCount: number;
@@ -3966,6 +4038,7 @@ function TodayScreen({
   consecutiveStreak,
   dateCardStates,
   dismissCompletionCelebration,
+  returnReminderPreprompt,
   hasStarted,
   hintBalance,
   hintCount,
@@ -5232,6 +5305,7 @@ function TodayScreen({
           isNewBestTime={isNewBestTime}
           nextPuzzleLabel={completionNextRecommendedLabel}
           puzzleId={puzzle.puzzleId}
+          returnReminderPreprompt={returnReminderPreprompt}
           revealUsed={revealUsed}
           shareGrid={celebrationShareGrid}
           shareText={celebrationShareText}

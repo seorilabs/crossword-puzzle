@@ -21,9 +21,10 @@ describe("#352 RN 복귀 알림 인수조건", () => {
   );
   const iosInfoPlist = read("apps/mobile/ios/CrosswordPuzzleMobile/Info.plist");
 
-  it("AC-1: 완료 뒤 권한을 요청하고 익일 09:00 KST 한 건을 예약해 today로 연다", () => {
+  it("AC-1: 완료 뒤 사전 안내 수락 시 권한을 요청하고 익일 09:00 KST 한 건을 예약해 today로 연다", () => {
     assert.match(mobileApp, /viewModel\.isComplete/);
-    assert.match(mobileApp, /maybeRequestMobileReturnReminder\(\{/);
+    assert.match(mobileApp, /prepareMobileReturnReminderPreprompt\(\{/);
+    assert.match(mobileApp, /confirmMobileReturnReminder\(prompted, \{/);
     assert.match(notificationAdapter, /client\.requestPermission\(\{/);
     assert.match(notificationAdapter, /client\.createTriggerNotification\(/);
     assert.match(notificationAdapter, /route: 'today'/);
@@ -92,8 +93,62 @@ describe("#352 RN 복귀 알림 인수조건", () => {
 
   it("AC-7: iOS도 완료 맥락에서 OS 권한을 요청하고 가짜 purpose-string 키를 만들지 않는다", () => {
     assert.match(mobileApp, /viewModel\.isComplete/);
-    assert.match(mobileApp, /maybeRequestMobileReturnReminder\(\{/);
+    assert.match(mobileApp, /confirmMobileReturnReminder\(prompted, \{/);
     assert.match(notificationAdapter, /client\.requestPermission\(\{/);
     assert.doesNotMatch(iosInfoPlist, /NotificationUsageDescription/);
+  });
+
+  it("AC-8: 사전 안내 카드 뒤에만 시스템 요청을 하고, 동의 상태는 매 완료마다 재예약하며, 복귀 시 오늘자 예약을 취소한다", () => {
+    const orchestration = read("apps/mobile/mobileReturnReminder.ts");
+    const webApp = read("src/App.tsx");
+    const webDialog = read("src/components/CompletionCelebrationDialog.tsx");
+    const core = read("packages/crossword-core/src/returnReminder.ts");
+
+    // core: declined 는 종결이 아니라 익일 재안내, 재예약·취소 판정은 순수 함수.
+    assert.match(core, /"declined"/);
+    assert.match(core, /export function shouldRefreshLocalReturnReminder/);
+    assert.match(core, /export function shouldCancelLocalReturnReminder/);
+    assert.match(core, /RETURN_REMINDER_PREPROMPT_EVENT = "return_reminder_preprompt"/);
+
+    // RN: prepare(shown) → confirm(accept → prompt → schedule → result) / decline.
+    assert.match(orchestration, /export async function prepareMobileReturnReminderPreprompt/);
+    assert.match(orchestration, /export async function confirmMobileReturnReminder/);
+    assert.match(orchestration, /export async function declineMobileReturnReminder/);
+    assert.match(orchestration, /export async function refreshMobileReturnReminderSchedule/);
+    assert.match(orchestration, /export async function cancelStaleMobileReturnReminder/);
+    assert.doesNotMatch(orchestration, /maybeRequestMobileReturnReminder/);
+    assert.match(mobileApp, /refreshMobileReturnReminderSchedule\(promptDate, \{ telemetry \}\)/);
+    assert.match(mobileApp, /cancelStaleMobileReturnReminder\(getTodayDateKey\(\)\)/);
+    assert.match(mobileApp, /RETURN_REMINDER_PREPROMPT_COPY\.accept/);
+    assert.match(mobileApp, /declineMobileReturnReminder\(prompted, \{/);
+    assert.match(
+      orchestrationTests,
+      /사전 안내는 유도 1회로 기록하고 shown 을 계측하며 시스템 요청은 하지 않는다/,
+    );
+    assert.match(
+      orchestrationTests,
+      /동의 상태면 매 완료마다 D\+1 알림을 다시 예약하고 schedule 을 계측한다/,
+    );
+    assert.match(
+      notificationTests,
+      /예약 날짜가 오늘 이전·오늘인 복귀 알림만 취소한다/,
+    );
+
+    // 카드는 축하 다이얼로그·모달이 떠 있을 때만 유도로 기록하고(카드 없이 예산 소진 방지),
+    // 완료 후 확정한 스트릭을 카드 본문과 세 이벤트가 함께 쓴다.
+    assert.match(mobileApp, /completionCelebrationPuzzleIdRef\.current !== puzzle\.puzzleId/);
+    assert.match(mobileApp, /setReturnReminderPreprompt\(\{ prompted, streakDays \}\)/);
+    assert.match(webApp, /completionCelebrationIdRef\.current === puzzle\.puzzleId/);
+    assert.match(webApp, /openReturnReminderPreprompt\(nextStreak\)/);
+    assert.match(webApp, /setReturnReminderPreprompt\(\{ prompted, streakDays \}\)/);
+
+    // Web: 같은 사전 안내 카드와 accept/decline 계측, 미응답 닫기는 보류.
+    assert.match(webApp, /RETURN_REMINDER_PREPROMPT_EVENT/);
+    assert.match(webApp, /buildReturnReminderPrepromptParams\(\s*"shown"/);
+    assert.match(webApp, /buildReturnReminderPrepromptParams\(\s*"accept"/);
+    assert.match(webApp, /buildReturnReminderPrepromptParams\(\s*"decline"/);
+    assert.match(webApp, /applyReturnReminderOutcome\(prompted, "declined"\)/);
+    assert.match(webDialog, /<ReturnReminderPrepromptCard/);
+    assert.match(webDialog, /function settleReturnReminderPreprompt/);
   });
 });
