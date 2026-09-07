@@ -11,6 +11,7 @@ import {
   isValidDateKey,
   makeAnswerHistoryEntry,
   parseAnswerHistory,
+  resolveAnswerHistoryRetentionDays,
   selectAnswerHistoryWindow,
   shiftDateKey,
   summarizeAnswerExclusion,
@@ -281,5 +282,14 @@ describe("makeAnswerHistoryEntry", () => {
       }),
       entry("26090700", "2026-09-07", "easy", ["단면", "도사"]),
     );
+  });
+});
+
+describe("resolveAnswerHistoryRetentionDays", () => {
+  it("정확 일치 창과 어근 창 중 긴 쪽으로 보존해 어느 창도 잘리지 않는다", () => {
+    assert.equal(resolveAnswerHistoryRetentionDays(90, 14), 90);
+    assert.equal(resolveAnswerHistoryRetentionDays(0, 14), 14);
+    assert.equal(resolveAnswerHistoryRetentionDays(7, 30.9), 30);
+    assert.equal(resolveAnswerHistoryRetentionDays(Number.NaN, -3), 0);
   });
 });

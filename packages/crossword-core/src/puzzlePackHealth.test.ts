@@ -318,6 +318,8 @@ describe("health 검사 운영 계약", () => {
   it("health 는 발행 정답 이력을 읽어 교차·과거 반복을 검사하고 런북이 이를 설명한다", () => {
     assert.match(healthSource, /resolveAnswerHistoryUrl\(baseUrl\)/);
     assert.match(healthSource, /parseAnswerHistory\(/);
+    // 항목 일부가 손상된 이력은 missing 으로 취급해 검사가 약해지지 않게 한다.
+    assert.match(healthSource, /droppedEntryCount > 0/);
     assert.match(healthSource, /answerHistoryDays/);
     assert.match(runbook, /PUZZLE_ANSWER_HISTORY_DAYS/);
     assert.match(runbook, /answer-history\.json/);

@@ -66,10 +66,19 @@ async function run() {
   const rawAnswerHistory = await fetchJson(resolveAnswerHistoryUrl(baseUrl), {
     allowNotFound: true,
   });
+  // 항목 하나라도 손상됐으면 이력 전체를 신뢰하지 않는다. 빠진 항목이 바로 반복을
+  // 증명하는 이전 퍼즐일 수 있어, 줄어든 이력으로 PASS 를 내면 검사가 약해진다.
+  const parsedAnswerHistory =
+    rawAnswerHistory == null ? null : parseAnswerHistory(rawAnswerHistory);
+  if (parsedAnswerHistory != null && parsedAnswerHistory.droppedEntryCount > 0) {
+    console.error(
+      `[puzzle-pack-health] answer-history.json dropped ${parsedAnswerHistory.droppedEntryCount} malformed entries; treating history as missing`,
+    );
+  }
   const answerHistory =
-    rawAnswerHistory == null
+    parsedAnswerHistory == null || parsedAnswerHistory.droppedEntryCount > 0
       ? null
-      : (parseAnswerHistory(rawAnswerHistory)?.history ?? null);
+      : parsedAnswerHistory.history;
   const items =
     manifest.puzzles?.filter((item) => item.date === expectedDate) ?? [];
   const puzzlesByPath = {};

@@ -43,6 +43,7 @@ import {
   excludeExactAnswers,
   makeAnswerHistoryEntry,
   parseAnswerHistory,
+  resolveAnswerHistoryRetentionDays,
   selectAnswerHistoryWindow,
   summarizeAnswerExclusion,
   upsertAnswerHistory,
@@ -915,7 +916,12 @@ async function loadAnswerHistory(
     }
   }
 
-  let history = createEmptyAnswerHistory(options.answerHistoryDays);
+  // 정확 일치 창과 어근 창은 독립 override 라, 이력은 둘 중 긴 창만큼 보존한다.
+  const retentionDays = resolveAnswerHistoryRetentionDays(
+    options.answerHistoryDays,
+    options.fragmentHistoryDays,
+  );
+  let history = createEmptyAnswerHistory(retentionDays);
   if (raw != null) {
     const parsed = parseAnswerHistory(raw);
     if (parsed == null) {
@@ -944,7 +950,7 @@ async function loadAnswerHistory(
   }
 
   history = upsertAnswerHistory(history, manifestEntries, {
-    retentionDays: options.answerHistoryDays,
+    retentionDays,
     today,
   });
   if (source === "bootstrap") {
@@ -1376,7 +1382,13 @@ async function run() {
     answerHistory = upsertAnswerHistory(
       answerHistory,
       [makeAnswerHistoryEntry(puzzle)],
-      { retentionDays: options.answerHistoryDays, today: slotInfo.date },
+      {
+        retentionDays: resolveAnswerHistoryRetentionDays(
+          options.answerHistoryDays,
+          options.fragmentHistoryDays,
+        ),
+        today: slotInfo.date,
+      },
     );
     await writeAnswerHistory(outDir, answerHistory);
 

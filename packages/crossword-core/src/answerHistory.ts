@@ -102,6 +102,17 @@ function normalizeAnswers(answers: Iterable<string>): string[] {
   return [...unique];
 }
 
+// 이력 파일이 보존해야 하는 일수. 정확 일치 창과 어근 창은 독립 override 라 어느 쪽이
+// 길어도 그 창을 다 볼 수 있어야 하므로 둘 중 큰 값으로 prune 한다.
+export function resolveAnswerHistoryRetentionDays(
+  answerHistoryDays: number,
+  fragmentHistoryDays: number,
+): number {
+  const safe = (value: number) =>
+    Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
+  return Math.max(safe(answerHistoryDays), safe(fragmentHistoryDays));
+}
+
 export function createEmptyAnswerHistory(
   retentionDays: number = DEFAULT_ANSWER_HISTORY_DAYS,
   updatedAt: string = new Date(0).toISOString(),
