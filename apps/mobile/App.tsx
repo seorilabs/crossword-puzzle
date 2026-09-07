@@ -960,7 +960,6 @@ function AppContent() {
   const [puzzleArchiveRecords, setPuzzleArchiveRecords] = useState<
     PuzzleArchiveRecord[]
   >([]);
-  const [consecutiveStreak, setConsecutiveStreak] = useState(0);
   const [cellValues, setCellValues] = useState<Record<string, string>>({});
   const [dailyHintWallet, setDailyHintWallet] = useState<DailyHintWallet>(() =>
     createDailyHintWallet(getTodayDateKey()),
@@ -1266,6 +1265,12 @@ function AppContent() {
       ),
     [puzzleArchiveRecords],
   );
+  // 스트릭은 완료일 집합에서 파생한다(별도 상태 없음). 초기 hydrate 로 아카이브가
+  // 로드되는 즉시 헤드라인·넛지·배지가 같은 값을 쓴다(웹과 동일 규칙).
+  const consecutiveStreak = useMemo(
+    () => computeConsecutiveStreakDays(completedDates, todayKey),
+    [completedDates, todayKey],
+  );
   const weeklyStrip = useMemo(
     () => buildWeeklyStreakStrip(completedDates, todayKey),
     [completedDates, todayKey],
@@ -1493,17 +1498,6 @@ function AppContent() {
     );
 
     setPuzzleArchiveRecords(nextArchiveRecords);
-    setConsecutiveStreak(
-      computeConsecutiveStreakDays(
-        collectCompletedDates(
-          nextArchiveRecords.map(record => ({
-            date: record.puzzle.date,
-            completedAt: record.completedAt,
-          })),
-        ),
-        getTodayDateKey(),
-      ),
-    );
     setDateCardStates(previous => ({ ...previous, ...archiveStates }));
   }, []);
 
@@ -2914,7 +2908,15 @@ function AppContent() {
       ...buildDailyLadderCtaParams(step),
       status: 'loaded',
     });
-    navigateTo(nextMission.completedAt == null ? 'today' : 'result');
+    // 완료했거나 도전 기회를 모두 써 더 풀 수 없는 판은 결과 화면으로 보낸다(이전 홈
+    // CTA와 동일). 풀이 화면은 읽기 전용이라 결과 동선이 없다.
+    const isExhausted =
+      nextMission.completedAt == null &&
+      alreadyStarted &&
+      getRemainingAttempts(nextMission) === 0;
+    navigateTo(
+      nextMission.completedAt != null || isExhausted ? 'result' : 'today',
+    );
   }
 
   function restartMissionAttempt() {

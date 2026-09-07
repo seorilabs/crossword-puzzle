@@ -2846,7 +2846,15 @@ function App() {
       startedAt: nextMission.lastStartedAt,
     });
     applyPuzzleSession(session, { mission: nextMission });
-    navigate(nextMission.completedAt == null ? "today" : "result");
+    // 완료했거나 도전 기회를 모두 써 더 풀 수 없는 판은 결과 화면으로 보낸다(이전 홈
+    // CTA와 동일). 풀이 화면은 읽기 전용이라 결과 동선이 없다.
+    const isExhausted =
+      nextMission.completedAt == null &&
+      alreadyStarted &&
+      getRemainingAttempts(nextMission) === 0;
+    navigate(
+      nextMission.completedAt != null || isExhausted ? "result" : "today",
+    );
     telemetry.click("home_quick_start", {
       ...getPuzzleTelemetryParams(session.nextPuzzle),
       ...extraParams,

@@ -26,6 +26,13 @@ describe("홈 사다리·주간 스트릭 인수조건", () => {
     assert.match(webApp, /<DailyLadderCard/);
     assert.match(webLadderCard, /dailyLadderStepNext/);
     assert.match(mobileApp, /function renderDailyLadder\(\)/);
+    // 완료·도전 소진 판은 풀이(읽기 전용) 대신 결과 화면으로 보낸다(이전 홈 CTA 동일).
+    for (const source of [webApp, mobileApp]) {
+      assert.match(
+        source,
+        /const isExhausted =\s*nextMission\.completedAt == null &&\s*alreadyStarted &&\s*getRemainingAttempts\(nextMission\) === 0;/,
+      );
+    }
   });
 
   it("AC-2: 주간 스트릭 스트립과 마일스톤 넛지가 두 표면 홈에 있다", () => {
@@ -42,8 +49,13 @@ describe("홈 사다리·주간 스트릭 인수조건", () => {
   it("AC-3: 스트릭 규칙은 core 하나만 쓰고 마일스톤 이전 값은 비관 계산이다", () => {
     assert.match(webStreakAdapter, /computeConsecutiveStreakDays\(completedDates, today, \{/);
     assert.match(webApp, /readConsecutiveStreakDays\(\{\s*countTodayPending: false,?\s*\}\)/);
-    assert.match(mobileApp, /computeConsecutiveStreakDays\(/);
+    // RN 스트릭은 완료일 집합에서 파생해 초기 hydrate 직후에도 0 으로 남지 않는다.
+    assert.match(
+      mobileApp,
+      /const consecutiveStreak = useMemo\(\s*\(\) => computeConsecutiveStreakDays\(completedDates, todayKey\)/,
+    );
     assert.match(mobileApp, /collectCompletedDates\(/);
+    assert.doesNotMatch(mobileApp, /setConsecutiveStreak/);
     assert.doesNotMatch(mobileApp, /computeMobileStreakDays/);
   });
 
