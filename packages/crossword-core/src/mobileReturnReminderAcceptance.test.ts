@@ -134,6 +134,14 @@ describe("#352 RN 복귀 알림 인수조건", () => {
       /예약 날짜가 오늘 이전·오늘인 복귀 알림만 취소한다/,
     );
 
+    // 카드는 축하 다이얼로그·모달이 떠 있을 때만 유도로 기록하고(카드 없이 예산 소진 방지),
+    // 완료 후 확정한 스트릭을 카드 본문과 세 이벤트가 함께 쓴다.
+    assert.match(mobileApp, /completionCelebrationPuzzleIdRef\.current !== puzzle\.puzzleId/);
+    assert.match(mobileApp, /setReturnReminderPreprompt\(\{ prompted, streakDays \}\)/);
+    assert.match(webApp, /completionCelebrationIdRef\.current === puzzle\.puzzleId/);
+    assert.match(webApp, /openReturnReminderPreprompt\(nextStreak\)/);
+    assert.match(webApp, /setReturnReminderPreprompt\(\{ prompted, streakDays \}\)/);
+
     // Web: 같은 사전 안내 카드와 accept/decline 계측, 미응답 닫기는 보류.
     assert.match(webApp, /RETURN_REMINDER_PREPROMPT_EVENT/);
     assert.match(webApp, /buildReturnReminderPrepromptParams\(\s*"shown"/);

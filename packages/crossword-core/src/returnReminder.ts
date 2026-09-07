@@ -511,7 +511,11 @@ export function shouldPromptReturnReminder({
   if (state.promptCount === 0) {
     return true;
   }
+  // outcome 이 없는데 유도 기록만 있으면 사전 안내를 띄운 채 앱이 종료된 경우다.
+  // 응답을 못 받았으므로 종결이 아니며, 익일에 다시 안내한다(예산은 이미 소진됐다).
+  const unanswered = state.outcome == null;
   if (
+    !unanswered &&
     state.outcome !== "error" &&
     state.outcome !== "timeout" &&
     state.outcome !== "declined"

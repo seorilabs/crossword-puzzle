@@ -889,4 +889,37 @@ describe("사전 안내(pre-prompt)와 RN 재예약·취소 규칙", () => {
     assert.equal(shouldCancelLocalReturnReminder("2026-09-09", "2026-09-08"), false);
     assert.equal(shouldCancelLocalReturnReminder("nope", "2026-09-08"), false);
   });
+
+  it("사전 안내를 띄운 채 앱이 종료돼 응답이 없으면 익일에 다시 안내한다(예산은 소진)", () => {
+    // promptCount 만 1 이고 outcome 이 없는 상태 = 카드 노출 후 강제 종료.
+    const unanswered = markReturnReminderPrompted({ promptCount: 0 }, "2026-09-08");
+    assert.equal(unanswered.outcome, undefined);
+    assert.equal(
+      shouldPromptReturnReminder({
+        enabled: true,
+        promptDate: "2026-09-08",
+        state: unanswered,
+      }),
+      false,
+      "같은 날에는 다시 묻지 않는다",
+    );
+    assert.equal(
+      shouldPromptReturnReminder({
+        enabled: true,
+        promptDate: "2026-09-09",
+        state: unanswered,
+      }),
+      true,
+      "익일에는 다시 안내한다",
+    );
+    assert.equal(
+      shouldPromptReturnReminder({
+        enabled: true,
+        promptDate: "2026-09-09",
+        state: { promptCount: RETURN_REMINDER_MAX_PROMPT_COUNT, lastPromptDate: "2026-09-08" },
+      }),
+      false,
+      "예산을 다 썼으면 미응답이어도 종결한다",
+    );
+  });
 });

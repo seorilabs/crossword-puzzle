@@ -1046,8 +1046,10 @@ function AppContent() {
   });
   // 완료 모달 안 복귀 알림 사전 안내 상태. null 이면 카드를 그리지 않는다. 카드에
   // 답하지 않고 모달이 닫히면(홈·결과·다음 퍼즐 이동) 보류로 정리한다(아래 effect).
-  const [returnReminderPreprompt, setReturnReminderPreprompt] =
-    useState<ReturnReminderState | null>(null);
+  const [returnReminderPreprompt, setReturnReminderPreprompt] = useState<{
+    prompted: ReturnReminderState;
+    streakDays: number;
+  } | null>(null);
   const [completionCelebrationPuzzleId, setCompletionCelebrationPuzzleId] =
     useState<string | null>(null);
   const [rewardedAdPlacement, setRewardedAdPlacement] =
@@ -1062,8 +1064,13 @@ function AppContent() {
   );
   const submittedLeaderboardPuzzleIdsRef = useRef(new Set<string>());
   const returnReminderPromptedPuzzleIdsRef = useRef(new Set<string>());
-  const returnReminderPrepromptRef = useRef<ReturnReminderState | null>(null);
+  const returnReminderPrepromptRef = useRef<{
+    prompted: ReturnReminderState;
+    streakDays: number;
+  } | null>(null);
   returnReminderPrepromptRef.current = returnReminderPreprompt;
+  const completionCelebrationPuzzleIdRef = useRef<string | null>(null);
+  completionCelebrationPuzzleIdRef.current = completionCelebrationPuzzleId;
   const playScreenScrollRef = useRef<React.ElementRef<typeof ScrollView>>(null);
   const boardInputRef = useRef<React.ElementRef<typeof TextInput>>(null);
   const answerCommitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
@@ -1647,16 +1654,16 @@ function AppContent() {
   // 정지 중이었으면 재개한다. 정지 구간은 pausedMs에 누적돼 완료·이탈·리더보드
   // 계측과 완료 화면 경과 표시에서 제외된다.
   useEffect(() => {
-    const prompted = returnReminderPrepromptRef.current;
-    if (completionCelebrationPuzzleId != null || prompted == null) {
+    const pending = returnReminderPrepromptRef.current;
+    if (completionCelebrationPuzzleId != null || pending == null) {
       return;
     }
     setReturnReminderPreprompt(null);
-    declineMobileReturnReminder(prompted, {
-      streakDays: consecutiveStreak,
+    declineMobileReturnReminder(pending.prompted, {
+      streakDays: pending.streakDays,
       telemetry,
     }).catch(() => {});
-  }, [completionCelebrationPuzzleId, consecutiveStreak]);
+  }, [completionCelebrationPuzzleId]);
 
   useEffect(() => {
     refreshDailyHintWallet().catch(() => {});
@@ -1878,21 +1885,43 @@ function AppContent() {
     if (!returnReminderPromptedPuzzleIdsRef.current.has(puzzle.puzzleId)) {
       returnReminderPromptedPuzzleIdsRef.current.add(puzzle.puzzleId);
       const promptDate = getTodayDateKey();
+      // 완료 후 스트릭(오늘 포함)을 미리 확정해 카드 본문과 shown/accept/decline 계측이
+      // 같은 값을 쓴다. 아카이브 갱신은 비동기라 consecutiveStreak 는 아직 완료 전 값이다.
+      const streakDays = computeMobileStreakDays(
+        [
+          ...puzzleArchiveRecords,
+          { completedAt: nextMission.completedAt ?? promptDate, puzzle },
+        ],
+        promptDate,
+      );
       // 이미 동의한 사용자는 매 완료마다 D+1 알림을 다시 예약하고, 아직 동의 전이면
-      // 사전 안내 카드를 띄운다(시스템 권한 요청은 카드 수락 뒤에만).
+      // 사전 안내 카드를 띄운다(시스템 권한 요청은 카드 수락 뒤에만). 카드는 오늘 화면의
+      // 완료 모달에서만 그릴 수 있으므로 모달이 떠 있을 때만 유도로 기록하고, 비동기
+      // 처리 중 모달이 닫혔으면 보류로 정리한다.
       refreshMobileReturnReminderSchedule(promptDate, { telemetry })
-        .then(() =>
-          prepareMobileReturnReminderPreprompt({
+        .then(() => {
+          if (completionCelebrationPuzzleIdRef.current !== puzzle.puzzleId) {
+            return null;
+          }
+          return prepareMobileReturnReminderPreprompt({
             enabled: launchConfig.returnReminderEnabled,
             promptDate,
-            streakDays: consecutiveStreak,
+            streakDays,
             telemetry,
-          }),
-        )
+          });
+        })
         .then(prompted => {
-          if (prompted != null) {
-            setReturnReminderPreprompt(prompted);
+          if (prompted == null) {
+            return;
           }
+          if (completionCelebrationPuzzleIdRef.current !== puzzle.puzzleId) {
+            declineMobileReturnReminder(prompted, {
+              streakDays,
+              telemetry,
+            }).catch(() => {});
+            return;
+          }
+          setReturnReminderPreprompt({ prompted, streakDays });
         })
         .catch(() => {});
     }
@@ -2416,26 +2445,26 @@ function AppContent() {
   // 사전 안내 카드 응답. 수락 시에만 OS 권한 요청·D+1 예약(confirm), 보류는 declined
   // 로 기록해 익일 재안내 대상으로 남긴다.
   async function acceptReturnReminder() {
-    const prompted = returnReminderPreprompt;
-    if (prompted == null) {
+    if (returnReminderPreprompt == null) {
       return;
     }
+    const { prompted, streakDays } = returnReminderPreprompt;
     setReturnReminderPreprompt(null);
     await confirmMobileReturnReminder(prompted, {
       promptDate: getTodayDateKey(),
-      streakDays: consecutiveStreak,
+      streakDays,
       telemetry,
     }).catch(() => {});
   }
 
   async function declineReturnReminder() {
-    const prompted = returnReminderPreprompt;
-    if (prompted == null) {
+    if (returnReminderPreprompt == null) {
       return;
     }
+    const { prompted, streakDays } = returnReminderPreprompt;
     setReturnReminderPreprompt(null);
     await declineMobileReturnReminder(prompted, {
-      streakDays: consecutiveStreak,
+      streakDays,
       telemetry,
     }).catch(() => {});
   }
@@ -3779,7 +3808,7 @@ function AppContent() {
                     {RETURN_REMINDER_PREPROMPT_COPY.title}
                   </Text>
                   <Text style={styles.returnReminderPrepromptBody}>
-                    {formatReturnReminderPrepromptBody(consecutiveStreak)}
+                    {formatReturnReminderPrepromptBody(preprompt.streakDays)}
                   </Text>
                   <View style={styles.returnReminderPrepromptActions}>
                     <Pressable
