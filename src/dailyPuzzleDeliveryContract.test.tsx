@@ -70,16 +70,19 @@ describe("일간 퍼즐 전달 계약", () => {
     expect(DIFFICULTY_PROFILES.hard.minWordCount).toBe(12);
   });
 
-  it("AC-4: Web과 Mobile은 난이도 선택을 퍼즐 변경과 스캐폴드 렌더에 연결한다", () => {
+  it("AC-4: Web과 Mobile은 오늘의 두 난이도를 사다리 단계로 시작하고 스캐폴드를 렌더한다", () => {
     expect(
       DAILY_PUZZLE_TIERS.map((tier) => formatDifficultyLabel(tier.difficulty)),
     ).toEqual(["쉬움", "어려움"]);
-    expect(webSource).toContain(
-      "onClick={() => selectPuzzle(summary.puzzleId)}",
-    );
+    // 병렬 난이도 선택 대신 core 사다리(buildDailyLadder)로 단계를 만들고, 단계 탭이
+    // 곧 시작이 되도록 home_quick_start(source=ladder_step_N)로 계측한다.
+    for (const source of [webSource, mobileSource]) {
+      expect(source).toContain("buildDailyLadder(");
+      expect(source).toContain("buildDailyLadderCtaParams(");
+      expect(source).toContain("buildWeeklyStreakStrip(");
+    }
     expect(webSource).toContain('className="selectedPuzzleScaffold"');
     expect(webSource).toContain("<MiniPuzzlePreview puzzle={puzzle}");
-    expect(mobileSource).toContain("void selectPuzzle(summary.puzzleId)");
     expect(mobileSource).toContain("renderSelectedPuzzleScaffold()");
     expect(mobileSource).toContain("styles.selectedPuzzleScaffold");
   });

@@ -832,49 +832,6 @@ button:disabled {
   line-height: 24px;
 }
 
-.homeQuickStart {
-  display: flex;
-  width: calc(100% - 40px);
-  min-width: 0;
-  flex-direction: column;
-  gap: 4px;
-  margin: 14px 20px 4px;
-  border: 0;
-  border-radius: 12px;
-  background: #00a88f;
-  color: #ffffff;
-  font: inherit;
-  padding: 16px 18px;
-  text-align: left;
-  box-sizing: border-box;
-}
-
-.homeQuickStart:not(:disabled) {
-  cursor: pointer;
-}
-
-.homeQuickStart:disabled {
-  cursor: default;
-  background: #c4d5d1;
-}
-
-.homeQuickStart:focus-visible {
-  outline: 3px solid rgba(0, 168, 143, 0.32);
-  outline-offset: 2px;
-}
-
-.homeQuickStartLabel {
-  font-size: 17px;
-  line-height: 24px;
-  font-weight: 700;
-}
-
-.homeQuickStartHint {
-  font-size: 13px;
-  line-height: 18px;
-  opacity: 0.88;
-}
-
 .hintRewardPanel {
   display: grid;
   width: calc(100% - 40px);
@@ -3619,9 +3576,6 @@ button:disabled {
   }
   .shareButton {
     border-color: var(--cw-border-strong);
-  }
-  .homeQuickStart:disabled {
-    background: #2a3a36;
   }
 
   /* 답안 슬롯 상태(셀 토큰과 동일 팔레트로 맞춤) */

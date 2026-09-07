@@ -44,7 +44,8 @@ flowchart TD
 
 ## 완료 후 다음 퍼즐 추천 계약
 
-- Web과 RN은 공용 `getNextRecommendedPuzzleSummary` 정책에 발행 manifest 전체, 완료 목록, 현재 퍼즐을 넘긴다. RN 홈 rail의 오늘·로컬 노출 제한은 추천 후보를 제한하지 않는다.
+- Web과 RN은 공용 `getNextRecommendedPuzzleSummary` 정책에 발행 manifest 전체, 완료 목록, 현재 퍼즐(`puzzleId`·`difficulty`·`date`)을 넘긴다. RN 홈 rail의 오늘·로컬 노출 제한은 추천 후보를 제한하지 않는다.
+- 같은 날짜의 남은 사다리 단계를 가장 먼저 추천한다. 워밍업(easy)을 끝내면 오늘의 퍼즐(hard), hard를 먼저 끝냈고 easy가 남았으면 easy로 잇는다. CTA 문구는 core `formatDailyLadderNextLabel`이 만든 `오늘의 퍼즐 이어서 풀기`/`워밍업 퍼즐 풀기`를 두 표면이 그대로 쓴다.
 - 오늘 발행분을 모두 완료해도 과거 미완료 발행분이 있으면 `다음 퍼즐 풀기` CTA를 노출한다.
 - 실제 미완료 후보가 없거나 온보딩 난이도 완화 정책이 추천을 보류하면 RN 완료 모달과 결과 화면은 `퍼즐 기록 보기` fallback CTA를 노출한다.
 
@@ -75,9 +76,17 @@ flowchart TD
 - Android/iOS가 같은 `apps/mobile` 타깃을 공유하므로, 인앱 홈 타이틀이나 입력 UX를 `Platform.OS === 'ios'` / `Platform.OS === 'android'` 분기로 되돌리면 안 된다. `check:release-parity`는 iOS 전용 홈 타이틀 분기, Android 전용 보드 입력 재포커스, 관련 테스트 누락을 실패 처리한다.
 - 한 시장에서만 기능을 임시로 끄는 경우, fallback UX와 해제 조건을 이 문서 또는 release 문서에 남긴다.
 
+## 홈 사다리와 주간 스트릭
+
+- 홈은 오늘의 두 난이도를 병렬 선택지가 아니라 `워밍업 · 5×5 → 오늘의 퍼즐 · 8×8` 두 단계의 사다리로 보여 준다. 단계 순서·상태(new/in_progress/exhausted/done)·주 CTA 판정은 core `buildDailyLadder`(`packages/crossword-core/src/dailyLadder.ts`)가 맡고, Web은 `DailyLadderCard`, RN은 `renderDailyLadder`가 렌더만 한다. 하단 주 CTA는 항상 다음 미완료 단계를 가리키고 두 단계를 모두 끝냈으면 `내일 다시`로 비활성화한다. 오늘 퍼즐이 없으면(원격 미로드·번들 폴백) 선택 퍼즐 기준 기존 CTA로 폴백한다.
+- 단계를 직접 눌러 hard로 바로 가는 것은 막지 않는다. 단계 탭과 하단 CTA는 `home_quick_start` 이벤트에 `source=ladder_step_1|ladder_step_2`, `ladder_step`, `step_status`, `difficulty`를 실어 계측한다.
+- 사다리 위에는 오늘로 끝나는 7일 스트릭 스트립(`buildWeeklyStreakStrip`)과 헤드라인(`formatStreakStripHeadline`), 마일스톤 넛지(`getStreakMilestoneProgress`)를 둔다.
+- 스트릭 숫자는 core `computeConsecutiveStreakDays` 하나로 계산한다. 홈 표시는 오늘 미완료·어제 완료면 오늘 몫을 더한 낙관 값(`countTodayPending: true`)이고, 7/30/100일 마일스톤 발화의 "이전 값"만 비관 값(`countTodayPending: false`)으로 읽는다. Web은 localStorage 미션 레코드, RN은 아카이브 레코드에서 `collectCompletedDates`로 같은 완료일 집합을 만든다.
+- 온보딩 난이도 램프는 `onboardingPuzzleId`(Web 온보딩 퍼즐)와 일치하는 완료에만 개입한다. RN은 온보딩 퍼즐이 없어 첫 daily easy 완료 후 곧바로 오늘의 hard로 잇는다.
+
 ## 일간 발행 난이도 구성
 
-- 자정 배치 한 번에서 `easy 5×5`, `normal 8×8`, `hard 8×8`을 각각 한 판 발행한다. 내부 슬롯은 h00/h01/h02로 분리한다.
+- 자정 배치 한 번에서 `easy 5×5`, `hard 8×8`을 각각 한 판 발행한다. 내부 슬롯은 h00/h01로 분리한다.
 - `PUZZLE_DAILY_TIERS=false`인 레거시 다회 실행에서만 코어의 `normal/easy/normal/hard` 로테이션을 사용한다.
 - AIT/Web과 Android/iOS는 같은 Firebase Hosting manifest를 읽으므로 난이도 구성과 완료 후 상위 티어 추천 정책이 세 시장에서 동일하다.
 - manifest 항목과 퍼즐 JSON의 `difficulty`는 모두 필수이며 서로 다르면 발행 검증이 실패한다. 난이도가 없는 구버전 원격 항목은 전환 시 제거하고 사전 뜻풀이 구조 검증·보드 품질 게이트를 통과한 새 슬롯으로 교체한다.

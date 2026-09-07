@@ -304,6 +304,11 @@ const webPuzzleRepository = read(webPuzzleRepositoryPath);
 const featureParityMarkers = [
   "answerInputMode",
   "selectAnswerInputMode",
+  "buildDailyLadder",
+  "buildDailyLadderCtaParams",
+  "buildWeeklyStreakStrip",
+  "startLadderStep",
+  "formatStreakStripHeadline",
   "getNextRecommendedPuzzleSummary",
   "onboardingDifficultyRampEnabled",
   "buildNextPuzzleCtaEvent",
@@ -425,7 +430,7 @@ assertImported(
 );
 assertMatches(
   webApp,
-  /getNextRecommendedPuzzleSummary\(\s*puzzleSummaries,\s*getCompletedPuzzleIds\(dateCardStates\),\s*current,\s*\{\s*onboardingRampEnabled\s*\}/,
+  /getNextRecommendedPuzzleSummary\(\s*puzzleSummaries,\s*getCompletedPuzzleIds\(dateCardStates\),\s*current,\s*\{\s*onboardingRampEnabled,\s*onboardingPuzzleId:\s*onboardingPuzzle\.puzzleId\s*\}/,
   webAppPath,
   "shared onboarding recommendation policy call",
 );

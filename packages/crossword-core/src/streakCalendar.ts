@@ -82,6 +82,120 @@ export function buildStreakCalendarMonthLabels(
   });
 }
 
+const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+// "YYYY-MM-DD"이면서 실제 달력에 존재하는 날짜만 통과시킨다(2026-13-40 등 제외).
+export function isValidDateKey(dateKey: string): boolean {
+  if (!DATE_KEY_PATTERN.test(dateKey)) return false;
+  const ms = toUtcMs(dateKey);
+  return Number.isFinite(ms) && toDateKey(ms) === dateKey;
+}
+
+// 완료 기록(날짜 + completedAt)에서 완료일 집합을 만든다. completedAt이 파싱되는
+// 문자열이고 날짜 키가 유효한 항목만 센다. 웹은 localStorage 미션 레코드, RN은
+// 아카이브 레코드를 같은 모양으로 넘겨 3마켓이 같은 완료 판정을 쓴다.
+export function collectCompletedDates(
+  entries: Iterable<{ date: string; completedAt?: string | null }>,
+): Set<string> {
+  const completed = new Set<string>();
+  for (const entry of entries) {
+    if (
+      typeof entry.completedAt === "string" &&
+      Number.isFinite(Date.parse(entry.completedAt)) &&
+      isValidDateKey(entry.date)
+    ) {
+      completed.add(entry.date);
+    }
+  }
+  return completed;
+}
+
+// 현재 연속 완료일 수.
+//
+// countTodayPending(기본 true): 오늘은 아직 안 풀었지만 어제까지 이어져 있으면 오늘
+// 몫을 +1로 센다. 홈 스트립·넛지는 오늘 완료 "전"에 보이므로, 자정에 0으로 떨어지는
+// 비관적 계산은 "기록이 끊겼다"로 읽혀 오늘 풀 동기를 꺾는다. 반대로 마일스톤 달성
+// 판정(이전 < 임계 ≤ 현재)의 "이전 값"은 countTodayPending=false로 계산해야 한다 —
+// 낙관 +1을 이전 값에도 적용하면 완료 전후가 같은 수가 되어 7/30/100일 달성 이벤트가
+// 발화하지 않는다. 웹이 오래 안고 있던 잠재 결함이라 여기서 규칙을 하나로 고정한다.
+export function computeConsecutiveStreakDays(
+  completedDates: Iterable<string>,
+  today: string,
+  options: { countTodayPending?: boolean } = {},
+): number {
+  const countTodayPending = options.countTodayPending ?? true;
+  if (!isValidDateKey(today)) return 0;
+
+  const completed = new Set(completedDates);
+  if (completed.size === 0) return 0;
+
+  const todayMs = toUtcMs(today);
+  const yesterday = toDateKey(todayMs - DAY_MS);
+  const startsToday = completed.has(today);
+  if (!startsToday && !completed.has(yesterday)) {
+    return 0;
+  }
+
+  // 오늘 미완료면 어제까지 이어진 구간을 세고, 낙관 모드에서만 오늘 몫을 더한다.
+  let streak = 0;
+  let cursorMs = startsToday ? todayMs : todayMs - DAY_MS;
+  while (completed.has(toDateKey(cursorMs))) {
+    streak += 1;
+    cursorMs -= DAY_MS;
+  }
+  if (startsToday) return streak;
+  return countTodayPending ? streak + 1 : streak;
+}
+
+export type WeeklyStreakStripDay = {
+  date: string;
+  // 요일 한 글자(일~토).
+  weekdayLabel: string;
+  completed: boolean;
+  isToday: boolean;
+};
+
+const WEEKDAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"] as const;
+
+// 오늘로 끝나는 최근 7일 스트립(오래된 날부터). 히트맵과 달리 주 단위로 자르지
+// 않아 미래 칸이 없고 오늘이 항상 오른쪽 끝에 온다.
+export function buildWeeklyStreakStrip(
+  completedDates: Iterable<string>,
+  today: string,
+): WeeklyStreakStripDay[] {
+  if (!isValidDateKey(today)) return [];
+  const completed = new Set(completedDates);
+  const todayMs = toUtcMs(today);
+  const days: WeeklyStreakStripDay[] = [];
+  for (let offset = 6; offset >= 0; offset -= 1) {
+    const ms = todayMs - offset * DAY_MS;
+    const date = toDateKey(ms);
+    days.push({
+      date,
+      weekdayLabel: WEEKDAY_LABELS[new Date(ms).getUTCDay()],
+      completed: completed.has(date),
+      isToday: offset === 0,
+    });
+  }
+  return days;
+}
+
+// 스트립 위에 놓는 한 줄 헤드라인. 오늘 완료 여부에 따라 "이어졌다"와 "오늘 풀면
+// 이어진다"를 구분해, 낙관 +1 스트릭이 실제 완료로 오해되지 않게 한다.
+export function formatStreakStripHeadline(
+  streak: number,
+  todayCompleted: boolean,
+): string {
+  const safeStreak = Number.isFinite(streak) ? Math.max(0, Math.floor(streak)) : 0;
+  if (safeStreak <= 0) {
+    return "오늘부터 연속 기록을 시작해요";
+  }
+  if (todayCompleted) {
+    return `🔥 ${safeStreak}일 연속`;
+  }
+  return `🔥 ${safeStreak}일째 도전 중 · 오늘 풀면 이어져요`;
+}
+
 // 완료일 집합(YYYY-MM-DD)에서 최장 연속 완료일 수(통산 최고 스트릭)를 반환한다.
 // 하루 놓쳐 현재 스트릭이 끊겨도 통산 최고 기록은 보존해 재도전 동기를 유지하려는
 // 지표다. 현재 스트릭(computeConsecutiveStreakDays)과 동일한 완료일 집합을 근거로

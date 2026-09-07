@@ -9,8 +9,6 @@ import {
   getDailyFreePuzzleSummary,
   getNewlyReachedStreakMilestone,
   getNextStreakMilestoneHint,
-  getOpenPuzzleSummariesForDate,
-  getPuzzleDailySequenceNumber,
   getPuzzlePackAlias,
   getStreakBadgeLabel,
   getNewlyReachedProgressMilestones,
@@ -22,7 +20,6 @@ import {
   resolveInitialActivePuzzleId,
   resolveStarterCell,
   shouldAutoStartFirstRun,
-  shouldQuickStartActivePuzzle,
   shouldServeOnboardingPuzzle,
   shouldShowFirstInputGuide,
   getStuckHintDelayMs,
@@ -725,55 +722,6 @@ describe("shouldServeOnboardingPuzzle", () => {
   });
 });
 
-describe("shouldQuickStartActivePuzzle", () => {
-  const onboardingPuzzleId = "onboarding-easy-01";
-  const todayPuzzleId = "2026-06-26-normal-01";
-
-  it("활성 퍼즐이 오늘의 일반 퍼즐이면 현재 퍼즐을 시작한다", () => {
-    assert.equal(
-      shouldQuickStartActivePuzzle({
-        activePuzzleId: todayPuzzleId,
-        onboardingPuzzleId,
-        todayPuzzleId,
-      }),
-      true,
-    );
-  });
-
-  it("신규 사용자의 입문(easy) 퍼즐이 활성 상태면 일반 퍼즐로 전환하지 않는다", () => {
-    assert.equal(
-      shouldQuickStartActivePuzzle({
-        activePuzzleId: onboardingPuzzleId,
-        onboardingPuzzleId,
-        todayPuzzleId,
-      }),
-      true,
-    );
-  });
-
-  it("다른 날짜의 일반 퍼즐을 보던 중이면 오늘의 퍼즐로 전환한다", () => {
-    assert.equal(
-      shouldQuickStartActivePuzzle({
-        activePuzzleId: "2026-06-20-normal-01",
-        onboardingPuzzleId,
-        todayPuzzleId,
-      }),
-      false,
-    );
-  });
-
-  it("오늘의 퍼즐이 아직 없으면 현재 퍼즐을 시작한다", () => {
-    assert.equal(
-      shouldQuickStartActivePuzzle({
-        activePuzzleId: onboardingPuzzleId,
-        onboardingPuzzleId,
-        todayPuzzleId: undefined,
-      }),
-      true,
-    );
-  });
-});
-
 describe("shouldAutoStartFirstRun (#205)", () => {
   // 도전 이력이 전혀 없는 신규 + 게이트 ON + 온보딩 활성 배정의 기준 입력.
   const freshFirstRun = {
@@ -894,110 +842,6 @@ describe("resolveInitialActivePuzzleId", () => {
       resolveInitialActivePuzzleId({ ...newUser, onboardingAvailable: false }),
       dailyPuzzleId,
     );
-  });
-});
-
-describe("getOpenPuzzleSummariesForDate", () => {
-  const now = Date.parse("2026-06-12T02:00:00.000Z");
-
-  it("excludes unpublished same-day remote slots from the open puzzle rail", () => {
-    const dailyFreeSummary = createSummary("published-default", {
-      publishedAt: "2026-06-11T15:00:00.000Z",
-      slotId: "2026-06-12-h00",
-    });
-    const futureUnlocked = createSummary("future-bonus", {
-      publishedAt: "2026-06-12T13:00:00.000Z",
-      slotId: "2026-06-12-h22",
-    });
-    const futureSelected = createSummary("future-selected", {
-      publishedAt: "2026-06-12T11:00:00.000Z",
-      slotId: "2026-06-12-h20",
-    });
-
-    const result = getOpenPuzzleSummariesForDate({
-      archivePuzzleSummaries: [],
-      date: "2026-06-12",
-      dailyFreeSummary,
-      now,
-      selectedPuzzleSummary: futureSelected,
-      unlockedBonusSummaries: [futureUnlocked],
-    });
-
-    assert.deepEqual(
-      result.map((summary) => summary.puzzleId),
-      ["published-default"],
-    );
-  });
-
-  it("uses slotId when publishedAt is missing to exclude future remote slots", () => {
-    const currentSlot = createSummary("current-slot", {
-      publishedAt: undefined,
-      slotId: "2026-06-12-h10",
-    });
-    const futureSlot = createSummary("future-slot", {
-      publishedAt: undefined,
-      slotId: "2026-06-12-h12",
-    });
-
-    const result = getOpenPuzzleSummariesForDate({
-      archivePuzzleSummaries: [],
-      date: "2026-06-12",
-      dailyFreeSummary: currentSlot,
-      now,
-      unlockedBonusSummaries: [futureSlot],
-    });
-
-    assert.deepEqual(
-      result.map((summary) => summary.puzzleId),
-      ["current-slot"],
-    );
-  });
-
-  it("keeps archived same-day records even when their publishedAt is in the future", () => {
-    const archivedFuture = createSummary("archived-future", {
-      publishedAt: "2026-06-12T13:00:00.000Z",
-      slotId: "2026-06-12-h22",
-    });
-
-    const result = getOpenPuzzleSummariesForDate({
-      archivePuzzleSummaries: [archivedFuture],
-      date: "2026-06-12",
-      now,
-      unlockedBonusSummaries: [],
-    });
-
-    assert.deepEqual(
-      result.map((summary) => summary.puzzleId),
-      ["archived-future"],
-    );
-  });
-
-  it("fills missing duplicate metadata without letting lower-priority records overwrite it", () => {
-    const selectedSummary = createSummary("same-puzzle", {
-      path: "",
-    });
-    const unlockedSummary = createSummary("same-puzzle", {
-      publishedAt: "2026-06-12T01:00:00.000Z",
-      slotId: "2026-06-12-h10",
-    });
-    const archivedSummary = createSummary("same-puzzle", {
-      publishedAt: "2026-06-12T13:00:00.000Z",
-      slotId: "2026-06-12-h22",
-    });
-
-    const result = getOpenPuzzleSummariesForDate({
-      archivePuzzleSummaries: [archivedSummary],
-      date: "2026-06-12",
-      now,
-      selectedPuzzleSummary: selectedSummary,
-      unlockedBonusSummaries: [unlockedSummary],
-    });
-
-    assert.equal(result.length, 1);
-    assert.equal(result[0]?.puzzleId, "same-puzzle");
-    assert.equal(result[0]?.slotId, "2026-06-12-h10");
-    assert.equal(result[0]?.path, "/puzzles/same-puzzle.json");
-    assert.equal(getPuzzleDailySequenceNumber(result[0]!), 11);
   });
 });
 

@@ -17,7 +17,9 @@ export type CompletionCelebrationDialogProps = {
   elapsedLabel: string | null;
   hintCount: number;
   isNewBestTime: boolean;
-  nextPuzzleLabel?: string;
+  // 완료 직후 primary CTA 문구. 사다리 다음 단계면 "오늘의 퍼즐 이어서 풀기"처럼
+  // 호출부(core formatDailyLadderNextLabel)가 완성한 문구를 그대로 받는다.
+  nextPuzzleButtonLabel?: string;
   puzzleId: string;
   revealUsed: boolean;
   shareGrid: string;
@@ -39,7 +41,7 @@ export function CompletionCelebrationDialog({
   elapsedLabel,
   hintCount,
   isNewBestTime,
-  nextPuzzleLabel,
+  nextPuzzleButtonLabel,
   puzzleId,
   revealUsed,
   shareGrid,
@@ -68,10 +70,10 @@ export function CompletionCelebrationDialog({
     achievements.noHint ||
     achievements.firstTry ||
     streakBadge != null;
-  const nextPuzzleButtonLabel =
-    nextPuzzleLabel == null || nextPuzzleLabel === ""
+  const nextPuzzleCtaText =
+    nextPuzzleButtonLabel == null || nextPuzzleButtonLabel === ""
       ? "다음 퍼즐 풀기"
-      : `다음 퍼즐 풀기 · ${nextPuzzleLabel}`;
+      : nextPuzzleButtonLabel;
 
   // 완료 직후(고관여 시점) 기록 화면으로 잇는 보조 동선. 진입 소스를 구분해
   // 계측한 뒤(#300) 다이얼로그 닫힘·이동은 호출부(onSeeHistory)에 위임한다.
@@ -166,7 +168,7 @@ export function CompletionCelebrationDialog({
               onClick={onStartNextPuzzle}
               autoFocus
             >
-              {nextPuzzleButtonLabel}
+              {nextPuzzleCtaText}
             </button>
           )}
           <button className="secondaryButton" type="button" onClick={onGoHome}>

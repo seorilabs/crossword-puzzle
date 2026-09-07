@@ -84,13 +84,20 @@ import {
   shouldMarkTentative,
   pickHintCellIndex,
   resolveInitialActivePuzzleId,
+  buildDailyLadder,
+  buildDailyLadderCtaParams,
+  buildWeeklyStreakStrip,
+  formatDailyLadderNextLabel,
+  formatStreakStripHeadline,
+  type DailyLadder,
+  type DailyLadderStep,
+  type WeeklyStreakStripDay,
   resolveStarterCell,
   runRewardedHintAdFlow,
   trackRewardedHintAdRequest,
   trackRewardedHintAdResult,
   shouldCelebrateOnboardingWordCompletion,
   shouldOfferStuckWordReveal,
-  shouldQuickStartActivePuzzle,
   shouldShowFirstInputGuide,
   shouldSubmitLeaderboardScore,
   togglePauseState,
@@ -144,10 +151,11 @@ import {
 } from "./components/HowToPlayDialog";
 import { SettingsSheet } from "./components/SettingsSheet";
 import { CompletionCelebrationDialog } from "./components/CompletionCelebrationDialog";
+import { DailyLadderCard } from "./components/DailyLadderCard";
+import { WeeklyStreakStrip } from "./components/WeeklyStreakStrip";
 import { MissionHistoryCard } from "./components/MissionHistoryCard";
 import { PuzzleMetaChips } from "./components/PuzzleMetaChips";
 import { StuckHintPrompt } from "./components/StuckHintPrompt";
-import { formatDifficultyLabel } from "./puzzleLabels";
 import { useShareResult } from "./useShareResult";
 import { useLeaderboard } from "./useLeaderboard";
 import {
@@ -161,10 +169,10 @@ import {
   shouldShowLiveTimer,
 } from "./timer";
 import {
-  computeConsecutiveStreakDays,
   createLocalMissionRepository,
   getRecentCompletionDates,
   invalidateStreakCache,
+  readConsecutiveStreakDays,
 } from "./adapters/localMissionRepository";
 import {
   createLocalPuzzleArchiveRepository,
@@ -502,10 +510,6 @@ function getPuzzlePackLoadState(summaries: PuzzleManifestItem[]): LoadState {
   return summaries.some(isRemotePuzzlePackSummary) ? "remote" : "fallback";
 }
 
-// 난이도 정렬 순위(당일 서빙 목록·홈 난이도 선택에서 쉬움→어려움 순으로 노출).
-// normal 은 2단계 전환 전에 발행된 퍼즐이 기기에 남아 있을 때만 쓰이는 레거시 값이다.
-const DIFFICULTY_RANK: Record<string, number> = { easy: 0, normal: 1, hard: 2 };
-
 function getInitialPuzzleId(
   puzzleSummaries: PuzzleManifestItem[],
   today: string,
@@ -516,20 +520,21 @@ function getInitialPuzzleId(
   );
 }
 
-// 완료 직후 "다음 퍼즐"로 이어줄 추천 퍼즐. 추천 규칙(난이도 상승 → 동일 티어 →
-// 그 외 미완료 → 후보 없음)은 코어 정책(getNextRecommendedPuzzleSummary)에
-// 두어 3마켓이 공유한다. 여기서는 완료 집합만 만들어 위임한다.
+// 완료 직후 "다음 퍼즐"로 이어줄 추천 퍼즐. 추천 규칙(오늘 사다리의 남은 단계 →
+// 난이도 상승 → 동일 티어 → 그 외 미완료 → 후보 없음)은 코어 정책
+// (getNextRecommendedPuzzleSummary)에 두어 3마켓이 공유한다. 여기서는 완료 집합과
+// 온보딩 퍼즐 ID(램프는 온보딩 완료에만 개입)만 넘겨 위임한다.
 function getNextRecommendedSummary(
   puzzleSummaries: PuzzleManifestItem[],
   dateCardStates: Record<string, DateCardState>,
-  current: { puzzleId: string; difficulty?: Puzzle["difficulty"] },
+  current: { puzzleId: string; difficulty?: Puzzle["difficulty"]; date?: string },
   onboardingRampEnabled = false,
 ): PuzzleManifestItem | undefined {
   return getNextRecommendedPuzzleSummary(
     puzzleSummaries,
     getCompletedPuzzleIds(dateCardStates),
     current,
-    { onboardingRampEnabled },
+    { onboardingRampEnabled, onboardingPuzzleId: onboardingPuzzle.puzzleId },
   );
 }
 
@@ -662,7 +667,7 @@ function App() {
     string | null
   >(null);
   const [consecutiveStreak, setConsecutiveStreak] = useState(() =>
-    computeConsecutiveStreakDays(),
+    readConsecutiveStreakDays(),
   );
   const [isNewBestTime, setIsNewBestTime] = useState(false);
   // 풀이 일시정지 상태. pausedMs는 누적 정지 시간(ms), pausedAt은 현재 정지 시작
@@ -777,7 +782,7 @@ function App() {
       // Recalculate streak whenever the home screen is shown so that a date
       // change at midnight is reflected without requiring an app restart. The
       // same-day module cache keeps repeat home visits cheap.
-      setConsecutiveStreak(computeConsecutiveStreakDays());
+      setConsecutiveStreak(readConsecutiveStreakDays());
     }
     if (route === "history") {
       // 기록 화면은 히트맵(getRecentCompletionDates)이 매 렌더 localStorage를 새로
@@ -785,7 +790,7 @@ function App() {
       // 즉시 반환하는 모듈 캐시를 무효화한 뒤 재계산해 숫자와 히트맵이 어긋나지
       // 않게 한다(scanCompletedDates 공유).
       invalidateStreakCache();
-      setConsecutiveStreak(computeConsecutiveStreakDays());
+      setConsecutiveStreak(readConsecutiveStreakDays());
     }
   }, [route]);
 
@@ -1362,22 +1367,28 @@ function App() {
   }, [refreshDailyHintWallet]);
 
   const todayKey = getTodayDateKey();
-  const dailyFreeSummary = useMemo(
-    () => getDailyFreePuzzleSummary(puzzleSummaries, todayKey),
+  // 당일 서빙: 오늘 발행된 퍼즐(easy 5×5 · hard 8×8). 단계 순서·상태·주 CTA 판정은
+  // core의 buildDailyLadder가 맡아 워밍업 → 오늘의 퍼즐 한 흐름으로 보여 준다.
+  const todayPuzzleSummaries = useMemo(
+    () => puzzleSummaries.filter((summary) => summary.date === todayKey),
     [puzzleSummaries, todayKey],
   );
-  // 당일 서빙: 오늘 발행된 퍼즐(easy 5×5 · hard 8×8)만 노출한다. 난이도 오름차순
-  // (쉬움→어려움)으로 정렬해 홈에서 원하는 난이도를 고를 수 있게 한다.
-  const todayPuzzleSummaries = useMemo(
+  const dailyLadder = useMemo(
     () =>
-      puzzleSummaries
-        .filter((summary) => summary.date === todayKey)
-        .sort(
-          (a, b) =>
-            (DIFFICULTY_RANK[a.difficulty ?? "normal"] ?? 1) -
-            (DIFFICULTY_RANK[b.difficulty ?? "normal"] ?? 1),
-        ),
-    [puzzleSummaries, todayKey],
+      buildDailyLadder(todayPuzzleSummaries, dateCardStates, {
+        dailyAttemptLimit: launchConfig.dailyAttemptLimit,
+      }),
+    [dateCardStates, launchConfig.dailyAttemptLimit, todayPuzzleSummaries],
+  );
+  // 홈 스트립은 최근 7일 완료일을 매 렌더 스캔한다(기록 화면 히트맵과 같은 소스).
+  // 완료 직후 dateCardStates가 바뀌면 다시 계산되도록 의존성에 넣는다.
+  const weeklyStrip = useMemo(
+    () => buildWeeklyStreakStrip(getRecentCompletionDates(7), todayKey),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- localStorage 스캔 결과는 dateCardStates 변화와 함께 바뀐다
+    [dateCardStates, todayKey],
+  );
+  const todayCompleted = weeklyStrip.some(
+    (day) => day.isToday && day.completed,
   );
   const archivePuzzleSummaries = useMemo(
     () =>
@@ -1631,10 +1642,14 @@ function App() {
     // saveMission→invalidateStreakCache 이후 재계산한 완료 후 스트릭과 비교해 새
     // 마일스톤 도달을 판정한다. 상태(consecutiveStreak) 대신 여기서 직접 읽어
     // effect 의존성을 늘리지 않는다.
-    const previousStreak = computeConsecutiveStreakDays();
+    // 이전 값은 오늘 몫을 더하지 않는 비관 계산으로 읽어야 한다. 낙관(+1) 값과 비교하면
+    // 완료 전후가 같은 수가 되어 7/30/100일 달성이 발화하지 않는다.
+    const previousStreak = readConsecutiveStreakDays({
+      countTodayPending: false,
+    });
     void missionRepository.saveMission(nextMission).then(() => {
       invalidateStreakCache();
-      const nextStreak = computeConsecutiveStreakDays();
+      const nextStreak = readConsecutiveStreakDays();
       setConsecutiveStreak(nextStreak);
       // 완료로 스트릭이 새 마일스톤(7/30/100일)에 도달하면 달성 이벤트를 1회 보낸다.
       // 발화 조건("이전 < 임계 ≤ 현재") 판정은 core 헬퍼가 담당한다(#292).
@@ -2730,48 +2745,43 @@ function App() {
     },
   });
 
-  // 홈 최상단 "오늘의 퍼즐 바로 시작" 원탭 CTA: 선택 단계를 건너뛰고 오늘의 무료
-  // 퍼즐로 바로 진입시킨다. 다른 날짜를 보던 중이면 오늘의 퍼즐 세션을 불러와 시작한다.
-  async function startTodayPuzzle() {
+  // 홈 사다리 단계 탭·하단 CTA. 단계의 퍼즐을 로드해 바로 시작(필요 시 첫 시도)한다.
+  // 신규 사용자에게 배정된 입문 온보딩 퍼즐이 아직 활성·미완료면 1단계(워밍업)를
+  // 눌러도 오늘의 일반 퍼즐로 전환하지 않고 온보딩을 이어 간다(#92). 온보딩 퍼즐은
+  // puzzleId가 달라 이 가드가 없으면 신규의 첫 경험이 입문 퍼즐을 건너뛴다.
+  async function startLadderStep(step: DailyLadderStep) {
     if (loadState === "loading") {
       return;
     }
 
-    const todaysSummary = dailyFreeSummary;
-
-    // 오늘의 퍼즐이 이미 선택돼 있거나, 신규 사용자에게 배정된 입문(easy) 온보딩
-    // 퍼즐이 활성 상태면 일반 퍼즐로 전환하지 않고 현재 퍼즐을 그대로 시작한다.
-    // 온보딩 퍼즐은 puzzleId가 오늘의 일반 퍼즐과 달라, 이 가드가 없으면 신규의
-    // 첫 경험이 easy 대신 normal로 빠진다(#92).
     if (
-      shouldQuickStartActivePuzzle({
-        activePuzzleId: puzzle.puzzleId,
-        onboardingPuzzleId: onboardingPuzzle.puzzleId,
-        todayPuzzleId: todaysSummary?.puzzleId,
-      })
+      step.step === 1 &&
+      puzzle.puzzleId === onboardingPuzzle.puzzleId &&
+      mission.completedAt == null
     ) {
       telemetry.click("home_quick_start", {
         ...puzzleTelemetryParams,
-        source:
-          puzzle.puzzleId === onboardingPuzzle.puzzleId
-            ? "onboarding"
-            : "today",
+        ...buildDailyLadderCtaParams(step),
+        status: "onboarding",
       });
       startOrResumeMission();
       return;
     }
 
-    // 다른 날짜 퍼즐을 보던 중이면 오늘의 퍼즐을 불러와 바로 시작한다.
-    if (todaysSummary == null) {
-      return;
-    }
-
-    await startPuzzleById(todaysSummary.puzzleId, "switched_to_today");
+    await startPuzzleById(
+      step.puzzleId,
+      buildDailyLadderCtaParams(step).source,
+      buildDailyLadderCtaParams(step),
+    );
   }
 
   // 특정 퍼즐을 로드해 바로 시작(필요 시 첫 시도)하고 풀이 화면으로 이동한다.
-  // 홈 원탭 CTA와 난이도별 시작 버튼이 공유하는 로드+시작 로직이다.
-  async function startPuzzleById(targetPuzzleId: string, source: string) {
+  // 홈 사다리 단계와 완료 후 "다음 퍼즐"이 공유하는 로드+시작 로직이다.
+  async function startPuzzleById(
+    targetPuzzleId: string,
+    source: string,
+    extraParams: Record<string, string | number> = {},
+  ) {
     if (loadState === "loading") {
       return;
     }
@@ -2786,6 +2796,7 @@ function App() {
       }));
       telemetry.click("home_quick_start", {
         puzzle_id: targetPuzzleId,
+        ...extraParams,
         source,
         status: "missing",
       });
@@ -2838,6 +2849,7 @@ function App() {
     navigate(nextMission.completedAt == null ? "today" : "result");
     telemetry.click("home_quick_start", {
       ...getPuzzleTelemetryParams(session.nextPuzzle),
+      ...extraParams,
       source,
       status: "loaded",
     });
@@ -3062,7 +3074,7 @@ function App() {
           hasStarted={hasStarted}
           hintBalance={hintBalance}
           isCompleted={isCompleted}
-          isSelectedDailyFree={puzzle.puzzleId === dailyFreeSummary?.puzzleId}
+          ladder={dailyLadder}
           launchConfig={launchConfig}
           mission={mission}
           navigate={navigate}
@@ -3074,8 +3086,9 @@ function App() {
           selectedEntry={viewModel.selectedEntry}
           startLabels={viewModel.startLabels}
           startOrResumeMission={startOrResumeMission}
-          startTodayPuzzle={() => void startTodayPuzzle()}
-          todayPuzzleSummaries={todayPuzzleSummaries}
+          todayCompleted={todayCompleted}
+          weeklyStrip={weeklyStrip}
+          onLadderStep={(step) => void startLadderStep(step)}
         />
       )}
       {isRewardedHintPromptOpen ? (
@@ -3277,7 +3290,7 @@ type HomeScreenProps = DateSelectionProps & {
   hasStarted: boolean;
   hintBalance: HintBalance;
   isCompleted: boolean;
-  isSelectedDailyFree: boolean;
+  ladder: DailyLadder;
   launchConfig: LaunchConfig;
   mission: DailyMissionState;
   navigate: (route: AppRoute) => void;
@@ -3289,8 +3302,9 @@ type HomeScreenProps = DateSelectionProps & {
   selectedEntry?: PuzzleEntry;
   startLabels: Map<string, number>;
   startOrResumeMission: () => void;
-  startTodayPuzzle: () => void;
-  todayPuzzleSummaries: PuzzleManifestItem[];
+  todayCompleted: boolean;
+  weeklyStrip: WeeklyStreakStripDay[];
+  onLadderStep: (step: DailyLadderStep) => void;
 };
 
 function HomeScreen({
@@ -3299,7 +3313,7 @@ function HomeScreen({
   hasStarted,
   hintBalance,
   isCompleted,
-  isSelectedDailyFree,
+  ladder,
   loadState,
   mission,
   navigate,
@@ -3309,14 +3323,13 @@ function HomeScreen({
   puzzleSummaries,
   remainingAttempts,
   requestRewardedHint,
-  dateCardStates,
   selectedEntry,
   selectedPuzzleId,
-  selectPuzzle,
   startLabels,
   startOrResumeMission,
-  startTodayPuzzle,
-  todayPuzzleSummaries,
+  todayCompleted,
+  weeklyStrip,
+  onLadderStep,
 }: HomeScreenProps) {
   const isLoadingPuzzlePack = loadState === "loading";
   const isAttemptExhaustedUncompleted =
@@ -3365,20 +3378,34 @@ function HomeScreen({
   const streakMilestoneHint = !isLoadingPuzzlePack
     ? getStreakMilestoneProgress(consecutiveStreak)
     : null;
-  // 홈 최상단 원탭 CTA: 선택 단계 없이 오늘의 퍼즐로 바로 진입시킨다. 라벨은
-  // 오늘의 퍼즐이 선택된 경우에만 진행 상태(이어 풀기/결과 보기)를 반영한다.
-  const quickStartLabel = isLoadingPuzzlePack
-    ? "오늘의 퍼즐 준비 중"
-    : isSelectedDailyFree
-      ? isCompleted || isAttemptExhaustedUncompleted
-        ? "오늘의 퍼즐 결과 보기"
-        : hasStarted
-          ? "오늘의 퍼즐 이어 풀기"
-          : "오늘의 퍼즐 바로 시작"
-      : "오늘의 퍼즐 바로 시작";
-  const isQuickStartDisabled = isSelectedDailyFree
-    ? isPrimaryDisabled
-    : isLoadingPuzzlePack;
+  // 하단 고정 CTA는 사다리의 다음 미완료 단계를 가리킨다. 두 단계를 모두 끝냈으면
+  // "내일 다시"로 비활성화하고, 완료 판은 사다리 단계나 대표 단서 카드로 결과를 본다.
+  // 오늘 퍼즐이 아직 없으면(원격 미로드·번들 폴백) 선택 퍼즐 기준 기존 CTA로 폴백한다.
+  const ladderCta = ladder.cta;
+  const useLadderCta = ladderCta.kind !== "unavailable";
+  const isLadderCtaActionable =
+    ladderCta.kind === "start" || ladderCta.kind === "resume";
+  const bottomCtaLabel = isLoadingPuzzlePack
+    ? "불러오는 중"
+    : useLadderCta
+      ? ladderCta.label
+      : primaryLabel;
+  const isBottomCtaDisabled = useLadderCta
+    ? isLoadingPuzzlePack || !isLadderCtaActionable
+    : isPrimaryDisabled;
+  function pressBottomCta() {
+    if (useLadderCta) {
+      if (ladderCta.kind === "start" || ladderCta.kind === "resume") {
+        onLadderStep(ladderCta.step);
+      }
+      return;
+    }
+    if (isCompleted) {
+      navigate("result");
+      return;
+    }
+    startOrResumeMission();
+  }
 
   return (
     <>
@@ -3388,59 +3415,21 @@ function HomeScreen({
           loadState === "remote"
             ? `${selectedPuzzleLabel} · ${formatGameHeaderDate(mission.date)}`
             : formatMissionDateLabel(mission.date, loadState)
-        }${consecutiveStreak > 0 ? ` · 🔥 ${consecutiveStreak}일째 도전 중` : ""}`}
+        }`}
       />
 
-      {todayPuzzleSummaries.length > 0 ? (
-        <section
-          className="todayStartButtons"
-          aria-label="오늘의 퍼즐 난이도 선택"
-        >
-          {todayPuzzleSummaries.map((summary) => {
-            const state = dateCardStates[summary.puzzleId];
-            const statusLabel =
-              state?.completedAt != null
-                ? "완료"
-                : state?.hasProgress
-                  ? "이어 풀기"
-                  : "새 퍼즐";
+      <WeeklyStreakStrip
+        days={weeklyStrip}
+        headline={formatStreakStripHeadline(consecutiveStreak, todayCompleted)}
+        nudge={streakMilestoneHint}
+      />
 
-            return (
-              <button
-                key={summary.puzzleId}
-                type="button"
-                className={[
-                  "todayStartButton",
-                  summary.puzzleId === selectedPuzzleId
-                    ? "todayStartButtonSelected"
-                    : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-                aria-pressed={summary.puzzleId === selectedPuzzleId}
-                disabled={isLoadingPuzzlePack}
-                onClick={() => selectPuzzle(summary.puzzleId)}
-              >
-                <span className="todayStartButtonLead">난이도 선택</span>
-                <span className="todayStartButtonDifficulty">
-                  난이도 {formatDifficultyLabel(summary.difficulty)}
-                </span>
-                <span className="todayStartButtonStatus">{statusLabel}</span>
-              </button>
-            );
-          })}
-        </section>
-      ) : (
-        <button
-          type="button"
-          className="homeQuickStart"
-          disabled={isQuickStartDisabled}
-          onClick={startTodayPuzzle}
-        >
-          <span className="homeQuickStartLabel">{quickStartLabel}</span>
-          <span className="homeQuickStartHint">한 번 눌러 바로 풀기 시작</span>
-        </button>
-      )}
+      <DailyLadderCard
+        ladder={ladder}
+        selectedPuzzleId={selectedPuzzleId}
+        disabled={isLoadingPuzzlePack}
+        onStepPress={onLadderStep}
+      />
 
       <section className="todayMission" aria-label="선택한 미션">
         <div className="missionLead">
@@ -3459,9 +3448,6 @@ function HomeScreen({
               themeLabel={puzzle.themeLabel}
               themeTag={puzzle.themeTag}
             />
-          )}
-          {!isLoadingPuzzlePack && streakMilestoneHint != null && (
-            <p className="streakNudge">{streakMilestoneHint}</p>
           )}
         </div>
 
@@ -3605,12 +3591,10 @@ function HomeScreen({
           size="large"
           display="full"
           type="button"
-          disabled={isPrimaryDisabled}
-          onClick={
-            isCompleted ? () => navigate("result") : startOrResumeMission
-          }
+          disabled={isBottomCtaDisabled}
+          onClick={pressBottomCta}
         >
-          {primaryLabel}
+          {bottomCtaLabel}
         </Button>
       </div>
     </>
@@ -4072,19 +4056,18 @@ function TodayScreen({
         {
           puzzleId: puzzle.puzzleId,
           difficulty: puzzle.difficulty,
+          date: puzzle.date,
         },
         onboardingDifficultyRampEnabled,
       )
     : undefined;
-  const completionNextRecommendedLabel =
+  const completionNextRecommendedButtonLabel =
     completionNextRecommendedSummary == null
       ? undefined
-      : [
-          formatPuzzleAliasLabel(completionNextRecommendedSummary),
-          formatDifficultyLabel(completionNextRecommendedSummary.difficulty),
-        ]
-          .filter(Boolean)
-          .join(" · ");
+      : formatDailyLadderNextLabel(
+          completionNextRecommendedSummary,
+          puzzle.date,
+        );
 
   function startNextPuzzleFromCompletion() {
     if (completionNextRecommendedSummary == null) {
@@ -5230,7 +5213,7 @@ function TodayScreen({
           elapsedLabel={celebrationElapsedLabel}
           hintCount={hintCount}
           isNewBestTime={isNewBestTime}
-          nextPuzzleLabel={completionNextRecommendedLabel}
+          nextPuzzleButtonLabel={completionNextRecommendedButtonLabel}
           puzzleId={puzzle.puzzleId}
           revealUsed={revealUsed}
           shareGrid={celebrationShareGrid}
@@ -5505,19 +5488,19 @@ function ResultScreen({
         {
           puzzleId: puzzle.puzzleId,
           difficulty: puzzle.difficulty,
+          date: puzzle.date,
         },
         onboardingDifficultyRampEnabled,
       )
     : undefined;
-  const nextRecommendedLabel =
+  const nextRecommendedButtonLabel =
     nextRecommendedSummary == null
       ? ""
-      : [
-          formatPuzzleAliasLabel(nextRecommendedSummary),
-          formatDifficultyLabel(nextRecommendedSummary.difficulty),
-        ]
-          .filter(Boolean)
-          .join(" · ");
+      : formatDailyLadderNextLabel(nextRecommendedSummary, puzzle.date);
+  const nextRecommendedHint =
+    nextRecommendedSummary == null
+      ? ""
+      : formatPuzzleAliasLabel(nextRecommendedSummary);
 
   function startNextPuzzle() {
     if (nextRecommendedSummary == null) {
@@ -5707,10 +5690,10 @@ function ResultScreen({
               type="button"
               onClick={startNextPuzzle}
             >
-              다음 퍼즐 풀기
+              {nextRecommendedButtonLabel}
             </button>
-            {nextRecommendedLabel !== "" && (
-              <p className="resultNextHint">추천 {nextRecommendedLabel}</p>
+            {nextRecommendedHint !== "" && (
+              <p className="resultNextHint">추천 {nextRecommendedHint}</p>
             )}
             <button
               className="secondaryButton"
