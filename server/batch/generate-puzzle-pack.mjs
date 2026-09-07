@@ -33,10 +33,30 @@ import {
   evaluateAnswerVariety,
   excludeAnswersSharingFragments,
 } from "../../packages/crossword-core/src/answerVariety.ts";
+import {
+  ANSWER_HISTORY_FILE_NAME,
+  ANSWER_HISTORY_PATH,
+  DEFAULT_ANSWER_HISTORY_DAYS,
+  DEFAULT_FRAGMENT_HISTORY_DAYS,
+  collectHistoryAnswers,
+  createEmptyAnswerHistory,
+  excludeExactAnswers,
+  makeAnswerHistoryEntry,
+  parseAnswerHistory,
+  resolveAnswerHistoryRetentionDays,
+  selectAnswerHistoryWindow,
+  summarizeAnswerExclusion,
+  upsertAnswerHistory,
+} from "../../packages/crossword-core/src/answerHistory.ts";
+import { fetchJsonFresh, readJsonOptional } from "./puzzlePackIo.mjs";
 
 const DEFAULT_BATCH_OPTIONS = {
   append: false,
   appendManifestUrl: undefined,
+  // 발행 정답 이력(answer-history.json). 정확 일치는 길게, 어근 겹침은 짧게 배제한다.
+  answerHistoryDays: DEFAULT_ANSWER_HISTORY_DAYS,
+  answerHistoryUrl: undefined,
+  fragmentHistoryDays: DEFAULT_FRAGMENT_HISTORY_DAYS,
   attempts: 30,
   boardSize: 8,
   diversityHistoryLimit: DEFAULT_DIVERSITY_HISTORY_LIMIT,
@@ -105,6 +125,15 @@ function parseArgs(argv) {
     }
     if (key === "appendManifestUrl" && rawValue) {
       options.appendManifestUrl = rawValue;
+    }
+    if (key === "answerHistoryUrl" && rawValue) {
+      options.answerHistoryUrl = rawValue;
+    }
+    if (key === "answerHistoryDays" && Number.isFinite(numericValue)) {
+      options.answerHistoryDays = numericValue;
+    }
+    if (key === "fragmentHistoryDays" && Number.isFinite(numericValue)) {
+      options.fragmentHistoryDays = numericValue;
     }
     if (key === "beam" && Number.isFinite(numericValue)) {
       options.beamWidth = numericValue;
@@ -526,18 +555,6 @@ async function loadConfiguredWordBank(wordBankPath) {
   }
 }
 
-async function readJsonOptional(filePath) {
-  try {
-    return JSON.parse(await readFile(filePath, "utf8"));
-  } catch (error) {
-    if (error.code === "ENOENT") {
-      return null;
-    }
-
-    throw error;
-  }
-}
-
 async function fetchJsonOptional(url) {
   try {
     const response = await fetch(url);
@@ -592,7 +609,13 @@ async function loadExistingManifest(options, outDir) {
   }
 
   if (options.appendManifestUrl != null) {
-    const remoteManifest = await fetchJsonOptional(options.appendManifestUrl);
+    // 같은 날 재실행이 5분 CDN 캐시의 옛 manifest 를 읽지 않도록 캐시를 우회한다.
+    // 원격 실패 시에는 기존처럼 로컬 manifest 로 폴백한다.
+    const remoteManifest = await fetchJsonFresh(options.appendManifestUrl, {
+      allowNotFound: true,
+      throwOnError: false,
+      label: "manifestRead",
+    });
 
     if (remoteManifest != null) {
       console.log(
@@ -853,6 +876,102 @@ async function loadSameDateAnswerHistory(
   return { answers, puzzleCount };
 }
 
+function formatAnswerHistoryRange(history) {
+  if (history.puzzles.length === 0) {
+    return "oldest=- newest=-";
+  }
+
+  return `oldest=${history.puzzles[history.puzzles.length - 1].date} newest=${history.puzzles[0].date}`;
+}
+
+// 발행 정답 이력을 원격(캐시 우회) → 로컬 → 빈 이력 순으로 읽고, manifest 에 남아
+// 있는 퍼즐을 항상 upsert 한다. 이력 파일이 아직 없는 첫 실행은 이 upsert 가
+// bootstrap 이 되고, 평소에는 manifest 와 이력의 어긋남을 바로잡는 no-op 병합이다.
+// 원격 읽기가 404 가 아닌 오류로 끝나면 run 을 실패시킨다. 조용히 빈 이력으로
+// 시작하면 7일치만 담긴 파일이 90일 이력을 덮어쓰기 때문이다.
+async function loadAnswerHistory(
+  options,
+  outDir,
+  hydratedExistingPuzzles,
+  assetRoot,
+  today,
+) {
+  const localPath = path.join(outDir, ANSWER_HISTORY_FILE_NAME);
+  let raw = null;
+  let source = "bootstrap";
+
+  if (options.answerHistoryUrl != null) {
+    raw = await fetchJsonFresh(options.answerHistoryUrl, {
+      allowNotFound: true,
+      label: "historyRead",
+    });
+    if (raw != null) {
+      source = "remote";
+    }
+  }
+  if (raw == null) {
+    raw = await readJsonOptional(localPath);
+    if (raw != null) {
+      source = "local";
+    }
+  }
+
+  // 정확 일치 창과 어근 창은 독립 override 라, 이력은 둘 중 긴 창만큼 보존한다.
+  const retentionDays = resolveAnswerHistoryRetentionDays(
+    options.answerHistoryDays,
+    options.fragmentHistoryDays,
+  );
+  let history = createEmptyAnswerHistory(retentionDays);
+  if (raw != null) {
+    const parsed = parseAnswerHistory(raw);
+    if (parsed == null) {
+      console.error(
+        `Answer history from ${source} is malformed; rebuilding from manifest puzzles`,
+      );
+      source = "bootstrap";
+    } else {
+      history = parsed.history;
+      if (parsed.droppedEntryCount > 0) {
+        console.warn(
+          `Answer history from ${source} dropped ${parsed.droppedEntryCount} malformed entries`,
+        );
+      }
+    }
+  }
+
+  const manifestEntries = [];
+  for (const item of hydratedExistingPuzzles) {
+    const puzzle = await readJsonOptional(
+      resolvePuzzleOutputPath(assetRoot, outDir, item.path),
+    );
+    if (puzzle != null && isDifficulty(puzzle.difficulty)) {
+      manifestEntries.push(makeAnswerHistoryEntry(puzzle));
+    }
+  }
+
+  history = upsertAnswerHistory(history, manifestEntries, {
+    retentionDays,
+    today,
+  });
+  if (source === "bootstrap") {
+    console.log(
+      `Bootstrapped answer history from manifest puzzles=${manifestEntries.length}`,
+    );
+  }
+  console.log(
+    `Answer history source=${source} entries=${history.puzzles.length} ${formatAnswerHistoryRange(history)} retentionDays=${history.retentionDays}`,
+  );
+
+  return history;
+}
+
+async function writeAnswerHistory(outDir, history) {
+  await writeFile(
+    path.join(outDir, ANSWER_HISTORY_FILE_NAME),
+    `${JSON.stringify(history, null, 2)}\n`,
+  );
+}
+
 async function run() {
   const options = parseArgs(process.argv.slice(2));
   const outDir = path.resolve(options.outDir);
@@ -928,6 +1047,18 @@ async function run() {
     profile.difficulty,
     options.diversityHistoryLimit,
   );
+  const firstSlotDate = makeSlotInfo(
+    basePublishedAt,
+    options.timeZone,
+    options.intervalHours,
+  ).date;
+  let answerHistory = await loadAnswerHistory(
+    options,
+    outDir,
+    hydratedExistingPuzzles,
+    assetRoot,
+    firstSlotDate,
+  );
   console.log(
     `Generating puzzle pack count=${options.days} start=${options.startDate} seed=${options.seed} outDir=${outDir}`,
   );
@@ -938,7 +1069,7 @@ async function run() {
     `Difficulty profile=${profile.difficulty} boardSize=${options.boardSize} maxWords=${options.maxWords} minWordLength=${options.minWordLength} minWordCount=${options.minWordCount} generationCandidates=${generationWords.length}/${wordBank.words.length} candidateNeedsManualClueRatio=${needsManualClueRatio(generationWords).toFixed(3)}`,
   );
   console.log(
-    `Diversity gate history=${diversityHistory.length}/${Math.max(0, Math.floor(options.diversityHistoryLimit))} maxAnswerReuse=${diversityThresholds.maxSharedAnswerRatio} maxScaffoldSimilarity=${diversityThresholds.maxScaffoldSimilarity}`,
+    `Diversity gate history=${diversityHistory.length}/${Math.max(0, Math.floor(options.diversityHistoryLimit))} maxAnswerReuse=${diversityThresholds.maxSharedAnswerRatio} maxScaffoldSimilarity=${diversityThresholds.maxScaffoldSimilarity} answerHistoryDays=${options.answerHistoryDays} fragmentHistoryDays=${options.fragmentHistoryDays}`,
   );
 
   for (let dayIndex = 0; dayIndex < options.days; dayIndex += 1) {
@@ -966,23 +1097,55 @@ async function run() {
       slotInfo.slotId,
       slotInfo.alias,
     );
+    // 발행 정답 이력은 두 난이도를 합쳐 두 창으로 본다. 정확히 같은 정답은 긴 창
+    // (기본 90일), 어근 겹침은 짧은 창(기본 14일)에서 배제한다. 현재 슬롯 자신은
+    // 제외해 같은 슬롯 재실행이 자기 정답에 막히지 않게 한다.
+    const historyWindow = {
+      today: slotInfo.date,
+      excludeSlotId: slotInfo.slotId,
+      excludePuzzleId: slotInfo.alias,
+    };
+    const exactHistoryEntries = selectAnswerHistoryWindow(answerHistory, {
+      ...historyWindow,
+      days: options.answerHistoryDays,
+    });
+    const fragmentHistoryEntries = selectAnswerHistoryWindow(answerHistory, {
+      ...historyWindow,
+      days: options.fragmentHistoryDays,
+    });
+    const exactHistoryAnswers = collectHistoryAnswers(exactHistoryEntries);
     // 같은 날 다른 난이도가 쓴 정답과, 같은 난이도의 최근 발행 정답을 함께 배제한다.
     // 문자열이 같은 정답만 빼면 어제 "대학생"을 쓰고 오늘 "학생"이 나오는 반복을
     // 막지 못하므로, 어근(2음절 조각)을 공유하는 후보까지 후보 풀에서 제외한다.
     const recentAnswers = [
       ...sameDateAnswerHistory.answers,
       ...slotDiversityHistory.flatMap((snapshot) => snapshot.answers),
+      ...collectHistoryAnswers(fragmentHistoryEntries),
     ];
-    const slotGenerationWords = excludeAnswersSharingFragments(
+    const exactFilteredWords = excludeExactAnswers(
       generationWords,
+      exactHistoryAnswers,
+    );
+    const slotGenerationWords = excludeAnswersSharingFragments(
+      exactFilteredWords,
       recentAnswers,
       answerVarietyThresholds.sharedFragmentLength,
     );
+    // 자동 생성(auto run) 단어도 이 word map 에서만 인정되므로 이력 배제가 함께 적용된다.
     const slotGenerationWordMap = makeWordMap(slotGenerationWords);
+    const exclusionSummary = summarizeAnswerExclusion({
+      totalWordCount: generationWords.length,
+      afterExactCount: exactFilteredWords.length,
+      afterFragmentCount: slotGenerationWords.length,
+      exactEntries: exactHistoryEntries,
+      fragmentEntries: fragmentHistoryEntries,
+      answerHistoryDays: options.answerHistoryDays,
+      fragmentHistoryDays: options.fragmentHistoryDays,
+    });
 
     if (slotGenerationWords.length < profile.minWordCount) {
       throw new Error(
-        `Not enough unused recent answers for ${profile.difficulty}: candidates=${slotGenerationWords.length} minEntries=${profile.minWordCount}`,
+        `Not enough unused recent answers for ${profile.difficulty}: candidates=${slotGenerationWords.length} minEntries=${profile.minWordCount} excludedExact=${exclusionSummary.historyExactExcludedWordCount} over ${exclusionSummary.answerHistoryDays}d excludedFragment=${exclusionSummary.historyFragmentExcludedWordCount} over ${exclusionSummary.fragmentHistoryDays}d; lower PUZZLE_ANSWER_HISTORY_DAYS or PUZZLE_FRAGMENT_HISTORY_DAYS`,
       );
     }
 
@@ -990,7 +1153,7 @@ async function run() {
       `[${slotInfo.slotId}] generation started (${dayIndex + 1}/${options.days}) packId=${packId}`,
     );
     console.log(
-      `[${slotInfo.slotId}] recent answer gate sameDatePuzzles=${sameDateAnswerHistory.puzzleCount} sameDateAnswers=${sameDateAnswerHistory.answers.size} recentPuzzles=${slotDiversityHistory.length} excludedAnswers=${recentAnswers.length} candidates=${slotGenerationWords.length}/${generationWords.length}`,
+      `[${slotInfo.slotId}] recent answer gate sameDatePuzzles=${sameDateAnswerHistory.puzzleCount} sameDateAnswers=${sameDateAnswerHistory.answers.size} recentPuzzles=${slotDiversityHistory.length} excludedAnswers=${recentAnswers.length} historyExactPuzzles=${exclusionSummary.historyExactPuzzleCount} excludedExact=${exclusionSummary.historyExactExcludedWordCount} historyFragmentPuzzles=${exclusionSummary.historyFragmentPuzzleCount} excludedFragment=${exclusionSummary.historyFragmentExcludedWordCount} candidates=${slotGenerationWords.length}/${generationWords.length}`,
     );
 
     for (let retryIndex = 0; retryIndex < options.retries; retryIndex += 1) {
@@ -1073,6 +1236,7 @@ async function run() {
             sameDateComparedPuzzleCount: sameDateAnswerHistory.puzzleCount,
             sameDateExcludedAnswerCount: sameDateAnswerHistory.answers.size,
             sameDateSharedAnswerCount: 0,
+            ...exclusionSummary,
             sharedAnswerFragments: variety.sharedFragments.map(
               (entry) => entry.fragment,
             ),
@@ -1109,7 +1273,7 @@ async function run() {
         selectedQuality = evaluateQuality(board, qualityThresholds);
         selectedDiversity = candidates[acceptedIndex].diversity;
         console.log(
-          `[${slotInfo.slotId}] accepted candidate=${acceptedIndex} entries=${board.metrics.wordCount} cross=${board.metrics.crossRatio} bbox=${board.metrics.bboxDensity} answerReuse=${selectedDiversity.maxSharedAnswerRatio} scaffold=${selectedDiversity.maxScaffoldSimilarity} elapsed=${retryElapsedSeconds}s`,
+          `[${slotInfo.slotId}] accepted candidate=${acceptedIndex} entries=${board.metrics.wordCount} cross=${board.metrics.crossRatio} bbox=${board.metrics.bboxDensity} answerReuse=${selectedDiversity.maxSharedAnswerRatio} scaffold=${selectedDiversity.maxScaffoldSimilarity} historyExact=${selectedDiversity.historyExactExcludedWordCount} elapsed=${retryElapsedSeconds}s`,
         );
         break;
       }
@@ -1163,6 +1327,22 @@ async function run() {
       );
     }
 
+    // 이력 배제는 후보 풀에서 이미 걸렀지만, 발행 직전에 한 번 더 확인해 반복이
+    // 조용히 새는 일이 없게 한다.
+    const historySharedAnswers = [
+      ...new Set(
+        puzzle.entries
+          .map((entry) => entry.answer)
+          .filter((answer) => exactHistoryAnswers.has(answer)),
+      ),
+    ];
+
+    if (historySharedAnswers.length > 0) {
+      throw new Error(
+        `History answers leaked into ${slotInfo.slotId}: ${historySharedAnswers.join(",")}`,
+      );
+    }
+
     const publishedVariety = evaluateAnswerVariety(
       puzzle.entries.map((entry) => entry.answer),
       answerVarietyThresholds,
@@ -1197,6 +1377,20 @@ async function run() {
       slotId: slotInfo.slotId,
       ...buildThemeMeta(puzzle.themeTag, puzzle.themeLabel),
     });
+    // 슬롯이 확정될 때마다 이력을 갱신해 둔다. 같은 실행의 다음 슬롯과, 뒤이어
+    // 로컬 manifest 를 읽는 다음 티어(hard)가 이 파일에서 방금 쓴 정답을 본다.
+    answerHistory = upsertAnswerHistory(
+      answerHistory,
+      [makeAnswerHistoryEntry(puzzle)],
+      {
+        retentionDays: resolveAnswerHistoryRetentionDays(
+          options.answerHistoryDays,
+          options.fragmentHistoryDays,
+        ),
+        today: slotInfo.date,
+      },
+    );
+    await writeAnswerHistory(outDir, answerHistory);
 
     // needsManualClue는 발행 차단이 아니라 자체 문장 큐레이션 현황이다. 사전
     // 뜻풀이도 기본 허용하되 비율을 리포트에 남겨 후속 편집 대상을 추적한다.
@@ -1271,6 +1465,9 @@ async function run() {
       maxSameDateSharedAnswers: 0,
       ...diversityThresholds,
       ...answerVarietyThresholds,
+      answerHistoryDays: Math.max(0, Math.floor(options.answerHistoryDays)),
+      fragmentHistoryDays: Math.max(0, Math.floor(options.fragmentHistoryDays)),
+      answerHistoryPath: ANSWER_HISTORY_PATH,
     },
     puzzles: manifestPuzzles,
   };
