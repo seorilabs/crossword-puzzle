@@ -5,6 +5,7 @@ import {
 } from 'react-native-notify-kit';
 
 import {
+  cancelLocalReturnReminderIfStale,
   consumeInitialReturnReminderOpen,
   consumePendingReturnReminderOpen,
   registerReturnReminderBackgroundHandler,
@@ -23,6 +24,7 @@ function createClient(status = AuthorizationStatus.AUTHORIZED) {
       async () => RETURN_REMINDER_NOTIFICATION_ID,
     ),
     getInitialNotification: jest.fn(async () => null),
+    getTriggerNotifications: jest.fn(async () => []),
     onBackgroundEvent: jest.fn(),
     onForegroundEvent: jest.fn(() => jest.fn()),
     requestPermission: jest.fn(async () => ({ authorizationStatus: status })),
@@ -158,4 +160,34 @@ test('foreground 탭도 오늘의 퍼즐 진입 callback을 한 번 전달한다
   });
   await new Promise<void>(resolve => setTimeout(() => resolve(), 0));
   expect(onOpen).toHaveBeenCalledWith({ reminderDate: '2026-09-01' });
+});
+
+test('예약 날짜가 오늘 이전·오늘인 복귀 알림만 취소한다', async () => {
+  const stale = createClient();
+  (stale.getTriggerNotifications as jest.Mock).mockResolvedValueOnce([
+    { notification: reminderNotification('2026-09-08') },
+  ]);
+  await expect(
+    cancelLocalReturnReminderIfStale('2026-09-08', stale),
+  ).resolves.toBe(true);
+  expect(stale.cancelTriggerNotification).toHaveBeenCalledWith(
+    RETURN_REMINDER_NOTIFICATION_ID,
+  );
+
+  const future = createClient();
+  (future.getTriggerNotifications as jest.Mock).mockResolvedValueOnce([
+    { notification: reminderNotification('2026-09-09') },
+  ]);
+  await expect(
+    cancelLocalReturnReminderIfStale('2026-09-08', future),
+  ).resolves.toBe(false);
+  expect(future.cancelTriggerNotification).not.toHaveBeenCalled();
+
+  const broken = createClient();
+  (broken.getTriggerNotifications as jest.Mock).mockRejectedValueOnce(
+    new Error('native unavailable'),
+  );
+  await expect(
+    cancelLocalReturnReminderIfStale('2026-09-08', broken),
+  ).resolves.toBe(false);
 });

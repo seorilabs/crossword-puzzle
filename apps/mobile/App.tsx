@@ -98,6 +98,9 @@ import {
   validatePuzzleSlots,
   REWARDED_HINT_AD_REWARD_EVENT,
   RETURN_REMINDER_OPENED_EVENT,
+  RETURN_REMINDER_PREPROMPT_COPY,
+  formatReturnReminderPrepromptBody,
+  type ReturnReminderState,
   STUCK_HINT_PROMPT_ACCEPT_EVENT,
   STUCK_HINT_PROMPT_DISMISS_EVENT,
   STUCK_HINT_PROMPT_EVENT,
@@ -155,7 +158,13 @@ import {
   loadFirstInputGuideSeen,
   markFirstInputGuideSeen,
 } from './firstInputGuideRepository';
-import { maybeRequestMobileReturnReminder } from './mobileReturnReminder';
+import {
+  cancelStaleMobileReturnReminder,
+  confirmMobileReturnReminder,
+  declineMobileReturnReminder,
+  prepareMobileReturnReminderPreprompt,
+  refreshMobileReturnReminderSchedule,
+} from './mobileReturnReminder';
 import {
   consumeInitialReturnReminderOpen,
   consumePendingReturnReminderOpen,
@@ -1035,6 +1044,10 @@ function AppContent() {
     adapter: leaderboardAdapter,
     telemetry,
   });
+  // 완료 모달 안 복귀 알림 사전 안내 상태. null 이면 카드를 그리지 않는다. 카드에
+  // 답하지 않고 모달이 닫히면(홈·결과·다음 퍼즐 이동) 보류로 정리한다(아래 effect).
+  const [returnReminderPreprompt, setReturnReminderPreprompt] =
+    useState<ReturnReminderState | null>(null);
   const [completionCelebrationPuzzleId, setCompletionCelebrationPuzzleId] =
     useState<string | null>(null);
   const [rewardedAdPlacement, setRewardedAdPlacement] =
@@ -1049,6 +1062,8 @@ function AppContent() {
   );
   const submittedLeaderboardPuzzleIdsRef = useRef(new Set<string>());
   const returnReminderPromptedPuzzleIdsRef = useRef(new Set<string>());
+  const returnReminderPrepromptRef = useRef<ReturnReminderState | null>(null);
+  returnReminderPrepromptRef.current = returnReminderPreprompt;
   const playScreenScrollRef = useRef<React.ElementRef<typeof ScrollView>>(null);
   const boardInputRef = useRef<React.ElementRef<typeof TextInput>>(null);
   const answerCommitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
@@ -1562,6 +1577,7 @@ function AppContent() {
     let isCancelled = false;
 
     async function hydrateInitialSession() {
+      cancelStaleMobileReturnReminder(getTodayDateKey()).catch(() => {});
       let nextPuzzlePack = bundledPuzzlePack;
 
       try {
@@ -1631,6 +1647,18 @@ function AppContent() {
   // 정지 중이었으면 재개한다. 정지 구간은 pausedMs에 누적돼 완료·이탈·리더보드
   // 계측과 완료 화면 경과 표시에서 제외된다.
   useEffect(() => {
+    const prompted = returnReminderPrepromptRef.current;
+    if (completionCelebrationPuzzleId != null || prompted == null) {
+      return;
+    }
+    setReturnReminderPreprompt(null);
+    declineMobileReturnReminder(prompted, {
+      streakDays: consecutiveStreak,
+      telemetry,
+    }).catch(() => {});
+  }, [completionCelebrationPuzzleId, consecutiveStreak]);
+
+  useEffect(() => {
     refreshDailyHintWallet().catch(() => {});
     const subscription = AppState.addEventListener('change', state => {
       if (state === 'active') {
@@ -1645,6 +1673,8 @@ function AppContent() {
           saveStoredMission(nextMission);
         }
         refreshDailyHintWallet().catch(() => {});
+        // 알림 시각 전에 이미 돌아왔으면 오늘자 예약은 소음이라 취소한다.
+        cancelStaleMobileReturnReminder(getTodayDateKey()).catch(() => {});
         consumePendingReturnReminderOpen()
           .then(open => {
             if (open != null) {
@@ -1847,11 +1877,24 @@ function AppContent() {
 
     if (!returnReminderPromptedPuzzleIdsRef.current.has(puzzle.puzzleId)) {
       returnReminderPromptedPuzzleIdsRef.current.add(puzzle.puzzleId);
-      maybeRequestMobileReturnReminder({
-        enabled: launchConfig.returnReminderEnabled,
-        promptDate: getTodayDateKey(),
-        telemetry,
-      }).catch(() => {});
+      const promptDate = getTodayDateKey();
+      // 이미 동의한 사용자는 매 완료마다 D+1 알림을 다시 예약하고, 아직 동의 전이면
+      // 사전 안내 카드를 띄운다(시스템 권한 요청은 카드 수락 뒤에만).
+      refreshMobileReturnReminderSchedule(promptDate, { telemetry })
+        .then(() =>
+          prepareMobileReturnReminderPreprompt({
+            enabled: launchConfig.returnReminderEnabled,
+            promptDate,
+            streakDays: consecutiveStreak,
+            telemetry,
+          }),
+        )
+        .then(prompted => {
+          if (prompted != null) {
+            setReturnReminderPreprompt(prompted);
+          }
+        })
+        .catch(() => {});
     }
 
     if (
@@ -1898,6 +1941,7 @@ function AppContent() {
       setCompletionCelebrationPuzzleId(puzzle.puzzleId);
     }
   }, [
+    consecutiveStreak,
     hintCount,
     isLoading,
     launchConfig.leaderboardScoreCompletedWord,
@@ -2367,6 +2411,33 @@ function AppContent() {
       ),
       puzzle_pack_source: puzzlePack.source,
     });
+  }
+
+  // 사전 안내 카드 응답. 수락 시에만 OS 권한 요청·D+1 예약(confirm), 보류는 declined
+  // 로 기록해 익일 재안내 대상으로 남긴다.
+  async function acceptReturnReminder() {
+    const prompted = returnReminderPreprompt;
+    if (prompted == null) {
+      return;
+    }
+    setReturnReminderPreprompt(null);
+    await confirmMobileReturnReminder(prompted, {
+      promptDate: getTodayDateKey(),
+      streakDays: consecutiveStreak,
+      telemetry,
+    }).catch(() => {});
+  }
+
+  async function declineReturnReminder() {
+    const prompted = returnReminderPreprompt;
+    if (prompted == null) {
+      return;
+    }
+    setReturnReminderPreprompt(null);
+    await declineMobileReturnReminder(prompted, {
+      streakDays: consecutiveStreak,
+      telemetry,
+    }).catch(() => {});
   }
 
   async function startNextRecommendedPuzzle(source: NextPuzzleCtaSource) {
@@ -3633,6 +3704,7 @@ function AppContent() {
 
   function renderCompletionCelebrationModal() {
     const isVisible = completionCelebrationPuzzleId === puzzle.puzzleId;
+    const preprompt = isVisible ? returnReminderPreprompt : null;
     const elapsedLabel =
       isVisible && mission.lastStartedAt != null && mission.completedAt != null
         ? formatElapsedTime(
@@ -3697,6 +3769,43 @@ function AppContent() {
                 <Text style={styles.streakNudge}>
                   {getNextStreakMilestoneHint(consecutiveStreak)}
                 </Text>
+              )}
+              {preprompt != null && (
+                <View
+                  accessibilityLabel="복귀 알림 안내"
+                  style={styles.returnReminderPreprompt}
+                >
+                  <Text style={styles.returnReminderPrepromptTitle}>
+                    {RETURN_REMINDER_PREPROMPT_COPY.title}
+                  </Text>
+                  <Text style={styles.returnReminderPrepromptBody}>
+                    {formatReturnReminderPrepromptBody(consecutiveStreak)}
+                  </Text>
+                  <View style={styles.returnReminderPrepromptActions}>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => {
+                        acceptReturnReminder().catch(() => undefined);
+                      }}
+                      style={styles.primaryButton}
+                    >
+                      <Text style={styles.primaryButtonText}>
+                        {RETURN_REMINDER_PREPROMPT_COPY.accept}
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => {
+                        declineReturnReminder().catch(() => undefined);
+                      }}
+                      style={styles.secondaryButton}
+                    >
+                      <Text style={styles.secondaryButtonText}>
+                        {RETURN_REMINDER_PREPROMPT_COPY.decline}
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
               )}
             </View>
             {nextRecommendedSummary != null ? (
@@ -5425,6 +5534,30 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     paddingHorizontal: 8,
     paddingVertical: 4,
+  },
+  returnReminderPreprompt: {
+    gap: 8,
+    marginTop: 12,
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: '#f1f9f9',
+    borderWidth: 1,
+    borderColor: '#c7ebe5',
+  },
+  returnReminderPrepromptTitle: {
+    color: '#0f172a',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  returnReminderPrepromptBody: {
+    color: '#475569',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  returnReminderPrepromptActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
   },
   streakNudge: {
     color: '#0f766e',

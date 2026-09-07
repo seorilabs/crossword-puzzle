@@ -304,6 +304,7 @@ const webPuzzleRepository = read(webPuzzleRepositoryPath);
 const featureParityMarkers = [
   "answerInputMode",
   "selectAnswerInputMode",
+  "formatReturnReminderPrepromptBody",
   "getNextRecommendedPuzzleSummary",
   "onboardingDifficultyRampEnabled",
   "buildNextPuzzleCtaEvent",

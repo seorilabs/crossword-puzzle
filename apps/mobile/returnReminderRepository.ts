@@ -24,6 +24,7 @@ const knownOutcomes: ReadonlySet<ReturnReminderOutcome> = new Set([
   'unsupported',
   'error',
   'timeout',
+  'declined',
 ]);
 const knownFailureStages: ReadonlySet<ReturnReminderFailureStage> = new Set([
   'preflight',
