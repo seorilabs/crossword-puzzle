@@ -1970,6 +1970,7 @@ function AppContent() {
       setCompletionCelebrationPuzzleId(puzzle.puzzleId);
     }
   }, [
+    puzzleArchiveRecords,
     consecutiveStreak,
     hintCount,
     isLoading,
