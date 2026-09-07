@@ -1,3 +1,5 @@
+import { isValidDateKey } from "./answerHistory.ts";
+
 // 연속 도전(streak) 캘린더 히트맵의 날짜 격자 배치를 계산하는 순수 helper.
 // GitHub 컨트리뷰션 그래프처럼 열=주, 행=요일(일→토)로 배치한다. 완료일 판정은
 // 상위(어댑터)에서 스캔한 completedDates 집합을 그대로 받으므로 3마켓이 공유하고
@@ -82,14 +84,6 @@ export function buildStreakCalendarMonthLabels(
   });
 }
 
-const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-
-// "YYYY-MM-DD"이면서 실제 달력에 존재하는 날짜만 통과시킨다(2026-13-40 등 제외).
-export function isValidDateKey(dateKey: string): boolean {
-  if (!DATE_KEY_PATTERN.test(dateKey)) return false;
-  const ms = toUtcMs(dateKey);
-  return Number.isFinite(ms) && toDateKey(ms) === dateKey;
-}
 
 // 완료 기록(날짜 + completedAt)에서 완료일 집합을 만든다. completedAt이 파싱되는
 // 문자열이고 날짜 키가 유효한 항목만 센다. 웹은 localStorage 미션 레코드, RN은
