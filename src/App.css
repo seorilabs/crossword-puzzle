@@ -1113,6 +1113,44 @@ button:disabled {
   gap: 8px;
 }
 
+/* 완료 축하 다이얼로그 안 복귀 알림 사전 안내 카드. 시스템 동의 다이얼로그 전에
+   가치를 먼저 보여 주고 명시적 수락 뒤에만 SDK를 호출한다. */
+.returnReminderPreprompt {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--cw-brand-soft-2);
+  border: 1px solid var(--cw-border);
+  text-align: left;
+}
+.returnReminderPrepromptTitle {
+  margin: 0;
+  color: var(--cw-text);
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 20px;
+}
+.returnReminderPrepromptBody {
+  margin: 0;
+  color: var(--cw-text-2);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 18px;
+}
+.returnReminderPrepromptActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.returnReminderPrepromptActions .primaryButton,
+.returnReminderPrepromptActions .secondaryButton {
+  flex: 1 1 0;
+  min-height: 40px;
+}
+
 .resultAchievement {
   display: inline-flex;
   align-items: center;

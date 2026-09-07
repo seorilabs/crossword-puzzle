@@ -3,23 +3,30 @@ import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
 
 import {
+  RETURN_REMINDER_MAX_PROMPT_COUNT,
+  RETURN_REMINDER_PREPROMPT_COPY,
+  RETURN_REMINDER_PREPROMPT_EVENT,
+  RETURN_REMINDER_PROMPT_EVENT,
+  RETURN_REMINDER_RESULT_EVENT,
+  RETURN_REMINDER_SCHEDULE_EVENT,
+  type ReturnReminderState,
   applyReturnReminderOutcome,
+  buildReturnReminderPrepromptParams,
   buildReturnReminderPromptParams,
   buildReturnReminderResultParams,
+  extractAgreementErrorCode,
+  formatReturnReminderPrepromptBody,
+  getNextLocalReturnReminderSchedule,
   initialReturnReminderState,
   isReturnReminderConfigErrorCode,
   isReturnReminderResolved,
   mapNotificationAgreementResult,
   markReturnReminderPrompted,
-  RETURN_REMINDER_MAX_PROMPT_COUNT,
-  RETURN_REMINDER_PROMPT_EVENT,
-  RETURN_REMINDER_RESULT_EVENT,
+  shouldCancelLocalReturnReminder,
   shouldPromptReturnReminder,
+  shouldRefreshLocalReturnReminder,
   summarizeAgreementError,
   summarizeAgreementFailure,
-  extractAgreementErrorCode,
-  getNextLocalReturnReminderSchedule,
-  type ReturnReminderState,
 } from "./returnReminder.ts";
 
 describe("returnReminder 정책", () => {
@@ -790,5 +797,129 @@ describe("summarizeAgreementFailure / error_code (#288)", () => {
     assert.equal(summary.code, "4000");
     assert.equal(summary.reason.includes("\n"), false);
     assert.equal(summary.reason.length, 100);
+  });
+});
+
+describe("사전 안내(pre-prompt)와 RN 재예약·취소 규칙", () => {
+  it("declined 는 종결이 아니라 익일 재유도 대상이며 예산을 소진한다", () => {
+    const declined = applyReturnReminderOutcome(
+      markReturnReminderPrompted({ promptCount: 0 }, "2026-09-08"),
+      "declined",
+    );
+    assert.equal(isReturnReminderResolved(declined), false);
+    assert.equal(
+      shouldPromptReturnReminder({
+        enabled: true,
+        promptDate: "2026-09-08",
+        state: declined,
+      }),
+      false,
+      "같은 날에는 다시 묻지 않는다",
+    );
+    assert.equal(
+      shouldPromptReturnReminder({
+        enabled: true,
+        promptDate: "2026-09-09",
+        state: declined,
+      }),
+      true,
+      "익일에는 다시 안내한다",
+    );
+    const exhausted: ReturnReminderState = {
+      promptCount: RETURN_REMINDER_MAX_PROMPT_COUNT,
+      lastPromptDate: "2026-09-08",
+      outcome: "declined",
+    };
+    assert.equal(
+      shouldPromptReturnReminder({
+        enabled: true,
+        promptDate: "2026-09-09",
+        state: exhausted,
+      }),
+      false,
+      "3회 예산을 다 쓰면 declined 여도 종결한다",
+    );
+  });
+
+  it("사전 안내 문구는 스트릭을 프레이밍하고 알림 시각을 알린다", () => {
+    assert.equal(
+      RETURN_REMINDER_PREPROMPT_COPY.title,
+      "내일 새 퍼즐이 나오면 알려드릴게요",
+    );
+    assert.equal(
+      formatReturnReminderPrepromptBody(3),
+      "🔥 3일 연속 기록 지키기 · 매일 아침 9시 알림",
+    );
+    assert.equal(
+      formatReturnReminderPrepromptBody(0),
+      "🔥 연속 기록 시작하기 · 매일 아침 9시 알림",
+    );
+    assert.equal(
+      formatReturnReminderPrepromptBody(Number.NaN),
+      "🔥 연속 기록 시작하기 · 매일 아침 9시 알림",
+    );
+  });
+
+  it("return_reminder_preprompt 파라미터에 action·channel·회차·스트릭을 담는다", () => {
+    const prompted = markReturnReminderPrompted({ promptCount: 1 }, "2026-09-08");
+    assert.deepEqual(
+      buildReturnReminderPrepromptParams("shown", prompted, "local", 4.7),
+      { action: "shown", channel: "local", prompt_count: 2, streak_days: 4 },
+    );
+    assert.deepEqual(
+      buildReturnReminderPrepromptParams("decline", prompted, "ait", -1),
+      { action: "decline", channel: "ait", prompt_count: 2, streak_days: 0 },
+    );
+    assert.equal(RETURN_REMINDER_PREPROMPT_EVENT, "return_reminder_preprompt");
+    assert.equal(RETURN_REMINDER_SCHEDULE_EVENT, "return_reminder_schedule");
+  });
+
+  it("RN 재예약은 agreed 상태에서만, 취소는 예약 날짜가 오늘 이전·오늘일 때만 한다", () => {
+    assert.equal(
+      shouldRefreshLocalReturnReminder({ promptCount: 1, outcome: "agreed" }),
+      true,
+    );
+    assert.equal(
+      shouldRefreshLocalReturnReminder({ promptCount: 1, outcome: "rejected" }),
+      false,
+    );
+    assert.equal(shouldRefreshLocalReturnReminder({ promptCount: 0 }), false);
+    assert.equal(shouldCancelLocalReturnReminder("2026-09-08", "2026-09-08"), true);
+    assert.equal(shouldCancelLocalReturnReminder("2026-09-07", "2026-09-08"), true);
+    assert.equal(shouldCancelLocalReturnReminder("2026-09-09", "2026-09-08"), false);
+    assert.equal(shouldCancelLocalReturnReminder("nope", "2026-09-08"), false);
+  });
+
+  it("사전 안내를 띄운 채 앱이 종료돼 응답이 없으면 익일에 다시 안내한다(예산은 소진)", () => {
+    // promptCount 만 1 이고 outcome 이 없는 상태 = 카드 노출 후 강제 종료.
+    const unanswered = markReturnReminderPrompted({ promptCount: 0 }, "2026-09-08");
+    assert.equal(unanswered.outcome, undefined);
+    assert.equal(
+      shouldPromptReturnReminder({
+        enabled: true,
+        promptDate: "2026-09-08",
+        state: unanswered,
+      }),
+      false,
+      "같은 날에는 다시 묻지 않는다",
+    );
+    assert.equal(
+      shouldPromptReturnReminder({
+        enabled: true,
+        promptDate: "2026-09-09",
+        state: unanswered,
+      }),
+      true,
+      "익일에는 다시 안내한다",
+    );
+    assert.equal(
+      shouldPromptReturnReminder({
+        enabled: true,
+        promptDate: "2026-09-09",
+        state: { promptCount: RETURN_REMINDER_MAX_PROMPT_COUNT, lastPromptDate: "2026-09-08" },
+      }),
+      false,
+      "예산을 다 썼으면 미응답이어도 종결한다",
+    );
   });
 });

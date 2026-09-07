@@ -81,7 +81,9 @@ AIT는 AppsInToss Analytics와 Firebase Analytics를 함께 호출한다. 샌드
 | `result_interstitial_ad_request` | 결과 전면 광고 요청. 현재 기본 비활성             |
 | `result_interstitial_ad_event`   | 결과 전면 광고 load/show 이벤트. 현재 기본 비활성 |
 | `result_interstitial_ad_result`  | 결과 전면 광고 종료/실패. 현재 기본 비활성        |
-| `return_reminder_prompt`         | 퍼즐 완료 후 복귀 리마인더 동의 유도              |
+| `return_reminder_preprompt`      | 완료 축하 화면의 복귀 알림 사전 안내 카드. `action=shown\|accept\|decline`, `channel`, `prompt_count`, `streak_days` |
+| `return_reminder_prompt`         | 사전 안내 수락 뒤 시스템 동의·권한 요청 시작      |
+| `return_reminder_schedule`       | RN 동의 사용자의 매 완료 D+1 로컬 알림 재예약 결과. `channel=local`, `outcome`, `reminder_date` |
 | `return_reminder_result`         | 동의 결과와 오류 코드·래퍼·실패 단계 기록         |
 | `notification_opened`            | RN 로컬 복귀 알림 탭 후 오늘의 퍼즐 진입          |
 

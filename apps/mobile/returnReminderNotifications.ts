@@ -11,6 +11,7 @@ import notifee, {
 
 import {
   getNextLocalReturnReminderSchedule,
+  shouldCancelLocalReturnReminder,
   summarizeAgreementFailure,
   type ReturnReminderFailureMetadata,
   type ReturnReminderOutcome,
@@ -22,6 +23,7 @@ type NotifyKitClient = Pick<
   | 'createChannel'
   | 'createTriggerNotification'
   | 'getInitialNotification'
+  | 'getTriggerNotifications'
   | 'onBackgroundEvent'
   | 'onForegroundEvent'
   | 'requestPermission'
@@ -216,5 +218,32 @@ export async function scheduleLocalReturnReminder(
       errorShape: summary.shape,
       failureStage: 'sdk_callback',
     };
+  }
+}
+
+// 예약된 복귀 알림의 reminder_date 가 오늘 이전·오늘이면 취소한다. 사용자가 알림 전에
+// 이미 돌아온 경우 그 알림은 소음이다. 취소했으면 true, 예약이 없거나 아직 미래면
+// false 다. 조회·취소 실패는 호출부 흐름을 막지 않도록 false 로 축약한다.
+export async function cancelLocalReturnReminderIfStale(
+  today: string,
+  client: NotifyKitClient = notifee,
+): Promise<boolean> {
+  try {
+    const pending = await client.getTriggerNotifications();
+    const stale = pending.find(
+      ({ notification }) =>
+        isReturnReminderNotification(notification) &&
+        shouldCancelLocalReturnReminder(
+          notification.data?.reminder_date as string,
+          today,
+        ),
+    );
+    if (stale == null) {
+      return false;
+    }
+    await client.cancelTriggerNotification(RETURN_REMINDER_NOTIFICATION_ID);
+    return true;
+  } catch {
+    return false;
   }
 }

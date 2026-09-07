@@ -309,6 +309,7 @@ const featureParityMarkers = [
   "buildWeeklyStreakStrip",
   "startLadderStep",
   "formatStreakStripHeadline",
+  "formatReturnReminderPrepromptBody",
   "getNextRecommendedPuzzleSummary",
   "onboardingDifficultyRampEnabled",
   "buildNextPuzzleCtaEvent",
