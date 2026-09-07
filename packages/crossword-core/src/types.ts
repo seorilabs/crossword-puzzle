@@ -123,6 +123,10 @@ export type PuzzleManifest = {
     maxSameDateSharedAnswers: number;
     maxScaffoldSimilarity: number;
     maxSharedAnswerRatio: number;
+    // 발행 정답 이력(answer-history.json) 배제 창. 이력 도입 이전 manifest 에는 없다.
+    answerHistoryDays?: number;
+    fragmentHistoryDays?: number;
+    answerHistoryPath?: string;
   };
   generatedAt?: string;
   keep?: number;

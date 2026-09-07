@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
+import {
+  createEmptyAnswerHistory,
+  upsertAnswerHistory,
+} from "./answerHistory.ts";
 import { evaluatePublishedPuzzlePackHealth } from "./puzzlePackHealth.ts";
 import type { Puzzle, PuzzleManifest, PuzzleManifestItem } from "./types.ts";
 
@@ -152,6 +156,87 @@ describe("evaluatePublishedPuzzlePackHealth", () => {
     assert.ok(result.issues.some((issue) => issue.code === "shared_answer"));
   });
 
+  it("오늘 정답이 90일 안의 다른 날짜·다른 난이도 퍼즐에 있었으면 repeated_answer로 실패한다", () => {
+    const fixture = createFixture();
+    // 40일 전 hard 퍼즐이 오늘 easy 정답("가나다")을 이미 썼다 — 난이도 교차·과거 반복.
+    const answerHistory = upsertAnswerHistory(
+      createEmptyAnswerHistory(90),
+      [
+        {
+          puzzleId: "puzzle-hard-old",
+          date: "2026-06-16",
+          difficulty: "hard",
+          slotId: "2026-06-16-h01",
+          answers: ["가나다", "마바사"],
+        },
+      ],
+      { retentionDays: 90, today: DATE },
+    );
+
+    const result = evaluatePublishedPuzzlePackHealth({
+      expectedDate: DATE,
+      manifest: fixture.manifest,
+      puzzlesByPath: fixture.puzzlesByPath,
+      answerHistory,
+      answerHistoryDays: 90,
+    });
+
+    assert.equal(result.pass, false);
+    const repeated = result.issues.filter(
+      (issue) => issue.code === "repeated_answer",
+    );
+    assert.equal(repeated.length, 1);
+    assert.equal(repeated[0].difficulty, "easy");
+    assert.match(repeated[0].detail, /"가나다"/);
+    assert.match(repeated[0].detail, /puzzle-hard-old/);
+    assert.match(repeated[0].detail, /40d/);
+  });
+
+  it("이력이 오늘 두 판 자신만 담고 있으면 repeated_answer 없이 통과한다", () => {
+    const fixture = createFixture();
+    const answerHistory = upsertAnswerHistory(
+      createEmptyAnswerHistory(90),
+      Object.values(fixture.puzzles).map((puzzle) => ({
+        puzzleId: puzzle.puzzleId,
+        date: puzzle.date,
+        difficulty: puzzle.difficulty,
+        answers: puzzle.entries.map((entry) => entry.answer),
+      })),
+      { retentionDays: 90, today: DATE },
+    );
+
+    const result = evaluatePublishedPuzzlePackHealth({
+      expectedDate: DATE,
+      manifest: fixture.manifest,
+      puzzlesByPath: fixture.puzzlesByPath,
+      answerHistory,
+    });
+
+    assert.equal(result.pass, true, JSON.stringify(result.issues));
+  });
+
+  it("이력이 발행되지 않았으면(null) missing_answer_history로 실패하고, 인자를 생략하면 검사하지 않는다", () => {
+    const fixture = createFixture();
+
+    const missing = evaluatePublishedPuzzlePackHealth({
+      expectedDate: DATE,
+      manifest: fixture.manifest,
+      puzzlesByPath: fixture.puzzlesByPath,
+      answerHistory: null,
+    });
+    assert.equal(missing.pass, false);
+    assert.ok(
+      missing.issues.some((issue) => issue.code === "missing_answer_history"),
+    );
+
+    const legacy = evaluatePublishedPuzzlePackHealth({
+      expectedDate: DATE,
+      manifest: fixture.manifest,
+      puzzlesByPath: fixture.puzzlesByPath,
+    });
+    assert.equal(legacy.pass, true);
+  });
+
   it("AC-3 manifest와 puzzle metadata가 다르면 실패한다", () => {
     const fixture = createFixture();
     fixture.puzzles.hard.puzzleId = "unexpected-hard-id";
@@ -228,5 +313,18 @@ describe("health 검사 운영 계약", () => {
   it("두 Job 이 같은 이미지를 쓴다는 배포 주의가 런북에 있다", () => {
     assert.match(runbook, /두 Job은 같은 이미지를 쓴다/);
     assert.match(runbook, /crossword-puzzle-pack-health/);
+  });
+
+  it("health 는 발행 정답 이력을 읽어 교차·과거 반복을 검사하고 런북이 이를 설명한다", () => {
+    assert.match(healthSource, /resolveAnswerHistoryUrl\(baseUrl\)/);
+    assert.match(healthSource, /parseAnswerHistory\(/);
+    // 항목 일부가 손상된 이력은 missing 으로 취급해 검사가 약해지지 않게 한다.
+    assert.match(healthSource, /droppedEntryCount > 0/);
+    assert.match(healthSource, /answerHistoryDays/);
+    assert.match(runbook, /PUZZLE_ANSWER_HISTORY_DAYS/);
+    assert.match(runbook, /answer-history\.json/);
+    assert.match(runbook, /repeated_answer/);
+    assert.match(runbook, /missing_answer_history/);
+    assert.match(runbook, /report:answer-repeats/);
   });
 });
