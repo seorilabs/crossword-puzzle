@@ -74,8 +74,7 @@ keystore_base64="$credential_dir/play-keystore.b64"
 keystore_password_file="$credential_dir/play-keystore-password"
 key_password_file="$credential_dir/play-key-password"
 for path in \
-  "$firebase_base64" "$keystore_base64" "$keystore_password_file" \
-  "$key_password_file"; do
+  "$firebase_base64" "$keystore_base64" "$keystore_password_file"; do
   [ -s "$path" ] || {
     echo "빌드 자격증명 파일이 없습니다: $(basename "$path")" >&2
     exit 1
@@ -109,7 +108,12 @@ unset firebase_value
 base64 --decode "$keystore_base64" > "$keystore_file"
 chmod 0600 "$keystore_file" "$firebase_config"
 keystore_password="$(<"$keystore_password_file")"
-key_password="$(<"$key_password_file")"
+# key password는 keystore password와 다를 때만 등록한다(docs/google-play-release.md).
+if [ -s "$key_password_file" ]; then
+  key_password="$(<"$key_password_file")"
+else
+  key_password="$keystore_password"
+fi
 
 keystore_details="$(
   keytool -list -v \

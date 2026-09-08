@@ -1126,6 +1126,18 @@ assertIncludes(
   "runs-on: seorilabs-rpi-arm64",
   deployGooglePlayWorkflowPath,
 );
+// 이 워크플로 이전에 태그된 릴리즈에는 Cloud Build 도구가 없다. 빌드 도구 계약은
+// 워크플로 리비전에서 태그 소스로 설치해야 재배포가 태그 시점 파일에 좌우되지 않는다.
+assertIncludes(
+  deployGooglePlayWorkflow,
+  "release-tooling/cloudbuild-android.yaml release-source/cloudbuild-android.yaml",
+  deployGooglePlayWorkflowPath,
+);
+assertIncludes(
+  deployGooglePlayWorkflow,
+  "release-tooling/scripts/build-android.sh release-source/scripts/build-android.sh",
+  deployGooglePlayWorkflowPath,
+);
 assertNotIncludes(
   deployGooglePlayWorkflow,
   "seorilabs-x64-android",

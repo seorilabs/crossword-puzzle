@@ -43,8 +43,9 @@ on:
         required: true
       GOOGLE_PLAY_UPLOAD_KEYSTORE_PASSWORD:
         required: true
+      # keystore password와 다를 때만 설정한다(docs/google-play-release.md).
       GOOGLE_PLAY_UPLOAD_KEY_PASSWORD:
-        required: true
+        required: false
 
 permissions:
   contents: read
@@ -86,6 +87,13 @@ jobs:
           fetch-tags: true
           path: release-source
 
+      - name: Checkout release tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          path: release-tooling
+
       - name: Checkout exact release authority
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -99,6 +107,19 @@ jobs:
         with:
           node-version: 24.16.0
           check-latest: false
+
+      # 빌드 도구 계약은 이 워크플로 리비전이 정본이다. 태그 시점 소스에는 없거나
+      # substitution 계약이 다른 버전이 들어 있을 수 있어 그대로 덮어쓴다.
+      # 마켓 artifact의 버전 정본은 여전히 중앙 release authority가 해석한 태그다.
+      - name: Install release build tooling into the tagged source
+        working-directory: ${{ github.workspace }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 0644 release-tooling/build.env release-source/build.env
+          install -m 0644 release-tooling/cloudbuild-android.yaml release-source/cloudbuild-android.yaml
+          install -m 0644 release-tooling/.gcloudignore release-source/.gcloudignore
+          install -m 0755 release-tooling/scripts/build-android.sh release-source/scripts/build-android.sh
 
       - name: Validate build configuration
         shell: bash
@@ -118,7 +139,6 @@ jobs:
             FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64
             GOOGLE_PLAY_UPLOAD_KEYSTORE_BASE64
             GOOGLE_PLAY_UPLOAD_KEYSTORE_PASSWORD
-            GOOGLE_PLAY_UPLOAD_KEY_PASSWORD
             GOOGLE_PLAY_UPLOAD_KEY_ALIAS
             GOOGLE_WORKLOAD_IDENTITY_PROVIDER
             GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL
