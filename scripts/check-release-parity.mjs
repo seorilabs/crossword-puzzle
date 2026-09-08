@@ -69,6 +69,7 @@ const deployAppStoreWorkflowPath = ".github/workflows/deploy-app-store.yml";
 const androidBuildEnvPath = "build.env";
 const androidCloudBuildConfigPath = "cloudbuild-android.yaml";
 const androidCloudBuildScriptPath = "scripts/build-android.sh";
+const googlePlayUploadScriptPath = "scripts/upload-google-play-internal.py";
 const appStoreLocalBuildPath = "scripts/app-store-local-build.sh";
 const xcodeCloudPostClonePath = "apps/mobile/ios/ci_scripts/ci_post_clone.sh";
 const xcodeCloudPreBuildPath =
@@ -423,6 +424,7 @@ const deployAppStoreWorkflow = read(deployAppStoreWorkflowPath);
 const androidBuildEnv = read(androidBuildEnvPath);
 const androidCloudBuildConfig = read(androidCloudBuildConfigPath);
 const androidCloudBuildScript = read(androidCloudBuildScriptPath);
+const googlePlayUploadScript = read(googlePlayUploadScriptPath);
 const appStoreLocalBuild = read(appStoreLocalBuildPath);
 const xcodeCloudPostClone = read(xcodeCloudPostClonePath);
 const xcodeCloudPreBuild = read(xcodeCloudPreBuildPath);
@@ -1227,6 +1229,18 @@ assertIncludes(
   promoteGooglePlayWorkflow,
   "upload_script: scripts/upload-google-play-internal.py",
   promoteGooglePlayWorkflowPath,
+);
+// 중앙 승격 계약은 태그가 정한 versionCode 하나만 올린다. 트랙의 최신 build를
+// 그대로 승격하면 태그와 다른 산출물이 production으로 나갈 수 있다.
+assertIncludes(
+  googlePlayUploadScript,
+  "--promote-version-code",
+  googlePlayUploadScriptPath,
+);
+assertNotIncludes(
+  googlePlayUploadScript,
+  "max(version_codes)",
+  googlePlayUploadScriptPath,
 );
 assertIncludes(
   promoteGooglePlayWorkflow,
