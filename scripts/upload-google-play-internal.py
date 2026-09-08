@@ -385,6 +385,12 @@ def main():
     )
     args = parser.parse_args()
 
+    # 승격 대상은 중앙 release authority 가 태그에서 파생한 versionCode 하나뿐이다.
+    # Play edit 를 만들기 전에 확인해 빈 edit 를 남기지 않는다.
+    if args.promote and args.promote_version_code is None:
+        print("--promote-version-code is required for promotion.", file=sys.stderr)
+        return 1
+
     try:
         result = promote_release(args) if args.promote else upload_internal_release(args)
     except Exception as error:
