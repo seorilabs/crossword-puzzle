@@ -1148,6 +1148,18 @@ assertIncludes(
   "machineType: E2_STANDARD_2",
   androidCloudBuildConfigPath,
 );
+// 제출 toolchain이 흔들리면 machineType이 unrecognized field로 떨어져 제출 자체가
+// 거절된다(run 34225056022, 34228215910). gcloud 버전과 리전을 함께 고정한다.
+assertIncludes(
+  deployGooglePlayWorkflow,
+  "version: 582.0.0",
+  deployGooglePlayWorkflowPath,
+);
+assertIncludes(
+  deployGooglePlayWorkflow,
+  "--region=asia-northeast3",
+  deployGooglePlayWorkflowPath,
+);
 assertIncludes(
   androidCloudBuildConfig,
   "dist/android/crossword-puzzle.aab",
