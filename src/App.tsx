@@ -84,6 +84,7 @@ import {
   shouldMarkTentative,
   pickHintCellIndex,
   resolveInitialActivePuzzleId,
+  shouldRecordBestTime,
   buildDailyLadder,
   buildDailyLadderCtaParams,
   buildWeeklyStreakStrip,
@@ -1810,13 +1811,12 @@ function App() {
           endedAt: nextMission.completedAt,
           pausedMs: pause.pausedMs,
         }) ?? 0;
-      if (elapsedMs > 0) {
-        const currentBest = getBestTimeMs(puzzle.puzzleId);
-        if (currentBest == null || elapsedMs < currentBest) {
-          if (saveBestTimeMs(puzzle.puzzleId, elapsedMs)) {
-            setIsNewBestTime(true);
-          }
-        }
+      // 갱신 판정(유효한 시간이고 기존 기록이 없거나 더 빠름)은 core 규칙을 쓴다(RN 동일).
+      if (
+        shouldRecordBestTime(getBestTimeMs(puzzle.puzzleId), elapsedMs) &&
+        saveBestTimeMs(puzzle.puzzleId, elapsedMs)
+      ) {
+        setIsNewBestTime(true);
       }
     }
 

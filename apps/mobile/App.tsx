@@ -17,7 +17,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  Share,
   StatusBar,
   StyleSheet,
   Text,
@@ -70,7 +69,6 @@ import {
   buildDailyLadder,
   buildDailyLadderCtaParams,
   buildWeeklyStreakStrip,
-  collectCompletedDates,
   computeConsecutiveStreakDays,
   formatDailyLadderNextLabel,
   formatDailyLadderStepLabel,
@@ -87,6 +85,18 @@ import {
   getPuzzlePackAlias,
   getRemainingAttempts,
   getStreakBadgeLabel,
+  buildShareGrid,
+  buildStreakCalendarWeeks,
+  computeElapsedMs,
+  computeLongestStreakDays,
+  computePersonalStats,
+  computeSolveTimeDistribution,
+  emitProgressionScreenView,
+  emitStreakMilestoneIfReached,
+  formatMissionHistoryCardSummary,
+  getCompletionAchievements,
+  getProgressMilestoneRewardMessage,
+  type PersonalStatsRecord,
   getTodayDateKey,
   grantDailyHintCredits,
   loadOrMigrateDailyHintWallet,
@@ -158,6 +168,19 @@ import {
 } from './mobileAds';
 import { telemetry } from './telemetry';
 import { gameAnalytics } from './gameAnalytics';
+import {
+  getAllBestTimeValuesMs,
+  getOverallBestTimeMs,
+  mobileBestTimeRepository,
+  type BestTimes,
+} from './bestTimeRepository';
+import { mobileCompletionDatesRepository } from './completionDatesRepository';
+import {
+  PersonalStatsCard,
+  ShareGridPreview,
+  StreakHeatmap,
+} from './recordsComponents';
+import { buildMobileShareText, shareResultText } from './shareResult';
 import {
   createMobileGameplayAttemptTracker,
   type MobilePuzzleAbandonSnapshot,
@@ -534,38 +557,6 @@ export function formatElapsedTime(
   return minutes > 0 ? `${minutes}분 ${seconds}초` : `${seconds}초`;
 }
 
-function buildResultShareText({
-  puzzleLabel,
-  elapsedLabel,
-  hintCount,
-  attemptsUsed,
-  completedCount,
-  totalCount,
-  streak,
-}: {
-  puzzleLabel: string;
-  elapsedLabel: string | null;
-  hintCount: number;
-  attemptsUsed: number;
-  completedCount: number;
-  totalCount: number;
-  streak?: number;
-}): string {
-  const lines: string[] = [`가로세로 낱말 퍼즐 ${puzzleLabel}`, ''];
-  const stats: string[] = [];
-  if (elapsedLabel != null) stats.push(`⏱ ${elapsedLabel}`);
-  stats.push(`도전 ${attemptsUsed}회`);
-  if (hintCount > 0) stats.push(`힌트 ${hintCount}회`);
-  lines.push(stats.join(' · '));
-  const badges: string[] = [];
-  if (hintCount === 0) badges.push('🎯 노힌트 클리어');
-  if (attemptsUsed === 1) badges.push('💎 첫 도전 성공');
-  const streakBadge = streak != null ? getStreakBadgeLabel(streak) : null;
-  if (streakBadge != null) badges.push(streakBadge);
-  if (badges.length > 0) lines.push(badges.join(' · '));
-  lines.push(`낱말 ${completedCount}/${totalCount}개 완성 🎉`);
-  return lines.join('\n');
-}
 
 export function formatPuzzleHistoryTitle(
   summary: PuzzleManifestItem,
@@ -1005,6 +996,16 @@ function AppContent() {
   });
   // 완료 모달 안 복귀 알림 사전 안내 상태. null 이면 카드를 그리지 않는다. 카드에
   // 답하지 않고 모달이 닫히면(홈·결과·다음 퍼즐 이동) 보류로 정리한다(아래 effect).
+  // 기록 패리티 상태(웹과 동일 계약). 최고 기록은 퍼즐별 ms, 완료일은 무한 누적 목록.
+  const [bestTimes, setBestTimes] = useState<BestTimes>({});
+  const [completionDates, setCompletionDates] = useState<string[]>([]);
+  const completionDatesRef = useRef<string[]>([]);
+  const [isNewBestTime, setIsNewBestTime] = useState(false);
+  // 진행 마일스톤(25/50/75%) 보상 토스트. 2.5초 뒤 자동으로 사라진다.
+  const [progressToast, setProgressToast] = useState<{
+    id: number;
+    message: string;
+  }>({ id: 0, message: '' });
   const [returnReminderPreprompt, setReturnReminderPreprompt] = useState<{
     prompted: ReturnReminderState;
     streakDays: number;
@@ -1277,15 +1278,11 @@ function AppContent() {
   );
   // 완료일 집합은 아카이브 레코드에서 만든다(웹은 localStorage 미션 레코드). 스트릭
   // 숫자와 7일 스트립이 같은 집합을 근거로 삼도록 한 곳에서 계산한다.
+  // 완료일은 아카이브(30건 상한)가 아니라 누적 저장소(completionDates)에서 읽는다.
+  // 첫 실행에 아카이브·미션 키로 백필하므로 기존 기기의 스트릭이 줄지 않는다.
   const completedDates = useMemo(
-    () =>
-      collectCompletedDates(
-        puzzleArchiveRecords.map(record => ({
-          date: record.puzzle.date,
-          completedAt: record.completedAt,
-        })),
-      ),
-    [puzzleArchiveRecords],
+    () => new Set(completionDates),
+    [completionDates],
   );
   // 스트릭은 완료일 집합에서 파생한다(별도 상태 없음). 초기 hydrate 로 아카이브가
   // 로드되는 즉시 헤드라인·넛지·배지가 같은 값을 쓴다(웹과 동일 규칙).
@@ -1298,6 +1295,54 @@ function AppContent() {
     [completedDates, todayKey],
   );
   const todayCompleted = weeklyStrip.some(day => day.isToday && day.completed);
+  // 기록 화면 통계. 노힌트 신호는 아카이브에 동결된 값을 우선하고 없으면(구버전) 카드
+  // 상태로 폴백한다(웹과 동일). 최고 기록은 저장소의 전체 값으로 집계한다.
+  const historyStats = useMemo(() => {
+    const records: PersonalStatsRecord[] = puzzleArchiveRecords.map(record => {
+      const state = dateCardStates[record.puzzleId];
+      return {
+        completed: record.completedAt != null || state?.completedAt != null,
+        hintCount: record.hintCount ?? state?.hintCount ?? 0,
+        revealUsed: record.revealUsed ?? false,
+      };
+    });
+    const bestTimeValuesMs = getAllBestTimeValuesMs(bestTimes);
+    return {
+      stats: computePersonalStats(records, bestTimeValuesMs),
+      solveTimeDistribution: computeSolveTimeDistribution(bestTimeValuesMs),
+      streakWeeks: buildStreakCalendarWeeks(completionDates, todayKey, 12),
+      longestStreak: Math.max(
+        computeLongestStreakDays(completionDates),
+        consecutiveStreak,
+      ),
+    };
+  }, [
+    bestTimes,
+    completionDates,
+    consecutiveStreak,
+    dateCardStates,
+    puzzleArchiveRecords,
+    todayKey,
+  ]);
+  const historyViewRef = useRef({
+    totalPuzzles: 0,
+    completedCount: 0,
+    currentStreak: 0,
+    longestStreak: 0,
+  });
+  historyViewRef.current = {
+    totalPuzzles: historyStats.stats.totalPuzzles,
+    completedCount: historyStats.stats.completedCount,
+    currentStreak: consecutiveStreak,
+    longestStreak: historyStats.longestStreak,
+  };
+  // 기록 화면 진입마다 1회 계측(웹 HistoryScreen 마운트 1회와 동일).
+  useEffect(() => {
+    if (isLoading || route !== 'history') {
+      return;
+    }
+    emitProgressionScreenView(gameAnalytics, historyViewRef.current);
+  }, [isLoading, route]);
   const archivePuzzleSummaries = useMemo(
     () =>
       puzzleArchiveRecords
@@ -1574,6 +1619,12 @@ function AppContent() {
 
       const nextSummaries = nextPuzzlePack.summaries;
       const nextArchiveRecords = await listArchivedPuzzles();
+      const [nextCompletionDates, nextBestTimes] = await Promise.all([
+        mobileCompletionDatesRepository.migrateCompletionDatesIfNeeded({
+          archiveRecords: nextArchiveRecords,
+        }),
+        mobileBestTimeRepository.loadBestTimes(),
+      ]);
       const hydratedSummaries = uniquePuzzleSummaries([
         ...nextSummaries,
         ...nextArchiveRecords.map(record => createPuzzleSummary(record.puzzle)),
@@ -1591,6 +1642,9 @@ function AppContent() {
 
       setPuzzlePack(nextPuzzlePack);
       setPuzzleArchiveRecords(nextArchiveRecords);
+      completionDatesRef.current = nextCompletionDates;
+      setCompletionDates(nextCompletionDates);
+      setBestTimes(nextBestTimes);
       setDateCardStates(states);
       setDailyHintWallet(nextDailyHintWallet);
       applyPuzzleSession(session);
@@ -1632,6 +1686,22 @@ function AppContent() {
   // "오늘" 화면에서 시작·미완료·시도 소진 전 진행 중일 때만 정지하고, active 복귀에서
   // 정지 중이었으면 재개한다. 정지 구간은 pausedMs에 누적돼 완료·이탈·리더보드
   // 계측과 완료 화면 경과 표시에서 제외된다.
+  useEffect(() => {
+    setIsNewBestTime(false);
+  }, [puzzle.puzzleId]);
+
+  useEffect(() => {
+    if (progressToast.message === '') {
+      return;
+    }
+    const timer = setTimeout(() => {
+      setProgressToast(prev =>
+        prev.id === progressToast.id ? { ...prev, message: '' } : prev,
+      );
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [progressToast]);
+
   useEffect(() => {
     const pending = returnReminderPrepromptRef.current;
     if (completionCelebrationPuzzleId != null || pending == null) {
@@ -1840,7 +1910,56 @@ function AppContent() {
     };
     setMission(nextMission);
     saveStoredMission(nextMission);
-    savePuzzleSnapshot(puzzle, { completedAt: nextMission.completedAt });
+    // 완료 시점의 노힌트 판정 신호를 아카이브에 동결한다(웹과 동일). RN 은 정답 보기가
+    // 없어 revealUsed 는 항상 false 지만 규칙은 core getCompletionAchievements 하나다.
+    savePuzzleSnapshot(puzzle, {
+      completedAt: nextMission.completedAt,
+      hintCount,
+      revealUsed: false,
+    });
+    const elapsedMs =
+      computeElapsedMs({
+        startedAt: nextMission.lastStartedAt,
+        endedAt: nextMission.completedAt,
+        pausedMs: nextMission.pausedMs,
+      }) ?? 0;
+    if (
+      getCompletionAchievements({
+        hintCount,
+        attemptsUsed: nextMission.attemptsUsed,
+        revealUsed: false,
+      }).bestTimeEligible
+    ) {
+      mobileBestTimeRepository
+        .recordBestTime(puzzle.puzzleId, elapsedMs)
+        .then(({ isNewBest, bestTimes: nextBestTimes }) => {
+          setBestTimes(nextBestTimes);
+          if (isNewBest) {
+            setIsNewBestTime(true);
+          }
+        })
+        .catch(() => {});
+    }
+    // 완료일을 누적하고 스트릭 마일스톤(7/30/100)을 1회 계측한다. 이전 값은 오늘 몫을
+    // 더하지 않는 비관 계산으로 읽어야 완료 전후가 갈린다(웹과 동일 규칙).
+    const completionToday = getTodayDateKey();
+    const previousStreak = computeConsecutiveStreakDays(
+      completionDatesRef.current,
+      completionToday,
+      { countTodayPending: false },
+    );
+    mobileCompletionDatesRepository
+      .addCompletionDate(nextMission.date)
+      .then(nextDates => {
+        completionDatesRef.current = nextDates;
+        setCompletionDates(nextDates);
+        emitStreakMilestoneIfReached(
+          gameAnalytics,
+          previousStreak,
+          computeConsecutiveStreakDays(nextDates, completionToday),
+        );
+      })
+      .catch(() => {});
     telemetry.impression('mission_complete', {
       ...getPuzzleTelemetryParams(puzzle, selectedPuzzleSummary),
       attempt_number: mission.attemptsUsed,
@@ -1997,6 +2116,13 @@ function AppContent() {
         progressPercent,
         attemptNumber: mission.attemptsUsed,
       });
+    }
+    if (milestones.length > 0) {
+      // 가장 높은 마일스톤 하나만 토스트로 보여 준다(웹과 동일 문구).
+      const message = getProgressMilestoneRewardMessage(
+        milestones[milestones.length - 1],
+      );
+      setProgressToast(prev => ({ id: prev.id + 1, message }));
     }
   }, [
     hintCount,
@@ -3367,7 +3493,21 @@ function AppContent() {
               <Text style={styles.secondaryButtonText}>못 끝낸 퍼즐</Text>
             </Pressable>
             <Pressable
-              onPress={() => navigateTo('history')}
+              accessibilityLabel={`기록${
+                formatMissionHistoryCardSummary({
+                  consecutiveStreak,
+                  fastestBestTimeMs: getOverallBestTimeMs(bestTimes),
+                }) == null
+                  ? ''
+                  : ` · ${formatMissionHistoryCardSummary({
+                      consecutiveStreak,
+                      fastestBestTimeMs: getOverallBestTimeMs(bestTimes),
+                    })}`
+              }`}
+              onPress={() => {
+                telemetry.click('history_open', { source: 'home_card' });
+                navigateTo('history');
+              }}
               style={styles.secondaryButton}
             >
               <Text style={styles.secondaryButtonText}>기록</Text>
@@ -3890,6 +4030,12 @@ function AppContent() {
   function renderCompletionCelebrationModal() {
     const isVisible = completionCelebrationPuzzleId === puzzle.puzzleId;
     const preprompt = isVisible ? returnReminderPreprompt : null;
+    const achievements = getCompletionAchievements({
+      hintCount,
+      attemptsUsed: mission.attemptsUsed,
+      revealUsed: false,
+    });
+    const streakBadge = getStreakBadgeLabel(consecutiveStreak);
     const elapsedLabel =
       isVisible && mission.lastStartedAt != null && mission.completedAt != null
         ? formatElapsedTime(
@@ -3898,6 +4044,22 @@ function AppContent() {
             mission.pausedMs,
           )
         : null;
+    const shareGrid = isVisible ? buildShareGrid(puzzle, cellValues) : '';
+    const shareText = isVisible
+      ? buildMobileShareText({
+          puzzle,
+          cellValues,
+          puzzleLabel: formatPuzzleAliasLabel(selectedPuzzleSummary),
+          elapsedLabel,
+          hintCount,
+          attemptsUsed: mission.attemptsUsed,
+          completedCount: viewModel.completedEntries.length,
+          totalCount: puzzle.entries.length,
+          consecutiveStreak,
+          isComplete: true,
+          revealUsed: false,
+        })
+      : '';
 
     return (
       <Modal
@@ -3929,23 +4091,35 @@ function AppContent() {
                   ⏱ {elapsedLabel}
                 </Text>
               )}
-              {(hintCount === 0 ||
-                mission.attemptsUsed === 1 ||
-                consecutiveStreak > 0) && (
+              <ShareGridPreview shareGrid={shareGrid} />
+              {(isNewBestTime ||
+                achievements.noHint ||
+                achievements.firstTry ||
+                streakBadge != null) && (
                 <View style={styles.completionAchievements}>
-                  {hintCount === 0 && (
+                  {isNewBestTime && (
+                    <Text
+                      style={[
+                        styles.completionAchievementBadge,
+                        styles.completionAchievementBadgeBest,
+                      ]}
+                    >
+                      🏆 최고 기록 갱신!
+                    </Text>
+                  )}
+                  {achievements.noHint && (
                     <Text style={styles.completionAchievementBadge}>
                       🎯 노힌트 클리어
                     </Text>
                   )}
-                  {mission.attemptsUsed === 1 && (
+                  {achievements.firstTry && (
                     <Text style={styles.completionAchievementBadge}>
                       💎 첫 도전 성공
                     </Text>
                   )}
-                  {getStreakBadgeLabel(consecutiveStreak) != null && (
+                  {streakBadge != null && (
                     <Text style={styles.completionAchievementBadge}>
-                      {getStreakBadgeLabel(consecutiveStreak)}
+                      {streakBadge}
                     </Text>
                   )}
                 </View>
@@ -3993,6 +4167,22 @@ function AppContent() {
                 </View>
               )}
             </View>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                shareResultText({
+                  text: shareText,
+                  surface: 'completion_dialog',
+                  clickParams: {
+                    puzzleId: puzzle.puzzleId,
+                    difficulty: puzzle.difficulty,
+                  },
+                }).catch(() => undefined);
+              }}
+              style={styles.shareButton}
+            >
+              <Text style={styles.shareButtonText}>결과 공유하기</Text>
+            </Pressable>
             {nextRecommendedSummary != null ? (
               <Pressable
                 accessibilityLabel={nextRecommendedButtonLabel ?? '다음 퍼즐 풀기'}
@@ -4013,6 +4203,7 @@ function AppContent() {
                 accessibilityLabel="퍼즐 기록 보기"
                 accessibilityRole="button"
                 onPress={() => {
+                  telemetry.click('history_open', { source: 'completion_dialog' });
                   setCompletionCelebrationPuzzleId(null);
                   navigateTo('history');
                 }}
@@ -4250,6 +4441,11 @@ function AppContent() {
       <View style={styles.playScreen}>
         {renderTodayHeader()}
         {renderSolveClueBar()}
+        {progressToast.message !== '' ? (
+          <View accessibilityLiveRegion="polite" style={styles.progressToast}>
+            <Text style={styles.progressToastText}>{progressToast.message}</Text>
+          </View>
+        ) : null}
         <ScrollView
           ref={playScreenScrollRef}
           keyboardShouldPersistTaps="handled"
@@ -4285,19 +4481,31 @@ function AppContent() {
       e => e.direction === 'down',
     );
 
+    const resultAchievements = getCompletionAchievements({
+      hintCount,
+      attemptsUsed: mission.attemptsUsed,
+      revealUsed: false,
+    });
+    const resultStreakBadge = getStreakBadgeLabel(consecutiveStreak);
+
     async function handleShare() {
-      const text = buildResultShareText({
-        puzzleLabel,
-        elapsedLabel,
-        hintCount,
-        attemptsUsed: mission.attemptsUsed,
-        completedCount: viewModel.completedEntries.length,
-        totalCount: puzzle.entries.length,
-        streak: consecutiveStreak,
+      await shareResultText({
+        text: buildMobileShareText({
+          puzzle,
+          cellValues,
+          puzzleLabel,
+          elapsedLabel,
+          hintCount,
+          attemptsUsed: mission.attemptsUsed,
+          completedCount: viewModel.completedEntries.length,
+          totalCount: puzzle.entries.length,
+          consecutiveStreak,
+          isComplete: isCompleted,
+          revealUsed: false,
+        }),
+        surface: 'result_screen',
+        clickParams: { puzzleId: puzzle.puzzleId, difficulty: puzzle.difficulty },
       });
-      try {
-        await Share.share({ message: text });
-      } catch {}
     }
 
     return (
@@ -4415,18 +4623,38 @@ function AppContent() {
               <Text style={styles.shareButtonText}>결과 공유하기</Text>
             </Pressable>
           )}
-          {isCompleted && consecutiveStreak > 0 && (
-            <View style={styles.resultStreakRow}>
-              <Text style={styles.resultStreakBadge}>
-                {getStreakBadgeLabel(consecutiveStreak)}
-              </Text>
-              {getNextStreakMilestoneHint(consecutiveStreak) != null && (
-                <Text style={styles.streakNudge}>
-                  {getNextStreakMilestoneHint(consecutiveStreak)}
-                </Text>
-              )}
-            </View>
-          )}
+          {isCompleted &&
+            (isNewBestTime ||
+              resultAchievements.noHint ||
+              resultAchievements.firstTry ||
+              resultStreakBadge != null) && (
+              <View style={styles.resultStreakRow}>
+                {isNewBestTime && (
+                  <Text
+                    style={[
+                      styles.resultStreakBadge,
+                      styles.completionAchievementBadgeBest,
+                    ]}
+                  >
+                    🏆 최고 기록 갱신!
+                  </Text>
+                )}
+                {resultAchievements.noHint && (
+                  <Text style={styles.resultStreakBadge}>🎯 노힌트 클리어</Text>
+                )}
+                {resultAchievements.firstTry && (
+                  <Text style={styles.resultStreakBadge}>💎 첫 도전 성공</Text>
+                )}
+                {resultStreakBadge != null && (
+                  <Text style={styles.resultStreakBadge}>{resultStreakBadge}</Text>
+                )}
+                {getNextStreakMilestoneHint(consecutiveStreak) != null && (
+                  <Text style={styles.streakNudge}>
+                    {getNextStreakMilestoneHint(consecutiveStreak)}
+                  </Text>
+                )}
+              </View>
+            )}
         </View>
         {viewModel.completedEntries.length > 0 && (
           <View style={styles.resultWordList}>
@@ -4499,6 +4727,13 @@ function AppContent() {
           '퍼즐 기록',
           puzzleArchiveRecords.length > 0 ? '기기 저장 사본' : '최근 공개 퍼즐',
         )}
+        <PersonalStatsCard
+          stats={historyStats.stats}
+          consecutiveStreak={consecutiveStreak}
+          longestStreak={historyStats.longestStreak}
+          solveTimeDistribution={historyStats.solveTimeDistribution}
+        />
+        <StreakHeatmap weeks={historyStats.streakWeeks} />
         {historySummaries.map(summary => {
           const state = dateCardStates[summary.puzzleId];
 
@@ -5824,6 +6059,23 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     textAlign: 'center',
+  },
+  completionAchievementBadgeBest: {
+    backgroundColor: '#fef3c7',
+    color: '#92400e',
+  },
+  progressToast: {
+    alignSelf: 'center',
+    marginTop: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: '#0f766e',
+  },
+  progressToastText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '800',
   },
   resultStreakRow: {
     alignItems: 'center',

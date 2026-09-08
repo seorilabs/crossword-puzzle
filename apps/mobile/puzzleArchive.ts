@@ -4,15 +4,21 @@ import type { Puzzle, PuzzleEntry } from '../../packages/crossword-core/src';
 
 export type PuzzleArchiveRecord = {
   completedAt: string | undefined;
+  // 완료 시점에 동결한 힌트 사용 수·정답 보기 여부. 노힌트 완료 집계를 진행상태 저장소
+  // 의존 없이 아카이브만으로 판정하기 위해 보존한다(구버전 기록에는 없을 수 있다).
+  hintCount?: number;
   lastPlayedAt: string | undefined;
   puzzle: Puzzle;
   puzzleId: string;
+  revealUsed?: boolean;
   savedAt: string;
   startedAt: string | undefined;
 };
 
 export type PuzzleArchiveSaveOptions = {
   completedAt?: string;
+  hintCount?: number;
+  revealUsed?: boolean;
   startedAt?: string;
 };
 
@@ -111,15 +117,28 @@ export async function loadArchivedPuzzle(puzzleId: string) {
       typeof parsed.savedAt === 'string'
         ? parsed.savedAt
         : lastPlayedAt ?? completedAt ?? startedAt ?? ARCHIVE_FALLBACK_SAVED_AT;
+    const hintCount =
+      typeof parsed.hintCount === 'number' && Number.isFinite(parsed.hintCount)
+        ? Math.max(0, Math.floor(parsed.hintCount))
+        : undefined;
+    const revealUsed =
+      typeof parsed.revealUsed === 'boolean' ? parsed.revealUsed : undefined;
 
-    return {
+    const record: PuzzleArchiveRecord = {
       completedAt,
       lastPlayedAt,
       puzzle: parsed.puzzle,
       puzzleId,
       savedAt,
       startedAt,
-    } satisfies PuzzleArchiveRecord;
+    };
+    if (hintCount != null) {
+      record.hintCount = hintCount;
+    }
+    if (revealUsed != null) {
+      record.revealUsed = revealUsed;
+    }
+    return record;
   } catch {
     return null;
   }
@@ -189,6 +208,14 @@ export async function saveArchivedPuzzle(
     savedAt: existing?.savedAt ?? now,
     startedAt: options.startedAt ?? existing?.startedAt,
   };
+  const hintCount = options.hintCount ?? existing?.hintCount;
+  if (hintCount != null) {
+    nextRecord.hintCount = hintCount;
+  }
+  const revealUsed = options.revealUsed ?? existing?.revealUsed;
+  if (revealUsed != null) {
+    nextRecord.revealUsed = revealUsed;
+  }
   const currentIndex = await loadArchiveIndex();
   const nextIndex = [
     puzzle.puzzleId,

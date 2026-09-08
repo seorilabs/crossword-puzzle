@@ -39,6 +39,18 @@ function isValidBestTimeMs(ms: number): boolean {
   return Number.isFinite(ms) && ms > 0;
 }
 
+// 새 완료 기록이 보유 최고 기록을 갱신하는지 판정한다. 유효한(유한·양수) 소요 시간이고
+// 기존 기록이 없거나 더 빠를 때만 true 다. 웹·RN 완료 효과가 같은 규칙을 쓴다.
+export function shouldRecordBestTime(
+  currentBestMs: number | null | undefined,
+  elapsedMs: number,
+): boolean {
+  if (!isValidBestTimeMs(elapsedMs)) {
+    return false;
+  }
+  return currentBestMs == null || elapsedMs < currentBestMs;
+}
+
 /** 풀이 시간 분포의 한 구간(막대 1개). */
 export type SolveTimeBucket = {
   // 구간 라벨(예: "1분 미만")

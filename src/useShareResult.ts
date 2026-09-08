@@ -1,17 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import type { TelemetryParams } from "../packages/crossword-core/src";
+import {
+  buildShareResultClickParams,
+  buildShareResultOutcomeParams,
+  SHARE_RESULT_CLICK_EVENT,
+  SHARE_RESULT_OUTCOME_EVENT,
+  type ShareDeliveryOutcome,
+  type ShareSurface,
+  type TelemetryParams,
+} from "../packages/crossword-core/src";
 import { telemetry } from "./adapters/telemetry";
 import { shareViaAitSheet } from "./adapters/aitShare";
 
 // 결과 공유 전달 공통 로직. AIT 네이티브 공유 시트를 우선 시도하고(#320), 미지원이면
 // navigator.share(공유 시트) → 클립보드 복사 순서로 폴백한다. ResultScreen과 완료 축하
-// 다이얼로그가 같은 동작을 공유하도록 화면 밖으로 추출했다(#202).
-export type ShareDeliveryOutcome = "shared" | "aborted" | "copied" | "failed";
-
-// 공유 표면 구분(#299). 결과 화면·완료 축하 다이얼로그에서 각각 발화하는
-// 공유 CTA를 GA4에서 나눠 볼 수 있도록 이벤트 파라미터 surface에 싣는다.
-export type ShareSurface = "result_screen" | "completion_dialog";
+// 다이얼로그가 같은 동작을 공유하도록 화면 밖으로 추출했다(#202). 이벤트 이름·파라미터
+// 계약은 core shareResult 에 두어 RN 과 같은 표면 구분을 쓴다.
+export type { ShareDeliveryOutcome, ShareSurface };
 
 export async function deliverShareText(
   text: string,
@@ -74,9 +79,15 @@ export function useShareResult(surface: ShareSurface): {
 
   const share = useCallback(
     (text: string, clickParams?: TelemetryParams) => {
-      telemetry.click("share_result_click", { surface, ...clickParams });
+      telemetry.click(SHARE_RESULT_CLICK_EVENT, {
+        ...buildShareResultClickParams(surface),
+        ...clickParams,
+      });
       void deliverShareText(text).then((outcome) => {
-        telemetry.impression("share_result_outcome", { surface, outcome });
+        telemetry.impression(
+          SHARE_RESULT_OUTCOME_EVENT,
+          buildShareResultOutcomeParams(surface, outcome),
+        );
         if (outcome === "copied") {
           setShareCopied(true);
           setShareFailed(false);

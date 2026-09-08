@@ -6,6 +6,7 @@ import {
   computeSolveTimeDistribution,
   formatBestTime,
   formatMissionHistoryCardSummary,
+  shouldRecordBestTime,
 } from "./personalStats.ts";
 import type { PersonalStatsRecord } from "./personalStats.ts";
 
@@ -284,5 +285,21 @@ describe("formatMissionHistoryCardSummary", () => {
       }),
       null,
     );
+  });
+});
+
+describe("shouldRecordBestTime", () => {
+  it("기존 기록이 없거나 더 빠를 때만 갱신하고 같거나 느리면 갱신하지 않는다", () => {
+    assert.equal(shouldRecordBestTime(null, 90_000), true);
+    assert.equal(shouldRecordBestTime(undefined, 90_000), true);
+    assert.equal(shouldRecordBestTime(120_000, 90_000), true);
+    assert.equal(shouldRecordBestTime(90_000, 90_000), false);
+    assert.equal(shouldRecordBestTime(60_000, 90_000), false);
+  });
+
+  it("유효하지 않은 소요 시간은 기록하지 않는다", () => {
+    assert.equal(shouldRecordBestTime(null, 0), false);
+    assert.equal(shouldRecordBestTime(null, -5), false);
+    assert.equal(shouldRecordBestTime(null, Number.NaN), false);
   });
 });
