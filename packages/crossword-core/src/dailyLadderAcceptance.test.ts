@@ -11,6 +11,7 @@ describe("홈 사다리·주간 스트릭 인수조건", () => {
   const webApp = read("src/App.tsx");
   const mobileApp = read("apps/mobile/App.tsx");
   const webStreakAdapter = read("src/adapters/localMissionRepository.ts");
+  const mobileCompletionDates = read("apps/mobile/completionDatesRepository.ts");
   const webLadderCard = read("src/components/DailyLadderCard.tsx");
   const webStrip = read("src/components/WeeklyStreakStrip.tsx");
   const recommendation = read("packages/crossword-core/src/recommendation.ts");
@@ -50,11 +51,14 @@ describe("홈 사다리·주간 스트릭 인수조건", () => {
     assert.match(webStreakAdapter, /computeConsecutiveStreakDays\(completedDates, today, \{/);
     assert.match(webApp, /readConsecutiveStreakDays\(\{\s*countTodayPending: false,?\s*\}\)/);
     // RN 스트릭은 완료일 집합에서 파생해 초기 hydrate 직후에도 0 으로 남지 않는다.
+    // 완료일 집합은 아카이브(30건 상한)가 아니라 누적 완료일 저장소에서 읽고, 저장소가
+    // 구버전 아카이브·미션 키를 core collectCompletedDates 로 백필한다.
     assert.match(
       mobileApp,
       /const consecutiveStreak = useMemo\(\s*\(\) => computeConsecutiveStreakDays\(completedDates, todayKey\)/,
     );
-    assert.match(mobileApp, /collectCompletedDates\(/);
+    assert.match(mobileApp, /const completedDates = useMemo\(\s*\(\) => new Set\(completionDates\)/);
+    assert.match(mobileCompletionDates, /collectCompletedDates\(/);
     assert.doesNotMatch(mobileApp, /setConsecutiveStreak/);
     assert.doesNotMatch(mobileApp, /computeMobileStreakDays/);
   });
