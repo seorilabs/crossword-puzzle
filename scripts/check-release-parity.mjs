@@ -1160,6 +1160,18 @@ assertIncludes(
   "--region=asia-northeast3",
   deployGooglePlayWorkflowPath,
 );
+// ARC 러너 이미지에는 gh CLI와 jq가 없다. 업로드 job이 다시 이 도구에 의존하면
+// 빌드가 끝난 뒤 업로드에서 exit 127로 끊긴다(run 34230988042).
+assertNotIncludes(
+  deployGooglePlayWorkflow,
+  "gh release download",
+  deployGooglePlayWorkflowPath,
+);
+assertIncludes(
+  deployGooglePlayWorkflow,
+  "releases/tags/",
+  deployGooglePlayWorkflowPath,
+);
 assertIncludes(
   androidCloudBuildConfig,
   "dist/android/crossword-puzzle.aab",
