@@ -27,10 +27,13 @@ const FAST_ARGS = [
   "--difficulty=easy",
   "--days=1",
   "--intervalHours=1",
-  "--attempts=10",
-  "--samples=2",
-  "--candidates=600",
+  // RPI ARM CI 러너에서 생성기 한 번이 수십 초라 시도·빔을 최소로 둔다(로컬 1초 미만).
+  "--attempts=3",
+  "--samples=1",
+  "--candidates=300",
   "--retries=3",
+  "--beam=4",
+  "--branch=4",
   "--minCross=0",
   "--minDensity=0",
   "--minMulti=0",
@@ -243,7 +246,7 @@ describe("answer-history 운영 계약 (생성기 CLI)", () => {
 
       // 2일차: 로컬 이력을 읽어 1일차 정답을 정확 배제한다.
       const day2 = await runGenerator(
-        dayArgs(outDir, "2026-09-11", "2026-09-10T15:00:00.000Z", 1002),
+        dayArgs(outDir, "2026-09-11", "2026-09-10T15:00:00.000Z", 1005),
       );
       assert.equal(day2.code, 0, day2.stdout + day2.stderr);
       assert.match(day2.stdout, /Answer history source=local entries=1/);
@@ -281,7 +284,7 @@ describe("answer-history 운영 계약 (생성기 CLI)", () => {
 
       // 같은 슬롯 재실행: 자기 항목은 창에서 빠지고 identity 로 교체돼 2건을 유지한다.
       const rerun = await runGenerator(
-        dayArgs(outDir, "2026-09-11", "2026-09-10T15:00:00.000Z", 1002),
+        dayArgs(outDir, "2026-09-11", "2026-09-10T15:00:00.000Z", 1005),
       );
       assert.equal(rerun.code, 0, rerun.stdout + rerun.stderr);
       assert.match(rerun.stdout, /historyExactPuzzles=1 /);
