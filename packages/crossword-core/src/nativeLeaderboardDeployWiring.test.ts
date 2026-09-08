@@ -65,14 +65,20 @@ describe("네이티브 리더보드 배포 배선", () => {
   });
 
   it("native release workflow는 immutable 중앙 caller와 플랫폼별 실행 경계를 유지한다", () => {
+    // 버전 정본은 중앙 release authority 하나이고, 서명 AAB는 x86 Cloud Build가 만든다.
+    // ARC 러너(4608Mi cgroup)에서 RN 빌드를 돌리면 v1.1.9처럼 SIGKILL로 끝난다.
     assert.match(
       androidWorkflow,
-      /rn-deploy-google-play\.yml@9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5/,
+      /resolve-release-version\.yml@9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5/,
     );
-    assert.match(androidWorkflow, /android_dir:\s*apps\/mobile\/android/);
-    assert.match(androidWorkflow, /package_name:\s*com\.seorilabs\.crosswordpuzzle/);
-    assert.doesNotMatch(androidWorkflow, /runs-on:/);
-    assert.doesNotMatch(androidWorkflow, /uses:\s*actions\//);
+    assert.match(androidWorkflow, /ref:\s*9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5/);
+    assert.match(androidWorkflow, /--config=cloudbuild-android\.yaml/);
+    assert.match(androidWorkflow, /runs-on:\s*seorilabs-rpi-arm64/);
+    assert.doesNotMatch(androidWorkflow, /seorilabs-x64-android/);
+    assert.match(
+      androidWorkflow,
+      /uses:\s*actions\/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1/,
+    );
     assert.match(
       iosWorkflow,
       /uses:\s*actions\/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1/,
@@ -87,9 +93,13 @@ describe("네이티브 리더보드 배포 배선", () => {
   });
 
   it("Google Play caller는 internal-only 업로드와 named secret 계약을 유지한다", () => {
-    assert.match(androidWorkflow, /upload:\s*\$\{\{ inputs\.upload_to_internal \}\}/);
-    assert.match(androidWorkflow, /track:\s*internal/);
-    assert.doesNotMatch(androidWorkflow, /track:\s*production|--promote/);
+    assert.match(androidWorkflow, /if:\s*\$\{\{ inputs\.upload_to_internal \}\}/);
+    assert.match(androidWorkflow, /--track internal/);
+    assert.doesNotMatch(androidWorkflow, /--track production|--promote/);
+    // 업로드는 중앙 정본 스크립트로만 하고, 그 전에 AAB manifest readback으로 검증한다.
+    assert.match(androidWorkflow, /scripts\/release\/verify-release-artifact\.mjs/);
+    assert.match(androidWorkflow, /scripts\/release\/upload-google-play-aab\.py/);
+    assert.match(androidWorkflow, /com\.seorilabs\.crosswordpuzzle/);
     for (const secret of [
       "FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64",
       "GOOGLE_PLAY_UPLOAD_KEYSTORE_BASE64",
