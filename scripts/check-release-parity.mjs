@@ -19,6 +19,8 @@ const webMainPath = "src/main.tsx";
 const webPlatformAuthPath = "src/adapters/platformAuth.ts";
 const webPuzzleRepositoryPath = "src/adapters/staticPuzzleRepository.ts";
 const mobileAppPath = "apps/mobile/App.tsx";
+const webShareHookPath = "src/useShareResult.ts";
+const mobileShareResultPath = "apps/mobile/shareResult.ts";
 const mobileGameplayTelemetryPath = "apps/mobile/gameplayTelemetry.ts";
 const mobileStuckHintPromptPath = "apps/mobile/useStuckHintPrompt.ts";
 const mobileIndexPath = "apps/mobile/index.js";
@@ -310,6 +312,13 @@ const featureParityMarkers = [
   "startLadderStep",
   "formatStreakStripHeadline",
   "formatReturnReminderPrepromptBody",
+  "computePersonalStats",
+  "buildStreakCalendarWeeks",
+  "emitProgressionScreenView",
+  "emitStreakMilestoneIfReached",
+  "getCompletionAchievements",
+  "getProgressMilestoneRewardMessage",
+  "isNewBestTime",
   "getNextRecommendedPuzzleSummary",
   "onboardingDifficultyRampEnabled",
   "buildNextPuzzleCtaEvent",
@@ -324,6 +333,14 @@ const featureParityMarkers = [
 for (const marker of featureParityMarkers) {
   assertIncludes(webApp, marker, webAppPath);
   assertIncludes(mobileApp, marker, mobileAppPath);
+}
+// 기록 열기 계측: 웹은 컴포넌트(완료 다이얼로그·기록 카드)에서, RN 은 App.tsx 에서 발화한다.
+for (const [path, source] of [
+  ["src/components/CompletionCelebrationDialog.tsx", "completion_dialog"],
+  ["src/components/MissionHistoryCard.tsx", "home_card"],
+]) {
+  assertIncludes(read(path), `telemetry.click("history_open", { source: "${source}" })`, path);
+  assertIncludes(mobileApp, `telemetry.click('history_open', { source: '${source}' })`, mobileAppPath);
 }
 for (const eventName of ["game_progress", "puzzle_progress"]) {
   assertIncludes(webApp, eventName, webAppPath);
@@ -345,6 +362,24 @@ assertIncludes(webApp, "...puzzleSummaries", webAppPath);
 assertIncludes(mobileApp, "...puzzlePack.summaries", mobileAppPath);
 assertIncludes(webApp, "recommendationPuzzleSummaries,", webAppPath);
 assertIncludes(mobileApp, "recommendationPuzzleSummaries,", mobileAppPath);
+// 공유 문구·계측은 core(shareText/shareGrid/shareResult) 하나여야 한다. RN 로컬 문구
+// 빌더나 표면별 스트릭 계산이 되살아나면 두 마켓의 공유 결과·스트릭 숫자가 갈린다.
+assertNotIncludes(
+  mobileApp,
+  "buildResultShareText",
+  mobileAppPath,
+  "share text must come from crossword-core shareText",
+);
+assertNotIncludes(
+  mobileApp,
+  "computeMobileStreakDays",
+  mobileAppPath,
+  "streak must come from crossword-core streakCalendar",
+);
+for (const eventName of ["SHARE_RESULT_CLICK_EVENT", "SHARE_RESULT_OUTCOME_EVENT"]) {
+  assertIncludes(read(webShareHookPath), eventName, webShareHookPath);
+  assertIncludes(read(mobileShareResultPath), eventName, mobileShareResultPath);
+}
 const recommendationFallbackCtaMarkers =
   mobileApp.match(/퍼즐 기록 보기/g) ?? [];
 if (recommendationFallbackCtaMarkers.length < 4) {

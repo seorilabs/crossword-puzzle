@@ -118,6 +118,13 @@ flowchart TD
 - `rewarded_bonus_puzzle` 광고·Remote Config 계약도 f992a61에서 제거됨. 광고 퍼널과 마켓 파리티 대상에 포함하지 않는다.
 - 복원 여부는 제품 결정 대기 상태다. 제거 전 표본이 개발자 1~2명뿐이라 리텐션 효과 근거가 없으며, 별도 결정과 검증 계획 없이 기능을 복원하지 않는다.
 
+## 기록·통계·공유 계약
+
+- 개인 통계(`computePersonalStats`·`computeSolveTimeDistribution`), 스트릭 달력(`buildStreakCalendarWeeks`·`computeLongestStreakDays`), 공유 문구·격자(`buildShareText`·`buildShareGrid`), 공유 계측(`shareResult.ts`의 `share_result_click`/`share_result_outcome`, `surface=result_screen|completion_dialog`), 진척 화면 노출(`emitProgressionScreenView` → `personal_stats_view`·`streak_view`)과 스트릭 마일스톤(`emitStreakMilestoneIfReached`)은 모두 core 에 있고 Web·RN 이 같은 함수를 호출한다.
+- RN 기록 화면은 `apps/mobile/recordsComponents.tsx`(`PersonalStatsCard`·`StreakHeatmap`·`ShareGridPreview`)로 웹과 같은 카드를 그린다. 완료 모달·결과 화면 배지는 core `getCompletionAchievements`(노힌트·첫 도전·최고 기록 자격)를 쓰고 `🏆 최고 기록 갱신!`을 포함한다. 진행 마일스톤(25/50/75%) 보상 토스트도 core 문구를 쓴다.
+- RN 저장 키: 최고 기록 `crossword-puzzle:best-times`(퍼즐별 ms 단일 JSON, 갱신 판정은 core `shouldRecordBestTime`), 완료일 `crossword-puzzle:completion-dates`(정렬된 `YYYY-MM-DD[]`, 아카이브 30건 상한과 무관하게 누적), 백필 마커 `crossword-puzzle:completion-dates:migrated`. 첫 실행에 아카이브 완료 레코드와 `crossword-puzzle:mission:{date}:{puzzleId}` 키를 한 번 스캔해 완료일을 백필하므로 기존 기기의 스트릭·히트맵이 줄지 않는다. 아카이브 레코드는 완료 시점의 `hintCount`·`revealUsed`를 동결한다.
+- 스트릭과 7일 스트립·12주 히트맵은 모두 누적 완료일 저장소에서 파생한다(`computeConsecutiveStreakDays`).
+
 ## 리더보드
 
 - 세 시장은 `packages/crossword-core`의 완료 제출 조건, 점수 산식, `leaderboard_enabled`, `leaderboard_score_submit` 계약을 공유한다. 결과 화면에서 완료한 퍼즐에만 `순위 보기`를 노출한다.

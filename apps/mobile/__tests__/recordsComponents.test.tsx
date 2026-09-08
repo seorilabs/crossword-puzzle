@@ -21,6 +21,11 @@ function collectText(renderer: ReactTestRenderer.ReactTestRenderer) {
     .filter((child): child is string => typeof child === 'string');
 }
 
+// react-test-renderer 의 findAll 은 composite 와 host 노드를 모두 돌려주므로 host View 만 센다.
+function isHostView(node: ReactTestRenderer.ReactTestInstance) {
+  return (node.type as unknown) === 'View';
+}
+
 function render(element: React.ReactElement) {
   let renderer: ReactTestRenderer.ReactTestRenderer | undefined;
   ReactTestRenderer.act(() => {
@@ -84,10 +89,9 @@ test('StreakHeatmap 은 12주 × 7칸을 그리고 오늘 칸을 표시한다', 
   const today = '2026-07-01';
   const weeks = buildStreakCalendarWeeks(['2026-06-30', today], today, 12);
   const renderer = render(<StreakHeatmap weeks={weeks} />);
-  // host 노드(View)만 센다. react-test-renderer 의 findAll 은 composite 와 host 를 모두 돌려준다.
   const labelled = renderer.root.findAll(
     node =>
-      node.type === 'View' &&
+      isHostView(node) &&
       typeof node.props.accessibilityLabel === 'string' &&
       /^\d{4}-\d{2}-\d{2} (완료|미완료)/.test(node.props.accessibilityLabel),
   );
@@ -109,7 +113,7 @@ test('ShareGridPreview 는 줄·코드포인트 단위로 타일을 그리고 �
   const renderer = render(<ShareGridPreview shareGrid={grid} />);
   const rows = renderer.root.findAll(
     node =>
-      node.type === 'View' &&
+      isHostView(node) &&
       Array.isArray(node.props.style) === false &&
       node.props.style != null &&
       node.props.style.flexDirection === 'row',
@@ -117,7 +121,7 @@ test('ShareGridPreview 는 줄·코드포인트 단위로 타일을 그리고 �
   expect(rows).toHaveLength(2);
   expect(
     renderer.root.find(
-      node => node.type === 'View' && node.props.accessibilityRole === 'image',
+      node => isHostView(node) && node.props.accessibilityRole === 'image',
     ).props.accessibilityLabel,
   ).toBe('완성한 퍼즐 결과 격자');
 
