@@ -59,7 +59,9 @@ export function createMobileBestTimeRepository({
       try {
         await storage.setItem(key, JSON.stringify(next));
       } catch {
-        // Local persistence is best effort.
+        // 저장에 실패하면 갱신으로 보고하지 않는다. 웹도 saveBestTimeMs 가 성공했을 때만
+        // 배지를 켜므로, 다음 실행에서 사라질 값을 배지·통계에 쓰지 않는다.
+        return { isNewBest: false, bestTimes };
       }
       return { isNewBest: true, bestTimes: next };
     },

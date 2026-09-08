@@ -1,11 +1,15 @@
 import { createMobileCompletionDatesRepository } from '../completionDatesRepository';
 
-function createStorage(initial: Record<string, string> = {}, failKeys = false) {
+function createStorage(
+  initial: Record<string, string> = {},
+  flags: { failKeys?: boolean; failSet?: boolean } = {},
+) {
   const values = new Map(Object.entries(initial));
   return {
     values,
+    flags,
     async getAllKeys() {
-      if (failKeys) {
+      if (flags.failKeys) {
         throw new Error('getAllKeys unavailable');
       }
       return [...values.keys()];
@@ -17,6 +21,9 @@ function createStorage(initial: Record<string, string> = {}, failKeys = false) {
       return keys.map(key => [key, values.get(key) ?? null] as const);
     },
     async setItem(key: string, value: string) {
+      if (flags.failSet) {
+        throw new Error('setItem unavailable');
+      }
       values.set(key, value);
     },
   };
@@ -79,13 +86,42 @@ test('구버전 archive와 mission 키에서 완료일을 1회 백필한다', as
   ).resolves.toEqual(['2026-06-01', '2026-06-10']);
 });
 
-test('getAllKeys 를 못 쓰면 archive 완료일만으로 백필한다', async () => {
-  const repository = createMobileCompletionDatesRepository({
-    storage: createStorage({}, true),
-  });
+test('mission 스캔이 실패하면 archive 완료일만 쓰고 마커를 남기지 않아 다음 실행에서 다시 백필한다', async () => {
+  const storage = createStorage(
+    {
+      'crossword-puzzle:mission:2026-06-01:p1': JSON.stringify({
+        completedAt: '2026-06-01T10:00:00Z',
+      }),
+    },
+    { failKeys: true },
+  );
+  const repository = createMobileCompletionDatesRepository({ storage });
   await expect(
     repository.migrateCompletionDatesIfNeeded({ archiveRecords }),
   ).resolves.toEqual(['2026-06-10']);
+  expect(storage.values.has('crossword-puzzle:completion-dates:migrated')).toBe(
+    false,
+  );
+
+  storage.flags.failKeys = false;
+  await expect(
+    repository.migrateCompletionDatesIfNeeded({ archiveRecords }),
+  ).resolves.toEqual(['2026-06-01', '2026-06-10']);
+  expect(storage.values.get('crossword-puzzle:completion-dates:migrated')).toBe(
+    '1',
+  );
+});
+
+test('병합 결과 저장이 실패하면 마커를 남기지 않는다', async () => {
+  const storage = createStorage({}, { failSet: true });
+  const repository = createMobileCompletionDatesRepository({ storage });
+  await expect(
+    repository.migrateCompletionDatesIfNeeded({ archiveRecords }),
+  ).resolves.toEqual(['2026-06-10']);
+  expect(storage.values.has('crossword-puzzle:completion-dates')).toBe(false);
+  expect(storage.values.has('crossword-puzzle:completion-dates:migrated')).toBe(
+    false,
+  );
 });
 
 test('손상된 저장값은 빈 목록으로 복원한다', async () => {

@@ -42,6 +42,21 @@ test('첫 기록은 갱신으로 저장하고 같은 기록·느린 기록은 �
   });
 });
 
+test('저장에 실패하면 갱신으로 보고하지 않고 이전 기록을 돌려준다', async () => {
+  const storage = createStorage({
+    'crossword-puzzle:best-times': JSON.stringify({ p1: 90_000 }),
+  });
+  storage.setItem = async () => {
+    throw new Error('setItem unavailable');
+  };
+  const repository = createMobileBestTimeRepository({ storage });
+  await expect(repository.recordBestTime('p1', 60_000)).resolves.toEqual({
+    isNewBest: false,
+    bestTimes: { p1: 90_000 },
+  });
+  await expect(repository.loadBestTimes()).resolves.toEqual({ p1: 90_000 });
+});
+
 test('손상된 JSON 과 유효하지 않은 값은 무시하고 빈 기록으로 복원한다', async () => {
   const broken = createMobileBestTimeRepository({
     storage: createStorage({ 'crossword-puzzle:best-times': '{not json' }),
