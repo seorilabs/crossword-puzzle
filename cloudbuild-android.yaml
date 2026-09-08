@@ -61,6 +61,8 @@ artifacts:
       - dist/android/crossword-puzzle.aab
 
 options:
+  # machineType은 global build pool에서만 E2_STANDARD_2를 받는다. 지역 endpoint로
+  # 제출하면 gcloud가 `.options.machineType: unused`로 거절한다(run 34225056022).
   machineType: E2_STANDARD_2
   logging: CLOUD_LOGGING_ONLY
 

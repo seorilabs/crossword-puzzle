@@ -232,7 +232,7 @@ jobs:
           source build.env
           gcloud builds submit . \
             --project=seorilabs-ci \
-            --region=asia-northeast3 \
+            --region=global \
             --config=cloudbuild-android.yaml \
             --ignore-file=.gcloudignore \
             --substitutions="_ANDROID_BUILDER_IMAGE=$ANDROID_BUILDER_IMAGE,_ANDROID_BUILDER_TAG=$ANDROID_BUILDER_TAG,_SEORI_RELEASE_TAG=$RELEASE_TAG,_SEORI_RELEASE_SOURCE_SHA=$SOURCE_SHA,_ANDROID_VERSION_NAME=$VERSION_NAME,_ANDROID_VERSION_CODE=$VERSION_CODE,_GOOGLE_PLAY_UPLOAD_KEY_ALIAS=$GOOGLE_PLAY_UPLOAD_KEY_ALIAS,_PLAY_GAMES_PROJECT_ID=$PLAY_GAMES_PROJECT_ID,_PLAY_GAMES_LEADERBOARD_ID=$PLAY_GAMES_LEADERBOARD_ID,_CREDENTIAL_BUCKET=$CREDENTIAL_BUCKET,_ARTIFACT_BUCKET=$ARTIFACT_BUCKET"
