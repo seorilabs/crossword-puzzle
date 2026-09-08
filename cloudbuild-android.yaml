@@ -1,0 +1,68 @@
+# 릴리즈 태그 기준 Google Play 업로드용 서명 AAB를 x86 Cloud Build에서 만든다.
+#
+# 왜 ARC 러너에서 빌드하지 않는가: RN 0.85 new architecture는 native module마다 CMake로
+# ABI를 컴파일하고 Hermes 번들까지 겹쳐 합산 RSS가 seorilabs-x64-android 러너의 4608Mi
+# cgroup을 넘는다. v1.1.9 배포(run 34183637521)가 이 한도에서 SIGKILL(exit 137)로 끝났고,
+# 러너 노드 seori-m6-01의 allocatable은 5209Mi라 한도를 더 올릴 수 없다.
+# 8GB worker에서 격리해 빌드하며 과금형 machineType으로 우회하지 않는다.
+substitutions:
+  _ANDROID_BUILDER_IMAGE: "asia-northeast3-docker.pkg.dev/seorilabs-ci/builders/rn-android-builder"
+  _ANDROID_BUILDER_TAG: "node24-jdk17-android36"
+  _SEORI_RELEASE_TAG: ""
+  _SEORI_RELEASE_SOURCE_SHA: ""
+  _ANDROID_VERSION_NAME: ""
+  _ANDROID_VERSION_CODE: ""
+  _GOOGLE_PLAY_UPLOAD_KEY_ALIAS: ""
+  _PLAY_GAMES_PROJECT_ID: ""
+  _PLAY_GAMES_LEADERBOARD_ID: ""
+  _CREDENTIAL_BUCKET: ""
+  _ARTIFACT_BUCKET: ""
+
+steps:
+  # 업로드 키스토어와 Firebase 설정은 GitHub Secret이 원본이라 Secret Manager version이
+  # 없다. 제출 job이 방금 올린 일회성 객체만 읽고 즉시 지운다.
+  - id: fetch-ephemeral-credentials
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        install -d -m 0700 /workspace/.ci-secrets
+        for name in \
+          firebase-android-config.b64 \
+          play-keystore.b64 \
+          play-keystore-password \
+          play-key-password; do
+          gcloud storage cp "${_CREDENTIAL_BUCKET}/$$name" "/workspace/.ci-secrets/$$name"
+          chmod 0600 "/workspace/.ci-secrets/$$name"
+        done
+        gcloud storage rm --recursive "${_CREDENTIAL_BUCKET}" || true
+
+  - id: build-signed-aab
+    name: ${_ANDROID_BUILDER_IMAGE}:${_ANDROID_BUILDER_TAG}
+    entrypoint: bash
+    args:
+      - scripts/build-android.sh
+    env:
+      - SEORI_RELEASE_TAG=${_SEORI_RELEASE_TAG}
+      - SEORI_RELEASE_SOURCE_SHA=${_SEORI_RELEASE_SOURCE_SHA}
+      - ANDROID_VERSION_NAME=${_ANDROID_VERSION_NAME}
+      - ANDROID_VERSION_CODE=${_ANDROID_VERSION_CODE}
+      - GOOGLE_PLAY_UPLOAD_KEY_ALIAS=${_GOOGLE_PLAY_UPLOAD_KEY_ALIAS}
+      - PLAY_GAMES_PROJECT_ID=${_PLAY_GAMES_PROJECT_ID}
+      - PLAY_GAMES_LEADERBOARD_ID=${_PLAY_GAMES_LEADERBOARD_ID}
+      - BUILD_CREDENTIAL_DIR=/workspace/.ci-secrets
+
+artifacts:
+  objects:
+    location: ${_ARTIFACT_BUCKET}
+    paths:
+      - dist/android/crossword-puzzle.aab
+
+options:
+  machineType: E2_STANDARD_2
+  logging: CLOUD_LOGGING_ONLY
+
+# 2 vCPU에서 RN new architecture의 ABI 컴파일까지 끝낼 수 있는 상한이다.
+timeout: 7200s

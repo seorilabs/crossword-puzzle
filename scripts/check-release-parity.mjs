@@ -67,6 +67,8 @@ const deployGooglePlayWorkflowPath = ".github/workflows/deploy-google-play.yml";
 const promoteGooglePlayWorkflowPath = ".github/workflows/promote-google-play.yml";
 const deployAppStoreWorkflowPath = ".github/workflows/deploy-app-store.yml";
 const androidBuildEnvPath = "build.env";
+const androidCloudBuildConfigPath = "cloudbuild-android.yaml";
+const androidCloudBuildScriptPath = "scripts/build-android.sh";
 const appStoreLocalBuildPath = "scripts/app-store-local-build.sh";
 const xcodeCloudPostClonePath = "apps/mobile/ios/ci_scripts/ci_post_clone.sh";
 const xcodeCloudPreBuildPath =
@@ -419,6 +421,8 @@ const deployGooglePlayWorkflow = read(deployGooglePlayWorkflowPath);
 const promoteGooglePlayWorkflow = read(promoteGooglePlayWorkflowPath);
 const deployAppStoreWorkflow = read(deployAppStoreWorkflowPath);
 const androidBuildEnv = read(androidBuildEnvPath);
+const androidCloudBuildConfig = read(androidCloudBuildConfigPath);
+const androidCloudBuildScript = read(androidCloudBuildScriptPath);
 const appStoreLocalBuild = read(appStoreLocalBuildPath);
 const xcodeCloudPostClone = read(xcodeCloudPostClonePath);
 const xcodeCloudPreBuild = read(xcodeCloudPreBuildPath);
@@ -1072,9 +1076,26 @@ assertNotIncludes(
   "npm_scope:",
   deployGooglePlayWorkflowPath,
 );
+// 버전 정본은 중앙 release authority가 해석한 태그 하나이고, 검증과 업로드도
+// 같은 exact SHA의 중앙 스크립트만 쓴다.
 assertIncludes(
   deployGooglePlayWorkflow,
-  "rn-deploy-google-play.yml@9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5",
+  "resolve-release-version.yml@9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5",
+  deployGooglePlayWorkflowPath,
+);
+assertIncludes(
+  deployGooglePlayWorkflow,
+  "ref: 9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5",
+  deployGooglePlayWorkflowPath,
+);
+assertIncludes(
+  deployGooglePlayWorkflow,
+  "scripts/release/verify-release-artifact.mjs",
+  deployGooglePlayWorkflowPath,
+);
+assertIncludes(
+  deployGooglePlayWorkflow,
+  "scripts/release/upload-google-play-aab.py",
   deployGooglePlayWorkflowPath,
 );
 assertIncludes(
@@ -1084,13 +1105,63 @@ assertIncludes(
 );
 assertIncludes(
   deployGooglePlayWorkflow,
-  "package_name: com.seorilabs.crosswordpuzzle",
+  "com.seorilabs.crosswordpuzzle",
   deployGooglePlayWorkflowPath,
 );
 assertNotIncludes(
   deployGooglePlayWorkflow,
   "secrets: inherit",
   deployGooglePlayWorkflowPath,
+);
+// 서명 AAB는 x86 Cloud Build에서만 만든다. RN new architecture 빌드의 합산 RSS가
+// seorilabs-x64-android 러너의 4608Mi cgroup을 넘겨 v1.1.9 배포가 SIGKILL로 끝났고,
+// 러너 노드에는 한도를 올릴 여유 메모리가 없다.
+assertIncludes(
+  deployGooglePlayWorkflow,
+  "--config=cloudbuild-android.yaml",
+  deployGooglePlayWorkflowPath,
+);
+assertIncludes(
+  deployGooglePlayWorkflow,
+  "runs-on: seorilabs-rpi-arm64",
+  deployGooglePlayWorkflowPath,
+);
+assertNotIncludes(
+  deployGooglePlayWorkflow,
+  "seorilabs-x64-android",
+  deployGooglePlayWorkflowPath,
+);
+assertIncludes(
+  androidCloudBuildConfig,
+  "machineType: E2_STANDARD_2",
+  androidCloudBuildConfigPath,
+);
+assertIncludes(
+  androidCloudBuildConfig,
+  "dist/android/crossword-puzzle.aab",
+  androidCloudBuildConfigPath,
+);
+assertIncludes(
+  androidCloudBuildConfig,
+  "args:\n      - scripts/build-android.sh",
+  androidCloudBuildConfigPath,
+);
+// 공통 SDK는 npm 공개 레지스트리에 있다. GitHub Packages 라우팅이 되살아나면
+// 무인증 Cloud Build 설치가 다시 깨지므로 부재를 고정한다.
+assertNotIncludes(
+  androidCloudBuildScript,
+  "npm.pkg.github.com",
+  androidCloudBuildScriptPath,
+);
+assertIncludes(
+  androidCloudBuildScript,
+  "EXPECTED_PLAY_UPLOAD_CERT_SHA256",
+  androidCloudBuildScriptPath,
+);
+assertIncludes(
+  androidCloudBuildScript,
+  "gradlew :app:bundleRelease",
+  androidCloudBuildScriptPath,
 );
 assertMatches(
   promoteGooglePlayWorkflow,

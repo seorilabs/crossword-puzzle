@@ -1,5 +1,9 @@
 name: Deploy Google Play
 
+# 서명 AAB는 x86 Cloud Build에서 만들고, ARC 러너는 제출·회수·검증·업로드만 한다.
+# 버전 정본은 중앙 release authority가 해석한 릴리즈 태그 하나뿐이며, 업로드 전에
+# AAB manifest readback으로 fail-closed한다.
+
 on:
   workflow_dispatch:
     inputs:
@@ -40,7 +44,7 @@ on:
       GOOGLE_PLAY_UPLOAD_KEYSTORE_PASSWORD:
         required: true
       GOOGLE_PLAY_UPLOAD_KEY_PASSWORD:
-        required: false
+        required: true
 
 permissions:
   contents: read
@@ -52,23 +56,339 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
-    uses: seorilabs/.github/.github/workflows/rn-deploy-google-play.yml@9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5
+  resolve:
+    name: Bind exact release tag
+    uses: seorilabs/.github/.github/workflows/resolve-release-version.yml@9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5
     with:
       release_tag: ${{ inputs.release_tag }}
-      upload: ${{ inputs.upload_to_internal }}
-      track: internal
-      release_status: ${{ inputs.release_status }}
-      changes_not_sent_for_review: ${{ inputs.changes_not_sent_for_review }}
-      package_manager: npm
-      node_version: 24.16.0
-      java_version: 17
-      android_dir: apps/mobile/android
-      package_name: com.seorilabs.crosswordpuzzle
-      firebase_restore_script: scripts/restore-mobile-firebase-config.mjs
-      timeout_minutes: 55
-    secrets:
-      FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64 }}
-      GOOGLE_PLAY_UPLOAD_KEYSTORE_BASE64: ${{ secrets.GOOGLE_PLAY_UPLOAD_KEYSTORE_BASE64 }}
-      GOOGLE_PLAY_UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.GOOGLE_PLAY_UPLOAD_KEYSTORE_PASSWORD }}
-      GOOGLE_PLAY_UPLOAD_KEY_PASSWORD: ${{ secrets.GOOGLE_PLAY_UPLOAD_KEY_PASSWORD }}
+
+  build-aab:
+    name: Cloud Build signed Android App Bundle
+    needs: resolve
+    runs-on: seorilabs-rpi-arm64
+    timeout-minutes: 100
+    environment: google-play
+    defaults:
+      run:
+        working-directory: release-source
+    outputs:
+      artifact_digest: ${{ steps.provenance.outputs.artifact_digest }}
+      artifact_name: ${{ steps.meta.outputs.artifact_name }}
+      package_name: ${{ steps.provenance.outputs.package_name }}
+      source_sha: ${{ steps.meta.outputs.source_sha }}
+
+    steps:
+      - name: Checkout release source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.resolve.outputs.tag }}
+          fetch-depth: 0
+          fetch-tags: true
+          path: release-source
+
+      - name: Checkout exact release authority
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: seorilabs/.github
+          ref: 9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5
+          path: .seorilabs-release-authority
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.16.0
+          check-latest: false
+
+      - name: Validate build configuration
+        shell: bash
+        env:
+          FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64 }}
+          GOOGLE_PLAY_UPLOAD_KEYSTORE_BASE64: ${{ secrets.GOOGLE_PLAY_UPLOAD_KEYSTORE_BASE64 }}
+          GOOGLE_PLAY_UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.GOOGLE_PLAY_UPLOAD_KEYSTORE_PASSWORD }}
+          GOOGLE_PLAY_UPLOAD_KEY_PASSWORD: ${{ secrets.GOOGLE_PLAY_UPLOAD_KEY_PASSWORD }}
+          GOOGLE_PLAY_UPLOAD_KEY_ALIAS: ${{ vars.GOOGLE_PLAY_UPLOAD_KEY_ALIAS }}
+          GOOGLE_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL: ${{ vars.GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL }}
+          PLAY_GAMES_PROJECT_ID: ${{ vars.PLAY_GAMES_PROJECT_ID }}
+          PLAY_GAMES_LEADERBOARD_ID: ${{ vars.PLAY_GAMES_LEADERBOARD_ID }}
+        run: |
+          set -euo pipefail
+          required=(
+            FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64
+            GOOGLE_PLAY_UPLOAD_KEYSTORE_BASE64
+            GOOGLE_PLAY_UPLOAD_KEYSTORE_PASSWORD
+            GOOGLE_PLAY_UPLOAD_KEY_PASSWORD
+            GOOGLE_PLAY_UPLOAD_KEY_ALIAS
+            GOOGLE_WORKLOAD_IDENTITY_PROVIDER
+            GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL
+            PLAY_GAMES_PROJECT_ID
+            PLAY_GAMES_LEADERBOARD_ID
+          )
+          for name in "${required[@]}"; do
+            value="${!name:-}"
+            if [ -z "${value//[[:space:]]/}" ]; then
+              echo "$name repository secret or variable is required." >&2
+              exit 1
+            fi
+          done
+
+      - name: Resolve build contract
+        id: meta
+        shell: bash
+        env:
+          RELEASE_SOURCE_SHA: ${{ needs.resolve.outputs.source_sha }}
+          VERSION_CODE: ${{ needs.resolve.outputs.android_version_code }}
+          VERSION_NAME: ${{ needs.resolve.outputs.version_name }}
+        run: |
+          set -euo pipefail
+          # shellcheck disable=SC1091
+          source build.env
+          source_sha="$(git rev-parse HEAD)"
+          test "$source_sha" = "$RELEASE_SOURCE_SHA"
+          run_key="${{ github.run_id }}-${{ github.run_attempt }}"
+          bucket_root="gs://seorilabs-ci-build-artifacts/${{ github.repository }}/$run_key"
+          {
+            echo "aab_name=$(basename "$AAB_PATH")"
+            echo "aab_path=$AAB_PATH"
+            echo "artifact_bucket=$bucket_root/artifacts"
+            echo "artifact_name=crossword-puzzle-google-play-aab-v$VERSION_NAME-code$VERSION_CODE"
+            echo "builder=$ANDROID_BUILDER_IMAGE:$ANDROID_BUILDER_TAG"
+            echo "credential_bucket=$bucket_root/credentials"
+            echo "source_sha=$source_sha"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL }}
+          create_credentials_file: true
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
+        with:
+          project_id: seorilabs-ci
+
+      - name: Set Cloud Build quota project
+        run: gcloud config set billing/quota_project seorilabs-ci
+
+      - name: Stage ephemeral build credentials
+        shell: bash
+        env:
+          CREDENTIAL_BUCKET: ${{ steps.meta.outputs.credential_bucket }}
+          FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64 }}
+          GOOGLE_PLAY_UPLOAD_KEYSTORE_BASE64: ${{ secrets.GOOGLE_PLAY_UPLOAD_KEYSTORE_BASE64 }}
+          GOOGLE_PLAY_UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.GOOGLE_PLAY_UPLOAD_KEYSTORE_PASSWORD }}
+          GOOGLE_PLAY_UPLOAD_KEY_PASSWORD: ${{ secrets.GOOGLE_PLAY_UPLOAD_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          secret_dir="$RUNNER_TEMP/crossword-cloud-build-secrets"
+          mkdir -p "$secret_dir"
+          printf '%s' "$FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_BASE64" > "$secret_dir/firebase-android-config.b64"
+          printf '%s' "$GOOGLE_PLAY_UPLOAD_KEYSTORE_BASE64" > "$secret_dir/play-keystore.b64"
+          printf '%s' "$GOOGLE_PLAY_UPLOAD_KEYSTORE_PASSWORD" > "$secret_dir/play-keystore-password"
+          printf '%s' "$GOOGLE_PLAY_UPLOAD_KEY_PASSWORD" > "$secret_dir/play-key-password"
+          for path in "$secret_dir"/*; do
+            gcloud storage cp "$path" "$CREDENTIAL_BUCKET/$(basename "$path")"
+          done
+
+      - name: Build signed AAB on Cloud Build
+        shell: bash
+        env:
+          ARTIFACT_BUCKET: ${{ steps.meta.outputs.artifact_bucket }}
+          CREDENTIAL_BUCKET: ${{ steps.meta.outputs.credential_bucket }}
+          GOOGLE_PLAY_UPLOAD_KEY_ALIAS: ${{ vars.GOOGLE_PLAY_UPLOAD_KEY_ALIAS }}
+          PLAY_GAMES_PROJECT_ID: ${{ vars.PLAY_GAMES_PROJECT_ID }}
+          PLAY_GAMES_LEADERBOARD_ID: ${{ vars.PLAY_GAMES_LEADERBOARD_ID }}
+          RELEASE_TAG: ${{ needs.resolve.outputs.tag }}
+          SOURCE_SHA: ${{ needs.resolve.outputs.source_sha }}
+          VERSION_CODE: ${{ needs.resolve.outputs.android_version_code }}
+          VERSION_NAME: ${{ needs.resolve.outputs.version_name }}
+        run: |
+          set -euo pipefail
+          # shellcheck disable=SC1091
+          source build.env
+          gcloud builds submit . \
+            --project=seorilabs-ci \
+            --region=asia-northeast3 \
+            --config=cloudbuild-android.yaml \
+            --ignore-file=.gcloudignore \
+            --substitutions="_ANDROID_BUILDER_IMAGE=$ANDROID_BUILDER_IMAGE,_ANDROID_BUILDER_TAG=$ANDROID_BUILDER_TAG,_SEORI_RELEASE_TAG=$RELEASE_TAG,_SEORI_RELEASE_SOURCE_SHA=$SOURCE_SHA,_ANDROID_VERSION_NAME=$VERSION_NAME,_ANDROID_VERSION_CODE=$VERSION_CODE,_GOOGLE_PLAY_UPLOAD_KEY_ALIAS=$GOOGLE_PLAY_UPLOAD_KEY_ALIAS,_PLAY_GAMES_PROJECT_ID=$PLAY_GAMES_PROJECT_ID,_PLAY_GAMES_LEADERBOARD_ID=$PLAY_GAMES_LEADERBOARD_ID,_CREDENTIAL_BUCKET=$CREDENTIAL_BUCKET,_ARTIFACT_BUCKET=$ARTIFACT_BUCKET"
+
+      - name: Fetch signed AAB
+        shell: bash
+        env:
+          AAB_NAME: ${{ steps.meta.outputs.aab_name }}
+          AAB_PATH: ${{ steps.meta.outputs.aab_path }}
+          ARTIFACT_BUCKET: ${{ steps.meta.outputs.artifact_bucket }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$(dirname "$AAB_PATH")"
+          gcloud storage cp "$ARTIFACT_BUCKET/$AAB_NAME" "$AAB_PATH"
+          test -s "$AAB_PATH"
+
+      # Cloud Build가 override를 무시하거나 프로젝트 값이 남아 있으면 여기서 fail-closed한다.
+      - name: Verify AAB against the central release binding
+        id: provenance
+        shell: bash
+        env:
+          AAB_PATH: ${{ steps.meta.outputs.aab_path }}
+          RELEASE_BINDING_BASE64: ${{ needs.resolve.outputs.binding_base64 }}
+        run: |
+          set -euo pipefail
+          binding="$RUNNER_TEMP/release-binding.json"
+          printf '%s' "$RELEASE_BINDING_BASE64" | base64 --decode > "$binding"
+          # AAB의 base/manifest/AndroidManifest.xml은 aapt.pb.XmlNode 바이너리라
+          # zip에서 직접 꺼내 org 정본 parser로 읽는다.
+          unzip -p "$AAB_PATH" base/manifest/AndroidManifest.xml > "$RUNNER_TEMP/aab-manifest.pb"
+          test -s "$RUNNER_TEMP/aab-manifest.pb"
+          RELEASE_BINDING_PATH="$binding" \
+            node ../.seorilabs-release-authority/scripts/release/verify-release-artifact.mjs \
+              --kind android-app-bundle \
+              --artifact "$AAB_PATH" \
+              --metadata "$RUNNER_TEMP/aab-manifest.pb" \
+              --receipt "$RUNNER_TEMP/release-artifact-receipt.txt" \
+              --github-output
+
+      - name: Upload signed AAB artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ steps.meta.outputs.artifact_name }}
+          path: release-source/${{ steps.meta.outputs.aab_path }}
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Clean up ephemeral Cloud Build objects
+        if: ${{ always() && steps.meta.outputs.credential_bucket != '' }}
+        shell: bash
+        env:
+          ARTIFACT_BUCKET: ${{ steps.meta.outputs.artifact_bucket }}
+          CREDENTIAL_BUCKET: ${{ steps.meta.outputs.credential_bucket }}
+        run: |
+          rm -rf -- "$RUNNER_TEMP/crossword-cloud-build-secrets"
+          gcloud storage rm --recursive "$CREDENTIAL_BUCKET" || true
+          gcloud storage rm --recursive "$ARTIFACT_BUCKET" || true
+
+      - name: Build summary
+        if: ${{ success() }}
+        shell: bash
+        run: |
+          {
+            echo "### Google Play signed AAB"
+            echo "- tag: \`${{ needs.resolve.outputs.tag }}\`"
+            echo "- source SHA: \`${{ steps.meta.outputs.source_sha }}\`"
+            echo "- versionCode: \`${{ needs.resolve.outputs.android_version_code }}\`"
+            echo "- package: \`${{ steps.provenance.outputs.package_name }}\`"
+            echo "- builder: \`${{ steps.meta.outputs.builder }}\`"
+            echo "- internal upload requested: \`${{ inputs.upload_to_internal }}\`"
+            echo "- production promotion: \`false\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  upload:
+    name: Upload AAB to Google Play internal track
+    needs: [resolve, build-aab]
+    if: ${{ inputs.upload_to_internal }}
+    runs-on: seorilabs-rpi-arm64
+    timeout-minutes: 25
+    environment: google-play
+
+    steps:
+      - name: Checkout release source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.resolve.outputs.tag }}
+
+      - name: Checkout exact release authority
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: seorilabs/.github
+          ref: 9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5
+          path: .seorilabs-release-authority
+          persist-credentials: false
+
+      - name: Download signed AAB
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ needs.build-aab.outputs.artifact_name }}
+          path: artifacts/android
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL }}
+          create_credentials_file: true
+
+      - name: Setup Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.13"
+          architecture: arm64
+
+      - name: Install Google Play API client
+        run: >-
+          python3 -m pip install --disable-pip-version-check
+          google-api-python-client google-auth google-auth-httplib2 httplib2
+
+      - name: Upload internal release
+        shell: bash
+        env:
+          CHANGES_NOT_SENT_FOR_REVIEW: ${{ inputs.changes_not_sent_for_review }}
+          EXPECTED_AAB_SHA256: ${{ needs.build-aab.outputs.artifact_digest }}
+          EXPECTED_VERSION_CODE: ${{ needs.resolve.outputs.android_version_code }}
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_STATUS: ${{ inputs.release_status }}
+          TAG: ${{ needs.resolve.outputs.tag }}
+          VERIFIED_PACKAGE_NAME: ${{ needs.build-aab.outputs.package_name }}
+          VERSION_NAME: ${{ needs.resolve.outputs.version_name }}
+          GOOGLE_PLAY_API_TIMEOUT_SECONDS: "900"
+        run: |
+          set -euo pipefail
+          mapfile -t aabs < <(find artifacts/android -type f -name '*.aab' -print)
+          [ "${#aabs[@]}" -eq 1 ] || {
+            echo "정확히 하나의 AAB가 필요합니다: ${#aabs[@]}" >&2
+            exit 1
+          }
+          [ "$VERIFIED_PACKAGE_NAME" = "com.seorilabs.crosswordpuzzle" ] || {
+            echo "검증된 AAB package identity가 Google Play 등록값과 다릅니다: $VERIFIED_PACKAGE_NAME" >&2
+            exit 1
+          }
+
+          args=(
+            --package-name "$VERIFIED_PACKAGE_NAME"
+            --aab-path "${aabs[0]}"
+            --expected-aab-sha256 "$EXPECTED_AAB_SHA256"
+            --expected-version-code "$EXPECTED_VERSION_CODE"
+            --track internal
+            --release-name "$VERSION_NAME"
+            --release-status "$RELEASE_STATUS"
+          )
+          if [ "$CHANGES_NOT_SENT_FOR_REVIEW" = "true" ]; then
+            args+=(--changes-not-sent-for-review)
+          fi
+
+          notes="$RUNNER_TEMP/release-notes.json"
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern release-notes.json --output "$notes" --clobber
+          [ "$(jq -r '(.notes // {}) | length' "$notes")" -gt 0 ] || {
+            echo "release-notes.json이 없거나 비어 있습니다: $TAG" >&2
+            exit 1
+          }
+          args+=(--release-notes-json "$notes")
+          echo "release-notes.json 로드: $(jq -r '.notes | keys_unsorted | join(", ")' "$notes")"
+
+          python3 .seorilabs-release-authority/scripts/release/upload-google-play-aab.py "${args[@]}"
+
+      - name: Upload summary
+        shell: bash
+        run: |
+          {
+            echo "### Google Play internal 업로드"
+            echo "- tag: \`${{ needs.resolve.outputs.tag }}\`"
+            echo "- source SHA: \`${{ needs.build-aab.outputs.source_sha }}\`"
+            echo "- versionCode: \`${{ needs.resolve.outputs.android_version_code }}\`"
+            echo "- track: \`internal\`"
+            echo "- status: \`${{ inputs.release_status }}\`"
+            echo "- production promotion: \`false\`"
+          } >> "$GITHUB_STEP_SUMMARY"

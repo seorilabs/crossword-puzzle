@@ -2,7 +2,7 @@
 
 ## 현재 판정
 
-Google Play용 React Native `apps/mobile` 타깃은 RPI ARC가 릴리즈를 조정하고 x86 Cloud Build가 signed AAB를 만드는 경로를 사용한다. ARC는 Android 바이너리를 직접 빌드하지 않는다. 빌드 성공, GitHub Artifact 보관, internal track 업로드, 처리, QA, production 승격은 각각 별도 gate다.
+Google Play용 React Native `apps/mobile` 타깃은 RPI ARC가 릴리즈를 조정하고 x86 Cloud Build가 signed AAB를 만드는 경로를 사용한다. ARC는 Android 바이너리를 직접 빌드하지 않는다. RN 0.85 new architecture 빌드의 합산 RSS가 `seorilabs-x64-android` 러너의 4608Mi cgroup을 넘어 v1.1.9 배포가 SIGKILL(exit 137)로 끝났고, 러너 노드 allocatable이 5209Mi라 한도를 올릴 여유도 없다. 빌드 성공, GitHub Artifact 보관, internal track 업로드, 처리, QA, production 승격은 각각 별도 gate다.
 
 기존 Play upload key의 로컬 원본과 catalog 항목은 없고 GitHub Actions Secret 실행 복제본만 남아 있다. 워크플로는 사용자가 승인한 복구 경로로 이 Secret을 소비하되, Play Console에 등록된 공개 SHA-256 지문과 빌드 안에서 대조한다. 값은 Cloud Build substitution이나 로그에 넣지 않고 비공개 GCS 임시 객체로 전달하며, Cloud Build가 받은 뒤와 ARC job 종료 시 각각 삭제를 시도한다. Cloud Build가 만든 임시 AAB도 GitHub Artifact로 옮긴 뒤 삭제한다. 다른 앱 키 대체나 upload key 재설정은 이 경로에 포함하지 않는다.
 
@@ -38,7 +38,9 @@ flowchart TD
 | `scripts/apply-google-play-listing.py`     | API로 쓰기 가능한 Play listing/details/images 적용                             |
 | `scripts/upload-google-play-internal.py`   | Android Publisher API로 AAB를 internal track에 업로드                          |
 | `build.env`                                | Node, JDK, Android SDK와 기존 빌드 도구 기준                                   |
-| `.github/workflows/deploy-google-play.yml` | 고정된 중앙 RN workflow 호출과 선택적 internal upload                          |
+| `cloudbuild-android.yaml`                  | x86 Cloud Build에서 서명 AAB를 만드는 build config                             |
+| `scripts/build-android.sh`                 | Cloud Build 안에서 도구 버전·서명 인증서를 검증하고 `bundleRelease` 실행       |
+| `.github/workflows/deploy-google-play.yml` | 중앙 태그 해석 → Cloud Build 제출·회수·검증 → 중앙 업로더로 internal 업로드    |
 | `docs/google-play-store-listing.md`        | 스토어 등록값과 미확정 항목                                                    |
 
 ## 1. Package Name
