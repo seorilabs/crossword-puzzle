@@ -4,6 +4,7 @@ import {
   type DailyMissionState,
 } from "../../packages/crossword-core/src/mission.ts";
 import { getTodayDateKey } from "../../packages/crossword-core/src/puzzle.ts";
+import { computeConsecutiveStreakDays } from "../../packages/crossword-core/src/streakCalendar.ts";
 
 type KeyValueStorage = {
   getItem(key: string): string | null;
@@ -124,15 +125,19 @@ function scanCompletedDates(
 }
 
 // Module-level memory cache: avoids re-scanning localStorage on every home
-// screen visit within the same calendar day.
-let _streakCache: { date: string; value: number } | null = null;
+// screen visit within the same calendar day. 낙관(countTodayPending)·비관 값을
+// 따로 캐시한다.
+let _streakCache: {
+  date: string;
+  values: Partial<Record<"optimistic" | "pessimistic", number>>;
+} | null = null;
 
 export function invalidateStreakCache(): void {
   _streakCache = null;
 }
 
 // 최근 lookbackDays일 이내에 완료(completedAt 존재)한 날짜를 오름차순 정렬해 반환한다.
-// computeConsecutiveStreakDays와 동일한 스캔·완료 판정(scanCompletedDates)을 공유하므로
+// readConsecutiveStreakDays와 동일한 스캔·완료 판정(scanCompletedDates)을 공유하므로
 // 캘린더 히트맵과 스트릭 숫자가 같은 완료일 집합을 근거로 삼는다. storage는 테스트에서
 // 주입할 수 있고, 기본값은 window.localStorage다.
 export function getRecentCompletionDates(
@@ -146,14 +151,23 @@ export function getRecentCompletionDates(
   return [...scanCompletedDates(storage, keyPrefix, lookbackDates)].sort();
 }
 
-export function computeConsecutiveStreakDays(
+// 현재 스트릭. 규칙(오늘 미완료면 어제까지 이어진 구간 + 낙관 모드에서 오늘 몫 1)은
+// core의 computeConsecutiveStreakDays 하나에 두어 RN과 같은 숫자가 나오게 한다.
+// countTodayPending=false 는 마일스톤 달성 판정의 "이전 값"에만 쓴다.
+export function readConsecutiveStreakDays(
+  options: { countTodayPending?: boolean } = {},
   keyPrefix = "crossword-puzzle:mission",
   maxLookbackDays = 366,
 ): number {
+  const countTodayPending = options.countTodayPending ?? true;
+  const cacheKey = countTodayPending ? "optimistic" : "pessimistic";
   const today = getTodayDateKey();
 
   if (_streakCache != null && _streakCache.date === today) {
-    return _streakCache.value;
+    const cached = _streakCache.values[cacheKey];
+    if (cached != null) return cached;
+  } else {
+    _streakCache = { date: today, values: {} };
   }
 
   const storage = getIterableStorage();
@@ -161,28 +175,10 @@ export function computeConsecutiveStreakDays(
 
   const lookbackDates = buildLookbackDates(today, maxLookbackDays);
   const completedDates = scanCompletedDates(storage, keyPrefix, lookbackDates);
-
-  const yesterday = getPreviousDateKey(today);
-
-  // If today is already completed, count from today.
-  // If today is not yet completed but yesterday is, count from yesterday and
-  // add 1 for today — this preserves the "streak still active" state and
-  // motivates the user to complete today's puzzle.
-  const startDate = completedDates.has(today) ? today : yesterday;
-  if (!completedDates.has(startDate)) {
-    _streakCache = { date: today, value: 0 };
-    return 0;
-  }
-
-  let streak = 0;
-  let current = startDate;
-  while (completedDates.has(current)) {
-    streak++;
-    current = getPreviousDateKey(current);
-  }
-
-  const result = startDate === yesterday ? streak + 1 : streak;
-  _streakCache = { date: today, value: result };
+  const result = computeConsecutiveStreakDays(completedDates, today, {
+    countTodayPending,
+  });
+  _streakCache.values[cacheKey] = result;
   return result;
 }
 

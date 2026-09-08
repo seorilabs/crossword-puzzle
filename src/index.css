@@ -64,49 +64,140 @@ body {
   font-weight: 600;
 }
 
-/* 홈 난이도 선택 버튼. 선택만 하고 아래 스캐폴드와 CTA가 선택 퍼즐로 갱신된다. */
-.todayStartButtons {
+/* 홈 주간 스트릭 스트립. 오늘로 끝나는 7일의 완료 여부와 헤드라인·넛지를 한 카드에. */
+.weeklyStreakStrip {
   display: flex;
-  gap: 8px;
-  /* 홈의 다른 카드·헤더와 같은 20px 거터를 적용해 AIT 좁은 WebView에서도
-     난이도 카드가 화면 가장자리에 붙지 않게 한다. */
-  margin: 8px 20px 18px;
+  flex-direction: column;
+  gap: 10px;
+  margin: 8px 20px 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--cw-surface);
+  border: 1px solid var(--cw-border);
 }
-.todayStartButton {
-  flex: 1 1 0;
-  min-width: 0;
+.weeklyStreakHeadline {
+  margin: 0;
+  color: var(--cw-text);
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 20px;
+}
+.weeklyStreakDays {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.weeklyStreakDay {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  padding: 14px 8px;
+}
+.weeklyStreakDayLabel {
+  color: var(--cw-text-3);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 14px;
+}
+.weeklyStreakDayDot {
+  display: flex;
+  width: 26px;
+  height: 26px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--cw-surface-muted);
+  color: transparent;
+  font-size: 13px;
+  font-weight: 900;
+}
+.weeklyStreakDayDone .weeklyStreakDayDot {
+  background: var(--cw-brand);
+  color: #fff;
+}
+.weeklyStreakDayToday .weeklyStreakDayDot {
+  box-shadow: 0 0 0 2px var(--cw-brand);
+}
+.weeklyStreakDayToday .weeklyStreakDayLabel {
+  color: var(--cw-brand-strong);
+}
+
+/* 홈 오늘의 사다리. 워밍업 → 오늘의 퍼즐 두 단계를 한 흐름으로 보이고, 다음 단계를
+   강조한다. 홈의 다른 카드·헤더와 같은 20px 거터를 적용해 AIT 좁은 WebView에서도
+   카드가 화면 가장자리에 붙지 않게 한다. */
+.dailyLadder {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 20px 18px;
+}
+.dailyLadderStep {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
   border: 1px solid var(--cw-border);
   border-radius: 12px;
   background: var(--cw-surface);
   color: var(--cw-text);
+  font: inherit;
+  text-align: left;
   cursor: pointer;
+  box-sizing: border-box;
 }
-.todayStartButtonSelected {
+.dailyLadderStepNext {
   border-color: var(--cw-brand);
   background: var(--cw-brand-soft-2);
   box-shadow: inset 0 0 0 1px var(--cw-brand);
 }
-.todayStartButton:disabled {
+.dailyLadderStep--done {
+  opacity: 0.8;
+}
+.dailyLadderStep:disabled {
   opacity: 0.5;
   cursor: default;
 }
-.todayStartButtonLead {
-  color: var(--cw-text-3);
-  font-size: 12px;
-  font-weight: 700;
+.dailyLadderStepIndex {
+  display: flex;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--cw-surface-muted);
+  color: var(--cw-text-2);
+  font-size: 13px;
+  font-weight: 900;
 }
-.todayStartButtonDifficulty {
+.dailyLadderStepNext .dailyLadderStepIndex,
+.dailyLadderStep--done .dailyLadderStepIndex {
+  background: var(--cw-brand);
+  color: #fff;
+}
+.dailyLadderStepBody {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+.dailyLadderStepTitle {
   color: var(--cw-text);
   font-size: 16px;
   font-weight: 900;
+  line-height: 22px;
 }
-.todayStartButtonStatus {
+.dailyLadderStepStatus {
   color: var(--cw-text-2);
   font-size: 12px;
   font-weight: 700;
+  line-height: 16px;
+}
+.dailyLadderStepNext .dailyLadderStepStatus {
+  color: var(--cw-brand-strong);
 }

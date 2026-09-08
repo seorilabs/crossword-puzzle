@@ -67,15 +67,15 @@ function renderDialog(
 }
 
 describe("CompletionCelebrationDialog 다음 퍼즐 CTA(#274)", () => {
-  it("미해결 추천이 있으면 난이도·제목을 포함한 primary CTA를 최상단에 노출한다", () => {
+  it("미해결 추천이 있으면 사다리 단계 문구의 primary CTA를 최상단에 노출한다", () => {
     const onStartNextPuzzle = vi.fn();
     renderDialog({
-      nextPuzzleLabel: "#26060114 · 어려움",
+      nextPuzzleButtonLabel: "오늘의 퍼즐 이어서 풀기",
       onStartNextPuzzle,
     });
 
     const cta = screen.getByRole("button", {
-      name: "다음 퍼즐 풀기 · #26060114 · 어려움",
+      name: "오늘의 퍼즐 이어서 풀기",
     });
     expect(cta.classList.contains("primaryButton")).toBe(true);
     expect(cta.classList.contains("completionNextPuzzleButton")).toBe(true);
@@ -123,7 +123,7 @@ describe("CompletionCelebrationDialog 기록 진입 CTA(#300)", () => {
   it("기록 CTA는 공유·다음 퍼즐 CTA와 독립적으로 동작한다(회귀 없음)", () => {
     const onStartNextPuzzle = vi.fn();
     const props = renderDialog({
-      nextPuzzleLabel: "#26060114 · 어려움",
+      nextPuzzleButtonLabel: "오늘의 퍼즐 이어서 풀기",
       onStartNextPuzzle,
     });
 

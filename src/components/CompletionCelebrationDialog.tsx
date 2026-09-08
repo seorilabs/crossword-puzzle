@@ -26,7 +26,9 @@ export type CompletionCelebrationDialogProps = {
   elapsedLabel: string | null;
   hintCount: number;
   isNewBestTime: boolean;
-  nextPuzzleLabel?: string;
+  // 완료 직후 primary CTA 문구. 사다리 다음 단계면 "오늘의 퍼즐 이어서 풀기"처럼
+  // 호출부(core formatDailyLadderNextLabel)가 완성한 문구를 그대로 받는다.
+  nextPuzzleButtonLabel?: string;
   puzzleId: string;
   returnReminderPreprompt?: CompletionReturnReminderPreprompt;
   revealUsed: boolean;
@@ -49,7 +51,7 @@ export function CompletionCelebrationDialog({
   elapsedLabel,
   hintCount,
   isNewBestTime,
-  nextPuzzleLabel,
+  nextPuzzleButtonLabel,
   puzzleId,
   returnReminderPreprompt,
   revealUsed,
@@ -79,10 +81,10 @@ export function CompletionCelebrationDialog({
     achievements.noHint ||
     achievements.firstTry ||
     streakBadge != null;
-  const nextPuzzleButtonLabel =
-    nextPuzzleLabel == null || nextPuzzleLabel === ""
+  const nextPuzzleCtaText =
+    nextPuzzleButtonLabel == null || nextPuzzleButtonLabel === ""
       ? "다음 퍼즐 풀기"
-      : `다음 퍼즐 풀기 · ${nextPuzzleLabel}`;
+      : nextPuzzleButtonLabel;
 
   // 사전 안내에 답하지 않고 다이얼로그를 떠나면 보류로 기록한다(익일 재안내).
   function settleReturnReminderPreprompt() {
@@ -197,7 +199,7 @@ export function CompletionCelebrationDialog({
               onClick={leaveWith(onStartNextPuzzle)}
               autoFocus
             >
-              {nextPuzzleButtonLabel}
+              {nextPuzzleCtaText}
             </button>
           )}
           <button

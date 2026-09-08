@@ -68,6 +68,7 @@ AIT는 AppsInToss Analytics와 Firebase Analytics를 함께 호출한다. 샌드
 | -------------------------------- | ------------------------------------------------- |
 | `screen_view`                    | 홈, 풀이, 결과, 기록 화면 진입                    |
 | `puzzle_select`                  | 홈/풀이/결과에서 다른 퍼즐 카드 선택              |
+| `home_quick_start`               | 홈 사다리 단계·하단 CTA로 퍼즐 시작. `source=ladder_step_1\|ladder_step_2`, `ladder_step`, `step_status`, `status=loaded\|missing\|onboarding` |
 | `mission_start`                  | 퍼즐별 첫 도전 시작                               |
 | `attempt_start`                  | 첫 도전 또는 재도전 시작                          |
 | `first_answer_input`             | 도전 중 첫 수동 입력                              |

@@ -49,4 +49,26 @@ describe("Web·RN 다음 퍼즐 추천 표면 parity (#347)", () => {
     assert.equal(webResult?.puzzleId, "older-1");
     assert.equal(rnResult?.puzzleId, webResult?.puzzleId);
   });
+
+  it("오늘의 워밍업(easy)을 끝내면 두 표면 모두 오늘의 퍼즐(hard)을 추천한다", () => {
+    const manifest = [
+      summary("today-easy", "2026-08-30", "easy"),
+      summary("today-hard", "2026-08-30"),
+      summary("older-1", "2026-08-29"),
+    ];
+    const current = { difficulty: "easy" as const, puzzleId: "today-easy" };
+    const completed = new Set(["today-easy"]);
+
+    // Web 은 온보딩 퍼즐 ID 를 넘기고, RN 은 온보딩 퍼즐이 없어 넘기지 않는다.
+    const webResult = getNextRecommendedPuzzleSummary(manifest, completed, current, {
+      onboardingRampEnabled: true,
+      onboardingPuzzleId: "onboarding-easy-01",
+    });
+    const rnResult = getNextRecommendedPuzzleSummary(manifest, completed, current, {
+      onboardingRampEnabled: true,
+    });
+
+    assert.equal(webResult?.puzzleId, "today-hard");
+    assert.equal(rnResult?.puzzleId, webResult?.puzzleId);
+  });
 });

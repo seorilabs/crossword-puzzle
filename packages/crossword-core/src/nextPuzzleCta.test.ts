@@ -71,4 +71,25 @@ describe("next_puzzle_cta telemetry 계약 (#274)", () => {
 
     assert.equal(recommended?.puzzleId, olderUncompleted.puzzleId);
   });
+
+  it("오늘 사다리 단계가 남아 있으면 과거 미완료보다 오늘의 나머지 단계를 먼저 추천한다", () => {
+    const todayEasy = { ...nextPuzzle, date: "2026-08-30", difficulty: "easy" as const, puzzleId: "today-easy" };
+    const todayHard = { ...nextPuzzle, date: "2026-08-30", puzzleId: "today-hard" };
+    const olderUncompleted = { ...nextPuzzle, date: "2026-08-29", puzzleId: "older-hard-1" };
+
+    const afterEasy = getNextRecommendedPuzzleSummary(
+      [olderUncompleted, todayEasy, todayHard],
+      new Set([todayEasy.puzzleId]),
+      { puzzleId: todayEasy.puzzleId, difficulty: "easy" },
+      { onboardingRampEnabled: true },
+    );
+    assert.equal(afterEasy?.puzzleId, todayHard.puzzleId);
+
+    const afterHard = getNextRecommendedPuzzleSummary(
+      [olderUncompleted, todayEasy, todayHard],
+      new Set([todayHard.puzzleId]),
+      { puzzleId: todayHard.puzzleId, difficulty: "hard" },
+    );
+    assert.equal(afterHard?.puzzleId, todayEasy.puzzleId);
+  });
 });

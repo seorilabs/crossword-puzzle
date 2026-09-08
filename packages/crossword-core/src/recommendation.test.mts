@@ -11,14 +11,19 @@ import type { PuzzleManifestItem } from "./types.ts";
 function summary(
   puzzleId: string,
   difficulty?: PuzzleManifestItem["difficulty"],
+  date = "2026-06-29",
 ): PuzzleManifestItem {
   return {
     puzzleId,
-    date: "2026-06-29",
+    date,
     path: `/${puzzleId}.json`,
     difficulty,
   };
 }
+
+// 온보딩 퍼즐은 번들 상수라 발행 날짜가 없다(고정 날짜). 같은 날짜 사다리 규칙이
+// 온보딩 완료에 끼어들지 않도록 실제 값과 같은 모양으로 둔다.
+const ONBOARDING_DATE = "2026-01-01";
 
 const SET = (...ids: string[]) => new Set(ids);
 
@@ -54,17 +59,48 @@ describe("getNextRecommendedPuzzleSummary", () => {
     assert.equal(next?.puzzleId, "easy2", "위 티어(hard) 완료됨 → 동일 easy");
   });
 
-  it("최고 난이도(hard) 완료 시 같은 hard 미완료를 추천한다", () => {
+  it("최고 난이도(hard) 완료 시 같은 날짜의 easy가 남았으면 easy로, 없으면 같은 hard 미완료를 추천한다", () => {
     const summaries = [
       summary("hard1", "hard"),
       summary("hard2", "hard"),
       summary("easy1", "easy"),
     ];
-    const next = getNextRecommendedPuzzleSummary(summaries, SET(), {
+    const withEasyLeft = getNextRecommendedPuzzleSummary(summaries, SET(), {
       puzzleId: "hard1",
       difficulty: "hard",
     });
-    assert.equal(next?.puzzleId, "hard2");
+    assert.equal(withEasyLeft?.puzzleId, "easy1", "오늘의 사다리 1단계가 남았다");
+
+    const easyDone = getNextRecommendedPuzzleSummary(summaries, SET("easy1"), {
+      puzzleId: "hard1",
+      difficulty: "hard",
+    });
+    assert.equal(easyDone?.puzzleId, "hard2");
+  });
+
+  it("같은 날짜의 워밍업(easy) 완료 후에는 오늘의 퍼즐(hard)을 사다리 순서로 잇는다", () => {
+    const summaries = [
+      summary("old-hard", "hard", "2026-06-28"),
+      summary("today-easy", "easy"),
+      summary("today-hard", "hard"),
+    ];
+    const next = getNextRecommendedPuzzleSummary(summaries, SET("today-easy"), {
+      puzzleId: "today-easy",
+      difficulty: "easy",
+      date: "2026-06-29",
+    });
+    assert.equal(next?.puzzleId, "today-hard");
+  });
+
+  it("램프가 켜져 있어도 온보딩 퍼즐이 아니면(RN daily easy) 오늘의 hard로 잇는다", () => {
+    const summaries = [summary("today-easy", "easy"), summary("today-hard", "hard")];
+    const next = getNextRecommendedPuzzleSummary(
+      summaries,
+      SET("today-easy"),
+      { puzzleId: "today-easy", difficulty: "easy" },
+      { onboardingRampEnabled: true },
+    );
+    assert.equal(next?.puzzleId, "today-hard");
   });
 
   it("위·동일 티어 미완료가 없으면 그 외 미완료로 폴백한다", () => {
@@ -128,10 +164,11 @@ describe("getNextRecommendedPuzzleSummary", () => {
 // 온보딩 난이도 램프 배정 수락 조건(#291). it 이름의 AC-N 은 이슈 인수조건 번호와 대응.
 describe("온보딩 난이도 램프 배정 수락 조건 (#291)", () => {
   const summaries = [
-    summary("onboarding", "easy"),
+    summary("onboarding", "easy", ONBOARDING_DATE),
     summary("easy2", "easy"),
     summary("hard1", "hard"),
   ];
+  const rampOn = { onboardingRampEnabled: true, onboardingPuzzleId: "onboarding" };
 
   it("AC-2: 램프 on + 신규(첫 완료)면 easy 완료 직후 hard 대신 완화(남은 easy)를 배정한다", () => {
     const current = { puzzleId: "onboarding", difficulty: "easy" as const };
@@ -146,9 +183,7 @@ describe("온보딩 난이도 램프 배정 수락 조건 (#291)", () => {
       summaries,
       SET("onboarding"),
       current,
-      {
-        onboardingRampEnabled: true,
-      },
+      rampOn,
     );
     assert.equal(off?.difficulty, "hard", "램프 off: 기존 급점프");
     assert.equal(next?.puzzleId, "easy2", "easy→easy로 절벽 완화");
@@ -175,7 +210,7 @@ describe("온보딩 난이도 램프 배정 수락 조건 (#291)", () => {
       summaries,
       SET(),
       { puzzleId: "onboarding", difficulty: "easy" },
-      { onboardingRampEnabled: true },
+      rampOn,
     );
     assert.equal(next?.puzzleId, "easy2");
   });
@@ -186,27 +221,27 @@ describe("온보딩 난이도 램프 배정 수락 조건 (#291)", () => {
       summaries,
       SET("easy2", "onboarding"),
       { puzzleId: "onboarding", difficulty: "easy" },
-      { onboardingRampEnabled: true },
+      rampOn,
     );
     assert.equal(next?.puzzleId, "hard1", "급점프 완화는 첫 완료 1회뿐");
   });
 
   it("램프 on인데 남은 easy가 없으면 추천을 숨긴다(hard 급점프 방지)", () => {
     const next = getNextRecommendedPuzzleSummary(
-      [summary("onboarding", "easy"), summary("hard1", "hard")],
+      [summary("onboarding", "easy", ONBOARDING_DATE), summary("hard1", "hard")],
       SET("onboarding"),
       { puzzleId: "onboarding", difficulty: "easy" },
-      { onboardingRampEnabled: true },
+      rampOn,
     );
     assert.equal(next, undefined);
   });
 
   it("첫 후속 후보가 hard뿐이면 추천을 숨긴다", () => {
     const next = getNextRecommendedPuzzleSummary(
-      [summary("onboarding", "easy"), summary("hard1", "hard")],
+      [summary("onboarding", "easy", ONBOARDING_DATE), summary("hard1", "hard")],
       SET("onboarding"),
       { puzzleId: "onboarding", difficulty: "easy" },
-      { onboardingRampEnabled: true },
+      rampOn,
     );
     assert.equal(next, undefined);
   });
@@ -216,7 +251,7 @@ describe("온보딩 난이도 램프 배정 수락 조건 (#291)", () => {
       [summary("hard1", "hard"), summary("hard2", "hard")],
       SET(),
       { puzzleId: "cur", difficulty: "hard" },
-      { onboardingRampEnabled: true },
+      rampOn,
     );
     assert.equal(next?.puzzleId, "hard1", "동일 hard 티어 연결 유지");
   });

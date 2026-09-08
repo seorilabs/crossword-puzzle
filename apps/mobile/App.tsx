@@ -67,6 +67,17 @@ import {
   getNextAnswerSlotCellKey,
   getNextFocusEntryAfterCompletion,
   getNextRecommendedPuzzleSummary,
+  buildDailyLadder,
+  buildDailyLadderCtaParams,
+  buildWeeklyStreakStrip,
+  collectCompletedDates,
+  computeConsecutiveStreakDays,
+  formatDailyLadderNextLabel,
+  formatDailyLadderStepLabel,
+  formatStreakStripHeadline,
+  getStreakMilestoneProgress,
+  HOME_QUICK_START_EVENT,
+  type DailyLadderStep,
   getPendingAnswerCellValues,
   getProgressPercent,
   getStuckHintPromptText,
@@ -367,9 +378,6 @@ function dedupePuzzleSummaries(puzzles: PuzzleManifestItem[]) {
   return result;
 }
 
-// 난이도 정렬 순위(쉬움→어려움 순). normal 은 2단계 전환 전 퍼즐용 레거시 값이다.
-const DIFFICULTY_RANK: Record<string, number> = { easy: 0, normal: 1, hard: 2 };
-
 function getInitialPuzzleId(puzzles: PuzzleManifestItem[]) {
   const today = getTodayDateKey();
   return (
@@ -557,54 +565,6 @@ function buildResultShareText({
   if (badges.length > 0) lines.push(badges.join(' · '));
   lines.push(`낱말 ${completedCount}/${totalCount}개 완성 🎉`);
   return lines.join('\n');
-}
-
-export function computeMobileStreakDays(
-  records: Array<{ completedAt: string | undefined; puzzle: { date: string } }>,
-  today = getTodayDateKey(),
-): number {
-  const YYYY_MM_DD = /^\d{4}-\d{2}-\d{2}$/;
-
-  function isValidDate(dateStr: string): boolean {
-    if (!YYYY_MM_DD.test(dateStr)) return false;
-    const parsed = new Date(`${dateStr}T00:00:00Z`);
-    if (isNaN(parsed.getTime())) return false;
-    return parsed.toISOString().slice(0, 10) === dateStr;
-  }
-
-  function getPrevDate(dateStr: string): string {
-    const [y, m, d] = dateStr.split('-').map(Number);
-    if (!Number.isInteger(y) || !Number.isInteger(m) || !Number.isInteger(d))
-      return '';
-    const prev = new Date(Date.UTC(y, m - 1, d - 1));
-    return prev.toISOString().slice(0, 10);
-  }
-
-  if (!isValidDate(today)) return 0;
-
-  const completedDates = new Set<string>();
-  for (const record of records) {
-    if (
-      typeof record.completedAt === 'string' &&
-      isFinite(Date.parse(record.completedAt)) &&
-      isValidDate(record.puzzle.date)
-    ) {
-      completedDates.add(record.puzzle.date);
-    }
-  }
-  if (completedDates.size === 0) return 0;
-
-  const yesterday = getPrevDate(today);
-  const startDate = completedDates.has(today) ? today : yesterday;
-  if (!completedDates.has(startDate)) return 0;
-
-  let streak = 0;
-  let current = startDate;
-  while (completedDates.has(current)) {
-    streak++;
-    current = getPrevDate(current);
-  }
-  return streak;
 }
 
 export function formatPuzzleHistoryTitle(
@@ -1009,7 +969,6 @@ function AppContent() {
   const [puzzleArchiveRecords, setPuzzleArchiveRecords] = useState<
     PuzzleArchiveRecord[]
   >([]);
-  const [consecutiveStreak, setConsecutiveStreak] = useState(0);
   const [cellValues, setCellValues] = useState<Record<string, string>>({});
   const [dailyHintWallet, setDailyHintWallet] = useState<DailyHintWallet>(() =>
     createDailyHintWallet(getTodayDateKey()),
@@ -1303,18 +1262,42 @@ function AppContent() {
     () => getCompletedPuzzleIds(dateCardStates),
     [dateCardStates],
   );
-  // 당일 서빙: 오늘 발행된 퍼즐(easy 5×5 · normal/hard 8×8)만, 난이도 오름차순 정렬.
+  // 당일 서빙: 오늘 발행된 퍼즐(easy 5×5 · hard 8×8). 단계 순서·상태·주 CTA 판정은
+  // core의 buildDailyLadder가 맡아 워밍업 → 오늘의 퍼즐 한 흐름으로 보여 준다(웹과 동일).
   const todayPuzzleSummaries = useMemo(
-    () =>
-      puzzlePack.summaries
-        .filter(summary => summary.date === todayKey)
-        .sort(
-          (a, b) =>
-            (DIFFICULTY_RANK[a.difficulty ?? 'normal'] ?? 1) -
-            (DIFFICULTY_RANK[b.difficulty ?? 'normal'] ?? 1),
-        ),
+    () => puzzlePack.summaries.filter(summary => summary.date === todayKey),
     [puzzlePack.summaries, todayKey],
   );
+  const dailyLadder = useMemo(
+    () =>
+      buildDailyLadder(todayPuzzleSummaries, dateCardStates, {
+        dailyAttemptLimit: DAILY_ATTEMPT_LIMIT,
+      }),
+    [dateCardStates, todayPuzzleSummaries],
+  );
+  // 완료일 집합은 아카이브 레코드에서 만든다(웹은 localStorage 미션 레코드). 스트릭
+  // 숫자와 7일 스트립이 같은 집합을 근거로 삼도록 한 곳에서 계산한다.
+  const completedDates = useMemo(
+    () =>
+      collectCompletedDates(
+        puzzleArchiveRecords.map(record => ({
+          date: record.puzzle.date,
+          completedAt: record.completedAt,
+        })),
+      ),
+    [puzzleArchiveRecords],
+  );
+  // 스트릭은 완료일 집합에서 파생한다(별도 상태 없음). 초기 hydrate 로 아카이브가
+  // 로드되는 즉시 헤드라인·넛지·배지가 같은 값을 쓴다(웹과 동일 규칙).
+  const consecutiveStreak = useMemo(
+    () => computeConsecutiveStreakDays(completedDates, todayKey),
+    [completedDates, todayKey],
+  );
+  const weeklyStrip = useMemo(
+    () => buildWeeklyStreakStrip(completedDates, todayKey),
+    [completedDates, todayKey],
+  );
+  const todayCompleted = weeklyStrip.some(day => day.isToday && day.completed);
   const archivePuzzleSummaries = useMemo(
     () =>
       puzzleArchiveRecords
@@ -1361,6 +1344,7 @@ function AppContent() {
             {
               puzzleId: puzzle.puzzleId,
               difficulty: puzzle.difficulty,
+              date: puzzle.date,
             },
             {
               onboardingRampEnabled:
@@ -1372,20 +1356,18 @@ function AppContent() {
       completedPuzzleIds,
       isCompleted,
       launchConfig.onboardingDifficultyRampEnabled,
+      puzzle.date,
       puzzle.difficulty,
       puzzle.puzzleId,
       recommendationPuzzleSummaries,
     ],
   );
-  const nextRecommendedLabel =
+  // 완료 직후 CTA 문구. 오늘 사다리의 다음 단계면 "오늘의 퍼즐 이어서 풀기"처럼
+  // 단계 이름으로 잇는다(웹과 같은 core 문구).
+  const nextRecommendedButtonLabel =
     nextRecommendedSummary == null
       ? undefined
-      : [
-          formatPuzzleAliasLabel(nextRecommendedSummary),
-          formatDifficultyLabel(nextRecommendedSummary.difficulty),
-        ]
-          .filter(Boolean)
-          .join(' · ');
+      : formatDailyLadderNextLabel(nextRecommendedSummary, puzzle.date);
 
   const isBoardEmpty = Object.keys(cellValues).length === 0;
   const currentAttemptFirstInputKey = `${puzzle.puzzleId}:${mission.attemptsUsed}`;
@@ -1538,9 +1520,6 @@ function AppContent() {
     );
 
     setPuzzleArchiveRecords(nextArchiveRecords);
-    setConsecutiveStreak(
-      computeMobileStreakDays(nextArchiveRecords, getTodayDateKey()),
-    );
     setDateCardStates(previous => ({ ...previous, ...archiveStates }));
   }, []);
 
@@ -1887,11 +1866,8 @@ function AppContent() {
       const promptDate = getTodayDateKey();
       // 완료 후 스트릭(오늘 포함)을 미리 확정해 카드 본문과 shown/accept/decline 계측이
       // 같은 값을 쓴다. 아카이브 갱신은 비동기라 consecutiveStreak 는 아직 완료 전 값이다.
-      const streakDays = computeMobileStreakDays(
-        [
-          ...puzzleArchiveRecords,
-          { completedAt: nextMission.completedAt ?? promptDate, puzzle },
-        ],
+      const streakDays = computeConsecutiveStreakDays(
+        [...completedDates, promptDate],
         promptDate,
       );
       // 이미 동의한 사용자는 매 완료마다 D+1 알림을 다시 예약하고, 아직 동의 전이면
@@ -1970,7 +1946,7 @@ function AppContent() {
       setCompletionCelebrationPuzzleId(puzzle.puzzleId);
     }
   }, [
-    puzzleArchiveRecords,
+    completedDates,
     consecutiveStreak,
     hintCount,
     isLoading,
@@ -2940,33 +2916,105 @@ function AppContent() {
         return;
       }
 
-      // 새 시도는 새 타이머다 — 이전 정지 누적을 이어받지 않는다(웹과 동일 규칙).
-      const nextMission: MissionState = {
-        ...startMissionAttempt(mission),
-        pausedMs: 0,
-        pausedAt: null,
-      };
-      setMission(nextMission);
-      saveStoredMission(nextMission);
-      savePuzzleSnapshot(puzzle, { startedAt: nextMission.lastStartedAt });
-      telemetry.impression('mission_start', {
-        ...getPuzzleTelemetryParams(puzzle, selectedPuzzleSummary),
-        attempt_number: nextMission.attemptsUsed,
-        remaining_attempts: getRemainingAttempts(nextMission),
-      });
-      telemetry.impression('attempt_start', {
-        ...getPuzzleTelemetryParams(puzzle, selectedPuzzleSummary),
-        attempt_number: nextMission.attemptsUsed,
-        remaining_attempts: getRemainingAttempts(nextMission),
-      });
-      // 게임 세부 지표: 시도 시작(완료 퍼널 시작점, 마켓 차원 포함).
-      gameAnalytics.track('game_puzzle_start', getGamePuzzleContext(puzzle), {
-        attemptKind: 'first',
-        attemptNumber: nextMission.attemptsUsed,
-      });
+      setMission(
+        startMissionForPuzzle(puzzle, mission, selectedPuzzleSummary),
+      );
     }
 
     navigateTo('today');
+  }
+
+  // 첫 시도 시작 공통 로직. 홈 주 CTA(현재 퍼즐)와 사다리 단계 탭(다른 퍼즐 로드 후
+  // 즉시 시작)이 같은 mission_start/attempt_start/game_puzzle_start 계약을 공유한다.
+  function startMissionForPuzzle(
+    targetPuzzle: Puzzle,
+    baseMission: MissionState,
+    summary: PuzzleManifestItem | undefined,
+  ): MissionState {
+    // 새 시도는 새 타이머다 — 이전 정지 누적을 이어받지 않는다(웹과 동일 규칙).
+    const nextMission: MissionState = {
+      ...startMissionAttempt(baseMission),
+      pausedMs: 0,
+      pausedAt: null,
+    };
+    saveStoredMission(nextMission);
+    savePuzzleSnapshot(targetPuzzle, { startedAt: nextMission.lastStartedAt });
+    telemetry.impression('mission_start', {
+      ...getPuzzleTelemetryParams(targetPuzzle, summary),
+      attempt_number: nextMission.attemptsUsed,
+      remaining_attempts: getRemainingAttempts(nextMission),
+    });
+    telemetry.impression('attempt_start', {
+      ...getPuzzleTelemetryParams(targetPuzzle, summary),
+      attempt_number: nextMission.attemptsUsed,
+      remaining_attempts: getRemainingAttempts(nextMission),
+    });
+    // 게임 세부 지표: 시도 시작(완료 퍼널 시작점, 마켓 차원 포함).
+    gameAnalytics.track('game_puzzle_start', getGamePuzzleContext(targetPuzzle), {
+      attemptKind: 'first',
+      attemptNumber: nextMission.attemptsUsed,
+    });
+    return nextMission;
+  }
+
+  // 홈 사다리 단계 탭·하단 CTA. 단계의 퍼즐을 로드해 바로 시작(필요 시 첫 시도)하고
+  // 풀이 화면으로 간다. 완료 판은 결과 화면으로 간다. 웹 startLadderStep과 같은
+  // home_quick_start(source=ladder_step_N) 계측을 남긴다.
+  async function startLadderStep(step: DailyLadderStep) {
+    if (isLoading) {
+      return;
+    }
+
+    setIsLoading(true);
+    const session = await loadPuzzleSession(step.puzzleId, puzzlePack);
+    if (session == null) {
+      setIsLoading(false);
+      setNotice('퍼즐 데이터를 찾을 수 없습니다.');
+      telemetry.click(HOME_QUICK_START_EVENT, {
+        puzzle_id: step.puzzleId,
+        ...buildDailyLadderCtaParams(step),
+        status: 'missing',
+      });
+      return;
+    }
+
+    const summary = findPuzzleSummaryById(
+      puzzlePack.summaries,
+      session.nextPuzzle.puzzleId,
+    );
+    const alreadyStarted =
+      session.savedMission.attemptsUsed > 0 ||
+      Object.keys(session.savedProgress.cellValues).length > 0 ||
+      session.savedProgress.hintCount > 0;
+    let nextMission = session.savedMission;
+    if (
+      !alreadyStarted &&
+      nextMission.completedAt == null &&
+      getRemainingAttempts(nextMission) > 0
+    ) {
+      nextMission = startMissionForPuzzle(
+        session.nextPuzzle,
+        nextMission,
+        summary,
+      );
+    }
+
+    applyPuzzleSession({ ...session, savedMission: nextMission });
+    setIsLoading(false);
+    telemetry.click(HOME_QUICK_START_EVENT, {
+      ...getPuzzleTelemetryParams(session.nextPuzzle, summary),
+      ...buildDailyLadderCtaParams(step),
+      status: 'loaded',
+    });
+    // 완료했거나 도전 기회를 모두 써 더 풀 수 없는 판은 결과 화면으로 보낸다(이전 홈
+    // CTA와 동일). 풀이 화면은 읽기 전용이라 결과 동선이 없다.
+    const isExhausted =
+      nextMission.completedAt == null &&
+      alreadyStarted &&
+      getRemainingAttempts(nextMission) === 0;
+    navigateTo(
+      nextMission.completedAt != null || isExhausted ? 'result' : 'today',
+    );
   }
 
   function restartMissionAttempt() {
@@ -3016,39 +3064,116 @@ function AppContent() {
     );
   }
 
-  function renderDifficultyPicker() {
-    if (todayPuzzleSummaries.length < 2) {
+  function renderWeeklyStreakStrip() {
+    if (weeklyStrip.length === 0) {
       return null;
     }
+    const nudge = getStreakMilestoneProgress(consecutiveStreak);
     return (
-      <View style={styles.difficultyPicker}>
-        {todayPuzzleSummaries.map(summary => {
-          const state = dateCardStates[summary.puzzleId];
-          const isSelected = summary.puzzleId === puzzle.puzzleId;
-          const statusLabel =
-            state?.completedAt != null
-              ? '완료'
-              : state?.hasProgress
-                ? '이어 풀기'
-                : '새 퍼즐';
+      <View
+        accessible
+        accessibilityLabel="최근 7일 연속 기록"
+        style={styles.weeklyStreakStrip}
+      >
+        <Text style={styles.weeklyStreakHeadline}>
+          {formatStreakStripHeadline(consecutiveStreak, todayCompleted)}
+        </Text>
+        <View style={styles.weeklyStreakDays}>
+          {weeklyStrip.map(day => (
+            <View
+              key={day.date}
+              accessibilityLabel={`${day.date} ${day.completed ? '완료' : '미완료'}${day.isToday ? ' · 오늘' : ''}`}
+              style={styles.weeklyStreakDay}
+            >
+              <Text
+                style={[
+                  styles.weeklyStreakDayLabel,
+                  day.isToday ? styles.weeklyStreakDayLabelToday : null,
+                ]}
+              >
+                {day.weekdayLabel}
+              </Text>
+              <View
+                style={[
+                  styles.weeklyStreakDayDot,
+                  day.completed ? styles.weeklyStreakDayDotDone : null,
+                  day.isToday ? styles.weeklyStreakDayDotToday : null,
+                ]}
+              >
+                <Text style={styles.weeklyStreakDayDotText}>
+                  {day.completed ? '✓' : ''}
+                </Text>
+              </View>
+            </View>
+          ))}
+        </View>
+        {nudge != null ? (
+          <Text style={styles.weeklyStreakNudge}>{nudge}</Text>
+        ) : null}
+      </View>
+    );
+  }
+
+  // 오늘의 사다리(워밍업 → 오늘의 퍼즐). 병렬 난이도 선택 대신 두 단계를 한 흐름으로
+  // 보이고, 다음 단계를 강조한다. 단계를 누르면 바로 시작한다(웹 DailyLadderCard와 동일).
+  function renderDailyLadder() {
+    if (dailyLadder.steps.length === 0) {
+      return null;
+    }
+    const ctaStepId =
+      dailyLadder.cta.kind === 'start' || dailyLadder.cta.kind === 'resume'
+        ? dailyLadder.cta.step.puzzleId
+        : null;
+    return (
+      <View style={styles.dailyLadder}>
+        {dailyLadder.steps.map(step => {
+          const isNext = step.puzzleId === ctaStepId;
+          const isSelected = step.puzzleId === puzzle.puzzleId;
           return (
             <Pressable
-              key={summary.puzzleId}
-              accessibilityLabel={`${formatDifficultyLabel(summary.difficulty)} 난이도 ${statusLabel}`}
+              key={step.puzzleId}
+              accessibilityLabel={`${step.label} ${step.statusLabel}${isNext ? ' 다음 단계' : ''}`}
               accessibilityRole="button"
               accessibilityState={{ selected: isSelected }}
               onPress={() => {
-                void selectPuzzle(summary.puzzleId);
+                void startLadderStep(step);
               }}
               style={[
-                styles.difficultyChip,
-                isSelected ? styles.difficultyChipSelected : null,
+                styles.dailyLadderStep,
+                isNext ? styles.dailyLadderStepNext : null,
+                step.status === 'done' ? styles.dailyLadderStepDone : null,
               ]}
             >
-              <Text style={styles.difficultyChipLabel}>
-                {formatDifficultyLabel(summary.difficulty)}
-              </Text>
-              <Text style={styles.difficultyChipStatus}>{statusLabel}</Text>
+              <View
+                style={[
+                  styles.dailyLadderStepIndex,
+                  isNext || step.status === 'done'
+                    ? styles.dailyLadderStepIndexActive
+                    : null,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.dailyLadderStepIndexText,
+                    isNext || step.status === 'done'
+                      ? styles.dailyLadderStepIndexTextActive
+                      : null,
+                  ]}
+                >
+                  {step.status === 'done' ? '✓' : String(step.step)}
+                </Text>
+              </View>
+              <View style={styles.dailyLadderStepBody}>
+                <Text style={styles.dailyLadderStepTitle}>{step.label}</Text>
+                <Text
+                  style={[
+                    styles.dailyLadderStepStatus,
+                    isNext ? styles.dailyLadderStepStatusNext : null,
+                  ]}
+                >
+                  {isNext ? `${step.statusLabel} · 다음 단계` : step.statusLabel}
+                </Text>
+              </View>
             </Pressable>
           );
         })}
@@ -3066,8 +3191,9 @@ function AppContent() {
         <View style={styles.puzzleScaffoldHeader}>
           <Text style={styles.puzzleScaffoldTitle}>선택한 퍼즐판</Text>
           <Text style={styles.puzzleScaffoldMeta}>
-            {formatDifficultyLabel(puzzle.difficulty)} · {puzzle.gridSize}×
-            {puzzle.gridSize}
+            {puzzle.difficulty === 'easy' || puzzle.difficulty === 'hard'
+              ? formatDailyLadderStepLabel(puzzle.difficulty)
+              : `${formatDifficultyLabel(puzzle.difficulty)} · ${puzzle.gridSize}×${puzzle.gridSize}`}
           </Text>
         </View>
         <View style={styles.puzzleScaffoldBoard}>
@@ -3163,7 +3289,8 @@ function AppContent() {
     return (
       <ScrollView contentContainerStyle={styles.homeContent}>
         {renderHeader(HOME_HEADER_TITLE, selectedPuzzleLabel)}
-        {renderDifficultyPicker()}
+        {renderWeeklyStreakStrip()}
+        {renderDailyLadder()}
         {renderSelectedPuzzleScaffold()}
 
         <View style={styles.summaryPanel}>
@@ -3189,22 +3316,50 @@ function AppContent() {
             />
           </View>
           <View style={styles.actions}>
-            <Pressable
-              onPress={
-                isAttemptExhaustedUncompleted
-                  ? () => navigateTo('result')
-                  : startOrResumeMission
-              }
-              style={styles.primaryButton}
-            >
-              <Text style={styles.primaryButtonText}>
-                {isAttemptExhaustedUncompleted
-                  ? '결과 보기'
-                  : hasStarted
-                    ? '이어 풀기'
-                    : '퍼즐 시작'}
-              </Text>
-            </Pressable>
+            {/* 주 CTA는 사다리의 다음 미완료 단계. 오늘 퍼즐이 없으면(번들 폴백)
+                선택 퍼즐 기준 기존 CTA로 폴백한다(웹과 동일). */}
+            {dailyLadder.cta.kind !== 'unavailable' ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{
+                  disabled: dailyLadder.cta.kind === 'all_done',
+                }}
+                disabled={dailyLadder.cta.kind === 'all_done'}
+                onPress={() => {
+                  const cta = dailyLadder.cta;
+                  if (cta.kind === 'start' || cta.kind === 'resume') {
+                    void startLadderStep(cta.step);
+                  }
+                }}
+                style={[
+                  styles.primaryButton,
+                  dailyLadder.cta.kind === 'all_done'
+                    ? styles.primaryButtonDisabled
+                    : null,
+                ]}
+              >
+                <Text style={styles.primaryButtonText}>
+                  {dailyLadder.cta.label}
+                </Text>
+              </Pressable>
+            ) : (
+              <Pressable
+                onPress={
+                  isAttemptExhaustedUncompleted
+                    ? () => navigateTo('result')
+                    : startOrResumeMission
+                }
+                style={styles.primaryButton}
+              >
+                <Text style={styles.primaryButtonText}>
+                  {isAttemptExhaustedUncompleted
+                    ? '결과 보기'
+                    : hasStarted
+                      ? '이어 풀기'
+                      : '퍼즐 시작'}
+                </Text>
+              </Pressable>
+            )}
             <Pressable
               onPress={() => navigateTo('resume')}
               style={styles.secondaryButton}
@@ -3840,11 +3995,7 @@ function AppContent() {
             </View>
             {nextRecommendedSummary != null ? (
               <Pressable
-                accessibilityLabel={`다음 퍼즐 풀기${
-                  nextRecommendedLabel == null
-                    ? ''
-                    : ` · ${nextRecommendedLabel}`
-                }`}
+                accessibilityLabel={nextRecommendedButtonLabel ?? '다음 퍼즐 풀기'}
                 accessibilityRole="button"
                 onPress={() => {
                   startNextRecommendedPuzzle('result_overlay').catch(
@@ -3854,10 +4005,7 @@ function AppContent() {
                 style={styles.primaryButton}
               >
                 <Text style={styles.primaryButtonText}>
-                  다음 퍼즐 풀기
-                  {nextRecommendedLabel == null
-                    ? ''
-                    : ` · ${nextRecommendedLabel}`}
+                  {nextRecommendedButtonLabel ?? '다음 퍼즐 풀기'}
                 </Text>
               </Pressable>
             ) : (
@@ -4194,11 +4342,7 @@ function AppContent() {
             {isCompleted &&
               (nextRecommendedSummary != null ? (
                 <Pressable
-                  accessibilityLabel={`다음 퍼즐 풀기${
-                    nextRecommendedLabel == null
-                      ? ''
-                      : ` · ${nextRecommendedLabel}`
-                  }`}
+                  accessibilityLabel={nextRecommendedButtonLabel ?? '다음 퍼즐 풀기'}
                   onPress={() => {
                     startNextRecommendedPuzzle('result_screen').catch(
                       () => undefined,
@@ -4207,10 +4351,7 @@ function AppContent() {
                   style={styles.primaryButton}
                 >
                   <Text style={styles.primaryButtonText}>
-                    다음 퍼즐 풀기
-                    {nextRecommendedLabel == null
-                      ? ''
-                      : ` · ${nextRecommendedLabel}`}
+                    {nextRecommendedButtonLabel ?? '다음 퍼즐 풀기'}
                   </Text>
                 </Pressable>
               ) : (
@@ -4993,33 +5134,119 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '900',
   },
-  difficultyPicker: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 16,
-    marginBottom: 18,
-  },
-  difficultyChip: {
-    flex: 1,
-    gap: 2,
-    padding: 12,
+  weeklyStreakStrip: {
+    gap: 10,
+    marginTop: 12,
+    marginBottom: 12,
+    padding: 14,
     borderWidth: 1,
     borderColor: 'rgba(15,23,42,0.08)',
     borderRadius: 12,
     backgroundColor: '#ffffff',
   },
-  difficultyChipSelected: {
+  weeklyStreakHeadline: {
+    color: '#0f172a',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  weeklyStreakDays: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  weeklyStreakDay: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 4,
+  },
+  weeklyStreakDayLabel: {
+    color: '#64748b',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  weeklyStreakDayLabelToday: {
+    color: '#00866f',
+  },
+  weeklyStreakDayDot: {
+    width: 26,
+    height: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 13,
+    backgroundColor: '#e2e8f0',
+  },
+  weeklyStreakDayDotDone: {
+    backgroundColor: '#00a88f',
+  },
+  weeklyStreakDayDotToday: {
+    borderWidth: 2,
+    borderColor: '#00a88f',
+  },
+  weeklyStreakDayDotText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  weeklyStreakNudge: {
+    color: '#00866f',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  dailyLadder: {
+    gap: 8,
+    marginBottom: 18,
+  },
+  dailyLadderStep: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(15,23,42,0.08)',
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
+  },
+  dailyLadderStepNext: {
     borderColor: '#00a88f',
     backgroundColor: '#f1f9f9',
   },
-  difficultyChipLabel: {
-    color: '#0f172a',
-    fontSize: 15,
-    fontWeight: '700',
+  dailyLadderStepDone: {
+    opacity: 0.8,
   },
-  difficultyChipStatus: {
+  dailyLadderStepIndex: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
+    backgroundColor: '#e2e8f0',
+  },
+  dailyLadderStepIndexActive: {
+    backgroundColor: '#00a88f',
+  },
+  dailyLadderStepIndexText: {
+    color: '#475569',
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  dailyLadderStepIndexTextActive: {
+    color: '#ffffff',
+  },
+  dailyLadderStepBody: {
+    flex: 1,
+    gap: 2,
+  },
+  dailyLadderStepTitle: {
+    color: '#0f172a',
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  dailyLadderStepStatus: {
     color: '#64748b',
     fontSize: 12,
+    fontWeight: '700',
+  },
+  dailyLadderStepStatusNext: {
+    color: '#00866f',
   },
   selectedPuzzleScaffold: {
     alignItems: 'center',
@@ -5110,6 +5337,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minHeight: 44,
     paddingHorizontal: 14,
+  },
+  primaryButtonDisabled: {
+    backgroundColor: '#94a3b8',
   },
   primaryButtonText: {
     color: '#ffffff',

@@ -21,6 +21,9 @@ jobs:
     uses: seorilabs/.github/.github/workflows/rn-static-checks.yml@9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5
     with:
       runs_on: ${{ github.event.repository.private && 'seorilabs-rpi-arm64' || 'ubuntu-latest' }}
+      # RPI ARM 러너에서 install 5분 + checks 14~15분(test:core 의 생성기 CLI e2e 포함)로
+      # 기본 20분에 걸려 취소되는 일이 생겼다. 상한만 넉넉히 두고 e2e 비용은 별도로 줄인다.
+      timeout_minutes: 30
       node_version: "24"
       package_manager: npm
       install_command: |

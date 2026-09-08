@@ -33,14 +33,20 @@ const remoteConfigTemplate = JSON.parse(
 function summary(
   puzzleId: string,
   difficulty: PuzzleManifestItem["difficulty"],
+  date = "2026-06-29",
 ): PuzzleManifestItem {
   return {
     puzzleId,
-    date: "2026-06-29",
+    date,
     path: `/${puzzleId}.json`,
     difficulty,
   };
 }
+
+// 온보딩 퍼즐은 번들 상수라 발행 날짜가 없다. 램프는 onboardingPuzzleId 와 일치하는
+// 완료에만 개입하고, daily easy 완료는 같은 날짜 사다리(hard)로 바로 잇는다.
+const ONBOARDING_DATE = "2026-01-01";
+const rampOn = { onboardingRampEnabled: true, onboardingPuzzleId: "onboarding" };
 
 describe("온보딩 난이도 램프 수락 조건 (#291)", () => {
   it("AC-1: 난이도가 쉬움/어려움 두 단계이므로 중간 프로파일 없이 easy 반복으로 램프를 만든다", () => {
@@ -58,7 +64,7 @@ describe("온보딩 난이도 램프 수락 조건 (#291)", () => {
 
   it("AC-2: 배정 로직이 신규 사용자의 easy 완료 직후 완화(중간) 난이도를 제공한다", () => {
     const summaries = [
-      summary("onboarding", "easy"),
+      summary("onboarding", "easy", ONBOARDING_DATE),
       summary("easy2", "easy"),
       summary("hard1", "hard"),
     ];
@@ -74,7 +80,7 @@ describe("온보딩 난이도 램프 수락 조건 (#291)", () => {
       summaries,
       new Set(["onboarding"]),
       current,
-      { onboardingRampEnabled: true },
+      rampOn,
     );
     assert.equal(off?.difficulty, "hard", "램프 off: 기존 동작(난이도 상승)");
     assert.equal(on?.puzzleId, "easy2");
@@ -138,7 +144,7 @@ describe("온보딩 난이도 램프 수락 조건 (#291)", () => {
 
     // (실행 경로) 갱신한 난이도 추천 동작의 신규 경계 케이스들을 함께 검증한다.
     const summaries = [
-      summary("onboarding", "easy"),
+      summary("onboarding", "easy", ONBOARDING_DATE),
       summary("easy2", "easy"),
       summary("hard1", "hard"),
     ];
@@ -159,7 +165,7 @@ describe("온보딩 난이도 램프 수락 조건 (#291)", () => {
       summaries,
       new Set(["easy2", "onboarding"]),
       current,
-      { onboardingRampEnabled: true },
+      rampOn,
     );
     assert.equal(secondCompletion?.difficulty, "hard");
     assert.equal(ONBOARDING_RAMP_MAX_COMPLETIONS, 0);
@@ -167,20 +173,30 @@ describe("온보딩 난이도 램프 수락 조건 (#291)", () => {
     // 신규 케이스 3(실행 경로): 램프가 켜졌는데 남은 easy가 없으면 CTA를 숨긴다.
     // 2단계에서 남은 후보는 hard 뿐이라 폴백이 곧 급점프가 되기 때문이다.
     const noEasyLeft = getNextRecommendedPuzzleSummary(
-      [summary("onboarding", "easy"), summary("hard1", "hard")],
+      [summary("onboarding", "easy", ONBOARDING_DATE), summary("hard1", "hard")],
       new Set(["onboarding"]),
       current,
-      { onboardingRampEnabled: true },
+      rampOn,
     );
     assert.equal(noEasyLeft, undefined);
 
     // 신규 케이스 4(실행 경로): 첫 후속으로 hard만 남으면 CTA를 숨긴다.
     const hardOnly = getNextRecommendedPuzzleSummary(
-      [summary("onboarding", "easy"), summary("hard1", "hard")],
+      [summary("onboarding", "easy", ONBOARDING_DATE), summary("hard1", "hard")],
       new Set(["onboarding"]),
       current,
-      { onboardingRampEnabled: true },
+      rampOn,
     );
     assert.equal(hardOnly, undefined);
+
+    // 신규 케이스 5(실행 경로): 온보딩 퍼즐이 아닌 daily easy 완료는 램프 대상이 아니다.
+    // 첫 완료여도 같은 날짜의 hard(오늘의 퍼즐)로 잇는다 — 사다리 재구성의 핵심 동선.
+    const dailyEasy = getNextRecommendedPuzzleSummary(
+      [summary("today-easy", "easy"), summary("today-hard", "hard")],
+      new Set(["today-easy"]),
+      { puzzleId: "today-easy", difficulty: "easy" },
+      rampOn,
+    );
+    assert.equal(dailyEasy?.puzzleId, "today-hard");
   });
 });

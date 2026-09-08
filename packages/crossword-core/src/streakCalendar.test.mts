@@ -5,7 +5,11 @@ import { strict as assert } from "node:assert";
 import {
   buildStreakCalendarMonthLabels,
   buildStreakCalendarWeeks,
+  buildWeeklyStreakStrip,
+  collectCompletedDates,
+  computeConsecutiveStreakDays,
   computeLongestStreakDays,
+  formatStreakStripHeadline,
 } from "./streakCalendar.ts";
 
 describe("buildStreakCalendarWeeks", () => {
@@ -146,5 +150,102 @@ describe("computeLongestStreakDays", () => {
       computeLongestStreakDays(["2026-06-30", "2026-07-01"]),
       2,
     );
+  });
+});
+
+describe("computeConsecutiveStreakDays (공용 스트릭 규칙)", () => {
+  const today = "2026-06-10";
+
+  it("오늘 완료면 오늘부터 거슬러 센다", () => {
+    assert.equal(computeConsecutiveStreakDays([today], today), 1);
+    assert.equal(
+      computeConsecutiveStreakDays(
+        ["2026-06-08", "2026-06-09", today],
+        today,
+      ),
+      3,
+    );
+  });
+
+  it("오늘 미완료·어제 완료면 기본(낙관)으로 오늘 몫을 더하고, 비관 옵션은 더하지 않는다", () => {
+    const dates = ["2026-06-08", "2026-06-09"];
+    assert.equal(computeConsecutiveStreakDays(dates, today), 3);
+    assert.equal(
+      computeConsecutiveStreakDays(dates, today, { countTodayPending: false }),
+      2,
+    );
+  });
+
+  it("하루 비면 0이고 유효하지 않은 today 도 0이다", () => {
+    assert.equal(computeConsecutiveStreakDays(["2026-06-08"], today), 0);
+    assert.equal(computeConsecutiveStreakDays([today], "not-a-date"), 0);
+    assert.equal(computeConsecutiveStreakDays([today], "2026-13-40"), 0);
+    assert.equal(computeConsecutiveStreakDays([], today), 0);
+  });
+
+  it("마일스톤 판정용 이전 값(비관)과 완료 후 값(낙관)이 갈려 7일 달성이 감지된다", () => {
+    const sixDays = [
+      "2026-06-04",
+      "2026-06-05",
+      "2026-06-06",
+      "2026-06-07",
+      "2026-06-08",
+      "2026-06-09",
+    ];
+    const before = computeConsecutiveStreakDays(sixDays, today, {
+      countTodayPending: false,
+    });
+    const after = computeConsecutiveStreakDays([...sixDays, today], today);
+    assert.equal(before, 6);
+    assert.equal(after, 7);
+  });
+});
+
+describe("collectCompletedDates", () => {
+  it("completedAt 이 파싱되고 날짜 키가 유효한 항목만 모은다", () => {
+    const dates = collectCompletedDates([
+      { date: "2026-06-10", completedAt: "2026-06-10T10:00:00Z" },
+      { date: "2026-06-09", completedAt: "invalid" },
+      { date: "2026-06-08", completedAt: null },
+      { date: "2026-6-7", completedAt: "2026-06-07T10:00:00Z" },
+      { date: "2026-06-10", completedAt: "2026-06-10T11:00:00Z" },
+    ]);
+    assert.deepEqual([...dates], ["2026-06-10"]);
+  });
+});
+
+describe("buildWeeklyStreakStrip", () => {
+  it("오늘로 끝나는 7일을 오래된 날부터 배치하고 월 경계를 넘긴다", () => {
+    const strip = buildWeeklyStreakStrip(["2026-06-30", "2026-07-02"], "2026-07-02");
+    assert.equal(strip.length, 7);
+    assert.equal(strip[0].date, "2026-06-26");
+    assert.equal(strip[6].date, "2026-07-02");
+    assert.equal(strip[6].isToday, true);
+    assert.equal(strip[5].isToday, false);
+    assert.deepEqual(
+      strip.map((day) => day.completed),
+      [false, false, false, false, true, false, true],
+    );
+    // 2026-07-02 는 목요일.
+    assert.deepEqual(
+      strip.map((day) => day.weekdayLabel),
+      ["금", "토", "일", "월", "화", "수", "목"],
+    );
+  });
+
+  it("유효하지 않은 today 면 빈 배열이다", () => {
+    assert.deepEqual(buildWeeklyStreakStrip([], "nope"), []);
+  });
+});
+
+describe("formatStreakStripHeadline", () => {
+  it("완료 여부에 따라 이어짐/도전 중 문구를 가른다", () => {
+    assert.equal(formatStreakStripHeadline(0, false), "오늘부터 연속 기록을 시작해요");
+    assert.equal(formatStreakStripHeadline(3, true), "🔥 3일 연속");
+    assert.equal(
+      formatStreakStripHeadline(3, false),
+      "🔥 3일째 도전 중 · 오늘 풀면 이어져요",
+    );
+    assert.equal(formatStreakStripHeadline(Number.NaN, false), "오늘부터 연속 기록을 시작해요");
   });
 });
