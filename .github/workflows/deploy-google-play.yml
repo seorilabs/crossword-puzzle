@@ -185,9 +185,13 @@ jobs:
           service_account: ${{ vars.GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL }}
           create_credentials_file: true
 
-      - name: Setup gcloud
+      # gcloud는 고정 버전만 쓴다. latest로 설치된 SDK의 cloudbuild v1 message에는
+      # E2_STANDARD_2가 없어 `.options.machineType: unused`로 제출이 거절된다
+      # (run 34225056022, 34228215910). org build-only 경로가 쓰는 버전과 맞춘다.
+      - name: Setup pinned gcloud
         uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
         with:
+          version: 582.0.0
           project_id: seorilabs-ci
 
       - name: Set Cloud Build quota project
@@ -232,7 +236,7 @@ jobs:
           source build.env
           gcloud builds submit . \
             --project=seorilabs-ci \
-            --region=global \
+            --region=asia-northeast3 \
             --config=cloudbuild-android.yaml \
             --ignore-file=.gcloudignore \
             --substitutions="_ANDROID_BUILDER_IMAGE=$ANDROID_BUILDER_IMAGE,_ANDROID_BUILDER_TAG=$ANDROID_BUILDER_TAG,_SEORI_RELEASE_TAG=$RELEASE_TAG,_SEORI_RELEASE_SOURCE_SHA=$SOURCE_SHA,_ANDROID_VERSION_NAME=$VERSION_NAME,_ANDROID_VERSION_CODE=$VERSION_CODE,_GOOGLE_PLAY_UPLOAD_KEY_ALIAS=$GOOGLE_PLAY_UPLOAD_KEY_ALIAS,_PLAY_GAMES_PROJECT_ID=$PLAY_GAMES_PROJECT_ID,_PLAY_GAMES_LEADERBOARD_ID=$PLAY_GAMES_LEADERBOARD_ID,_CREDENTIAL_BUCKET=$CREDENTIAL_BUCKET,_ARTIFACT_BUCKET=$ARTIFACT_BUCKET"
