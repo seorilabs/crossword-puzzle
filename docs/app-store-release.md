@@ -116,8 +116,8 @@ npm run app-store:build:local -- --export-upload --tag v1.0.0
 Workflow:
 
 ```text
-.github/workflows/deploy-app-store.yml   # Xcode Cloud 빌드 트리거(ARC runner)
-scripts/trigger-xcode-cloud-build.mjs    # ASC API: 제품·workflow·태그 ref 해석 후 ciBuildRuns
+.github/workflows/deploy-app-store.yml   # 조직 재사용 워크플로 caller
+seorilabs/.github app-store-xcode-cloud.yml  # Xcode Cloud 트리거(조직 공통, bundle id는 앱 설정에서 읽음)
 apps/mobile/ios/ci_scripts/              # Xcode Cloud 안에서 도는 빌드 준비·검증
 ```
 

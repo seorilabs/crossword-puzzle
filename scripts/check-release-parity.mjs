@@ -1325,31 +1325,15 @@ assertIncludes(
 assertIncludes(xcodeCloudPostBuild, "CFBundleVersion", xcodeCloudPostBuildPath);
 // App Store archive는 Xcode Cloud가 담당한다. GitHub Actions 경로가 macOS runner로
 // 되돌아가면(회귀) 여기서 막는다.
+// 트리거 구현은 조직 재사용 워크플로 한 벌에 있다. 여기서는 저장소가 그 워크플로를
+// 정확한 commit으로 부르는지, 그리고 macOS 러너로 되돌아가지 않는지만 본다. 러너와
+// action pin은 중앙 워크플로의 책임이라 이 파일이 다시 고정하지 않는다.
 assertIncludes(
   deployAppStoreWorkflow,
-  "scripts/trigger-xcode-cloud-build.mjs",
-  deployAppStoreWorkflowPath,
-);
-assertIncludes(
-  deployAppStoreWorkflow,
-  "runs-on: seorilabs-rpi-arm64",
+  "seorilabs/.github/.github/workflows/app-store-xcode-cloud.yml@",
   deployAppStoreWorkflowPath,
 );
 assertNotIncludes(deployAppStoreWorkflow, "macos-", deployAppStoreWorkflowPath);
-for (const [path, content] of [
-  [deployAppStoreWorkflowPath, deployAppStoreWorkflow],
-]) {
-  assertIncludes(
-    content,
-    "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
-    path,
-  );
-  assertIncludes(
-    content,
-    "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
-    path,
-  );
-}
 assertIncludes(
   appStoreLocalBuild,
   "GAME_CENTER_LEADERBOARD_ID",
