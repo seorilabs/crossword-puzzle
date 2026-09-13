@@ -165,8 +165,8 @@ fi
 
 app_identifier="$(node --input-type=module -e "const c=JSON.parse(await import('node:fs').then(fs=>fs.readFileSync('app-store/app-store.config.json','utf8'))); console.log(c.bundleId)")"
 
-AUTHORITY_SHA="9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5"
-AUTHORITY_SHA256="ca9ef5b4fe326323840b171f9e6ed069cb182d2aee8e88b72e352c57514d466b"
+AUTHORITY_SHA="565fba53aa5053785c63c9b732b93a3fbd7be847"
+AUTHORITY_SHA256="a8d3a1f6ecd1184cdfe744e930c7ab4b106a2078c9bafb9a7e20d5bcacf99e0a"
 authority_dir="$(mktemp -d)"
 authority_path="$authority_dir/tag-version-authority.mjs"
 curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \

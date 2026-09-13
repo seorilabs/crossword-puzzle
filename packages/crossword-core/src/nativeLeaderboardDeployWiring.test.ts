@@ -65,9 +65,9 @@ describe("네이티브 리더보드 배포 배선", () => {
     // ARC 러너(4608Mi cgroup)에서 RN 빌드를 돌리면 v1.1.9처럼 SIGKILL로 끝난다.
     assert.match(
       androidWorkflow,
-      /resolve-release-version\.yml@9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5/,
+      /resolve-release-version\.yml@[0-9a-f]{40}/,
     );
-    assert.match(androidWorkflow, /ref:\s*9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5/);
+    assert.match(androidWorkflow, /ref:\s*[0-9a-f]{40}/);
     assert.match(androidWorkflow, /--config=cloudbuild-android\.yaml/);
     assert.match(androidWorkflow, /runs-on:\s*seorilabs-rpi-arm64/);
     assert.doesNotMatch(androidWorkflow, /seorilabs-x64-android/);

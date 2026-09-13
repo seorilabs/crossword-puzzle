@@ -1056,10 +1056,13 @@ assertNotIncludes(
   "npm_scope:",
   deployAppsInTossWorkflowPath,
 );
-assertIncludes(
+// 중앙 판본은 올라간다. 여기서 특정 SHA 를 박아 두면 판본을 올릴 때마다 이 파일도
+// 같이 고쳐야 하고, 빠뜨리면 CI 가 빨간불로 남는다. immutable commit SHA 인지만 본다.
+assertMatches(
   deployAppsInTossWorkflow,
-  "rn-deploy-ait.yml@9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5",
+  /rn-deploy-ait\.yml@[0-9a-f]{40}/u,
   deployAppsInTossWorkflowPath,
+  "rn-deploy-ait.yml pinned to a commit SHA",
 );
 assertIncludes(
   deployGooglePlayWorkflow,
@@ -1078,15 +1081,17 @@ assertNotIncludes(
 );
 // 버전 정본은 중앙 release authority가 해석한 태그 하나이고, 검증과 업로드도
 // 같은 exact SHA의 중앙 스크립트만 쓴다.
-assertIncludes(
+assertMatches(
   deployGooglePlayWorkflow,
-  "resolve-release-version.yml@9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5",
+  /resolve-release-version\.yml@[0-9a-f]{40}/u,
   deployGooglePlayWorkflowPath,
+  "resolve-release-version.yml pinned to a commit SHA",
 );
-assertIncludes(
+assertMatches(
   deployGooglePlayWorkflow,
-  "ref: 9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5",
+  /ref: [0-9a-f]{40}/u,
   deployGooglePlayWorkflowPath,
+  "central scripts checked out at a commit SHA",
 );
 assertIncludes(
   deployGooglePlayWorkflow,
@@ -1382,9 +1387,10 @@ const deployAllResolvedTagUsages =
     /release_tag:\s*\${{ needs\.resolve\.outputs\.tag }}/g,
   )?.length ?? 0;
 
-if (deployAllResolvedTagUsages < 3) {
+// App Store 잡은 없다. 트리거는 Backoffice 가 ASC ciBuildRuns 로 직접 한다.
+if (deployAllResolvedTagUsages < 2) {
   fail(
-    `${deployAllWorkflowPath}: Deploy All must pass the resolved tag to AIT, Google Play, and App Store jobs`,
+    `${deployAllWorkflowPath}: Deploy All must pass the resolved tag to AIT and Google Play jobs`,
   );
 }
 

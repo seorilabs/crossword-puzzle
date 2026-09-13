@@ -41,7 +41,7 @@ describe("복귀 리마인더 배포 배선 설정 (#319)", () => {
   it("AIT workflow는 immutable 중앙 caller와 named secret 계약을 사용한다", () => {
     assert.match(
       deployWorkflow,
-      /rn-deploy-ait\.yml@9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5/,
+      /rn-deploy-ait\.yml@[0-9a-f]{40}/,
     );
     assert.match(deployWorkflow, /APPS_IN_TOSS_API_KEY:\s*\$\{\{ secrets\.APPS_IN_TOSS_API_KEY \}\}/);
     assert.doesNotMatch(deployWorkflow, /secrets:\s*inherit/);
