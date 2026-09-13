@@ -2,7 +2,7 @@
 
 ## 현재 상태
 
-`crossword-puzzle`의 iOS archive와 App Store Connect 업로드는 **Xcode Cloud**가 담당한다. `.github/workflows/deploy-app-store.yml`은 릴리즈 태그를 대상으로 Xcode Cloud 빌드를 트리거하고 완료를 기다리는 진입점이고, 서명은 Xcode Cloud 매니지드 서명이 처리한다.
+`crossword-puzzle`의 iOS archive와 App Store Connect 업로드는 **Xcode Cloud**가 담당한다. 릴리즈 태그를 대상으로 한 빌드 트리거는 Backoffice 가 ASC `ciBuildRuns` 로 직접 하고, 서명은 Xcode Cloud 매니지드 서명이 처리한다. Backoffice 가 멈추면 App Store Connect 의 Xcode Cloud 에서 해당 태그에 직접 Start Build 한다.
 
 GitHub Actions macOS runner에서 archive하던 방식은 걷어냈다. Xcode 26.5부터 Firebase가 정적 라이브러리 지원을 끝내 `use_frameworks!` + RNFB 혼합 링키지가 필요해졌고, macOS Action minutes도 유한하기 때문이다.
 
@@ -116,7 +116,6 @@ npm run app-store:build:local -- --export-upload --tag v1.0.0
 Workflow:
 
 ```text
-.github/workflows/deploy-app-store.yml   # 조직 재사용 워크플로 caller
 seorilabs/.github app-store-xcode-cloud.yml  # Xcode Cloud 트리거(조직 공통, bundle id는 앱 설정에서 읽음)
 apps/mobile/ios/ci_scripts/              # Xcode Cloud 안에서 도는 빌드 준비·검증
 ```

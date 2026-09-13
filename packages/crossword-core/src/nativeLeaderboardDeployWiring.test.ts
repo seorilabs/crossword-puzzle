@@ -7,10 +7,6 @@ const androidWorkflow = readFileSync(
   new URL(".github/workflows/deploy-google-play.yml", repoRoot),
   "utf8",
 );
-const iosWorkflow = readFileSync(
-  new URL(".github/workflows/deploy-app-store.yml", repoRoot),
-  "utf8",
-);
 const androidAppBuildGradle = readFileSync(
   new URL("apps/mobile/android/app/build.gradle", repoRoot),
   "utf8",
@@ -79,17 +75,6 @@ describe("네이티브 리더보드 배포 배선", () => {
       androidWorkflow,
       /uses:\s*actions\/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1/,
     );
-    assert.match(
-      iosWorkflow,
-      /uses:\s*actions\/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1/,
-    );
-    assert.match(
-      iosWorkflow,
-      /uses:\s*actions\/setup-node@820762786026740c76f36085b0efc47a31fe5020/,
-    );
-    // Apple archive/업로드는 Xcode Cloud가 한다. macOS runner로 되돌아가면 실패시킨다.
-    assert.match(iosWorkflow, /runs-on:\s*seorilabs-rpi-arm64/);
-    assert.doesNotMatch(iosWorkflow, /runs-on:\s*macos/);
   });
 
   it("Google Play caller는 internal-only 업로드와 named secret 계약을 유지한다", () => {

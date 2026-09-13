@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 
 const sharedPolicyPath = "packages/crossword-core/src/uiPolicy.ts";
 const sharedLaunchConfigPath = "packages/crossword-core/src/launchConfig.ts";
@@ -65,7 +65,6 @@ const deployAppsInTossWorkflowPath =
   ".github/workflows/deploy-apps-in-toss.yml";
 const deployGooglePlayWorkflowPath = ".github/workflows/deploy-google-play.yml";
 const promoteGooglePlayWorkflowPath = ".github/workflows/promote-google-play.yml";
-const deployAppStoreWorkflowPath = ".github/workflows/deploy-app-store.yml";
 const androidBuildEnvPath = "build.env";
 const androidCloudBuildConfigPath = "cloudbuild-android.yaml";
 const androidCloudBuildScriptPath = "scripts/build-android.sh";
@@ -420,7 +419,6 @@ const deployAllWorkflow = read(deployAllWorkflowPath);
 const deployAppsInTossWorkflow = read(deployAppsInTossWorkflowPath);
 const deployGooglePlayWorkflow = read(deployGooglePlayWorkflowPath);
 const promoteGooglePlayWorkflow = read(promoteGooglePlayWorkflowPath);
-const deployAppStoreWorkflow = read(deployAppStoreWorkflowPath);
 const androidBuildEnv = read(androidBuildEnvPath);
 const androidCloudBuildConfig = read(androidCloudBuildConfigPath);
 const androidCloudBuildScript = read(androidCloudBuildScriptPath);
@@ -1325,15 +1323,14 @@ assertIncludes(
 assertIncludes(xcodeCloudPostBuild, "CFBundleVersion", xcodeCloudPostBuildPath);
 // App Store archive는 Xcode Cloud가 담당한다. GitHub Actions 경로가 macOS runner로
 // 되돌아가면(회귀) 여기서 막는다.
-// 트리거 구현은 조직 재사용 워크플로 한 벌에 있다. 여기서는 저장소가 그 워크플로를
-// 정확한 commit으로 부르는지, 그리고 macOS 러너로 되돌아가지 않는지만 본다. 러너와
-// action pin은 중앙 워크플로의 책임이라 이 파일이 다시 고정하지 않는다.
-assertIncludes(
-  deployAppStoreWorkflow,
-  "seorilabs/.github/.github/workflows/app-store-xcode-cloud.yml@",
-  deployAppStoreWorkflowPath,
-);
-assertNotIncludes(deployAppStoreWorkflow, "macos-", deployAppStoreWorkflowPath);
+// App Store 트리거는 Backoffice 가 ASC ciBuildRuns 로 직접 한다. 이 저장소에는 App Store
+// 워크플로를 두지 않는다. 예전에는 caller 하나만 macOS 러너가 아닌지 봤는데, 파일이
+// 사라진 지금은 어떤 워크플로도 macOS 러너로 되돌아가지 않는지를 본다.
+for (const name of readdirSync(".github/workflows")) {
+  if (!name.endsWith(".yml")) continue;
+  const workflowPath = `.github/workflows/${name}`;
+  assertNotIncludes(read(workflowPath), "macos-", workflowPath);
+}
 assertIncludes(
   appStoreLocalBuild,
   "GAME_CENTER_LEADERBOARD_ID",
