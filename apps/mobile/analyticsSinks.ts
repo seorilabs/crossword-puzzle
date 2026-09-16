@@ -1,12 +1,12 @@
-import {Platform} from 'react-native';
+import { Platform } from 'react-native';
 import {
-  createReleaseVersionedSink,
+  createAnalyticsDimensionedSink,
   resolveReleaseVersion,
   type CompactTelemetryParams,
   type GameAnalyticsSink,
   type GameMarket,
 } from '../../packages/crossword-core/src';
-import {version as packageVersion} from './package.json';
+import { version as packageVersion } from './package.json';
 import {
   logFirebaseAnalyticsEvent,
   logFirebaseScreenView,
@@ -18,11 +18,12 @@ import NativeAppInfo from './specs/NativeAppInfo';
 // 모바일에는 AppsInToss Analytics가 없으므로 Firebase가 기본 sink다.
 
 /**
- * 이 앱 빌드가 도는 마켓. Android=Google Play, iOS=App Store. 마켓개별/마켓통합 지표를
+ * 이 앱 빌드가 도는 마켓. Android=google_play, iOS=app_store. 마켓개별/마켓통합 지표를
  * 뽑기 위해 모든 게임 이벤트에 실린다.
  */
 export const currentMarket: GameMarket =
-  Platform.OS === 'ios' ? 'app-store' : 'google-play';
+  Platform.OS === 'ios' ? 'app_store' : 'google_play';
+export const currentRuntimePlatform = Platform.OS === 'ios' ? 'ios' : 'android';
 
 // 이 빌드의 릴리즈 버전(release_version 계측 값). 첫 후보는 네이티브 버전 브리지
 // (Android versionName / iOS CFBundleShortVersionString)로, 태그 유래 실제 릴리즈
@@ -43,10 +44,10 @@ export const RELEASE_VERSION = resolveReleaseVersion(
 );
 
 export type AnalyticsEvent =
-  | {kind: 'screen'; name: string; params: CompactTelemetryParams}
-  | {kind: 'impression'; name: string; params: CompactTelemetryParams}
-  | {kind: 'click'; name: string; params: CompactTelemetryParams}
-  | {kind: 'game'; name: string; params: CompactTelemetryParams};
+  | { kind: 'screen'; name: string; params: CompactTelemetryParams }
+  | { kind: 'impression'; name: string; params: CompactTelemetryParams }
+  | { kind: 'click'; name: string; params: CompactTelemetryParams }
+  | { kind: 'game'; name: string; params: CompactTelemetryParams };
 
 export interface AnalyticsSink {
   readonly id: string;
@@ -82,7 +83,7 @@ export function createHttpMetricsSink(endpoint: string): AnalyticsSink {
         void fetch(endpoint, {
           method: 'POST',
           body,
-          headers: {'content-type': 'application/json'},
+          headers: { 'content-type': 'application/json' },
         }).catch(() => {
           // 분석은 절대 플레이를 끊지 않는다.
         });
@@ -101,11 +102,15 @@ function buildSinks(): AnalyticsSink[] {
   return sinks;
 }
 
-// 모든 sink를 release_version 첨부 데코레이터로 감싼다. dispatchAnalytics와
+// 모든 sink를 표준 분석 차원 데코레이터로 감싼다. dispatchAnalytics와
 // gameAnalyticsSinks가 모두 이 배열에서 파생되므로, 여기 한 곳에서 감싸면 전 이벤트에
-// 개별 호출 수정 없이 release_version이 실린다(웹 adapter와 동일 구조, #293).
+// 개별 호출 수정 없이 시장·runtime·release가 실린다(웹 adapter와 동일 구조).
 export const analyticsSinks: readonly AnalyticsSink[] = buildSinks().map(sink =>
-  createReleaseVersionedSink(sink, RELEASE_VERSION),
+  createAnalyticsDimensionedSink(sink, {
+    appMarket: currentMarket,
+    runtimePlatform: currentRuntimePlatform,
+    releaseVersion: RELEASE_VERSION,
+  }),
 );
 
 export function dispatchAnalytics(event: AnalyticsEvent): void {
@@ -122,6 +127,6 @@ export const gameAnalyticsSinks: readonly GameAnalyticsSink[] =
   analyticsSinks.map(sink => ({
     id: sink.id,
     logGameEvent(name, params) {
-      sink.track({kind: 'game', name, params});
+      sink.track({ kind: 'game', name, params });
     },
   }));

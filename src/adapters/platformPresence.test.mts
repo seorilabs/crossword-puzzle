@@ -20,7 +20,7 @@ const tokenResponse = () =>
 
 const nextTurn = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
-describe("@seorilabs/platform-sdk Presence 0.4.0 통합", () => {
+describe("@seorilabs/platform-sdk Presence 0.5.0 통합", () => {
   it("presenceEnabled=false이면 token과 Edge 요청이 모두 0회다", async () => {
     let requests = 0;
     const platform = createPlatform({

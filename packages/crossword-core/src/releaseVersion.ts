@@ -11,7 +11,18 @@ export type { CompactTelemetryParams } from "./platformContracts.ts";
  * 모든 이벤트에 실리는 릴리즈 버전 파라미터 키. happy-farm 등 다른 Seorilabs AIT 게임의
  * 버전 표준 파라미터와 동일한 이름을 써, 백오피스가 게임 간 같은 축으로 집계할 수 있다.
  */
+export const APP_MARKET_PARAM_KEY = "app_market";
+export const RUNTIME_PLATFORM_PARAM_KEY = "runtime_platform";
 export const RELEASE_VERSION_PARAM_KEY = "release_version";
+
+export type AnalyticsAppMarket = "google_play" | "app_store" | "apps_in_toss";
+export type AnalyticsRuntimePlatform = "android" | "ios" | "web";
+
+export type AnalyticsDimensions = {
+  appMarket: AnalyticsAppMarket;
+  runtimePlatform: AnalyticsRuntimePlatform;
+  releaseVersion: string;
+};
 
 /**
  * 유효한 버전을 찾지 못했을 때의 안전 기본값. GA4에서 NULL 대신 "미상" 값을 채워
@@ -54,7 +65,7 @@ export function resolveReleaseVersion(
  * 최소 sink 계약. 각 마켓 adapter의 AnalyticsSink(params를 가진 이벤트를 track)를 포괄하는
  * 제네릭 형태라, SDK import 없이 core에서 다룰 수 있다.
  */
-export interface ReleaseVersionedSink<
+export interface AnalyticsDimensionedSink<
   E extends { params: CompactTelemetryParams },
 > {
   readonly id: string;
@@ -62,23 +73,28 @@ export interface ReleaseVersionedSink<
 }
 
 /**
- * sink를 감싸, track되는 모든 이벤트의 params에 release_version을 자동 병합한다. 이벤트
- * 종류(screen/impression/click/game)와 무관하게 sink 공통 경로에서 첨부되므로 개별 emit
- * 호출은 수정할 필요가 없다(#293). 이미 release_version이 실려 있으면 그 값을 보존한다.
+ * sink를 감싸 모든 커스텀 이벤트에 표준 분석 차원을 자동 병합한다. 표준값을 마지막에
+ * 덮어써 호출자가 market/release 값을 위조하거나 레거시 값을 되살릴 수 없게 한다.
  */
-export function createReleaseVersionedSink<
+export function createAnalyticsDimensionedSink<
   E extends { params: CompactTelemetryParams },
->(sink: ReleaseVersionedSink<E>, version: string): ReleaseVersionedSink<E> {
+>(
+  sink: AnalyticsDimensionedSink<E>,
+  dimensions: AnalyticsDimensions,
+): AnalyticsDimensionedSink<E> {
   return {
     id: sink.id,
     track(event) {
-      // params만 release_version으로 보강하고 나머지 이벤트 속성(kind/name 등)은 그대로
-      // 복사한다. 제네릭 E의 스프레드 대입 한계 때문에 결과를 E로 단언한다(속성 손실 없음).
-      const withVersion = {
+      const withDimensions = {
         ...event,
-        params: { [RELEASE_VERSION_PARAM_KEY]: version, ...event.params },
+        params: {
+          ...event.params,
+          [APP_MARKET_PARAM_KEY]: dimensions.appMarket,
+          [RUNTIME_PLATFORM_PARAM_KEY]: dimensions.runtimePlatform,
+          [RELEASE_VERSION_PARAM_KEY]: dimensions.releaseVersion,
+        },
       } as E;
-      sink.track(withVersion);
+      sink.track(withDimensions);
     },
   };
 }

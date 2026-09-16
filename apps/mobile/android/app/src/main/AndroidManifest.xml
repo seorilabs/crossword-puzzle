@@ -25,7 +25,7 @@
       android:supportsRtl="true">
       <meta-data
         android:name="com.google.android.gms.ads.APPLICATION_ID"
-        android:value="ca-app-pub-2444587584524186~5456766418"
+        android:value="ca-app-pub-9932778305312246~7356925389"
         tools:replace="android:value" />
       <meta-data
         android:name="com.google.android.gms.games.APP_ID"

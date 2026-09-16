@@ -768,12 +768,12 @@ assertIncludes(
 );
 assertIncludes(
   mobileAppJson,
-  '"android_app_id": "ca-app-pub-2444587584524186~5456766418"',
+  '"android_app_id": "ca-app-pub-9932778305312246~7356925389"',
   mobileAppJsonPath,
 );
 assertIncludes(
   mobileAppJson,
-  '"ios_app_id": "ca-app-pub-2444587584524186~4715406099"',
+  '"ios_app_id": "ca-app-pub-9932778305312246~5361317430"',
   mobileAppJsonPath,
 );
 assertIncludes(mobileAppJson, '"sk_ad_network_items":', mobileAppJsonPath);
@@ -800,7 +800,7 @@ assertIncludes(
 );
 assertIncludes(mobileAds, "initializeMobileAds", mobileAdsPath);
 assertIncludes(mobileAds, "showRewardedAd", mobileAdsPath);
-assertIncludes(mobileAds, "showInterstitialAd", mobileAdsPath);
+assertNotIncludes(mobileAds, "showInterstitialAd", mobileAdsPath);
 assertIncludes(mobileAds, "requestNonPersonalizedAdsOnly: true", mobileAdsPath);
 assertIncludes(mobileAds, "setRequestConfiguration", mobileAdsPath);
 assertIncludes(mobileApp, "showRewardedAd", mobileAppPath);
@@ -953,7 +953,7 @@ assertIncludes(
 );
 assertIncludes(
   androidManifest,
-  "ca-app-pub-2444587584524186~5456766418",
+  "ca-app-pub-9932778305312246~7356925389",
   androidManifestPath,
 );
 assertIncludes(appDelegate, "import Firebase", appDelegatePath);

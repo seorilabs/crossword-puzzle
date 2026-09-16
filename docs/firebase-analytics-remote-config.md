@@ -64,28 +64,34 @@ Remote Config는 보안 결정이나 정답 검증의 source가 아니다. UI �
 
 AIT는 AppsInToss Analytics와 Firebase Analytics를 함께 호출한다. 샌드박스나 로컬 브라우저에서 일부 이벤트가 실제 콘솔에 쌓이지 않을 수 있으므로, QA는 런타임 로그와 라이브 콘솔을 분리해서 본다.
 
-| Event                            | 시점                                              |
-| -------------------------------- | ------------------------------------------------- |
-| `screen_view`                    | 홈, 풀이, 결과, 기록 화면 진입                    |
-| `puzzle_select`                  | 홈/풀이/결과에서 다른 퍼즐 카드 선택              |
+모든 커스텀 이벤트는 공통 sink에서 `app_market`, `runtime_platform`,
+`release_version`을 강제로 덧붙인다. 값은 각각
+`google_play|app_store|apps_in_toss`, `android|ios|web`, 실제 빌드 버전이다.
+레거시 `market` 파라미터는 더 이상 발화하지 않는다. Firebase 자동 이벤트는 이 계약의
+대상이 아니며 BigQuery 정규화 뷰에서만 보완한다.
+
+| Event                            | 시점                                                                                                                                           |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `screen_view`                    | 홈, 풀이, 결과, 기록 화면 진입                                                                                                                 |
+| `puzzle_select`                  | 홈/풀이/결과에서 다른 퍼즐 카드 선택                                                                                                           |
 | `home_quick_start`               | 홈 사다리 단계·하단 CTA로 퍼즐 시작. `source=ladder_step_1\|ladder_step_2`, `ladder_step`, `step_status`, `status=loaded\|missing\|onboarding` |
-| `mission_start`                  | 퍼즐별 첫 도전 시작                               |
-| `attempt_start`                  | 첫 도전 또는 재도전 시작                          |
-| `first_answer_input`             | 도전 중 첫 수동 입력                              |
-| `hint_reveal`                    | 힌트 1개 사용                                     |
-| `rewarded_hint_ad_request`       | 보상형 광고 요청                                  |
-| `rewarded_hint_ad_event`         | 보상형 광고 load/show 이벤트                      |
-| `rewarded_hint_ad_reward`        | `userEarnedReward` 수신 후 힌트 지급              |
-| `mission_complete`               | 퍼즐 완료. 완료자 집계 기준                       |
-| `puzzle_abandon`                 | 시작 후 미완료로 보드 이탈(시도당 1회)            |
-| `result_interstitial_ad_request` | 결과 전면 광고 요청. 현재 기본 비활성             |
-| `result_interstitial_ad_event`   | 결과 전면 광고 load/show 이벤트. 현재 기본 비활성 |
-| `result_interstitial_ad_result`  | 결과 전면 광고 종료/실패. 현재 기본 비활성        |
-| `return_reminder_preprompt`      | 완료 축하 화면의 복귀 알림 사전 안내 카드. `action=shown\|accept\|decline`, `channel`, `prompt_count`, `streak_days` |
-| `return_reminder_prompt`         | 사전 안내 수락 뒤 시스템 동의·권한 요청 시작      |
-| `return_reminder_schedule`       | RN 동의 사용자의 매 완료 D+1 로컬 알림 재예약 결과. `channel=local`, `outcome`, `reminder_date` |
-| `return_reminder_result`         | 동의 결과와 오류 코드·래퍼·실패 단계 기록         |
-| `notification_opened`            | RN 로컬 복귀 알림 탭 후 오늘의 퍼즐 진입          |
+| `mission_start`                  | 퍼즐별 첫 도전 시작                                                                                                                            |
+| `attempt_start`                  | 첫 도전 또는 재도전 시작                                                                                                                       |
+| `first_answer_input`             | 도전 중 첫 수동 입력                                                                                                                           |
+| `hint_reveal`                    | 힌트 1개 사용                                                                                                                                  |
+| `rewarded_hint_ad_request`       | 보상형 광고 요청                                                                                                                               |
+| `rewarded_hint_ad_event`         | 보상형 광고 load/show 이벤트                                                                                                                   |
+| `rewarded_hint_ad_reward`        | `userEarnedReward` 수신 후 힌트 지급                                                                                                           |
+| `mission_complete`               | 퍼즐 완료. 완료자 집계 기준                                                                                                                    |
+| `puzzle_abandon`                 | 시작 후 미완료로 보드 이탈(시도당 1회)                                                                                                         |
+| `result_interstitial_ad_request` | 결과 전면 광고 요청. 현재 기본 비활성                                                                                                          |
+| `result_interstitial_ad_event`   | 결과 전면 광고 load/show 이벤트. 현재 기본 비활성                                                                                              |
+| `result_interstitial_ad_result`  | 결과 전면 광고 종료/실패. 현재 기본 비활성                                                                                                     |
+| `return_reminder_preprompt`      | 완료 축하 화면의 복귀 알림 사전 안내 카드. `action=shown\|accept\|decline`, `channel`, `prompt_count`, `streak_days`                           |
+| `return_reminder_prompt`         | 사전 안내 수락 뒤 시스템 동의·권한 요청 시작                                                                                                   |
+| `return_reminder_schedule`       | RN 동의 사용자의 매 완료 D+1 로컬 알림 재예약 결과. `channel=local`, `outcome`, `reminder_date`                                                |
+| `return_reminder_result`         | 동의 결과와 오류 코드·래퍼·실패 단계 기록                                                                                                      |
+| `notification_opened`            | RN 로컬 복귀 알림 탭 후 오늘의 퍼즐 진입                                                                                                       |
 
 집계용 이벤트는 공통으로 `puzzle_id`, `slot_id`, `pack_id`, `published_at`, `difficulty`, `grid_size`, `word_count`를 포함한다. 미션/시도 이벤트는 `attempt_number`, `remaining_attempts`, `hint_count`, `earned_hint_credits`를 추가한다. `mission_complete`는 `completed_at`, `elapsed_seconds`, `completed_word_count`도 포함한다.
 
@@ -122,10 +128,19 @@ node scripts/restore-mobile-firebase-config.mjs --ios --require
 
 ## Native AdMob IDs
 
-| Platform | App ID                                   | rewarded hint                            | interstitial result                      | rewarded bonus puzzle                    |
-| -------- | ---------------------------------------- | ---------------------------------------- | ---------------------------------------- | ---------------------------------------- |
-| Android  | `ca-app-pub-2444587584524186~5456766418` | `ca-app-pub-2444587584524186/7533141122` | `ca-app-pub-2444587584524186/4930691809` | `ca-app-pub-2444587584524186/2299285882` |
-| iOS      | `ca-app-pub-2444587584524186~4715406099` | `ca-app-pub-2444587584524186/6151776694` | `ca-app-pub-2444587584524186/3402324424` | `ca-app-pub-2444587584524186/2089242756` |
+공개 원장은 `.github#167`, catalog logical ID는
+`app/crossword-puzzle/admob/public-identifiers`다. 현재 유지 placement는
+`rewardedHint` 하나뿐이며 호출되지 않던 결과 interstitial 구현과 제거된 보너스 퍼즐 ID는
+운영 설정에서 제거했다. 개발·QA 빌드의 Google 테스트 ID 경로는 유지한다.
+
+| Platform | App ID                                   | rewarded hint                            |
+| -------- | ---------------------------------------- | ---------------------------------------- |
+| Android  | `ca-app-pub-9932778305312246~7356925389` | `ca-app-pub-9932778305312246/1613644113` |
+| iOS      | `ca-app-pub-9932778305312246~5361317430` | `ca-app-pub-9932778305312246/5603016700` |
+
+이번 변경은 코드·계약·테스트만 정리한다. Firebase↔GA4, BigQuery export,
+AdMob↔Firebase, custom dimension, impression-level revenue의 콘솔 상태와 실데이터는
+변경하거나 개선됐다고 간주하지 않는다.
 
 ## 배포 전 확인
 

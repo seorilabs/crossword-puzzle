@@ -13,16 +13,15 @@ import {
   compactTelemetryParams,
   normalizePuzzleIdentifierTelemetryParam,
   type CompactTelemetryParams,
-  type MarketTarget,
   type TelemetryParam,
 } from "./platformContracts.ts";
 import { getNewlyReachedStreakMilestone } from "./uiPolicy.ts";
 
 /**
- * 게임 이벤트가 실린 마켓. 마켓통합(all) 지표와 마켓개별 지표를 동시에 뽑기 위해
- * 모든 게임 이벤트에 필수로 실린다. 값은 core의 MarketTarget과 동일하게 유지한다.
+ * 게임 이벤트가 실린 표준 마켓. 대시를 쓰던 레거시 MarketTarget과 분리해 GA4·BigQuery
+ * 조직 계약의 snake_case enum을 모든 게임 이벤트에 고정한다.
  */
-export type GameMarket = MarketTarget;
+export type GameMarket = "google_play" | "app_store" | "apps_in_toss";
 
 /**
  * 이벤트 계약 버전. 페이로드 스키마를 바꾸면 올린다. 백오피스가 스키마 변화를 구분해
@@ -245,7 +244,7 @@ export function buildGameAnalyticsEvent<E extends GameAnalyticsEventName>(
 
   const params = compactTelemetryParams({
     schema_version: GAME_ANALYTICS_SCHEMA_VERSION,
-    market: input.market,
+    app_market: input.market,
     ...contextParams(input.context),
     ...snakeCased,
     ...derivedParams(name, payload),
@@ -275,7 +274,7 @@ export function buildGameProgressionEvent<E extends GameProgressionEventName>(
 
   const params = compactTelemetryParams({
     schema_version: GAME_ANALYTICS_SCHEMA_VERSION,
-    market: input.market,
+    app_market: input.market,
     ...snakeCased,
   });
 
