@@ -20,16 +20,16 @@ const read = (path) => readFileSync(path, "utf8");
 const json = (path) => JSON.parse(read(path));
 const fail = (message) => failures.push(message);
 const equal = (actual, wanted, label) => {
-  if (actual !== wanted) fail(`${label}: expected ${wanted}, found ${actual}`);
+  if (actual !== wanted) fail(`${label}: configured value mismatch`);
 };
 const includes = (content, value, label) => {
-  if (!content.includes(value)) fail(`${label}: missing ${value}`);
+  if (!content.includes(value)) fail(`${label}: required value missing`);
 };
 const excludes = (content, value, label) => {
-  if (content.includes(value)) fail(`${label}: forbidden ${value}`);
+  if (content.includes(value)) fail(`${label}: forbidden value present`);
 };
 const excludesPattern = (content, pattern, label) => {
-  if (pattern.test(content)) fail(`${label}: forbidden ${pattern}`);
+  if (pattern.test(content)) fail(`${label}: forbidden pattern present`);
 };
 
 const play = json("play-store/google-play.config.json");
@@ -63,9 +63,7 @@ for (const [label, config, platform] of [
   );
   const placements = Object.keys(config.adMob?.adUnits ?? {}).sort();
   if (placements.join(",") !== "rewardedHint") {
-    fail(
-      `${label} placements: expected rewardedHint only, found ${placements}`,
-    );
+    fail(`${label} placements: unexpected placement set`);
   }
 }
 
