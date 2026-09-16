@@ -28,6 +28,9 @@ const includes = (content, value, label) => {
 const excludes = (content, value, label) => {
   if (content.includes(value)) fail(`${label}: forbidden ${value}`);
 };
+const excludesPattern = (content, pattern, label) => {
+  if (pattern.test(content)) fail(`${label}: forbidden ${pattern}`);
+};
 
 const play = json("play-store/google-play.config.json");
 const appStore = json("app-store/app-store.config.json");
@@ -104,7 +107,11 @@ for (const key of ["app_market", "runtime_platform", "release_version"]) {
   includes(dimensions, `"${key}"`, "analytics standard dimensions");
 }
 includes(gameAnalytics, "app_market: input.market", "game analytics market");
-excludes(gameAnalytics, "    market: input.market", "legacy emitted market");
+excludesPattern(
+  gameAnalytics,
+  /(?:^|[\s,{])market\s*:\s*input\.market\b/m,
+  "legacy emitted market",
+);
 includes(webAnalytics, "appMarket: currentMarket", "AIT analytics dimensions");
 includes(webAnalytics, 'runtimePlatform: "web"', "AIT runtime platform");
 includes(

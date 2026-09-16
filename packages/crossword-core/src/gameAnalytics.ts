@@ -15,13 +15,14 @@ import {
   type CompactTelemetryParams,
   type TelemetryParam,
 } from "./platformContracts.ts";
+import type { AnalyticsAppMarket } from "./releaseVersion.ts";
 import { getNewlyReachedStreakMilestone } from "./uiPolicy.ts";
 
 /**
  * 게임 이벤트가 실린 표준 마켓. 대시를 쓰던 레거시 MarketTarget과 분리해 GA4·BigQuery
  * 조직 계약의 snake_case enum을 모든 게임 이벤트에 고정한다.
  */
-export type GameMarket = "google_play" | "app_store" | "apps_in_toss";
+export type GameMarket = AnalyticsAppMarket;
 
 /**
  * 이벤트 계약 버전. 페이로드 스키마를 바꾸면 올린다. 백오피스가 스키마 변화를 구분해
