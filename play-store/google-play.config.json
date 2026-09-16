@@ -18,11 +18,11 @@
   },
   "adMob": {
     "status": "native SDK adapter integrated in apps/mobile; QA with Google test ad units before production rollout",
-    "appId": "ca-app-pub-2444587584524186~5456766418",
+    "publisherId": "pub-9932778305312246",
+    "catalogLogicalId": "app/crossword-puzzle/admob/public-identifiers",
+    "appId": "ca-app-pub-9932778305312246~7356925389",
     "adUnits": {
-      "rewardedHint": "ca-app-pub-2444587584524186/7533141122",
-      "interstitialResult": "ca-app-pub-2444587584524186/4930691809",
-      "rewardedBonusPuzzle": "ca-app-pub-2444587584524186/2299285882"
+      "rewardedHint": "ca-app-pub-9932778305312246/1613644113"
     },
     "productionPolicy": "Development builds use Google test ad units through react-native-google-mobile-ads; release builds use these production IDs after adapter QA. Personalized ads stay off for the first launch; requests set requestNonPersonalizedAdsOnly=true, global request configuration marks child-directed and under-age-of-consent treatment false, and simulator/emulator devices are allowlisted as test devices."
   },

@@ -1,6 +1,6 @@
 import { Analytics as AppsInTossAnalytics } from "@apps-in-toss/web-framework";
 import {
-  createReleaseVersionedSink,
+  createAnalyticsDimensionedSink,
   resolveReleaseVersion,
   type CompactTelemetryParams,
   type GameAnalyticsSink,
@@ -15,8 +15,8 @@ import { logFirebaseAnalyticsEvent } from "./firebaseClient";
 // 도입이 "sink 하나 추가"로 끝나고, 호출부(telemetry / gameAnalytics)는 바뀌지 않는다.
 // 이벤트 계약(무엇을 보낼지)은 core의 gameAnalytics.ts에 있고, 여기서는 "어디로 보낼지"만 정한다.
 
-/** 이 앱 빌드가 도는 마켓. AIT WebView 빌드는 항상 apps-in-toss다. */
-export const currentMarket: GameMarket = "apps-in-toss";
+/** 이 앱 빌드가 도는 마켓. AIT WebView 빌드는 항상 apps_in_toss다. */
+export const currentMarket: GameMarket = "apps_in_toss";
 
 // 이 빌드의 릴리즈 버전(release_version 계측 값). 배포 워크플로가 주입하는 태그 유래
 // VITE_APP_VERSION/VITE_RELEASE_TAG를 우선 쓰고, 없으면 vite define으로 주입된 패키지
@@ -129,11 +129,16 @@ function buildSinks(): AnalyticsSink[] {
   return sinks;
 }
 
-// 모든 sink를 release_version 첨부 데코레이터로 감싼다. dispatchAnalytics와
+// 모든 sink를 표준 분석 차원 데코레이터로 감싼다. dispatchAnalytics와
 // gameAnalyticsSinks가 모두 이 배열에서 파생되므로, 여기 한 곳에서 감싸면 screen/
-// impression/click/game 전 이벤트에 개별 호출 수정 없이 release_version이 실린다(#293).
-export const analyticsSinks: readonly AnalyticsSink[] = buildSinks().map((sink) =>
-  createReleaseVersionedSink(sink, RELEASE_VERSION),
+// impression/click/game 전 이벤트에 개별 호출 수정 없이 세 표준 차원이 실린다.
+export const analyticsSinks: readonly AnalyticsSink[] = buildSinks().map(
+  (sink) =>
+    createAnalyticsDimensionedSink(sink, {
+      appMarket: currentMarket,
+      runtimePlatform: "web",
+      releaseVersion: RELEASE_VERSION,
+    }),
 );
 
 /** 등록된 모든 sink로 이벤트를 팬아웃한다. 한 sink 실패가 나머지를 막지 않는다. */

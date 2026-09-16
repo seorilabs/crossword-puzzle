@@ -7,7 +7,7 @@ import { PLATFORM_PRESENCE_ENABLED } from "./platformPresence.ts";
 const read = (path: string) => readFileSync(path, "utf8");
 
 describe("#356 Platform Presence Phase A 인수조건", () => {
-  it("AC-1: SDK 0.4.0 exact dependency와 clean install/import 실행 경로를 고정한다", () => {
+  it("AC-1: SDK 0.5.0 exact dependency와 clean install/import 실행 경로를 고정한다", () => {
     const rootPackage = JSON.parse(read("package.json"));
     const mobilePackage = JSON.parse(read("apps/mobile/package.json"));
     const rootLock = JSON.parse(read("package-lock.json"));

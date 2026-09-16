@@ -28,15 +28,16 @@ function context(
 }
 
 describe("buildGameAnalyticsEvent", () => {
-  it("항상 market·schema_version·컨텍스트를 병합한다", () => {
+  it("항상 app_market·schema_version·컨텍스트를 병합한다", () => {
     const { name, params } = buildGameAnalyticsEvent("game_puzzle_start", {
-      market: "apps-in-toss",
+      market: "apps_in_toss",
       context: context(),
       payload: { attemptKind: "first", attemptNumber: 1 },
     });
 
     assert.equal(name, "game_puzzle_start");
-    assert.equal(params.market, "apps-in-toss");
+    assert.equal(params.app_market, "apps_in_toss");
+    assert.ok(!("market" in params));
     assert.equal(params.schema_version, GAME_ANALYTICS_SCHEMA_VERSION);
     assert.equal(params.puzzle_id, "puzzle-1");
     assert.equal(params.puzzle_alias, "alias-a");
@@ -52,7 +53,7 @@ describe("buildGameAnalyticsEvent", () => {
 
   it("숫자형 퍼즐·alias·pack·slot 식별자를 sink 전에 문자열로 정규화한다 (#351)", () => {
     const { params } = buildGameAnalyticsEvent("game_puzzle_start", {
-      market: "apps-in-toss",
+      market: "apps_in_toss",
       context: context({
         puzzleId: 26082100,
         puzzleAlias: 26082100,
@@ -70,7 +71,7 @@ describe("buildGameAnalyticsEvent", () => {
 
   it("완료 이벤트에 no_hint/first_try 파생값을 계산한다", () => {
     const noHintFirstTry = buildGameAnalyticsEvent("game_puzzle_complete", {
-      market: "google-play",
+      market: "google_play",
       context: context(),
       payload: {
         solveTimeSec: 88,
@@ -85,7 +86,7 @@ describe("buildGameAnalyticsEvent", () => {
     assert.equal(noHintFirstTry.params.solve_time_sec, 88);
 
     const hintedRetry = buildGameAnalyticsEvent("game_puzzle_complete", {
-      market: "app-store",
+      market: "app_store",
       context: context(),
       payload: {
         solveTimeSec: 120,
@@ -99,7 +100,7 @@ describe("buildGameAnalyticsEvent", () => {
     assert.equal(hintedRetry.params.first_try, false);
 
     const revealed = buildGameAnalyticsEvent("game_puzzle_complete", {
-      market: "app-store",
+      market: "app_store",
       context: context(),
       payload: {
         solveTimeSec: 60,
@@ -115,7 +116,7 @@ describe("buildGameAnalyticsEvent", () => {
 
   it("null/undefined 파라미터는 제거한다", () => {
     const { params } = buildGameAnalyticsEvent("game_hint_use", {
-      market: "apps-in-toss",
+      market: "apps_in_toss",
       context: context({ packId: null, slotId: null, themeTag: undefined }),
       payload: { hintType: "reveal_word", hintRemainingAfter: null },
     });
@@ -130,12 +131,12 @@ describe("buildGameAnalyticsEvent", () => {
 describe("진척 이벤트 스키마·빌더 buildGameProgressionEvent (#292)", () => {
   it("AC-1: 코어 gameAnalytics에 streak_view 이벤트명·파라미터 키를 정의한다 (#292)", () => {
     const { name, params } = buildGameProgressionEvent("streak_view", {
-      market: "apps-in-toss",
+      market: "apps_in_toss",
       payload: { currentStreak: 6, longestStreak: 12 },
     });
 
     assert.equal(name, "streak_view");
-    assert.equal(params.market, "apps-in-toss");
+    assert.equal(params.app_market, "apps_in_toss");
     assert.equal(params.schema_version, GAME_ANALYTICS_SCHEMA_VERSION);
     assert.equal(params.current_streak, 6);
     assert.equal(params.longest_streak, 12);
@@ -146,15 +147,15 @@ describe("진척 이벤트 스키마·빌더 buildGameProgressionEvent (#292)", 
 
   it("AC-1: streak_milestone·personal_stats_view 이벤트명·파라미터 키를 정의한다 (#292)", () => {
     const milestone = buildGameProgressionEvent("streak_milestone", {
-      market: "google-play",
+      market: "google_play",
       payload: { streakLength: 7 },
     });
     assert.equal(milestone.name, "streak_milestone");
     assert.equal(milestone.params.streak_length, 7);
-    assert.equal(milestone.params.market, "google-play");
+    assert.equal(milestone.params.app_market, "google_play");
 
     const statsView = buildGameProgressionEvent("personal_stats_view", {
-      market: "app-store",
+      market: "app_store",
       payload: { totalPuzzles: 20, completedCount: 13 },
     });
     assert.equal(statsView.name, "personal_stats_view");
@@ -164,20 +165,20 @@ describe("진척 이벤트 스키마·빌더 buildGameProgressionEvent (#292)", 
 
   it("AC-3: 진척 파라미터를 숫자형으로 유지한다 — string 적재 금지 (#292)", () => {
     const streakView = buildGameProgressionEvent("streak_view", {
-      market: "apps-in-toss",
+      market: "apps_in_toss",
       payload: { currentStreak: 6, longestStreak: 12 },
     });
     assert.equal(typeof streakView.params.current_streak, "number");
     assert.equal(typeof streakView.params.longest_streak, "number");
 
     const milestone = buildGameProgressionEvent("streak_milestone", {
-      market: "apps-in-toss",
+      market: "apps_in_toss",
       payload: { streakLength: 7 },
     });
     assert.equal(typeof milestone.params.streak_length, "number");
 
     const statsView = buildGameProgressionEvent("personal_stats_view", {
-      market: "apps-in-toss",
+      market: "apps_in_toss",
       payload: { totalPuzzles: 20, completedCount: 13 },
     });
     assert.equal(typeof statsView.params.total_puzzles, "number");
@@ -207,7 +208,7 @@ describe("createGameAnalyticsClient.trackProgression (#292)", () => {
   it("AC-5: 등록된 모든 sink에 마켓을 주입해 진척 이벤트를 팬아웃한다 — 파라미터 검증 (#292)", () => {
     const seen: Array<{ name: string; params: Record<string, unknown> }> = [];
     const client = createGameAnalyticsClient({
-      market: "apps-in-toss",
+      market: "apps_in_toss",
       sinks: [
         {
           id: "test",
@@ -229,7 +230,7 @@ describe("createGameAnalyticsClient.trackProgression (#292)", () => {
       seen.map(({ name }) => name),
       ["personal_stats_view", "streak_view"],
     );
-    assert.equal(seen[0].params.market, "apps-in-toss");
+    assert.equal(seen[0].params.app_market, "apps_in_toss");
     assert.equal(seen[0].params.total_puzzles, 4);
     assert.equal(seen[1].params.longest_streak, 9);
   });
@@ -249,7 +250,7 @@ describe("createGameAnalyticsClient.trackProgression (#292)", () => {
     };
 
     const client = createGameAnalyticsClient({
-      market: "apps-in-toss",
+      market: "apps_in_toss",
       sinks: [throwing, healthy],
       onError: (error) => errors.push(error),
     });
@@ -276,7 +277,7 @@ describe("createGameAnalyticsClient", () => {
     };
 
     const client = createGameAnalyticsClient({
-      market: "google-play",
+      market: "google_play",
       sinks: [sinkA, sinkB],
     });
     client.track("game_first_input", context(), {
@@ -287,7 +288,7 @@ describe("createGameAnalyticsClient", () => {
     assert.equal(seenA.length, 1);
     assert.equal(seenB.length, 1);
     assert.equal(seenA[0].name, "game_first_input");
-    assert.equal(seenA[0].params.market, "google-play");
+    assert.equal(seenA[0].params.app_market, "google_play");
     assert.equal(seenA[0].params.time_to_first_input_sec, 5);
   });
 
@@ -306,7 +307,7 @@ describe("createGameAnalyticsClient", () => {
     };
 
     const client = createGameAnalyticsClient({
-      market: "apps-in-toss",
+      market: "apps_in_toss",
       sinks: [throwing, healthy],
       onError: (error) => errors.push(error),
     });

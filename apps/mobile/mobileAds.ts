@@ -37,7 +37,6 @@ export type MobileAdEvent = {
 
 export type MobileAdUnitMode = 'production' | 'test';
 export type RewardedAdPlacement = 'rewardedHint';
-export type InterstitialAdPlacement = 'interstitialResult';
 export type MobileAdRequestOptions = {
   adUnitMode?: MobileAdUnitMode;
 };
@@ -45,11 +44,6 @@ export type MobileAdRequestOptions = {
 export type RewardedAdResult = {
   events: MobileAdEvent[];
   status: 'closed' | 'error' | 'failed' | 'rewarded';
-};
-
-export type InterstitialAdResult = {
-  events: MobileAdEvent[];
-  status: 'failed' | 'shown';
 };
 
 const unsupportedRewardedEventTypes = new Set<MobileAdEventType>([
@@ -128,12 +122,10 @@ const loadTimeoutMs = 15000;
 
 const productionAdUnitIds = {
   android: {
-    interstitialResult: 'ca-app-pub-2444587584524186/4930691809',
-    rewardedHint: 'ca-app-pub-2444587584524186/7533141122',
+    rewardedHint: 'ca-app-pub-9932778305312246/1613644113',
   },
   ios: {
-    interstitialResult: 'ca-app-pub-2444587584524186/3402324424',
-    rewardedHint: 'ca-app-pub-2444587584524186/6151776694',
+    rewardedHint: 'ca-app-pub-9932778305312246/5603016700',
   },
 } as const;
 
@@ -175,15 +167,6 @@ function getRewardedAdUnitId(
     : getPlatformAdUnitIds()[placement];
 }
 
-function getInterstitialAdUnitId(
-  module: GoogleMobileAdsModule,
-  options: MobileAdRequestOptions = {},
-) {
-  return __DEV__ || options.adUnitMode === 'test'
-    ? module.TestIds.INTERSTITIAL
-    : getPlatformAdUnitIds().interstitialResult;
-}
-
 function getAdUnitMode(options: MobileAdRequestOptions = {}): MobileAdUnitMode {
   return __DEV__ || options.adUnitMode === 'test' ? 'test' : 'production';
 }
@@ -202,15 +185,6 @@ export function createMobileAdsRequestConfiguration(
 function createUnavailableRewardedResult(
   type: Extract<MobileAdEventType, 'initialize_failed' | 'module_unavailable'>,
 ): RewardedAdResult {
-  return {
-    events: [{ errorCode: initializationErrorCode, type }],
-    status: 'failed',
-  };
-}
-
-function createUnavailableInterstitialResult(
-  type: Extract<MobileAdEventType, 'initialize_failed' | 'module_unavailable'>,
-): InterstitialAdResult {
   return {
     events: [{ errorCode: initializationErrorCode, type }],
     status: 'failed',
@@ -263,13 +237,10 @@ export async function showRewardedAd(
   return new Promise(resolve => {
     const adUnitMode = getAdUnitMode(options);
     const adUnitId = getRewardedAdUnitId(module, placement, options);
-    const events: MobileAdEvent[] = [
-      { adUnitId, adUnitMode, type: 'request' },
-    ];
-    const ad = module.RewardedAd.createForAdRequest(
-      adUnitId,
-      { requestNonPersonalizedAdsOnly: true },
-    );
+    const events: MobileAdEvent[] = [{ adUnitId, adUnitMode, type: 'request' }];
+    const ad = module.RewardedAd.createForAdRequest(adUnitId, {
+      requestNonPersonalizedAdsOnly: true,
+    });
     const unsubscribers: Array<() => void> = [];
     let hasResolved = false;
     let hasEarnedReward = false;
@@ -316,84 +287,6 @@ export async function showRewardedAd(
       ad.addAdEventListener(module.AdEventType.CLOSED, () => {
         events.push({ type: 'closed' });
         resolveOnce(hasEarnedReward ? 'rewarded' : 'closed');
-      }),
-      ad.addAdEventListener(module.AdEventType.ERROR, error => {
-        events.push({ errorCode: getMobileAdErrorCode(error), type: 'error' });
-        resolveOnce('failed');
-      }),
-    );
-
-    ad.load();
-  });
-}
-
-export async function showInterstitialAd(
-  _placement: InterstitialAdPlacement,
-  options: MobileAdRequestOptions = {},
-): Promise<InterstitialAdResult> {
-  const module = await getMobileAdsModule();
-
-  if (module == null) {
-    return createUnavailableInterstitialResult('module_unavailable');
-  }
-
-  if (!(await initializeMobileAds())) {
-    return createUnavailableInterstitialResult('initialize_failed');
-  }
-
-  return new Promise(resolve => {
-    const adUnitMode = getAdUnitMode(options);
-    const adUnitId = getInterstitialAdUnitId(module, options);
-    const events: MobileAdEvent[] = [
-      { adUnitId, adUnitMode, type: 'request' },
-    ];
-    const ad = module.InterstitialAd.createForAdRequest(
-      adUnitId,
-      { requestNonPersonalizedAdsOnly: true },
-    );
-    const unsubscribers: Array<() => void> = [];
-    let hasResolved = false;
-    let hasOpened = false;
-
-    function cleanup() {
-      unsubscribers.forEach(unsubscribe => unsubscribe());
-      clearTimeout(timeoutId);
-    }
-
-    function resolveOnce(status: InterstitialAdResult['status']) {
-      if (hasResolved) {
-        return;
-      }
-
-      hasResolved = true;
-      cleanup();
-      resolve({ events, status });
-    }
-
-    const timeoutId = setTimeout(() => {
-      events.push({ type: 'timeout' });
-      resolveOnce(hasOpened ? 'shown' : 'failed');
-    }, loadTimeoutMs);
-
-    unsubscribers.push(
-      ad.addAdEventListener(module.AdEventType.LOADED, () => {
-        events.push({ type: 'loaded' });
-        clearTimeout(timeoutId);
-        ad.show().catch(error => {
-          events.push({
-            errorCode: getMobileAdErrorCode(error),
-            type: 'show_failed',
-          });
-          resolveOnce('failed');
-        });
-      }),
-      ad.addAdEventListener(module.AdEventType.OPENED, () => {
-        hasOpened = true;
-        events.push({ type: 'opened' });
-      }),
-      ad.addAdEventListener(module.AdEventType.CLOSED, () => {
-        events.push({ type: 'closed' });
-        resolveOnce('shown');
       }),
       ad.addAdEventListener(module.AdEventType.ERROR, error => {
         events.push({ errorCode: getMobileAdErrorCode(error), type: 'error' });

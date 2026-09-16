@@ -327,7 +327,7 @@ function checkAdMobConfig(config) {
     const mobileAppJson = readFileSync(repoPath(mobileAppJsonPath), "utf8");
     if (
       mobileAppJson.includes(
-        '"android_app_id": "ca-app-pub-2444587584524186~5456766418"',
+        '"android_app_id": "ca-app-pub-9932778305312246~7356925389"',
       )
     ) {
       pass("Android AdMob app ID가 app.json에 있습니다.", mobileAppJsonPath);
@@ -344,7 +344,7 @@ function checkAdMobConfig(config) {
       androidManifest.includes(
         'android:name="com.google.android.gms.ads.APPLICATION_ID"',
       ) &&
-      androidManifest.includes("ca-app-pub-2444587584524186~5456766418")
+      androidManifest.includes("ca-app-pub-9932778305312246~7356925389")
     ) {
       pass(
         "Android manifest에 AdMob application ID가 있습니다.",

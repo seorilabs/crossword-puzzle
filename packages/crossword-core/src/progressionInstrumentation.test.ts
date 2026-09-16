@@ -18,7 +18,7 @@ type Emitted = { name: string; params: Record<string, unknown> };
 
 // 발화 이벤트를 그대로 수집하는 테스트용 클라이언트. core의 실제 팬아웃 경로
 // (createGameAnalyticsClient → sink.logGameEvent)를 그대로 태운다.
-function createRecordingClient(market = "apps-in-toss" as const): {
+function createRecordingClient(market = "apps_in_toss" as const): {
   client: GameAnalyticsClient;
   emitted: Emitted[];
 } {
@@ -44,7 +44,7 @@ describe("#292 진척 이벤트 계측 인수조건", () => {
     // 코어 gameAnalytics 계약이 세 진척 이벤트를 이벤트명 + 파라미터 키·타입으로
     // 정의함을 빌더 실행 경로로 확인한다. 각 이벤트의 파라미터는 숫자형(타입) 유지.
     const streakView = buildGameProgressionEvent("streak_view", {
-      market: "apps-in-toss",
+      market: "apps_in_toss",
       payload: { currentStreak: 6, longestStreak: 12 },
     });
     assert.equal(streakView.name, "streak_view");
@@ -52,10 +52,13 @@ describe("#292 진척 이벤트 계측 인수조건", () => {
     assert.equal(streakView.params.longest_streak, 12);
     assert.equal(typeof streakView.params.current_streak, "number");
     assert.equal(typeof streakView.params.longest_streak, "number");
-    assert.equal(streakView.params.schema_version, GAME_ANALYTICS_SCHEMA_VERSION);
+    assert.equal(
+      streakView.params.schema_version,
+      GAME_ANALYTICS_SCHEMA_VERSION,
+    );
 
     const milestone = buildGameProgressionEvent("streak_milestone", {
-      market: "google-play",
+      market: "google_play",
       payload: { streakLength: 7 },
     });
     assert.equal(milestone.name, "streak_milestone");
@@ -63,7 +66,7 @@ describe("#292 진척 이벤트 계측 인수조건", () => {
     assert.equal(typeof milestone.params.streak_length, "number");
 
     const statsView = buildGameProgressionEvent("personal_stats_view", {
-      market: "app-store",
+      market: "app_store",
       payload: { totalPuzzles: 20, completedCount: 13 },
     });
     assert.equal(statsView.name, "personal_stats_view");
@@ -151,10 +154,7 @@ describe("#292 진척 이벤트 계측 인수조건", () => {
       currentStreak: 3,
       longestStreak: 9,
     });
-    assert.equal(
-      emitted.filter((e) => e.name === "streak_view").length,
-      1,
-    );
+    assert.equal(emitted.filter((e) => e.name === "streak_view").length, 1);
     assert.equal(
       emitted.filter((e) => e.name === "personal_stats_view").length,
       1,

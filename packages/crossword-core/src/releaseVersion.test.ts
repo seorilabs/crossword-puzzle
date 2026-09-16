@@ -6,8 +6,10 @@ import { strict as assert } from "node:assert";
 import { readFileSync } from "node:fs";
 
 import {
-  createReleaseVersionedSink,
+  APP_MARKET_PARAM_KEY,
+  createAnalyticsDimensionedSink,
   RELEASE_VERSION_PARAM_KEY,
+  RUNTIME_PLATFORM_PARAM_KEY,
   resolveReleaseVersion,
   UNKNOWN_RELEASE_VERSION,
   type CompactTelemetryParams,
@@ -29,7 +31,10 @@ function createRecordingSink() {
 }
 
 function readRepoFile(relativePath: string): string {
-  return readFileSync(new URL(`../../../${relativePath}`, import.meta.url), "utf8");
+  return readFileSync(
+    new URL(`../../../${relativePath}`, import.meta.url),
+    "utf8",
+  );
 }
 
 describe("#293 release_version 계측 인수조건", () => {
@@ -62,23 +67,29 @@ describe("#293 release_version 계측 인수조건", () => {
 
   it("AC-2: 모든 이벤트에 release_version 파라미터가 공통 경로에서 자동 첨부됨 (개별 호출 수정 불필요)", () => {
     const { sink, seen } = createRecordingSink();
-    const versioned = createReleaseVersionedSink(sink, "0.1.0");
+    const dimensioned = createAnalyticsDimensionedSink(sink, {
+      appMarket: "apps_in_toss",
+      runtimePlatform: "web",
+      releaseVersion: "0.1.0",
+    });
 
     // 네 이벤트 종류 모두 sink 데코레이터(공통 경로) 통과 시 release_version이 실린다.
     for (const kind of ["screen", "impression", "click", "game"] as const) {
-      versioned.track({ kind, name: `event_${kind}`, params: {} });
+      dimensioned.track({ kind, name: `event_${kind}`, params: {} });
     }
     assert.equal(seen.length, 4);
     for (const event of seen) {
       assert.equal(event.params[RELEASE_VERSION_PARAM_KEY], "0.1.0");
+      assert.equal(event.params[APP_MARKET_PARAM_KEY], "apps_in_toss");
+      assert.equal(event.params[RUNTIME_PLATFORM_PARAM_KEY], "web");
     }
 
-    // 배선: 두 adapter 모두 sink 레지스트리를 createReleaseVersionedSink로 감싼다
+    // 배선: 두 adapter 모두 sink 레지스트리를 표준 차원 데코레이터로 감싼다
     // (개별 emit 호출 수정 없이 공통 경로에서 첨부).
     const webSinks = readRepoFile("src/adapters/analyticsSinks.ts");
     const mobileSinks = readRepoFile("apps/mobile/analyticsSinks.ts");
-    assert.match(webSinks, /createReleaseVersionedSink\(/);
-    assert.match(mobileSinks, /createReleaseVersionedSink\(/);
+    assert.match(webSinks, /createAnalyticsDimensionedSink\(/);
+    assert.match(mobileSinks, /createAnalyticsDimensionedSink\(/);
   });
 
   it("AC-3: 버전 값 형식이 docs/release-versioning.md 및 happy-farm 관례와 일치", () => {
@@ -90,23 +101,37 @@ describe("#293 release_version 계측 인수조건", () => {
     assert.equal(resolveReleaseVersion("1.2.3-rc.1"), "1.2.3-rc.1");
     // semver 형식이 아니면 다음 후보/미상 값으로 넘어간다(형식 보증).
     assert.equal(resolveReleaseVersion("nightly", "0.4.0"), "0.4.0");
-    assert.equal(resolveReleaseVersion(undefined, null, ""), UNKNOWN_RELEASE_VERSION);
+    assert.equal(
+      resolveReleaseVersion(undefined, null, ""),
+      UNKNOWN_RELEASE_VERSION,
+    );
   });
 
   it("AC-4: 단위 테스트: 싱크 통과 이벤트에 release_version 포함 검증", () => {
     const { sink, seen } = createRecordingSink();
-    const versioned = createReleaseVersionedSink(sink, "0.1.0");
+    const dimensioned = createAnalyticsDimensionedSink(sink, {
+      appMarket: "google_play",
+      runtimePlatform: "android",
+      releaseVersion: "0.1.0",
+    });
 
-    versioned.track({
+    dimensioned.track({
       kind: "impression",
       name: "mission_complete",
-      params: { difficulty: "normal" },
+      params: {
+        app_market: "apps_in_toss",
+        difficulty: "normal",
+        release_version: "9.9.9",
+        runtime_platform: "web",
+      },
     });
 
     assert.equal(seen.length, 1);
     const delivered = seen[0];
     // release_version이 포함되고, 기존 파라미터도 보존된다.
     assert.equal(delivered.params[RELEASE_VERSION_PARAM_KEY], "0.1.0");
+    assert.equal(delivered.params[APP_MARKET_PARAM_KEY], "google_play");
+    assert.equal(delivered.params[RUNTIME_PLATFORM_PARAM_KEY], "android");
     assert.equal(delivered.params.difficulty, "normal");
     assert.equal(delivered.name, "mission_complete");
   });

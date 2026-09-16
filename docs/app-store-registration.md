@@ -31,24 +31,24 @@ flowchart TD
 
 ## 현재 확정값
 
-| 항목                       | 값                                                                    |
-| -------------------------- | --------------------------------------------------------------------- |
-| 기본 언어                  | `ko-KR`                                                               |
-| 앱 유형                    | `game`                                                                |
-| 가격                       | `free`                                                                |
-| 고객 문의 이메일           | `cs@seorilabs.com`                                                    |
-| Bundle ID                  | `com.seorilabs.crosswordpuzzle`                                       |
-| SKU                        | `crossword-puzzle-app`                                                |
-| 광고                       | `yes`. `apps/mobile`에 AdMob native adapter 연결                      |
-| 추적/ATT                   | 현재 native mobile 기준 `no` 후보                                     |
-| Game Center                | iOS adapter·entitlement·콘솔 리더보드 설정 완료                       |
-| CocoaPods                  | `bundle exec pod install` 완료                                        |
-| unsigned iOS Release build | `CODE_SIGNING_ALLOWED=NO build` 통과                                  |
+| 항목                       | 값                                                               |
+| -------------------------- | ---------------------------------------------------------------- |
+| 기본 언어                  | `ko-KR`                                                          |
+| 앱 유형                    | `game`                                                           |
+| 가격                       | `free`                                                           |
+| 고객 문의 이메일           | `cs@seorilabs.com`                                               |
+| Bundle ID                  | `com.seorilabs.crosswordpuzzle`                                  |
+| SKU                        | `crossword-puzzle-app`                                           |
+| 광고                       | `yes`. `apps/mobile`에 AdMob native adapter 연결                 |
+| 추적/ATT                   | 현재 native mobile 기준 `no` 후보                                |
+| Game Center                | iOS adapter·entitlement·콘솔 리더보드 설정 완료                  |
+| CocoaPods                  | `bundle exec pod install` 완료                                   |
+| unsigned iOS Release build | `CODE_SIGNING_ALLOWED=NO build` 통과                             |
 | App Store CI               | Backoffice 가 ASC `ciBuildRuns` 로 Xcode Cloud 빌드를 트리거한다 |
-| 로컬 iOS build             | `npm run app-store:build:local` 준비                                  |
-| 로컬 metadata 등록         | `npm run app-store:deliver:upload` 준비                               |
-| App Store profile          | `AppStore Crossword Puzzle Profile` secret 등록                       |
-| 최신 업로드 빌드           | `v0.1.5` / build `1005` / run `27087313726`                           |
+| 로컬 iOS build             | `npm run app-store:build:local` 준비                             |
+| 로컬 metadata 등록         | `npm run app-store:deliver:upload` 준비                          |
+| App Store profile          | `AppStore Crossword Puzzle Profile` secret 등록                  |
+| 최신 업로드 빌드           | `v0.1.5` / build `1005` / run `27087313726`                      |
 
 ## 확정 필요
 
@@ -96,11 +96,11 @@ App Store 앱 이름은 iOS용으로 `가로세로 퍼즐`을 사용한다. `--u
 
 현재 `react-native-google-mobile-ads` adapter에 연결되어 있다. 개발/QA 빌드는 Google test ad unit을 사용하고, release 빌드는 adapter QA 후 아래 운영 ID를 사용한다. 1차 출시는 개인화 광고를 끄고 비개인화 광고 요청으로 운영하며, global request configuration은 아동 대상/동의연령 미만 대상 플래그를 false로 명시하고 simulator/emulator를 test device로 allowlist한다.
 
-| 항목                      | 값                                       |
-| ------------------------- | ---------------------------------------- |
-| iOS AdMob app ID          | `ca-app-pub-2444587584524186~4715406099` |
-| `ios_rewarded_hint`       | `ca-app-pub-2444587584524186/6151776694` |
-| `ios_interstitial_result` | `ca-app-pub-2444587584524186/3402324424` |
+| 항목                | 값                                       |
+| ------------------- | ---------------------------------------- |
+| AdMob publisher ID  | `pub-9932778305312246`                   |
+| iOS AdMob app ID    | `ca-app-pub-9932778305312246~5361317430` |
+| `ios_rewarded_hint` | `ca-app-pub-9932778305312246/5603016700` |
 
 `GADApplicationIdentifier`와 `SKAdNetworkItems`는 `app.json`의 `react-native-google-mobile-ads` 설정을 CocoaPods build phase가 빌드 산출물 `Info.plist`에 주입한다. 로컬/App Store archive 경로는 업로드 전에 산출물 `Info.plist`에서 iOS AdMob app ID와 Google SKAdNetwork ID를 다시 검증한다. AdMob 개인화 광고, IDFA, cross-app ad measurement를 켜면 App Store Connect Tracking 답변, ATT/UMP 동선, `NSUserTrackingUsageDescription`도 같이 구현한다.
 

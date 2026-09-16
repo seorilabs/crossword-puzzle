@@ -2,8 +2,8 @@
   "name": "CrosswordPuzzleMobile",
   "displayName": "가로세로 낱말 퍼즐",
   "react-native-google-mobile-ads": {
-    "android_app_id": "ca-app-pub-2444587584524186~5456766418",
-    "ios_app_id": "ca-app-pub-2444587584524186~4715406099",
+    "android_app_id": "ca-app-pub-9932778305312246~7356925389",
+    "ios_app_id": "ca-app-pub-9932778305312246~5361317430",
     "sk_ad_network_items": ["cstr6suwn9.skadnetwork"]
   }
 }

@@ -54,11 +54,11 @@ npm run check:play
 
 현재 `react-native-google-mobile-ads` adapter에 연결되어 있다. 개발/QA 빌드는 Google test ad unit을 사용하고, release 빌드는 adapter QA 후 아래 운영 ID를 사용한다. 1차 출시는 개인화 광고를 끄고 비개인화 광고 요청으로 운영하며, global request configuration은 아동 대상/동의연령 미만 대상 플래그를 false로 명시하고 simulator/emulator를 test device로 allowlist한다.
 
-| 항목                            | 값                                       |
-| ------------------------------- | ---------------------------------------- |
-| Android AdMob app ID            | `ca-app-pub-2444587584524186~5456766418` |
-| `android_rewarded_hint`         | `ca-app-pub-2444587584524186/7533141122` |
-| `android_interstitial_result`   | `ca-app-pub-2444587584524186/4930691809` |
+| 항목                    | 값                                       |
+| ----------------------- | ---------------------------------------- |
+| AdMob publisher ID      | `pub-9932778305312246`                   |
+| Android AdMob app ID    | `ca-app-pub-9932778305312246~7356925389` |
+| `android_rewarded_hint` | `ca-app-pub-9932778305312246/1613644113` |
 
 ## 2026-06-07 API 반영 결과
 

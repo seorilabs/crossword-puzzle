@@ -8,7 +8,11 @@ jest.mock('../firebaseClient', () => ({
     mockLogFirebaseScreenView(...args),
 }));
 
-const { dispatchAnalytics } = require('../analyticsSinks');
+const {
+  currentMarket,
+  currentRuntimePlatform,
+  dispatchAnalytics,
+} = require('../analyticsSinks');
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -24,6 +28,8 @@ test('RN screen 이벤트는 logScreenView 전용 경로를 사용한다', () =>
   expect(mockLogFirebaseScreenView).toHaveBeenCalledWith('today', {
     difficulty: 'easy',
     puzzle_id: '26083000',
+    app_market: currentMarket,
+    runtime_platform: currentRuntimePlatform,
     release_version: expect.any(String),
   });
   expect(mockLogFirebaseAnalyticsEvent).not.toHaveBeenCalled();
@@ -38,6 +44,8 @@ test('RN 일반 이벤트는 기존 logEvent 경로를 유지한다', () => {
 
   expect(mockLogFirebaseAnalyticsEvent).toHaveBeenCalledWith('mission_start', {
     puzzle_id: '26083000',
+    app_market: currentMarket,
+    runtime_platform: currentRuntimePlatform,
     release_version: expect.any(String),
   });
   expect(mockLogFirebaseScreenView).not.toHaveBeenCalled();
@@ -73,16 +81,19 @@ describe('RELEASE_VERSION 은 네이티브 앱 버전을 우선 사용한다', (
     });
     expect(mockLogFirebaseAnalyticsEvent).toHaveBeenCalledWith(
       'puzzle_complete',
-      { puzzle_id: '26083000', release_version: '1.1.7' },
+      {
+        puzzle_id: '26083000',
+        app_market: sinks.currentMarket,
+        runtime_platform: sinks.currentRuntimePlatform,
+        release_version: '1.1.7',
+      },
     );
   });
 
   test('네이티브 버전이 있으면 패키지 상수 0.1.0 이 실리지 않는다', () => {
     const sinks = loadWithNativeAppInfo({ getAppVersion: () => '1.1.7' });
 
-    expect(sinks.RELEASE_VERSION).not.toBe(
-      require('../package.json').version,
-    );
+    expect(sinks.RELEASE_VERSION).not.toBe(require('../package.json').version);
   });
 
   test('네이티브 모듈이 없으면 패키지 버전으로 폴백한다', () => {

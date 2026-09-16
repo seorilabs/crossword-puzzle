@@ -22,19 +22,19 @@ flowchart TD
 
 ## Source Of Truth
 
-| 영역                    | Source of truth                                             | 시장별 구현                                                              |
-| ----------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------ |
-| 퍼즐 타입/검증          | `packages/crossword-core/src/types.ts`, `puzzle.ts`         | 없음                                                                     |
-| 발행 난이도 로테이션    | `packages/crossword-core/src/difficultyRotation.ts`         | 세 시장이 같은 Firebase Hosting manifest를 읽음                          |
-| 난이도 한글 라벨        | `packages/crossword-core/src/puzzleLabels.ts`               | AIT와 Android/iOS가 쉬움·보통·어려움을 공통 노출                         |
-| 공개/보너스/힌트 정책   | `packages/crossword-core/src/uiPolicy.ts`                   | 화면 렌더링만 분리                                                       |
-| Remote Config 키/기본값 | `packages/crossword-core/src/launchConfig.ts`               | AIT는 Firebase Web SDK, mobile은 RNFirebase                              |
-| telemetry 파라미터 정리 | `packages/crossword-core/src/platformContracts.ts`          | AIT는 AppsInToss Analytics + Firebase Web, mobile은 RNFirebase Analytics |
-| Presence opt-in 정책    | `packages/crossword-core/src/platformPresence.ts`           | AIT WebView와 Android/iOS가 Platform SDK 0.4.0 lifecycle을 연결          |
-| 광고 adapter            | `src/adapters/appsInTossAds.ts`, `apps/mobile/mobileAds.ts` | AIT는 AppsInToss 광고, mobile은 AdMob                                    |
-| 리더보드 정책/점수      | `packages/crossword-core/src/leaderboard.ts`                | AIT Game Center, Android Play Games Services, iOS GameKit                |
-| AIT adapter             | `src/adapters`                                              | AppsInToss SDK, Web Firebase, localStorage                               |
-| Android/iOS adapter     | `apps/mobile`                                               | RNFirebase, AsyncStorage, native projects                                |
+| 영역                    | Source of truth                                             | 시장별 구현                                                     |
+| ----------------------- | ----------------------------------------------------------- | --------------------------------------------------------------- |
+| 퍼즐 타입/검증          | `packages/crossword-core/src/types.ts`, `puzzle.ts`         | 없음                                                            |
+| 발행 난이도 로테이션    | `packages/crossword-core/src/difficultyRotation.ts`         | 세 시장이 같은 Firebase Hosting manifest를 읽음                 |
+| 난이도 한글 라벨        | `packages/crossword-core/src/puzzleLabels.ts`               | AIT와 Android/iOS가 쉬움·보통·어려움을 공통 노출                |
+| 공개/보너스/힌트 정책   | `packages/crossword-core/src/uiPolicy.ts`                   | 화면 렌더링만 분리                                              |
+| Remote Config 키/기본값 | `packages/crossword-core/src/launchConfig.ts`               | AIT는 Firebase Web SDK, mobile은 RNFirebase                     |
+| telemetry 표준 차원     | `packages/crossword-core/src/releaseVersion.ts`             | 모든 custom event에 시장·runtime·release를 sink에서 강제        |
+| Presence opt-in 정책    | `packages/crossword-core/src/platformPresence.ts`           | AIT WebView와 Android/iOS가 Platform SDK 0.5.0 lifecycle을 연결 |
+| 광고 adapter            | `src/adapters/appsInTossAds.ts`, `apps/mobile/mobileAds.ts` | AIT는 AppsInToss 광고, mobile은 AdMob                           |
+| 리더보드 정책/점수      | `packages/crossword-core/src/leaderboard.ts`                | AIT Game Center, Android Play Games Services, iOS GameKit       |
+| AIT adapter             | `src/adapters`                                              | AppsInToss SDK, Web Firebase, localStorage                      |
+| Android/iOS adapter     | `apps/mobile`                                               | RNFirebase, AsyncStorage, native projects                       |
 
 ## 퍼즐 식별자 telemetry 문자열 계약
 
@@ -59,9 +59,16 @@ flowchart TD
 
 `google-services.json`과 `GoogleService-Info.plist`는 커밋하지 않는다. CI는 `scripts/restore-mobile-firebase-config.mjs`로 복구하고, local native build도 같은 스크립트를 사용한다.
 
+모든 커스텀 이벤트는 공통 sink를 거쳐 `app_market`, `runtime_platform`,
+`release_version`을 받는다. 웹은 `apps_in_toss`/`web`, Android는
+`google_play`/`android`, iOS는 `app_store`/`ios`다. 호출자가 같은 키를 넘겨도 빌드에서
+결정한 표준값이 마지막에 덮어쓴다. Firebase 자동 이벤트는 앱 코드에서 억지로 고치지 않고
+BigQuery 정규화 뷰에서 출처와 함께 보완한다. Firebase/GA4/BigQuery 콘솔 링크와 custom
+dimension의 live 상태는 이 코드 변경의 완료 범위가 아니다.
+
 ## Platform Presence Phase A (#356)
 
-- Web/AIT와 Android/iOS는 `@seorilabs/platform-sdk@0.4.0`을 사용하고 안정된 `appId=crossword-puzzle`, 플랫폼, 앱 버전만 Presence context로 전달한다. 사용자 ID·광고 ID·외부 세션 ID·기타 PII와 재전송 큐는 추가하지 않는다.
+- Web/AIT와 Android/iOS는 `@seorilabs/platform-sdk@0.5.0`을 사용하고 안정된 `appId=crossword-puzzle`, 플랫폼, 앱 버전만 Presence context로 전달한다. 사용자 ID·광고 ID·외부 세션 ID·기타 PII와 재전송 큐는 추가하지 않는다.
 - 공용 기본 opt-in은 `packages/crossword-core/src/platformPresence.ts`의 `PLATFORM_PRESENCE_ENABLED=false`다. 비활성 상태에서는 token/Edge 요청이 발생하지 않는다.
 - 각 composition root는 시작·background/hidden 정지·foreground/visible 복귀를 SDK Presence lifecycle에 연결한다. 동기 SDK 오류와 SDK 내부의 timeout·5xx·DNS·TLS 실패는 모두 fail-open이며 앱 시작·퍼즐 플레이·저장 흐름을 막지 않는다.
 - SDK가 제공하는 전용 token/Edge HTTP 경로, Edge 2초 timeout, no-outbox/no-replay 계약을 그대로 사용한다. 앱 adapter는 직접 heartbeat나 별도 fallback을 구현하지 않는다.
