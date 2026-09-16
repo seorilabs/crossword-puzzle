@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "release": {
+    "lastTag": null,
+    "lastSourceSha": null,
+    "marketingVersion": null
+  },
+  "android": {
+    "authority": "github-ledger",
+    "lastVersionCode": 1001001009,
+    "legacyFallbackSealed": false
+  },
+  "ios": {
+    "authority": "xcode-cloud",
+    "lastObservedBuildNumber": null,
+    "lastObservedTag": null
+  },
+  "provenance": {
+    "initializedAt": "2026-09-16T14:38:51Z",
+    "initializedBy": "release-version-ledger-init-v1",
+    "initializedFromWorkflowSha": "53c0819ec0976a48c7e8302234bcfc408f0a1e0b",
+    "authorityRevision": "4fc4d51809da6e41e645919b7e2b89b0849d511613469617984815eb09e95cec",
+    "baseline": {
+      "androidVersionCode": 1001001009,
+      "rule": "max-of-verified-sources",
+      "sources": [
+        {
+          "kind": "google-play-bundles-list",
+          "androidVersionCode": 1001001009,
+          "packageName": "com.seorilabs.crosswordpuzzle",
+          "observedAt": "2026-09-16T12:55:15Z",
+          "evidenceDigest": "sha256:b13c04f7855f2ca589aee87306f7c5a86e1ea9395465194996e495b6df6bf73b"
+        }
+      ]
+    }
+  }
+}
