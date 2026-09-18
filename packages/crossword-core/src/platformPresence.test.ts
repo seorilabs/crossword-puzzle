@@ -7,8 +7,8 @@ import {
 } from "./platformPresence.ts";
 
 describe("Platform Presence 공통 정책", () => {
-  it("중앙 canary 전 기본 opt-in은 false다", () => {
-    assert.equal(PLATFORM_PRESENCE_ENABLED, false);
+  it("중앙 게이트 해제 후 기본 opt-in은 true다", () => {
+    assert.equal(PLATFORM_PRESENCE_ENABLED, true);
   });
 
   it("start, stop, resume 오류를 모두 흡수하고 foreground 복귀 시 재시작한다", () => {

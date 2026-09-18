@@ -66,13 +66,15 @@ flowchart TD
 BigQuery 정규화 뷰에서 출처와 함께 보완한다. Firebase/GA4/BigQuery 콘솔 링크와 custom
 dimension의 live 상태는 이 코드 변경의 완료 범위가 아니다.
 
-## Platform Presence Phase A (#356)
+## Platform Presence (#356)
 
 - Web/AIT와 Android/iOS는 `@seorilabs/platform-sdk@0.5.0`을 사용하고 안정된 `appId=crossword-puzzle`, 플랫폼, 앱 버전만 Presence context로 전달한다. 사용자 ID·광고 ID·외부 세션 ID·기타 PII와 재전송 큐는 추가하지 않는다.
-- 공용 기본 opt-in은 `packages/crossword-core/src/platformPresence.ts`의 `PLATFORM_PRESENCE_ENABLED=false`다. 비활성 상태에서는 token/Edge 요청이 발생하지 않는다.
+- 공용 기본 opt-in은 `packages/crossword-core/src/platformPresence.ts`의 `PLATFORM_PRESENCE_ENABLED=true`다. 이 값을 `false`로 두면 token/Edge 요청이 아예 발생하지 않는다.
 - 각 composition root는 시작·background/hidden 정지·foreground/visible 복귀를 SDK Presence lifecycle에 연결한다. 동기 SDK 오류와 SDK 내부의 timeout·5xx·DNS·TLS 실패는 모두 fail-open이며 앱 시작·퍼즐 플레이·저장 흐름을 막지 않는다.
 - SDK가 제공하는 전용 token/Edge HTTP 경로, Edge 2초 timeout, no-outbox/no-replay 계약을 그대로 사용한다. 앱 adapter는 직접 heartbeat나 별도 fallback을 구현하지 않는다.
-- 이 단계는 활성화 준비만 완료한 상태다. 중앙 canary와 정확한 릴리스 후보 승인이 끝나기 전에는 `true`로 바꾸거나 배포·live readback 완료로 간주하지 않는다.
+- 실제 heartbeat는 이 앱 스위치와 Platform registry `registry/apps/crossword-puzzle.json`의 `features.presence`가 **둘 다** 켜져야 나간다. registry만 켜면 앱이 요청하지 않고, 앱만 켜면 token이 `enabled=false`로 돌아온다.
+- 롤백은 registry를 닫는 쪽으로 한다. 이미 마켓에 나간 빌드에서도 heartbeat가 멈추므로 앱 재배포가 필요 없다.
+- 중앙 rollout 게이트는 2026-09-09에 해제됐다(seorilabs/platform#78). 앱 스위치를 켠 것과 공개 배포·live readback 완료는 계속 구분해 기록한다.
 
 ## 개발 규칙
 
