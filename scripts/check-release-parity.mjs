@@ -1128,7 +1128,7 @@ assertIncludes(
 );
 assertIncludes(
   deployGooglePlayWorkflow,
-  "runs-on: seorilabs-rpi-arm64",
+  "runs-on: seorilabs-x64",
   deployGooglePlayWorkflowPath,
 );
 // 이 워크플로 이전에 태그된 릴리즈에는 Cloud Build 도구가 없다. 빌드 도구 계약은

@@ -66,7 +66,7 @@ jobs:
   build-aab:
     name: Cloud Build signed Android App Bundle
     needs: resolve
-    runs-on: seorilabs-rpi-arm64
+    runs-on: seorilabs-x64
     timeout-minutes: 100
     environment: google-play
     defaults:
@@ -314,7 +314,7 @@ jobs:
     name: Upload AAB to Google Play internal track
     needs: [resolve, build-aab]
     if: ${{ inputs.upload_to_internal }}
-    runs-on: seorilabs-rpi-arm64
+    runs-on: seorilabs-x64
     timeout-minutes: 25
     environment: google-play
 

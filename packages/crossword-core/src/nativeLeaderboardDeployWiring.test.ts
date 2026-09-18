@@ -70,7 +70,7 @@ describe("네이티브 리더보드 배포 배선", () => {
     );
     assert.match(androidWorkflow, /ref:\s*[0-9a-f]{40}/);
     assert.match(androidWorkflow, /--config=cloudbuild-android\.yaml/);
-    assert.match(androidWorkflow, /runs-on:\s*seorilabs-rpi-arm64/);
+    assert.match(androidWorkflow, /runs-on:\s*seorilabs-x64/);
     assert.doesNotMatch(androidWorkflow, /seorilabs-x64-android/);
     assert.match(
       androidWorkflow,
