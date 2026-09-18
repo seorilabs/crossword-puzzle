@@ -1,8 +1,11 @@
-// Presence는 제품 기능과 분리된 선택적 운영 관측이다. 중앙 canary가 끝나기 전에는
-// 모든 마켓에서 같은 기본값(false)을 사용하고, SDK 예외가 앱 시작·게임플레이·저장에
+// Presence는 제품 기능과 분리된 선택적 운영 관측이다. 중앙 rollout 게이트가 열린 뒤에는
+// 모든 마켓에서 같은 기본값(true)을 사용하고, SDK 예외가 앱 시작·게임플레이·저장에
 // 전파되지 않도록 lifecycle 호출을 fail-open으로 감싼다.
+//
+// 실제 heartbeat는 이 스위치와 Platform registry의 features.presence가 모두 켜져야
+// 나간다. registry가 kill switch라서 이미 배포된 빌드도 registry를 닫으면 멈춘다.
 
-export const PLATFORM_PRESENCE_ENABLED = false;
+export const PLATFORM_PRESENCE_ENABLED = true;
 
 export type PlatformPresenceHandle = {
   start(): void;

@@ -130,8 +130,8 @@ const webLifecycle = read("src/main.tsx");
 const mobileLifecycle = read("apps/mobile/index.js");
 includes(
   presenceCore,
-  "PLATFORM_PRESENCE_ENABLED = false",
-  "Presence opt-in remains disabled",
+  "PLATFORM_PRESENCE_ENABLED = true",
+  "Presence opt-in stays enabled",
 );
 for (const [label, content] of [
   ["web", webPresence],

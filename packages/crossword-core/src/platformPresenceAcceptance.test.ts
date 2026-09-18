@@ -30,10 +30,10 @@ describe("#356 Platform Presence Phase A 인수조건", () => {
     );
   });
 
-  it("AC-2: 기본 opt-in false와 비활성 Presence 요청 0회를 직접 검증한다", () => {
+  it("AC-2: 활성 opt-in과 비활성 Presence 요청 0회를 직접 검증한다", () => {
     const integrationTest = read("src/adapters/platformPresence.test.mts");
 
-    assert.equal(PLATFORM_PRESENCE_ENABLED, false);
+    assert.equal(PLATFORM_PRESENCE_ENABLED, true);
     assert.match(integrationTest, /presenceEnabled: false/);
     assert.match(integrationTest, /assert\.equal\(requests, 0\)/);
   });
