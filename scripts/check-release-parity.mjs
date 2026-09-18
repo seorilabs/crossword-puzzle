@@ -1131,6 +1131,12 @@ assertIncludes(
   "runs-on: seorilabs-x64",
   deployGooglePlayWorkflowPath,
 );
+// 두 라벨이 동시에 남아 일부 job만 rpi5로 되돌아가는 회귀를 막는다.
+assertNotIncludes(
+  deployGooglePlayWorkflow,
+  "seorilabs-rpi-arm64",
+  deployGooglePlayWorkflowPath,
+);
 // 이 워크플로 이전에 태그된 릴리즈에는 Cloud Build 도구가 없다. 빌드 도구 계약은
 // 워크플로 리비전에서 태그 소스로 설치해야 재배포가 태그 시점 파일에 좌우되지 않는다.
 assertIncludes(

@@ -71,6 +71,8 @@ describe("네이티브 리더보드 배포 배선", () => {
     assert.match(androidWorkflow, /ref:\s*[0-9a-f]{40}/);
     assert.match(androidWorkflow, /--config=cloudbuild-android\.yaml/);
     assert.match(androidWorkflow, /runs-on:\s*seorilabs-x64/);
+    // 두 라벨이 동시에 남아 일부 job만 rpi5로 되돌아가는 회귀를 막는다.
+    assert.doesNotMatch(androidWorkflow, /seorilabs-rpi-arm64/);
     assert.doesNotMatch(androidWorkflow, /seorilabs-x64-android/);
     assert.match(
       androidWorkflow,
