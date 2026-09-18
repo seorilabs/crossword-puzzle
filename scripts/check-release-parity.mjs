@@ -1060,7 +1060,7 @@ assertNotIncludes(
 // 중앙 한 줄을 고치면 전 저장소에 바로 반영되고, 되돌릴 때도 중앙 revert 한 번이다.
 assertMatches(
   deployAppsInTossWorkflow,
-  /rn-deploy-ait\.yml@main/u,
+  /uses: seorilabs\/\.github\/\.github\/workflows\/rn-deploy-ait\.yml@main/u,
   deployAppsInTossWorkflowPath,
   "rn-deploy-ait.yml pointed at the central main",
 );
@@ -1083,7 +1083,7 @@ assertNotIncludes(
 // seorilabs/.github#179 이후 중앙 정본 main 이고, fail-closed 대상은 태그와 계약이다.
 assertMatches(
   deployGooglePlayWorkflow,
-  /resolve-release-version\.yml@main/u,
+  /uses: seorilabs\/\.github\/\.github\/workflows\/resolve-release-version\.yml@main/u,
   deployGooglePlayWorkflowPath,
   "resolve-release-version.yml pointed at the central main",
 );
