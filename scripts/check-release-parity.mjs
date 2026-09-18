@@ -1056,13 +1056,13 @@ assertNotIncludes(
   "npm_scope:",
   deployAppsInTossWorkflowPath,
 );
-// 중앙 판본은 올라간다. 여기서 특정 SHA 를 박아 두면 판본을 올릴 때마다 이 파일도
-// 같이 고쳐야 하고, 빠뜨리면 CI 가 빨간불로 남는다. immutable commit SHA 인지만 본다.
+// caller 는 seorilabs/.github#179 이후 SHA 를 박지 않고 중앙 정본 main 을 본다.
+// 중앙 한 줄을 고치면 전 저장소에 바로 반영되고, 되돌릴 때도 중앙 revert 한 번이다.
 assertMatches(
   deployAppsInTossWorkflow,
-  /rn-deploy-ait\.yml@[0-9a-f]{40}/u,
+  /rn-deploy-ait\.yml@main/u,
   deployAppsInTossWorkflowPath,
-  "rn-deploy-ait.yml pinned to a commit SHA",
+  "rn-deploy-ait.yml pointed at the central main",
 );
 assertIncludes(
   deployGooglePlayWorkflow,
@@ -1079,13 +1079,13 @@ assertNotIncludes(
   "npm_scope:",
   deployGooglePlayWorkflowPath,
 );
-// 버전 정본은 중앙 release authority가 해석한 태그 하나이고, 검증과 업로드도
-// 같은 exact SHA의 중앙 스크립트만 쓴다.
+// 버전 정본은 중앙 release authority가 해석한 태그 하나다. caller ref 자체는
+// seorilabs/.github#179 이후 중앙 정본 main 이고, fail-closed 대상은 태그와 계약이다.
 assertMatches(
   deployGooglePlayWorkflow,
-  /resolve-release-version\.yml@[0-9a-f]{40}/u,
+  /resolve-release-version\.yml@main/u,
   deployGooglePlayWorkflowPath,
-  "resolve-release-version.yml pinned to a commit SHA",
+  "resolve-release-version.yml pointed at the central main",
 );
 assertMatches(
   deployGooglePlayWorkflow,
@@ -1206,14 +1206,9 @@ assertIncludes(
 );
 assertMatches(
   promoteGooglePlayWorkflow,
-  /uses: seorilabs\/\.github\/\.github\/workflows\/promote-google-play\.yml@[0-9a-f]{40}/,
+  /uses: seorilabs\/\.github\/\.github\/workflows\/promote-google-play\.yml@main/,
   promoteGooglePlayWorkflowPath,
-  "immutable org promotion workflow SHA",
-);
-assertNotIncludes(
-  promoteGooglePlayWorkflow,
-  "promote-google-play.yml@main",
-  promoteGooglePlayWorkflowPath,
+  "org promotion workflow pointed at the central main",
 );
 for (const input of [
   "release_tag",

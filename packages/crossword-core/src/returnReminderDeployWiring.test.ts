@@ -38,11 +38,9 @@ describe("복귀 리마인더 배포 배선 설정 (#319)", () => {
     assert.doesNotMatch(deployWorkflow, /::warning::/);
   });
 
-  it("AIT workflow는 immutable 중앙 caller와 named secret 계약을 사용한다", () => {
-    assert.match(
-      deployWorkflow,
-      /rn-deploy-ait\.yml@[0-9a-f]{40}/,
-    );
+  it("AIT workflow는 중앙 정본 main caller와 named secret 계약을 사용한다", () => {
+    // caller는 seorilabs/.github#179 이후 SHA를 박지 않고 중앙 정본 main을 본다.
+    assert.match(deployWorkflow, /rn-deploy-ait\.yml@main/);
     assert.match(deployWorkflow, /APPS_IN_TOSS_API_KEY:\s*\$\{\{ secrets\.APPS_IN_TOSS_API_KEY \}\}/);
     assert.doesNotMatch(deployWorkflow, /secrets:\s*inherit/);
     assert.doesNotMatch(deployWorkflow, /uses:\s*actions\//);

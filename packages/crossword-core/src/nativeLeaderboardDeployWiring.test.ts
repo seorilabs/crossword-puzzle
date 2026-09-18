@@ -60,13 +60,11 @@ describe("네이티브 리더보드 배포 배선", () => {
     assert.equal(iosProject.split(expected).length - 1, 2);
   });
 
-  it("native release workflow는 immutable 중앙 caller와 플랫폼별 실행 경계를 유지한다", () => {
+  it("native release workflow는 중앙 정본 main caller와 플랫폼별 실행 경계를 유지한다", () => {
     // 버전 정본은 중앙 release authority 하나이고, 서명 AAB는 x86 Cloud Build가 만든다.
     // ARC 러너(4608Mi cgroup)에서 RN 빌드를 돌리면 v1.1.9처럼 SIGKILL로 끝난다.
-    assert.match(
-      androidWorkflow,
-      /resolve-release-version\.yml@[0-9a-f]{40}/,
-    );
+    // caller는 seorilabs/.github#179 이후 SHA를 박지 않고 중앙 정본 main을 본다.
+    assert.match(androidWorkflow, /resolve-release-version\.yml@main/);
     assert.match(androidWorkflow, /ref:\s*[0-9a-f]{40}/);
     assert.match(androidWorkflow, /--config=cloudbuild-android\.yaml/);
     assert.match(androidWorkflow, /runs-on:\s*seorilabs-rpi-arm64/);
