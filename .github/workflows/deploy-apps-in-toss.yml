@@ -45,10 +45,24 @@ jobs:
           echo "::error::RETURN_REMINDER_TEMPLATE_CODE repository variable is required."
           exit 1
         fi
-        VITE_PUZZLE_PACK_BASE_URL="${{ vars.PUZZLE_PACK_BASE_URL || 'https://crossword-puzzle-79ae0.web.app' }}"
-        VITE_RETURN_REMINDER_TEMPLATE_CODE="$template_code"
-        VITE_APP_VERSION="$SEORI_RELEASE_VERSION"
-        VITE_RELEASE_TAG="$SEORI_RELEASE_TAG"
+        puzzle_pack_base_url="${{ vars.PUZZLE_PACK_BASE_URL || 'https://crossword-puzzle-79ae0.web.app' }}"
+        if [ -z "${puzzle_pack_base_url//[[:space:]]/}" ]; then
+          echo "::error::PUZZLE_PACK_BASE_URL is required. 비우면 번들 내장 폴백 팩으로 조용히 내려간다."
+          exit 1
+        fi
+        release_version="${SEORI_RELEASE_VERSION:-}"
+        release_tag="${SEORI_RELEASE_TAG:-}"
+        if [ -z "${release_version//[[:space:]]/}" ] || [ -z "${release_tag//[[:space:]]/}" ]; then
+          echo "::error::SEORI_RELEASE_VERSION/SEORI_RELEASE_TAG must come from the central release workflow."
+          exit 1
+        fi
+        # export 하지 않으면 자식 프로세스인 vite가 값을 보지 못한다. 그러면 퍼즐 팩
+        # 주소가 비어 번들 내장 6월 폴백 팩이 나가고 release_version이 package.json
+        # 기본값으로 떨어진다(#406). 반드시 export로 환경에 실어 보낸다.
+        export VITE_PUZZLE_PACK_BASE_URL="$puzzle_pack_base_url"
+        export VITE_RETURN_REMINDER_TEMPLATE_CODE="$template_code"
+        export VITE_APP_VERSION="$release_version"
+        export VITE_RELEASE_TAG="$release_tag"
         npm run build
       artifact_path: "*.ait"
       timeout_minutes: 30
