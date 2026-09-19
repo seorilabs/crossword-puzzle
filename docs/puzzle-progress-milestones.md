@@ -27,7 +27,7 @@ bq query \
   < scripts/analytics/puzzle-progress-milestones.sql
 ```
 
-기본값은 최근 28일 롤링 구간이며, 구간을 고정하려면 SQL 상단 두 `DECLARE` 줄의 `DEFAULT`만 바꾼다(예: `'20260603'` ~ `'20260624'`). named-parameter 변형은 `docs/retention-cohort.md`와 동일한 방식으로 적용할 수 있다.
+기본값은 최근 28일 롤링 구간이며, 구간을 고정하려면 SQL 상단 두 `DECLARE` 줄의 `DEFAULT`만 바꾼다(예: `'20260603'` ~ `'20260624'`). named-parameter 변형은 SQL 상단 `DECLARE` 두 줄을 지우고 본문의 `from_suffix`/`to_suffix`를 `@from_suffix`/`@to_suffix`로 바꿔 적용한다.
 
 ## 출력 스키마
 
