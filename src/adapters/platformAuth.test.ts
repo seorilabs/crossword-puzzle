@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   PLATFORM_API_BASE_URL,
+  PLATFORM_INGEST_BASE_URL,
   PLATFORM_AUTH_APP_ID,
   PLATFORM_AUTH_EVENT,
   PLATFORM_PRESENCE_ENABLED,
@@ -99,6 +100,7 @@ describe("ensurePlatformAuth (웹/AIT adapter)", () => {
     expect(createPlatform).toHaveBeenCalledWith({
       appId: PLATFORM_AUTH_APP_ID,
       baseUrl: PLATFORM_API_BASE_URL,
+      ingestBaseUrl: PLATFORM_INGEST_BASE_URL,
       presenceEnabled: PLATFORM_PRESENCE_ENABLED,
       presenceContext: {
         appVersion: expect.any(String),

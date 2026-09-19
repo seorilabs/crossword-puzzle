@@ -1,5 +1,6 @@
 import {
   PLATFORM_API_BASE_URL,
+  PLATFORM_INGEST_BASE_URL,
   PLATFORM_AUTH_APP_ID,
   PLATFORM_AUTH_EVENT,
   PLATFORM_PRESENCE_ENABLED,
@@ -101,6 +102,7 @@ test('같은 appId로 SDK를 만들고 firebase-id-token 세션을 한 번 연�
   expect(mockCreatePlatform).toHaveBeenCalledWith({
     appId: PLATFORM_AUTH_APP_ID,
     baseUrl: PLATFORM_API_BASE_URL,
+    ingestBaseUrl: PLATFORM_INGEST_BASE_URL,
     presenceEnabled: PLATFORM_PRESENCE_ENABLED,
     presenceContext: {
       appVersion: '1.1.7',
