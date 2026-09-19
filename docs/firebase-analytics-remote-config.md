@@ -97,7 +97,7 @@ AIT는 AppsInToss Analytics와 Firebase Analytics를 함께 호출한다. 샌드
 
 레거시 `result_interstitial_ad_*` 이벤트와
 `result_interstitial_ads_enabled` 키는 현재 코드 계약이 아니다. 과거 배포 데이터의 잔존
-여부만 `docs/result-interstitial-config-audit.md`와 관련 SQL에서 감사한다.
+여부만 `scripts/analytics/result-interstitial-config-audit.sql`에서 감사한다.
 
 ## Android / iOS
 
