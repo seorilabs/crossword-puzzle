@@ -345,11 +345,12 @@ jobs:
           service_account: ${{ vars.GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL }}
           create_credentials_file: true
 
+      # architecture를 고정하지 않는다. runs-on을 바꿀 때마다 같이 고쳐야 하고,
+      # 빠뜨리면 러너와 다른 아키텍처의 Python을 받아 Exec format error로 죽는다.
       - name: Setup Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.13"
-          architecture: arm64
 
       - name: Install Google Play API client
         run: >-
