@@ -131,6 +131,7 @@ const productionAdUnitIds = {
 
 let mobileAdsModulePromise: Promise<GoogleMobileAdsModule | null> | null = null;
 let initializationPromise: Promise<boolean> | null = null;
+let consentPromise: Promise<boolean> | null = null;
 let initializationErrorCode: string | undefined;
 
 function isTestRuntime() {
@@ -182,6 +183,30 @@ export function createMobileAdsRequestConfiguration(
   };
 }
 
+export async function requestMobileAdsConsent(module: GoogleMobileAdsModule) {
+  if (consentPromise != null) {
+    return consentPromise;
+  }
+
+  consentPromise = (async () => {
+    try {
+      const info = await module.AdsConsent.gatherConsent();
+      return info.canRequestAds;
+    } catch {
+      // A transient update failure may still leave a valid decision from a
+      // previous launch. Never request ads unless the SDK explicitly allows it.
+      try {
+        const info = await module.AdsConsent.getConsentInfo();
+        return info.canRequestAds;
+      } catch {
+        return false;
+      }
+    }
+  })();
+
+  return consentPromise;
+}
+
 function createUnavailableRewardedResult(
   type: Extract<MobileAdEventType, 'initialize_failed' | 'module_unavailable'>,
 ): RewardedAdResult {
@@ -204,6 +229,10 @@ export async function initializeMobileAds() {
     }
 
     try {
+      if (!(await requestMobileAdsConsent(module))) {
+        initializationErrorCode = 'consent_required';
+        return false;
+      }
       const mobileAds = module.default();
       await mobileAds.setRequestConfiguration(
         createMobileAdsRequestConfiguration(module),
@@ -218,6 +247,37 @@ export async function initializeMobileAds() {
   })();
 
   return initializationPromise;
+}
+
+export async function showMobileAdsPrivacyOptions() {
+  const module = await getMobileAdsModule();
+  if (module == null) {
+    return { errorCode: 'module_unavailable', status: 'failed' as const };
+  }
+
+  try {
+    const info = await module.AdsConsent.getConsentInfo();
+    if (
+      info.privacyOptionsRequirementStatus !==
+      module.AdsConsentPrivacyOptionsRequirementStatus.REQUIRED
+    ) {
+      return { status: 'not_required' as const };
+    }
+    await module.AdsConsent.showPrivacyOptionsForm();
+    return { status: 'shown' as const };
+  } catch (error) {
+    return {
+      errorCode: getMobileAdErrorCode(error),
+      status: 'failed' as const,
+    };
+  }
+}
+
+export function resetMobileAdsStateForTests() {
+  mobileAdsModulePromise = null;
+  initializationPromise = null;
+  consentPromise = null;
+  initializationErrorCode = undefined;
 }
 
 export async function showRewardedAd(

@@ -3,8 +3,38 @@ import {
   getMobileAdErrorCode,
   getMobileRewardedAdRetryStatus,
   mapMobileAdTraceEvent,
+  requestMobileAdsConsent,
+  resetMobileAdsStateForTests,
   type MobileAdEvent,
 } from '../mobileAds';
+
+beforeEach(() => {
+  resetMobileAdsStateForTests();
+});
+
+test('uses the UMP decision before allowing mobile ad requests', async () => {
+  const gatherConsent = jest.fn().mockResolvedValue({ canRequestAds: true });
+  const module = {
+    AdsConsent: {
+      gatherConsent,
+      getConsentInfo: jest.fn(),
+    },
+  } as never;
+
+  await expect(requestMobileAdsConsent(module)).resolves.toBe(true);
+  expect(gatherConsent).toHaveBeenCalledTimes(1);
+});
+
+test('fails closed when UMP cannot refresh or read a previous decision', async () => {
+  const module = {
+    AdsConsent: {
+      gatherConsent: jest.fn().mockRejectedValue(new Error('offline')),
+      getConsentInfo: jest.fn().mockRejectedValue(new Error('unavailable')),
+    },
+  } as never;
+
+  await expect(requestMobileAdsConsent(module)).resolves.toBe(false);
+});
 
 test('configures mobile ad requests for first-launch non-personalized ads', () => {
   const config = createMobileAdsRequestConfiguration({

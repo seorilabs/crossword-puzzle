@@ -161,6 +161,7 @@ import {
   mapMobileAdTraceEvent,
   mapRewardedAdRetryError,
   openMobileAdsInspector,
+  showMobileAdsPrivacyOptions,
   showRewardedAd,
   type MobileAdUnitMode,
   type MobileAdEvent,
@@ -1890,6 +1891,17 @@ function AppContent() {
           ? 'Ad Inspector를 닫았습니다.'
           : `Ad Inspector 실패 (${result.errorCode ?? 'unknown'})`,
     });
+  }, []);
+
+  const openAdPrivacySettings = useCallback(async () => {
+    const result = await showMobileAdsPrivacyOptions();
+    setNotice(
+      result.status === 'shown'
+        ? '광고 개인정보 선택을 반영했습니다.'
+        : result.status === 'not_required'
+          ? '현재 지역에서는 별도의 광고 개인정보 선택이 필요하지 않습니다.'
+          : '광고 개인정보 설정을 열지 못했습니다. 네트워크 연결 후 다시 시도해 주세요.',
+    );
   }, []);
 
   useEffect(() => {
@@ -4789,6 +4801,13 @@ function AppContent() {
             style={styles.secondaryButton}
           >
             <Text style={styles.secondaryButtonText}>출처</Text>
+          </Pressable>
+          <Pressable
+            accessibilityLabel="광고 개인정보 설정"
+            onPress={openAdPrivacySettings}
+            style={styles.secondaryButton}
+          >
+            <Text style={styles.secondaryButtonText}>광고 개인정보 설정</Text>
           </Pressable>
         </View>
       </ScrollView>
