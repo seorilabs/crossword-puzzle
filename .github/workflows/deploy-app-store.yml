@@ -1,0 +1,80 @@
+name: Deploy App Store
+
+# 서명 archive와 App Store Connect 업로드를 조직 재사용 워크플로에 위임한다.
+# 버전 정본은 중앙 release authority가 해석한 릴리즈 태그 하나이고, 업로드 전에
+# archive 산출물에서 버전과 AdMob app ID를 readback해 fail-closed한다.
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "빌드할 exact stable SemVer 태그. 비우면 최신 vX.Y.Z"
+        type: string
+        required: false
+        default: ""
+      upload:
+        description: "true면 App Store Connect에 업로드(false면 xcarchive artifact만 생성)"
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      release_tag:
+        type: string
+        required: false
+        default: ""
+      upload:
+        type: boolean
+        default: true
+    secrets:
+      APPLE_DISTRIBUTION_CERTIFICATE_BASE64:
+        required: true
+      APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD:
+        required: true
+      APPLE_KEYCHAIN_PASSWORD:
+        required: true
+      APPLE_PROVISIONING_PROFILE_BASE64:
+        required: false
+      APP_STORE_CONNECT_API_KEY_ID:
+        required: true
+      APP_STORE_CONNECT_ISSUER_ID:
+        required: true
+      APP_STORE_CONNECT_PRIVATE_KEY_BASE64:
+        required: true
+      FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64:
+        required: true
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: crossword-app-store-${{ inputs.release_tag || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    uses: seorilabs/.github/.github/workflows/rn-deploy-app-store.yml@main
+    secrets:
+      APPLE_DISTRIBUTION_CERTIFICATE_BASE64: ${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE_BASE64 }}
+      APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD }}
+      APPLE_KEYCHAIN_PASSWORD: ${{ secrets.APPLE_KEYCHAIN_PASSWORD }}
+      APPLE_PROVISIONING_PROFILE_BASE64: ${{ secrets.APPLE_PROVISIONING_PROFILE_BASE64 }}
+      APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+      APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+      APP_STORE_CONNECT_PRIVATE_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY_BASE64 }}
+      FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64: ${{ secrets.FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64 }}
+    with:
+      release_tag: ${{ inputs.release_tag }}
+      bundle_id: com.seorilabs.crosswordpuzzle
+      upload: ${{ inputs.upload }}
+      ios_dir: apps/mobile/ios
+      xcode_workspace: CrosswordPuzzleMobile.xcworkspace
+      scheme: CrosswordPuzzleMobile
+      export_options_plist: app-store/export-options.plist
+      package_manager: npm
+      node_version: 24.16.0
+      install_command: |
+        npm ci
+        npm ci --prefix apps/mobile
+      firebase_restore_script: scripts/restore-mobile-firebase-config.mjs
+      timeout_minutes: 60
