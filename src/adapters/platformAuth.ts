@@ -5,6 +5,7 @@ import {
   ensurePlatformSignIn,
   evaluateUpdateGate,
   PLATFORM_API_BASE_URL,
+  PLATFORM_INGEST_BASE_URL,
   PLATFORM_AUTH_APP_ID,
   PLATFORM_AUTH_EVENT,
   PLATFORM_PRESENCE_ENABLED,
@@ -30,6 +31,8 @@ type FirebaseAuthHandle = {
 const webPlatform = createPlatform({
   appId: PLATFORM_AUTH_APP_ID,
   baseUrl: PLATFORM_API_BASE_URL,
+  // Presence token 라우트는 ingest role에만 있다. 생략하면 baseUrl로 가서 404가 난다.
+  ingestBaseUrl: PLATFORM_INGEST_BASE_URL,
   presenceEnabled: PLATFORM_PRESENCE_ENABLED,
   presenceContext: {
     appVersion: RELEASE_VERSION,

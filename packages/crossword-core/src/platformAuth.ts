@@ -12,6 +12,12 @@ export const PLATFORM_AUTH_APP_ID = "crossword-puzzle";
 export const PLATFORM_API_BASE_URL =
   "https://platform-api-306278488979.asia-northeast3.run.app";
 
+// Presence token 발급(POST /v1/presence/token)은 platform-api가 아니라 ingest role
+// 서비스에만 등록된 라우트다. 이 값을 주지 않으면 SDK가 baseUrl로 보내고 서버가
+// "404 page not found"를 돌려줘, Presence가 fail-open으로 조용히 꺼진다.
+export const PLATFORM_INGEST_BASE_URL =
+  "https://platform-ingest-306278488979.asia-northeast3.run.app";
+
 export type PlatformCustomTokenResult = {
   firebaseCustomToken: string;
   appUserId: string;
