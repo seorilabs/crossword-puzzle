@@ -17,7 +17,7 @@
 | 항목                  | 확인값                                           | 근거                                                                     |
 | --------------------- | ------------------------------------------------ | ------------------------------------------------------------------------ |
 | 한국어 앱 이름        | `가로세로 낱말 퍼즐`                               | AppsInToss Console 앱 설정(SDK 3.x부터 config에서 제거), 앱 상단 제목    |
-| appName               | `crossword-puzzle-game`                          | `apps-in-toss.config.ts`, `package.json`                                 |
+| appName               | `crossword-puzzle-game`                          | `apps-in-toss.config.ts`의 `appName` (package.json의 name과 다름)        |
 | 대표 색상             | `#00A88F`                                        | `apps-in-toss.config.ts`의 `brand.primaryColor`                          |
 | 앱 유형               | 게임 / 퍼즐 후보                                 | 기획서와 현재 구현이 낱말 퍼즐 앱                                        |
 | 실제 구현 라우팅      | `/`, `/today`, `/history`, `/result`, `/license` | 홈, 퍼즐 풀기, 기록, 결과, 출처/라이선스 화면                            |
