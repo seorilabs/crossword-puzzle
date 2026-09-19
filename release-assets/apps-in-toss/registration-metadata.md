@@ -21,7 +21,7 @@
 | 부제 (20자 이내) | `매일 한 판으로 어휘력·집중력 UP` | 사용자 가치 강조 |
 | 카테고리 | 게임(id `5`) > 퍼즐(id `3844`) | `subCategoryIds: []` (게임 그룹은 서브카테고리 없음) |
 | 사용 연령/등급 | 등급분류 결과에 따름 | 전체이용가 예상 시 `minAge 14 / maxAge 99`(형제 게임 기준) |
-| 대표 색상 | `#00A88F` | `granite.config.ts brand.primaryColor` |
+| 대표 색상 | `#00A88F` | `apps-in-toss.config.ts brand.primaryColor` |
 | CS 이메일 | (자동) | MCP는 요청 멤버 콘솔 계정 이메일로 자동 설정 |
 
 ### 한 줄 설명(부제) 대안

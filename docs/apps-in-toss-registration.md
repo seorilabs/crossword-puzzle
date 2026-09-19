@@ -16,12 +16,12 @@
 
 | 항목                  | 확인값                                           | 근거                                                                     |
 | --------------------- | ------------------------------------------------ | ------------------------------------------------------------------------ |
-| 한국어 앱 이름        | `가로세로 낱말 퍼즐`                               | `granite.config.ts`의 `brand.displayName`, 앱 상단 제목                  |
-| appName               | `crossword-puzzle`                               | `granite.config.ts`, `package.json`                                      |
-| 대표 색상             | `#00A88F`                                        | `granite.config.ts`의 `brand.primaryColor`                               |
+| 한국어 앱 이름        | `가로세로 낱말 퍼즐`                               | AppsInToss Console 앱 설정(SDK 3.x부터 config에서 제거), 앱 상단 제목    |
+| appName               | `crossword-puzzle-game`                          | `apps-in-toss.config.ts`, `package.json`                                 |
+| 대표 색상             | `#00A88F`                                        | `apps-in-toss.config.ts`의 `brand.primaryColor`                          |
 | 앱 유형               | 게임 / 퍼즐 후보                                 | 기획서와 현재 구현이 낱말 퍼즐 앱                                        |
 | 실제 구현 라우팅      | `/`, `/today`, `/history`, `/result`, `/license` | 홈, 퍼즐 풀기, 기록, 결과, 출처/라이선스 화면                            |
-| 권한                  | 없음                                             | `granite.config.ts`의 `permissions: []`                                  |
+| 권한                  | 없음                                             | `apps-in-toss.config.ts`의 `permissions: []`                             |
 | 저장 방식             | 기기 로컬 저장                                   | `localStorage`에 날짜별 미션, 퍼즐별 진행 상태, 힌트 사용/보상 횟수 저장 |
 | 광고                  | 결과 전면, 힌트 보상형                           | AppsInToss 인앱 광고 2.0 ver2                                            |
 | 분석                  | AppsInToss Analytics, Firebase Analytics         | 화면 진입, 힌트 사용, 광고 이벤트, 퍼즐 참여자/완료율 집계용 이벤트      |
@@ -122,7 +122,7 @@
 
 - 로고와 썸네일은 Toss 제공 아이콘, 이미지 리소스, 외부 저작물 없이 자체 SVG로 제작했다.
 - 세로 스크린샷 3장은 로컬 앱을 실행해 실제 UI에서 캡처했다.
-- `brand.icon`에는 로컬 경로를 넣지 않는다. AppsInToss Console에 업로드한 로고 HTTPS URL을 `granite.config.ts`의 `brand.icon`에 반영했다.
+- 앱 아이콘과 표시 이름은 SDK 3.x에서 config 필드(`brand.icon`, `brand.displayName`)가 제거돼 AppsInToss Console 앱 설정이 정본이다. 저장소에는 값을 두지 않는다.
 - 현재 퍼즐 힌트는 한국어기초사전 뜻풀이 기반이다. 앱 홈과 `/license` 화면에서 출처와 `CC-BY-SA-2.0-KR` 조건을 상시 표시한다. 검수 대상 문장은 `docs/hint-license-review.md`에 정리했다.
 - 광고 그룹 ID는 힌트 보상형 `ait.v2.live.bf12924f4bf84b74`를 사용한다. (결과 전면 광고 `ait.v2.live.a1439d344fa34821`는 광고 힌트 한정 리팩터에서 제거됨)
 - 보상형 광고 힌트는 `userEarnedReward` 이벤트 수신 즉시 지급한다. `dismissed`는 광고 닫힘 이벤트일 뿐 보상 지급 근거로 쓰지 않는다.
