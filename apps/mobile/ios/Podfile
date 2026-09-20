@@ -5,6 +5,10 @@ require Pod::Executable.execute_command('node', ['-p',
     {paths: [process.argv[1]]},
   )', __dir__]).strip
 
+# 앱 타겟(CrosswordPuzzleMobile.xcodeproj)의 IPHONEOS_DEPLOYMENT_TARGET과 같은 값이다.
+# 둘이 어긋나면 post_install이 팟을 앱보다 낮게 두거나 불필요하게 올린다.
+APP_IOS_DEPLOYMENT_TARGET = '15.1'
+
 platform :ios, min_ios_version_supported
 prepare_react_native_project!
 
@@ -42,6 +46,29 @@ target 'CrosswordPuzzleMobile' do
 
       target.build_configurations.each do |build_config|
         build_config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+      end
+    end
+
+    # Firebase/AdMob 전이 의존성(FBLPromises 9.0, GoogleUtilities·nanopb·GMA 12.0,
+    # AsyncStorage 13.0)이 앱보다 낮은 deployment target을 들고 온다. Xcode 27은
+    # 15.0 미만을 거부해 archive가 통째로 실패하므로 앱 값까지 끌어올린다.
+    #
+    # 낮은 것만 올리고 이미 높은 팟은 건드리지 않는다. 팟을 앱보다 낮게 내리면
+    # 앱이 쓰지 못하는 심볼이 링크돼 런타임에 터질 수 있다.
+    app_deployment_target = Gem::Version.new(APP_IOS_DEPLOYMENT_TARGET)
+    raise_deployment_target = lambda do |build_settings|
+      current = build_settings['IPHONEOS_DEPLOYMENT_TARGET']
+      next if current && Gem::Version.new(current) >= app_deployment_target
+
+      build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = APP_IOS_DEPLOYMENT_TARGET
+    end
+
+    installer.pods_project.build_configurations.each do |build_config|
+      raise_deployment_target.call(build_config.build_settings)
+    end
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |build_config|
+        raise_deployment_target.call(build_config.build_settings)
       end
     end
   end
