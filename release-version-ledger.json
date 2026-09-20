@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "release": {
-    "lastTag": "v1.1.12",
-    "lastSourceSha": "608e8b579f836e4932f7800df0d40527f75b4b2a",
-    "marketingVersion": "1.1.12"
+    "lastTag": "v1.1.13",
+    "lastSourceSha": "3090c82d59f6ce162ca26dd51bbd6652f7e22281",
+    "marketingVersion": "1.1.13"
   },
   "android": {
     "authority": "github-ledger",
-    "lastVersionCode": 1001001012,
+    "lastVersionCode": 1001001013,
     "legacyFallbackSealed": true
   },
   "ios": {
