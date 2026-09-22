@@ -1154,19 +1154,23 @@ assertNotIncludes(
   "seorilabs-x64-android",
   deployGooglePlayWorkflowPath,
 );
-assertIncludes(
+// machineType을 적어두면 제출 toolchain이 흔들릴 때 unrecognized field로 떨어져
+// 제출 자체가 거절된다(run 34225056022, 34228215910). default pool의 기본 머신이
+// e2-standard-2로 같은 사양이라 명시할 이유가 없다.
+assertNotIncludes(
   androidCloudBuildConfig,
   "machineType: E2_STANDARD_2",
   androidCloudBuildConfigPath,
 );
-// 제출 toolchain이 흔들리면 machineType이 unrecognized field로 떨어져 제출 자체가
-// 거절된다(run 34225056022, 34228215910). gcloud 버전과 리전을 함께 고정한다.
 assertIncludes(
   deployGooglePlayWorkflow,
   "version: 582.0.0",
   deployGooglePlayWorkflowPath,
 );
-assertIncludes(
+// 리전 풀은 무료 등급 크레딧이 일부만 적용된다. default pool로 제출해야 빌드가
+// 무료다(35일 실측: default pool 4,734분 전액 크레딧, asia-northeast3 9,444분
+// 중 7,109원 청구). --region이 되살아나면 과금 경로로 돌아간다.
+assertNotIncludes(
   deployGooglePlayWorkflow,
   "--region=asia-northeast3",
   deployGooglePlayWorkflowPath,
@@ -1266,6 +1270,13 @@ for (const automaticTrigger of ["push:", "pull_request:", "schedule:"]) {
 assertIncludes(
   androidBuildEnv,
   "ANDROID_BUILDER_TAG=node24-jdk17-android36",
+  androidBuildEnvPath,
+);
+// default pool은 미국에서 실행된다. 서울 사본을 당기면 빌드마다 2GB 대륙간
+// egress가 붙으므로 US 멀티리전 사본을 고정한다.
+assertIncludes(
+  androidBuildEnv,
+  "ANDROID_BUILDER_IMAGE=us-docker.pkg.dev/seorilabs-ci/builders/rn-android-builder",
   androidBuildEnvPath,
 );
 assertIncludes(

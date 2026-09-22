@@ -5,8 +5,14 @@
 # cgroup을 넘는다. v1.1.9 배포(run 34183637521)가 이 한도에서 SIGKILL(exit 137)로 끝났고,
 # 러너 노드 seori-m6-01의 allocatable은 5209Mi라 한도를 더 올릴 수 없다.
 # 8GB worker에서 격리해 빌드하며 과금형 machineType으로 우회하지 않는다.
+#
+# 리전 풀(asia-northeast3)이 아니라 default pool로 제출한다. 같은 E2 사양인데
+# 무료 등급 크레딧이 default pool에만 전액 적용된다(35일 실측: default pool
+# 4,734분 전액 크레딧 0원, asia-northeast3 9,444분 중 7,109원 청구).
+# default pool은 미국에서 실행되므로 builder 이미지도 US 멀티리전 사본을 쓴다.
+# 서울 사본을 그대로 당기면 빌드마다 2GB 대륙간 egress가 붙는다.
 substitutions:
-  _ANDROID_BUILDER_IMAGE: "asia-northeast3-docker.pkg.dev/seorilabs-ci/builders/rn-android-builder"
+  _ANDROID_BUILDER_IMAGE: "us-docker.pkg.dev/seorilabs-ci/builders/rn-android-builder"
   _ANDROID_BUILDER_TAG: "node24-jdk17-android36"
   _SEORI_RELEASE_TAG: ""
   _SEORI_RELEASE_SOURCE_SHA: ""
@@ -61,9 +67,9 @@ artifacts:
       - dist/android/crossword-puzzle.aab
 
 options:
-  # E2_STANDARD_2는 gcloud 582.0.0 기준 값이다. 제출하는 gcloud 버전이 다르면
-  # `.options.machineType: unused`로 거절되므로 워크플로에서 버전을 고정한다.
-  machineType: E2_STANDARD_2
+  # machineType은 지정하지 않는다. default pool의 기본 머신이 이미
+  # e2-standard-2(2 vCPU, 8GB)로 같은 사양이고, 값을 적어두면 제출하는 gcloud
+  # 버전에 따라 `.options.machineType: unused`로 거절된다.
   logging: CLOUD_LOGGING_ONLY
 
 # 2 vCPU에서 RN new architecture의 ABI 컴파일까지 끝낼 수 있는 상한이다.
