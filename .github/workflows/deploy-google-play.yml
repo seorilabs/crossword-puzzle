@@ -167,14 +167,21 @@ jobs:
           source_sha="$(git rev-parse HEAD)"
           test "$source_sha" = "$RELEASE_SOURCE_SHA"
           run_key="${{ github.run_id }}-${{ github.run_attempt }}"
-          bucket_root="gs://seorilabs-ci-build-artifacts/${{ github.repository }}/$run_key"
+          artifact_root="gs://seorilabs-ci-build-artifacts/${{ github.repository }}/$run_key"
+          # 자격증명은 아티팩트와 다른 버킷에 둔다. 아티팩트 버킷은 babycare·cycle-pair·
+          # happy-farm·lizard-tycoon의 canary/release SA 8개가 objectAdmin을 갖고 있고
+          # 수명주기도 없어서, prefix를 나눠도 IAM 경계가 생기지 않는다. 키스토어를
+          # 잠깐이라도 올릴 자리가 아니다.
+          # 자격증명 전용 버킷은 제출 SA와 Cloud Build 런타임 SA 둘로 한정돼 있고,
+          # 수명주기 1일이 아래 rm이 실패했을 때의 백스톱이 된다. soft delete도 꺼두었다.
+          credential_root="gs://seorilabs-ci-build-credentials/${{ github.repository }}/$run_key"
           {
             echo "aab_name=$(basename "$AAB_PATH")"
             echo "aab_path=$AAB_PATH"
-            echo "artifact_bucket=$bucket_root/artifacts"
+            echo "artifact_bucket=$artifact_root/artifacts"
             echo "artifact_name=crossword-puzzle-google-play-aab-v$VERSION_NAME-code$VERSION_CODE"
             echo "builder=$ANDROID_BUILDER_IMAGE:$ANDROID_BUILDER_TAG"
-            echo "credential_bucket=$bucket_root/credentials"
+            echo "credential_bucket=$credential_root"
             echo "source_sha=$source_sha"
           } >> "$GITHUB_OUTPUT"
 
@@ -290,6 +297,10 @@ jobs:
           ARTIFACT_BUCKET: ${{ steps.meta.outputs.artifact_bucket }}
           CREDENTIAL_BUCKET: ${{ steps.meta.outputs.credential_bucket }}
         run: |
+          # 여기는 cloudbuild 쪽과 달리 `|| true`를 유지한다. always()로 도는 단계라
+          # 정상 경로에서는 fetch-ephemeral-credentials가 이미 prefix를 지웠고,
+          # 빌드 전에 실패했으면 prefix가 아예 없다. 둘 다 정상이라 실패로 볼 수 없다.
+          # 자격증명이 남는 경우를 잡는 건 cloudbuild의 rm과 버킷 수명주기 1일이다.
           rm -rf -- "$RUNNER_TEMP/crossword-cloud-build-secrets"
           gcloud storage rm --recursive "$CREDENTIAL_BUCKET" || true
           gcloud storage rm --recursive "$ARTIFACT_BUCKET" || true
