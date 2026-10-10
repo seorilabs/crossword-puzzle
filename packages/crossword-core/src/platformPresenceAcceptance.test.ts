@@ -7,22 +7,22 @@ import { PLATFORM_PRESENCE_ENABLED } from "./platformPresence.ts";
 const read = (path: string) => readFileSync(path, "utf8");
 
 describe("#356 Platform Presence Phase A 인수조건", () => {
-  it("AC-1: SDK 0.5.0 exact dependency와 clean install/import 실행 경로를 고정한다", () => {
+  it("AC-1: SDK 0.6.0 exact dependency와 clean install/import 실행 경로를 고정한다", () => {
     const rootPackage = JSON.parse(read("package.json"));
     const mobilePackage = JSON.parse(read("apps/mobile/package.json"));
     const rootLock = JSON.parse(read("package-lock.json"));
     const mobileLock = JSON.parse(read("apps/mobile/package-lock.json"));
     const integrationTest = read("src/adapters/platformPresence.test.mts");
 
-    assert.equal(rootPackage.dependencies["@seorilabs/platform-sdk"], "0.5.0");
-    assert.equal(mobilePackage.dependencies["@seorilabs/platform-sdk"], "0.5.0");
+    assert.equal(rootPackage.dependencies["@seorilabs/platform-sdk"], "0.6.0");
+    assert.equal(mobilePackage.dependencies["@seorilabs/platform-sdk"], "0.6.0");
     assert.equal(
       rootLock.packages["node_modules/@seorilabs/platform-sdk"].version,
-      "0.5.0",
+      "0.6.0",
     );
     assert.equal(
       mobileLock.packages["node_modules/@seorilabs/platform-sdk"].version,
-      "0.5.0",
+      "0.6.0",
     );
     assert.match(
       integrationTest,

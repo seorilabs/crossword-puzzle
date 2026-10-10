@@ -106,6 +106,7 @@ describe("ensurePlatformAuth (웹/AIT adapter)", () => {
         appVersion: expect.any(String),
         platform: "ait",
       },
+      debugBuild: expect.any(Boolean),
       fetchImpl: expect.any(Function),
     });
     expect(firebaseCustomToken).toHaveBeenCalledWith();
@@ -122,6 +123,30 @@ describe("ensurePlatformAuth (웹/AIT adapter)", () => {
     expect(Object.values(params)).not.toContain("pb_abc");
     expect(Object.values(params)).not.toContain("custom-token");
   });
+
+  // 웹 번들에는 React Native의 __DEV__가 없어 SDK 기본값이 늘 false다. 개발 서버
+  // 번들만 X-Seori-Build: debug로 운영 가입·지표에서 빠지고, 출시 번들(vite build)은
+  // 그대로 집계돼야 한다.
+  it.each([
+    { dev: true, debugBuild: true },
+    { dev: false, debugBuild: false },
+  ])(
+    "Vite DEV=$dev 번들은 SDK debugBuild=$debugBuild로 만든다",
+    async ({ dev, debugBuild }) => {
+      vi.stubEnv("DEV", dev);
+      try {
+        await loadAdapter();
+      } finally {
+        vi.unstubAllEnvs();
+      }
+
+      expect(createPlatform).toHaveBeenCalledTimes(1);
+      expect(createPlatform.mock.calls[0][0]).toHaveProperty(
+        "debugBuild",
+        debugBuild,
+      );
+    },
+  );
 
   it("영속 복원 후 bridge 없이 기존 uid로 Platform session을 연다", async () => {
     const existing = user("pb_existing", "existing-id-token");
