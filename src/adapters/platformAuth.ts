@@ -38,6 +38,10 @@ const webPlatform = createPlatform({
     appVersion: RELEASE_VERSION,
     platform: "ait",
   },
+  // 개발 서버 번들이면 X-Seori-Build: debug를 붙여 운영 가입·지표에서 뺀다. SDK 기본값은
+  // React Native의 __DEV__라 웹 번들에서는 늘 false이므로 Vite 개발 표시를 직접 넘긴다.
+  // 출시 번들(vite build)에서는 false다.
+  debugBuild: import.meta.env.DEV,
   // SDK Transport/Presence는 fetchImpl을 인스턴스 메서드로 호출한다. 브라우저 fetch는
   // this가 Window가 아니면 Illegal invocation을 던지므로 전역 객체에 바인딩해 넘긴다.
   // 주입하지 않으면 웹(AIT)에서 인증·presence 요청이 네트워크 계층에서 전부 실패한다.

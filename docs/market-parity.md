@@ -30,7 +30,7 @@ flowchart TD
 | 공개/보너스/힌트 정책   | `packages/crossword-core/src/uiPolicy.ts`                   | 화면 렌더링만 분리                                              |
 | Remote Config 키/기본값 | `packages/crossword-core/src/launchConfig.ts`               | AIT는 Firebase Web SDK, mobile은 RNFirebase                     |
 | telemetry 표준 차원     | `packages/crossword-core/src/releaseVersion.ts`             | 모든 custom event에 시장·runtime·release를 sink에서 강제        |
-| Presence opt-in 정책    | `packages/crossword-core/src/platformPresence.ts`           | AIT WebView와 Android/iOS가 Platform SDK 0.5.0 lifecycle을 연결 |
+| Presence opt-in 정책    | `packages/crossword-core/src/platformPresence.ts`           | AIT WebView와 Android/iOS가 Platform SDK 0.6.0 lifecycle을 연결 |
 | 광고 adapter            | `src/adapters/appsInTossAds.ts`, `apps/mobile/mobileAds.ts` | AIT는 AppsInToss 광고, mobile은 AdMob                           |
 | 리더보드 정책/점수      | `packages/crossword-core/src/leaderboard.ts`                | AIT Game Center, Android Play Games Services, iOS GameKit       |
 | AIT adapter             | `src/adapters`                                              | AppsInToss SDK, Web Firebase, localStorage                      |
@@ -68,7 +68,8 @@ dimension의 live 상태는 이 코드 변경의 완료 범위가 아니다.
 
 ## Platform Presence (#356)
 
-- Web/AIT와 Android/iOS는 `@seorilabs/platform-sdk@0.5.0`을 사용하고 안정된 `appId=crossword-puzzle`, 플랫폼, 앱 버전만 Presence context로 전달한다. 사용자 ID·광고 ID·외부 세션 ID·기타 PII와 재전송 큐는 추가하지 않는다.
+- Web/AIT와 Android/iOS는 `@seorilabs/platform-sdk@0.6.0`을 사용하고 안정된 `appId=crossword-puzzle`, 플랫폼, 앱 버전만 Presence context로 전달한다. 사용자 ID·광고 ID·외부 세션 ID·기타 PII와 재전송 큐는 추가하지 않는다.
+- 개발용 빌드는 SDK가 `X-Seori-Build: debug`를 붙여 운영 가입·이벤트·presence 집계에서 빠진다. Android/iOS는 SDK 기본값(React Native `__DEV__`)을 쓰고, `__DEV__`가 없는 Web/AIT는 `src/adapters/platformAuth.ts`가 Vite `import.meta.env.DEV`를 `debugBuild`로 넘긴다. 출시 번들은 두 표면 모두 false다.
 - 공용 기본 opt-in은 `packages/crossword-core/src/platformPresence.ts`의 `PLATFORM_PRESENCE_ENABLED=true`다. 이 값을 `false`로 두면 token/Edge 요청이 아예 발생하지 않는다.
 - 각 composition root는 시작·background/hidden 정지·foreground/visible 복귀를 SDK Presence lifecycle에 연결한다. 동기 SDK 오류와 SDK 내부의 timeout·5xx·DNS·TLS 실패는 모두 fail-open이며 앱 시작·퍼즐 플레이·저장 흐름을 막지 않는다.
 - SDK가 제공하는 전용 token/Edge HTTP 경로, Edge 2초 timeout, no-outbox/no-replay 계약을 그대로 사용한다. 앱 adapter는 직접 heartbeat나 별도 fallback을 구현하지 않는다.

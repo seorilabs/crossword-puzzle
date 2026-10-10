@@ -136,7 +136,7 @@ const sharedLaunchConfigExports = [
   "normalizeLaunchConfig",
 ];
 
-const platformSdkVersion = "0.5.0";
+const platformSdkVersion = "0.6.0";
 
 const failures = [];
 
