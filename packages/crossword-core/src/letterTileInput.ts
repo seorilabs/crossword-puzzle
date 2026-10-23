@@ -55,10 +55,11 @@ function firstEditable(
   );
 }
 
-export function createLetterTileState(
+function normalizeState(
   puzzle: Puzzle,
   values: Record<string, string> = {},
   metadata?: unknown,
+  keepSelected = false,
 ): LetterTileState {
   const saved = normalizeLetterTileProgress(metadata);
   const occupied = new Set(puzzle.entries.flatMap(keysOf));
@@ -75,7 +76,9 @@ export function createLetterTileState(
     if (complete(entry, values))
       keysOf(entry).forEach((key) => confirmed.add(key));
   const entry =
-    puzzle.entries.find((e) => e.id === saved?.entryId) ??
+    puzzle.entries.find(
+      (e) => e.id === saved?.entryId && (keepSelected || !complete(e, values)),
+    ) ??
     puzzle.entries.find((e) => !complete(e, values)) ??
     puzzle.entries[0];
   const entryKeys = entry ? keysOf(entry) : [];
@@ -100,6 +103,33 @@ export function createLetterTileState(
       ),
     },
   };
+}
+
+export function createLetterTileState(
+  puzzle: Puzzle,
+  values: Record<string, string> = {},
+  metadata?: unknown,
+): LetterTileState {
+  return normalizeState(puzzle, values, metadata);
+}
+
+export function selectLetterEntry(
+  puzzle: Puzzle,
+  state: LetterTileState,
+  entryId: string,
+  cellKey = "",
+): LetterTileState {
+  if (!puzzle.entries.some((entry) => entry.id === entryId)) return state;
+  return normalizeState(
+    puzzle,
+    state.cellValues,
+    {
+      ...state.progress,
+      entryId,
+      activeCellKey: cellKey,
+    },
+    true,
+  );
 }
 
 function seed(value: string) {
@@ -183,12 +213,16 @@ function finishEdit(puzzle: Puzzle, state: LetterTileState): LetterTileState {
       ? state.progress.selectionHistory.filter((key) => !keys.includes(key))
       : state.progress.selectionHistory,
   };
-  const next = createLetterTileState(puzzle, values, progress);
-  next.progress.activeCellKey = firstEditable(
-    entry,
-    values,
-    new Set(next.progress.confirmedCells),
-  );
+  const next = normalizeState(puzzle, values, progress, true);
+  const confirmed = new Set(next.progress.confirmedCells);
+  const editedIndex = keys.indexOf(state.progress.activeCellKey);
+  const following = [
+    ...keys.slice(editedIndex + 1),
+    ...keys.slice(0, editedIndex + 1),
+  ];
+  next.progress.activeCellKey =
+    following.find((key) => !values[key] && !confirmed.has(key)) ??
+    firstEditable(entry, values, confirmed);
   return { ...next, status };
 }
 
@@ -215,6 +249,7 @@ export function chooseLetterTile(
     cellValues: { ...state.cellValues, [key]: tile.letter },
     progress: {
       ...state.progress,
+      activeCellKey: key,
       selectionHistory: [...state.progress.selectionHistory, key],
     },
   });

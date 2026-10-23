@@ -1,3 +1,4 @@
+import { normalizeLetterTileProgress } from "../../packages/crossword-core/src/letterTileInput.ts";
 import {
   createEmptyProgress,
   type ProgressRepository,
@@ -117,7 +118,9 @@ export function saveBestTimeMs(
 }
 
 function normalizeProgress(progress: Partial<SavedProgress>): SavedProgress {
+  const tileInput = normalizeLetterTileProgress(progress.tileInput);
   return {
+    ...(tileInput ? { tileInput } : {}),
     cellValues:
       progress.cellValues != null && typeof progress.cellValues === "object"
         ? progress.cellValues
