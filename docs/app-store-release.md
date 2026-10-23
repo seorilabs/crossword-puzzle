@@ -170,7 +170,7 @@ source "$HOME/.config/seorilabs/app-store-connect.env"
 npm run app-store:deliver:upload -- --screenshots-only --tag v1.0.0
 ```
 
-현재 `app-store/screenshots/iphone/iphone-{1,2,3}.png`와 `app-store/screenshots/ipad/ipad-{1,2,3}.png`를 시뮬레이터 Release build에서 생성했다. iPhone은 1320 x 2868, iPad는 2064 x 2752 PNG다.
+기존 `app-store/screenshots` 파일은 이전 등록 자산이다. v1.2.0은 승인된 개발 환경의 실제 화면에서 만든 iPhone 3장과 iPad 3장을 별도로 업로드하고 처리 상태와 checksum을 확인했다. 생성 환경과 NAS 원본은 출시 기록을 따른다.
 
 ## 8. Export/Upload 로컬 참고
 
