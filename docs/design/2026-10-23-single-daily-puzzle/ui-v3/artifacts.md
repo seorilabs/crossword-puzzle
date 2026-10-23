@@ -1,4 +1,19 @@
-# 시안과 실행 원본 보관
+# 보드 고정 수정본
+
+- 렌더 기준: `39fbc2bff6d60c24d5fedb7e4aa2164fe8d9bca3`
+- 보관 위치: `/Volumes/Data/Backup/agent-artifacts/crossword-puzzle/2026-10-23/39fbc2bff6d60c24d5fedb7e4aa2164fe8d9bca3/fixed-board-20261023T131855`
+- 최종 목록: [VERIFIED.json](/Volumes/Data/Backup/agent-artifacts/crossword-puzzle/2026-10-23/39fbc2bff6d60c24d5fedb7e4aa2164fe8d9bca3/fixed-board-20261023T131855/VERIFIED.json), SHA-256 `7ea0be79f3f4781ffec59a9e2ca81c9412be5a35d6fabba16c06bdf556bcbda4`
+- 실제 NAS1dual Data SMB 연결 확인 뒤 스트림 복사와 fsync, 닫기 후 직접 읽기로 3개, 195,069바이트의 크기와 SHA-256을 대조했다.
+- 목적은 시안 확인이다. 만료 기간을 승인받지 않아 임의 삭제하지 않는다. 로컬 작업 파일은 최종 확인 뒤 정리한다.
+- 단어 이동 240개 경우와 최대 10개 후보의 12개 경우에서 보드, 단서, 답칸과 버튼의 위치 및 크기가 유지됐다. 360×800, 390×844, 430×932와 단서 22px 설정을 포함한다. 후보 높이 57px, 최소 너비 55.18px를 확인했다. 실제 앱 반영과 L3는 미실행이다.
+
+| 파일 | 바이트 | SHA-256 |
+|---|---:|---|
+| [tile-preview.html](/Volumes/Data/Backup/agent-artifacts/crossword-puzzle/2026-10-23/39fbc2bff6d60c24d5fedb7e4aa2164fe8d9bca3/fixed-board-20261023T131855/tile-preview.html) | 45915 | `515a1f36220945b65a587e879dcb7fa4749765e10e5e702c7aa20576addc45ff` |
+| [fixed-board-comparison.png](/Volumes/Data/Backup/agent-artifacts/crossword-puzzle/2026-10-23/39fbc2bff6d60c24d5fedb7e4aa2164fe8d9bca3/fixed-board-20261023T131855/fixed-board-comparison.png) | 112020 | `a02bd31a64ee7b71d1dc9e06d387821babf9ef87e15d51bfa279ea29d9d96f85` |
+| [small-fixed-board.png](/Volumes/Data/Backup/agent-artifacts/crossword-puzzle/2026-10-23/39fbc2bff6d60c24d5fedb7e4aa2164fe8d9bca3/fixed-board-20261023T131855/small-fixed-board.png) | 37134 | `370e2abf7a9f03f9f42bb49ae9bf8395863b2a537a8aa9117da2b797adf6ea82` |
+
+## 이전 시안과 실행 원본 보관
 
 - 렌더 기준: `14571481af069aa01eb108fe63f93e604144647f`
 - 보관 위치: `/Volumes/Data/Backup/agent-artifacts/crossword-puzzle/2026-10-23/14571481af069aa01eb108fe63f93e604144647f/tile-ui-v3-20261023T110427`
