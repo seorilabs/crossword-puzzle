@@ -65,7 +65,7 @@
   "markets": {
     "google_play": {
       "objective": "public_live",
-      "state": "candidate",
+      "state": "qa",
       "identity": {
         "applicationId": "com.seorilabs.crosswordpuzzle",
         "version": "1.2.0",
@@ -81,24 +81,31 @@
           "blocker": null
         },
         "artifact": {
-          "status": "pending",
+          "status": "pass",
           "evidence": [
-            "PR #444를 d81564419f2f0429f89b539ffb08ae4cf7577410으로 병합, 시작 전 대기하던 39971839829 취소 완료",
-            "https://github.com/seorilabs/crossword-puzzle/actions/runs/39987898311 에서 동일 v1.2.0 AAB 빌드 중; 산출물 확인 전"
+            "Cloud Build 52d45c56-fb22-4042-8391-9417b22e5b71 및 실행 39987898311 성공; 실제 AAB 48,196,734바이트",
+            "AAB SHA-256 d3944f1e4feff1cb6fb8b55ec7153961bbd0ea3a735c575d774ea2373965c941; 실제 CI binding과 manifest를 독립 대조",
+            "com.seorilabs.crosswordpuzzle, 1.2.0 (1001001014), min SDK 24와 target SDK 36, debuggable false 및 jar 서명 검증 통과",
+            "업로드 인증서 SHA-256 2F:29:66:18:77:6D:79:BF:26:FD:46:EF:0D:30:21:85:41:D9:8A:52:A5:10:57:14:05:88:2F:DA:CC:62:FB:F8가 등록 원본과 일치"
           ],
-          "checkedAt": null,
+          "checkedAt": "2026-10-23T17:09:31.267813+00:00",
           "blocker": null
         },
         "upload": {
-          "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
+          "status": "pass",
+          "evidence": [
+            "실행 39987898311의 내부 업로드 성공; Play API internal 1.2.0, 코드 1001001014, completed 및 ko-KR 노트 일치"
+          ],
+          "checkedAt": "2026-10-23T17:09:31.267813+00:00",
           "blocker": null
         },
         "processing": {
-          "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
+          "status": "pass",
+          "evidence": [
+            "동일 AAB의 내부 트랙 처리가 끝났고 production 승격 실행 39991782728이 성공했다",
+            "공급자 빠른 검사와 production 심사 및 공개는 별도 단계다"
+          ],
+          "checkedAt": "2026-10-23T17:09:31.267813+00:00",
           "blocker": null
         },
         "qa": {
@@ -110,12 +117,13 @@
           "blocker": null
         },
         "metadata": {
-          "status": "pass",
+          "status": "pending",
           "evidence": [
-            "ko-KR 저장 문구 일치, 원본 아이콘 및 새 피처 이미지와 화면 3장의 API와 실제 다운로드 SHA-256 총 5개 일치",
-            "앱 전용 개인정보 URL 저장 뒤 재로딩으로 확인"
+            "새 소개와 이미지가 기존 바이너리보다 먼저 공개된 것을 실제 스토어에서 발견했다",
+            "현재 버전과 새 버전에 모두 맞는 중립 설명과 기존 원본 이미지로 바로잡아 edit 05336043847492629018을 저장했고 API 및 다운로드 5장 해시를 확인했다",
+            "공개 페이지에는 아직 앞선 문구가 보여 반영 대기다. 신규 소개와 화면은 v1.2.0 공개 확인 후 적용한다"
           ],
-          "checkedAt": "2026-10-23T16:35:29.632129+00:00",
+          "checkedAt": null,
           "blocker": null
         },
         "policy": {
@@ -129,9 +137,13 @@
           "blocker": null
         },
         "submission": {
-          "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
+          "status": "pass",
+          "evidence": [
+            "production 승격 실행 39991782728, commit edit 13569423046528496077, 코드 1001001014 및 기존 KR 전체 출시 completed를 API로 확인",
+            "콘솔 제출 활동 ID 18, 2026-10-24 02:02 KST, 프로덕션과 스토어 및 데이터 보안 변경 접수, 검토 중",
+            "게시 개요의 빠른 검사 진행은 실제 접수 및 최종 승인, 공개와 구분한다"
+          ],
+          "checkedAt": "2026-10-23T17:09:31.267813+00:00",
           "blocker": null
         },
         "approval": {
@@ -251,7 +263,7 @@
     },
     "apps_in_toss": {
       "objective": "public_live",
-      "state": "qa",
+      "state": "approval",
       "identity": {
         "applicationId": "crossword-puzzle-game",
         "version": "1.2.0",
@@ -299,11 +311,12 @@
           "blocker": null
         },
         "metadata": {
-          "status": "pending",
+          "status": "pass",
           "evidence": [
-            "소개와 이미지 IN_REVIEW, 승인된 새 메타데이터 확인은 아직 없음"
+            "miniapp_meta_status APPROVED, miniapp_get의 새 소개가 준비안과 일치",
+            "승인된 썸네일 1장과 세로 화면 3장, 총 4개 URL이 등록돼 있다"
           ],
-          "checkedAt": null,
+          "checkedAt": "2026-10-23T17:09:31.267813+00:00",
           "blocker": null
         },
         "policy": {
