@@ -9,7 +9,7 @@
     "deploy": "ait deploy",
     "test:adapters": "node --experimental-strip-types --test src/adapters/*.test.mts",
     "test:core": "node --experimental-strip-types --test packages/crossword-core/src/*.test.mts packages/crossword-core/src/*.test.ts",
-    "test:operations": "node --test server/batch/*.test.mjs",
+    "test:operations": "node --test server/batch/*.test.mjs scripts/google-play-runner-routing.test.mjs",
     "test:components": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "lint": "eslint .",
