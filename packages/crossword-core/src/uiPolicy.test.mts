@@ -401,7 +401,7 @@ describe("getStuckHintPromptText (#280)", () => {
         wordsRemaining: 1,
         hasHintCredits: true,
       }),
-      "반짝이는 칸을 탭해 글자를 입력해 보세요 ✏️",
+      "아래 글자 타일을 골라 빈칸을 채워보세요",
     );
   });
   it("near-finish면 잔여 단어 수를 포함한 마무리 문구를 돌려준다", () => {
@@ -1245,4 +1245,30 @@ describe("getNewlyReachedStreakMilestone (#292)", () => {
     assert.equal(getNewlyReachedStreakMilestone(5, 40), 30);
     assert.equal(getNewlyReachedStreakMilestone(0, 100), 100);
   });
+});
+
+it("오늘 두 판이 남아 있는 전환 기간에도 가장 큰 공개 판을 대표로 고른다", () => {
+  const easy = createSummary("easy", {
+    date: "2026-10-23",
+    difficulty: "easy",
+    publishedAt: "2026-10-22T15:00:00Z",
+  });
+  const hard = createSummary("hard", {
+    date: "2026-10-23",
+    difficulty: "hard",
+    publishedAt: "2026-10-22T16:00:00Z",
+  });
+  assert.equal(
+    getDailyFreePuzzleSummary(
+      [easy, hard],
+      "2026-10-23",
+      Date.parse("2026-10-23T00:00:00Z"),
+    )?.puzzleId,
+    "hard",
+  );
+});
+
+it("미래 판만 있는 목록은 공개 시각 전 대표 판으로 고르지 않는다", () => {
+  const future = createSummary("future-only", {date:"2026-10-24", difficulty:"hard", publishedAt:"2026-10-23T15:00:00Z"});
+  assert.equal(getDailyFreePuzzleSummary([future],"2026-10-23",Date.parse("2026-10-23T14:59:59Z")),undefined);
 });

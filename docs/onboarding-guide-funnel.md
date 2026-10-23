@@ -1,86 +1,29 @@
-# 온보딩 가이드 퍼널·완료 기여 모니터링 (onboarding_guide_*)
+# 첫 세 단어 안내와 한 판 완주 분석
 
-## 목적
+표준 쿼리는 [onboarding-guide-funnel.sql](../scripts/analytics/onboarding-guide-funnel.sql)이다. GA4 BigQuery `crossword-puzzle-79ae0.analytics_539639687.events_*`에서 고유 사용자와 퍼즐 단위로 안내 노출, 첫 입력, 세 단어 완료, 건너뛰기와 한 판 완주를 구분한다.
 
-첫 진입 1스텝 온보딩 가이드(#89, 6/23 머지)의 **노출→완료/이탈** 전환과, 가이드 **노출군의 첫 입력·완료 전환 기여**를 재측정한다. `onboarding_guide_shown`을 분모로 `complete`/`dismiss`/`first_answer_input`/`mission_complete` 전환을 보고, 노출군 vs 비노출군의 전환 차이를 비교한다. 행동 변경 없는 **계측 전용** 작업이다.
+## 전송 계약
 
-- 표준 쿼리: [`scripts/analytics/onboarding-guide-funnel.sql`](../scripts/analytics/onboarding-guide-funnel.sql)
-- 소스: GA4 → BigQuery export `crossword-puzzle-79ae0.analytics_539639687.events_*`
+Web과 Android 및 iOS는 core `FIRST_WORD_GUIDE_EVENTS`의 `first_three_words_shown`, `first_three_words_complete`, `first_three_words_skip`를 사용한다. 공통 파라미터는 `puzzle_id`, `input_policy=syllable-v1`, `word_count`다. 처음 안내를 시작한 판의 진행은 다른 판을 열어도 유지된다. 안내는 매일 새로 만드는 미션이 아니며 원래 판으로 돌아와 계속할 수 있다.
 
-## emit 배선 확인 (코드 점검 결과)
+앱을 다시 열면 노출 이벤트가 다시 생길 수 있으므로 원시 노출 건수를 분모로 쓰지 않는다. 세 단어 안내 완료는 전체 판 완료가 아니다. 전체 완주는 `mission_complete` 하나만 세고 `game_puzzle_complete`를 더하지 않는다. 기존 한 번 입력 안내 `onboarding_guide_*`는 새 세 단어 안내와 합치지 않는다.
 
-온보딩 가이드 이벤트는 현재 코드에 **정상 배선되어 있다**(`src/App.tsx`):
+## 실행과 출력
 
-| 단계 | 이벤트 | emit 위치 / 조건 | 파라미터 |
-| --- | --- | --- | --- |
-| 노출 | `onboarding_guide_shown` | 가이드가 보이고(최초 1회) `firstInputGuideShownRef`로 1회 가드 | `attempt_number` + 공통 퍼즐 |
-| 완료 | `onboarding_guide_complete` | 가이드 노출 중/전 첫 수동 입력 성공 시(`trackFirstAnswerInput`) | `attempt_number`, `elapsed_seconds` + 공통 퍼즐 |
-| 닫기 | `onboarding_guide_dismiss` | 가이드 X 버튼(`dismissFirstInputGuide`) | `attempt_number` + 공통 퍼즐 |
+기본 구간은 최근 28일이다. 등록된 분석 identity로 아래 쿼리를 실행하며 필요하면 두 `DECLARE`의 날짜만 고정한다.
 
-- 가이드 노출 조건: `hasSeenHowToPlay && !hasSeenFirstInputGuide && 입력 0`(셀 값 없음). 즉 "방법 보기"를 본 뒤 아직 첫 입력 전인 신규에게만 노출된다.
-- `complete`는 첫 입력 시점에 가이드가 떠 있던(또는 보기 전) 경우에만 emit되고, 동시에 `crossword:first-input-guide-seen`을 저장해 재노출을 막는다.
-
-따라서 baseline의 `onboarding_guide_*` 데이터 0건은 emit 누락이 아니라 **릴리스/데이터 적재 지연**(#89 머지 6/23, 데이터 구간 ~6/24)으로 보인다. 데이터가 쌓이면 아래 쿼리로 재측정한다.
-
-## 실행
-
-```bash
-bq query \
-  --project_id=crossword-puzzle-79ae0 \
-  --location=asia-southeast3 \
-  --use_legacy_sql=false \
-  < scripts/analytics/onboarding-guide-funnel.sql
+```sh
+bq query --project_id=crossword-puzzle-79ae0 --location=asia-southeast3 --use_legacy_sql=false < scripts/analytics/onboarding-guide-funnel.sql
 ```
 
-기본값은 최근 28일 롤링 구간이며, 구간을 고정하려면 SQL 상단 두 `DECLARE` 줄의 `DEFAULT`만 바꾼다(예: `'20260603'` ~ `'20260624'`). 스크립트는 임시 테이블 1개와 결과 SELECT 3개(`section` 컬럼으로 구분)를 반환한다.
+- `guide_funnel`: `shown_user_puzzles`가 분모다. `first_input_user_puzzles`, `guide_complete_user_puzzles`, `skipped_user_puzzles`, `mission_complete_user_puzzles`를 분자와 함께 보고 각각의 `first_input_rate`, `guide_complete_rate`, `skip_rate`, `mission_complete_rate`를 읽는다.
+- `guide_complete_elapsed`: 세 단어를 끝낸 `completed_user_puzzles`, 첫 노출부터 완료까지의 `avg_seconds`, `median_seconds`다. [GA4 공식 스키마](https://support.google.com/analytics/answer/7029846)에 정의된 정수 마이크로초 시각 차이를 초로 바꾼다.
+- 마지막 결과: `event_name`, `input_policy`, `word_count`, `raw_events`, `missing_puzzle_id_events`로 전송 누락을 점검한다. 이 결과만 원시 이벤트 건수이며 사용자 수가 아니다.
 
-## 출력 스키마
+쿼리 계약 검사와 실제 앱의 고정 입력 이벤트는 개발 환경에서 확인했다. 새 SQL의 실제 BigQuery 실행과 새 공개 빌드의 데이터 적재는 아직 확인하지 않았다. 개발 데이터나 출시 전 0건을 새 이용자의 전환율로 해석하지 않는다.
 
-### 결과 1: `guide_funnel` — 노출 분모 기준 전환
+## 관찰 기준
 
-| 컬럼                    | 의미                                                          |
-| ----------------------- | ------------------------------------------------------------- |
-| `shown_users`           | 가이드 노출 user 수(분모)                                     |
-| `complete_users`        | 노출 후 `onboarding_guide_complete` 도달 user 수             |
-| `dismiss_users`         | 노출 후 `onboarding_guide_dismiss` user 수                   |
-| `first_input_users`     | 노출군 중 `first_answer_input` 도달 user 수                  |
-| `completed_users`       | 노출군 중 `mission_complete` 도달 user 수                    |
-| `complete_rate`         | `complete_users / shown_users`                               |
-| `dismiss_rate`          | `dismiss_users / shown_users`                                |
-| `first_input_rate`      | 노출군 첫 입력 전환율                                          |
-| `mission_complete_rate` | 노출군 완료 전환율                                            |
+분자와 분모를 함께 기록하고, 안내를 끈 이용자를 노출 분모에 넣지 않는다. 이미 완주한 판을 다시 연 기록이나 첫 세 단어 완료를 새 한 판 완주로 세지 않는다. 노출군의 관찰값만으로 안내의 인과 효과나 체감 난이도 개선을 단정하지 않는다. 구버전 구간과 새 타일 입력 구간을 나누고, 첫 입력과 전체 완주가 낮은 구간의 실제 단서와 화면을 함께 확인한다.
 
-### 결과 2: `shown_vs_unshown` — 노출군 vs 비노출군(시작자 분모)
-
-| 컬럼                    | 의미                                                          |
-| ----------------------- | ------------------------------------------------------------- |
-| `cohort`                | `shown`(가이드 노출) / `unshown`(미노출)                      |
-| `starters`              | 코호트 시작자(`attempt_start`) 수                            |
-| `first_input_users`     | 첫 입력 도달 user 수                                          |
-| `completed_users`       | 완료 user 수                                                  |
-| `first_input_rate`      | 첫 입력 전환율                                                |
-| `mission_complete_rate` | 완료 전환율                                                   |
-
-> 해석 주의: 가이드는 "입력 0"일 때만 노출되므로 **비노출군에는 즉시 입력한 user가 섞인다**. 따라서 단순 비교로 가이드 효과를 인과로 단정하지 말고, 표본 누적 후 추세로 본다.
-
-### 결과 3: `complete_elapsed` — 가이드 완료까지 걸린 시간
-
-| 컬럼                     | 의미                                                          |
-| ------------------------ | ------------------------------------------------------------- |
-| `complete_events`        | `onboarding_guide_complete` 이벤트 수                        |
-| `avg_elapsed_seconds`    | 완료까지 평균 경과(초)                                        |
-| `median_elapsed_seconds` | 완료까지 중앙값(초)                                           |
-| `within_8s` / `within_8s_rate` | 8초 이내 완료 건수·비율(빠른 첫 입력 구간)             |
-
-## 추이 기록 (정기 갱신)
-
-| 산출일(KST) | 구간(from~to) | shown | complete율 | dismiss율 | 첫입력율 | 완료율(노출군) | 비고 |
-| ----------- | ------------- | ----- | ---------- | --------- | -------- | -------------- | ---- |
-| _측정 후 기입_ | 2026-06-03~2026-06-24 | _기입_ | _기입_ | _기입_ | _기입_ | _기입_ | #89 baseline 재측정 |
-
-> 표본이 작으면 비율과 함께 분자/분모(user 수)를 같이 적는다.
-
-## 후속
-
-- **노출군의 첫 입력/완료 전환이 비노출군보다 유의미하게 높으면** → 가이드 유지·강화(노출 타이밍·문구 개선) 방향.
-- **dismiss율이 높거나 complete율이 낮으면** → 가이드 문구/위치가 첫 입력을 돕지 못한다는 신호이므로, 첫 입력 유도(예: 셀 강조·예시 입력) 개선 이슈를 연다.
+현재 공개된 v1.2.0 관찰값은 없다. 공개 후 적재가 확인되면 기간, 마켓, 분자와 분모, 누락 비율을 연결해 기록한다.

@@ -16,7 +16,10 @@
         "src/App.tsx",
         "src/components/PuzzleBoard.tsx",
         "apps/mobile/App.tsx",
-        "packages/crossword-core/src/answerInput.ts"
+        "packages/crossword-core/src/answerInput.ts",
+        "src/components/TilePuzzleScreen.tsx",
+        "apps/mobile/TilePuzzleScreen.tsx",
+        "packages/crossword-core/src/letterTileInput.ts"
       ]
     },
     {
@@ -43,7 +46,8 @@
       "paths": [
         "src/useShareResult.ts",
         "src/components/ShareGridPreview.tsx",
-        "apps/mobile/shareResult.ts"
+        "apps/mobile/shareResult.ts",
+        "apps/mobile/TileResultScreen.tsx"
       ]
     },
     {
@@ -82,7 +86,8 @@
         "server/batch/run-puzzle-pack-job.mjs",
         "server/batch/publish-puzzle-pack.mjs",
         "scripts/validate-puzzle-pack.mjs"
-      ]
+      ],
+      "runtimeKind": "service"
     },
     {
       "id": "puzzle-image-retention",
@@ -93,7 +98,8 @@
         "scripts/preview-puzzle-image-cleanup.mjs",
         "scripts/setup-puzzle-pack-cloud-run-job.sh",
         "config/puzzle-image-cleanup.json"
-      ]
+      ],
+      "runtimeKind": "service"
     },
     {
       "id": "puzzle-pack-monitoring",
@@ -101,7 +107,8 @@
       "paths": [
         "scripts/setup-puzzle-pack-monitoring.sh",
         "server/batch/check-puzzle-pack-health.mjs"
-      ]
+      ],
+      "runtimeKind": "service"
     },
     {
       "id": "platform-auth",
@@ -118,13 +125,18 @@
       "id": "platform-ads",
       "core": false,
       "foundation": true,
-      "paths": ["src/adapters/appsInTossAds.ts", "apps/mobile/mobileAds.ts"]
+      "paths": [
+        "src/adapters/appsInTossAds.ts",
+        "apps/mobile/mobileAds.ts"
+      ]
     },
     {
       "id": "remote-configuration",
       "core": false,
       "foundation": true,
-      "paths": ["src/adapters/launchConfig.ts"]
+      "paths": [
+        "src/adapters/launchConfig.ts"
+      ]
     },
     {
       "id": "analytics",
@@ -136,6 +148,51 @@
         "apps/mobile/gameplayTelemetry.ts",
         "apps/mobile/telemetry.ts",
         "apps/mobile/gameAnalytics.ts"
+      ]
+    },
+    {
+      "id": "single-daily-puzzle",
+      "core": true,
+      "paths": [
+        "packages/crossword-core/src/uiPolicy.ts",
+        "apps/mobile/TileHomeScreen.tsx",
+        "src/App.tsx"
+      ]
+    },
+    {
+      "id": "daily-vocabulary-selection",
+      "core": true,
+      "paths": [
+        "packages/crossword-core/src/vocabularySelection.ts",
+        "scripts/crossword-generator-prototype.mjs"
+      ],
+      "runtimeKind": "service"
+    },
+    {
+      "id": "first-puzzle-guidance",
+      "core": true,
+      "paths": [
+        "packages/crossword-core/src/firstWordGuide.ts",
+        "apps/mobile/TilePuzzleScreen.tsx",
+        "src/components/TilePuzzleScreen.tsx"
+      ]
+    },
+    {
+      "id": "syllable-tile-input",
+      "core": true,
+      "paths": [
+        "packages/crossword-core/src/letterTileInput.ts",
+        "apps/mobile/TilePuzzleScreen.tsx",
+        "src/components/TilePuzzleScreen.tsx"
+      ]
+    },
+    {
+      "id": "puzzle-progress-persistence",
+      "core": true,
+      "paths": [
+        "src/adapters/localProgressRepository.ts",
+        "apps/mobile/App.tsx",
+        "packages/crossword-core/src/letterTileInput.ts"
       ]
     }
   ]

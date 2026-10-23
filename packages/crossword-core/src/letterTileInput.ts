@@ -2,6 +2,7 @@ import { getCellKey, getEntryCells } from "./puzzle.ts";
 import type { LetterTileProgress, Puzzle, PuzzleEntry } from "./types.ts";
 
 export const TILE_INPUT_POLICY_VERSION = "syllable-v1";
+export const LETTER_TILE_CHOOSE_EVENT = "letter_tile_choose";
 export type LetterTileState = {
   cellValues: Record<string, string>;
   progress: LetterTileProgress;

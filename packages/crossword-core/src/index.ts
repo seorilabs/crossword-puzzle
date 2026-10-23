@@ -1,3 +1,4 @@
+export * from "./firstWordGuide";
 export * from "./answerHistory";
 export * from "./answerInput";
 export * from "./letterTileInput";

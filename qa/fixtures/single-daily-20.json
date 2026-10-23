@@ -1,0 +1,401 @@
+{
+  "alias": "26102401",
+  "puzzleId": "26102401",
+  "date": "2026-10-24",
+  "difficulty": "hard",
+  "gridSize": 8,
+  "grid": [
+    [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "가",
+      "교",
+      ""
+    ],
+    [
+      "",
+      "",
+      "",
+      "",
+      "휴",
+      "게",
+      "실",
+      ""
+    ],
+    [
+      "",
+      "홈",
+      "페",
+      "이",
+      "지",
+      "",
+      "",
+      ""
+    ],
+    [
+      "",
+      "",
+      "",
+      "야",
+      "",
+      "감",
+      "동",
+      "적"
+    ],
+    [
+      "수",
+      "",
+      "여",
+      "기",
+      "저",
+      "기",
+      "",
+      "극"
+    ],
+    [
+      "박",
+      "물",
+      "관",
+      "",
+      "",
+      "",
+      "사",
+      "적"
+    ],
+    [
+      "",
+      "론",
+      "",
+      "",
+      "",
+      "고",
+      "투",
+      ""
+    ],
+    [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "요",
+      "리",
+      ""
+    ]
+  ],
+  "entries": [
+    {
+      "id": "a1",
+      "answer": "가교",
+      "clue": "다리를 놓음",
+      "clueSource": "krdict-definition",
+      "direction": "across",
+      "row": 0,
+      "col": 5,
+      "generatedBy": "auto",
+      "needsManualClue": true,
+      "vocabularyLevel": "없음"
+    },
+    {
+      "id": "a2",
+      "answer": "휴게실",
+      "clue": "잠시 머물러 쉴 수 있도록 마련해 놓은 방",
+      "clueSource": "krdict-definition",
+      "direction": "across",
+      "row": 1,
+      "col": 4,
+      "generatedBy": "placed",
+      "needsManualClue": true,
+      "vocabularyLevel": "초급"
+    },
+    {
+      "id": "a3",
+      "answer": "홈페이지",
+      "clue": "다른 사람들이 인터넷을 통해서 볼 수 있도록 만든 문서",
+      "clueSource": "krdict-definition",
+      "direction": "across",
+      "row": 2,
+      "col": 1,
+      "generatedBy": "placed",
+      "needsManualClue": true,
+      "vocabularyLevel": "중급"
+    },
+    {
+      "id": "a4",
+      "answer": "감동적",
+      "clue": "강하게 느껴 마음이 움직이는 것",
+      "clueSource": "krdict-definition",
+      "direction": "across",
+      "row": 3,
+      "col": 5,
+      "generatedBy": "placed",
+      "needsManualClue": true,
+      "vocabularyLevel": "중급"
+    },
+    {
+      "id": "a5",
+      "answer": "여기저기",
+      "clue": "분명하게 정해지지 않은 여러 장소나 위치",
+      "clueSource": "krdict-definition",
+      "direction": "across",
+      "row": 4,
+      "col": 2,
+      "generatedBy": "placed",
+      "needsManualClue": true,
+      "vocabularyLevel": "초급"
+    },
+    {
+      "id": "a6",
+      "answer": "박물관",
+      "clue": "유물이나 예술품을 수집, 보관, 전시하여 사람들이 보거나 연구할 수 있게 하는 시설",
+      "clueSource": "krdict-definition",
+      "direction": "across",
+      "row": 5,
+      "col": 0,
+      "generatedBy": "placed",
+      "needsManualClue": true,
+      "vocabularyLevel": "초급"
+    },
+    {
+      "id": "a7",
+      "answer": "사적",
+      "clue": "개인에 관계된 것",
+      "clueSource": "krdict-definition",
+      "direction": "across",
+      "row": 5,
+      "col": 6,
+      "generatedBy": "auto",
+      "needsManualClue": true,
+      "vocabularyLevel": "중급"
+    },
+    {
+      "id": "a8",
+      "answer": "고투",
+      "clue": "몹시 어렵고 힘들게 싸우거나 노력함",
+      "clueSource": "krdict-definition",
+      "direction": "across",
+      "row": 6,
+      "col": 5,
+      "generatedBy": "auto",
+      "needsManualClue": true,
+      "vocabularyLevel": "없음"
+    },
+    {
+      "id": "a9",
+      "answer": "요리",
+      "clue": "음식을 만듦",
+      "clueSource": "krdict-definition",
+      "direction": "across",
+      "row": 7,
+      "col": 5,
+      "generatedBy": "auto",
+      "needsManualClue": true,
+      "vocabularyLevel": "초급"
+    },
+    {
+      "id": "d10",
+      "answer": "가게",
+      "clue": "동네에서 이런저런 물건을 파는 자그마한 상점",
+      "clueSource": "manual",
+      "direction": "down",
+      "row": 0,
+      "col": 5,
+      "generatedBy": "placed",
+      "needsManualClue": false,
+      "vocabularyLevel": "초급"
+    },
+    {
+      "id": "d11",
+      "answer": "교실",
+      "clue": "책상과 칠판이 놓여 수업이 이루어지는 방",
+      "clueSource": "manual",
+      "direction": "down",
+      "row": 0,
+      "col": 6,
+      "generatedBy": "placed",
+      "needsManualClue": false,
+      "vocabularyLevel": "초급"
+    },
+    {
+      "id": "d12",
+      "answer": "휴지",
+      "clue": "쓸모없는 종이",
+      "clueSource": "krdict-definition",
+      "direction": "down",
+      "row": 1,
+      "col": 4,
+      "generatedBy": "auto",
+      "needsManualClue": true,
+      "vocabularyLevel": "초급"
+    },
+    {
+      "id": "d13",
+      "answer": "이야기",
+      "clue": "서로 주고받는 말, 또는 줄거리가 있는 말",
+      "clueSource": "manual",
+      "direction": "down",
+      "row": 2,
+      "col": 3,
+      "generatedBy": "placed",
+      "needsManualClue": false,
+      "vocabularyLevel": "초급"
+    },
+    {
+      "id": "d14",
+      "answer": "감기",
+      "clue": "찬 바람 맞은 뒤 기침과 콧물을 몰고 오는 흔한 병",
+      "clueSource": "manual",
+      "direction": "down",
+      "row": 3,
+      "col": 5,
+      "generatedBy": "auto",
+      "needsManualClue": false,
+      "vocabularyLevel": "초급"
+    },
+    {
+      "id": "d15",
+      "answer": "적극적",
+      "clue": "어떤 일에 대한 태도에 있어 자발적이고 긍정적인 것",
+      "clueSource": "krdict-definition",
+      "direction": "down",
+      "row": 3,
+      "col": 7,
+      "generatedBy": "placed",
+      "needsManualClue": true,
+      "vocabularyLevel": "중급"
+    },
+    {
+      "id": "d16",
+      "answer": "수박",
+      "clue": "둥글고 크며 초록 빛깔에 검푸른 줄무늬가 있으며 속이 붉고 수분이 많은 과일",
+      "clueSource": "krdict-definition",
+      "direction": "down",
+      "row": 4,
+      "col": 0,
+      "generatedBy": "placed",
+      "needsManualClue": true,
+      "vocabularyLevel": "초급"
+    },
+    {
+      "id": "d17",
+      "answer": "여관",
+      "clue": "손님에게 일정한 돈을 받고 잠을 잘 수 있는 방을 내주는 집",
+      "clueSource": "krdict-definition",
+      "direction": "down",
+      "row": 4,
+      "col": 2,
+      "generatedBy": "auto",
+      "needsManualClue": true,
+      "vocabularyLevel": "중급"
+    },
+    {
+      "id": "d18",
+      "answer": "물론",
+      "clue": "말할 것도 없이 당연함을 나타내는 말",
+      "clueSource": "manual",
+      "direction": "down",
+      "row": 5,
+      "col": 1,
+      "generatedBy": "placed",
+      "needsManualClue": false,
+      "vocabularyLevel": "초급"
+    },
+    {
+      "id": "d19",
+      "answer": "사투리",
+      "clue": "일부 지방에서만 쓰는, 표준어가 아닌 말",
+      "clueSource": "krdict-definition",
+      "direction": "down",
+      "row": 5,
+      "col": 6,
+      "generatedBy": "placed",
+      "needsManualClue": true,
+      "vocabularyLevel": "중급"
+    },
+    {
+      "id": "d20",
+      "answer": "고요",
+      "clue": "시끄럽거나 어지럽지 않고 조용한 상태",
+      "clueSource": "krdict-definition",
+      "direction": "down",
+      "row": 6,
+      "col": 5,
+      "generatedBy": "placed",
+      "needsManualClue": true,
+      "vocabularyLevel": "중급"
+    }
+  ],
+  "metrics": {
+    "autoRunCount": 7,
+    "bboxDensity": 0.453,
+    "crossCells": 21,
+    "crossRatio": 0.724,
+    "filledCells": 29,
+    "multiCrossEntries": 18,
+    "placedWordCount": 13,
+    "wordCount": 20
+  },
+  "wordBank": {
+    "sourceName": "국립국어원 한국어기초사전 XML",
+    "sourceUrl": "https://github.com/spellcheck-ko/korean-dict-nikl-krdict",
+    "license": {
+      "name": "Creative Commons Attribution-ShareAlike 2.0 Korea",
+      "spdx": "CC-BY-SA-2.0-KR",
+      "url": "https://creativecommons.org/licenses/by-sa/2.0/kr/"
+    },
+    "wordCount": 24963
+  },
+  "packId": "pack-20261023150000-20261024",
+  "publishedAt": "2026-10-23T15:00:00.000Z",
+  "quality": {
+    "pass": true,
+    "checks": [
+      {
+        "key": "minWordCount",
+        "pass": true,
+        "actual": 20,
+        "expected": 20
+      },
+      {
+        "key": "minCrossRatio",
+        "pass": true,
+        "actual": 0.724,
+        "expected": 0.5
+      },
+      {
+        "key": "minBboxDensity",
+        "pass": true,
+        "actual": 0.453,
+        "expected": 0.45
+      },
+      {
+        "key": "minMultiCrossRatio",
+        "pass": true,
+        "actual": 0.9,
+        "expected": 0.65
+      },
+      {
+        "key": "maxAutoRunRatio",
+        "pass": true,
+        "actual": 0.35,
+        "expected": 0.5
+      }
+    ],
+    "ratios": {
+      "autoRunRatio": 0.35,
+      "multiCrossRatio": 0.9
+    },
+    "thresholds": {
+      "maxAutoRunRatio": 0.5,
+      "minBboxDensity": 0.45,
+      "minCrossRatio": 0.5,
+      "minMultiCrossRatio": 0.65,
+      "minWordCount": 20
+    }
+  },
+  "slotId": "2026-10-24-h01",
+  "generatedAt": "2026-10-23T07:32:30.561Z"
+}

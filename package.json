@@ -41,7 +41,11 @@
     "validate:puzzles": "node scripts/validate-puzzle-pack.mjs",
     "clues:apply": "node scripts/apply-manual-clues.mjs",
     "wordbank:krdict": "node scripts/build-krdict-wordbank.mjs",
-    "wordbank:themes": "node scripts/build-theme-tags.mjs"
+    "wordbank:themes": "node scripts/build-theme-tags.mjs",
+    "dev:qa-native": "vite --config vite.qa-native.config.ts",
+    "build:qa-native": "vite build --config vite.qa-native.config.ts",
+    "dev:qa-web": "vite --config vite.qa-web.config.ts",
+    "build:qa-web": "vite build --config vite.qa-web.config.ts"
   },
   "dependencies": {
     "@apps-in-toss/web-framework": "3.4.1",
@@ -55,6 +59,7 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@apps-in-toss/devtools": "^3.4.1",
     "@eslint/js": "^9.21.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
@@ -68,10 +73,10 @@
     "globals": "^15.15.0",
     "jsdom": "^29.1.1",
     "prettier": "^3.4.2",
+    "react-native-web": "0.21.4",
     "typescript": "~5.7.2",
     "typescript-eslint": "^8.24.1",
     "vite": "^6.2.0",
-    "vitest": "^4.1.9",
-    "@apps-in-toss/devtools": "^3.4.1"
+    "vitest": "^4.1.9"
   }
 }

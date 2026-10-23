@@ -2,36 +2,32 @@
  * @format
  */
 
-import React from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { TextInput } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
+import { TileHomeScreen } from '../TileHomeScreen';
+import { TilePuzzleScreen } from '../TilePuzzleScreen';
+import { TileResultScreen } from '../TileResultScreen';
+import {
+  chooseLetterTile,
+  getLetterTiles,
+  formatPuzzleAliasLabel,
+  formatPuzzleCardSequenceLabel,
+  type Puzzle,
+  type PuzzleManifestItem,
+} from '../../../packages/crossword-core/src';
 import App, {
   applyAppStateTransition,
-  BOARD_TEXT_INPUT_REFOCUS_DELAY_MS,
   formatElapsedTime,
   formatPuzzleCardTitle,
   formatPuzzleHistoryTitle,
   formatPuzzleHomeSubtitle,
   getBackTargetRoute,
-  getBoardCellFocusScrollY,
-  getBoardNativeInputPosition,
-  getClearAnswerTargetIndex,
   getElapsedSeconds,
   loadPuzzleSession,
   type MissionState,
   normalizeMission,
-  scheduleBoardNativeInputFocus,
   shouldUseSystemBack,
 } from '../App';
-import {
-  formatPuzzleAliasLabel,
-  formatPuzzleCardSequenceLabel,
-  getPendingAnswerCellValues,
-  type Puzzle,
-  type PuzzleEntry,
-  type PuzzleManifestItem,
-} from '../../../packages/crossword-core/src';
 import {
   ARCHIVE_INDEX_KEY,
   ARCHIVE_INDEX_LIMIT,
@@ -83,22 +79,6 @@ async function flushAsyncWork(cycles = 1) {
   }
 }
 
-function findAncestorWithOnPress(
-  node: ReactTestRenderer.ReactTestInstance | undefined,
-) {
-  let current = node?.parent;
-
-  while (current != null) {
-    if (typeof current.props.onPress === 'function') {
-      return current;
-    }
-
-    current = current.parent;
-  }
-
-  return undefined;
-}
-
 beforeEach(async () => {
   jest.clearAllMocks();
   await AsyncStorage.clear();
@@ -121,12 +101,237 @@ test('renders correctly', async () => {
   });
 }, 45_000);
 
+test('last tile completes the mission once and opens the result', async () => {
+  const today = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+  const puzzle = createPuzzle(today.slice(2).replaceAll('-', '') + '01', today);
+  const summary = {
+    ...puzzle,
+    path: `/puzzles/${puzzle.puzzleId}.json`,
+    publishedAt: `${today}T00:00:00+09:00`,
+  };
+  const fetchMock = globalThis.fetch as jest.Mock;
+  fetchMock.mockImplementation(async (url: string) => ({
+    ok: true,
+    json: async () =>
+      url.endsWith('manifest.json') ? { puzzles: [summary] } : puzzle,
+  }));
+  let renderer: ReactTestRenderer.ReactTestRenderer | undefined;
+  try {
+    await ReactTestRenderer.act(async () => {
+      renderer = ReactTestRenderer.create(<App />);
+    });
+    await flushAsyncWork(15);
+    await ReactTestRenderer.act(async () => {
+      renderer!.root.findByType(TileHomeScreen).props.onStart();
+    });
+    await flushAsyncWork(10);
+    for (const letter of ['가', '나']) {
+      const screen = renderer!.root.findByType(TilePuzzleScreen);
+      const tile = getLetterTiles(puzzle, screen.props.state).find(
+        item => item.letter === letter && !item.used,
+      );
+      expect(tile).toBeDefined();
+      await ReactTestRenderer.act(async () => {
+        screen.props.onChange(
+          chooseLetterTile(puzzle, screen.props.state, tile!.id),
+          'choice',
+        );
+      });
+      await flushAsyncWork(5);
+    }
+    expect(renderer!.root.findByType(TileResultScreen).props.completed).toBe(1);
+    const missionRaw = await AsyncStorage.getItem(
+      `crossword-puzzle:mission:${today}:${puzzle.puzzleId}`,
+    );
+    expect(JSON.parse(missionRaw!).completedAt).toEqual(expect.any(String));
+    const completionWrites = (
+      AsyncStorage.setItem as jest.Mock
+    ).mock.calls.filter(
+      ([key, value]) =>
+        key === `crossword-puzzle:mission:${today}:${puzzle.puzzleId}` &&
+        JSON.parse(value).completedAt != null,
+    );
+    expect(completionWrites).toHaveLength(1);
+  } finally {
+    ReactTestRenderer.act(() => renderer?.unmount());
+    fetchMock.mockImplementation(() =>
+      Promise.reject(new Error('fetch is mocked in mobile Jest')),
+    );
+  }
+}, 45_000);
+
 test('maps Android hardware back targets through the app scene graph', () => {
   expect(shouldUseSystemBack('home')).toBe(true);
   expect(getBackTargetRoute('history')).toBe('home');
   expect(getBackTargetRoute('today')).toBe('home');
   expect(getBackTargetRoute('result')).toBe('home');
   expect(getBackTargetRoute('license')).toBe('history');
+});
+
+test('first input acknowledgement stops first-clue auto-selection on another unopened board', async () => {
+  const dateKey = (date: Date) =>
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Seoul',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(date);
+  const today = dateKey(new Date());
+  const yesterday = dateKey(new Date(Date.now() - 86400000));
+  const puzzles = [today, yesterday].map(date => {
+    const base = createPuzzle(date.slice(2).replaceAll('-', '') + '01', date);
+    return {
+      ...base,
+      grid: [
+        ['가', '나'],
+        ['다', '라'],
+      ],
+      entries: [
+        base.entries[0],
+        {
+          ...base.entries[0],
+          id: `${base.puzzleId}-basic`,
+          row: 1,
+          answer: '다라',
+          vocabularyLevel: '초급',
+        },
+      ],
+    };
+  });
+  const fetchMock = globalThis.fetch as jest.Mock;
+  fetchMock.mockImplementation(async (url: string) => ({
+    ok: true,
+    json: async () =>
+      url.endsWith('manifest.json')
+        ? {
+            puzzles: puzzles.map(p => ({
+              ...p,
+              path: `/puzzles/${p.puzzleId}.json`,
+              publishedAt: `${p.date}T00:00:00+09:00`,
+            })),
+          }
+        : puzzles.find(p => url.endsWith(`${p.puzzleId}.json`)),
+  }));
+  let renderer: ReactTestRenderer.ReactTestRenderer | undefined;
+  try {
+    await ReactTestRenderer.act(async () => {
+      renderer = ReactTestRenderer.create(<App />);
+    });
+    await flushAsyncWork(15);
+    await ReactTestRenderer.act(async () => {
+      renderer!.root.findByType(TileHomeScreen).props.onStart();
+    });
+    await flushAsyncWork(10);
+    const screen = renderer!.root.findByType(TilePuzzleScreen);
+    expect(screen.props.state.progress.entryId).toBe(
+      `${puzzles[0].puzzleId}-basic`,
+    );
+    const tile = getLetterTiles(puzzles[0], screen.props.state).find(
+      item => item.letter === '다',
+    )!;
+    await ReactTestRenderer.act(async () => {
+      screen.props.onChange(
+        chooseLetterTile(puzzles[0], screen.props.state, tile.id),
+        'choice',
+      );
+    });
+    await flushAsyncWork(5);
+    await ReactTestRenderer.act(async () => {
+      renderer!.root.findByType(TilePuzzleScreen).props.onBack();
+    });
+    await ReactTestRenderer.act(async () => {
+      renderer!.root.findByType(TileHomeScreen).props.onHistory();
+    });
+    await flushAsyncWork(5);
+    const row = renderer!.root.findByProps({
+      testID: `history-puzzle-${puzzles[1].puzzleId}`,
+    });
+    expect(row).toBeDefined();
+    await ReactTestRenderer.act(async () => {
+      row.props.onPress();
+    });
+    await flushAsyncWork(10);
+    expect(
+      renderer!.root.findByType(TilePuzzleScreen).props.state.progress.entryId,
+    ).toBe(puzzles[1].entries[0].id);
+  } finally {
+    ReactTestRenderer.act(() => renderer?.unmount());
+    fetchMock.mockImplementation(() =>
+      Promise.reject(new Error('fetch is mocked in mobile Jest')),
+    );
+  }
+}, 45_000);
+
+test('opening a fully saved board does not create a new completion', async () => {
+  const today = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+  const puzzle = createPuzzle(today.slice(2).replaceAll('-', '') + '01', today);
+  await AsyncStorage.setItem(
+    `crossword-puzzle:progress:${puzzle.puzzleId}`,
+    JSON.stringify({
+      cellValues: { '0:0': '가', '0:1': '나' },
+      hintCount: 0,
+      earnedHintCredits: 0,
+    }),
+  );
+  await AsyncStorage.setItem(
+    `crossword-puzzle:mission:${today}:${puzzle.puzzleId}`,
+    JSON.stringify({
+      date: today,
+      puzzleId: puzzle.puzzleId,
+      attemptsUsed: 1,
+      maxAttempts: 3,
+      lastStartedAt: new Date().toISOString(),
+    }),
+  );
+  const fetchMock = globalThis.fetch as jest.Mock;
+  fetchMock.mockImplementation(async (url: string) => ({
+    ok: true,
+    json: async () =>
+      url.endsWith('manifest.json')
+        ? {
+            puzzles: [
+              {
+                ...puzzle,
+                path: `/puzzles/${puzzle.puzzleId}.json`,
+                publishedAt: `${today}T00:00:00+09:00`,
+              },
+            ],
+          }
+        : puzzle,
+  }));
+  let renderer: ReactTestRenderer.ReactTestRenderer | undefined;
+  try {
+    await ReactTestRenderer.act(async () => {
+      renderer = ReactTestRenderer.create(<App />);
+    });
+    await flushAsyncWork(15);
+    await ReactTestRenderer.act(async () => {
+      renderer!.root.findByType(TileHomeScreen).props.onStart();
+    });
+    await flushAsyncWork(15);
+    expect(renderer!.root.findByType(TileResultScreen).props.completed).toBe(1);
+    const mission = JSON.parse(
+      (await AsyncStorage.getItem(
+        `crossword-puzzle:mission:${today}:${puzzle.puzzleId}`,
+      ))!,
+    );
+    expect(mission.completedAt).toBeUndefined();
+  } finally {
+    ReactTestRenderer.act(() => renderer?.unmount());
+    fetchMock.mockImplementation(() =>
+      Promise.reject(new Error('fetch is mocked in mobile Jest')),
+    );
+  }
 });
 
 test('formats generated puzzle aliases as yyMMddHH labels', () => {
@@ -264,191 +469,6 @@ test('formats history titles with home sequence labels for remote puzzles', () =
     '퍼즐 23번 · #26061222',
   );
   expect(formatPuzzleHistoryTitle(summary, 'bundled')).toBe('#26061222');
-});
-
-test('maps pending Korean composition directly onto board cells', () => {
-  const entry = {
-    answer: '관포지교',
-    clue: '오랜 우정',
-    col: 0,
-    direction: 'across' as const,
-    generatedBy: 'placed' as const,
-    id: 'korean-composition-entry',
-    row: 0,
-  };
-
-  expect(getPendingAnswerCellValues(entry, 'ㄱ', '0:0')).toEqual({
-    '0:0': 'ㄱ',
-  });
-  expect(getPendingAnswerCellValues(entry, '관포', '0:0')).toEqual({
-    '0:0': '관',
-    '0:1': '포',
-  });
-  expect(getPendingAnswerCellValues(entry, '지교', '0:2')).toEqual({
-    '0:2': '지',
-    '0:3': '교',
-  });
-});
-
-test('leaves the hidden board input uncapped for Korean IME composition', async () => {
-  let renderer: ReactTestRenderer.ReactTestRenderer | undefined;
-
-  await ReactTestRenderer.act(() => {
-    renderer = ReactTestRenderer.create(<App />);
-  });
-  await flushAsyncWork(5);
-
-  const startLabel = renderer?.root.find(node =>
-    node.children.some(
-      child =>
-        typeof child === 'string' && ['퍼즐 시작', '이어 풀기'].includes(child),
-    ),
-  );
-  const startButton = findAncestorWithOnPress(startLabel);
-
-  expect(startButton?.props.onPress).toEqual(expect.any(Function));
-
-  await ReactTestRenderer.act(() => {
-    startButton?.props.onPress();
-  });
-
-  const boardInput = renderer?.root
-    .findAllByType(TextInput)
-    .find(node => node.props.caretHidden);
-
-  expect(boardInput?.props.maxLength).toBeUndefined();
-
-  ReactTestRenderer.act(() => {
-    renderer?.unmount();
-  });
-});
-
-test('positions the hidden board input on the active puzzle cell', () => {
-  const bounds = { maxCol: 8, maxRow: 8, minCol: 3, minRow: 2 };
-
-  expect(getBoardNativeInputPosition('2:3', bounds, 40)).toEqual({
-    left: 2,
-    top: 2,
-  });
-  expect(getBoardNativeInputPosition('5:7', bounds, 40)).toEqual({
-    left: 162,
-    top: 122,
-  });
-  expect(getBoardCellFocusScrollY(122, 40)).toBe(58);
-});
-
-test('skips locked correct letters when choosing the backspace target', () => {
-  const lockPuzzle = {
-    ...createPuzzle('lock-puzzle'),
-    grid: [
-      ['가', '나', '다'],
-      ['', '', ''],
-      ['', '', ''],
-    ],
-    gridSize: 3,
-  } as unknown as Puzzle;
-  const entry: PuzzleEntry = {
-    answer: '가나다',
-    clue: '잠금 테스트',
-    col: 0,
-    direction: 'across',
-    generatedBy: 'placed',
-    id: 'lock-entry',
-    row: 0,
-  };
-
-  // Caret on a wrong (editable) filled cell deletes that cell.
-  expect(getClearAnswerTargetIndex(lockPuzzle, entry, { '0:0': 'X' }, 0)).toBe(
-    0,
-  );
-
-  // Caret on an empty cell steps back to the nearest editable (wrong) cell,
-  // skipping past the locked correct first cell.
-  expect(
-    getClearAnswerTargetIndex(
-      lockPuzzle,
-      entry,
-      { '0:0': '가', '0:1': 'X' },
-      2,
-    ),
-  ).toBe(1);
-
-  // When every earlier cell is locked correct, nothing is deletable.
-  expect(
-    getClearAnswerTargetIndex(
-      lockPuzzle,
-      entry,
-      { '0:0': '가', '0:1': '나' },
-      2,
-    ),
-  ).toBe(-1);
-
-  // Caret on a locked correct cell with no earlier editable cell stays put.
-  expect(getClearAnswerTargetIndex(lockPuzzle, entry, { '0:0': '가' }, 0)).toBe(
-    -1,
-  );
-});
-
-test('refocuses a stale native text input after the keyboard is hidden', () => {
-  jest.useFakeTimers({ now: 0 });
-
-  const blur = jest.fn();
-  const focus = jest.fn();
-  const isFocused = jest.fn(() => true);
-  const onFocusTimerSettled = jest.fn();
-  const getInput = jest.fn(() => ({ blur, focus, isFocused }));
-
-  scheduleBoardNativeInputFocus({
-    getInput,
-    keyboardVisible: false,
-    onFocusTimerSettled,
-    platformOS: 'ios',
-  });
-
-  expect(isFocused).toHaveBeenCalledTimes(1);
-  expect(blur).toHaveBeenCalledTimes(1);
-  expect(focus).not.toHaveBeenCalled();
-
-  ReactTestRenderer.act(() => {
-    jest.advanceTimersByTime(BOARD_TEXT_INPUT_REFOCUS_DELAY_MS - 1);
-  });
-
-  expect(onFocusTimerSettled).not.toHaveBeenCalled();
-  expect(focus).not.toHaveBeenCalled();
-
-  ReactTestRenderer.act(() => {
-    jest.advanceTimersByTime(1);
-  });
-
-  expect(onFocusTimerSettled).toHaveBeenCalledTimes(1);
-  expect(focus).toHaveBeenCalledTimes(1);
-});
-
-test('focuses native text input without refocus delay when keyboard is visible', () => {
-  jest.useFakeTimers({ now: 0 });
-
-  const blur = jest.fn();
-  const focus = jest.fn();
-  const isFocused = jest.fn(() => true);
-  const onFocusTimerSettled = jest.fn();
-  const getInput = jest.fn(() => ({ blur, focus, isFocused }));
-
-  scheduleBoardNativeInputFocus({
-    getInput,
-    keyboardVisible: true,
-    onFocusTimerSettled,
-    platformOS: 'android',
-  });
-
-  expect(isFocused).not.toHaveBeenCalled();
-  expect(blur).not.toHaveBeenCalled();
-
-  ReactTestRenderer.act(() => {
-    jest.advanceTimersByTime(0);
-  });
-
-  expect(onFocusTimerSettled).toHaveBeenCalledTimes(1);
-  expect(focus).toHaveBeenCalledTimes(1);
 });
 
 test('loads an archived puzzle when it is missing from the current pack', async () => {
@@ -690,7 +710,11 @@ describe('applyAppStateTransition', () => {
     expect(mission.pausedAt).toBeNull();
     expect(mission.pausedMs).toBe(10_000 + 45_000);
     expect(
-      getElapsedSeconds(mission.lastStartedAt, '2026-09-04T00:03:00.000Z', mission),
+      getElapsedSeconds(
+        mission.lastStartedAt,
+        '2026-09-04T00:03:00.000Z',
+        mission,
+      ),
     ).toBe(180 - 55);
   });
 
@@ -776,10 +800,7 @@ describe('normalizeMission', () => {
 describe('getElapsedSeconds', () => {
   test('pause가 없으면 시작~종료 그대로 계산한다(기존 동작 회귀 없음)', () => {
     expect(
-      getElapsedSeconds(
-        '2026-09-04T00:00:00.000Z',
-        '2026-09-04T00:02:00.000Z',
-      ),
+      getElapsedSeconds('2026-09-04T00:00:00.000Z', '2026-09-04T00:02:00.000Z'),
     ).toBe(120);
   });
 
@@ -812,3 +833,73 @@ describe('formatElapsedTime', () => {
   });
 });
 
+test.each([1, -1])(
+  'preloading a board %i days away on home cannot consume the first guide',
+  async offset => {
+    const key = (date: Date) =>
+      new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Seoul',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(date);
+    const today = key(new Date());
+    const tomorrow = key(new Date(Date.now() + offset * 86400000));
+    let loaded = createPuzzle(
+      tomorrow.slice(2).replaceAll('-', '') + '01',
+      tomorrow,
+    );
+    const fetchMock = globalThis.fetch as jest.Mock;
+    fetchMock.mockImplementation(async (url: string) => ({
+      ok: true,
+      json: async () =>
+        url.endsWith('manifest.json')
+          ? {
+              puzzles: [
+                {
+                  ...loaded,
+                  path: `/puzzles/${loaded.puzzleId}.json`,
+                  publishedAt: `${loaded.date}T00:00:00+09:00`,
+                },
+              ],
+            }
+          : loaded,
+    }));
+    let renderer: ReactTestRenderer.ReactTestRenderer | undefined;
+    try {
+      await ReactTestRenderer.act(async () => {
+        renderer = ReactTestRenderer.create(<App />);
+      });
+      await flushAsyncWork(15);
+      if (offset > 0)
+        expect(
+          renderer!.root.findByType(TileHomeScreen).props.puzzle,
+        ).toBeNull();
+      else
+        expect(
+          renderer!.root.findByType(TileHomeScreen).props.puzzle.date,
+        ).toBe(tomorrow);
+      await ReactTestRenderer.act(async () => {
+        renderer!.unmount();
+      });
+      loaded = createPuzzle(today.slice(2).replaceAll('-', '') + '01', today);
+      await ReactTestRenderer.act(async () => {
+        renderer = ReactTestRenderer.create(<App />);
+      });
+      await flushAsyncWork(15);
+      await ReactTestRenderer.act(async () => {
+        renderer!.root.findByType(TileHomeScreen).props.onStart();
+      });
+      await flushAsyncWork(10);
+      expect(renderer!.root.findByType(TilePuzzleScreen).props.guide).toEqual(
+        expect.objectContaining({ completed: 0, total: 1 }),
+      );
+    } finally {
+      ReactTestRenderer.act(() => renderer?.unmount());
+      fetchMock.mockImplementation(() =>
+        Promise.reject(new Error('fetch is mocked in mobile Jest')),
+      );
+    }
+  },
+  45_000,
+);

@@ -1,0 +1,193 @@
+{
+  "alias": "26102000",
+  "puzzleId": "26102000",
+  "date": "2026-10-20",
+  "difficulty": "easy",
+  "gridSize": 5,
+  "grid": [
+    [
+      "인",
+      "생",
+      "철",
+      "학",
+      ""
+    ],
+    [
+      "간",
+      "",
+      "",
+      "",
+      ""
+    ],
+    [
+      "미",
+      "개",
+      "척",
+      "지",
+      ""
+    ],
+    [
+      "",
+      "중",
+      "도",
+      "적",
+      ""
+    ],
+    [
+      "",
+      "",
+      "",
+      "",
+      ""
+    ]
+  ],
+  "entries": [
+    {
+      "id": "a1",
+      "answer": "인생철학",
+      "clue": "인생에 대한 실천적인 태도",
+      "clueSource": "krdict-definition",
+      "direction": "across",
+      "row": 0,
+      "col": 0,
+      "generatedBy": "placed",
+      "needsManualClue": true
+    },
+    {
+      "id": "a2",
+      "answer": "미개척지",
+      "clue": "아직 개척하지 않은 땅",
+      "clueSource": "krdict-definition",
+      "direction": "across",
+      "row": 2,
+      "col": 0,
+      "generatedBy": "placed",
+      "needsManualClue": true
+    },
+    {
+      "id": "a3",
+      "answer": "중도적",
+      "clue": "좌도 우도 아닌 가운데 노선을 걷는 것",
+      "clueSource": "manual",
+      "direction": "across",
+      "row": 3,
+      "col": 1,
+      "generatedBy": "placed",
+      "needsManualClue": false
+    },
+    {
+      "id": "d4",
+      "answer": "인간미",
+      "clue": "사람에게서 느낄 수 있는 정답고 따뜻한 느낌",
+      "clueSource": "krdict-definition",
+      "direction": "down",
+      "row": 0,
+      "col": 0,
+      "generatedBy": "placed",
+      "needsManualClue": true
+    },
+    {
+      "id": "d5",
+      "answer": "개중",
+      "clue": "여럿이 있는 가운데",
+      "clueSource": "krdict-definition",
+      "direction": "down",
+      "row": 2,
+      "col": 1,
+      "generatedBy": "auto",
+      "needsManualClue": true
+    },
+    {
+      "id": "d6",
+      "answer": "척도",
+      "clue": "자로 재는 길이의 표준",
+      "clueSource": "krdict-definition",
+      "direction": "down",
+      "row": 2,
+      "col": 2,
+      "generatedBy": "auto",
+      "needsManualClue": true
+    },
+    {
+      "id": "d7",
+      "answer": "지적",
+      "clue": "어떤 것을 꼭 집어서 분명하게 가리킴",
+      "clueSource": "krdict-definition",
+      "direction": "down",
+      "row": 2,
+      "col": 3,
+      "generatedBy": "auto",
+      "needsManualClue": true
+    }
+  ],
+  "metrics": {
+    "autoRunCount": 3,
+    "bboxDensity": 0.75,
+    "crossCells": 8,
+    "crossRatio": 0.667,
+    "filledCells": 12,
+    "multiCrossEntries": 6,
+    "placedWordCount": 4,
+    "wordCount": 7
+  },
+  "wordBank": {
+    "sourceName": "국립국어원 한국어기초사전 XML",
+    "sourceUrl": "https://github.com/spellcheck-ko/korean-dict-nikl-krdict",
+    "license": {
+      "name": "Creative Commons Attribution-ShareAlike 2.0 Korea",
+      "spdx": "CC-BY-SA-2.0-KR",
+      "url": "https://creativecommons.org/licenses/by-sa/2.0/kr/"
+    },
+    "wordCount": 24963
+  },
+  "packId": "pack-20261019150000-1784263873",
+  "publishedAt": "2026-10-19T15:00:00.000Z",
+  "quality": {
+    "pass": true,
+    "checks": [
+      {
+        "key": "minWordCount",
+        "pass": true,
+        "actual": 7,
+        "expected": 6
+      },
+      {
+        "key": "minCrossRatio",
+        "pass": true,
+        "actual": 0.667,
+        "expected": 0.6
+      },
+      {
+        "key": "minBboxDensity",
+        "pass": true,
+        "actual": 0.75,
+        "expected": 0.5
+      },
+      {
+        "key": "minMultiCrossRatio",
+        "pass": true,
+        "actual": 0.857,
+        "expected": 0.65
+      },
+      {
+        "key": "maxAutoRunRatio",
+        "pass": true,
+        "actual": 0.429,
+        "expected": 0.5
+      }
+    ],
+    "ratios": {
+      "autoRunRatio": 0.429,
+      "multiCrossRatio": 0.857
+    },
+    "thresholds": {
+      "maxAutoRunRatio": 0.5,
+      "minBboxDensity": 0.5,
+      "minCrossRatio": 0.6,
+      "minMultiCrossRatio": 0.65,
+      "minWordCount": 6
+    }
+  },
+  "slotId": "2026-10-20-h00",
+  "generatedAt": "2026-10-19T15:09:38.782Z"
+}

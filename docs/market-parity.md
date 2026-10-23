@@ -26,7 +26,7 @@ flowchart TD
 | ----------------------- | ----------------------------------------------------------- | --------------------------------------------------------------- |
 | 퍼즐 타입/검증          | `packages/crossword-core/src/types.ts`, `puzzle.ts`         | 없음                                                            |
 | 발행 난이도 로테이션    | `packages/crossword-core/src/difficultyRotation.ts`         | 세 시장이 같은 Firebase Hosting manifest를 읽음                 |
-| 난이도 한글 라벨        | `packages/crossword-core/src/puzzleLabels.ts`               | AIT와 Android/iOS가 쉬움·보통·어려움을 공통 노출                |
+| 난이도 한글 라벨        | `packages/crossword-core/src/puzzleLabels.ts`               | 이전 난이도 데이터 해석에 사용, 새 홈에서는 난이도 선택 제거                |
 | 공개/보너스/힌트 정책   | `packages/crossword-core/src/uiPolicy.ts`                   | 화면 렌더링만 분리                                              |
 | Remote Config 키/기본값 | `packages/crossword-core/src/launchConfig.ts`               | AIT는 Firebase Web SDK, mobile은 RNFirebase                     |
 | telemetry 표준 차원     | `packages/crossword-core/src/releaseVersion.ts`             | 모든 custom event에 시장·runtime·release를 sink에서 강제        |
@@ -44,10 +44,8 @@ flowchart TD
 
 ## 완료 후 다음 퍼즐 추천 계약
 
-- Web과 RN은 공용 `getNextRecommendedPuzzleSummary` 정책에 발행 manifest 전체, 완료 목록, 현재 퍼즐(`puzzleId`·`difficulty`·`date`)을 넘긴다. RN 홈 rail의 오늘·로컬 노출 제한은 추천 후보를 제한하지 않는다.
-- 같은 날짜의 남은 사다리 단계를 가장 먼저 추천한다. 워밍업(easy)을 끝내면 오늘의 퍼즐(hard), hard를 먼저 끝냈고 easy가 남았으면 easy로 잇는다. CTA 문구는 core `formatDailyLadderNextLabel`이 만든 `오늘의 퍼즐 이어서 풀기`/`워밍업 퍼즐 풀기`를 두 표면이 그대로 쓴다.
-- 오늘 발행분을 모두 완료해도 과거 미완료 발행분이 있으면 `다음 퍼즐 풀기` CTA를 노출한다.
-- 실제 미완료 후보가 없거나 온보딩 난이도 완화 정책이 추천을 보류하면 RN 완료 모달과 결과 화면은 `퍼즐 기록 보기` fallback CTA를 노출한다.
+- v1.2.0의 결과 화면은 한 판의 실제 완료와 기록을 보여 준다. 공유, 기록, 완성한 판 다시 보기와 홈 복귀를 제공한다.
+- 난이도를 올리는 다음 판 추천과 두 단계 사다리는 새 화면에서 사용하지 않는다. 이전 easy와 hard 판은 기록에서 직접 열 수 있다. 미래 공개 판을 추천하거나 홈에서 노출하지 않는다.
 
 ## Firebase
 
@@ -88,18 +86,15 @@ dimension의 live 상태는 이 코드 변경의 완료 범위가 아니다.
 
 ## 홈 사다리와 주간 스트릭
 
-- 홈은 오늘의 두 난이도를 병렬 선택지가 아니라 `워밍업 · 5×5 → 오늘의 퍼즐 · 8×8` 두 단계의 사다리로 보여 준다. 단계 순서·상태(new/in_progress/exhausted/done)·주 CTA 판정은 core `buildDailyLadder`(`packages/crossword-core/src/dailyLadder.ts`)가 맡고, Web은 `DailyLadderCard`, RN은 `renderDailyLadder`가 렌더만 한다. 하단 주 CTA는 항상 다음 미완료 단계를 가리키고 두 단계를 모두 끝냈으면 `내일 다시`로 비활성화한다. 오늘 퍼즐이 없으면(원격 미로드·번들 폴백) 선택 퍼즐 기준 기존 CTA로 폴백한다.
-- 단계를 직접 눌러 hard로 바로 가는 것은 막지 않는다. 단계 탭과 하단 CTA는 `home_quick_start` 이벤트에 `source=ladder_step_1|ladder_step_2`, `ladder_step`, `step_status`, `difficulty`를 실어 계측한다.
-- 사다리 위에는 오늘로 끝나는 7일 스트릭 스트립(`buildWeeklyStreakStrip`)과 헤드라인(`formatStreakStripHeadline`), 마일스톤 넛지(`getStreakMilestoneProgress`)를 둔다.
-- 스트릭 숫자는 core `computeConsecutiveStreakDays` 하나로 계산한다. 홈 표시는 오늘 미완료·어제 완료면 오늘 몫을 더한 낙관 값(`countTodayPending: true`)이고, 7/30/100일 마일스톤 발화의 "이전 값"만 비관 값(`countTodayPending: false`)으로 읽는다. Web은 localStorage 미션 레코드, RN은 아카이브 레코드에서 `collectCompletedDates`로 같은 완료일 집합을 만든다.
-- 온보딩 난이도 램프는 `onboardingPuzzleId`(Web 온보딩 퍼즐)와 일치하는 완료에만 개입한다. RN은 온보딩 퍼즐이 없어 첫 daily easy 완료 후 곧바로 오늘의 hard로 잇는다.
+- v1.2.0은 두 단계 사다리 대신 오늘 공개된 8×8 판 하나를 권한다. core `getDailyFreePuzzleSummary`가 공개 시각을 지난 판 중 같은 날짜의 hard를 우선한다. 이전 두 판 발행 날짜도 같은 선택 규칙을 쓴다.
+- 홈의 주 행동은 오늘 한 판 시작, 이어서 풀기 또는 완성한 판 보기다. 지난 미완료 판과 전체 기록은 보조 진입이다.
+- 주간 표시는 core `buildWeeklyStreakStrip`와 `computeConsecutiveStreakDays`로 계산한다. 화면 방문만으로 완료일이나 스트릭을 늘리지 않는다.
 
 ## 일간 발행 난이도 구성
 
-- 자정 배치 한 번에서 `easy 5×5`, `hard 8×8`을 각각 한 판 발행한다. 내부 슬롯은 h00/h01로 분리한다.
-- `PUZZLE_DAILY_TIERS=false`인 레거시 다회 실행에서만 코어의 `normal/easy/normal/hard` 로테이션을 사용한다.
-- AIT/Web과 Android/iOS는 같은 Firebase Hosting manifest를 읽으므로 난이도 구성과 완료 후 상위 티어 추천 정책이 세 시장에서 동일하다.
-- manifest 항목과 퍼즐 JSON의 `difficulty`는 모두 필수이며 서로 다르면 발행 검증이 실패한다. 난이도가 없는 구버전 원격 항목은 전환 시 제거하고 사전 뜻풀이 구조 검증·보드 품질 게이트를 통과한 새 슬롯으로 교체한다.
+- 단일 판 전환일 전에는 기존 easy와 hard 발행을 유지한다. `PUZZLE_SINGLE_DAILY_FROM_DATE`를 설정한 날짜부터 전날 23:00에 8×8 한 판을 생성해 해당 날짜 00:00 KST에 공개한다. 실제 적용 여부는 운영 readback으로 별도 확인한다.
+- 새 판의 전송 식별자는 hard, h01과 YYMMDD01을 유지한다. 사용자 화면에서는 난이도를 선택하지 않는다. 과거 easy와 hard의 정답, ID와 진행 기록은 덮어쓰지 않는다.
+- 세 마켓은 같은 Firebase Hosting manifest를 읽으며 미래 공개 판을 숨긴다. 공개된 판이 하나도 없으면 준비 상태로 남기고 미래 판을 대신 시작하지 않는다.
 
 ## 막힘 힌트 과다 노출 방어 (#265)
 
@@ -107,7 +102,7 @@ dimension의 live 상태는 이 코드 변경의 완료 범위가 아니다.
 - 막힘 판정 시간·첫 입력 전용 지연(`stuck_hint_first_input_idle_ms`, 기본 6초)·오답 임계·퍼즐당 노출 상한·dismiss 상한·최소 쿨다운은 `packages/crossword-core/src/launchConfig.ts`의 공용 Remote Config 계약을 따른다. 기본 정책은 같은 퍼즐에서 최대 2회, 노출 간 최소 180초, 첫 dismiss 후 해당 퍼즐 재노출 금지다.
 - **AIT/Web**은 `src/useStuckHintPrompt.ts`가 퍼즐 ID를 기준으로 상태를 유지하므로 같은 퍼즐의 재도전이나 홈 왕복으로 상한과 dismiss 억제를 초기화하지 않는다. 기존 `stuck_hint_prompt`, `stuck_hint_prompt_accept`, `stuck_hint_prompt_dismiss` 이벤트 이름은 유지한다.
 - **AIT/Web**은 보드가 비고 이번 attempt에 입력이 없으면 6초 뒤 `trigger=first_input` 입력 개시 안내를 띄운다. 수락은 힌트를 소비하지 않고 첫 빈 칸 선택·입력 포커스만 수행한다. 첫 입력 뒤에는 기존 20초 idle/5초 오답 분기로 돌아간다.
-- **Android/iOS(RN)**도 `apps/mobile/useStuckHintPrompt.ts`에서 같은 코어 지연·쿨다운·상한 함수를 사용한다. 첫 입력 가이드는 AsyncStorage 열람 상태로 재진입 중복을 막고, 첫 수동 입력 또는 닫기에서 종결한다. `onboarding_guide_shown|complete|dismiss`와 `stuck_hint_prompt|accept|dismiss`는 Web과 같은 파라미터 키로 RNFirebase Analytics에 발화한다.
+- **Android/iOS(RN)**도 `apps/mobile/useStuckHintPrompt.ts`에서 같은 코어 지연·쿨다운·상한 함수를 사용한다. 첫 세 단어 안내의 공통 상태를 AsyncStorage에 저장한다. `first_three_words_shown`, `first_three_words_complete`, `first_three_words_skip`와 `stuck_hint_prompt|accept|dismiss`를 Web과 같은 파라미터 계약으로 RNFirebase Analytics에 발화한다.
 
 ## 리워드 힌트 광고 시스템 실패 재시도 (#277)
 
@@ -117,10 +112,8 @@ dimension의 live 상태는 이 코드 변경의 완료 범위가 아니다.
 
 ## 완료 직후 다음 퍼즐 연결 (#274)
 
-- 다음 퍼즐 선택은 `packages/crossword-core/src/recommendation.ts`가 세 시장에 동일하게 적용한다. 한 단계 높은 난이도, 같은 난이도, 그 외 미완료 순으로 고르며 미완료 후보가 없으면 완료 퍼즐을 재추천하지 않는다.
-- `onboarding_difficulty_ramp_enabled`는 기본 `true`다. 기완료 퍼즐이 없는 사용자의 첫 easy 완료 직후에는 남은 easy를 한 판 더 추천하고, easy가 없으면 normal까지만 폴백한다. hard만 남으면 CTA를 숨긴다. 두 번째 완료부터는 기존 난이도 상승 정책으로 복귀하며, Remote Config의 명시적 `false`가 3마켓 공통 킬스위치다.
-- AIT/Web과 Android/iOS 완료 축하 오버레이는 추천 후보가 있을 때 난이도·퍼즐 라벨을 포함한 `다음 퍼즐 풀기`를 primary CTA로 먼저 노출하고, 탭하면 목록 없이 풀이 화면으로 진입한다. 후보가 없으면 기존 결과·홈 동선을 유지한다.
-- `next_puzzle_cta` 이벤트는 공용 이름을 유지하고 `source=result_overlay|result_screen`, `next_puzzle_id`, `next_difficulty`를 같은 계약으로 기록한다.
+- v1.2.0 결과 화면은 한 판 완성 뒤 공유와 기록으로 잇는다. 이전 `next_puzzle_cta`와 난이도 상승 화면은 사용하지 않는다.
+- 실제 완료 전환에만 `mission_complete`와 별도의 `game_puzzle_complete`를 각각 한 번 기록한다. 지표에서는 두 이름을 더해 두 번 완주한 것으로 세지 않는다. 저장된 완성 판을 다시 열어도 새 완료를 만들지 않는다.
 
 ## 보너스 퍼즐 제거 상태 (#326)
 
@@ -148,7 +141,7 @@ dimension의 live 상태는 이 코드 변경의 완료 범위가 아니다.
 
 - 결정 로직(언제·몇 번 동의를 유도할지)은 코어 `packages/crossword-core/src/returnReminder.ts`에 두어 3개 시장이 같은 정책으로 동작한다. 노출 게이트는 Remote Config 키 `return_reminder_enabled`(기본값 `true`, #162)이다. 필요 시 Remote Config에서 `false`로 끌 수 있다.
 - 실제 동의 요청(시장별 알림 SDK)은 adapter로 분리한다. **AIT/Web**은 `src/adapters/notificationAgreement.ts`가 `@apps-in-toss/web-framework`의 `requestNotificationAgreement`(스마트발송 캠페인 동의)를 호출하고, 다음날 "오늘의 퍼즐" 리마인드는 서버(스마트발송)가 발송한다.
-- **사전 안내(pre-prompt)**: 두 표면 모두 완료 축하 화면 안에 core 문구(`RETURN_REMINDER_PREPROMPT_COPY`, `formatReturnReminderPrepromptBody(streak)`) 카드를 먼저 보여 주고, "알림 받기"를 누른 뒤에만 시스템 다이얼로그(AIT 스마트발송 동의·OS 알림 권한)를 띄운다. 시스템 다이얼로그는 한 번 거부되면 되돌리기 어렵기 때문이다. "괜찮아요"와 카드에 답하지 않은 닫기는 `declined`로 기록하며, 종결이 아니라 `error`/`timeout`처럼 다음 날 다시 안내하고 유도 예산(3회)은 소진한다. 카드 노출·수락·보류는 `return_reminder_preprompt(action=shown|accept|decline, channel, prompt_count, streak_days)`로 계측한다. Web은 `src/components/ReturnReminderPrepromptCard.tsx`, RN은 완료 모달 안 인라인 카드다.
+- **사전 안내(pre-prompt)**: 두 표면 모두 완료 축하 화면 안에 core 문구(`RETURN_REMINDER_PREPROMPT_COPY`, `formatReturnReminderPrepromptBody(streak)`) 카드를 먼저 보여 주고, "알림 받기"를 누른 뒤에만 시스템 다이얼로그(AIT 스마트발송 동의·OS 알림 권한)를 띄운다. 시스템 다이얼로그는 한 번 거부되면 되돌리기 어렵기 때문이다. "괜찮아요"와 카드에 답하지 않은 닫기는 `declined`로 기록하며, 종결이 아니라 `error`/`timeout`처럼 다음 날 다시 안내하고 유도 예산(3회)은 소진한다. 카드 노출·수락·보류는 `return_reminder_preprompt(action=shown|accept|decline, channel, prompt_count, streak_days)`로 계측한다. Web은 `src/components/ReturnReminderPrepromptCard.tsx`, RN도 결과 화면 진입 후 동의 카드를 연다.
 - **Android/iOS(RN)**는 `react-native-notify-kit` adapter가 사전 안내 수락 뒤 OS 알림 권한을 요청하고, 허용 시 다음 날 09:00 KST에 "오늘의 퍼즐" 로컬 알림 한 건을 예약한다(`apps/mobile/mobileReturnReminder.ts`의 `prepare → confirm/decline`). 동의(`agreed`) 상태면 **매 완료마다** D+1로 다시 예약한다(`refreshMobileReturnReminderSchedule`, `return_reminder_schedule(channel=local, outcome, reminder_date)`) — 이전에는 동의한 첫날 한 번만 예약돼 D1 알림 한 건으로 끝났다. 앱을 다시 열면(초기 로드·active 복귀) 예약 날짜가 오늘 이전·오늘인 알림은 취소한다(`cancelStaleMobileReturnReminder`). 같은 notification ID를 취소 후 재사용하고 Android는 `alarmManager=false`로 WorkManager를 사용하므로 exact-alarm 권한이 필요 없다. 앱이 꺼진 상태의 탭은 early background handler가 저장하고, foreground/cold-start 소비가 `today` 화면으로 이동시킨다.
 - Android 13+ 권한은 Manifest의 `POST_NOTIFICATIONS`와 SDK 런타임 요청으로 처리한다. iOS 알림 권한 문구는 OS가 앱 이름과 함께 표시하며 사용자 정의 purpose-string용 Info.plist 키가 없으므로 가짜 키를 추가하지 않는다. 양쪽 모두 퍼즐 완료라는 사용 맥락에서 요청한다.
 - 동의 유도/결과는 텔레메트리 `return_reminder_prompt`, `return_reminder_result`(영문 키 유지)로 계측하고 `channel=ait|local`로 구분한다. 동의/거부/미지원은 1회 결과로 종결하고, `error`/`timeout`/`declined`만 다음 날짜에 총 3회 상한으로 재유도한다. 결과에는 `prompt_count`, `error_reason`, 가장 구체적인 `error_code`, 다른 최상위 래퍼가 있으면 `error_wrapper_code`, 실패 단계 `stage=preflight|sdk_callback|timeout`을 기록한다. 중첩 코드 `4000`도 AIT 배포 설정 오류로 인식해 프롬프트 예산 상한을 우회한다. RN 알림 탭은 `notification_opened(channel=local, notification_kind=daily_puzzle, reminder_date)`를 한 번 발화한다.
@@ -156,15 +149,16 @@ dimension의 live 상태는 이 코드 변경의 완료 범위가 아니다.
 
 ## 신규 첫 실행 온보딩 퍼즐 자동 진입 (#205)
 
-- 판정 로직(도전 이력이 전혀 없는 신규인지)은 코어 `packages/crossword-core/src/uiPolicy.ts`의 `shouldAutoStartFirstRun` 순수 함수에 둔다. 게이트는 Remote Config 키 `first_run_auto_start_enabled`(기본값 `true`)이며 회귀 시 Remote Config에서 `false`로 즉시 끌 수 있다.
-- **AIT/Web**은 `src/App.tsx`가 퍼즐 팩 로드·원격 설정 fetch 완료 후 1회 판정해, 신규면 홈 대신 온보딩(easy) 퍼즐 풀이 화면으로 자동 진입한다. 진입 시 `first_run_auto_start` 임프레션과 기존 `attempt_start`(attempt_kind=first)가 발화된다.
-- **Android/iOS(RN)**는 아직 이 자동 진입 배선이 없다(후속 작업). `apps/mobile`은 이 키와 무관하게 기존 홈 진입으로 동작하는 no-op이다. 이 시장 차이는 의도된 상태다.
+- 세 마켓 모두 오늘 판 홈에서 시작한다. 별도 작은 입문 판과 자동 진입은 사용하지 않는다.
+- 같은 판에서 쉬운 세 단서를 안내한다. 건너뛰기, 자유 선택과 중단 후 복원을 허용한다. 다른 미시작 판을 열어도 원래 진행 중인 안내를 덮어쓰지 않는다.
+- `first_three_words_shown`, `first_three_words_complete`, `first_three_words_skip`는 공통 `FIRST_WORD_GUIDE_EVENTS`에서 가져온다. `puzzle_id`, `input_policy=syllable-v1`, `word_count`를 함께 기록한다. 세 단어 안내 완료는 전체 한 판 완료와 다르다.
+- `scripts/analytics/onboarding-guide-funnel.sql`은 고유 사용자와 퍼즐의 노출을 분모로 계산한다. 출력 해석은 [첫 세 단어 안내 분석](onboarding-guide-funnel.md)을 따른다. 기존 한 입력 안내 `onboarding_guide_*`와 새 세 단어 안내를 합치지 않는다.
 
 ## 연필(임시 입력) 모드 (#200)
 
-- 어떤 입력을 임시(연필)로 볼지의 정책은 코어 `packages/crossword-core/src/tentative.ts`의 `shouldMarkTentative`(연필 ON + `manual` 입력만 임시, `reveal`/`debug`는 항상 확정) 순수 함수에 둔다. 임시 셋 갱신·렌더 가드·저장 스키마(`SavedProgress.tentativeCells`)는 기존 코어 로직을 그대로 쓴다.
-- **AIT/Web**은 풀이 툴바의 연필 토글(`aria-pressed`)로 모드를 켜고 끈다. 모드 자체는 세션 한정 상태이고, 임시 표시는 `SavedProgress.tentativeCells`로 재진입 후에도 복원된다.
-- **Android/iOS(RN)**는 아직 연필 토글 UI가 없다(후속 작업). `apps/mobile`은 기존처럼 항상 확정 입력으로 동작하는 no-op이다. 이 시장 차이는 의도된 상태다.
+- v1.2.0의 기본 입력은 core `letterTileInput.ts`의 글자 타일이다. 시스템 키보드와 연필 토글은 새 풀이 화면에서 사용하지 않는다.
+- 맞힌 단어와 교차 칸은 잠그고, 전체 오답에서는 맞는 위치를 유지해 틀린 칸만 다시 선택하게 한다. 미완성 입력, 선택 위치와 되돌리기 이력은 저장 후 복원한다. 과거 저장 형식은 읽을 수 있게 유지한다.
+- 같은 viewport에서는 보드와 입력부 위치를 고정한다. 타일은 5열, 2줄 영역을 예약하고 더 긴 과거 단어는 타일 영역 안에서만 스크롤한다.
 
 ## 일일 도전 횟수 상한 원격화 (#225)
 
