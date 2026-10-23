@@ -55,6 +55,7 @@ FROM guide_per_puzzle
 WHERE shown_at IS NOT NULL;
 
 -- 결과 2: 세 단어를 실제로 마친 표본의 관찰 시간. 재노출도 첫 노출부터 계산한다.
+-- event_timestamp는 TIMESTAMP가 아닌 INTEGER 마이크로초이므로 정수 차이를 초로 환산한다.
 SELECT
   'guide_complete_elapsed' AS section,
   COUNT(*) AS completed_user_puzzles,

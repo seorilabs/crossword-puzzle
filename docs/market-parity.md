@@ -152,7 +152,7 @@ dimension의 live 상태는 이 코드 변경의 완료 범위가 아니다.
 - 세 마켓 모두 오늘 판 홈에서 시작한다. 별도 작은 입문 판과 자동 진입은 사용하지 않는다.
 - 같은 판에서 쉬운 세 단서를 안내한다. 건너뛰기, 자유 선택과 중단 후 복원을 허용한다. 다른 미시작 판을 열어도 원래 진행 중인 안내를 덮어쓰지 않는다.
 - `first_three_words_shown`, `first_three_words_complete`, `first_three_words_skip`는 공통 `FIRST_WORD_GUIDE_EVENTS`에서 가져온다. `puzzle_id`, `input_policy=syllable-v1`, `word_count`를 함께 기록한다. 세 단어 안내 완료는 전체 한 판 완료와 다르다.
-- `scripts/analytics/onboarding-guide-funnel.sql`은 고유 사용자와 퍼즐의 노출을 분모로 계산한다. 기존 한 입력 안내 `onboarding_guide_*`와 새 세 단어 안내를 합치지 않는다.
+- `scripts/analytics/onboarding-guide-funnel.sql`은 고유 사용자와 퍼즐의 노출을 분모로 계산한다. 출력 해석은 [첫 세 단어 안내 분석](onboarding-guide-funnel.md)을 따른다. 기존 한 입력 안내 `onboarding_guide_*`와 새 세 단어 안내를 합치지 않는다.
 
 ## 연필(임시 입력) 모드 (#200)
 

@@ -832,3 +832,63 @@ describe('formatElapsedTime', () => {
     ).toBe('42초');
   });
 });
+
+test('future-only manifest cannot consume the first guide before a published board arrives', async () => {
+  const key = (date: Date) =>
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Seoul',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(date);
+  const today = key(new Date());
+  const tomorrow = key(new Date(Date.now() + 86400000));
+  let loaded = createPuzzle(
+    tomorrow.slice(2).replaceAll('-', '') + '01',
+    tomorrow,
+  );
+  const fetchMock = globalThis.fetch as jest.Mock;
+  fetchMock.mockImplementation(async (url: string) => ({
+    ok: true,
+    json: async () =>
+      url.endsWith('manifest.json')
+        ? {
+            puzzles: [
+              {
+                ...loaded,
+                path: `/puzzles/${loaded.puzzleId}.json`,
+                publishedAt: `${loaded.date}T00:00:00+09:00`,
+              },
+            ],
+          }
+        : loaded,
+  }));
+  let renderer: ReactTestRenderer.ReactTestRenderer | undefined;
+  try {
+    await ReactTestRenderer.act(async () => {
+      renderer = ReactTestRenderer.create(<App />);
+    });
+    await flushAsyncWork(15);
+    expect(renderer!.root.findByType(TileHomeScreen).props.puzzle).toBeNull();
+    await ReactTestRenderer.act(async () => {
+      renderer!.unmount();
+    });
+    loaded = createPuzzle(today.slice(2).replaceAll('-', '') + '01', today);
+    await ReactTestRenderer.act(async () => {
+      renderer = ReactTestRenderer.create(<App />);
+    });
+    await flushAsyncWork(15);
+    await ReactTestRenderer.act(async () => {
+      renderer!.root.findByType(TileHomeScreen).props.onStart();
+    });
+    await flushAsyncWork(10);
+    expect(renderer!.root.findByType(TilePuzzleScreen).props.guide).toEqual(
+      expect.objectContaining({ completed: 0, total: 1 }),
+    );
+  } finally {
+    ReactTestRenderer.act(() => renderer?.unmount());
+    fetchMock.mockImplementation(() =>
+      Promise.reject(new Error('fetch is mocked in mobile Jest')),
+    );
+  }
+}, 45_000);

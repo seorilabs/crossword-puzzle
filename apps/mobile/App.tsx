@@ -1337,18 +1337,24 @@ function AppContent() {
       session.savedProgress.tileInput,
     );
     const ids = chooseFirstWordGuide(session.nextPuzzle.entries);
+    const guideEligible = isPublishedPuzzle(
+      createPuzzleSummary(session.nextPuzzle),
+    );
     setFirstWordGuide(previous =>
-      restoreFirstWordGuide({
-        previous,
-        puzzleId: session.nextPuzzle.puzzleId,
-        entries: session.nextPuzzle.entries,
-        legacySeen: firstGuideLegacySeen.current,
-        hasProgress:
-          session.savedMission.attemptsUsed > 0 ||
-          Object.keys(session.savedProgress.cellValues).length > 0,
-      }),
+      guideEligible
+        ? restoreFirstWordGuide({
+            previous,
+            puzzleId: session.nextPuzzle.puzzleId,
+            entries: session.nextPuzzle.entries,
+            legacySeen: firstGuideLegacySeen.current,
+            hasProgress:
+              session.savedMission.attemptsUsed > 0 ||
+              Object.keys(session.savedProgress.cellValues).length > 0,
+          })
+        : previous,
     );
     if (
+      guideEligible &&
       !session.savedProgress.tileInput &&
       Object.keys(restored.cellValues).length === 0 &&
       !firstGuideLegacySeen.current &&
