@@ -8,6 +8,7 @@ import {
   clearLetterTile,
   confirmLetterTileCell,
   recommendLetterEntry,
+  selectLetterEntry,
 } from "./letterTileInput.ts";
 
 const puzzle: Puzzle = {
@@ -182,4 +183,26 @@ test("TILE-2/3: long and repeated words retain every answer piece and two distra
     assert.equal(state.status, "correct");
     assert.equal(recommendLetterEntry(source, state), undefined);
   }
+});
+
+test("TILE-5: cursor advances after the selected slot before wrapping", () => {
+  let state = selectLetterEntry(puzzle, blank(), "bird", "0:1");
+  state = pick(state, "러");
+  assert.equal(state.progress.activeCellKey, "0:2");
+  state = pick(state, "기");
+  assert.equal(state.progress.activeCellKey, "0:0");
+});
+test("TILE-5: restore selects unfinished work and explicit review keeps a completed word", () => {
+  const solved = pick(pick(pick(blank(), "기"), "러"), "기");
+  assert.equal(solved.progress.entryId, "bird");
+  const restored = createLetterTileState(
+    puzzle,
+    solved.cellValues,
+    solved.progress,
+  );
+  assert.equal(restored.progress.entryId, "train");
+  const review = selectLetterEntry(puzzle, restored, "bird");
+  assert.equal(review.progress.entryId, "bird");
+  assert.equal(review.progress.activeCellKey, "");
+  assert.deepEqual(review.cellValues, solved.cellValues);
 });

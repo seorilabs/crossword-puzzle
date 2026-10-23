@@ -90,7 +90,11 @@ describe("localProgressRepository — restartMissionAttempt 시나리오", () =>
     });
 
     const loaded = await repo.loadProgress("puzzle-2");
-    assert.equal(loaded.earnedHintCredits, 5, "광고 획득 크레딧이 유지되어야 함");
+    assert.equal(
+      loaded.earnedHintCredits,
+      5,
+      "광고 획득 크레딧이 유지되어야 함",
+    );
     assert.equal(loaded.hintCount, 0, "힌트 사용 횟수는 초기화되어야 함");
     assert.deepEqual(loaded.cellValues, {}, "셀 값은 초기화되어야 함");
   });
@@ -118,7 +122,11 @@ describe("localProgressRepository — restartMissionAttempt 시나리오", () =>
     });
     await repo.clearProgress("puzzle-3");
     const loaded = await repo.loadProgress("puzzle-3");
-    assert.equal(loaded.earnedHintCredits, 0, "clearProgress 후 크레딧은 0이어야 함");
+    assert.equal(
+      loaded.earnedHintCredits,
+      0,
+      "clearProgress 후 크레딧은 0이어야 함",
+    );
     assert.equal(loaded.hintCount, 0);
     assert.deepEqual(loaded.cellValues, {});
   });
@@ -182,7 +190,11 @@ describe("localProgressRepository — restartMissionAttempt 시나리오", () =>
       JSON.stringify({ cellValues: {}, earnedHintCredits: 0, hintCount: 1.9 }),
     );
     const loaded = await repo.loadProgress("puzzle-float-hint");
-    assert.equal(loaded.hintCount, 1, "소수점 힌트카운트는 내림하여 정수로 정규화");
+    assert.equal(
+      loaded.hintCount,
+      1,
+      "소수점 힌트카운트는 내림하여 정수로 정규화",
+    );
   });
 
   it("saveProgress로 저장한 revealUsed는 loadProgress로 복원된다", async () => {
@@ -289,7 +301,7 @@ describe("localProgressRepository — restartMissionAttempt 시나리오", () =>
         cellValues: {},
         earnedHintCredits: 3,
         hintCount: 0,
-      })
+      }),
     );
   });
 
@@ -371,4 +383,27 @@ describe("getOverallBestTimeMs — 통산 최고 기록(가장 빠른 값)", () 
     saveBestTimeMs("valid", 33_000, storage);
     assert.equal(getOverallBestTimeMs(storage), 33_000);
   });
+});
+
+it("타일 선택 기록은 저장 후 새 저장소에서도 복원된다", async () => {
+  const storage = createMemoryStorage();
+  const tileInput = {
+    version: 1 as const,
+    confirmedCells: ["0:0"],
+    selectionHistory: ["0:1"],
+    entryId: "bird",
+    activeCellKey: "0:2",
+  };
+  await createLocalProgressRepository({ storage }).saveProgress("tiles", {
+    cellValues: { "0:0": "기", "0:1": "러" },
+    earnedHintCredits: 2,
+    hintCount: 1,
+    tileInput,
+  });
+  const loaded = await createLocalProgressRepository({ storage }).loadProgress(
+    "tiles",
+  );
+  assert.deepEqual(loaded.tileInput, tileInput);
+  assert.equal(loaded.earnedHintCredits, 2);
+  assert.equal(loaded.hintCount, 1);
 });
