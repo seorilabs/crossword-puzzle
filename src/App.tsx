@@ -3513,13 +3513,15 @@ function HomeScreen({
           )}
         </div>
         <p>
-          {loadState === "fallback"
-            ? "연결이 어려워 저장된 퍼즐을 보여드려요."
-            : finished
-              ? "완성한 단어를 다시 만나보세요."
-              : started
-                ? "고른 글자는 그대로, 이어서 완성해요."
-                : "서두르지 않아도 괜찮아요. 한 단어씩 채워봐요."}
+          {preview == null
+            ? "오늘의 퍼즐을 준비하고 있어요."
+            : loadState === "fallback"
+              ? "연결이 어려워 저장된 퍼즐을 보여드려요."
+              : finished
+                ? "완성한 단어를 다시 만나보세요."
+                : started
+                  ? "고른 글자는 그대로, 이어서 완성해요."
+                  : "서두르지 않아도 괜찮아요. 한 단어씩 채워봐요."}
         </p>
         {previewError ? (
           <button

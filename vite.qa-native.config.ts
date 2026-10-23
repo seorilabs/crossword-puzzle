@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { defineConfig } from "vite";
+import { defineConfig, transformWithEsbuild } from "vite";
 import react from "@vitejs/plugin-react";
 
 const root = process.cwd();
@@ -8,7 +8,22 @@ export default defineConfig({
   cacheDir: resolve(root, "node_modules/.vite-qa-native"),
   root: resolve(root, "qa/native"),
   publicDir: resolve(root, "public"),
-  plugins: [react()],
+  optimizeDeps: { esbuildOptions: { loader: { ".js": "jsx" } } },
+  plugins: [
+    {
+      name: "native-entry-jsx",
+      enforce: "pre",
+      transform(code, id) {
+        if (id.endsWith("/apps/mobile/index.js")) {
+          return transformWithEsbuild(code, id, {
+            loader: "jsx",
+            jsx: "automatic",
+          });
+        }
+      },
+    },
+    react(),
+  ],
   define: { __DEV__: true, __APP_VERSION__: JSON.stringify("0.0.0-qa") },
   server: {
     host: "127.0.0.1",

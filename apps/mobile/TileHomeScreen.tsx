@@ -72,13 +72,15 @@ export function TileHomeScreen({
           ))}
         </View>
         <Text style={s.caption}>
-          {offline
-            ? '연결이 어려워 저장된 퍼즐을 보여드려요.'
-            : finished
-              ? '완성한 단어를 다시 만나보세요.'
-              : started
-                ? '고른 글자는 그대로, 이어서 완성해요.'
-                : '서두르지 않아도 괜찮아요. 한 단어씩 채워봐요.'}
+          {puzzle == null
+            ? '오늘의 퍼즐을 준비하고 있어요.'
+            : offline
+              ? '연결이 어려워 저장된 퍼즐을 보여드려요.'
+              : finished
+                ? '완성한 단어를 다시 만나보세요.'
+                : started
+                  ? '고른 글자는 그대로, 이어서 완성해요.'
+                  : '서두르지 않아도 괜찮아요. 한 단어씩 채워봐요.'}
         </Text>
         <Pressable
           accessibilityRole="button"

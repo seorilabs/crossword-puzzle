@@ -1,6 +1,6 @@
 # 개발 환경 화면 검수
 
-`npm run dev:qa-web`는 실제 웹 앱 진입점과 어댑터를, `npm run dev:qa-native`는 실제 RN App과 어댑터를 브라우저에서 실행한다. RN은 React Native Web으로 화면만 렌더하며 네이티브 SDK와 OS 동작 검증을 뜻하지 않는다. 실제 광고, 인증, 분석, 알림과 플랫폼 네트워크를 외부 SDK 경계의 고정 입력으로 대체한다. 검수 이벤트는 `window.__crosswordQa.events`에만 모은다.
+`npm run dev:qa-web`는 실제 웹 앱 진입점과 어댑터를, `npm run dev:qa-native`는 실제 RN 시작 파일 `apps/mobile/index.js`와 App, 어댑터를 브라우저에서 실행한다. AppRegistry를 통해 인증, presence와 업데이트 안내 초기화도 같은 시작 경로로 검수한다. RN은 React Native Web으로 화면만 렌더하며 네이티브 SDK와 OS 동작 검증을 뜻하지 않는다. 실제 광고, 인증, 분석, 알림과 플랫폼 네트워크를 외부 SDK 경계의 고정 입력으로 대체한다. 검수 이벤트는 `window.__crosswordQa.events`에만 모은다.
 
 웹은 4183, RN은 4182 포트를 사용한다. `?run=<고유 검수명>`으로 저장 공간을 격리하며 RN은 `platform=android` 또는 `platform=ios`로 플랫폼 분기도 실행한다. 소스는 같은 앱을 사용하며 별도 모형 화면을 만들지 않는다. 퍼즐 응답은 실행 도구가 `qa/fixtures` 데이터로 대체하고, 신규와 기존 진행 상태를 각각 독립한 실행명으로 확인한다.
 
