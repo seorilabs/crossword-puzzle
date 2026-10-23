@@ -1071,6 +1071,7 @@ function AppContent() {
   const [homePreview, setHomePreview] = useState<Puzzle | null>(null);
   useEffect(() => {
     let cancelled = false;
+    setHomePreview(null);
     if (dailySummary)
       loadPuzzleSession(dailySummary.puzzleId, puzzlePack)
         .then(session => {
