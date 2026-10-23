@@ -1330,58 +1330,62 @@ function AppContent() {
     });
   }, []);
 
-  const applyPuzzleSession = useCallback((session: PuzzleSession | null) => {
-    if (session == null) {
-      return;
-    }
+  const applyPuzzleSession = useCallback(
+    (session: PuzzleSession | null, initializeGuide = false) => {
+      if (session == null) {
+        return;
+      }
 
-    setCompletionCelebrationPuzzleId(null);
-    setPuzzle(session.nextPuzzle);
-    const restored = createLetterTileState(
-      session.nextPuzzle,
-      session.savedProgress.cellValues,
-      session.savedProgress.tileInput,
-    );
-    const ids = chooseFirstWordGuide(session.nextPuzzle.entries);
-    const guideEligible = session.isPublished;
-    setFirstWordGuide(previous =>
-      guideEligible
-        ? restoreFirstWordGuide({
-            previous,
-            puzzleId: session.nextPuzzle.puzzleId,
-            entries: session.nextPuzzle.entries,
-            legacySeen: firstGuideLegacySeen.current,
-            hasProgress:
-              session.savedMission.attemptsUsed > 0 ||
-              Object.keys(session.savedProgress.cellValues).length > 0,
-          })
-        : previous,
-    );
-    if (
-      guideEligible &&
-      !session.savedProgress.tileInput &&
-      Object.keys(restored.cellValues).length === 0 &&
-      !firstGuideLegacySeen.current &&
-      ids[0]
-    )
-      Object.assign(
-        restored,
-        selectLetterEntry(session.nextPuzzle, restored, ids[0]),
+      setCompletionCelebrationPuzzleId(null);
+      setPuzzle(session.nextPuzzle);
+      const restored = createLetterTileState(
+        session.nextPuzzle,
+        session.savedProgress.cellValues,
+        session.savedProgress.tileInput,
       );
-    setCellValues(restored.cellValues);
-    setTileInput(restored.progress);
-    setTileStatus('idle');
-    setHintCount(session.savedProgress.hintCount);
-    setMission(session.savedMission);
-    setSelectedDirection(
-      session.nextPuzzle.entries.find(
-        entry => entry.id === restored.progress.entryId,
-      )?.direction ?? 'across',
-    );
-    setSelectedEntryId(restored.progress.entryId);
-    setSelectedCellKey(restored.progress.activeCellKey);
-    setNotice(`${session.nextPuzzle.date} 퍼즐을 불러왔습니다.`);
-  }, []);
+      const ids = chooseFirstWordGuide(session.nextPuzzle.entries);
+      const guideEligible = session.isPublished;
+      setFirstWordGuide(previous =>
+        guideEligible
+          ? restoreFirstWordGuide({
+              previous,
+              puzzleId: session.nextPuzzle.puzzleId,
+              entries: session.nextPuzzle.entries,
+              legacySeen: firstGuideLegacySeen.current || !initializeGuide,
+              hasProgress:
+                session.savedMission.attemptsUsed > 0 ||
+                Object.keys(session.savedProgress.cellValues).length > 0,
+            })
+          : previous,
+      );
+      if (
+        initializeGuide &&
+        guideEligible &&
+        session.savedMission.attemptsUsed === 0 &&
+        Object.keys(restored.cellValues).length === 0 &&
+        !firstGuideLegacySeen.current &&
+        ids[0]
+      )
+        Object.assign(
+          restored,
+          selectLetterEntry(session.nextPuzzle, restored, ids[0]),
+        );
+      setCellValues(restored.cellValues);
+      setTileInput(restored.progress);
+      setTileStatus('idle');
+      setHintCount(session.savedProgress.hintCount);
+      setMission(session.savedMission);
+      setSelectedDirection(
+        session.nextPuzzle.entries.find(
+          entry => entry.id === restored.progress.entryId,
+        )?.direction ?? 'across',
+      );
+      setSelectedEntryId(restored.progress.entryId);
+      setSelectedCellKey(restored.progress.activeCellKey);
+      setNotice(`${session.nextPuzzle.date} 퍼즐을 불러왔습니다.`);
+    },
+    [],
+  );
 
   useEffect(() => {
     let isCancelled = false;
@@ -2454,7 +2458,8 @@ function AppContent() {
       );
     }
 
-    applyPuzzleSession({ ...session, savedMission: nextMission });
+    applyPuzzleSession(session, true);
+    setMission(nextMission);
     setIsLoading(false);
     telemetry.click(HOME_QUICK_START_EVENT, {
       ...getPuzzleTelemetryParams(session.nextPuzzle, summary),
