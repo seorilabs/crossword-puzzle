@@ -139,6 +139,7 @@ async def run(session, *, platform, run_id, output_dir, width=390, height=844, p
     assert len(final['tileInput']['confirmedCells'])==sum(bool(letter) for row in puzzle['grid'] for letter in row)
     await page.get_by_role('button',name='나의 기록',exact=True).click()
     await page.get_by_text('퍼즐 기록' if native else '기록',exact=True).first.wait_for()
+    await page.wait_for_function('window.__crosswordQa.events.some(e=>e.source==="firebase"&&e.name==="history_open"&&e.params.source==="result_screen")')
     history=await page.evaluate('window.__crosswordQa.events.filter(e=>e.source==="firebase"&&e.name==="history_open"&&e.params.source==="result_screen")')
     assert len(history)==1
     events=await page.evaluate('window.__crosswordQa.events')

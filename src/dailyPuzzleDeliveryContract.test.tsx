@@ -7,6 +7,8 @@ import {
   DAILY_PUZZLE_TIERS,
   DIFFICULTY_PROFILES,
   PUZZLE_KEEP_COUNT,
+  FIRST_WORD_GUIDE_EVENTS,
+  buildFirstWordGuideTelemetryParams,
 } from "../packages/crossword-core/src";
 
 const root = process.cwd();
@@ -39,7 +41,7 @@ const aitWorkflowSource = readFileSync(
 );
 
 describe("일간 퍼즐 전달 계약", () => {
-  it("AC-3: Job은 매일 두 난이도를 생성하고 최근 7일치 14판을 유지한다", () => {
+  it("AC-3: 전환 전 Job은 기존 두 난이도와 보관 14판을 유지한다", () => {
     expect(DAILY_PUZZLE_TIERS.map((tier) => tier.difficulty)).toEqual([
       "easy",
       "hard",
@@ -63,7 +65,7 @@ describe("일간 퍼즐 전달 계약", () => {
     expect(validatorSource).toContain("selfReferentialEntries.length === 0");
   });
 
-  it("AC-3: Hard 기본 프로파일은 생성 검증값인 8×8과 11개 배치를 사용한다", () => {
+  it("AC-3: 레거시 Hard 기본 프로파일을 보존한다", () => {
     expect(DIFFICULTY_PROFILES.hard.boardSize).toBe(8);
     expect(DIFFICULTY_PROFILES.hard.maxWords).toBe(11);
     expect(DIFFICULTY_PROFILES.hard.minWordCount).toBe(12);
@@ -98,12 +100,19 @@ describe("일간 퍼즐 전달 계약", () => {
   });
 
   it("AC-12: 첫 세 단어와 전체 완주를 별도 사건으로 기록한다", () => {
-    for (const source of [webSource, mobileSource]) {
-      expect(source).toContain("first_three_words_complete");
-      expect(source).toContain("first_three_words_skip");
-      expect(source).toContain("game_puzzle_complete");
-      expect(source).toContain("TILE_INPUT_POLICY_VERSION");
-    }
+    expect(FIRST_WORD_GUIDE_EVENTS).toEqual({
+      shown: "first_three_words_shown",
+      complete: "first_three_words_complete",
+      skip: "first_three_words_skip",
+    });
+    expect(Object.values(FIRST_WORD_GUIDE_EVENTS)).not.toContain(
+      "game_puzzle_complete",
+    );
+    expect(buildFirstWordGuideTelemetryParams("p1", 3)).toEqual({
+      puzzle_id: "p1",
+      input_policy: "syllable-v1",
+      word_count: 3,
+    });
   });
 
   it("AC-11: 모든 난이도가 어휘 제한 없이 같은 워드뱅크를 후보로 쓴다", () => {
