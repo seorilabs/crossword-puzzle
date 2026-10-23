@@ -1,3 +1,8 @@
+import {
+  sampleVocabulary,
+  familiarVocabularyBonus,
+  VOCABULARY_POLICY_VERSION,
+} from "../packages/crossword-core/src/vocabularySelection.ts";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -118,10 +123,13 @@ function parseArgs(argv) {
     if (key === "size" && Number.isFinite(value)) options.boardSize = value;
     if (key === "beam" && Number.isFinite(value)) options.beamWidth = value;
     if (key === "branch" && Number.isFinite(value)) options.branchLimit = value;
-    if (key === "candidates" && Number.isFinite(value)) options.candidateWordLimit = value;
-    if (key === "dense" && Number.isFinite(value)) options.denseCandidateLimit = value;
+    if (key === "candidates" && Number.isFinite(value))
+      options.candidateWordLimit = value;
+    if (key === "dense" && Number.isFinite(value))
+      options.denseCandidateLimit = value;
     if (key === "words" && Number.isFinite(value)) options.maxWords = value;
-    if (key === "minLength" && Number.isFinite(value)) options.minWordLength = value;
+    if (key === "minLength" && Number.isFinite(value))
+      options.minWordLength = value;
     if (key === "samples" && Number.isFinite(value)) options.samples = value;
     if (key === "seed" && Number.isFinite(value)) options.seed = value;
     if (key === "wordbank" && rawValue) options.wordBankPath = rawValue;
@@ -158,9 +166,15 @@ function limitCandidateWords(words, options) {
     return words;
   }
 
+  if (options.vocabularyPolicy === VOCABULARY_POLICY_VERSION)
+    return sampleVocabulary(
+      words,
+      options.candidateWordLimit,
+      createRandom(options.seed ^ 0x9e3779b9),
+    );
   return shuffle(words, createRandom(options.seed ^ 0x9e3779b9)).slice(
     0,
-    options.candidateWordLimit
+    options.candidateWordLimit,
   );
 }
 
@@ -192,7 +206,7 @@ function buildLetterIndex(words) {
     [...byLetter.entries()].map(([letter, letterWords]) => [
       letter,
       [...letterWords.values()],
-    ])
+    ]),
   );
 }
 
@@ -216,12 +230,14 @@ export async function loadWordBank(filePath) {
 }
 
 function makeEmptyGrid(size) {
-  return Array.from({ length: size }, () => Array.from({ length: size }, () => null));
+  return Array.from({ length: size }, () =>
+    Array.from({ length: size }, () => null),
+  );
 }
 
 function makeDirectionGrid(size) {
   return Array.from({ length: size }, () =>
-    Array.from({ length: size }, () => new Set())
+    Array.from({ length: size }, () => new Set()),
   );
 }
 
@@ -278,7 +294,12 @@ function validatePlacement(state, word, row, col, direction, options) {
   const cells = [];
   const intersections = [];
 
-  for (const [endRow, endCol] of endpointCells(row, col, letters.length, direction)) {
+  for (const [endRow, endCol] of endpointCells(
+    row,
+    col,
+    letters.length,
+    direction,
+  )) {
     if (inBounds(size, endRow, endCol) && state.grid[endRow][endCol] !== null) {
       return null;
     }
@@ -307,7 +328,7 @@ function validatePlacement(state, word, row, col, direction, options) {
       for (const [neighborRow, neighborCol] of perpendicularNeighbors(
         currentRow,
         currentCol,
-        direction
+        direction,
       )) {
         if (
           inBounds(size, neighborRow, neighborCol) &&
@@ -323,7 +344,11 @@ function validatePlacement(state, word, row, col, direction, options) {
     cells.push({ row: currentRow, col: currentCol, letter: letters[index] });
   }
 
-  if (state.placements.length > 0 && intersections.length === 0 && !options.allowAdjacent) {
+  if (
+    state.placements.length > 0 &&
+    intersections.length === 0 &&
+    !options.allowAdjacent
+  ) {
     return null;
   }
 
@@ -368,7 +393,7 @@ function bridgesNewAndExistingCells(autoRun, state, validated) {
   const newCellKeys = new Set(
     validated.cells
       .filter((cell) => state.grid[cell.row][cell.col] === null)
-      .map((cell) => `${cell.row},${cell.col}`)
+      .map((cell) => `${cell.row},${cell.col}`),
   );
 
   let touchesNewCell = false;
@@ -413,7 +438,8 @@ function findPlacementCandidates(state, words, random, options) {
 
   if (state.placements.length === 0) {
     const sorted = [...words].sort(
-      (left, right) => splitWord(right.answer).length - splitWord(left.answer).length
+      (left, right) =>
+        splitWord(right.answer).length - splitWord(left.answer).length,
     );
     const seedWords = sorted.slice(0, Math.min(12, sorted.length));
 
@@ -428,10 +454,24 @@ function findPlacementCandidates(state, words, random, options) {
           direction === "across"
             ? Math.floor((options.boardSize - letters.length) / 2)
             : Math.floor(options.boardSize / 2);
-        const validated = validatePlacement(state, word, row, col, direction, options);
+        const validated = validatePlacement(
+          state,
+          word,
+          row,
+          col,
+          direction,
+          options,
+        );
 
         if (validated !== null) {
-          const nextState = applyPlacement(state, word, row, col, direction, validated);
+          const nextState = applyPlacement(
+            state,
+            word,
+            row,
+            col,
+            direction,
+            validated,
+          );
           const runAnalysis = analyzeRuns(nextState, options.wordMap);
 
           if (
@@ -479,13 +519,27 @@ function findPlacementCandidates(state, words, random, options) {
           const [dr, dc] = directionDelta(direction);
           const row = occupied.row - dr * letterIndex;
           const col = occupied.col - dc * letterIndex;
-          const validated = validatePlacement(state, word, row, col, direction, options);
+          const validated = validatePlacement(
+            state,
+            word,
+            row,
+            col,
+            direction,
+            options,
+          );
 
           if (validated === null) {
             continue;
           }
 
-          const nextState = applyPlacement(state, word, row, col, direction, validated);
+          const nextState = applyPlacement(
+            state,
+            word,
+            row,
+            col,
+            direction,
+            validated,
+          );
           const runAnalysis = analyzeRuns(nextState, options.wordMap);
 
           if (
@@ -497,7 +551,7 @@ function findPlacementCandidates(state, words, random, options) {
           }
 
           const newCells = validated.cells.filter(
-            (cell) => state.grid[cell.row][cell.col] === null
+            (cell) => state.grid[cell.row][cell.col] === null,
           ).length;
           const currentStats = getPreviewStats(state, []);
           const previewStats = getPreviewStats(state, validated.cells);
@@ -509,9 +563,11 @@ function findPlacementCandidates(state, words, random, options) {
             .filter((cell) => state.grid[cell.row][cell.col] !== null)
             .reduce((sum, cell) => {
               const wordIndex = validated.cells.findIndex(
-                (target) => target.row === cell.row && target.col === cell.col
+                (target) => target.row === cell.row && target.col === cell.col,
               );
-              const distanceFromMiddle = Math.abs(wordIndex - (letters.length - 1) / 2);
+              const distanceFromMiddle = Math.abs(
+                wordIndex - (letters.length - 1) / 2,
+              );
               return sum + Math.max(0, 20 - distanceFromMiddle * 10);
             }, 0);
           const intersectionCount = validated.intersections.length;
@@ -530,6 +586,13 @@ function findPlacementCandidates(state, words, random, options) {
             validated,
             nextState,
             score:
+              (options.vocabularyPolicy === VOCABULARY_POLICY_VERSION
+                ? familiarVocabularyBonus(
+                    runAnalysis.runs.map(
+                      (run) => options.wordMap.get(run.answer) ?? {},
+                    ),
+                  )
+                : 0) +
               intersectionCount ** 2 * 620 +
               runAnalysis.autoRuns.length * 900 +
               scoreAutoRuns(runAnalysis.autoRuns) +
@@ -554,13 +617,12 @@ function findPlacementCandidates(state, words, random, options) {
     const candidateKeys = new Set(
       candidates.map(
         (candidate) =>
-          `${candidate.word.answer}:${candidate.direction}:${candidate.row}:${candidate.col}`
-      )
+          `${candidate.word.answer}:${candidate.direction}:${candidate.row}:${candidate.col}`,
+      ),
     );
     let denseCandidateCount = 0;
 
-    denseSearch:
-    for (const word of words) {
+    denseSearch: for (const word of words) {
       const letters = splitWord(word.answer);
 
       for (const direction of ["across", "down"]) {
@@ -568,23 +630,45 @@ function findPlacementCandidates(state, words, random, options) {
           state,
           direction,
           letters.length,
-          options.boardSize
+          options.boardSize,
         );
 
-        for (let row = searchWindow.minRow; row <= searchWindow.maxRow; row += 1) {
-          for (let col = searchWindow.minCol; col <= searchWindow.maxCol; col += 1) {
+        for (
+          let row = searchWindow.minRow;
+          row <= searchWindow.maxRow;
+          row += 1
+        ) {
+          for (
+            let col = searchWindow.minCol;
+            col <= searchWindow.maxCol;
+            col += 1
+          ) {
             const key = `${word.answer}:${direction}:${row}:${col}`;
             if (candidateKeys.has(key)) {
               continue;
             }
 
-            const validated = validatePlacement(state, word, row, col, direction, options);
+            const validated = validatePlacement(
+              state,
+              word,
+              row,
+              col,
+              direction,
+              options,
+            );
 
             if (validated === null) {
               continue;
             }
 
-            const nextState = applyPlacement(state, word, row, col, direction, validated);
+            const nextState = applyPlacement(
+              state,
+              word,
+              row,
+              col,
+              direction,
+              validated,
+            );
             const runAnalysis = analyzeRuns(nextState, options.wordMap);
 
             if (
@@ -596,7 +680,7 @@ function findPlacementCandidates(state, words, random, options) {
             }
 
             const bridgingAutoRuns = runAnalysis.autoRuns.filter((run) =>
-              bridgesNewAndExistingCells(run, state, validated)
+              bridgesNewAndExistingCells(run, state, validated),
             );
 
             if (
@@ -608,7 +692,7 @@ function findPlacementCandidates(state, words, random, options) {
             }
 
             const newCells = validated.cells.filter(
-              (cell) => state.grid[cell.row][cell.col] === null
+              (cell) => state.grid[cell.row][cell.col] === null,
             ).length;
             const currentStats = getPreviewStats(state, []);
             const previewStats = getPreviewStats(state, validated.cells);
@@ -619,7 +703,8 @@ function findPlacementCandidates(state, words, random, options) {
             const intersectionCount = validated.intersections.length;
             const multiIntersectionBonus =
               intersectionCount >= 3 ? 4200 : intersectionCount >= 2 ? 1800 : 0;
-            const bboxEmptyCells = previewStats.bboxArea - previewStats.occupiedCount;
+            const bboxEmptyCells =
+              previewStats.bboxArea - previewStats.occupiedCount;
             const shortWordPenalty = letters.length <= 2 ? 80 : 0;
 
             candidateKeys.add(key);
@@ -632,6 +717,13 @@ function findPlacementCandidates(state, words, random, options) {
               validated,
               nextState,
               score:
+                (options.vocabularyPolicy === VOCABULARY_POLICY_VERSION
+                  ? familiarVocabularyBonus(
+                      runAnalysis.runs.map(
+                        (run) => options.wordMap.get(run.answer) ?? {},
+                      ),
+                    )
+                  : 0) +
                 intersectionCount ** 2 * 620 +
                 bridgingAutoRuns.length * 3200 +
                 scoreAutoRuns(bridgingAutoRuns) +
@@ -663,7 +755,10 @@ function findPlacementCandidates(state, words, random, options) {
 function getPreviewStats(state, nextCells) {
   const occupied = getOccupiedCells(state);
   const byKey = new Map(
-    occupied.map((cell) => [`${cell.row},${cell.col}`, { row: cell.row, col: cell.col }])
+    occupied.map((cell) => [
+      `${cell.row},${cell.col}`,
+      { row: cell.row, col: cell.col },
+    ]),
   );
 
   for (const cell of nextCells) {
@@ -834,21 +929,23 @@ function runAttempt(words, random, options) {
         item.state,
         item.remainingWords,
         random,
-        options
+        options,
       );
 
       for (const candidate of candidates.slice(0, options.branchLimit)) {
         const nextState = candidate.nextState;
         const usedAnswers = new Set(
-          analyzeRuns(nextState, options.wordMap).runs.map((run) => run.answer)
+          analyzeRuns(nextState, options.wordMap).runs.map((run) => run.answer),
         );
 
         expanded.push({
           state: nextState,
           remainingWords: item.remainingWords.filter(
-            (word) => !usedAnswers.has(word.answer)
+            (word) => !usedAnswers.has(word.answer),
           ),
-          score: scoreBoard(nextState, options.wordMap).metrics.score + candidate.score,
+          score:
+            scoreBoard(nextState, options.wordMap, options.vocabularyPolicy)
+              .metrics.score + candidate.score,
         });
       }
     }
@@ -873,11 +970,13 @@ function runAttempt(words, random, options) {
   }
 
   return beam
-    .map((item) => scoreBoard(item.state, options.wordMap))
+    .map((item) =>
+      scoreBoard(item.state, options.wordMap, options.vocabularyPolicy),
+    )
     .sort((left, right) => right.metrics.score - left.metrics.score)[0];
 }
 
-function scoreBoard(state, wordMap = makeWordMap(WORDS)) {
+function scoreBoard(state, wordMap = makeWordMap(WORDS), vocabularyPolicy) {
   const occupied = getOccupiedCells(state);
   const runAnalysis = analyzeRuns(state, wordMap);
   const runs = runAnalysis.runs;
@@ -903,16 +1002,19 @@ function scoreBoard(state, wordMap = makeWordMap(WORDS)) {
   const crossCellKeys = new Set(
     [...cellsToWords.entries()]
       .filter(([, runIndexes]) => {
-        const directions = new Set(runIndexes.map((runIndex) => runs[runIndex].direction));
+        const directions = new Set(
+          runIndexes.map((runIndex) => runs[runIndex].direction),
+        );
         return directions.size > 1;
       })
-      .map(([key]) => key)
+      .map(([key]) => key),
   );
   const totalRunCrossTouches = runs.reduce(
     (sum, run) =>
       sum +
-      run.cells.filter((cell) => crossCellKeys.has(`${cell.row},${cell.col}`)).length,
-    0
+      run.cells.filter((cell) => crossCellKeys.has(`${cell.row},${cell.col}`))
+        .length,
+    0,
   );
   const size = state.grid.length;
   const emptyRatio = (size * size - occupied.length) / (size * size);
@@ -927,8 +1029,8 @@ function scoreBoard(state, wordMap = makeWordMap(WORDS)) {
       : Number((totalRunCrossTouches / runs.length).toFixed(2));
   const multiIntersectionPlacements = runs.filter(
     (run) =>
-      run.cells.filter((cell) => crossCellKeys.has(`${cell.row},${cell.col}`)).length >=
-      2
+      run.cells.filter((cell) => crossCellKeys.has(`${cell.row},${cell.col}`))
+        .length >= 2,
   ).length;
   const bboxEmptyCells = bbox.bboxArea - bbox.occupiedCount;
 
@@ -950,6 +1052,11 @@ function scoreBoard(state, wordMap = makeWordMap(WORDS)) {
       bboxDensity: Number(bbox.bboxDensity.toFixed(3)),
       multiIntersectionPlacements,
       score:
+        (vocabularyPolicy === VOCABULARY_POLICY_VERSION
+          ? familiarVocabularyBonus(
+              runs.map((run) => wordMap.get(run.answer) ?? {}),
+            )
+          : 0) +
         runs.length * 160 +
         occupied.length * 42 +
         crossCellKeys.size * 220 +
@@ -1008,7 +1115,7 @@ export function generateBoards(inputOptions = {}) {
   const seen = new Set();
   const inputWords = inputOptions.wordBank ?? WORDS;
   const words = inputWords.filter(
-    (word) => splitWord(word.answer).length >= options.minWordLength
+    (word) => splitWord(word.answer).length >= options.minWordLength,
   );
   const candidateWords = limitCandidateWords(words, options);
   options.wordMap = makeWordMap(words);
@@ -1040,9 +1147,7 @@ export function generateBoards(inputOptions = {}) {
 }
 
 export function renderGrid(grid) {
-  return grid
-    .map((row) => row.map((cell) => cell ?? "·").join(" "))
-    .join("\n");
+  return grid.map((row) => row.map((cell) => cell ?? "·").join(" ")).join("\n");
 }
 
 export function renderBoard(board, index, words = WORDS) {
@@ -1064,7 +1169,9 @@ export function renderBoard(board, index, words = WORDS) {
       const directionLabel = run.direction === "across" ? "가로" : "세로";
       const sourceLabel = run.isPlaced ? "배치" : "자동";
       const finalIntersections = run.cells
-        .filter((cell) => cellToDirections.get(`${cell.row},${cell.col}`)?.size > 1)
+        .filter(
+          (cell) => cellToDirections.get(`${cell.row},${cell.col}`)?.size > 1,
+        )
         .map((cell) => `${cell.row},${cell.col}`);
       const intersections =
         finalIntersections.length === 0 ? "-" : finalIntersections.join(" ");
@@ -1090,18 +1197,27 @@ async function runCli() {
   const candidateCount = Math.min(words.length, options.candidateWordLimit);
 
   console.log(
-    `options size=${options.boardSize} words=${options.maxWords} minLength=${options.minWordLength} attempts=${options.attempts} beam=${options.beamWidth} branch=${options.branchLimit} dense=${options.denseCandidateLimit} candidates=${candidateCount} allowAdjacent=${options.allowAdjacent} seed=${options.seed} wordbank=${words.length}`
+    `options size=${options.boardSize} words=${options.maxWords} minLength=${options.minWordLength} attempts=${options.attempts} beam=${options.beamWidth} branch=${options.branchLimit} dense=${options.denseCandidateLimit} candidates=${candidateCount} allowAdjacent=${options.allowAdjacent} seed=${options.seed} wordbank=${words.length}`,
   );
 
   if (boards.length === 0) {
-    console.log("No valid boards generated. Try increasing --attempts or --size.");
+    console.log(
+      "No valid boards generated. Try increasing --attempts or --size.",
+    );
     process.exitCode = 1;
   } else {
-    console.log(boards.map((board, index) => renderBoard(board, index, words)).join("\n\n"));
+    console.log(
+      boards
+        .map((board, index) => renderBoard(board, index, words))
+        .join("\n\n"),
+    );
   }
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
+if (
+  process.argv[1] &&
+  fileURLToPath(import.meta.url) === path.resolve(process.argv[1])
+) {
   runCli().catch((error) => {
     console.error(error);
     process.exitCode = 1;
