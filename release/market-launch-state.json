@@ -86,7 +86,8 @@
             "Cloud Build 52d45c56-fb22-4042-8391-9417b22e5b71 및 실행 39987898311 성공; 실제 AAB 48,196,734바이트",
             "AAB SHA-256 d3944f1e4feff1cb6fb8b55ec7153961bbd0ea3a735c575d774ea2373965c941; 실제 CI binding과 manifest를 독립 대조",
             "com.seorilabs.crosswordpuzzle, 1.2.0 (1001001014), min SDK 24와 target SDK 36, debuggable false 및 jar 서명 검증 통과",
-            "업로드 인증서 SHA-256 2F:29:66:18:77:6D:79:BF:26:FD:46:EF:0D:30:21:85:41:D9:8A:52:A5:10:57:14:05:88:2F:DA:CC:62:FB:F8가 등록 원본과 일치"
+            "업로드 인증서 SHA-256 2F:29:66:18:77:6D:79:BF:26:FD:46:EF:0D:30:21:85:41:D9:8A:52:A5:10:57:14:05:88:2F:DA:CC:62:FB:F8가 등록 원본과 일치",
+            "NAS /Volumes/Data/Backup/agent-artifacts/crossword-puzzle/2026-10-23/1cece06bb64e90ffba7b2406bccab6ac4baa84d6/release-execution-20261023T171106119126Z/release-preparation/android-signed-v120/crossword-puzzle.aab; VERIFIED.json SHA-256 b4aa06e113aaba73dabdc4d32e5916298f8f25778eba49386d1c30772a320ea3"
           ],
           "checkedAt": "2026-10-23T17:09:31.267813+00:00",
           "blocker": null
