@@ -52,6 +52,7 @@ export const requestNotificationAgreement = ({
 }: {
   onEvent: (result: { type: string }) => void;
 }) => {
+  record("ait", "notification_agreement");
   queueMicrotask(() =>
     onEvent({
       type: window.__crosswordQa.notificationPermission

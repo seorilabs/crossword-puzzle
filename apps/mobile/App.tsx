@@ -17,7 +17,6 @@ import {
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import {
-  normalizeLetterTileProgress,
   buildCellEntries,
   buildStartLabels,
   buildStreakCalendarWeeks,
@@ -45,6 +44,9 @@ import {
   emitStreakMilestoneIfReached,
   findPuzzleSummaryById,
   FIRST_WORD_GUIDE_KEY,
+  FIRST_WORD_GUIDE_EVENTS,
+  buildFirstWordGuideTelemetryParams,
+  LETTER_TILE_CHOOSE_EVENT,
   formatDateCardDay,
   formatDateCardWeekday,
   formatDifficultyLabel,
@@ -992,6 +994,23 @@ function AppContent() {
         viewModel.completedEntries.some(entry => entry.id === id),
       ).length
     : 0;
+  const guideShownRef = useRef(new Set<string>());
+  useEffect(() => {
+    if (
+      route === 'today' &&
+      guideActive &&
+      !guideShownRef.current.has(puzzle.puzzleId)
+    ) {
+      guideShownRef.current.add(puzzle.puzzleId);
+      telemetry.impression(
+        FIRST_WORD_GUIDE_EVENTS.shown,
+        buildFirstWordGuideTelemetryParams(
+          puzzle.puzzleId,
+          firstWordGuide.entryIds.length,
+        ),
+      );
+    }
+  }, [route, guideActive, firstWordGuide, puzzle.puzzleId]);
   useEffect(() => {
     if (firstWordGuide)
       AsyncStorage.setItem(
@@ -1006,11 +1025,10 @@ function AppContent() {
       guideCompleted === firstWordGuide.entryIds.length
     ) {
       setFirstWordGuide({ ...firstWordGuide, status: 'complete' });
-      telemetry.impression('first_three_words_complete', {
-        puzzle_id: puzzle.puzzleId,
-        input_policy: TILE_INPUT_POLICY_VERSION,
-        word_count: guideCompleted,
-      });
+      telemetry.impression(
+        FIRST_WORD_GUIDE_EVENTS.complete,
+        buildFirstWordGuideTelemetryParams(puzzle.puzzleId, guideCompleted),
+      );
     }
   }, [guideActive, guideCompleted, firstWordGuide, puzzle.puzzleId]);
   useEffect(
@@ -1047,12 +1065,6 @@ function AppContent() {
     viewModel.completedEntries.length > 0;
   const hasStarted = mission.attemptsUsed > 0 || hasProgress;
   const isCompleted = viewModel.isComplete || mission.completedAt != null;
-  // 당일 서빙: 오늘 발행된 퍼즐(easy 5×5 · hard 8×8). 단계 순서·상태·주 CTA 판정은
-  // core의 buildDailyLadder가 맡아 워밍업 → 오늘의 퍼즐 한 흐름으로 보여 준다(웹과 동일).
-  const todayPuzzleSummaries = useMemo(
-    () => puzzlePack.summaries.filter(summary => summary.date === todayKey),
-    [puzzlePack.summaries, todayKey],
-  );
   const dailySummary = getDailyFreePuzzleSummary(
     puzzlePack.summaries,
     todayKey,
@@ -1149,19 +1161,6 @@ function AppContent() {
       findPuzzleSummaryById(archivePuzzleSummaries, puzzle.puzzleId) ??
       createPuzzleSummary(puzzle),
     [archivePuzzleSummaries, puzzle, puzzlePack.summaries],
-  );
-  const visiblePuzzleSummaries = useMemo(
-    () =>
-      sortPuzzleSummariesByRecency(
-        uniquePuzzleSummaries(
-          [
-            ...todayPuzzleSummaries,
-            selectedPuzzleSummary,
-            ...archivePuzzleSummaries,
-          ].filter((summary): summary is PuzzleManifestItem => summary != null),
-        ),
-      ),
-    [archivePuzzleSummaries, todayPuzzleSummaries, selectedPuzzleSummary],
   );
 
   const isBoardEmpty = Object.keys(cellValues).length === 0;
@@ -1700,7 +1699,12 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
-    if (isLoading || !viewModel.isComplete || mission.completedAt != null || completionActionRef.current !== puzzle.puzzleId) {
+    if (
+      isLoading ||
+      !viewModel.isComplete ||
+      mission.completedAt != null ||
+      completionActionRef.current !== puzzle.puzzleId
+    ) {
       return;
     }
     completionActionRef.current = null;
@@ -2128,7 +2132,13 @@ function AppContent() {
   }
 
   function markCompletionAction(values: Record<string, string>) {
-    if (!viewModel.isComplete && puzzle.entries.length > 0 && getCompletedEntries(puzzle.entries, values).length === puzzle.entries.length) completionActionRef.current = puzzle.puzzleId;
+    if (
+      !viewModel.isComplete &&
+      puzzle.entries.length > 0 &&
+      getCompletedEntries(puzzle.entries, values).length ===
+        puzzle.entries.length
+    )
+      completionActionRef.current = puzzle.puzzleId;
   }
 
   function changeTileState(next: LetterTileState, action: TileInputAction) {
@@ -2167,7 +2177,7 @@ function AppContent() {
         });
         markFirstInputGuideSeen().catch(() => {});
       }
-      telemetry.click('letter_tile_choose', {
+      telemetry.click(LETTER_TILE_CHOOSE_EVENT, {
         ...getPuzzleTelemetryParams(puzzle, selectedPuzzleSummary),
         entry_id: entry.id,
         input_policy: TILE_INPUT_POLICY_VERSION,
@@ -2447,7 +2457,14 @@ function AppContent() {
       alreadyStarted &&
       getRemainingAttempts(nextMission) === 0;
     navigateTo(
-      nextMission.completedAt != null || getCompletedEntries(session.nextPuzzle.entries, session.savedProgress.cellValues).length === session.nextPuzzle.entries.length || isExhausted ? 'result' : 'today',
+      nextMission.completedAt != null ||
+        getCompletedEntries(
+          session.nextPuzzle.entries,
+          session.savedProgress.cellValues,
+        ).length === session.nextPuzzle.entries.length ||
+        isExhausted
+        ? 'result'
+        : 'today',
     );
   }
 
@@ -2739,11 +2756,13 @@ function AppContent() {
                 total: firstWordGuide.entryIds.length,
                 onSkip: () => {
                   setFirstWordGuide({ ...firstWordGuide, status: 'skipped' });
-                  telemetry.click('first_three_words_skip', {
-                    puzzle_id: puzzle.puzzleId,
-                    input_policy: TILE_INPUT_POLICY_VERSION,
-                    word_count: guideCompleted,
-                  });
+                  telemetry.click(
+                    FIRST_WORD_GUIDE_EVENTS.skip,
+                    buildFirstWordGuideTelemetryParams(
+                      puzzle.puzzleId,
+                      guideCompleted,
+                    ),
+                  );
                 },
               }
             : undefined
@@ -2833,10 +2852,14 @@ function AppContent() {
   }
 
   function renderHistory() {
-    const historySummaries = sortPuzzleSummariesByRecency(uniquePuzzleSummaries([
-      ...puzzlePack.summaries,
-      ...puzzleArchiveRecords.map(record => createPuzzleSummary(record.puzzle)),
-    ])).filter(summary => isPublishedPuzzle(summary));
+    const historySummaries = sortPuzzleSummariesByRecency(
+      uniquePuzzleSummaries([
+        ...puzzlePack.summaries,
+        ...puzzleArchiveRecords.map(record =>
+          createPuzzleSummary(record.puzzle),
+        ),
+      ]),
+    ).filter(summary => isPublishedPuzzle(summary));
 
     return (
       <ScrollView contentContainerStyle={styles.homeContent}>
@@ -2859,7 +2882,13 @@ function AppContent() {
               key={summary.puzzleId}
               accessibilityRole="button"
               onPress={() => {
-                void selectPuzzle(summary.puzzleId, state?.completedAt != null || (state?.attemptsUsed ?? 0) >= DAILY_ATTEMPT_LIMIT ? 'result' : 'today');
+                void selectPuzzle(
+                  summary.puzzleId,
+                  state?.completedAt != null ||
+                    (state?.attemptsUsed ?? 0) >= DAILY_ATTEMPT_LIMIT
+                    ? 'result'
+                    : 'today',
+                );
               }}
               style={[
                 styles.historyItem,

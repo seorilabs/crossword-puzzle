@@ -41,6 +41,9 @@ import {
   emitStreakMilestoneIfReached,
   findPuzzleSummaryById,
   FIRST_WORD_GUIDE_KEY,
+  FIRST_WORD_GUIDE_EVENTS,
+  buildFirstWordGuideTelemetryParams,
+  LETTER_TILE_CHOOSE_EVENT,
   formatPuzzleAliasLabel,
   formatPuzzleCardSequenceLabel,
   formatReturnReminderPrepromptBody,
@@ -1158,6 +1161,23 @@ function App() {
         viewModel.completedEntries.some((entry) => entry.id === id),
       ).length
     : 0;
+  const guideShownRef = useRef(new Set<string>());
+  useEffect(() => {
+    if (
+      route === "today" &&
+      guideActive &&
+      !guideShownRef.current.has(puzzle.puzzleId)
+    ) {
+      guideShownRef.current.add(puzzle.puzzleId);
+      telemetry.impression(
+        FIRST_WORD_GUIDE_EVENTS.shown,
+        buildFirstWordGuideTelemetryParams(
+          puzzle.puzzleId,
+          firstWordGuide.entryIds.length,
+        ),
+      );
+    }
+  }, [route, guideActive, firstWordGuide, puzzle.puzzleId]);
   useEffect(() => {
     if (firstWordGuide == null) return;
     try {
@@ -1176,11 +1196,10 @@ function App() {
       guideCompleted === firstWordGuide.entryIds.length
     ) {
       setFirstWordGuide({ ...firstWordGuide, status: "complete" });
-      telemetry.impression("first_three_words_complete", {
-        puzzle_id: puzzle.puzzleId,
-        input_policy: TILE_INPUT_POLICY_VERSION,
-        word_count: guideCompleted,
-      });
+      telemetry.impression(
+        FIRST_WORD_GUIDE_EVENTS.complete,
+        buildFirstWordGuideTelemetryParams(puzzle.puzzleId, guideCompleted),
+      );
     }
   }, [guideActive, guideCompleted, firstWordGuide, puzzle.puzzleId]);
   useEffect(
@@ -1569,7 +1588,10 @@ function App() {
     prompted: ReturnReminderState;
     streakDays: number;
   } | null>(null);
-  const [returnReminderReady, setReturnReminderReady] = useState<{puzzleId:string;streakDays:number} | null>(null);
+  const [returnReminderReady, setReturnReminderReady] = useState<{
+    puzzleId: string;
+    streakDays: number;
+  } | null>(null);
   const completionCelebrationIdRef = useRef<string | null>(null);
   completionCelebrationIdRef.current = completionCelebrationId;
   const openReturnReminderPreprompt = useCallback(
@@ -1668,17 +1690,31 @@ function App() {
 
   // 저장이 끝나고 완료 화면을 실제로 표시한 뒤 사전 안내를 연다.
   useEffect(() => {
-    if (route === "result" && returnReminderReady?.puzzleId === puzzle.puzzleId) {
+    if (
+      route === "result" &&
+      returnReminderReady?.puzzleId === puzzle.puzzleId
+    ) {
       setReturnReminderReady(null);
       openReturnReminderPreprompt(returnReminderReady.streakDays);
     } else if (route !== "today" && route !== "result") {
       if (returnReminderReady) setReturnReminderReady(null);
       if (returnReminderPreprompt) declineReturnReminder();
     }
-  }, [route, puzzle.puzzleId, returnReminderReady, returnReminderPreprompt, openReturnReminderPreprompt, declineReturnReminder]);
+  }, [
+    route,
+    puzzle.puzzleId,
+    returnReminderReady,
+    returnReminderPreprompt,
+    openReturnReminderPreprompt,
+    declineReturnReminder,
+  ]);
 
   useEffect(() => {
-    if (!viewModel.isComplete || mission.completedAt != null || completionActionRef.current !== puzzle.puzzleId) {
+    if (
+      !viewModel.isComplete ||
+      mission.completedAt != null ||
+      completionActionRef.current !== puzzle.puzzleId
+    ) {
       return;
     }
     completionActionRef.current = null;
@@ -1715,7 +1751,10 @@ function App() {
       // 다이얼로그가 아직 떠 있을 때만 유도로 기록해 카드 없이 예산이 소진되지 않게
       // 하고, 완료 후 확정된 스트릭을 카드·계측이 함께 쓰도록 넘긴다.
       if (route === "today") {
-        setReturnReminderReady({puzzleId:puzzle.puzzleId,streakDays:nextStreak});
+        setReturnReminderReady({
+          puzzleId: puzzle.puzzleId,
+          streakDays: nextStreak,
+        });
       }
     });
     // 완료 시점의 노힌트 판정 신호(힌트 수·정답 보기 여부)를 archive 기록에 동결해,
@@ -1989,7 +2028,13 @@ function App() {
   }
 
   function markCompletionAction(values: Record<string, string>) {
-    if (!viewModel.isComplete && puzzle.entries.length > 0 && getCompletedEntries(puzzle.entries, values).length === puzzle.entries.length) completionActionRef.current = puzzle.puzzleId;
+    if (
+      !viewModel.isComplete &&
+      puzzle.entries.length > 0 &&
+      getCompletedEntries(puzzle.entries, values).length ===
+        puzzle.entries.length
+    )
+      completionActionRef.current = puzzle.puzzleId;
   }
 
   function changeTileState(next: LetterTileState, action: TileInputAction) {
@@ -2007,7 +2052,7 @@ function App() {
     if (entry) setSelectedDirection(entry.direction);
     if (action === "choice" && entry) {
       trackFirstAnswerInput(entry, 1, "manual");
-      telemetry.click("letter_tile_choose", {
+      telemetry.click(LETTER_TILE_CHOOSE_EVENT, {
         ...puzzleTelemetryParams,
         entry_id: entry.id,
         input_policy: TILE_INPUT_POLICY_VERSION,
@@ -2882,7 +2927,14 @@ function App() {
       alreadyStarted &&
       getRemainingAttempts(nextMission) === 0;
     navigate(
-      nextMission.completedAt != null || getCompletedEntries(session.nextPuzzle.entries, session.savedProgress.cellValues).length === session.nextPuzzle.entries.length || isExhausted ? "result" : "today",
+      nextMission.completedAt != null ||
+        getCompletedEntries(
+          session.nextPuzzle.entries,
+          session.savedProgress.cellValues,
+        ).length === session.nextPuzzle.entries.length ||
+        isExhausted
+        ? "result"
+        : "today",
     );
     telemetry.click("home_quick_start", {
       ...getPuzzleTelemetryParams(session.nextPuzzle),
@@ -3041,11 +3093,13 @@ function App() {
                   total: firstWordGuide.entryIds.length,
                   onSkip: () => {
                     setFirstWordGuide({ ...firstWordGuide, status: "skipped" });
-                    telemetry.click("first_three_words_skip", {
-                      puzzle_id: puzzle.puzzleId,
-                      input_policy: TILE_INPUT_POLICY_VERSION,
-                      word_count: guideCompleted,
-                    });
+                    telemetry.click(
+                      FIRST_WORD_GUIDE_EVENTS.skip,
+                      buildFirstWordGuideTelemetryParams(
+                        puzzle.puzzleId,
+                        guideCompleted,
+                      ),
+                    );
                   },
                 }
               : undefined
@@ -3943,7 +3997,13 @@ function ResultScreen({
           새로 도전하기
         </button>
       ) : null}
-      <button className="tileSecondary" onClick={() => {returnReminderPreprompt?.onDecline();navigate("today");}}>
+      <button
+        className="tileSecondary"
+        onClick={() => {
+          returnReminderPreprompt?.onDecline();
+          navigate("today");
+        }}
+      >
         {complete ? "완성한 단어 살펴보기" : "이어서 풀기"}
       </button>
       {returnReminderPreprompt ? (
@@ -4163,7 +4223,8 @@ function HistoryScreen({
       state?.attemptsUsed != null &&
       state.attemptsUsed >= state.maxAttempts;
 
-    if (await selectPuzzle(record.puzzleId)) navigate(isCompleted || isExhausted ? "result" : "today");
+    if (await selectPuzzle(record.puzzleId))
+      navigate(isCompleted || isExhausted ? "result" : "today");
   }
 
   return (
@@ -4267,16 +4328,42 @@ function HistoryScreen({
 
       <section className="historyList" aria-label="지난 퍼즐">
         <h2>지난 퍼즐</h2>
-        {sortPuzzleSummariesByRecency(puzzleSummaries).filter(summary => isPublishedPuzzle(summary) && !archiveRecords.some(record => record.puzzleId === summary.puzzleId)).map(summary => {
-          const state=dateCardStates[summary.puzzleId];
-          const finished=state?.completedAt != null;
-          const exhausted=(state?.attemptsUsed ?? 0) >= (state?.maxAttempts ?? DAILY_ATTEMPT_LIMIT);
-          return <button key={summary.puzzleId} className="historyItem" type="button" onClick={async () => {if(await selectPuzzle(summary.puzzleId)) navigate(finished || exhausted ? "result" : "today");}}>
-            <span>{formatPuzzleHistoryLabel(summary, loadState)}</span>
-            <strong>{finished ? "완료" : state?.hasProgress ? "진행 중" : "아직 풀지 않은 판"}</strong>
-            <em>{summary.metrics?.wordCount ?? "—"}개 단어</em>
-          </button>;
-        })}
+        {sortPuzzleSummariesByRecency(puzzleSummaries)
+          .filter(
+            (summary) =>
+              isPublishedPuzzle(summary) &&
+              !archiveRecords.some(
+                (record) => record.puzzleId === summary.puzzleId,
+              ),
+          )
+          .map((summary) => {
+            const state = dateCardStates[summary.puzzleId];
+            const finished = state?.completedAt != null;
+            const exhausted =
+              (state?.attemptsUsed ?? 0) >=
+              (state?.maxAttempts ?? DAILY_ATTEMPT_LIMIT);
+            return (
+              <button
+                key={summary.puzzleId}
+                className="historyItem"
+                type="button"
+                onClick={async () => {
+                  if (await selectPuzzle(summary.puzzleId))
+                    navigate(finished || exhausted ? "result" : "today");
+                }}
+              >
+                <span>{formatPuzzleHistoryLabel(summary, loadState)}</span>
+                <strong>
+                  {finished
+                    ? "완료"
+                    : state?.hasProgress
+                      ? "진행 중"
+                      : "아직 풀지 않은 판"}
+                </strong>
+                <em>{summary.metrics?.wordCount ?? "—"}개 단어</em>
+              </button>
+            );
+          })}
       </section>
 
       <section className="historyNotice" aria-label="기기 저장 안내">

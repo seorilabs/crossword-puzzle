@@ -120,6 +120,8 @@ async def run(session, *, platform, run_id, output_dir, width=390, height=844, p
             assert size and abs(size['width']-initial['width'])<1 and abs(size['height']-initial['height'])<1, (initial,size)
     await page.get_by_role('heading',name='한 판, 완성!',exact=True).wait_for(timeout=10000)
     if accept_reminder:
+        requested=await page.evaluate('window.__crosswordQa.events.filter(e=>["request_permission","notification_agreement"].includes(e.name)).length')
+        assert requested==0
         await page.get_by_role('button',name='알림 받기',exact=True).click()
         await page.wait_for_function('window.__crosswordQa.events.some(e=>e.source==="firebase"&&e.name==="return_reminder_result")')
     await page.screenshot(path=str(output/'03-complete.png'))
@@ -131,6 +133,8 @@ async def run(session, *, platform, run_id, output_dir, width=390, height=844, p
     counts={name:len([event for event in events if event['source']=='firebase' and event['name']==name]) for name in ['first_answer_input','first_three_words_complete','mission_complete','game_puzzle_complete']}
     assert counts['mission_complete']==1 and counts['game_puzzle_complete']==1,counts
     assert counts['first_three_words_complete']==(1 if guide_enabled else 0),counts
+    shown=len([e for e in events if e['source']=='firebase' and e['name']=='first_three_words_shown'])
+    assert (shown>0) if guide_enabled else (shown==0)
     final=await progress()
     assert len(final['tileInput']['confirmedCells'])==sum(bool(letter) for row in puzzle['grid'] for letter in row)
     await page.get_by_role('button',name='나의 기록',exact=True).click()
@@ -177,6 +181,16 @@ async def run_exceptions(session, *, platform, run_id, output_dir):
     assert all([await b.is_disabled() for b in await candidates.all()])
     await page.get_by_role('button',name=re.compile('^(계속|이어서) 풀기')).click()
     assert any([await b.is_enabled() for b in await candidates.all()])
+    await page.get_by_role('button',name=re.compile('단서 목록$')).click()
+    await page.get_by_role('button',name='설정',exact=True).click()
+    if native:
+        await page.get_by_role('button',name='글자 크기',exact=True).click()
+        await page.get_by_role('button',name='타이머 표시',exact=True).click()
+    else:
+        await page.get_by_role('button',name='크게',exact=True).click()
+        await page.locator('.settingsRow').filter(has_text='타이머 표시').get_by_role('button').click()
+    await page.get_by_role('button',name='닫기',exact=True).click()
+    assert abs((await board.bounding_box())['width']-initial['width'])<1
     long=next(e for e in puzzle['entries'] if len(e['answer'])>=4)
     await page.get_by_role('button',name=re.compile('단서 목록$')).click()
     if native:await page.get_by_role('button',name=long['clue'],exact=True).click()
@@ -188,6 +202,7 @@ async def run_exceptions(session, *, platform, run_id, output_dir):
         await page.evaluate('(outcome)=>window.__crosswordQa.adOutcome=outcome',arg=outcome)
         await page.get_by_role('button',name='힌트 0개',exact=True).click()
         await page.get_by_role('button',name=re.compile('^광고 보기')).click()
+        if native:await page.get_by_text('광고를 보고 힌트 받기',exact=True).wait_for(state='hidden')
     await request_ad('dismissed')
     await page.get_by_role('button',name='힌트 0개',exact=True).wait_for()
     await page.get_by_text(re.compile('끝까지 보지|중간에|완료되지 않아')).first.wait_for()
@@ -221,7 +236,7 @@ async def run_exceptions(session, *, platform, run_id, output_dir):
     assert restored['cellValues']==before['cellValues']
     await page.get_by_role('button',name='힌트 1개',exact=True).wait_for()
     assert not errors,errors
-    result={'platform':platform,'run':run_id,'checks':['guide_skip','pause_disables_input','resume','three_free_hints','ad_dismiss_no_reward','ad_error_no_reward','ad_reward_once','storage_error_notice','failed_save_retains_previous_progress','wallet_restore','no_completion_on_skip'],'pageErrors':errors}
+    result={'platform':platform,'run':run_id,'checks':['guide_skip','pause_disables_input','resume','font_and_timer_settings','fixed_board_with_large_font','three_free_hints','ad_dismiss_no_reward','ad_error_no_reward','ad_reward_once','storage_error_notice','failed_save_retains_previous_progress','wallet_restore','no_completion_on_skip'],'pageErrors':errors}
     (output/'result.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n');(output/'events.json').write_text(json.dumps(events,ensure_ascii=False,indent=2)+'\n')
     return result
 
@@ -252,7 +267,7 @@ async def run_legacy(session, *, platform, run_id, output_dir, page=None):
     await page.get_by_role('button',name=re.compile('^이어서 풀기')).click(timeout=25000)
     await page.get_by_role('button',name='힌트 1개',exact=True).wait_for()
     board=page.get_by_test_id('tile-board') if native else page.locator('.tileBoard')
-    rows=page.get_by_test_id('tile-board').locator(':scope > div') if native else page.locator('.tileBoard .tileCell')
+    rows=page.get_by_test_id('tile-board').locator(':scope > div') if native else page.locator('.tileBoard .tileBoardCell')
     assert await rows.count()==(8 if native else 64)
     await page.get_by_role('button',name='홈으로',exact=True).click()
     await page.get_by_role('button',name=re.compile('나의 기록$')).click()

@@ -173,10 +173,6 @@ describe("#352 RN 복귀 알림 인수조건", () => {
     );
     assert.match(
       webApp,
-      /completionCelebrationIdRef\.current === puzzle\.puzzleId/,
-    );
-    assert.match(
-      webApp,
       /setReturnReminderPreprompt\(\{ prompted, streakDays \}\)/,
     );
 

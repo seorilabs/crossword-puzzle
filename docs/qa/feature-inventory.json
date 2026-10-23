@@ -16,7 +16,10 @@
         "src/App.tsx",
         "src/components/PuzzleBoard.tsx",
         "apps/mobile/App.tsx",
-        "packages/crossword-core/src/answerInput.ts"
+        "packages/crossword-core/src/answerInput.ts",
+        "src/components/TilePuzzleScreen.tsx",
+        "apps/mobile/TilePuzzleScreen.tsx",
+        "packages/crossword-core/src/letterTileInput.ts"
       ]
     },
     {
@@ -43,7 +46,8 @@
       "paths": [
         "src/useShareResult.ts",
         "src/components/ShareGridPreview.tsx",
-        "apps/mobile/shareResult.ts"
+        "apps/mobile/shareResult.ts",
+        "apps/mobile/TileResultScreen.tsx"
       ]
     },
     {
@@ -136,6 +140,50 @@
         "apps/mobile/gameplayTelemetry.ts",
         "apps/mobile/telemetry.ts",
         "apps/mobile/gameAnalytics.ts"
+      ]
+    },
+    {
+      "id": "single-daily-puzzle",
+      "core": true,
+      "paths": [
+        "packages/crossword-core/src/uiPolicy.ts",
+        "apps/mobile/TileHomeScreen.tsx",
+        "src/App.tsx"
+      ]
+    },
+    {
+      "id": "daily-vocabulary-selection",
+      "core": true,
+      "paths": [
+        "packages/crossword-core/src/vocabularySelection.ts",
+        "scripts/crossword-generator-prototype.mjs"
+      ]
+    },
+    {
+      "id": "first-puzzle-guidance",
+      "core": true,
+      "paths": [
+        "packages/crossword-core/src/firstWordGuide.ts",
+        "apps/mobile/TilePuzzleScreen.tsx",
+        "src/components/TilePuzzleScreen.tsx"
+      ]
+    },
+    {
+      "id": "syllable-tile-input",
+      "core": true,
+      "paths": [
+        "packages/crossword-core/src/letterTileInput.ts",
+        "apps/mobile/TilePuzzleScreen.tsx",
+        "src/components/TilePuzzleScreen.tsx"
+      ]
+    },
+    {
+      "id": "puzzle-progress-persistence",
+      "core": true,
+      "paths": [
+        "src/adapters/localProgressRepository.ts",
+        "apps/mobile/App.tsx",
+        "packages/crossword-core/src/letterTileInput.ts"
       ]
     }
   ]

@@ -14,7 +14,7 @@ export type SettingsSheetProps = {
   toggleTimerVisible: () => void;
 };
 
-// 풀이 화면 설정 시트. 입력 방식·오답 자동 표시·사운드·햅틱·글자 크기를 조정한다.
+// 사운드, 햅틱, 타이머와 글자 크기를 조정한다.
 // 상태와 영속은 전부 상위(App)에서 주입받고 렌더만 담당한다.
 export function SettingsSheet({
   hapticEnabled,

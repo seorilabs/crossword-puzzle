@@ -6,6 +6,7 @@ export const EventType = { PRESS: 1 };
 export const TriggerType = { TIMESTAMP: 0 };
 export default {
   async requestPermission() {
+    record("notifications", "request_permission");
     return { authorizationStatus: window.__crosswordQa.notificationPermission };
   },
   async createChannel() {

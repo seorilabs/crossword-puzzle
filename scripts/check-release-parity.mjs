@@ -311,8 +311,9 @@ const featureParityMarkers = [
   "createLetterTileState",
   "restoreFirstWordGuide",
   "FIRST_WORD_GUIDE_KEY",
-  "first_three_words_complete",
-  "first_three_words_skip",
+  "FIRST_WORD_GUIDE_EVENTS",
+  "buildFirstWordGuideTelemetryParams",
+  "LETTER_TILE_CHOOSE_EVENT",
   "buildWeeklyStreakStrip",
   "formatReturnReminderPrepromptBody",
   "computePersonalStats",
@@ -595,8 +596,7 @@ assertIncludes(
 );
 assertIncludes(marketParityDoc, "trigger=first_input", marketParityDocPath);
 for (const marker of [
-  "first_three_words_complete",
-  "first_three_words_skip",
+  "FIRST_WORD_GUIDE_EVENTS",
   "STUCK_HINT_PROMPT_EVENT",
   "STUCK_HINT_PROMPT_ACCEPT_EVENT",
   "STUCK_HINT_PROMPT_DISMISS_EVENT",

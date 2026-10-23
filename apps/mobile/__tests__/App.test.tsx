@@ -175,25 +175,68 @@ test('maps Android hardware back targets through the app scene graph', () => {
 
 test('opening a fully saved board does not create a new completion', async () => {
   const today = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit',
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
   }).format(new Date());
   const puzzle = createPuzzle(today.slice(2).replaceAll('-', '') + '01', today);
-  await AsyncStorage.setItem(`crossword-puzzle:progress:${puzzle.puzzleId}`, JSON.stringify({cellValues:{'0:0':'가','0:1':'나'},hintCount:0,earnedHintCredits:0}));
-  await AsyncStorage.setItem(`crossword-puzzle:mission:${today}:${puzzle.puzzleId}`, JSON.stringify({date:today,puzzleId:puzzle.puzzleId,attemptsUsed:1,maxAttempts:3,lastStartedAt:new Date().toISOString()}));
+  await AsyncStorage.setItem(
+    `crossword-puzzle:progress:${puzzle.puzzleId}`,
+    JSON.stringify({
+      cellValues: { '0:0': '가', '0:1': '나' },
+      hintCount: 0,
+      earnedHintCredits: 0,
+    }),
+  );
+  await AsyncStorage.setItem(
+    `crossword-puzzle:mission:${today}:${puzzle.puzzleId}`,
+    JSON.stringify({
+      date: today,
+      puzzleId: puzzle.puzzleId,
+      attemptsUsed: 1,
+      maxAttempts: 3,
+      lastStartedAt: new Date().toISOString(),
+    }),
+  );
   const fetchMock = globalThis.fetch as jest.Mock;
-  fetchMock.mockImplementation(async (url: string) => ({ok:true,json:async()=>url.endsWith('manifest.json')?{puzzles:[{...puzzle,path:`/puzzles/${puzzle.puzzleId}.json`,publishedAt:`${today}T00:00:00+09:00`}]}:puzzle}));
+  fetchMock.mockImplementation(async (url: string) => ({
+    ok: true,
+    json: async () =>
+      url.endsWith('manifest.json')
+        ? {
+            puzzles: [
+              {
+                ...puzzle,
+                path: `/puzzles/${puzzle.puzzleId}.json`,
+                publishedAt: `${today}T00:00:00+09:00`,
+              },
+            ],
+          }
+        : puzzle,
+  }));
   let renderer: ReactTestRenderer.ReactTestRenderer | undefined;
   try {
-    await ReactTestRenderer.act(async () => {renderer=ReactTestRenderer.create(<App />);});
+    await ReactTestRenderer.act(async () => {
+      renderer = ReactTestRenderer.create(<App />);
+    });
     await flushAsyncWork(15);
-    await ReactTestRenderer.act(async () => {renderer!.root.findByType(TileHomeScreen).props.onStart();});
+    await ReactTestRenderer.act(async () => {
+      renderer!.root.findByType(TileHomeScreen).props.onStart();
+    });
     await flushAsyncWork(15);
     expect(renderer!.root.findByType(TileResultScreen).props.completed).toBe(1);
-    const mission=JSON.parse((await AsyncStorage.getItem(`crossword-puzzle:mission:${today}:${puzzle.puzzleId}`))!);
+    const mission = JSON.parse(
+      (await AsyncStorage.getItem(
+        `crossword-puzzle:mission:${today}:${puzzle.puzzleId}`,
+      ))!,
+    );
     expect(mission.completedAt).toBeUndefined();
   } finally {
-    ReactTestRenderer.act(()=>renderer?.unmount());
-    fetchMock.mockImplementation(()=>Promise.reject(new Error('fetch is mocked in mobile Jest')));
+    ReactTestRenderer.act(() => renderer?.unmount());
+    fetchMock.mockImplementation(() =>
+      Promise.reject(new Error('fetch is mocked in mobile Jest')),
+    );
   }
 });
 

@@ -1,5 +1,21 @@
 import type { PuzzleEntry } from "./types.ts";
+import { TILE_INPUT_POLICY_VERSION } from "./letterTileInput.ts";
 export const FIRST_WORD_GUIDE_KEY = "crossword-puzzle:first-three-words:v1";
+export const FIRST_WORD_GUIDE_EVENTS = {
+  shown: "first_three_words_shown",
+  complete: "first_three_words_complete",
+  skip: "first_three_words_skip",
+} as const;
+export function buildFirstWordGuideTelemetryParams(
+  puzzleId: string,
+  wordCount: number,
+) {
+  return {
+    puzzle_id: puzzleId,
+    input_policy: TILE_INPUT_POLICY_VERSION,
+    word_count: wordCount,
+  };
+}
 export type FirstWordGuide = {
   version: 1;
   puzzleId: string;
