@@ -102,6 +102,11 @@ export function TileResultScreen({
           {noHint ? '힌트 없이 완성' : ''}
         </Text>
       ) : null}
+      {leaderboardOpenFailed ? (
+        <Text accessibilityRole="alert" style={s.lead}>
+          {LEADERBOARD_OPEN_FAILURE_MESSAGE}
+        </Text>
+      ) : null}
       <Pressable accessibilityRole="button" style={s.primary} onPress={onHome}>
         <Text style={s.primaryText}>홈으로 돌아가기</Text>
       </Pressable>
@@ -126,11 +131,6 @@ export function TileResultScreen({
           </Pressable>
         ) : null}
       </View>
-      {leaderboardOpenFailed ? (
-        <Text accessibilityRole="alert" style={s.lead}>
-          {LEADERBOARD_OPEN_FAILURE_MESSAGE}
-        </Text>
-      ) : null}
       {onRetry ? (
         <Pressable accessibilityRole="button" style={s.link} onPress={onRetry}>
           <Text style={s.linkText}>새로 도전하기</Text>

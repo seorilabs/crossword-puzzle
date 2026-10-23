@@ -4015,6 +4015,11 @@ function ResultScreen({
           {achievements.noHint ? "힌트 없이 완성" : ""}
         </p>
       ) : null}
+      {leaderboardOpenFailed ? (
+        <p className="tileLead" role="status">
+          {LEADERBOARD_OPEN_FAILURE_MESSAGE}
+        </p>
+      ) : null}
       <button className="tilePrimary" onClick={() => navigate("home")}>
         홈으로 돌아가기
       </button>
@@ -4057,9 +4062,6 @@ function ResultScreen({
         <p role="status">공유할 결과를 복사했어요.</p>
       ) : shareFailed ? (
         <p role="status">공유하지 못했어요. 다시 눌러주세요.</p>
-      ) : null}
-      {leaderboardOpenFailed ? (
-        <p role="status">{LEADERBOARD_OPEN_FAILURE_MESSAGE}</p>
       ) : null}
       {!complete && remainingAttempts > 0 ? (
         <button className="tileSecondary" onClick={restartMissionAttempt}>
