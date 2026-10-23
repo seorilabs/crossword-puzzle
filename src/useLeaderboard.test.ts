@@ -113,10 +113,12 @@ describe("useLeaderboard 리더보드 개방 폴백 (#325)", () => {
       useLeaderboard({ enabled: true, adapter, telemetry }),
     );
 
+    expect(result.current.openFailed).toBe(false);
     await act(async () => {
       await expect(result.current.openLeaderboard()).resolves.toBe("failure");
     });
     expect(result.current.visible).toBe(false);
+    expect(result.current.openFailed).toBe(true);
   });
 
   it("AC-3: 제출 성공은 success로 계측하고 순위 UI를 유지한다", async () => {

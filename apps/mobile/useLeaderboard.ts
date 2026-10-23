@@ -26,6 +26,7 @@ export function useLeaderboard({
   telemetry,
 }: UseLeaderboardOptions) {
   const [sessionAvailable, setSessionAvailable] = useState(true);
+  const [openFailed, setOpenFailed] = useState(false);
   const visible = enabled && sessionAvailable && adapter.supported;
 
   const submitScore = useCallback(
@@ -97,9 +98,10 @@ export function useLeaderboard({
         return 'success';
       } catch {
         setSessionAvailable(false);
+        setOpenFailed(true);
         return 'failure';
       }
     }, [adapter, enabled, sessionAvailable]);
 
-  return { visible, submitScore, openLeaderboard };
+  return { visible, openFailed, submitScore, openLeaderboard };
 }

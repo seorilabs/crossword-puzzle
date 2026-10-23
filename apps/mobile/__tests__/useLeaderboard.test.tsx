@@ -40,6 +40,35 @@ function HookHarness({
   return null;
 }
 
+test('순위 열기 실패 상태를 화면에 전달하고 제출 실패와 구분한다', async () => {
+  const adapter = createAdapter({
+    openLeaderboard: jest.fn(() => Promise.reject(new Error('unavailable'))),
+  });
+  let hookResult: HookResult | undefined;
+  let renderer: ReactTestRenderer.ReactTestRenderer | undefined;
+  try {
+    await ReactTestRenderer.act(async () => {
+      renderer = ReactTestRenderer.create(
+        <HookHarness
+          adapter={adapter}
+          telemetry={createTelemetry()}
+          onRender={result => {
+            hookResult = result;
+          }}
+        />,
+      );
+    });
+    expect(hookResult?.openFailed).toBe(false);
+    await ReactTestRenderer.act(async () => {
+      await expect(hookResult?.openLeaderboard()).resolves.toBe('failure');
+    });
+    expect(hookResult?.openFailed).toBe(true);
+    expect(hookResult?.visible).toBe(false);
+  } finally {
+    ReactTestRenderer.act(() => renderer?.unmount());
+  }
+});
+
 test('네이티브 미지원이면 순위 UI와 제출을 비활성화한다', async () => {
   const adapter = createAdapter({ supported: false });
   const telemetry = createTelemetry();

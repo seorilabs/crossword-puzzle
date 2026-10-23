@@ -686,7 +686,17 @@
 }
 .tileHomePreview {
   margin: 24px auto 20px;
-  width: min(100%, 220px);
+  width: min(
+    100%,
+    clamp(
+      96px,
+      calc(
+        100dvh - 500px - var(--ait-safe-area-top, 0px) -
+          var(--ait-safe-area-bottom, 0px)
+      ),
+      220px
+    )
+  );
   aspect-ratio: 1;
 }
 .tileHomePreview .miniBoard {

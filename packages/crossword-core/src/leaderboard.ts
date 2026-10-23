@@ -1,6 +1,9 @@
 import type { Difficulty } from "./difficultyProfiles";
 import type { TelemetryParams } from "./platformContracts";
 
+export const LEADERBOARD_OPEN_FAILURE_MESSAGE =
+  "순위를 불러오지 못했어요. 풀이 기록은 그대로예요.";
+
 // 리더보드 정책의 공유 계약(3마켓 공통). 점수 산식과 제출 가드는 core에 두고,
 // 플랫폼 SDK(AIT 게임센터 / Google Play Games / Apple Game Center)는 앱 adapter에만
 // 둔다. core에는 React / React Native / AppsInToss / Firebase SDK import를 넣지 않는다.
