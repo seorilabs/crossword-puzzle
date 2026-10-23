@@ -6,7 +6,7 @@
 - 시각 변경 요청: “약간 게임스러운 UI”, 이번 업데이트 이후 다른 국가 진출 고려
 - 이 자료의 범위: 새 외형과 화면 배치 비교. 실제 앱 구현, 네이티브 실행과 공개 출시 증거가 아니다.
 
-[눌러보는 시안](index.html), [풀이 비교](play-comparison.png), [홈 비교](home-comparison.png), [영문 확장 예시](global-comparison.png)
+[눌러보는 시안](index.html), [풀이, 홈과 영문 렌더의 NAS 위치](artifacts.md)
 
 ## 비교와 추천
 

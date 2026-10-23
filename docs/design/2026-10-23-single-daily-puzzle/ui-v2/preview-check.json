@@ -233,5 +233,8 @@
     "Design prototype only, not application runtime or release evidence",
     "Keyboard drawings do not verify native IME or keyboard dimensions",
     "No device access"
-  ]
+  ],
+  "candidateSha": "4170abdad5db7ad111702420f12a95736ce2c477",
+  "artifactDirectory": "/Volumes/Data/Backup/agent-artifacts/crossword-puzzle/2026-10-23/4170abdad5db7ad111702420f12a95736ce2c477/puzzle-audit-ui-v2-20261023T095948",
+  "artifactManifestSha256": "284db3f90b71ad4b88cddffa9d7a95f89e1b5e77658f602cba42bd19496a469b"
 }
