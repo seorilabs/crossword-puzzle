@@ -1,5 +1,6 @@
 export * from "./answerHistory";
 export * from "./answerInput";
+export * from "./letterTileInput";
 export * from "./answerVariety";
 export * from "./boardNavigation";
 export * from "./clueCuration";
