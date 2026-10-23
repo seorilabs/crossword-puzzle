@@ -148,8 +148,10 @@ function openList(s,record=false){
 function fitPhone(p){
  const wrap=p.querySelector('.board-wrap');if(!wrap)return;
  wrap.style.width='';
- const overflow=p.scrollHeight-p.clientHeight;
- if(overflow>0)wrap.style.width=Math.max(160,wrap.getBoundingClientRect().width-overflow-2)+'px';
+ for(let i=0;i<3;i++){
+  const overflow=p.scrollHeight-p.clientHeight;if(overflow<=0)break;
+  wrap.style.width=Math.max(160,wrap.getBoundingClientRect().width-overflow-2)+'px';
+ }
 }
 function renderPhone(s){
  const p=document.querySelector(`[data-demo="${s.id}"]`);if(!p)return;

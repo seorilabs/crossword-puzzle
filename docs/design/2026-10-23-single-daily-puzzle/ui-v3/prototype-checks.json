@@ -42,9 +42,48 @@
   ],
   "source_sha256": {
     "index.html": "8b27cdad5940f551b2c8f50261187be6f7877162fb99be49362f97d05f1b8b51",
-    "styles.css": "5079580bf91a46e6e16d085d81beddce2dbda913556cc7264ef04b76a001dcdc",
-    "demo.js": "995ad176875422ef9f20f5e502496dee9758490a83d2ea668e95d445b8c3727d",
+    "styles.css": "ab0127fc803f91b68dd7a6ec9bdf3dca673385551ae9fbf415c08a6aa8c4fb5a",
+    "demo.js": "f765432363f2a54b0289597b2a21790b6413e290331a33222560123059d7bb65",
     "export-preview.mjs": "955fa14a005c90cc5f4338a95a517395f0a9de2db11f72004cca79164891cc37",
     "sample-data.js": "f9dc876fe5bd409328122ccbcec23512eccb2fe0e52cd3494eb97735826e3147"
-  }
+  },
+  "large_text_layout": [
+    {
+      "id": "ko-play",
+      "h": 800,
+      "scroll": 800,
+      "board": 253
+    },
+    {
+      "id": "ko-retry",
+      "h": 800,
+      "scroll": 800,
+      "board": 220
+    },
+    {
+      "id": "ko-result",
+      "h": 800,
+      "scroll": 800,
+      "board": null
+    },
+    {
+      "id": "en-play",
+      "h": 800,
+      "scroll": 800,
+      "board": 253
+    },
+    {
+      "id": "en-retry",
+      "h": 800,
+      "scroll": 800,
+      "board": 187
+    },
+    {
+      "id": "en-result",
+      "h": 800,
+      "scroll": 800,
+      "board": null
+    }
+  ],
+  "large_text_style": "단서 22px, 안내 14px, 화면 360×800"
 }
