@@ -7,7 +7,7 @@ SCHEDULER_LOCATION="asia-northeast3"
 GENERATOR_JOB_NAME="crossword-puzzle-pack-generator"
 HEALTH_JOB_NAME="crossword-puzzle-pack-health"
 HEALTH_SCHEDULER_JOB_NAME="crossword-puzzle-pack-health-daily"
-HEALTH_SCHEDULE="30 0 * * *"
+HEALTH_SCHEDULE="40 0 * * *"
 TIME_ZONE="Asia/Seoul"
 HOSTING_BASE_URL=""
 IMAGE=""
@@ -31,7 +31,7 @@ Options:
   --generator-job-name <name>          Existing generator job name.
   --health-job-name <name>             Health-check Cloud Run Job name.
   --health-scheduler-job-name <name>   Health-check Scheduler job name.
-  --health-schedule <cron>             Health-check cron. Default: "30 0 * * *".
+  --health-schedule <cron>             Health-check cron. Default: "40 0 * * *".
   --time-zone <zone>                   Scheduler/check timezone. Default: Asia/Seoul.
   --image <image>                      Container image. Defaults to the generator job image.
   --runtime-service-account <email>    Runtime service account. Defaults to the generator job account.
@@ -279,10 +279,11 @@ cat >"$POLICY_FILE" <<JSON
   "notificationChannels": ["${NOTIFICATION_CHANNEL}"],
   "documentation": {
     "mimeType": "text/markdown",
-    "content": "퍼즐팩 생성 또는 00:30 공개본 health check가 실패했습니다. Cloud Run Job 로그에서 ${GENERATOR_JOB_NAME}와 ${HEALTH_JOB_NAME}을 확인하세요."
+    "content": "퍼즐팩 생성 또는 공개본 점검이 실패했습니다. 생성은 00:05, 최종 점검은 00:40 KST입니다. ${GENERATOR_JOB_NAME}의 생성 로그와 ${HEALTH_JOB_NAME}의 공개본 검사 결과를 구분해 확인하세요. CLOSED는 오류 로그 집계 종료이며 정상 복구 검증이 아닙니다. 실제 복구는 공개본 health PASS로 확인하세요."
   },
   "alertStrategy": {
-    "autoClose": "1800s"
+    "autoClose": "1800s",
+    "notificationPrompts": ["OPENED"]
   },
   "conditions": [
     {
@@ -309,6 +310,7 @@ cat >"$POLICY_FILE" <<JSON
 JSON
 
 if [ "$DRY_RUN" = "1" ]; then
+  cat "$POLICY_FILE"
   run gcloud monitoring policies create \
     --project "$PROJECT_ID" \
     --policy-from-file "$POLICY_FILE"

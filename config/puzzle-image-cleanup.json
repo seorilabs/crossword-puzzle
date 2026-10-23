@@ -1,0 +1,20 @@
+[
+  {
+    "name": "delete-after-14-days",
+    "action": { "type": "Delete" },
+    "condition": { "tagState": "any", "olderThan": "14d" }
+  },
+  {
+    "name": "keep-runtime-images",
+    "action": { "type": "Keep" },
+    "condition": {
+      "tagState": "tagged",
+      "tagPrefixes": ["runtime-current", "runtime-rollback"]
+    }
+  },
+  {
+    "name": "keep-latest-two-per-package",
+    "action": { "type": "Keep" },
+    "mostRecentVersions": { "keepCount": 2 }
+  }
+]

@@ -182,14 +182,14 @@ Firebase Hosting을 AIT 앱 origin과 다른 도메인에서 읽기 때문에 CO
 
 ## 운영 health check와 알림
 
-생성 Job과 별도로 매일 `00:30 KST`에 공개 Firebase Hosting 결과를 다시 읽는
+생성 Job과 별도로 매일 `00:40 KST`에 공개 Firebase Hosting 결과를 다시 읽는
 `crossword-puzzle-pack-health` Job을 실행한다.
 
 - 오늘 날짜에 Easy, Hard가 정확히 한 판씩 있는지 확인한다.
 - Easy는 5×5, Hard는 8×8인지 확인한다.
 - manifest와 puzzle metadata, 격자 slot과 entry를 다시 검증한다.
 - 당일 두 난이도 정답 교집합이 0개인지 확인한다.
-- `answer-history.json`을 읽어 오늘 두 판의 정답이 최근 `PUZZLE_ANSWER_HISTORY_DAYS`(기본 90)일 안의 다른 퍼즐(난이도 무관)에 그대로 있었는지 확인한다(`repeated_answer`). 이력 파일이 없거나 깨졌으면 `missing_answer_history`로 실패한다 — 생성 Job(00:05)이 같은 이미지로 먼저 돌므로 00:30에 이력이 없다는 것은 발행 회귀다.
+- `answer-history.json`을 읽어 오늘 두 판의 정답이 최근 `PUZZLE_ANSWER_HISTORY_DAYS`(기본 90)일 안의 다른 퍼즐(난이도 무관)에 그대로 있었는지 확인한다(`repeated_answer`). 이력 파일이 없거나 깨졌으면 `missing_answer_history`로 실패한다 — 생성 Job(00:05)이 같은 이미지로 먼저 돌므로 00:40에 이력이 없다는 것은 발행 회귀다.
 - 실패하면 stderr와 non-zero exit를 남겨 Cloud Run Job을 실패 처리한다.
 
 로컬 또는 운영 공개본을 직접 확인할 수 있다.
@@ -229,14 +229,27 @@ scripts/setup-puzzle-pack-monitoring.sh \
 난이도를 2단계로 줄인 배포에서 generator 만 갱신해 health 가 `missing_difficulty:
 normal puzzle is missing` 으로 실패했다.
 
-`setup-puzzle-pack-monitoring.sh` 는 `--image` 를 생략하면 generator 의 현재
-이미지를 그대로 따라가므로, 이미지 교체 후 이 스크립트를 다시 돌리는 것이 가장
-안전하다. 두 Job 만 빠르게 맞추려면 아래처럼 같은 태그를 지정한다.
+기존 generator가 있으면 `setup-puzzle-pack-cloud-run-job.sh`가 배포 전 두 Job의 설정과 이미지 digest, 보호 태그를 읽고 빌드한다. 두 Job을 같은 immutable digest로 바꾸고 실제 health Job 실행이 통과해야 배포를 확정한다. 실패하면 원래 Job 설정과 태그를 복원한다. 복원 실패는 실패로 보고하고 비공개 임시 설정 파일 위치를 남긴다. Job 이미지만 따로 바꾸는 수동 반복문은 사용하지 않는다.
+
+### 이미지 보관과 최초 정리
+
+정본은 `config/puzzle-image-cleanup.json`이다. 모든 패키지에서 14일보다 오래된 버전을 정리하되 `runtime-current`, `runtime-rollback` 보호 태그와 패키지별 최신 두 버전은 보존한다. 기존 SHA 태그도 삭제 조건에 포함된다. 정리는 비동기이므로 청구 절감이 즉시 반영됐다고 판단하지 않는다.
+
+최초 적용 전에는 모든 Cloud Run Job과 서비스의 실제 사용 digest를 확인한다. 각 패키지의 실행 및 롤백 이미지에 보호 태그를 지정하고 실제 이미지 조회를 확인한다. 이미지를 두 개보다 많이 동시에 사용하는 패키지가 있으면 이 정책을 활성화하지 말고 보호 범위를 재검토한다. 공개본 health PASS도 먼저 확인한다.
 
 ```bash
-IMAGE=asia-northeast3-docker.pkg.dev/crossword-puzzle-79ae0/crossword-puzzle/puzzle-pack-job:<commit>
-for job in crossword-puzzle-pack-generator crossword-puzzle-pack-health; do
-  gcloud run jobs update "$job" \
-    --project crossword-puzzle-79ae0 --region asia-northeast3 --image "$IMAGE"
-done
+# 이미지 원본과 모든 사용처를 조회해 외부 작업 폴더에 기록한 뒤 후보를 검토한다.
+node scripts/preview-puzzle-image-cleanup.mjs --images /outside/images.json --inUse /outside/in-use-digests.json
+
+gcloud artifacts repositories set-cleanup-policies crossword-puzzle \
+  --project crossword-puzzle-79ae0 --location asia-northeast3 \
+  --policy config/puzzle-image-cleanup.json --dry-run
 ```
+
+미리보기와 보호 대조를 마친 뒤 같은 명령의 `--dry-run`을 `--no-dry-run`으로 바꿔 자동 정리를 활성화한다. 최초 수동 삭제는 검토한 digest만 대상으로 하며 삭제 직전 사용처와 보호 태그를 다시 확인한다. 권한 부족이나 이미지 조회 실패는 삭제 대상이 없다는 뜻으로 처리하지 않는다. 모의 입력 검증과 실제 클라우드 적용 완료를 구분한다.
+
+이후 배포는 기존 이미지를 롤백으로 보호하고 새 이미지를 current로 보호한다. 배포 전후 두 보호 태그만 유지한다. 최초 모니터링 설정 전의 신규 Job 생성도 현재 이미지를 immutable digest로 고정하고 current로 보호한다. 보관 정책 활성화는 위의 별도 미리보기 절차에서 한 번 수행하며 일반 빌드가 이를 자동 활성화하지 않는다.
+
+### 알림 해석
+
+오류 로그의 집계가 종료돼도 실제 정상 공개본이 검증된 것은 아니다. 알림 정책은 `notificationPrompts: ["OPENED"]`로 오류 발생만 통지한다. generator는 00:05, 최종 health는 00:40 KST이며 두 Job 로그와 health PASS를 구분해 확인한다. `--dry-run`은 적용할 정책 JSON을 출력한다.
