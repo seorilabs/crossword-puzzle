@@ -2,11 +2,11 @@
 
 ## 현재 상태
 
-`crossword-puzzle`의 iOS archive와 App Store Connect 업로드는 **Xcode Cloud**가 담당한다. `.github/workflows/deploy-app-store.yml`은 릴리즈 태그를 대상으로 Xcode Cloud 빌드를 트리거하고 완료를 기다리는 진입점이고, 서명은 Xcode Cloud 매니지드 서명이 처리한다.
+공개 저장소인 `crossword-puzzle`의 iOS archive와 App Store Connect 업로드는 GitHub-hosted macOS에서 중앙 `rn-deploy-app-store.yml@main`으로 실행한다. 앱의 `.github/workflows/deploy-app-store.yml`에 exact stable 태그와 `upload`를 전달한다. 중앙 정책상 private 저장소는 Xcode Cloud 경로를 사용한다.
 
-GitHub Actions macOS runner에서 archive하던 방식은 걷어냈다. Xcode 26.5부터 Firebase가 정적 라이브러리 지원을 끝내 `use_frameworks!` + RNFB 혼합 링키지가 필요해졌고, macOS Action minutes도 유한하기 때문이다.
+설치된 기존 배포 인증서와 앱 전용 프로파일로 수동 서명하며 새 인증서를 자동 발급하지 않는다. 중앙 PR [#313](https://github.com/seorilabs/.github/pull/313)부터 archive 단계가 프로파일 이름을 `IOS_PROVISIONING_PROFILE_NAME`에도 전달한다. 이 앱은 Release 구성에서 해당 변수를 읽는다. 프로파일의 앱 식별자와 Game Center 권한도 일치해야 한다.
 
-아래 로컬 build/archive/upload 체계는 Xcode Cloud를 쓸 수 없을 때의 대체 경로로 남겨 둔다.
+v1.2.0의 고정 후보와 개발 검수, 실제 마켓 실행 상태는 [출시 기록](qa/2026-10-23-single-daily-puzzle/release-status.md)을 따른다. 아래 로컬 명령은 개발 환경 진단용이며 서명 업로드, 심사 제출과 공개 완료의 근거를 대신하지 않는다.
 
 ## 1. 로컬 점검
 
@@ -111,78 +111,23 @@ npm run app-store:build:local -- --export-upload --tag v1.0.0
 가리키는 exact stable 태그와 SHA `565fba53aa5053785c63c9b732b93a3fbd7be847`의 중앙 정본이
 계산한 값만 `xcodebuild`에 전달한다.
 
-## 6. Xcode Cloud 업로드
-
-Workflow:
-
-```text
-.github/workflows/deploy-app-store.yml   # 조직 재사용 워크플로 caller
-seorilabs/.github app-store-xcode-cloud.yml  # Xcode Cloud 트리거(조직 공통, bundle id는 앱 설정에서 읽음)
-apps/mobile/ios/ci_scripts/              # Xcode Cloud 안에서 도는 빌드 준비·검증
-```
-
-Trigger:
-
-- 수동 실행 `workflow_dispatch` + `release_tag=vX.Y.Z` (비우면 최신 태그 사용)
-- `Deploy All` 묶음 workflow에서 `workflow_call`로 호출
-- Backoffice `/releases` 또는 Discord 배포 명령 (같은 ASC 경로를 직접 호출한다)
-
-`ci_scripts` 역할:
-
-| 훅                      | 하는 일                                                                                                                 |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `ci_post_clone.sh`      | GitHub Packages 인증, Node/CocoaPods 설치, `npm ci`(root + apps/mobile), `GoogleService-Info.plist` 복원, `pod install` |
-| `ci_pre_xcodebuild.sh`  | `CI_TAG`를 중앙 정본으로 검증하고 Info.plist에 deterministic release binding 주입                                      |
-| `ci_post_xcodebuild.sh` | 아카이브 `Info.plist` 검증 — 버전, Game Center 리더보드 ID, AdMob app ID, SKAdNetwork ID                                |
-
-릴리스 버전:
-
-- `MARKETING_VERSION`: `vX.Y.Z`에서 `X.Y.Z`
-- `CURRENT_PROJECT_VERSION`: 중앙 `release-version-authority-v1`이 태그에서 파생한 Apple build number
-
-필수 GitHub Secrets/Variables (`app-store` environment):
-
-| 이름                                   | 용도                                       |
-| -------------------------------------- | ------------------------------------------ |
-| `APP_STORE_CONNECT_API_KEY_ID`         | App Store Connect API key ID               |
-| `APP_STORE_CONNECT_ISSUER_ID`          | App Store Connect issuer ID                |
-| `APP_STORE_CONNECT_PRIVATE_KEY_BASE64` | `AuthKey_*.p8` base64. ASC JWT 서명에 쓴다 |
-
-Apple 배포 인증서와 프로비저닝 프로파일 시크릿(`APPLE_DISTRIBUTION_CERTIFICATE_*`, `APPLE_PROVISIONING_PROFILE_BASE64`, `APPLE_KEYCHAIN_PASSWORD`)은 **이 경로에 필요 없다.** Xcode Cloud 매니지드 서명이 처리한다. 아래 로컬 대체 경로(`app-store:build:local`)는 계속 이 값들을 쓰므로 시크릿 자체는 남겨 둔다.
-
-`FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64`는 Xcode Cloud 환경변수로 설정하면 `ci_post_clone.sh`가 복원하고, 없으면 저장소에 커밋된 `GoogleService-Info.plist`를 쓴다.
-
-`GITHUB_PACKAGES_TOKEN`은 Xcode Cloud workflow의 Secret으로 설정해야 한다. `@seorilabs/platform-sdk`를 받는 데 필요한 `read:packages` 권한만 사용하며, `ci_post_clone.sh`는 값을 저장소가 아닌 빌드 머신의 `${HOME}/.npmrc`에만 기록한다.
-
-workflow 성공은 **업로드 경로가 끝까지 돈 증거**다. TestFlight 처리 상태와 심사 상태는 App Store Connect에서 따로 확인한다.
-
-2026-06-07 확인 기준, `seorilabs/crossword-puzzle` GitHub repo에는 `app-store` environment가 생성되어 있고 TestFlight 업로드에 필요한 Apple signing/App Store Connect environment secrets와 `APPLE_TEAM_ID=HCDUXX4Z3X` variable이 등록되어 있다. `v0.1.5` / build `1005`는 GitHub Actions run `27087313726`, job `79945275484`에서 App Store Connect 업로드까지 성공했다.
-
-2026-06-13 로컬 확인 기준, GitHub Actions minutes를 쓰지 않고 아래 명령으로 `0.3.2` / build `3002`를 App Store Connect에 업로드했다. App Store Connect build ID는 `5720d5e9-38ab-4324-a8fa-acb74721426a`이고 processing state는 `VALID`다. 업로드 중 `hermesvm.framework` dSYM 누락 경고가 있었지만 binary upload는 성공했다.
+## 6. 중앙 릴리스 실행
 
 ```bash
-npm run app-store:build:local -- --export-upload --tag v0.3.2 --skip-pods
+gh workflow run deploy-app-store.yml \
+  --repo seorilabs/crossword-puzzle \
+  --ref main \
+  -f release_tag=v1.2.0 \
+  -f upload=true
 ```
 
-2026-06-13 로컬 확인 기준, iOS AdMob 설정을 점검한 뒤 `0.3.4` / build `3004`를 App Store Connect에 업로드했다. App Store Connect build ID는 `7adb7c92-7763-4046-9b42-119c0612c249`이고 processing state는 `VALID`다. archive 산출물 `Info.plist`에서 `GADApplicationIdentifier=ca-app-pub-2444587584524186~4715406099`와 Google Mobile Ads `SKAdNetworkItems`를 업로드 전에 검증했다. 당시 직접 버전 입력 경로는 현재 중앙 태그 정본 경로로 제거됐다. 업로드 중 `hermesvm.framework` dSYM 누락 경고가 있었지만 binary upload는 성공했다.
+실제 빌드 소스는 입력한 태그로 고정한다. 중앙 원장의 버전 번호를 사용하고 before-build 검증, Firebase 설정 복원, 의존성 설치와 기존 인증서 및 프로파일 설치, archive와 산출물 버전 및 bundle ID 대조, before-deploy 검증, App Store Connect 업로드 순서로 실행한다. 실패 실행의 재실행은 해당 단계와 이미 올라간 빌드 번호를 먼저 읽어 중복 업로드를 피한다.
 
-2026-06-13 로컬 확인 기준, 보상형 광고 진단 모드를 추가한 뒤 `0.3.5` / build `3005`를 App Store Connect에 업로드했다. App Store Connect build ID는 `28e5db1a-fc5d-4788-a1c8-beaa1481eda1`이고 processing state는 `VALID`다. archive 산출물 `Info.plist`에서 iOS AdMob app ID와 Google Mobile Ads SKAdNetwork ID를 다시 검증했다. 당시 직접 버전 입력 경로는 현재 중앙 태그 정본 경로로 제거됐다. 업로드 중 `hermesvm.framework` dSYM 누락 경고가 있었지만 binary upload는 성공했다.
+필요한 실행 복사본은 이 앱의 `app-store` 환경에 둔다. `APPLE_PROVISIONING_PROFILE_BASE64`는 등록된 앱 전용 프로파일을 사용하며 인증서, 팀, 앱 식별자와 Game Center 권한을 대조한다. `FIREBASE_IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64`도 기존 Secret에서 복원한다. 로컬 원본과 공개 identity가 확인된 자격증명만 재사용하며 새 발급과 회전은 별도 승인 범위다.
 
-`0.3.5` 광고 진단은 `출처` 화면에서 `한국어기초사전` 제목을 7회 탭해 연다. `힌트 테스트`/`보너스 테스트`가 성공하면 SDK 통합은 정상이고, `힌트 운영`/`보너스 운영`이 `googleMobileAds/no-fill`이면 AdMob serving 또는 신규 광고 단위 fill 문제로 본다. `module_unavailable` 또는 `initialize_failed`면 앱 binary/native SDK 연결 문제다. Ad Inspector 버튼은 Google Mobile Ads SDK request log를 확인하는 데 사용한다.
+기존 Xcode Cloud 훅은 `apps/mobile/ios/ci_scripts`에 남아 있다. private 저장소의 Xcode Cloud 경로를 사용할 때는 최신 중앙 정책과 해당 workflow의 실제 설정을 따로 확인한다. 현재 공개 저장소의 태그 실행 진입점은 위 caller다.
 
-남은 항목은 App Store Connect 정책 답변, TestFlight/App Store version build selection, 최종 심사 제출이다.
-
-Workflow는 profile을 복원한 뒤 다음을 검증한다.
-
-- profile Team ID가 `APPLE_TEAM_ID`와 일치
-- profile application identifier가 `com.seorilabs.crosswordpuzzle` 또는 wildcard와 일치
-- `get-task-allow=false`
-- device 목록이 없는 App Store profile
-- Apple Distribution signing identity import 성공
-
-업로드는 `xcodebuild -exportArchive`와 `destination=upload`, `method=app-store-connect`로 수행한다. 업로드 성공은 App Store Connect에서 build processing이 시작됐다는 뜻이며, TestFlight 그룹 선택/빌드 선택/최종 심사 제출은 별도 gate다.
-
-로컬 스크립트는 `~/.config/seorilabs/app-store-connect.env`가 있으면 자동으로 읽는다. App Store Connect API 인증은 archive 단계의 `-allowProvisioningUpdates`에도 전달하고, signing profile은 Xcode project의 앱 타깃 전용 `$(IOS_PROVISIONING_PROFILE_NAME)`로만 주입한다. `PROVISIONING_PROFILE_SPECIFIER`를 xcodebuild command-line build setting으로 넘기면 Pods target까지 오염되어 archive가 실패한다.
+빌드 성공, 업로드 접수, Apple 처리의 VALID, 내부 테스트 배포, 심사 제출, 승인과 공개를 각각 읽어 기록한다. 기기 검수 범위와 미실행 항목은 승인된 테스트 계획을 따른다.
 
 ## 7. Metadata/Screenshot 로컬 등록
 
@@ -225,7 +170,7 @@ source "$HOME/.config/seorilabs/app-store-connect.env"
 npm run app-store:deliver:upload -- --screenshots-only --tag v1.0.0
 ```
 
-현재 `app-store/screenshots/iphone/iphone-{1,2,3}.png`와 `app-store/screenshots/ipad/ipad-{1,2,3}.png`를 시뮬레이터 Release build에서 생성했다. iPhone은 1320 x 2868, iPad는 2064 x 2752 PNG다.
+기존 `app-store/screenshots` 파일은 이전 등록 자산이다. v1.2.0은 승인된 개발 환경의 실제 화면에서 만든 iPhone 3장과 iPad 3장을 별도로 업로드하고 처리 상태와 checksum을 확인했다. 생성 환경과 NAS 원본은 출시 기록을 따른다.
 
 ## 8. Export/Upload 로컬 참고
 

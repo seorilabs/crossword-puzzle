@@ -50,8 +50,8 @@
     "productionPolicy": "Development builds use Google test ad units through react-native-google-mobile-ads; release builds use these production IDs after adapter QA. Personalized ads stay off for the first launch; requests set requestNonPersonalizedAdsOnly=true, global request configuration marks child-directed and under-age-of-consent treatment false, and simulator/emulator devices are allowlisted as test devices."
   },
   "compliance": {
-    "privacyPolicyUrl": "https://www.seorilabs.com/privacy/",
-    "suggestedPrivacyPolicyUrl": "https://www.seorilabs.com/privacy",
+    "privacyPolicyUrl": "https://www.seorilabs.com/apps/crossword-puzzle/privacy/",
+    "suggestedPrivacyPolicyUrl": "https://www.seorilabs.com/apps/crossword-puzzle/privacy/",
     "appPrivacy": "확정 필요",
     "appPrivacyGuidance": {
       "status": "native Firebase and AdMob answers prepared; App Store Connect input pending",
