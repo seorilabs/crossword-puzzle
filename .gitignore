@@ -60,3 +60,5 @@ tmp/
 temp/
 /qa/__pycache__/
 apps/mobile/ios/.seori-release-binding.json
+
+.serena/
