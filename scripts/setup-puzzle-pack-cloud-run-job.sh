@@ -5,6 +5,7 @@ PROJECT_ID=""
 REGION="asia-northeast3"
 SCHEDULER_LOCATION="asia-northeast3"
 JOB_NAME="crossword-puzzle-pack-generator"
+HEALTH_JOB_NAME="crossword-puzzle-pack-health"
 SCHEDULER_JOB_NAME="crossword-puzzle-pack-daily"
 ARTIFACT_REPOSITORY="crossword-puzzle"
 IMAGE_NAME="puzzle-pack-job"
@@ -35,6 +36,7 @@ Options:
   --region <region>                 Cloud Run Job region. Default: asia-northeast3.
   --scheduler-location <region>     Cloud Scheduler location. Default: asia-northeast3.
   --job-name <name>                 Cloud Run Job name.
+  --health-job-name <name>          Existing health job to update with the generator.
   --scheduler-job-name <name>       Cloud Scheduler job name.
   --schedule <cron>                 Scheduler cron. Default: "5 0 * * *" (매일 00:05 KST).
   --time-zone <zone>                Scheduler/job timezone. Default: Asia/Seoul.
@@ -71,6 +73,10 @@ while [ "$#" -gt 0 ]; do
       ;;
     --job-name)
       JOB_NAME="${2:-}"
+      shift 2
+      ;;
+    --health-job-name)
+      HEALTH_JOB_NAME="${2:-}"
       shift 2
       ;;
     --scheduler-job-name)
@@ -315,10 +321,25 @@ images:
   - ${IMAGE}
 YAML
 
+EXISTING_JOB="0"
+if [ "$DRY_RUN" != "1" ] && gcloud run jobs describe "$JOB_NAME" --project "$PROJECT_ID" --region "$REGION" >/dev/null 2>&1; then
+  EXISTING_JOB="1"
+fi
+BUILD_ARGS=()
 if [ "$SKIP_BUILD" = "1" ]; then
   echo "Skipping Cloud Build; reusing image ${IMAGE}"
+elif [ "$EXISTING_JOB" = "1" ]; then
+  BUILD_ARGS=(--buildConfig "$BUILD_CONFIG")
 else
   submit_build
+fi
+
+if [ "$DRY_RUN" != "1" ] && [ "$EXISTING_JOB" = "0" ]; then
+  IMAGE="$(gcloud artifacts docker images describe "$IMAGE" --project "$PROJECT_ID" --format='value(image_summary.fully_qualified_digest)')"
+  if [ -z "$IMAGE" ]; then
+    echo "Could not resolve an immutable image digest." >&2
+    exit 1
+  fi
 fi
 
 if [ "$DRY_RUN" = "1" ]; then
@@ -332,17 +353,21 @@ if [ "$DRY_RUN" = "1" ]; then
     --task-timeout "$TASK_TIMEOUT" \
     --max-retries 0 \
     --set-env-vars "$ENV_VARS"
-elif gcloud run jobs describe "$JOB_NAME" --project "$PROJECT_ID" --region "$REGION" >/dev/null 2>&1; then
-  run gcloud run jobs update "$JOB_NAME" \
+elif [ "$EXISTING_JOB" = "1" ]; then
+  # The transaction protects both digests before updating either job and restores
+  # their exported configurations and tag targets if the new health job fails.
+  run node scripts/deploy-puzzle-pack-image.mjs \
     --project "$PROJECT_ID" \
     --region "$REGION" \
+    --generator "$JOB_NAME" \
+    --health "$HEALTH_JOB_NAME" \
     --image "$IMAGE" \
-    --service-account "$RUNTIME_SERVICE_ACCOUNT" \
+    --serviceAccount "$RUNTIME_SERVICE_ACCOUNT" \
     --memory "$MEMORY" \
     --cpu "$CPU" \
-    --task-timeout "$TASK_TIMEOUT" \
-    --max-retries 0 \
-    --set-env-vars "$ENV_VARS"
+    --timeout "$TASK_TIMEOUT" \
+    --env "$ENV_VARS" \
+    ${BUILD_ARGS[@]+"${BUILD_ARGS[@]}"}
 else
   run gcloud run jobs create "$JOB_NAME" \
     --project "$PROJECT_ID" \
@@ -354,6 +379,9 @@ else
     --task-timeout "$TASK_TIMEOUT" \
     --max-retries 0 \
     --set-env-vars "$ENV_VARS"
+  run gcloud artifacts docker tags add "$IMAGE" \
+    "${REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REPOSITORY}/${IMAGE_NAME}:runtime-current" \
+    --project "$PROJECT_ID" --quiet
 fi
 
 run gcloud run jobs add-iam-policy-binding "$JOB_NAME" \

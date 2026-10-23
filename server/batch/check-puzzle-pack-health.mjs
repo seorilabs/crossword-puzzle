@@ -61,7 +61,7 @@ async function run() {
   const manifestUrl = new URL("/puzzles/manifest.json", baseUrl);
   const manifest = await fetchJson(manifestUrl);
   // 이력이 없거나(404) 형식이 깨졌으면 null 을 넘겨 missing_answer_history 로 실패시킨다.
-  // 생성 Job(00:05)이 같은 이미지로 먼저 돌므로 00:30 에 이력이 없다는 것은 발행
+  // 생성 Job(00:05)이 같은 이미지로 먼저 돌므로 00:40 에 이력이 없다는 것은 발행
   // 회귀다.
   const rawAnswerHistory = await fetchJson(resolveAnswerHistoryUrl(baseUrl), {
     allowNotFound: true,

@@ -178,7 +178,7 @@ describe("published puzzle pack health CLI", () => {
 });
 
 describe("puzzle pack monitoring setup", () => {
-  it("AC-6 health Job과 00:30 Scheduler와 metric과 policy 생성 명령을 만든다", () => {
+  it("AC-6 health Job과 00:40 Scheduler와 metric과 policy 생성 명령을 만든다", () => {
     const result = spawnSync(
       SETUP_SCRIPT,
       [
@@ -197,7 +197,7 @@ describe("puzzle pack monitoring setup", () => {
     assert.equal(result.status, 0, result.stderr);
     assert.match(
       result.stdout,
-      /Health Scheduler:\s+crossword-puzzle-pack-health-daily \(30 0 \* \* \*, Asia\/Seoul\)/,
+      /Health Scheduler:\s+crossword-puzzle-pack-health-daily \(40 0 \* \* \*, Asia\/Seoul\)/,
     );
     assert.match(
       result.stdout,
@@ -248,6 +248,7 @@ if [ "$1" = "monitoring" ] && [ "$2" = "policies" ]; then
     fs.writeFileSync(process.env.POLICY_CAPTURE_PATH, JSON.stringify({
       displayName: policy.displayName,
       filter,
+      notificationPrompts: policy.alertStrategy.notificationPrompts,
     }));
   ' "$policy_file"
 fi
@@ -300,6 +301,7 @@ esac
       const capturedPolicy = JSON.parse(capturedPolicyRaw) as {
         displayName: string;
         filter: string;
+        notificationPrompts: string[];
       };
       assert.equal(
         capturedPolicy.displayName,
@@ -309,6 +311,7 @@ esac
         capturedPolicy.filter,
         'metric.type="logging.googleapis.com/user/crossword_puzzle_pack_job_error_count" AND resource.type="cloud_run_job"',
       );
+      assert.deepEqual(capturedPolicy.notificationPrompts, ["OPENED"]);
       const calls = await readFile(callsPath, "utf8");
       assert.match(calls, /run jobs update crossword-puzzle-pack-health /);
       assert.match(
