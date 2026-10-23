@@ -83,6 +83,11 @@ async def run(session, *, platform, run_id, output_dir, width=390, height=844, p
     partial=await progress()
     assert partial['tileInput']['entryId']==first['id']
     assert partial['tileInput']['confirmedCells']==[]
+    await page.get_by_role('button',name='홈으로',exact=True).click()
+    await page.get_by_role('button',name='⌁ 이어 풀기',exact=True).click()
+    await page.get_by_test_id('resume-puzzle-'+puzzle['puzzleId']).click()
+    await board.wait_for(timeout=15000)
+    assert (await progress())['cellValues']==partial['cellValues']
     step('reload')
     await page.reload(wait_until='domcontentloaded')
     if native:await page.get_by_role('button',name=re.compile('^이어서 풀기')).click()

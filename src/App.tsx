@@ -4052,12 +4052,12 @@ function ResumeScreen({
     return !isCompleted && hasStarted;
   });
 
-  function openRecord(record: PuzzleArchiveRecord) {
+  async function openRecord(record: PuzzleArchiveRecord) {
     const state = dateCardStates[record.puzzleId];
     const isExhausted =
       state?.attemptsUsed != null && state.attemptsUsed >= state.maxAttempts;
-    void selectPuzzle(record.puzzleId);
-    navigate(isExhausted ? "result" : "today");
+    if (await selectPuzzle(record.puzzleId))
+      navigate(isExhausted ? "result" : "today");
   }
 
   return (
@@ -4079,6 +4079,7 @@ function ResumeScreen({
             return (
               <button
                 key={record.puzzleId}
+                data-testid={`resume-puzzle-${record.puzzleId}`}
                 className="historyItem"
                 type="button"
                 onClick={() => openRecord(record)}

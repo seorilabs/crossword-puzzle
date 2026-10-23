@@ -84,7 +84,6 @@ describe("일간 퍼즐 전달 계약", () => {
     expect(webLabelSource).toContain(
       'export { formatDifficultyLabel } from "../packages/crossword-core/src"',
     );
-    expect(mobileSource).toContain("formatDifficultyLabel,");
     expect(mobileSource).toContain("from '../../packages/crossword-core/src';");
     expect(aitWorkflowSource).toContain(
       "https://crossword-puzzle-79ae0.web.app",

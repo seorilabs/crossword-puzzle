@@ -49,7 +49,6 @@ import {
   LETTER_TILE_CHOOSE_EVENT,
   formatDateCardDay,
   formatDateCardWeekday,
-  formatDifficultyLabel,
   formatPuzzleAliasLabel,
   formatPuzzleCardSequenceLabel,
   formatReturnReminderPrepromptBody,
@@ -2535,19 +2534,21 @@ function AppContent() {
             const state = dateCardStates[record.puzzleId];
             const isExhausted =
               (state?.attemptsUsed ?? 0) >= DAILY_ATTEMPT_LIMIT;
-            const summary = createPuzzleSummary(record.puzzle);
             return (
               <Pressable
                 key={record.puzzleId}
+                testID={`resume-puzzle-${record.puzzleId}`}
+                accessibilityRole="button"
                 onPress={() => {
-                  void selectPuzzle(record.puzzleId);
-                  navigateTo(isExhausted ? 'result' : 'today');
+                  void selectPuzzle(
+                    record.puzzleId,
+                    isExhausted ? 'result' : 'today',
+                  );
                 }}
                 style={styles.summaryPanel}
               >
                 <Text style={styles.panelTitle}>
-                  {formatDifficultyLabel(summary.difficulty)} ·{' '}
-                  {record.puzzle.gridSize}x{record.puzzle.gridSize}
+                  {record.puzzle.gridSize}×{record.puzzle.gridSize} 판
                 </Text>
                 <Text style={styles.smallText}>
                   {record.puzzle.entries.length}개 단어 ·{' '}
