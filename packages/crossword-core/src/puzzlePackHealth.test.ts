@@ -288,7 +288,10 @@ describe("evaluatePublishedPuzzlePackHealth", () => {
 // PASS 로그에 easy/normal/hard 가 하드코딩돼 있어 normal=undefined 가 찍혔다.
 describe("health 검사 운영 계약", () => {
   const healthSource = readFileSync(
-    new URL("../../../server/batch/check-puzzle-pack-health.mjs", import.meta.url),
+    new URL(
+      "../../../server/batch/check-puzzle-pack-health.mjs",
+      import.meta.url,
+    ),
     "utf8",
   );
   const runbook = readFileSync(
@@ -327,4 +330,67 @@ describe("health 검사 운영 계약", () => {
     assert.match(runbook, /missing_answer_history/);
     assert.match(runbook, /report:answer-repeats/);
   });
+});
+
+it("단일 판 전환 이후에는 hard 한 판과 최소 18단어를 확인한다", () => {
+  const puzzle = JSON.parse(
+    readFileSync("qa/fixtures/single-daily-18.json", "utf8"),
+  ) as Puzzle;
+  const path = "/puzzles/single.json";
+  const manifest: PuzzleManifest = {
+    dailyPolicy: {
+      version: 1,
+      singleFromDate: puzzle.date,
+      vocabularyPolicy: "familiar-v1",
+    },
+    diversityThresholds: {
+      historyLimit: 7,
+      maxSameDateSharedAnswers: 0,
+      maxScaffoldSimilarity: 0.75,
+      maxSharedAnswerRatio: 0.5,
+    },
+    puzzles: [
+      {
+        date: puzzle.date,
+        puzzleId: puzzle.puzzleId,
+        difficulty: "hard",
+        path,
+      },
+    ],
+  };
+  assert.equal(
+    evaluatePublishedPuzzlePackHealth({
+      expectedDate: puzzle.date,
+      manifest,
+      puzzlesByPath: { [path]: puzzle },
+    }).pass,
+    true,
+  );
+  const few = { ...puzzle, entries: puzzle.entries.slice(0, 17) };
+  assert.ok(
+    evaluatePublishedPuzzlePackHealth({
+      expectedDate: puzzle.date,
+      manifest,
+      puzzlesByPath: { [path]: few },
+    }).issues.some((issue) => issue.code === "word_count_mismatch"),
+  );
+  const dual = {
+    ...manifest,
+    puzzles: [
+      ...manifest.puzzles,
+      {
+        ...manifest.puzzles[0],
+        puzzleId: "legacy-easy",
+        difficulty: "easy" as const,
+        path: "/legacy",
+      },
+    ],
+  };
+  assert.ok(
+    evaluatePublishedPuzzlePackHealth({
+      expectedDate: puzzle.date,
+      manifest: dual,
+      puzzlesByPath: { [path]: puzzle },
+    }).issues.some((issue) => issue.code === "unexpected_difficulty"),
+  );
 });

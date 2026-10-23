@@ -117,6 +117,11 @@ export type PuzzleManifestItem = {
 };
 
 export type PuzzleManifest = {
+  dailyPolicy?: {
+    version: 1;
+    singleFromDate: string;
+    vocabularyPolicy: "familiar-v1";
+  };
   days?: number;
   diversityThresholds?: {
     historyLimit: number;

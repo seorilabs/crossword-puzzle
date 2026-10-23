@@ -1,3 +1,5 @@
+import { fileURLToPath } from "node:url";
+import { resolveSingleDailyPublication } from "../../packages/crossword-core/src/singleDailyPublication.ts";
 import { spawn } from "node:child_process";
 import path from "node:path";
 
@@ -140,15 +142,28 @@ async function runNode(scriptPath, args) {
   });
 }
 
-function getGeneratorArgs(options) {
+export function getGeneratorArgs(options, now = new Date()) {
   const hostingBaseUrl = process.env.PUZZLE_HOSTING_BASE_URL;
   let args = [...options.generatorArgs];
-  const now = new Date();
   const timeZone =
     getArgValue(args, "timeZone") ??
     process.env.PUZZLE_TIME_ZONE ??
     "Asia/Seoul";
+  const single = resolveSingleDailyPublication({
+    now,
+    timeZone,
+    fromDate: process.env.PUZZLE_SINGLE_DAILY_FROM_DATE,
+    startDate: getArgValue(args, "start") ?? process.env.PUZZLE_START_DATE,
+    publishedAt:
+      getArgValue(args, "publishedAt") ?? process.env.PUZZLE_PUBLISHED_AT,
+  });
+  if (single) {
+    args = ensureArg(args, "singleDaily", "true");
+    args = ensureArg(args, "singleDailyFrom", single.fromDate);
+    args = ensureArg(args, "difficulty", "hard");
+  }
   const publishedAt =
+    single?.publishedAt ??
     getArgValue(args, "publishedAt") ??
     process.env.PUZZLE_PUBLISHED_AT ??
     now.toISOString();
@@ -157,6 +172,7 @@ function getGeneratorArgs(options) {
     ? now
     : publishedAtDate;
   const startDate =
+    single?.date ??
     getArgValue(args, "start") ??
     process.env.PUZZLE_START_DATE ??
     getDateKey(timeZone, seedDate);
@@ -263,6 +279,7 @@ function getGeneratorArgs(options) {
   args = ensureArg(args, "themeLabel", process.env.PUZZLE_THEME_LABEL);
 
   if (
+    !single &&
     getArgValue(args, "theme") == null &&
     readEnvBooleanWithDefault("PUZZLE_THEME_ROTATION", false)
   ) {
@@ -306,6 +323,15 @@ async function run() {
   const outDir = getArgValue(generatorArgs, "outDir") ?? "public/puzzles";
   const manifestPath = path.join(outDir, "manifest.json");
   const publicDir = getAssetRoot(outDir);
+  if (
+    !options.skipPublish &&
+    !options.dryRun &&
+    getArgValue(generatorArgs, "singleDaily") === "true" &&
+    !process.env.PUZZLE_HOSTING_BASE_URL
+  )
+    throw new Error(
+      "PUZZLE_HOSTING_BASE_URL is required before publishing a single daily pack",
+    );
 
   // 생성 → 검증을 하나의 단위로 실행한다. 주제 슬롯은 후보 부족이나 보드 품질
   // 게이트에서 실패할 수 있어, 둘 중 어느 단계가 실패하든 같은 보강 경로로
@@ -395,10 +421,27 @@ async function run() {
     }
 
     await runNode("server/batch/publish-puzzle-pack.mjs", publishArgs);
+    if (
+      !options.dryRun &&
+      getArgValue(generatorArgs, "singleDaily") === "true"
+    ) {
+      const baseUrl = process.env.PUZZLE_HOSTING_BASE_URL;
+      if (!baseUrl)
+        throw new Error(
+          "PUZZLE_HOSTING_BASE_URL is required for post-publish health",
+        );
+      await runNode("server/batch/check-puzzle-pack-health.mjs", [
+        `--baseUrl=${baseUrl}`,
+        `--date=${getArgValue(generatorArgs, "start")}`,
+      ]);
+    }
   }
 }
 
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
 run().catch((error) => {
   console.error(error);
   process.exitCode = 1;
 });
+
+}
