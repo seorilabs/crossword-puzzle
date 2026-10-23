@@ -105,3 +105,102 @@ for (const build of [false, true])
         rmSync(dir, { recursive: true, force: true });
       }
     });
+
+test("OPS-3: outer setup reaches protected rollout with skip-build under system bash", () => {
+  const dir = mkdtempSync(join(tmpdir(), "crossword-setup-test-"));
+  try {
+    const capture = join(dir, "node-args.txt");
+    writeFileSync(
+      join(dir, "gcloud"),
+      '#!/bin/sh\nif [ "$1 $2" = "projects describe" ]; then echo 123; fi\n',
+      { mode: 0o700 },
+    );
+    writeFileSync(
+      join(dir, "node"),
+      '#!/bin/sh\nprintf "%s\\n" "$@" > "$PUZZLE_SETUP_CAPTURE"\n',
+      { mode: 0o700 },
+    );
+    execFileSync(
+      "/bin/bash",
+      [
+        "scripts/setup-puzzle-pack-cloud-run-job.sh",
+        "--project-id",
+        "fixture",
+        "--firebase-hosting-site",
+        "fixture",
+        "--skip-build",
+      ],
+      {
+        env: {
+          ...process.env,
+          PATH: dir + ":" + process.env.PATH,
+          PUZZLE_SETUP_CAPTURE: capture,
+        },
+        stdio: "pipe",
+      },
+    );
+    const args = readFileSync(capture, "utf8").split("\n");
+    assert.equal(args[0], "scripts/deploy-puzzle-pack-image.mjs");
+    assert.ok(args.includes("--health"));
+    assert.ok(!args.includes("--buildConfig"));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("OPS-2: cleanup preview collects tags and retains inactive rollback", () => {
+  const dir = mkdtempSync(join(tmpdir(), "crossword-preview-test-"));
+  try {
+    const base = "region-docker.pkg.dev/project/repo/image";
+    const rows = ["a", "b", "c", "d"].map((letter, i) => ({
+      package: base,
+      version: "sha256:" + letter.repeat(64),
+      createTime: `2026-0${9 - i}-01T00:00:00Z`,
+      tags: i === 3 ? ["runtime-rollback"] : [],
+      metadata: { imageSizeBytes: "12" },
+    }));
+    const bin = join(dir, "gcloud");
+    const capture = join(dir, "args.json");
+    writeFileSync(
+      bin,
+      "#!" +
+        process.execPath +
+        '\nconst fs=require("fs");fs.writeFileSync(process.env.PUZZLE_PREVIEW_CAPTURE,JSON.stringify(process.argv.slice(2)));console.log(' +
+        JSON.stringify(JSON.stringify(rows)) +
+        ");\n",
+      { mode: 0o700 },
+    );
+    const used = join(dir, "in-use.json");
+    writeFileSync(used, JSON.stringify([base + "@" + rows[0].version]));
+    const output = execFileSync(
+      process.execPath,
+      [
+        "scripts/preview-puzzle-image-cleanup.mjs",
+        "--repository",
+        "region-docker.pkg.dev/project/repo",
+        "--inUse",
+        used,
+        "--now",
+        "2026-10-23T00:00:00Z",
+      ],
+      {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          GCLOUD_BIN: bin,
+          PUZZLE_PREVIEW_CAPTURE: capture,
+        },
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
+    assert.ok(
+      JSON.parse(readFileSync(capture, "utf8")).includes("--include-tags"),
+    );
+    assert.deepEqual(
+      JSON.parse(output).candidates.map((row) => row.digest),
+      [rows[2].version],
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

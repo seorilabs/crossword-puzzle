@@ -238,8 +238,10 @@ normal puzzle is missing` 으로 실패했다.
 최초 적용 전에는 모든 Cloud Run Job과 서비스의 실제 사용 digest를 확인한다. 각 패키지의 실행 및 롤백 이미지에 보호 태그를 지정하고 실제 이미지 조회를 확인한다. 이미지를 두 개보다 많이 동시에 사용하는 패키지가 있으면 이 정책을 활성화하지 말고 보호 범위를 재검토한다. 공개본 health PASS도 먼저 확인한다.
 
 ```bash
-# 이미지 원본과 모든 사용처를 조회해 외부 작업 폴더에 기록한 뒤 후보를 검토한다.
-node scripts/preview-puzzle-image-cleanup.mjs --images /outside/images.json --inUse /outside/in-use-digests.json
+# 모든 사용처의 digest를 외부 작업 폴더에 기록한다. 미리보기는 태그를 포함해 이미지를 직접 조회한다.
+node scripts/preview-puzzle-image-cleanup.mjs \
+  --repository asia-northeast3-docker.pkg.dev/crossword-puzzle-79ae0/crossword-puzzle \
+  --inUse /outside/in-use-digests.json > /outside/image-cleanup-preview.json
 
 gcloud artifacts repositories set-cleanup-policies crossword-puzzle \
   --project crossword-puzzle-79ae0 --location asia-northeast3 \

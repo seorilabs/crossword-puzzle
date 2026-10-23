@@ -1,17 +1,34 @@
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { planImageCleanup } from "../server/batch/imageRetention.mjs";
 
 const { values } = parseArgs({
   options: {
-    images: { type: "string" },
+    repository: { type: "string" },
     inUse: { type: "string" },
     now: { type: "string" },
   },
 });
-if (!values.images || !values.inUse)
-  throw new Error("--images and --inUse inventory files are required");
-const rows = JSON.parse(readFileSync(values.images, "utf8"));
+if (!values.repository || !values.inUse)
+  throw new Error("--repository and --inUse inventory file are required");
+// Collect directly so the caller cannot accidentally omit protected tags.
+const rows = JSON.parse(
+  execFileSync(
+    process.env.GCLOUD_BIN ?? "gcloud",
+    [
+      "artifacts",
+      "docker",
+      "images",
+      "list",
+      values.repository,
+      "--include-tags",
+      "--format=json",
+    ],
+    { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+  ),
+);
+if (!Array.isArray(rows)) throw new Error("Invalid image inventory");
 const inUse = JSON.parse(readFileSync(values.inUse, "utf8"));
 if (
   !Array.isArray(inUse) ||

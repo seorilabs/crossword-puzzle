@@ -367,7 +367,7 @@ elif [ "$EXISTING_JOB" = "1" ]; then
     --cpu "$CPU" \
     --timeout "$TASK_TIMEOUT" \
     --env "$ENV_VARS" \
-    "${BUILD_ARGS[@]}"
+    ${BUILD_ARGS[@]+"${BUILD_ARGS[@]}"}
 else
   run gcloud run jobs create "$JOB_NAME" \
     --project "$PROJECT_ID" \
