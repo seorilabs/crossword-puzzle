@@ -1,5 +1,5 @@
 import { evaluatePublishedPuzzlePackHealth } from "../../packages/crossword-core/src/puzzlePackHealth.ts";
-import { DIFFICULTY_ORDER } from "../../packages/crossword-core/src/difficultyProfiles.ts";
+import { requiredDailyDifficulties } from "../../packages/crossword-core/src/singleDailyPublication.ts";
 import {
   DEFAULT_ANSWER_HISTORY_DAYS,
   parseAnswerHistory,
@@ -61,7 +61,7 @@ async function run() {
   const manifestUrl = new URL("/puzzles/manifest.json", baseUrl);
   const manifest = await fetchJson(manifestUrl);
   // 이력이 없거나(404) 형식이 깨졌으면 null 을 넘겨 missing_answer_history 로 실패시킨다.
-  // 생성 Job(00:05)이 같은 이미지로 먼저 돌므로 00:30 에 이력이 없다는 것은 발행
+  // 생성 Job(00:05)이 같은 이미지로 먼저 돌므로 00:40 에 이력이 없다는 것은 발행
   // 회귀다.
   const rawAnswerHistory = await fetchJson(resolveAnswerHistoryUrl(baseUrl), {
     allowNotFound: true,
@@ -70,7 +70,10 @@ async function run() {
   // 증명하는 이전 퍼즐일 수 있어, 줄어든 이력으로 PASS 를 내면 검사가 약해진다.
   const parsedAnswerHistory =
     rawAnswerHistory == null ? null : parseAnswerHistory(rawAnswerHistory);
-  if (parsedAnswerHistory != null && parsedAnswerHistory.droppedEntryCount > 0) {
+  if (
+    parsedAnswerHistory != null &&
+    parsedAnswerHistory.droppedEntryCount > 0
+  ) {
     console.error(
       `[puzzle-pack-health] answer-history.json dropped ${parsedAnswerHistory.droppedEntryCount} malformed entries; treating history as missing`,
     );
@@ -123,9 +126,9 @@ async function run() {
 
   // 난이도 티어 구성을 하드코딩하면 티어가 바뀔 때 로그에 normal=undefined 같은
   // 잔재가 남는다. 검사와 같은 출처(DIFFICULTY_ORDER)를 쓴다.
-  const summary = DIFFICULTY_ORDER.map(
-    (difficulty) => `${difficulty}=${health.puzzleIds[difficulty]}`,
-  ).join(" ");
+  const summary = requiredDailyDifficulties(manifest.dailyPolicy, expectedDate)
+    .map((difficulty) => `${difficulty}=${health.puzzleIds[difficulty]}`)
+    .join(" ");
 
   console.log(`[puzzle-pack-health] PASS date=${expectedDate} ${summary}`);
 }

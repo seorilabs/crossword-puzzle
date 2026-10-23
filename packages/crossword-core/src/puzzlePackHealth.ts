@@ -1,3 +1,4 @@
+import { requiredDailyDifficulties } from "./singleDailyPublication.ts";
 import {
   DIFFICULTY_ORDER,
   DIFFICULTY_PROFILES,
@@ -13,6 +14,8 @@ import {
 } from "./answerHistory.ts";
 
 export type PublishedPuzzlePackHealthIssueCode =
+  | "unexpected_difficulty"
+  | "word_count_mismatch"
   | "duplicate_difficulty"
   | "grid_size_mismatch"
   | "manifest_threshold_mismatch"
@@ -73,7 +76,20 @@ export function evaluatePublishedPuzzlePackHealth({
     });
   }
 
-  for (const difficulty of DIFFICULTY_ORDER) {
+  const required = requiredDailyDifficulties(
+    manifest.dailyPolicy,
+    expectedDate,
+  );
+  if (
+    required.length === 1 &&
+    (itemsForDate.length !== 1 || itemsForDate[0]?.difficulty !== "hard")
+  ) {
+    issues.push({
+      code: "unexpected_difficulty",
+      detail: `${expectedDate} must have exactly one hard puzzle`,
+    });
+  }
+  for (const difficulty of required) {
     const items = itemsForDate.filter((item) => item.difficulty === difficulty);
 
     if (items.length === 0) {
@@ -105,6 +121,12 @@ export function evaluatePublishedPuzzlePackHealth({
       continue;
     }
 
+    if (required.length === 1 && puzzle.entries.length < 18)
+      issues.push({
+        code: "word_count_mismatch",
+        difficulty,
+        detail: "Single daily puzzle needs at least 18 words",
+      });
     puzzleIds[difficulty] = puzzle.puzzleId;
     puzzlesByDifficulty.set(difficulty, puzzle);
 

@@ -1,3 +1,8 @@
+import { resolveSingleDailyPublication } from "../../packages/crossword-core/src/singleDailyPublication.ts";
+import {
+  getVocabularyMix,
+  VOCABULARY_POLICY_VERSION,
+} from "../../packages/crossword-core/src/vocabularySelection.ts";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -52,6 +57,9 @@ import { fetchJsonFresh, readJsonOptional } from "./puzzlePackIo.mjs";
 
 const DEFAULT_BATCH_OPTIONS = {
   append: false,
+  singleDaily: false,
+  singleDailyFrom: undefined,
+  vocabularyPolicy: "uniform",
   appendManifestUrl: undefined,
   // 발행 정답 이력(answer-history.json). 정확 일치는 길게, 어근 겹침은 짧게 배제한다.
   answerHistoryDays: DEFAULT_ANSWER_HISTORY_DAYS,
@@ -103,7 +111,14 @@ function parseArgs(argv) {
   // 난이도 프로파일을 먼저 적용한 뒤 개별 CLI 플래그가 이를 덮어쓰도록 한다.
   const difficultyArg = argv.find((arg) => arg.startsWith("--difficulty="));
   const difficultyValue = difficultyArg?.split("=")[1];
-  const profile = resolveDifficultyProfile(difficultyValue);
+  const profile = resolveDifficultyProfile(
+    difficultyValue ??
+      (argv.some(
+        (arg) => arg === "--singleDaily" || arg === "--singleDaily=true",
+      )
+        ? "hard"
+        : undefined),
+  );
   options.difficulty = profile.difficulty;
   options.boardSize = profile.boardSize;
   options.maxWords = profile.maxWords;
@@ -116,6 +131,15 @@ function parseArgs(argv) {
     const [key, rawValue] = arg.replace(/^--/, "").split("=");
     const numericValue = Number(rawValue);
 
+    if (key === "singleDailyFrom" && rawValue)
+      options.singleDailyFrom = rawValue;
+    if (key === "singleDaily")
+      options.singleDaily = rawValue == null || rawValue === "true";
+    if (key === "vocabulary" && rawValue) {
+      if (!["uniform", VOCABULARY_POLICY_VERSION].includes(rawValue))
+        throw new Error("Unknown vocabulary policy");
+      options.vocabularyPolicy = rawValue;
+    }
     if (key === "attempts" && Number.isFinite(numericValue)) {
       options.attempts = numericValue;
     }
@@ -227,6 +251,19 @@ function parseArgs(argv) {
     }
   }
 
+  if (options.singleDaily) {
+    options.difficulty = "hard";
+    options.boardSize = 8;
+    options.minWordCount = 20;
+    options.maxWords = 13;
+    options.samples = Math.max(options.samples, options.attempts);
+    options.intervalHours = 24;
+    options.minCrossRatio = Math.max(options.minCrossRatio, 0.5);
+    options.minBboxDensity = Math.max(options.minBboxDensity, 0.45);
+    options.vocabularyPolicy = VOCABULARY_POLICY_VERSION;
+    if (options.theme)
+      throw new Error("Single daily publication uses the full word pool");
+  }
   return options;
 }
 
@@ -323,9 +360,11 @@ function getZonedParts(date, timeZone) {
   };
 }
 
-function makeSlotInfo(date, timeZone, intervalHours) {
+function makeSlotInfo(date, timeZone, intervalHours, singleDaily = false) {
   const parts = getZonedParts(date, timeZone);
-  const slotHour = Math.floor(parts.hour / intervalHours) * intervalHours;
+  const slotHour = singleDaily
+    ? 1
+    : Math.floor(parts.hour / intervalHours) * intervalHours;
   const dateKey = `${parts.year}-${parts.month}-${parts.day}`;
   const alias = `${compactYear(parts.year)}${parts.month}${parts.day}${pad2(slotHour)}`;
   const slotId = `${dateKey}-h${pad2(slotHour)}`;
@@ -484,6 +523,7 @@ function serializeBoard(
       col: run.col,
       generatedBy: run.isPlaced ? "placed" : "auto",
       needsManualClue: sourceWord?.needsManualClue ?? true,
+      ...(sourceWord?.level ? { vocabularyLevel: sourceWord.level } : {}),
     };
   });
 
@@ -1030,6 +1070,22 @@ async function run() {
     throw new Error(`Invalid publishedAt: ${options.publishedAt}`);
   }
 
+  if (options.singleDaily) {
+    const date = makeSlotInfo(basePublishedAt, options.timeZone, 24, true).date;
+    resolveSingleDailyPublication({
+      now: basePublishedAt,
+      timeZone: options.timeZone,
+      fromDate: options.singleDailyFrom ?? date,
+      startDate: date,
+      publishedAt: basePublishedAt.toISOString(),
+    });
+    if (
+      existingManifest?.dailyPolicy &&
+      options.singleDailyFrom &&
+      existingManifest.dailyPolicy.singleFromDate !== options.singleDailyFrom
+    )
+      throw new Error("Existing daily transition date is immutable");
+  }
   await mkdir(outDir, { recursive: true });
   const hydratedExistingPuzzles =
     options.append && existingPuzzles.length > 0
@@ -1077,7 +1133,33 @@ async function run() {
       addHours(basePublishedAt, dayIndex * options.intervalHours),
       options.timeZone,
       options.intervalHours,
+      options.singleDaily,
     );
+    if (
+      options.singleDaily &&
+      hydratedExistingPuzzles.some(
+        (item) =>
+          item.puzzleId === slotInfo.alias || item.slotId === slotInfo.slotId,
+      )
+    ) {
+      if (
+        !existingManifest?.dailyPolicy ||
+        slotInfo.date < existingManifest.dailyPolicy.singleFromDate
+      )
+        throw new Error(
+          `Cannot replace or relabel an already issued legacy puzzle ${slotInfo.alias}`,
+        );
+      console.log(
+        `[single-daily] keeping already issued puzzle ${slotInfo.alias}`,
+      );
+      generationReport.push({
+        date: slotInfo.date,
+        puzzleId: slotInfo.alias,
+        accepted: true,
+        existing: true,
+      });
+      continue;
+    }
     const packId = makePackId(slotInfo, options.seed + dayIndex);
     let board = null;
     let selectedQuality = null;
@@ -1177,6 +1259,7 @@ async function run() {
         samples: options.samples,
         seed,
         wordBank: slotGenerationWords,
+        vocabularyPolicy: options.vocabularyPolicy,
       });
       const retryElapsedSeconds = (
         (Date.now() - retryStartTime) /
@@ -1244,6 +1327,7 @@ async function run() {
               (entry) => entry.syllable,
             ),
           },
+          vocabulary: getVocabularyMix(candidateEntries),
           metrics: {
             autoRunCount: candidate.metrics.autoRunCount,
             bboxDensity: candidate.metrics.bboxDensity,
@@ -1267,7 +1351,14 @@ async function run() {
         candidates,
       });
 
-      const acceptedIndex = candidates.findIndex((candidate) => candidate.pass);
+      const accepted = candidates.filter((candidate) => candidate.pass);
+      if (options.vocabularyPolicy === VOCABULARY_POLICY_VERSION)
+        accepted.sort(
+          (a, b) =>
+            b.vocabulary.ratio - a.vocabulary.ratio ||
+            b.metrics.wordCount - a.metrics.wordCount,
+        );
+      const acceptedIndex = accepted[0]?.candidateIndex ?? -1;
       if (acceptedIndex !== -1) {
         board = boards[acceptedIndex];
         selectedQuality = evaluateQuality(board, qualityThresholds);
@@ -1437,6 +1528,20 @@ async function run() {
   ];
 
   const manifest = {
+    ...(options.singleDaily
+      ? {
+          dailyPolicy: {
+            version: 1,
+            singleFromDate:
+              options.singleDailyFrom ??
+              existingManifest?.dailyPolicy?.singleFromDate ??
+              firstSlotDate,
+            vocabularyPolicy: VOCABULARY_POLICY_VERSION,
+          },
+        }
+      : existingManifest?.dailyPolicy
+        ? { dailyPolicy: existingManifest.dailyPolicy }
+        : {}),
     generatedAt: new Date().toISOString(),
     startDate: options.startDate,
     days: manifestPuzzles.length,

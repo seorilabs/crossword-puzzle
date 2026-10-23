@@ -5,6 +5,7 @@ PROJECT_ID=""
 REGION="asia-northeast3"
 SCHEDULER_LOCATION="asia-northeast3"
 JOB_NAME="crossword-puzzle-pack-generator"
+HEALTH_JOB_NAME="crossword-puzzle-pack-health"
 SCHEDULER_JOB_NAME="crossword-puzzle-pack-daily"
 ARTIFACT_REPOSITORY="crossword-puzzle"
 IMAGE_NAME="puzzle-pack-job"
@@ -13,6 +14,8 @@ RUNTIME_SERVICE_ACCOUNT_ID="crossword-puzzle-pack-job"
 SCHEDULER_SERVICE_ACCOUNT_ID="crossword-puzzle-scheduler"
 FIREBASE_HOSTING_SITE=""
 SCHEDULE="5 0 * * *"
+SCHEDULE_EXPLICIT="0"
+SINGLE_DAILY_FROM=""
 TIME_ZONE="Asia/Seoul"
 PUZZLE_DAYS="1"
 PUZZLE_KEEP="14"
@@ -35,8 +38,10 @@ Options:
   --region <region>                 Cloud Run Job region. Default: asia-northeast3.
   --scheduler-location <region>     Cloud Scheduler location. Default: asia-northeast3.
   --job-name <name>                 Cloud Run Job name.
+  --health-job-name <name>          Existing health job to update with the generator.
   --scheduler-job-name <name>       Cloud Scheduler job name.
   --schedule <cron>                 Scheduler cron. Default: "5 0 * * *" (매일 00:05 KST).
+  --single-daily-from <YYYY-MM-DD>   Prepare one 8x8 puzzle for the next midnight from this date. Default schedule: "0 23 * * *".
   --time-zone <zone>                Scheduler/job timezone. Default: Asia/Seoul.
   --puzzle-days <n>                 Number of puzzle slots to generate per run. Default: 1.
   --puzzle-keep <n>                 Number of recent puzzle packs to keep. Default: 14.
@@ -73,12 +78,25 @@ while [ "$#" -gt 0 ]; do
       JOB_NAME="${2:-}"
       shift 2
       ;;
+    --health-job-name)
+      HEALTH_JOB_NAME="${2:-}"
+      shift 2
+      ;;
     --scheduler-job-name)
       SCHEDULER_JOB_NAME="${2:-}"
       shift 2
       ;;
     --schedule)
       SCHEDULE="${2:-}"
+      SCHEDULE_EXPLICIT="1"
+      shift 2
+      ;;
+    --single-daily-from)
+      SINGLE_DAILY_FROM="${2:-}"
+      if [ -z "$SINGLE_DAILY_FROM" ]; then
+        echo "--single-daily-from must be a valid YYYY-MM-DD date." >&2
+        exit 1
+      fi
       shift 2
       ;;
     --time-zone)
@@ -147,6 +165,16 @@ if [ -z "$FIREBASE_HOSTING_SITE" ]; then
   echo "--firebase-hosting-site is required." >&2
   usage >&2
   exit 1
+fi
+
+if [ -n "$SINGLE_DAILY_FROM" ]; then
+  node -e 'const value=process.argv[1];if(!/^\d{4}-\d{2}-\d{2}$/.test(value)||!Number.isFinite(Date.parse(value+"T00:00:00Z"))||new Date(value+"T00:00:00Z").toISOString().slice(0,10)!==value)process.exit(1)' "$SINGLE_DAILY_FROM" || {
+    echo "--single-daily-from must be a valid YYYY-MM-DD date." >&2
+    exit 1
+  }
+  if [ "$SCHEDULE_EXPLICIT" = "0" ]; then
+    SCHEDULE="0 23 * * *"
+  fi
 fi
 
 run() {
@@ -240,6 +268,9 @@ COMPUTE_DEFAULT_SERVICE_ACCOUNT="${PROJECT_NUMBER}-compute@developer.gserviceacc
 IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REPOSITORY}/${IMAGE_NAME}:${IMAGE_TAG}"
 RUN_JOB_URI="https://run.googleapis.com/v2/projects/${PROJECT_ID}/locations/${REGION}/jobs/${JOB_NAME}:run"
 ENV_VARS="FIREBASE_PROJECT_ID=${PROJECT_ID},FIREBASE_HOSTING_SITE=${FIREBASE_HOSTING_SITE},PUZZLE_DAYS=${PUZZLE_DAYS},PUZZLE_TIME_ZONE=${TIME_ZONE},PUZZLE_HOSTING_BASE_URL=https://${FIREBASE_HOSTING_SITE}.web.app,PUZZLE_APPEND=true,PUZZLE_KEEP=${PUZZLE_KEEP},PUZZLE_INTERVAL_HOURS=${PUZZLE_INTERVAL_HOURS},PUZZLE_DIFFICULTY_ROTATION=false,PUZZLE_DAILY_TIERS=true,PUZZLE_DIVERSITY_HISTORY=7,PUZZLE_MAX_ANSWER_REUSE=0.5,PUZZLE_MAX_SCAFFOLD_SIMILARITY=0.75,PUZZLE_ANSWER_HISTORY_DAYS=${PUZZLE_ANSWER_HISTORY_DAYS},PUZZLE_FRAGMENT_HISTORY_DAYS=${PUZZLE_FRAGMENT_HISTORY_DAYS}"
+if [ -n "$SINGLE_DAILY_FROM" ]; then
+  ENV_VARS="${ENV_VARS},PUZZLE_SINGLE_DAILY_FROM_DATE=${SINGLE_DAILY_FROM}"
+fi
 
 echo "Project:              ${PROJECT_ID} (${PROJECT_NUMBER})"
 echo "Region:               ${REGION}"
@@ -315,10 +346,25 @@ images:
   - ${IMAGE}
 YAML
 
+EXISTING_JOB="0"
+if [ "$DRY_RUN" != "1" ] && gcloud run jobs describe "$JOB_NAME" --project "$PROJECT_ID" --region "$REGION" >/dev/null 2>&1; then
+  EXISTING_JOB="1"
+fi
+BUILD_ARGS=()
 if [ "$SKIP_BUILD" = "1" ]; then
   echo "Skipping Cloud Build; reusing image ${IMAGE}"
+elif [ "$EXISTING_JOB" = "1" ]; then
+  BUILD_ARGS=(--buildConfig "$BUILD_CONFIG")
 else
   submit_build
+fi
+
+if [ "$DRY_RUN" != "1" ] && [ "$EXISTING_JOB" = "0" ]; then
+  IMAGE="$(gcloud artifacts docker images describe "$IMAGE" --project "$PROJECT_ID" --format='value(image_summary.fully_qualified_digest)')"
+  if [ -z "$IMAGE" ]; then
+    echo "Could not resolve an immutable image digest." >&2
+    exit 1
+  fi
 fi
 
 if [ "$DRY_RUN" = "1" ]; then
@@ -332,17 +378,21 @@ if [ "$DRY_RUN" = "1" ]; then
     --task-timeout "$TASK_TIMEOUT" \
     --max-retries 0 \
     --set-env-vars "$ENV_VARS"
-elif gcloud run jobs describe "$JOB_NAME" --project "$PROJECT_ID" --region "$REGION" >/dev/null 2>&1; then
-  run gcloud run jobs update "$JOB_NAME" \
+elif [ "$EXISTING_JOB" = "1" ]; then
+  # The transaction protects both digests before updating either job and restores
+  # their exported configurations and tag targets if the new health job fails.
+  run node scripts/deploy-puzzle-pack-image.mjs \
     --project "$PROJECT_ID" \
     --region "$REGION" \
+    --generator "$JOB_NAME" \
+    --health "$HEALTH_JOB_NAME" \
     --image "$IMAGE" \
-    --service-account "$RUNTIME_SERVICE_ACCOUNT" \
+    --serviceAccount "$RUNTIME_SERVICE_ACCOUNT" \
     --memory "$MEMORY" \
     --cpu "$CPU" \
-    --task-timeout "$TASK_TIMEOUT" \
-    --max-retries 0 \
-    --set-env-vars "$ENV_VARS"
+    --timeout "$TASK_TIMEOUT" \
+    --env "$ENV_VARS" \
+    ${BUILD_ARGS[@]+"${BUILD_ARGS[@]}"}
 else
   run gcloud run jobs create "$JOB_NAME" \
     --project "$PROJECT_ID" \
@@ -354,6 +404,9 @@ else
     --task-timeout "$TASK_TIMEOUT" \
     --max-retries 0 \
     --set-env-vars "$ENV_VARS"
+  run gcloud artifacts docker tags add "$IMAGE" \
+    "${REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REPOSITORY}/${IMAGE_NAME}:runtime-current" \
+    --project "$PROJECT_ID" --quiet
 fi
 
 run gcloud run jobs add-iam-policy-binding "$JOB_NAME" \
