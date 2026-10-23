@@ -1,0 +1,50 @@
+{
+  "scope": "interactive design prototype only; not app L3",
+  "flows": {
+    "repair": true,
+    "undo": true,
+    "stable_positions": true,
+    "partial_reload": true,
+    "auto_next": true,
+    "hint": true,
+    "navigation_preserves_progress": true
+  },
+  "rounds": {
+    "ko": {
+      "words": 18,
+      "tile_clicks": 21,
+      "finish_and_reload": true
+    },
+    "en": {
+      "words": 22,
+      "tile_clicks": 35,
+      "finish_and_reload": true
+    }
+  },
+  "browser_errors": [],
+  "layout_cases": 132,
+  "layout_failures": [],
+  "minimum_candidate_height": 57,
+  "environment": "독립 Edge 브라우저, 데스크톱의 화면 크기 모사. 제품 앱과 실기기 검수 아님.",
+  "viewports": [
+    [
+      390,
+      844
+    ],
+    [
+      360,
+      800
+    ],
+    [
+      430,
+      932
+    ]
+  ],
+  "source_sha256": {
+    "index.html": "8b27cdad5940f551b2c8f50261187be6f7877162fb99be49362f97d05f1b8b51",
+    "styles.css": "5079580bf91a46e6e16d085d81beddce2dbda913556cc7264ef04b76a001dcdc",
+    "demo.js": "995ad176875422ef9f20f5e502496dee9758490a83d2ea668e95d445b8c3727d",
+    "export-preview.mjs": "955fa14a005c90cc5f4338a95a517395f0a9de2db11f72004cca79164891cc37",
+    "sample-data.js": "f9dc876fe5bd409328122ccbcec23512eccb2fe0e52cd3494eb97735826e3147"
+  }
+}
