@@ -2,11 +2,11 @@
 
 ## 현재 상태
 
-`crossword-puzzle`의 iOS archive와 App Store Connect 업로드는 **Xcode Cloud**가 담당한다. `.github/workflows/deploy-app-store.yml`은 릴리즈 태그를 대상으로 Xcode Cloud 빌드를 트리거하고 완료를 기다리는 진입점이고, 서명은 Xcode Cloud 매니지드 서명이 처리한다.
+공개 저장소인 `crossword-puzzle`의 iOS archive와 App Store Connect 업로드는 GitHub-hosted macOS에서 중앙 `rn-deploy-app-store.yml@main`으로 실행한다. 앱의 `.github/workflows/deploy-app-store.yml`에 exact stable 태그와 `upload`를 전달한다. 중앙 정책상 private 저장소는 Xcode Cloud 경로를 사용한다.
 
-GitHub Actions macOS runner에서 archive하던 방식은 걷어냈다. Xcode 26.5부터 Firebase가 정적 라이브러리 지원을 끝내 `use_frameworks!` + RNFB 혼합 링키지가 필요해졌고, macOS Action minutes도 유한하기 때문이다.
+설치된 기존 배포 인증서와 앱 전용 프로파일로 수동 서명하며 새 인증서를 자동 발급하지 않는다. 중앙 PR [#313](https://github.com/seorilabs/.github/pull/313)부터 archive 단계가 프로파일 이름을 `IOS_PROVISIONING_PROFILE_NAME`에도 전달한다. 이 앱은 Release 구성에서 해당 변수를 읽는다. 프로파일의 앱 식별자와 Game Center 권한도 일치해야 한다.
 
-아래 로컬 build/archive/upload 체계는 Xcode Cloud를 쓸 수 없을 때의 대체 경로로 남겨 둔다.
+v1.2.0의 고정 후보와 개발 검수, 실제 마켓 실행 상태는 [출시 기록](qa/2026-10-23-single-daily-puzzle/release-status.md)을 따른다. 아래 로컬 명령은 개발 환경 진단용이며 서명 업로드, 심사 제출과 공개 완료의 근거를 대신하지 않는다.
 
 ## 1. 로컬 점검
 
@@ -132,7 +132,7 @@ Trigger:
 | 훅                      | 하는 일                                                                                                                 |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | `ci_post_clone.sh`      | GitHub Packages 인증, Node/CocoaPods 설치, `npm ci`(root + apps/mobile), `GoogleService-Info.plist` 복원, `pod install` |
-| `ci_pre_xcodebuild.sh`  | `CI_TAG`를 중앙 정본으로 검증하고 Info.plist에 deterministic release binding 주입                                      |
+| `ci_pre_xcodebuild.sh`  | `CI_TAG`를 중앙 정본으로 검증하고 Info.plist에 deterministic release binding 주입                                       |
 | `ci_post_xcodebuild.sh` | 아카이브 `Info.plist` 검증 — 버전, Game Center 리더보드 ID, AdMob app ID, SKAdNetwork ID                                |
 
 릴리스 버전:

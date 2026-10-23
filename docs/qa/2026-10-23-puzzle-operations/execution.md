@@ -7,7 +7,20 @@
 - 격리: OS 임시 폴더의 가짜 gcloud와 Job 설정만 사용한다. 사용자 저장과 실제 Job은 바꾸지 않는다. 비밀값을 fixture에 넣지 않는다.
 - 검증 명령: `npm run test:operations`, `npm run lint`, `npm run typecheck`, `npm run check:release-parity`, `npm run build`, `npm run check:mobile`. 기존 정적 CI가 나머지 회귀를 포함한다.
 
-## 실제 운영 반영 전 조건
+## 2026-10-24 실제 운영 적용
+
+프로젝트 `crossword-puzzle-79ae0`, 리전 `asia-northeast3`에서 기존 generator와 health Job을 최종 후보 `1cece06bb64e90ffba7b2406bccab6ac4baa84d6`의 이미지로 갱신했다. 이미지 외 환경 변수, 자원, 서비스 계정, 재시도와 시간 제한은 전후 대조로 보존을 확인했다. 실제 적용 계정은 사용자 로그인으로 확인한 `ih@seorilabs.com`이며 새 IAM이나 키를 만들지 않았다.
+
+- `runtime-current`와 `latest`: `sha256:0cdc467ef51b6113ebf17681c8cd6bc2612b70297a88b66282b25865ec814cf0`.
+- `runtime-rollback`: 기존 `sha256:6740fac75b9f0f73088180ca68a8bb7f72939477d70f382443a8937faa41f085`.
+- 생성은 매일 00:05, health는 00:40, 시간대는 Asia/Seoul이다. 알림은 `OPENED`만 보내며 기존 1,800초 자동 닫기를 유지한다.
+- 모든 태그의 14일 정리, 현재 및 복구 태그 보호, 패키지별 최신 2개 보호가 실제 활성화됐다. 적용 직전 15개 중 11개 정리 후보의 가상 크기는 6,632,816,264바이트다. 레지스트리의 비동기 삭제 완료와 실제 청구 감소는 확인 전이다.
+- 10월 24일 자동 생성 `crossword-puzzle-pack-generator-dbrv5`는 7분 38초 뒤 성공했다. 공개 manifest와 실제 퍼즐 두 개를 내려받아 저장소 pack 검증기를 통과했다. 00:40 예약 health `crossword-puzzle-pack-health-4sg8n`도 성공했다.
+- 세 클라이언트 공개 전에는 기존 복수 판을 유지한다. 오늘 공개본은 5×5 10단어, 8×8 19단어다. 단일 판 전환과 전날 23시 생성은 아직 적용하지 않았다.
+
+최종 L3 서비스 검수와 운영 기록의 원본은 [출시 기록](../2026-10-23-single-daily-puzzle/release-status.md)의 NAS 검증 위치를 따른다. 아래는 초기 권한 조회 실패와 개발 검수 이력이며 현재 미적용 상태를 뜻하지 않는다.
+
+## 초기 개발 검수 당시 상태
 
 OPS-1부터 OPS-6의 원래 조건은 승인 설계와 실행 이슈에서 유지한다. 단위 및 CLI 실행은 정책과 복원 동작을 확인하지만 live readback을 대체하지 않는다. 현재 공개본은 `node server/batch/check-puzzle-pack-health.mjs`에서 PASS다. 등록된 `shared/gcp/provisioner-session`의 `seorilabs-provisioner@seorilabs-gws.iam.gserviceaccount.com`은 이 프로젝트의 `run.jobs.get`, `run.jobs.list`, `artifactregistry.repositories.get` 조회가 거부됐다. 따라서 실제 사용 이미지와 정책, 스케줄 및 알림의 전후 상태는 미검증이며 실제 변경과 삭제는 수행하지 않았다.
 
