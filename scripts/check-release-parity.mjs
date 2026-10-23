@@ -1114,7 +1114,7 @@ assertIncludes(
 );
 assertIncludes(
   deployGooglePlayWorkflow,
-  "runs-on: seorilabs-x64",
+  "runs-on: ${{ github.event.repository.private && 'seorilabs-x64' || 'ubuntu-latest' }}",
   deployGooglePlayWorkflowPath,
 );
 // 두 라벨이 동시에 남아 일부 job만 rpi5로 되돌아가는 회귀를 막는다.
