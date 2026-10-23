@@ -165,3 +165,10 @@ dimension의 live 상태는 이 코드 변경의 완료 범위가 아니다.
 - 하루 도전 횟수 상한은 코어 `packages/crossword-core/src/launchConfig.ts`의 Remote Config 키 `daily_attempt_limit`(기본값 `3` = `uiPolicy.DAILY_ATTEMPT_LIMIT`, 최소 1로 클램프)로 조정한다. 기본값이 기존 상수와 같아 원격 미주입 시 3마켓 모두 기존과 동일하게 3회로 동작한다.
 - **AIT/Web**은 `src/App.tsx`가 미션 로드 시 `launchConfig.dailyAttemptLimit`를 `loadMission`에 넘겨 미션의 `maxAttempts`로 반영하고, 카드 "도전 종료" 판정도 미션의 `maxAttempts`를 따른다. 원격에서 값을 2/4로 바꾸면 재배포 없이 상한이 반영된다.
 - **Android/iOS(RN)**는 아직 `apps/mobile/firebaseClient.ts`가 이 키를 읽지 않고 `apps/mobile/App.tsx`가 공유 기본 상수 `DAILY_ATTEMPT_LIMIT`를 그대로 사용한다(후속 작업). 원격값을 3에서 바꾸면 **AIT/Web만** 반영되고 mobile은 기본 3회로 유지되는 시장 차이가 생기며, 이는 의도된 상태다. mobile까지 원격화하려면 `apps/mobile/firebaseClient.ts`에 `daily_attempt_limit` 파싱과 미션 로드부 배선을 추가해야 한다.
+
+## v1.2.0 사용 통계와 iOS 동의
+
+- 세 마켓의 사용 통계 선택은 core의 `usageStatistics.ts`로 정의한다. 저장값이 없을 때 기본 켬이며 꺼진 선택을 보존한다. 복원 중에는 앱 분석 이벤트를 보내지 않는다. 끄기는 UI와 게임 분석의 모든 sink에 적용한다. 퍼즐 기록, 힌트, 계정 기능은 유지한다. 제공자 자체 필수 운영 로그까지 이 스위치로 차단한다고 안내하지 않는다.
+- iOS는 UMP와 광고 개인정보 메뉴를 사용하지 않는다. 앱 시작 시 `IABTCF_` 값만 제거하며 비개인화 광고와 Firebase 광고 신호 거부를 유지한다. ATT와 새 SDK를 추가하지 않는다. Android UMP는 유지한다.
+- 실제 제공자 SDK, OS 및 광고 송출 검사는 미실행이다. 승인된 L3 개발 환경과 독립 검수 3회로 검증하며 기기는 사용하지 않는다.
+- Firebase collection 및 consent 키: https://firebase.google.com/docs/analytics/configure-data-collection?platform=ios 와 https://developers.google.com/tag-platform/security/guides/app-consent?platform=ios 를 확인했다.

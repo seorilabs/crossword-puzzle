@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+import { usageStatistics } from './usageStatistics';
 import analytics from '@react-native-firebase/analytics';
 import remoteConfig from '@react-native-firebase/remote-config';
 
@@ -104,10 +106,24 @@ export async function loadFirebaseLaunchConfig(): Promise<LaunchConfig> {
   return launchConfigPromise;
 }
 
+export async function configureFirebaseUsageStatistics(enabled: boolean) {
+  const client = analytics();
+  if (Platform.OS === 'ios') {
+    await client.setConsent({
+      ad_storage: false,
+      ad_user_data: false,
+      ad_personalization: false,
+      analytics_storage: enabled,
+    });
+  }
+  await client.setAnalyticsCollectionEnabled(enabled);
+}
+
 export async function logFirebaseAnalyticsEvent(
   name: string,
   params: AnalyticsParams = {},
 ) {
+  if (!usageStatistics.canTrack()) return;
   try {
     await analytics().logEvent(name, params);
   } catch {
@@ -119,6 +135,7 @@ export async function logFirebaseScreenView(
   screenName: string,
   params: AnalyticsParams = {},
 ) {
+  if (!usageStatistics.canTrack()) return;
   try {
     const customParams = Object.fromEntries(
       Object.entries(params).filter(([key]) => !key.startsWith('firebase_')),

@@ -1,6 +1,6 @@
 {
   "react-native": {
-    "analytics_auto_collection_enabled": true,
+    "analytics_auto_collection_enabled": false,
     "analytics_collection_deactivated": false,
     "analytics_default_allow_ad_personalization_signals": false,
     "analytics_default_allow_ad_storage": false,

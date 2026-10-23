@@ -279,7 +279,7 @@ cat >"$POLICY_FILE" <<JSON
   "notificationChannels": ["${NOTIFICATION_CHANNEL}"],
   "documentation": {
     "mimeType": "text/markdown",
-    "content": "퍼즐팩 생성 또는 공개본 점검이 실패했습니다. 생성은 00:05, 최종 점검은 00:40 KST입니다. ${GENERATOR_JOB_NAME}의 생성 로그와 ${HEALTH_JOB_NAME}의 공개본 검사 결과를 구분해 확인하세요. CLOSED는 오류 로그 집계 종료이며 정상 복구 검증이 아닙니다. 실제 복구는 공개본 health PASS로 확인하세요."
+    "content": "퍼즐팩 생성 또는 공개본 점검이 실패했습니다. 생성 시각은 Cloud Scheduler의 현재 설정을 확인하고, 최종 공개본 점검은 00:40 KST에 실행합니다. ${GENERATOR_JOB_NAME}의 생성 로그와 ${HEALTH_JOB_NAME}의 공개본 검사 결과를 구분해 확인하세요. CLOSED는 오류 로그 집계 종료이며 정상 복구 검증이 아닙니다. 실제 복구는 공개본 health PASS로 확인하세요."
   },
   "alertStrategy": {
     "autoClose": "1800s",

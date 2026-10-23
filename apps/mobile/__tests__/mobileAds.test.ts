@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import {
   createMobileAdsRequestConfiguration,
   getMobileAdErrorCode,
@@ -10,6 +11,7 @@ import {
 
 beforeEach(() => {
   resetMobileAdsStateForTests();
+  Platform.OS = 'android';
 });
 
 test('uses the UMP decision before allowing mobile ad requests', async () => {
@@ -86,11 +88,17 @@ test('request 이벤트는 request/requested로 대응한다', () => {
 });
 
 test('loaded 이벤트는 load/loaded로 대응한다', () => {
-  expectMappedTrace({ type: 'loaded' }, { ad_result: 'loaded', ad_stage: 'load' });
+  expectMappedTrace(
+    { type: 'loaded' },
+    { ad_result: 'loaded', ad_stage: 'load' },
+  );
 });
 
 test('opened 이벤트는 show/shown으로 대응한다', () => {
-  expectMappedTrace({ type: 'opened' }, { ad_result: 'shown', ad_stage: 'show' });
+  expectMappedTrace(
+    { type: 'opened' },
+    { ad_result: 'shown', ad_stage: 'show' },
+  );
 });
 
 test('earned_reward 이벤트는 show/rewarded로 대응한다', () => {
@@ -101,7 +109,10 @@ test('earned_reward 이벤트는 show/rewarded로 대응한다', () => {
 });
 
 test('closed 이벤트는 show/dismissed로 대응한다', () => {
-  expectMappedTrace({ type: 'closed' }, { ad_result: 'dismissed', ad_stage: 'show' });
+  expectMappedTrace(
+    { type: 'closed' },
+    { ad_result: 'dismissed', ad_stage: 'show' },
+  );
 });
 
 test('show_failed 이벤트는 에러 코드와 함께 show/failed_to_show로 대응한다', () => {
@@ -127,7 +138,10 @@ test('error 이벤트는 에러 코드와 함께 error/load_error로 대응한�
 });
 
 test('timeout 이벤트는 error/load_timeout으로 대응한다', () => {
-  expectMappedTrace({ type: 'timeout' }, { ad_result: 'load_timeout', ad_stage: 'error' });
+  expectMappedTrace(
+    { type: 'timeout' },
+    { ad_result: 'load_timeout', ad_stage: 'error' },
+  );
 });
 
 test('module_unavailable/initialize_failed 이벤트는 error/unavailable로 대응한다', () => {
@@ -137,7 +151,11 @@ test('module_unavailable/initialize_failed 이벤트는 error/unavailable로 대
   );
   expectMappedTrace(
     { errorCode: 'init-failed', type: 'initialize_failed' },
-    { ad_error_code: 'init-failed', ad_result: 'unavailable', ad_stage: 'error' },
+    {
+      ad_error_code: 'init-failed',
+      ad_result: 'unavailable',
+      ad_stage: 'error',
+    },
   );
 });
 
@@ -160,4 +178,21 @@ test('normalizes rewarded mobile ad results for the shared retry policy', () => 
       status: 'failed',
     }),
   ).toBe('unsupported');
+});
+
+test('iOS는 이전 UMP 결정에 접근하지 않고 광고 동의 창을 생략한다', async () => {
+  Platform.OS = 'ios';
+  const gatherConsent = jest.fn();
+  const getConsentInfo = jest.fn();
+  await expect(
+    requestMobileAdsConsent({
+      AdsConsent: { gatherConsent, getConsentInfo },
+    } as never),
+  ).resolves.toBe(true);
+  expect(gatherConsent).not.toHaveBeenCalled();
+  expect(getConsentInfo).not.toHaveBeenCalled();
+  const { showMobileAdsPrivacyOptions } = require('../mobileAds');
+  await expect(showMobileAdsPrivacyOptions()).resolves.toEqual({
+    status: 'not_required',
+  });
 });

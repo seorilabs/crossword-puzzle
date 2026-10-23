@@ -1,3 +1,4 @@
+import { usageStatistics } from "./usageStatistics";
 import { Analytics as AppsInTossAnalytics } from "@apps-in-toss/web-framework";
 import {
   createAnalyticsDimensionedSink,
@@ -50,6 +51,7 @@ function getOptionalEnvValue(value?: string) {
 const appsInTossSink: AnalyticsSink = {
   id: "apps-in-toss",
   track(event) {
+    if (!usageStatistics.canTrack()) return;
     const method = event.kind === "game" ? "impression" : event.kind;
     try {
       void AppsInTossAnalytics[method]({
@@ -67,6 +69,7 @@ const appsInTossSink: AnalyticsSink = {
 const firebaseSink: AnalyticsSink = {
   id: "firebase",
   track(event) {
+    if (!usageStatistics.canTrack()) return;
     if (event.kind === "screen") {
       void logFirebaseAnalyticsEvent("screen_view", {
         firebase_screen: event.name,
@@ -87,6 +90,7 @@ export function createHttpMetricsSink(endpoint: string): AnalyticsSink {
   return {
     id: "self-hosted",
     track(event) {
+      if (!usageStatistics.canTrack()) return;
       const body = JSON.stringify({
         kind: event.kind,
         name: event.name,
@@ -157,6 +161,7 @@ export const gameAnalyticsSinks: readonly GameAnalyticsSink[] =
   analyticsSinks.map((sink) => ({
     id: sink.id,
     logGameEvent(name, params) {
+      if (!usageStatistics.canTrack()) return;
       sink.track({ kind: "game", name, params });
     },
   }));

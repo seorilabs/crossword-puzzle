@@ -42,3 +42,5 @@ export * from "./themeRotation";
 export * from "./themeTags";
 export * from "./types";
 export * from "./uiPolicy";
+
+export * from "./usageStatistics";

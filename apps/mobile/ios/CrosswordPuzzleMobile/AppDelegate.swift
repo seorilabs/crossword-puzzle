@@ -15,7 +15,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
+    ConsentPreferences.removeLegacyTCFValues(from: .standard)
     FirebaseApp.configure()
+    Analytics.setConsent([
+      .adStorage: .denied,
+      .adUserData: .denied,
+      .adPersonalization: .denied,
+    ])
 
     let delegate = ReactNativeDelegate()
     let factory = RCTReactNativeFactory(delegate: delegate)

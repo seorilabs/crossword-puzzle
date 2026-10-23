@@ -8,6 +8,8 @@ afterEach(cleanup);
 
 function renderSheet(overrides: Partial<SettingsSheetProps> = {}) {
   const props: SettingsSheetProps = {
+    usageStatistics: { enabled: true, ready: true, busy: false, error: null },
+    toggleUsageStatistics: vi.fn(),
     hapticEnabled: true,
     onClose: () => {},
     selectTextScale: () => {},
@@ -27,7 +29,7 @@ it("타일 입력에서 사용하지 않는 키보드와 즉시 오답 설정은
   renderSheet();
   expect(screen.queryByText("입력 방식")).toBeNull();
   expect(screen.queryByText("오답 자동 표시")).toBeNull();
-  expect(screen.getByText("사운드, 햅틱, 타이머와 글자 크기")).toBeTruthy();
+  expect(screen.getByText("나에게 맞게 플레이하기")).toBeTruthy();
 });
 
 function getTimerVisibleToggle() {
@@ -122,4 +124,24 @@ describe("SettingsSheet 글자 크기 세그먼트 컨트롤(#217)", () => {
     expect(selectTextScale).toHaveBeenCalledTimes(1);
     expect(selectTextScale).toHaveBeenCalledWith("normal");
   });
+});
+
+it("사용 통계 선택과 저장 실패를 설정에서 확인한다", () => {
+  const toggle = vi.fn();
+  renderSheet({
+    toggleUsageStatistics: toggle,
+    usageStatistics: {
+      enabled: false,
+      ready: true,
+      busy: false,
+      error: "storage",
+    },
+  });
+  const button = screen.getByRole("button", { name: "사용 통계" });
+  expect(button.getAttribute("aria-pressed")).toBe("false");
+  button.click();
+  expect(toggle).toHaveBeenCalledTimes(1);
+  expect(screen.getByRole("status").textContent).toContain(
+    "다음 실행에서 다시 확인",
+  );
 });

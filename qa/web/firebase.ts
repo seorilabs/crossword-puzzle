@@ -4,6 +4,11 @@ export const getApps = () => [app];
 export const initializeApp = () => app;
 export const isSupported = async () => true;
 export const getAnalytics = () => ({});
+export const initializeAnalytics = () => ({});
+export const setAnalyticsCollectionEnabled = (
+  _analytics: unknown,
+  enabled: boolean,
+) => record("firebase-config", "collection", { enabled });
 export const logEvent = (_analytics: unknown, name: string, params: unknown) =>
   record("firebase", name, params);
 export const getRemoteConfig = () => ({

@@ -1,3 +1,4 @@
+import { usageStatistics } from './usageStatistics';
 import { Platform } from 'react-native';
 import {
   createAnalyticsDimensionedSink,
@@ -57,6 +58,7 @@ export interface AnalyticsSink {
 const firebaseSink: AnalyticsSink = {
   id: 'firebase',
   track(event) {
+    if (!usageStatistics.canTrack()) return;
     if (event.kind === 'screen') {
       void logFirebaseScreenView(event.name, event.params);
       return;
@@ -74,6 +76,7 @@ export function createHttpMetricsSink(endpoint: string): AnalyticsSink {
   return {
     id: 'self-hosted',
     track(event) {
+      if (!usageStatistics.canTrack()) return;
       const body = JSON.stringify({
         kind: event.kind,
         name: event.name,
@@ -127,6 +130,7 @@ export const gameAnalyticsSinks: readonly GameAnalyticsSink[] =
   analyticsSinks.map(sink => ({
     id: sink.id,
     logGameEvent(name, params) {
+      if (!usageStatistics.canTrack()) return;
       sink.track({ kind: 'game', name, params });
     },
   }));

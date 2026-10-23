@@ -1,3 +1,7 @@
+const mockCanTrack = jest.fn(() => true);
+jest.mock('../usageStatistics', () => ({
+  usageStatistics: { canTrack: () => mockCanTrack() },
+}));
 const mockLogFirebaseAnalyticsEvent = jest.fn();
 const mockLogFirebaseScreenView = jest.fn();
 
@@ -16,6 +20,7 @@ const {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockCanTrack.mockReturnValue(true);
 });
 
 test('RN screen 이벤트는 logScreenView 전용 경로를 사용한다', () => {
@@ -113,4 +118,16 @@ describe('RELEASE_VERSION 은 네이티브 앱 버전을 우선 사용한다', (
     const empty = loadWithNativeAppInfo({ getAppVersion: () => '' });
     expect(empty.RELEASE_VERSION).toBe(require('../package.json').version);
   });
+});
+
+test('통계를 끄면 공통 UI와 게임 팬아웃 모두 전송하지 않는다', () => {
+  mockCanTrack.mockReturnValue(false);
+  dispatchAnalytics({ kind: 'screen', name: 'home', params: {} });
+  const { gameAnalyticsSinks } = require('../analyticsSinks');
+  gameAnalyticsSinks.forEach(
+    (sink: { logGameEvent: (name: string, params: object) => void }) =>
+      sink.logGameEvent('mission_start', {}),
+  );
+  expect(mockLogFirebaseScreenView).not.toHaveBeenCalled();
+  expect(mockLogFirebaseAnalyticsEvent).not.toHaveBeenCalled();
 });

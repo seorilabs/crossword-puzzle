@@ -184,6 +184,8 @@ export function createMobileAdsRequestConfiguration(
 }
 
 export async function requestMobileAdsConsent(module: GoogleMobileAdsModule) {
+  if (Platform.OS === 'ios') return true;
+
   if (consentPromise != null) {
     return consentPromise;
   }
@@ -250,6 +252,7 @@ export async function initializeMobileAds() {
 }
 
 export async function showMobileAdsPrivacyOptions() {
+  if (Platform.OS === 'ios') return { status: 'not_required' as const };
   const module = await getMobileAdsModule();
   if (module == null) {
     return { errorCode: 'module_unavailable', status: 'failed' as const };

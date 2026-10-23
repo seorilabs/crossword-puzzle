@@ -101,6 +101,80 @@ test('renders correctly', async () => {
   });
 }, 45_000);
 
+test('홈에서 다시 불러오면 저장한 글자와 힌트 잔액을 복원한다', async () => {
+  const today = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+  const puzzle = createPuzzle(today.slice(2).replaceAll('-', '') + '01', today);
+  const walletKey = `crossword-puzzle:daily-hints:${today}`;
+  const wallet = { date: today, usedCredits: 2, earnedCredits: 0 };
+  await AsyncStorage.setItem(walletKey, JSON.stringify(wallet));
+  await AsyncStorage.setItem(
+    `crossword-puzzle:progress:${puzzle.puzzleId}`,
+    JSON.stringify({
+      cellValues: { '0:0': '가' },
+      hintCount: 2,
+      earnedHintCredits: 0,
+    }),
+  );
+  const fetchMock = globalThis.fetch as jest.Mock;
+  fetchMock.mockRejectedValue(new Error('temporary puzzle load failure'));
+  let renderer: ReactTestRenderer.ReactTestRenderer | undefined;
+  try {
+    await ReactTestRenderer.act(async () => {
+      renderer = ReactTestRenderer.create(<App />);
+    });
+    await flushAsyncWork(15);
+    const failedHome = renderer!.root.findByType(TileHomeScreen);
+    expect(failedHome.props.loadError).toBe(true);
+    expect(JSON.stringify(renderer!.toJSON())).toContain('다시 불러오기');
+    expect(JSON.stringify(renderer!.toJSON())).not.toContain(
+      '오늘의 퍼즐을 준비하고 있어요.',
+    );
+    fetchMock.mockImplementation(async (url: string) => ({
+      ok: true,
+      json: async () =>
+        url.endsWith('manifest.json')
+          ? {
+              puzzles: [
+                {
+                  ...puzzle,
+                  path: `/puzzles/${puzzle.puzzleId}.json`,
+                  publishedAt: `${today}T00:00:00+09:00`,
+                },
+              ],
+            }
+          : puzzle,
+    }));
+    await ReactTestRenderer.act(async () => {
+      failedHome.props.onRetry();
+    });
+    await flushAsyncWork(15);
+    const recoveredHome = renderer!.root.findByType(TileHomeScreen);
+    expect(recoveredHome.props.loadError).toBe(false);
+    expect(recoveredHome.props.puzzle.puzzleId).toBe(puzzle.puzzleId);
+    await ReactTestRenderer.act(async () => {
+      recoveredHome.props.onStart();
+    });
+    await flushAsyncWork(10);
+    const board = renderer!.root.findByType(TilePuzzleScreen);
+    expect(board.props.state.cellValues['0:0']).toBe('가');
+    expect(board.props.hints).toBe(1);
+    expect(JSON.parse((await AsyncStorage.getItem(walletKey))!)).toEqual(
+      wallet,
+    );
+    expect(renderer!.root.findAllByType(TileResultScreen)).toHaveLength(0);
+  } finally {
+    ReactTestRenderer.act(() => renderer?.unmount());
+    fetchMock.mockImplementation(() =>
+      Promise.reject(new Error('fetch is mocked in mobile Jest')),
+    );
+  }
+}, 45_000);
+
 test('last tile completes the mission once and opens the result', async () => {
   const today = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Seoul',
@@ -903,3 +977,34 @@ test.each([1, -1])(
   },
   45_000,
 );
+
+test('실제 앱 설정은 사용 통계의 현재 상태를 접근성 상태로 전달한다', async () => {
+  let renderer: ReactTestRenderer.ReactTestRenderer | undefined;
+  try {
+    await ReactTestRenderer.act(async () => {
+      renderer = ReactTestRenderer.create(<App />);
+    });
+    await flushAsyncWork(15);
+    await ReactTestRenderer.act(async () => {
+      renderer!.root.findByType(TileHomeScreen).props.onSettings();
+    });
+    const toggle = renderer!.root
+      .findAllByProps({ accessibilityLabel: '사용 통계' })
+      .find(node => typeof node.props.onPress === 'function')!;
+    expect(toggle.props['aria-checked']).toBe(true);
+    await ReactTestRenderer.act(async () => {
+      toggle.props.onPress();
+    });
+    await flushAsyncWork(5);
+    expect(toggle.props['aria-checked']).toBe(false);
+    expect(
+      await AsyncStorage.getItem('crossword-puzzle:usage-statistics:v1'),
+    ).toBe('0');
+    await ReactTestRenderer.act(async () => {
+      toggle.props.onPress();
+    });
+    await flushAsyncWork(5);
+  } finally {
+    ReactTestRenderer.act(() => renderer?.unmount());
+  }
+});
