@@ -1,0 +1,240 @@
+{
+  "type": "design-prototype-check",
+  "notProductRuntimeEvidence": true,
+  "browser": "Edge via shared Playwright",
+  "results": [
+    {
+      "view": "play",
+      "sizes": [
+        {
+          "w": 390,
+          "h": 844,
+          "scroll": 844
+        },
+        {
+          "w": 390,
+          "h": 844,
+          "scroll": 844
+        },
+        {
+          "w": 390,
+          "h": 844,
+          "scroll": 844
+        }
+      ],
+      "image": "play-comparison.png"
+    },
+    {
+      "view": "home",
+      "sizes": [
+        {
+          "w": 390,
+          "h": 844,
+          "scroll": 844
+        },
+        {
+          "w": 390,
+          "h": 844,
+          "scroll": 844
+        },
+        {
+          "w": 390,
+          "h": 844,
+          "scroll": 844
+        }
+      ],
+      "image": "home-comparison.png"
+    },
+    {
+      "view": "global",
+      "sizes": [
+        {
+          "w": 390,
+          "h": 844,
+          "scroll": 844
+        },
+        {
+          "w": 390,
+          "h": 844,
+          "scroll": 844
+        }
+      ],
+      "image": "global-comparison.png"
+    },
+    {
+      "interaction": "A/B/C Korean answer, progress, clue list, home and resume",
+      "pass": true
+    },
+    {
+      "interaction": "English answer and progress",
+      "pass": true
+    },
+    {
+      "viewport": [
+        360,
+        800
+      ],
+      "view": "play",
+      "sizes": [
+        {
+          "w": 324,
+          "h": 800,
+          "scroll": 800,
+          "entry": 568.59375
+        },
+        {
+          "w": 324,
+          "h": 800,
+          "scroll": 800,
+          "entry": 568.59375
+        },
+        {
+          "w": 324,
+          "h": 800,
+          "scroll": 800,
+          "entry": 560.59375
+        }
+      ]
+    },
+    {
+      "viewport": [
+        360,
+        800
+      ],
+      "view": "home",
+      "sizes": [
+        {
+          "w": 324,
+          "h": 800,
+          "scroll": 800,
+          "entry": null
+        },
+        {
+          "w": 324,
+          "h": 800,
+          "scroll": 800,
+          "entry": null
+        },
+        {
+          "w": 324,
+          "h": 800,
+          "scroll": 800,
+          "entry": null
+        }
+      ]
+    },
+    {
+      "viewport": [
+        360,
+        800
+      ],
+      "view": "global",
+      "sizes": [
+        {
+          "w": 324,
+          "h": 800,
+          "scroll": 800,
+          "entry": null
+        },
+        {
+          "w": 324,
+          "h": 800,
+          "scroll": 800,
+          "entry": 541.5
+        }
+      ]
+    },
+    {
+      "viewport": [
+        430,
+        932
+      ],
+      "view": "play",
+      "sizes": [
+        {
+          "w": 390,
+          "h": 932,
+          "scroll": 932,
+          "entry": 658
+        },
+        {
+          "w": 390,
+          "h": 932,
+          "scroll": 932,
+          "entry": 658
+        },
+        {
+          "w": 390,
+          "h": 932,
+          "scroll": 932,
+          "entry": 652
+        }
+      ]
+    },
+    {
+      "viewport": [
+        430,
+        932
+      ],
+      "view": "home",
+      "sizes": [
+        {
+          "w": 390,
+          "h": 932,
+          "scroll": 932,
+          "entry": null
+        },
+        {
+          "w": 390,
+          "h": 932,
+          "scroll": 932,
+          "entry": null
+        },
+        {
+          "w": 390,
+          "h": 932,
+          "scroll": 932,
+          "entry": null
+        }
+      ]
+    },
+    {
+      "viewport": [
+        430,
+        932
+      ],
+      "view": "global",
+      "sizes": [
+        {
+          "w": 390,
+          "h": 932,
+          "scroll": 932,
+          "entry": null
+        },
+        {
+          "w": 390,
+          "h": 932,
+          "scroll": 932,
+          "entry": 659.5
+        }
+      ]
+    }
+  ],
+  "javascriptErrors": [],
+  "layoutPass": true,
+  "checkedAt": "2026-10-23T09:55:58.208572+09:00",
+  "sourceFiles": {
+    "index.html": "5b3929e2e385115b51cd0dcff218f70cf05ae0d723445eb4df9b7aa5b56f0808",
+    "styles.css": "81f6b1cf5656aefdad12b90e78c6ec448009b24c8b273b86a5f267ac84d15d8b",
+    "app.js": "7ff4ada8ef6de1ef425a8350592f4f42f761482b24e6dec60a505d7c7cff9183",
+    "sample-data.js": "f9dc876fe5bd409328122ccbcec23512eccb2fe0e52cd3494eb97735826e3147"
+  },
+  "limitations": [
+    "Design prototype only, not application runtime or release evidence",
+    "Keyboard drawings do not verify native IME or keyboard dimensions",
+    "No device access"
+  ],
+  "candidateSha": "4170abdad5db7ad111702420f12a95736ce2c477",
+  "artifactDirectory": "/Volumes/Data/Backup/agent-artifacts/crossword-puzzle/2026-10-23/4170abdad5db7ad111702420f12a95736ce2c477/puzzle-audit-ui-v2-20261023T095948",
+  "artifactManifestSha256": "284db3f90b71ad4b88cddffa9d7a95f89e1b5e77658f602cba42bd19496a469b"
+}

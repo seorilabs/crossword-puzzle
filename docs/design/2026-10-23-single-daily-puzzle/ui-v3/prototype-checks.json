@@ -1,0 +1,65 @@
+{
+  "scope": "보드 고정 시안의 배치 확인. 제품 앱 L3 아님.",
+  "current_layout": {
+    "scope": "fixed-board prototype layout only, not app L3",
+    "word_transitions": 240,
+    "maximum_candidate_cases": 12,
+    "failures": [],
+    "min_candidate_width": 55.1875,
+    "candidate_height": 57,
+    "fixed_regions": [
+      "board",
+      "clue",
+      "answer",
+      "tray",
+      "tools"
+    ],
+    "viewports": [
+      [
+        360,
+        800
+      ],
+      [
+        390,
+        844
+      ],
+      [
+        430,
+        932
+      ]
+    ],
+    "large_text": "clue 22px, feedback 14px"
+  },
+  "input_baseline": {
+    "source_sha": "14571481af069aa01eb108fe63f93e604144647f",
+    "flows": {
+      "repair": true,
+      "undo": true,
+      "stable_positions": true,
+      "partial_reload": true,
+      "auto_next": true,
+      "hint": true,
+      "navigation_preserves_progress": true
+    },
+    "rounds": {
+      "ko": {
+        "words": 18,
+        "tile_clicks": 21,
+        "finish_and_reload": true
+      },
+      "en": {
+        "words": 22,
+        "tile_clicks": 35,
+        "finish_and_reload": true
+      }
+    },
+    "note": "입력 정책은 변경하지 않았다. 이번에는 단서 이동과 배치를 다시 실행했다."
+  },
+  "source_sha256": {
+    "index.html": "23c81e6614a28bcf8ac8d65fd429d0025d4312bce3ecf1e7a8fd5338f8a9daf3",
+    "styles.css": "7d3026649b5e244d43a953ff84d2cd158e4ad202977918be7fe90e6cd4d603a3",
+    "demo.js": "e55774f4d6fe892070ae5e83a36588152e2c3593d30d37203a668690a2ab9416",
+    "export-preview.mjs": "955fa14a005c90cc5f4338a95a517395f0a9de2db11f72004cca79164891cc37",
+    "sample-data.js": "f9dc876fe5bd409328122ccbcec23512eccb2fe0e52cd3494eb97735826e3147"
+  }
+}
