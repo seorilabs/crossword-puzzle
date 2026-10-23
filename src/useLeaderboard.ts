@@ -26,6 +26,7 @@ export function useLeaderboard({
   // 지원 브리지가 있어도 게임센터 미승인·조회 실패가 확인되면 현재 세션에서는
   // 진입점을 숨긴다. 앱을 다시 열면 런타임 지원 여부를 다시 판정한다.
   const [sessionAvailable, setSessionAvailable] = useState(true);
+  const [openFailed, setOpenFailed] = useState(false);
   const visible = enabled && sessionAvailable && adapter.supported;
 
   const submitScore = useCallback(
@@ -100,12 +101,14 @@ export function useLeaderboard({
       } catch {
         // 게임센터 미승인·조회 실패 시 결과 화면은 유지하고 순위 CTA만 제거한다.
         setSessionAvailable(false);
+        setOpenFailed(true);
         return "failure";
       }
     }, [adapter, enabled, sessionAvailable]);
 
   return {
     visible,
+    openFailed,
     submitScore,
     openLeaderboard,
   };

@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   getCellKey,
+  LEADERBOARD_OPEN_FAILURE_MESSAGE,
   RETURN_REMINDER_PREPROMPT_COPY,
   type Puzzle,
 } from '../../packages/crossword-core/src';
@@ -19,6 +20,7 @@ type Props = {
   onReview: () => void;
   onShare: () => void;
   onLeaderboard?: () => void;
+  leaderboardOpenFailed?: boolean;
   onRetry?: () => void;
   reminder?: { body: string; accept: () => void; decline: () => void };
 };
@@ -36,6 +38,7 @@ export function TileResultScreen({
   onReview,
   onShare,
   onLeaderboard,
+  leaderboardOpenFailed = false,
   onRetry,
   reminder,
 }: Props) {
@@ -97,6 +100,11 @@ export function TileResultScreen({
         <Text style={s.badge}>
           {best ? '✧ 나의 최고 기록! ' : ''}
           {noHint ? '힌트 없이 완성' : ''}
+        </Text>
+      ) : null}
+      {leaderboardOpenFailed ? (
+        <Text accessibilityRole="alert" style={s.lead}>
+          {LEADERBOARD_OPEN_FAILURE_MESSAGE}
         </Text>
       ) : null}
       <Pressable accessibilityRole="button" style={s.primary} onPress={onHome}>

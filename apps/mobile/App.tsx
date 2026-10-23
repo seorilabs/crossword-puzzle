@@ -859,6 +859,7 @@ function AppContent() {
     useState<LaunchConfig>(defaultLaunchConfig);
   const {
     visible: leaderboardVisible,
+    openFailed: leaderboardOpenFailed,
     submitScore: submitLeaderboardScore,
     openLeaderboard,
   } = useLeaderboard({
@@ -2887,6 +2888,7 @@ function AppContent() {
               }
             : undefined
         }
+        leaderboardOpenFailed={leaderboardOpenFailed}
         onRetry={
           !isCompleted && remainingAttempts > 0
             ? restartMissionAttempt

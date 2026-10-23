@@ -46,6 +46,7 @@ import {
   FIRST_WORD_GUIDE_EVENTS,
   buildFirstWordGuideTelemetryParams,
   LETTER_TILE_CHOOSE_EVENT,
+  LEADERBOARD_OPEN_FAILURE_MESSAGE,
   formatPuzzleAliasLabel,
   formatPuzzleCardSequenceLabel,
   formatReturnReminderPrepromptBody,
@@ -607,6 +608,7 @@ function App() {
     useState<LaunchConfig>(defaultLaunchConfig);
   const {
     visible: leaderboardVisible,
+    openFailed: leaderboardOpenFailed,
     submitScore: submitLeaderboardScore,
     openLeaderboard,
   } = useLeaderboard({
@@ -974,6 +976,14 @@ function App() {
     [refreshPuzzleArchive],
   );
 
+  const recoverMissingPuzzle = useCallback(() => {
+    const currentRoute = getRouteFromPathname(window.location.pathname);
+    if (currentRoute === "today" || currentRoute === "result") {
+      window.history.replaceState(null, "", getPathForRoute("home"));
+      setRoute("home");
+    }
+  }, []);
+
   useEffect(() => {
     let isCancelled = false;
 
@@ -984,10 +994,7 @@ function App() {
         const nextArchiveRecords = (
           await puzzleArchiveRepository.listPuzzles()
         ).filter((record) => record.puzzleId !== onboardingPuzzle.puzzleId);
-        const nextSummaries =
-          loadedSummaries.length > 0
-            ? loadedSummaries
-            : [createPuzzleSummary(fallbackPuzzle)];
+        const nextSummaries = loadedSummaries;
         const today = getTodayDateKey();
         const allSummaries = [
           ...nextSummaries,
@@ -1013,10 +1020,12 @@ function App() {
           setDailyHintWallet(nextDailyHintWallet);
           applyPuzzleSession(session);
           setLoadState(getPuzzlePackLoadState(nextSummaries));
+          if (session == null) recoverMissingPuzzle();
         }
       } catch {
         if (!isCancelled) {
           setLoadState("fallback");
+          recoverMissingPuzzle();
         }
       }
     }
@@ -1032,6 +1041,7 @@ function App() {
     loadDailyHintWalletForDate,
     loadPuzzleSession,
     packReload,
+    recoverMissingPuzzle,
   ]);
 
   const selectPuzzle = useCallback(
@@ -3060,6 +3070,18 @@ function App() {
     selectPuzzle,
   };
 
+  if (loadState === "loading" && (route === "today" || route === "result")) {
+    return (
+      <main className="appShell appShellTiles">
+        <section className="tileHome" aria-busy="true">
+          <p className="tileLead" role="status">
+            퍼즐을 불러오고 있어요.
+          </p>
+        </section>
+      </main>
+    );
+  }
+
   if (route === "dev-simulator") {
     return (
       <DevSimulatorScreen
@@ -3171,6 +3193,7 @@ function App() {
           hintCount={hintCount}
           isNewBestTime={isNewBestTime}
           leaderboardVisible={leaderboardVisible}
+          leaderboardOpenFailed={leaderboardOpenFailed}
           mission={mission}
           navigate={navigate}
           onboardingDifficultyRampEnabled={
@@ -3891,6 +3914,7 @@ type ResultScreenProps = DateSelectionProps & {
   hintCount: number;
   isNewBestTime: boolean;
   leaderboardVisible: boolean;
+  leaderboardOpenFailed: boolean;
   mission: DailyMissionState;
   navigate: (route: AppRoute) => void;
   onboardingDifficultyRampEnabled: boolean;
@@ -3917,6 +3941,7 @@ function ResultScreen({
   consecutiveStreak,
   revealUsed,
   leaderboardVisible,
+  leaderboardOpenFailed,
   onOpenLeaderboard,
   remainingAttempts,
   restartMissionAttempt,
@@ -3988,6 +4013,11 @@ function ResultScreen({
         <p className="tileResultBadge">
           {isNewBestTime ? "✧ 나의 최고 기록! " : ""}
           {achievements.noHint ? "힌트 없이 완성" : ""}
+        </p>
+      ) : null}
+      {leaderboardOpenFailed ? (
+        <p className="tileLead" role="status">
+          {LEADERBOARD_OPEN_FAILURE_MESSAGE}
         </p>
       ) : null}
       <button className="tilePrimary" onClick={() => navigate("home")}>

@@ -1,5 +1,13 @@
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type {
   Puzzle,
   WeeklyStreakStripDay,
@@ -36,6 +44,12 @@ export function TileHomeScreen({
   onSettings,
   onLicense,
 }: Props) {
+  const { height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const previewSize = Math.max(
+    96,
+    Math.min(220, height - insets.top - insets.bottom - 500),
+  );
   return (
     <ScrollView style={s.screen} contentContainerStyle={s.content}>
       <View style={s.nav}>
@@ -66,7 +80,7 @@ export function TileHomeScreen({
           </Text>
           <Text style={s.wordCount}>{puzzle?.entries.length ?? '…'} 단어</Text>
         </View>
-        <View style={s.preview}>
+        <View style={[s.preview, { width: previewSize }]}>
           {puzzle?.grid.map((row, y) => (
             <View key={y} style={s.boardRow}>
               {row.map((letter, x) => (
