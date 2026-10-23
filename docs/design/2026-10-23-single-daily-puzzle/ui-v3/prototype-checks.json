@@ -1,89 +1,65 @@
 {
-  "scope": "interactive design prototype only; not app L3",
-  "flows": {
-    "repair": true,
-    "undo": true,
-    "stable_positions": true,
-    "partial_reload": true,
-    "auto_next": true,
-    "hint": true,
-    "navigation_preserves_progress": true
+  "scope": "보드 고정 시안의 배치 확인. 제품 앱 L3 아님.",
+  "current_layout": {
+    "scope": "fixed-board prototype layout only, not app L3",
+    "word_transitions": 240,
+    "maximum_candidate_cases": 12,
+    "failures": [],
+    "min_candidate_width": 55.1875,
+    "candidate_height": 57,
+    "fixed_regions": [
+      "board",
+      "clue",
+      "answer",
+      "tray",
+      "tools"
+    ],
+    "viewports": [
+      [
+        360,
+        800
+      ],
+      [
+        390,
+        844
+      ],
+      [
+        430,
+        932
+      ]
+    ],
+    "large_text": "clue 22px, feedback 14px"
   },
-  "rounds": {
-    "ko": {
-      "words": 18,
-      "tile_clicks": 21,
-      "finish_and_reload": true
+  "input_baseline": {
+    "source_sha": "14571481af069aa01eb108fe63f93e604144647f",
+    "flows": {
+      "repair": true,
+      "undo": true,
+      "stable_positions": true,
+      "partial_reload": true,
+      "auto_next": true,
+      "hint": true,
+      "navigation_preserves_progress": true
     },
-    "en": {
-      "words": 22,
-      "tile_clicks": 35,
-      "finish_and_reload": true
-    }
+    "rounds": {
+      "ko": {
+        "words": 18,
+        "tile_clicks": 21,
+        "finish_and_reload": true
+      },
+      "en": {
+        "words": 22,
+        "tile_clicks": 35,
+        "finish_and_reload": true
+      }
+    },
+    "note": "입력 정책은 변경하지 않았다. 이번에는 단서 이동과 배치를 다시 실행했다."
   },
-  "browser_errors": [],
-  "layout_cases": 132,
-  "layout_failures": [],
-  "minimum_candidate_height": 57,
-  "environment": "독립 Edge 브라우저, 데스크톱의 화면 크기 모사. 제품 앱과 실기기 검수 아님.",
-  "viewports": [
-    [
-      390,
-      844
-    ],
-    [
-      360,
-      800
-    ],
-    [
-      430,
-      932
-    ]
-  ],
   "source_sha256": {
-    "index.html": "8b27cdad5940f551b2c8f50261187be6f7877162fb99be49362f97d05f1b8b51",
-    "styles.css": "ab0127fc803f91b68dd7a6ec9bdf3dca673385551ae9fbf415c08a6aa8c4fb5a",
-    "demo.js": "f765432363f2a54b0289597b2a21790b6413e290331a33222560123059d7bb65",
+    "index.html": "23c81e6614a28bcf8ac8d65fd429d0025d4312bce3ecf1e7a8fd5338f8a9daf3",
+    "styles.css": "7d3026649b5e244d43a953ff84d2cd158e4ad202977918be7fe90e6cd4d603a3",
+    "demo.js": "e55774f4d6fe892070ae5e83a36588152e2c3593d30d37203a668690a2ab9416",
     "export-preview.mjs": "955fa14a005c90cc5f4338a95a517395f0a9de2db11f72004cca79164891cc37",
     "sample-data.js": "f9dc876fe5bd409328122ccbcec23512eccb2fe0e52cd3494eb97735826e3147"
-  },
-  "large_text_layout": [
-    {
-      "id": "ko-play",
-      "h": 800,
-      "scroll": 800,
-      "board": 253
-    },
-    {
-      "id": "ko-retry",
-      "h": 800,
-      "scroll": 800,
-      "board": 220
-    },
-    {
-      "id": "ko-result",
-      "h": 800,
-      "scroll": 800,
-      "board": null
-    },
-    {
-      "id": "en-play",
-      "h": 800,
-      "scroll": 800,
-      "board": 253
-    },
-    {
-      "id": "en-retry",
-      "h": 800,
-      "scroll": 800,
-      "board": 187
-    },
-    {
-      "id": "en-result",
-      "h": 800,
-      "scroll": 800,
-      "board": null
-    }
-  ],
-  "large_text_style": "단서 22px, 안내 14px, 화면 360×800"
+  }
 }

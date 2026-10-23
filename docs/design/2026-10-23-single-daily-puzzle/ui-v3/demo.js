@@ -133,9 +133,9 @@ function play(s){
  const t=TEXT[s.locale],r=entry(s),tokens=tray(s),done=s.completed.has(r.answer),canUndo=r.cells.some(c=>s.values[keyOf(c)]&&!s.confirmed.has(keyOf(c)));
  const message=s.status==='correct'?`${esc(r.answer)} ${t.wordDone}`:s.status==='repair'?t.repair:s.status==='hint'?t.hinted:done?t.already:t.idle;
  return `${statusBar()}<nav class="app-nav"><button class="icon-button" data-action="home" aria-label="${t.homeLabel}">${icon('back')}</button><span class="nav-title">${t.daily}</span><button class="hint-button" data-action="hint" aria-label="${t.hint} ${s.hints}" ${s.hints<=0||done?'disabled':''}>${icon('hint')}<span>${s.hints}</span></button></nav>${progress(s)}
- <div class="board-wrap">${board(s)}</div><section class="clue-panel"><div class="clue-label"><b class="clue-number">${r.number}</b><span>${r.direction==='across'?t.across:t.down}</span><span class="clue-length">${r.cells.length} ${t.letters}</span></div><p class="clue-text">${esc(r.clue)}</p></section>
+ <div class="board-wrap">${board(s)}</div><section class="clue-panel"><div class="clue-label"><b class="clue-number">${r.number}</b><span>${r.direction==='across'?t.across:t.down}</span><span class="clue-length">${r.cells.length} ${t.letters}</span></div><p class="clue-text" tabindex="0">${esc(r.clue)}</p></section>
  <div class="answer-row ${r.cells.length>5?'long':''}" role="group" aria-label="${s.locale==='ko'?'현재 단어 답칸':'Current answer'}">${r.cells.map((cell,i)=>{const key=keyOf(cell),v=s.values[key]||'',fixed=s.confirmed.has(key);return `<button class="answer-cell ${i===s.active&&!fixed?'current':''} ${fixed?'confirmed':''}" data-slot="${i}" aria-label="${t.answerSlot(i,r.cells.length)}${v?', '+esc(v):''}" ${fixed?'disabled':''}>${esc(v)}</button>`;}).join('')}</div>
- <section class="tray-section"><div class="tray-heading"><strong><span class="mini-star">✦</span>${t.pick}</strong><button class="tool-button" data-action="list">${icon('list')}${t.list}</button></div><div class="tray ${tokens.length>6?'dense':''} ${tokens.length>8?'wide':''}">${tokens.map(tile=>`<button class="letter-tile ${tile.used?'used':''}" data-token="${tile.id}" data-letter="${esc(tile.value)}" aria-label="${esc(tile.value)}, ${tile.used?t.used:t.available}" ${tile.used||done||s.status==='correct'?'disabled':''}>${esc(tile.value)}</button>`).join('')}</div></section>
+ <section class="tray-section"><div class="tray-heading"><strong><span class="mini-star">✦</span>${t.pick}</strong><button class="tool-button" data-action="list">${icon('list')}${t.list}</button></div><div class="tray">${tokens.map(tile=>`<button class="letter-tile ${tile.used?'used':''}" data-token="${tile.id}" data-letter="${esc(tile.value)}" aria-label="${esc(tile.value)}, ${tile.used?t.used:t.available}" ${tile.used||done||s.status==='correct'?'disabled':''}>${esc(tile.value)}</button>`).join('')}</div></section>
  <div class="feedback ${s.status==='correct'||s.status==='hint'?'positive':''} ${s.status==='repair'?'repair':''}" aria-live="polite">${message}</div><div class="bottom-tools"><button class="tool-button" data-action="prev">${icon('back')}${t.prev}</button><button class="tool-button undo" data-action="erase" ${!canUndo?'disabled':''}>${icon('erase')}${t.erase}</button><button class="tool-button" data-action="next">${t.next}${icon('next')}</button></div><div class="home-indicator"></div>`;
 }
 function completion(s){const t=TEXT[s.locale];return `${statusBar()}<nav class="app-nav"><button class="icon-button" data-action="home" aria-label="${t.homeLabel}">${icon('back')}</button><span class="nav-title">${t.daily}</span></nav><section class="celebration"><div class="eyebrow">OCT 23 · DAILY COMPLETE</div><div class="complete-badge">${icon('check')}</div><h3 class="complete-title">${t.complete}</h3><p class="complete-sub">${t.completeSub(s.sample.runs.length)}</p><div class="complete-board">${board(s,true)}</div><div class="complete-meta"><div class="complete-metric"><b>${s.completed.size}</b>${t.words}</div><div class="complete-metric"><b>8 × 8</b>${t.grid}</div></div><p class="complete-message">${t.completeMessage}</p><button class="primary-button" data-action="home">${t.home}${icon('next')}</button><button class="secondary-button" data-action="record">${t.record}</button></section><div class="home-indicator"></div>`;}
@@ -145,17 +145,9 @@ function openList(s,record=false){
  shade.innerHTML=`<section class="clue-sheet"><h3>${record?t.record:t.choose}</h3><div class="clue-list">${s.sample.runs.map(r=>`<button class="clue-choice" data-answer="${esc(r.answer)}"><b>${r.number}</b><span>${esc(r.clue)}</span><small>${s.completed.has(r.answer)?'✓':r.cells.length+' '+t.letters}</small></button>`).join('')}</div><button class="sheet-close">${t.close}</button></section>`;
  p.append(shade);shade.querySelectorAll('[data-answer]').forEach(b=>b.addEventListener('click',()=>selectEntry(s,b.dataset.answer)));shade.querySelector('.sheet-close').addEventListener('click',()=>shade.remove());
 }
-function fitPhone(p){
- const wrap=p.querySelector('.board-wrap');if(!wrap)return;
- wrap.style.width='';
- for(let i=0;i<3;i++){
-  const overflow=p.scrollHeight-p.clientHeight;if(overflow<=0)break;
-  wrap.style.width=Math.max(160,wrap.getBoundingClientRect().width-overflow-2)+'px';
- }
-}
 function renderPhone(s){
  const p=document.querySelector(`[data-demo="${s.id}"]`);if(!p)return;
- p.dataset.entry=s.selected;p.dataset.active=String(s.active);p.dataset.complete=String(s.completed.size);p.dataset.view=s.view;p.dataset.largeTray=String(tray(s).length>8);p.classList.toggle('busy',s.status==='correct');
+ p.dataset.entry=s.selected;p.dataset.active=String(s.active);p.dataset.complete=String(s.completed.size);p.dataset.view=s.view;p.classList.toggle('busy',s.status==='correct');
  p.innerHTML=s.view==='complete'?completion(s):s.view==='home'?home(s):play(s);
  p.querySelectorAll('[data-token]').forEach(b=>b.addEventListener('click',()=>takeTile(s,b.dataset.token)));
  p.querySelectorAll('[data-slot]').forEach(b=>b.addEventListener('click',()=>{const index=Number(b.dataset.slot),key=keyOf(entry(s).cells[index]);if(s.confirmed.has(key))return;if(s.values[key])delete s.values[key];s.active=index;s.status='idle';save(s);renderPhone(s);}));
@@ -170,7 +162,6 @@ function renderPhone(s){
   if(action==='list'||action==='record')return openList(s,action==='record');
   stopTimer(s);s.view=action==='home'?'home':'play';s.status='idle';save(s);renderPhone(s);
  }));
- fitPhone(p);
 }
 function renderGallery(){
  for(const s of states.values())stopTimer(s);
@@ -194,4 +185,3 @@ document.querySelector('.reset-demo').addEventListener('click',()=>{
  renderGallery();
 });
 renderGallery();
-window.addEventListener('resize',()=>document.querySelectorAll('.phone').forEach(fitPhone));
