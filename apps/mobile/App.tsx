@@ -225,6 +225,7 @@ export type MissionState = DailyMissionState & PauseSessionState;
 
 type PuzzleSession = {
   nextPuzzle: Puzzle;
+  isPublished: boolean;
   savedMission: MissionState;
   savedProgress: SavedProgress;
 };
@@ -729,6 +730,11 @@ export async function loadPuzzleSession(
 
   return {
     nextPuzzle,
+    isPublished: isPublishedPuzzle(
+      pack.summaries.find(
+        summary => summary.puzzleId === nextPuzzle.puzzleId,
+      ) ?? createPuzzleSummary(nextPuzzle),
+    ),
     savedMission,
     savedProgress,
   };
@@ -1337,9 +1343,7 @@ function AppContent() {
       session.savedProgress.tileInput,
     );
     const ids = chooseFirstWordGuide(session.nextPuzzle.entries);
-    const guideEligible = isPublishedPuzzle(
-      createPuzzleSummary(session.nextPuzzle),
-    );
+    const guideEligible = session.isPublished;
     setFirstWordGuide(previous =>
       guideEligible
         ? restoreFirstWordGuide({
