@@ -1090,15 +1090,26 @@ function AppContent() {
     todayKey,
   );
   const [homePreview, setHomePreview] = useState<Puzzle | null>(null);
+  const [homePreviewError, setHomePreviewError] = useState(false);
+  const [packReload, setPackReload] = useState(0);
+  const homeLoadError =
+    homePreviewError ||
+    (!isLoading && puzzlePack.source === 'bundled' && dailySummary == null);
   useEffect(() => {
     let cancelled = false;
     setHomePreview(null);
+    setHomePreviewError(false);
     if (dailySummary)
       loadPuzzleSession(dailySummary.puzzleId, puzzlePack)
         .then(session => {
-          if (!cancelled) setHomePreview(session?.nextPuzzle ?? null);
+          if (!cancelled) {
+            setHomePreview(session?.nextPuzzle ?? null);
+            setHomePreviewError(session == null);
+          }
         })
-        .catch(() => {});
+        .catch(() => {
+          if (!cancelled) setHomePreviewError(true);
+        });
     return () => {
       cancelled = true;
     };
@@ -1482,7 +1493,7 @@ function AppContent() {
     return () => {
       isCancelled = true;
     };
-  }, [applyPuzzleSession]);
+  }, [applyPuzzleSession, packReload]);
 
   const refreshDailyHintWallet = useCallback(async () => {
     const date = getTodayDateKey();
@@ -2629,6 +2640,12 @@ function AppContent() {
         streak={consecutiveStreak}
         week={weeklyStrip}
         offline={puzzlePack.source === 'bundled'}
+        loadError={homeLoadError}
+        onRetry={() => {
+          setIsLoading(true);
+          setHomePreviewError(false);
+          setPackReload(value => value + 1);
+        }}
         onStart={() => {
           if (dailySummary)
             startDailyPuzzle(dailySummary.puzzleId).catch(() => {

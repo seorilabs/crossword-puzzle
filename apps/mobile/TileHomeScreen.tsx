@@ -12,6 +12,8 @@ type Props = {
   streak: number;
   week: WeeklyStreakStripDay[];
   offline: boolean;
+  loadError?: boolean;
+  onRetry?: () => void;
   onStart: () => void;
   onResume: () => void;
   onHistory: () => void;
@@ -26,6 +28,8 @@ export function TileHomeScreen({
   streak,
   week,
   offline,
+  loadError = false,
+  onRetry,
   onStart,
   onResume,
   onHistory,
@@ -72,30 +76,34 @@ export function TileHomeScreen({
           ))}
         </View>
         <Text style={s.caption}>
-          {puzzle == null
-            ? '오늘의 퍼즐을 준비하고 있어요.'
-            : offline
-              ? '연결이 어려워 저장된 퍼즐을 보여드려요.'
-              : finished
-                ? '완성한 단어를 다시 만나보세요.'
-                : started
-                  ? '고른 글자는 그대로, 이어서 완성해요.'
-                  : '서두르지 않아도 괜찮아요. 한 단어씩 채워봐요.'}
+          {loadError
+            ? '퍼즐을 불러오지 못했어요. 연결을 확인한 뒤 다시 불러와 주세요.'
+            : puzzle == null
+              ? '오늘의 퍼즐을 준비하고 있어요.'
+              : offline
+                ? '연결이 어려워 저장된 퍼즐을 보여드려요.'
+                : finished
+                  ? '완성한 단어를 다시 만나보세요.'
+                  : started
+                    ? '고른 글자는 그대로, 이어서 완성해요.'
+                    : '서두르지 않아도 괜찮아요. 한 단어씩 채워봐요.'}
         </Text>
         <Pressable
           accessibilityRole="button"
-          disabled={!puzzle}
+          disabled={!loadError && !puzzle}
           style={s.primary}
-          onPress={onStart}
+          onPress={loadError ? onRetry : onStart}
         >
           <Text style={s.primaryText}>
-            {!puzzle
-              ? '오늘 퍼즐 준비 중'
-              : finished
-                ? '완성한 판 보기'
-                : started
-                  ? '이어서 풀기'
-                  : '오늘 한 판 시작'}{' '}
+            {loadError
+              ? '다시 불러오기'
+              : !puzzle
+                ? '오늘 퍼즐 준비 중'
+                : finished
+                  ? '완성한 판 보기'
+                  : started
+                    ? '이어서 풀기'
+                    : '오늘 한 판 시작'}{' '}
             ›
           </Text>
         </Pressable>

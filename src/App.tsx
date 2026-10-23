@@ -628,6 +628,7 @@ function App() {
   const [puzzleSummaries, setPuzzleSummaries] = useState<PuzzleManifestItem[]>(
     () => [createPuzzleSummary(fallbackPuzzle)],
   );
+  const [packReload, setPackReload] = useState(0);
   const [dateCardStates, setDateCardStates] = useState<
     Record<string, DateCardState>
   >({});
@@ -1030,6 +1031,7 @@ function App() {
     loadDateCardStates,
     loadDailyHintWalletForDate,
     loadPuzzleSession,
+    packReload,
   ]);
 
   const selectPuzzle = useCallback(
@@ -3224,6 +3226,10 @@ function App() {
           consecutiveStreak={consecutiveStreak}
           weeklyStrip={weeklyStrip}
           onOpenSettings={() => setSettingsOpen(true)}
+          onRetryPack={() => {
+            setLoadState("loading");
+            setPackReload((value) => value + 1);
+          }}
           startDailyPuzzle={(id) => {
             void startPuzzleById(id, "single_daily").catch(() =>
               showHintToast("퍼즐을 불러오지 못했어요. 다시 눌러주세요."),
@@ -3432,6 +3438,7 @@ type HomeScreenProps = {
   weeklyStrip: WeeklyStreakStripDay[];
   startDailyPuzzle: (id: string) => void;
   onOpenSettings: () => void;
+  onRetryPack: () => void;
 };
 
 function HomeScreen({
@@ -3444,6 +3451,7 @@ function HomeScreen({
   weeklyStrip,
   startDailyPuzzle,
   onOpenSettings,
+  onRetryPack,
 }: HomeScreenProps) {
   const summary = getDailyFreePuzzleSummary(puzzleSummaries, getTodayDateKey());
   const [preview, setPreview] = useState<Puzzle | null>(
@@ -3454,6 +3462,7 @@ function HomeScreen({
   useEffect(() => {
     let cancelled = false;
     setPreviewError(false);
+    setPreview(null);
     if (!summary) {
       setPreview(null);
       return;
@@ -3467,7 +3476,10 @@ function HomeScreen({
         }
       })
       .catch(() => {
-        if (!cancelled) setPreviewError(true);
+        if (!cancelled) {
+          setPreview(null);
+          setPreviewError(true);
+        }
       });
     return () => {
       cancelled = true;
@@ -3513,20 +3525,25 @@ function HomeScreen({
           )}
         </div>
         <p>
-          {preview == null
-            ? "오늘의 퍼즐을 준비하고 있어요."
-            : loadState === "fallback"
-              ? "연결이 어려워 저장된 퍼즐을 보여드려요."
-              : finished
-                ? "완성한 단어를 다시 만나보세요."
-                : started
-                  ? "고른 글자는 그대로, 이어서 완성해요."
-                  : "서두르지 않아도 괜찮아요. 한 단어씩 채워봐요."}
+          {previewError
+            ? "연결을 확인한 뒤 다시 불러와 주세요."
+            : preview == null
+              ? "오늘의 퍼즐을 준비하고 있어요."
+              : loadState === "fallback"
+                ? "연결이 어려워 저장된 퍼즐을 보여드려요."
+                : finished
+                  ? "완성한 단어를 다시 만나보세요."
+                  : started
+                    ? "고른 글자는 그대로, 이어서 완성해요."
+                    : "서두르지 않아도 괜찮아요. 한 단어씩 채워봐요."}
         </p>
         {previewError ? (
           <button
             className="tilePrimary"
-            onClick={() => setRetry((value) => value + 1)}
+            onClick={() => {
+              setRetry((value) => value + 1);
+              onRetryPack();
+            }}
           >
             다시 불러오기
           </button>
