@@ -127,7 +127,10 @@
       "foundation": true,
       "paths": [
         "src/adapters/appsInTossAds.ts",
-        "apps/mobile/mobileAds.ts"
+        "apps/mobile/mobileAds.ts",
+        "apps/mobile/ios/CrosswordPuzzleMobile/ConsentPreferences.swift",
+        "apps/mobile/ios/CrosswordPuzzleMobile/AppDelegate.swift",
+        "apps/mobile/firebase.json"
       ]
     },
     {
@@ -147,7 +150,9 @@
         "src/adapters/gameAnalytics.ts",
         "apps/mobile/gameplayTelemetry.ts",
         "apps/mobile/telemetry.ts",
-        "apps/mobile/gameAnalytics.ts"
+        "apps/mobile/gameAnalytics.ts",
+        "src/adapters/analyticsSinks.ts",
+        "apps/mobile/analyticsSinks.ts"
       ]
     },
     {
@@ -193,6 +198,15 @@
         "src/adapters/localProgressRepository.ts",
         "apps/mobile/App.tsx",
         "packages/crossword-core/src/letterTileInput.ts"
+      ]
+    },
+    {
+      "id": "usage-statistics-preference",
+      "core": false,
+      "paths": [
+        "packages/crossword-core/src/usageStatistics.ts",
+        "src/adapters/usageStatistics.ts",
+        "apps/mobile/usageStatistics.ts"
       ]
     }
   ]

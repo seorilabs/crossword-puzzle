@@ -1,3 +1,4 @@
+import { usageStatistics } from "./usageStatistics";
 import type { Analytics } from "firebase/analytics";
 import type { FirebaseApp, FirebaseOptions } from "firebase/app";
 import type { RemoteConfig } from "firebase/remote-config";
@@ -18,6 +19,8 @@ type AnalyticsParams = Record<string, string | number | boolean>;
 
 const firebaseAppName = "crossword-puzzle";
 const remoteConfigFetchIntervalMs = 6 * 60 * 60 * 1000;
+
+let firebaseUsageEnabled = false;
 
 let firebaseAppPromise: Promise<FirebaseApp | null> | null = null;
 let firebaseRuntimePromise: Promise<FirebaseRuntime | null> | null = null;
@@ -68,12 +71,21 @@ async function createAnalytics(app: FirebaseApp, options: FirebaseOptions) {
   }
 
   try {
-    const { getAnalytics, isSupported } = await import("firebase/analytics");
+    const { initializeAnalytics, isSupported, setAnalyticsCollectionEnabled } =
+      await import("firebase/analytics");
     if (!(await isSupported())) {
       return null;
     }
 
-    return getAnalytics(app);
+    // 원격 설정이 먼저 초기화해도 저장 선택 복원 전에는 자동 수집하지 않는다.
+    (window as unknown as Record<string, unknown>)[
+      `ga-disable-${options.measurementId}`
+    ] = !firebaseUsageEnabled;
+    const analytics = initializeAnalytics(app, {
+      config: { send_page_view: false },
+    });
+    setAnalyticsCollectionEnabled(analytics, firebaseUsageEnabled);
+    return analytics;
   } catch {
     return null;
   }
@@ -287,18 +299,35 @@ export async function loadFirebaseLaunchConfig(): Promise<LaunchConfig> {
   }
 }
 
+export async function configureFirebaseUsageStatistics(enabled: boolean) {
+  firebaseUsageEnabled = enabled;
+  const options = getFirebaseOptions();
+  if (options?.measurementId) {
+    (window as unknown as Record<string, unknown>)[
+      `ga-disable-${options.measurementId}`
+    ] = !enabled;
+  }
+  const runtime = await getFirebaseRuntime();
+  if (runtime?.analytics) {
+    const { setAnalyticsCollectionEnabled } =
+      await import("firebase/analytics");
+    setAnalyticsCollectionEnabled(runtime.analytics, enabled);
+  }
+}
+
 export async function logFirebaseAnalyticsEvent(
   name: string,
   params: AnalyticsParams = {},
 ) {
+  if (!usageStatistics.canTrack()) return;
   const runtime = await getFirebaseRuntime();
-  if (runtime?.analytics == null) {
+  if (!usageStatistics.canTrack() || runtime?.analytics == null) {
     return;
   }
 
   try {
     const { logEvent } = await import("firebase/analytics");
-    logEvent(runtime.analytics, name, params);
+    if (usageStatistics.canTrack()) logEvent(runtime.analytics, name, params);
   } catch {
     // Analytics must never interrupt puzzle play.
   }

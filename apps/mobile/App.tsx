@@ -1,5 +1,13 @@
+import { usageStatistics } from './usageStatistics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import {
   ActivityIndicator,
   AppState,
@@ -792,6 +800,13 @@ function getEntryCellKeys(entry: PuzzleEntry) {
 }
 
 function AppContent() {
+  const usageStatisticsState = useSyncExternalStore(
+    usageStatistics.subscribe,
+    usageStatistics.getSnapshot,
+  );
+  useEffect(() => {
+    void usageStatistics.initialize();
+  }, []);
   const [route, setRoute] = useState<AppRoute>('home');
   const [isLoading, setIsLoading] = useState(true);
   const [puzzle, setPuzzle] = useState(initialPuzzle);
@@ -1568,11 +1583,21 @@ function AppContent() {
       return;
     }
 
+    if (!usageStatisticsState.ready || !usageStatistics.canTrack()) return;
     telemetry.screen(route, {
       ...getPuzzleTelemetryParams(puzzle, selectedPuzzleSummary),
       puzzle_pack_source: puzzlePack.source,
     });
-  }, [isLoading, puzzle, puzzlePack.source, route, selectedPuzzleSummary]);
+  }, [
+    isLoading,
+    puzzle,
+    puzzlePack.source,
+    route,
+    selectedPuzzleSummary,
+    usageStatisticsState.ready,
+    usageStatisticsState.enabled,
+    usageStatisticsState.busy,
+  ]);
 
   useEffect(() => {
     if (route !== 'today' && route !== 'result') {
@@ -2956,13 +2981,15 @@ function AppContent() {
           >
             <Text style={styles.secondaryButtonText}>출처</Text>
           </Pressable>
-          <Pressable
-            accessibilityLabel="광고 개인정보 설정"
-            onPress={openAdPrivacySettings}
-            style={styles.secondaryButton}
-          >
-            <Text style={styles.secondaryButtonText}>광고 개인정보 설정</Text>
-          </Pressable>
+          {Platform.OS !== 'ios' ? (
+            <Pressable
+              accessibilityLabel="광고 개인정보 설정"
+              onPress={openAdPrivacySettings}
+              style={styles.secondaryButton}
+            >
+              <Text style={styles.secondaryButtonText}>광고 개인정보 설정</Text>
+            </Pressable>
+          ) : null}
         </View>
       </ScrollView>
     );
@@ -3140,12 +3167,56 @@ function AppContent() {
                 <Text>타이머: {tileTimerVisible ? '켜짐' : '꺼짐'}</Text>
               </Pressable>
               <Pressable
-                accessibilityRole="button"
-                style={{ minHeight: 56, justifyContent: 'center' }}
-                onPress={openAdPrivacySettings}
+                accessibilityRole="switch"
+                accessibilityLabel="사용 통계"
+                aria-checked={usageStatisticsState.enabled}
+                accessibilityState={{
+                  checked: usageStatisticsState.enabled,
+                  disabled:
+                    !usageStatisticsState.ready || usageStatisticsState.busy,
+                }}
+                disabled={
+                  !usageStatisticsState.ready || usageStatisticsState.busy
+                }
+                style={{
+                  minHeight: 56,
+                  justifyContent: 'center',
+                  padding: 12,
+                  borderRadius: 12,
+                  backgroundColor: usageStatisticsState.enabled
+                    ? '#e6f0de'
+                    : '#efeee6',
+                }}
+                onPress={() => {
+                  void usageStatistics.setEnabled(
+                    !usageStatisticsState.enabled,
+                  );
+                }}
               >
-                <Text>광고 개인정보 설정</Text>
+                <Text>
+                  사용 통계: {usageStatisticsState.enabled ? '켜짐' : '꺼짐'}
+                </Text>
+                <Text>
+                  앱 개선을 위한 이용 통계예요. 꺼도 퍼즐 기록과 힌트는
+                  유지돼요.
+                </Text>
               </Pressable>
+              {usageStatisticsState.error ? (
+                <Text accessibilityRole="alert">
+                  {usageStatisticsState.error === 'storage'
+                    ? '설정을 저장하지 못했어요. 이번 실행에만 적용되므로 다음 실행에서 다시 확인해 주세요.'
+                    : '통계 설정을 적용하지 못했어요. 다시 선택해 주세요.'}
+                </Text>
+              ) : null}
+              {Platform.OS !== 'ios' ? (
+                <Pressable
+                  accessibilityRole="button"
+                  style={{ minHeight: 56, justifyContent: 'center' }}
+                  onPress={openAdPrivacySettings}
+                >
+                  <Text>광고 개인정보 설정</Text>
+                </Pressable>
+              ) : null}
               <Pressable
                 accessibilityRole="button"
                 style={{ minHeight: 56, justifyContent: 'center' }}

@@ -1,3 +1,4 @@
+import { usageStatistics } from "./adapters/usageStatistics";
 import { Top } from "@toss/tds-mobile";
 import type { CSSProperties, KeyboardEvent, ReactNode } from "react";
 import {
@@ -7,6 +8,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import {
   applyReturnReminderOutcome,
@@ -556,6 +558,13 @@ function formatEntryReference(
 }
 
 function App() {
+  const usageStatisticsState = useSyncExternalStore(
+    usageStatistics.subscribe,
+    usageStatistics.getSnapshot,
+  );
+  useEffect(() => {
+    void usageStatistics.initialize();
+  }, []);
   const [route, setRoute] = useState<AppRoute>(() =>
     getRouteFromPathname(window.location.pathname),
   );
@@ -1570,11 +1579,19 @@ function App() {
   });
 
   useEffect(() => {
+    if (!usageStatisticsState.ready || !usageStatistics.canTrack()) return;
     telemetry.screen(route, {
       date: puzzle.date,
       puzzle_id: puzzle.puzzleId,
     });
-  }, [puzzle.date, puzzle.puzzleId, route]);
+  }, [
+    puzzle.date,
+    puzzle.puzzleId,
+    route,
+    usageStatisticsState.ready,
+    usageStatisticsState.enabled,
+    usageStatisticsState.busy,
+  ]);
 
   // 퍼즐 완료(고관여 시점)에 "오늘의 퍼즐" 복귀 리마인드 사전 안내 카드를 띄운다.
   // 게이트(원격 설정·종결·3회 예산·같은 날 1회)는 코어(shouldPromptReturnReminder)에
@@ -3217,6 +3234,10 @@ function App() {
       {settingsOpen ? (
         <div className="settingsTileLayer">
           <SettingsSheet
+            usageStatistics={usageStatisticsState}
+            toggleUsageStatistics={() => {
+              void usageStatistics.setEnabled(!usageStatisticsState.enabled);
+            }}
             hapticEnabled={hapticEnabled}
             soundEnabled={soundEnabled}
             timerVisible={timerVisible}

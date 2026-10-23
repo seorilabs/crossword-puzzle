@@ -45,6 +45,9 @@ jest.mock('@react-native-firebase/analytics', () => ({
   __esModule: true,
   default: jest.fn(() => ({
     logEvent: jest.fn(() => Promise.resolve()),
+    logScreenView: jest.fn(() => Promise.resolve()),
+    setConsent: jest.fn(() => Promise.resolve()),
+    setAnalyticsCollectionEnabled: jest.fn(() => Promise.resolve()),
   })),
 }));
 

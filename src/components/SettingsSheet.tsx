@@ -1,8 +1,11 @@
 import { Paragraph } from "@toss/tds-mobile";
 
 import type { TextScale } from "../../packages/crossword-core/src";
+import type { UsageStatisticsState } from "../../packages/crossword-core/src/usageStatistics";
 
 export type SettingsSheetProps = {
+  usageStatistics: UsageStatisticsState;
+  toggleUsageStatistics: () => void;
   hapticEnabled: boolean;
   onClose: () => void;
   selectTextScale: (scale: TextScale) => void;
@@ -17,6 +20,8 @@ export type SettingsSheetProps = {
 // 사운드, 햅틱, 타이머와 글자 크기를 조정한다.
 // 상태와 영속은 전부 상위(App)에서 주입받고 렌더만 담당한다.
 export function SettingsSheet({
+  usageStatistics,
+  toggleUsageStatistics,
   hapticEnabled,
   onClose,
   selectTextScale,
@@ -40,7 +45,7 @@ export function SettingsSheet({
             설정
           </Paragraph>
           <Paragraph typography="t4" fontWeight="bold">
-            사운드, 햅틱, 타이머와 글자 크기
+            나에게 맞게 플레이하기
           </Paragraph>
         </div>
         <button className="ghostButton" type="button" onClick={onClose}>
@@ -49,6 +54,32 @@ export function SettingsSheet({
       </div>
 
       <div className="settingsSheetBody">
+        <div className="settingsRow">
+          <div className="settingsRowText">
+            <strong>사용 통계</strong>
+            <span>
+              앱 개선을 위한 풀이와 이용 통계예요. 꺼도 퍼즐 기록과 힌트는
+              유지돼요.
+            </span>
+          </div>
+          <button
+            type="button"
+            className={`assistButton assistToggle ${usageStatistics.enabled ? "assistToggleOn" : ""}`}
+            aria-label="사용 통계"
+            aria-pressed={usageStatistics.enabled}
+            disabled={!usageStatistics.ready || usageStatistics.busy}
+            onClick={toggleUsageStatistics}
+          >
+            {usageStatistics.enabled ? "켜짐" : "꺼짐"}
+          </button>
+        </div>
+        {usageStatistics.error ? (
+          <p role="status">
+            {usageStatistics.error === "storage"
+              ? "설정을 저장하지 못했어요. 이번 실행에만 적용되므로 다음 실행에서 다시 확인해 주세요."
+              : "통계 설정을 적용하지 못했어요. 다시 선택해 주세요."}
+          </p>
+        ) : null}
         <div className="settingsRow">
           <div className="settingsRowText">
             <strong>사운드</strong>

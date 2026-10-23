@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		CD2300010000000000000001 /* ConsentPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD2300010000000000000002 /* ConsentPreferences.swift */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		628ACFCF9D6007E051DE470F /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
@@ -19,6 +20,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		CD2300010000000000000002 /* ConsentPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ConsentPreferences.swift; path = CrosswordPuzzleMobile/ConsentPreferences.swift; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* CrosswordPuzzleMobile.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CrosswordPuzzleMobile.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = CrosswordPuzzleMobile/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = CrosswordPuzzleMobile/Info.plist; sourceTree = "<group>"; };
@@ -56,6 +58,7 @@
 			children = (
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				761780EC2CA45674006654EE /* AppDelegate.swift */,
+				CD2300010000000000000002 /* ConsentPreferences.swift */,
 				C5A1F7D42D0F4A6F8B91D505 /* RCTNativeLeaderboard.h */,
 				C5A1F7D42D0F4A6F8B91D502 /* RCTNativeLeaderboard.mm */,
 				C5A1F7D42D0F4A6F8B91D515 /* RCTNativeAppInfo.h */,
@@ -295,6 +298,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				761780ED2CA45674006654EE /* AppDelegate.swift in Sources */,
+				CD2300010000000000000001 /* ConsentPreferences.swift in Sources */,
 				C5A1F7D42D0F4A6F8B91D501 /* RCTNativeLeaderboard.mm in Sources */,
 				C5A1F7D42D0F4A6F8B91D511 /* RCTNativeAppInfo.mm in Sources */,
 			);
