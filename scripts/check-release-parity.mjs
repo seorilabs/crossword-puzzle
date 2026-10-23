@@ -595,6 +595,17 @@ assertIncludes(
   remoteConfigTemplatePath,
 );
 assertIncludes(marketParityDoc, "trigger=first_input", marketParityDocPath);
+const guideEventsPath = "packages/crossword-core/src/firstWordGuide.ts";
+const guideFunnelPath = "scripts/analytics/onboarding-guide-funnel.sql";
+for (const event of [
+  "first_three_words_shown",
+  "first_three_words_complete",
+  "first_three_words_skip",
+]) {
+  assertIncludes(read(guideEventsPath), event, guideEventsPath);
+  assertIncludes(read(guideFunnelPath), `'${event}'`, guideFunnelPath);
+  assertIncludes(marketParityDoc, event, marketParityDocPath);
+}
 for (const marker of [
   "FIRST_WORD_GUIDE_EVENTS",
   "STUCK_HINT_PROMPT_EVENT",

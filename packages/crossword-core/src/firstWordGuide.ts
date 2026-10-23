@@ -78,12 +78,8 @@ export function restoreFirstWordGuide({
   legacySeen: boolean;
   hasProgress: boolean;
 }): FirstWordGuide | undefined {
-  if (
-    previous?.puzzleId === puzzleId ||
-    previous?.status === "complete" ||
-    previous?.status === "skipped"
-  )
-    return previous;
+  // 안내는 첫 판에 한 번만 만든다. 다른 판을 둘러봐도 진행 중인 안내를 보존한다.
+  if (previous) return previous;
   // 기록을 열기만 해도 새 안내의 완료 이벤트가 생기지 않도록 한다.
   if (hasProgress || (!previous && legacySeen)) return previous;
   return {

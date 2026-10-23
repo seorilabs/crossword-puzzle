@@ -1692,8 +1692,8 @@ function AppContent() {
       result.status === 'shown'
         ? '광고 개인정보 선택을 반영했습니다.'
         : result.status === 'not_required'
-        ? '현재 지역에서는 별도의 광고 개인정보 선택이 필요하지 않습니다.'
-        : '광고 개인정보 설정을 열지 못했습니다. 네트워크 연결 후 다시 시도해 주세요.',
+          ? '현재 지역에서는 별도의 광고 개인정보 선택이 필요하지 않습니다.'
+          : '광고 개인정보 설정을 열지 못했습니다. 네트워크 연결 후 다시 시도해 주세요.',
     );
   }, []);
 
@@ -2174,6 +2174,7 @@ function AppContent() {
           ),
           attemptNumber: mission.attemptsUsed,
         });
+        firstGuideLegacySeen.current = true;
         markFirstInputGuideSeen().catch(() => {});
       }
       telemetry.click(LETTER_TILE_CHOOSE_EVENT, {
@@ -2711,8 +2712,8 @@ function AppContent() {
                   stuckHintTrigger === 'first_input'
                     ? acceptFirstInputNudge
                     : isStuckHintNearFinish
-                    ? acceptNearFinishNudge
-                    : acceptStuckHintPrompt
+                      ? acceptNearFinishNudge
+                      : acceptStuckHintPrompt
                 }
               >
                 <Text
@@ -2881,6 +2882,7 @@ function AppContent() {
           return (
             <Pressable
               key={summary.puzzleId}
+              testID={`history-puzzle-${summary.puzzleId}`}
               accessibilityRole="button"
               onPress={() => {
                 void selectPuzzle(
@@ -2910,10 +2912,10 @@ function AppContent() {
                 {state?.completedAt != null
                   ? '완료'
                   : (state?.attemptsUsed ?? 0) >= DAILY_ATTEMPT_LIMIT
-                  ? '도전 종료'
-                  : state?.hasProgress
-                  ? '진행 중'
-                  : '대기'}
+                    ? '도전 종료'
+                    : state?.hasProgress
+                      ? '진행 중'
+                      : '대기'}
               </Text>
             </Pressable>
           );
@@ -2995,14 +2997,14 @@ function AppContent() {
         {route === 'today'
           ? renderToday()
           : route === 'result'
-          ? renderResult()
-          : route === 'history'
-          ? renderHistory()
-          : route === 'resume'
-          ? renderResume()
-          : route === 'license'
-          ? renderLicense()
-          : renderHome()}
+            ? renderResult()
+            : route === 'history'
+              ? renderHistory()
+              : route === 'resume'
+                ? renderResume()
+                : route === 'license'
+                  ? renderLicense()
+                  : renderHome()}
         {renderAdDiagnosticsModal()}
         <Modal
           visible={rewardPromptOpen}

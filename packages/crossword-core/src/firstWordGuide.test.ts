@@ -91,3 +91,30 @@ test("기존 진행과 완료 판은 열기만 해도 새 첫 세 단어 안내�
     active,
   );
 });
+
+test("지난 미시작 판을 열어도 오늘 진행 중인 첫 안내를 덮어쓰지 않는다", () => {
+  const active = restoreFirstWordGuide({
+    puzzleId: "today",
+    entries: [entry("today-a", "나무")],
+    legacySeen: false,
+    hasProgress: false,
+  })!;
+  const afterArchive = restoreFirstWordGuide({
+    previous: active,
+    puzzleId: "archive",
+    entries: [entry("old-a", "하늘")],
+    legacySeen: true,
+    hasProgress: false,
+  });
+  assert.deepEqual(afterArchive, active);
+  assert.deepEqual(
+    restoreFirstWordGuide({
+      previous: afterArchive,
+      puzzleId: "today",
+      entries: [entry("today-a", "나무")],
+      legacySeen: true,
+      hasProgress: true,
+    }),
+    active,
+  );
+});

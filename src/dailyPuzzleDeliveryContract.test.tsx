@@ -112,6 +112,16 @@ describe("일간 퍼즐 전달 계약", () => {
       input_policy: "syllable-v1",
       word_count: 3,
     });
+    const funnel = readFileSync(
+      join(root, "scripts/analytics/onboarding-guide-funnel.sql"),
+      "utf8",
+    );
+    for (const event of Object.values(FIRST_WORD_GUIDE_EVENTS)) {
+      expect(funnel).toContain(`'${event}'`);
+    }
+    for (const key of ["puzzle_id", "input_policy", "word_count"]) {
+      expect(funnel).toContain(`key = '${key}'`);
+    }
   });
 
   it("AC-11: 모든 난이도가 어휘 제한 없이 같은 워드뱅크를 후보로 쓴다", () => {

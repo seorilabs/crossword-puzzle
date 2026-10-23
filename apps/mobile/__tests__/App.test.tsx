@@ -173,6 +173,100 @@ test('maps Android hardware back targets through the app scene graph', () => {
   expect(getBackTargetRoute('license')).toBe('history');
 });
 
+test('first input acknowledgement stops first-clue auto-selection on another unopened board', async () => {
+  const dateKey = (date: Date) =>
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Seoul',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(date);
+  const today = dateKey(new Date());
+  const yesterday = dateKey(new Date(Date.now() - 86400000));
+  const puzzles = [today, yesterday].map(date => {
+    const base = createPuzzle(date.slice(2).replaceAll('-', '') + '01', date);
+    return {
+      ...base,
+      grid: [
+        ['가', '나'],
+        ['다', '라'],
+      ],
+      entries: [
+        base.entries[0],
+        {
+          ...base.entries[0],
+          id: `${base.puzzleId}-basic`,
+          row: 1,
+          answer: '다라',
+          vocabularyLevel: '초급',
+        },
+      ],
+    };
+  });
+  const fetchMock = globalThis.fetch as jest.Mock;
+  fetchMock.mockImplementation(async (url: string) => ({
+    ok: true,
+    json: async () =>
+      url.endsWith('manifest.json')
+        ? {
+            puzzles: puzzles.map(p => ({
+              ...p,
+              path: `/puzzles/${p.puzzleId}.json`,
+              publishedAt: `${p.date}T00:00:00+09:00`,
+            })),
+          }
+        : puzzles.find(p => url.endsWith(`${p.puzzleId}.json`)),
+  }));
+  let renderer: ReactTestRenderer.ReactTestRenderer | undefined;
+  try {
+    await ReactTestRenderer.act(async () => {
+      renderer = ReactTestRenderer.create(<App />);
+    });
+    await flushAsyncWork(15);
+    await ReactTestRenderer.act(async () => {
+      renderer!.root.findByType(TileHomeScreen).props.onStart();
+    });
+    await flushAsyncWork(10);
+    const screen = renderer!.root.findByType(TilePuzzleScreen);
+    expect(screen.props.state.progress.entryId).toBe(
+      `${puzzles[0].puzzleId}-basic`,
+    );
+    const tile = getLetterTiles(puzzles[0], screen.props.state).find(
+      item => item.letter === '다',
+    )!;
+    await ReactTestRenderer.act(async () => {
+      screen.props.onChange(
+        chooseLetterTile(puzzles[0], screen.props.state, tile.id),
+        'choice',
+      );
+    });
+    await flushAsyncWork(5);
+    await ReactTestRenderer.act(async () => {
+      renderer!.root.findByType(TilePuzzleScreen).props.onBack();
+    });
+    await ReactTestRenderer.act(async () => {
+      renderer!.root.findByType(TileHomeScreen).props.onHistory();
+    });
+    await flushAsyncWork(5);
+    const row = renderer!.root.findByProps({
+      testID: `history-puzzle-${puzzles[1].puzzleId}`,
+    });
+    expect(row).toBeDefined();
+    await ReactTestRenderer.act(async () => {
+      row.props.onPress();
+    });
+    await flushAsyncWork(10);
+    expect(
+      renderer!.root.findByType(TilePuzzleScreen).props.state.progress.entryId,
+    ).toBe(puzzles[1].entries[0].id);
+  } finally {
+    ReactTestRenderer.act(() => renderer?.unmount());
+    fetchMock.mockImplementation(() =>
+      Promise.reject(new Error('fetch is mocked in mobile Jest')),
+    );
+  }
+}, 45_000);
+
 test('opening a fully saved board does not create a new completion', async () => {
   const today = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Seoul',

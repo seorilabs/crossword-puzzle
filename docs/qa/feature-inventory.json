@@ -86,7 +86,8 @@
         "server/batch/run-puzzle-pack-job.mjs",
         "server/batch/publish-puzzle-pack.mjs",
         "scripts/validate-puzzle-pack.mjs"
-      ]
+      ],
+      "runtimeKind": "service"
     },
     {
       "id": "puzzle-image-retention",
@@ -97,7 +98,8 @@
         "scripts/preview-puzzle-image-cleanup.mjs",
         "scripts/setup-puzzle-pack-cloud-run-job.sh",
         "config/puzzle-image-cleanup.json"
-      ]
+      ],
+      "runtimeKind": "service"
     },
     {
       "id": "puzzle-pack-monitoring",
@@ -105,7 +107,8 @@
       "paths": [
         "scripts/setup-puzzle-pack-monitoring.sh",
         "server/batch/check-puzzle-pack-health.mjs"
-      ]
+      ],
+      "runtimeKind": "service"
     },
     {
       "id": "platform-auth",
@@ -122,13 +125,18 @@
       "id": "platform-ads",
       "core": false,
       "foundation": true,
-      "paths": ["src/adapters/appsInTossAds.ts", "apps/mobile/mobileAds.ts"]
+      "paths": [
+        "src/adapters/appsInTossAds.ts",
+        "apps/mobile/mobileAds.ts"
+      ]
     },
     {
       "id": "remote-configuration",
       "core": false,
       "foundation": true,
-      "paths": ["src/adapters/launchConfig.ts"]
+      "paths": [
+        "src/adapters/launchConfig.ts"
+      ]
     },
     {
       "id": "analytics",
@@ -157,7 +165,8 @@
       "paths": [
         "packages/crossword-core/src/vocabularySelection.ts",
         "scripts/crossword-generator-prototype.mjs"
-      ]
+      ],
+      "runtimeKind": "service"
     },
     {
       "id": "first-puzzle-guidance",

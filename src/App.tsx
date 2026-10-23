@@ -3435,7 +3435,6 @@ function HomeScreen({
     setPreviewError(false);
     if (!summary) {
       setPreview(null);
-      setPreviewError(true);
       return;
     }
     void puzzleRepository
@@ -3514,13 +3513,15 @@ function HomeScreen({
             disabled={loading || !summary}
             onClick={() => summary && startDailyPuzzle(summary.puzzleId)}
           >
-            {loading
-              ? "불러오는 중"
-              : finished
-                ? "완성한 판 보기"
-                : started
-                  ? "이어서 풀기"
-                  : "오늘 한 판 시작"}
+            {!summary
+              ? "오늘 퍼즐 준비 중"
+              : loading
+                ? "불러오는 중"
+                : finished
+                  ? "완성한 판 보기"
+                  : started
+                    ? "이어서 풀기"
+                    : "오늘 한 판 시작"}
             <span aria-hidden="true"> ›</span>
           </button>
         )}
