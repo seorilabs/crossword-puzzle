@@ -160,6 +160,17 @@ export type SavedProgress = {
   // 않는다(판정은 cellValues 값만 본다). 구버전 저장 데이터에는 없으므로
   // optional이며, 로드 시 빈 배열로 정규화한다.
   tentativeCells?: string[];
+  // 확정된 교차 및 힌트 글자와 미확정 타일 선택을 구분한다. 글자 자체는
+  // cellValues에만 저장하며 구버전 저장에는 이 메타데이터가 없다.
+  tileInput?: LetterTileProgress;
+};
+
+export type LetterTileProgress = {
+  version: 1;
+  confirmedCells: string[];
+  selectionHistory: string[];
+  entryId: string;
+  activeCellKey: string;
 };
 
 export type ReviewEntry = PuzzleEntry & {

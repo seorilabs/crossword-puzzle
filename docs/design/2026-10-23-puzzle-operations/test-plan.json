@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "level": "L1",
+  "baseline": "e64931fbff57c3e2690a5bcbfdf45d49f31ade04",
+  "changedFeatures": ["puzzle-image-retention", "puzzle-pack-monitoring"],
+  "environments": ["dev"],
+  "redesign": false,
+  "foundationRerun": false,
+  "floorOverrides": [],
+  "release": {"markets": ["service"], "until": "public"}
+}

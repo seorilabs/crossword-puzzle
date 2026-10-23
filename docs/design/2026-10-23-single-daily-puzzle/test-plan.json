@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "level": "L3",
+  "baseline": "v1.1.10",
+  "changedFeatures": [
+    "single-daily-puzzle",
+    "daily-vocabulary-selection",
+    "first-puzzle-guidance",
+    "syllable-tile-input",
+    "puzzle-progress-persistence",
+    "puzzle-pack-generation"
+  ],
+  "environments": [
+    "dev"
+  ],
+  "redesign": true,
+  "foundationRerun": false,
+  "floorOverrides": [],
+  "release": {
+    "markets": [
+      "apps-in-toss",
+      "google-play",
+      "app-store",
+      "service"
+    ],
+    "until": "public",
+    "rollout": 1
+  }
+}

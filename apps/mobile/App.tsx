@@ -27,6 +27,7 @@ import {
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import {
+  normalizeLetterTileProgress,
   buildCellEntries,
   buildNextPuzzleCtaEvent,
   buildStartLabels,
@@ -609,7 +610,9 @@ function normalizeProgress(
         )
       : {};
 
+  const tileInput = normalizeLetterTileProgress(value.tileInput);
   return {
+    ...(tileInput ? { tileInput } : {}),
     cellValues,
     earnedHintCredits:
       typeof value.earnedHintCredits === 'number'

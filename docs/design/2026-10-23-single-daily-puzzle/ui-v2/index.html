@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>하루 한 판 — 게임 UI 시안 2</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="gallery-head">
+    <div class="eyebrow">CROSSWORD / VISUAL DIRECTIONS / 02</div>
+    <h1>하루 한 판, 손끝으로 채우는 재미.</h1>
+    <p>같은 8×8, 같은 18단어, 같은 진행 상태로 비교하는 세 가지 시안</p>
+    <div class="toolbar" aria-label="시안 보기">
+      <div class="segmented" role="group" aria-label="화면">
+        <button data-view="play" class="active">풀이 화면</button>
+        <button data-view="home">홈 화면</button>
+        <button data-view="global">영문 확장 예시</button>
+      </div>
+      <span class="prototype-note">설계 시안 · 수치와 퍼즐은 예시</span>
+    </div>
+  </header>
+  <main id="gallery"></main>
+  <footer class="gallery-footer">
+    <span>8×8 한 판, 전체 어휘와 단어 수 보존, 첫 세 단어 안내는 세 안 모두 같습니다.</span>
+    <span>타일 선택, 입력, 단서 전환을 눌러볼 수 있습니다. 앱 실행 검수와 별도인 시안입니다.</span>
+  </footer>
+  <script src="sample-data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
