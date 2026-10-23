@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "level": "L3",
+  "baseline": "v1.1.10",
+  "changedFeatures": [
+    "single-daily-puzzle",
+    "daily-vocabulary-selection",
+    "first-puzzle-guidance",
+    "syllable-tile-input",
+    "puzzle-progress-persistence",
+    "puzzle-pack-generation",
+    "platform-ads",
+    "analytics",
+    "settings-and-help",
+    "usage-statistics-preference"
+  ],
+  "environments": [
+    "dev"
+  ],
+  "redesign": true,
+  "foundationRerun": false,
+  "floorOverrides": [
+    {
+      "rule": "foundation",
+      "featureId": "platform-auth",
+      "reason": "인증 SDK 구현은 바꾸지 않는다. v1.1.10 이후 병합된 presence 경로가 v1 경로 하한에 포함된다. 실제 웹과 RN App에서 SDK 경계 대체 입력으로 인증 실패와 복구를 독립 L3 개발 환경에서 확인한다. 실제 제공자 인증과 기기 SDK 실행은 미실행이며 기기를 사용하지 않는다."
+    },
+    {
+      "rule": "foundation",
+      "featureId": "platform-ads",
+      "reason": "iOS 광고 동의 경로를 추적하지 않는 기본값으로 보완한다. iOS UMP 미호출, 비개인화 요청, 기존 동의 값의 제한된 제거와 Android 동의 유지 및 보상 경계를 개발 환경의 실제 App과 SDK 경계 대체 입력으로 확인한다. iOS 시작 코드는 컴파일과 격리한 Foundation 실행으로 검증한다. 제공자 SDK와 실제 iOS OS 실행은 미실행이며 기기를 사용하지 않는다."
+    },
+    {
+      "rule": "foundation",
+      "featureId": "analytics",
+      "reason": "사용 통계 선택과 저장, 기존 선택 복원 및 끄기 후 앱의 분석 전송 억제를 세 마켓의 실제 개발 화면과 SDK 대체 입력으로 검증한다. iOS의 광고 저장 및 개인화 신호는 거부하고 사용자 통계 선택과 분리한다. 실제 제공자 수집과 기기 SDK 실행은 미실행이며 기기를 사용하지 않는다."
+    }
+  ],
+  "release": {
+    "markets": [
+      "apps-in-toss",
+      "google-play",
+      "app-store",
+      "service"
+    ],
+    "until": "public",
+    "rollout": 1
+  }
+}
