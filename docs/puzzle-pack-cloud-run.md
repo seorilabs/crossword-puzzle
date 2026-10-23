@@ -100,6 +100,18 @@ gcloud run jobs execute crossword-puzzle-pack-generator \
   --wait
 ```
 
+## 하루 큰 판 전환
+
+기존 배포는 전환 날짜를 지정하기 전까지 Easy와 Hard 두 판을 유지한다. 새 클라이언트를 세 마켓에 공개한 뒤 다음 공개 날짜를 `--single-daily-from YYYY-MM-DD`로 지정한다. 이 옵션은 `PUZZLE_SINGLE_DAILY_FROM_DATE`를 Job에 전달하고 기본 스케줄을 전날 23:00으로 바꾼다. `--schedule`을 함께 주면 그 시간을 사용한다. 전환 전 날짜를 앞당기거나 이미 발행한 판을 다시 만들지 않는다.
+
+전환일부터 다음 날짜 8×8 Hard 한 판을 준비하며 공개 시각은 그 날짜의 현지 자정이다. 기존 식별자 규칙인 `YYMMDD01`, `YYYY-MM-DD-h01`을 유지한다. manifest의 `dailyPolicy.singleFromDate`는 첫 전환 날짜로 고정된다. 원격 manifest와 정답 이력을 읽는 append 실행에서 이미 발행한 ID는 보존하고, 기존 두 판을 새 정책으로 재분류하려 하면 실패한다.
+
+생성은 전체 24,963단어에서 양의 가중치로 추첨하며 정답 90일, 어근 14일 제한을 유지한다. 단일 판은 최소 20단어를 요구하고 기존 품질 조건을 그대로 적용한다. 기준을 통과하지 못하면 발행을 중단한다. 지정한 주제로 어휘 풀을 줄이는 운영 모드는 단일 판에서 사용하지 않는다.
+
+생성 Job은 Hosting 공개 뒤 생성 대상 날짜로 즉시 health를 실행한다. `00:40` health는 당일을 다시 검사한다. health는 manifest의 전환일 전에는 기존 두 판, 전환일부터는 Hard 한 판을 요구한다. 아직 공개 시각 전인 미래 판은 클라이언트가 노출하지 않는다.
+
+현재 이 옵션은 코드에 준비된 상태다. 실제 Job, Scheduler와 공개 manifest의 전환 여부는 출시 실행 기록의 live 확인으로 판정한다.
+
 ## Runtime env
 
 Cloud Run Job은 다음 환경 변수를 사용한다.
@@ -110,6 +122,7 @@ Cloud Run Job은 다음 환경 변수를 사용한다.
 | `FIREBASE_HOSTING_SITE`          |                     필수 | Firebase Hosting site ID                                                                                                  |
 | `PUZZLE_DAYS`                    |                      `1` | 한 번에 생성할 퍼즐 슬롯 수                                                                                               |
 | `PUZZLE_TIME_ZONE`               |             `Asia/Seoul` | 동적 시작 날짜 계산 timezone                                                                                              |
+| `PUZZLE_SINGLE_DAILY_FROM_DATE`   |                     비움 | 단일 큰 판 전환 날짜. 지정하면 다음 날짜 자정 공개를 준비하며 manifest에 최초 전환일을 보존 |
 | `PUZZLE_SEED`                    |                     자동 | 재현용 고정 seed. 지정하지 않으면 `PUZZLE_TIME_ZONE`, 시작 날짜, `PUZZLE_PUBLISHED_AT`을 섞어 실행마다 다른 seed를 만든다 |
 | `PUZZLE_OUT_DIR`                 |         `public/puzzles` | 생성 결과 출력 폴더                                                                                                       |
 | `PUZZLE_HOSTING_BASE_URL`        | `https://<site>.web.app` | 앱/운영자가 참조할 base URL                                                                                               |

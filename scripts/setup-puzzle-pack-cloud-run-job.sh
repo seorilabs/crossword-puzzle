@@ -14,6 +14,8 @@ RUNTIME_SERVICE_ACCOUNT_ID="crossword-puzzle-pack-job"
 SCHEDULER_SERVICE_ACCOUNT_ID="crossword-puzzle-scheduler"
 FIREBASE_HOSTING_SITE=""
 SCHEDULE="5 0 * * *"
+SCHEDULE_EXPLICIT="0"
+SINGLE_DAILY_FROM=""
 TIME_ZONE="Asia/Seoul"
 PUZZLE_DAYS="1"
 PUZZLE_KEEP="14"
@@ -39,6 +41,7 @@ Options:
   --health-job-name <name>          Existing health job to update with the generator.
   --scheduler-job-name <name>       Cloud Scheduler job name.
   --schedule <cron>                 Scheduler cron. Default: "5 0 * * *" (매일 00:05 KST).
+  --single-daily-from <YYYY-MM-DD>   Prepare one 8x8 puzzle for the next midnight from this date. Default schedule: "0 23 * * *".
   --time-zone <zone>                Scheduler/job timezone. Default: Asia/Seoul.
   --puzzle-days <n>                 Number of puzzle slots to generate per run. Default: 1.
   --puzzle-keep <n>                 Number of recent puzzle packs to keep. Default: 14.
@@ -85,6 +88,15 @@ while [ "$#" -gt 0 ]; do
       ;;
     --schedule)
       SCHEDULE="${2:-}"
+      SCHEDULE_EXPLICIT="1"
+      shift 2
+      ;;
+    --single-daily-from)
+      SINGLE_DAILY_FROM="${2:-}"
+      if [ -z "$SINGLE_DAILY_FROM" ]; then
+        echo "--single-daily-from must be a valid YYYY-MM-DD date." >&2
+        exit 1
+      fi
       shift 2
       ;;
     --time-zone)
@@ -153,6 +165,16 @@ if [ -z "$FIREBASE_HOSTING_SITE" ]; then
   echo "--firebase-hosting-site is required." >&2
   usage >&2
   exit 1
+fi
+
+if [ -n "$SINGLE_DAILY_FROM" ]; then
+  node -e 'const value=process.argv[1];if(!/^\d{4}-\d{2}-\d{2}$/.test(value)||!Number.isFinite(Date.parse(value+"T00:00:00Z"))||new Date(value+"T00:00:00Z").toISOString().slice(0,10)!==value)process.exit(1)' "$SINGLE_DAILY_FROM" || {
+    echo "--single-daily-from must be a valid YYYY-MM-DD date." >&2
+    exit 1
+  }
+  if [ "$SCHEDULE_EXPLICIT" = "0" ]; then
+    SCHEDULE="0 23 * * *"
+  fi
 fi
 
 run() {
@@ -246,6 +268,9 @@ COMPUTE_DEFAULT_SERVICE_ACCOUNT="${PROJECT_NUMBER}-compute@developer.gserviceacc
 IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REPOSITORY}/${IMAGE_NAME}:${IMAGE_TAG}"
 RUN_JOB_URI="https://run.googleapis.com/v2/projects/${PROJECT_ID}/locations/${REGION}/jobs/${JOB_NAME}:run"
 ENV_VARS="FIREBASE_PROJECT_ID=${PROJECT_ID},FIREBASE_HOSTING_SITE=${FIREBASE_HOSTING_SITE},PUZZLE_DAYS=${PUZZLE_DAYS},PUZZLE_TIME_ZONE=${TIME_ZONE},PUZZLE_HOSTING_BASE_URL=https://${FIREBASE_HOSTING_SITE}.web.app,PUZZLE_APPEND=true,PUZZLE_KEEP=${PUZZLE_KEEP},PUZZLE_INTERVAL_HOURS=${PUZZLE_INTERVAL_HOURS},PUZZLE_DIFFICULTY_ROTATION=false,PUZZLE_DAILY_TIERS=true,PUZZLE_DIVERSITY_HISTORY=7,PUZZLE_MAX_ANSWER_REUSE=0.5,PUZZLE_MAX_SCAFFOLD_SIMILARITY=0.75,PUZZLE_ANSWER_HISTORY_DAYS=${PUZZLE_ANSWER_HISTORY_DAYS},PUZZLE_FRAGMENT_HISTORY_DAYS=${PUZZLE_FRAGMENT_HISTORY_DAYS}"
+if [ -n "$SINGLE_DAILY_FROM" ]; then
+  ENV_VARS="${ENV_VARS},PUZZLE_SINGLE_DAILY_FROM_DATE=${SINGLE_DAILY_FROM}"
+fi
 
 echo "Project:              ${PROJECT_ID} (${PROJECT_NUMBER})"
 echo "Region:               ${REGION}"
