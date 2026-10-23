@@ -10,38 +10,9 @@ describe("#340 RN 첫 입력 가이드와 막힘 프롬프트 인수조건", () 
   const mobileHookTests = read(
     "apps/mobile/__tests__/useStuckHintPrompt.test.tsx",
   );
-  const guideRepositoryTests = read(
-    "apps/mobile/__tests__/firstInputGuideRepository.test.ts",
-  );
+
   const mobileFirebase = read("apps/mobile/firebaseClient.ts");
   const webApp = read("src/App.tsx");
-
-  it("AC-1: RN 첫 입력 가이드는 공용 노출 정책과 영속 재진입 가드를 사용한다", () => {
-    assert.match(mobileApp, /shouldShowFirstInputGuide\(\{/);
-    assert.match(mobileApp, /firstInputGuideShownRef/);
-    assert.match(mobileApp, /loadFirstInputGuideSeen\(\)/);
-    assert.match(mobileApp, /markFirstInputGuideSeen\(\)/);
-    assert.match(
-      guideRepositoryTests,
-      /첫 입력 가이드 열람 상태를 저장해 재진입 시 복원한다/,
-    );
-  });
-
-  it("AC-2: RN 가이드 이벤트와 Web 파라미터 키 계약이 같다", () => {
-    for (const eventName of [
-      "onboarding_guide_shown",
-      "onboarding_guide_complete",
-      "onboarding_guide_dismiss",
-    ]) {
-      assert.ok(mobileApp.includes(eventName));
-      assert.ok(webApp.includes(eventName));
-    }
-    assert.match(mobileApp, /attempt_number: mission\.attemptsUsed/);
-    assert.match(
-      mobileApp,
-      /elapsed_seconds: getElapsedSeconds\(\s*mission\.lastStartedAt/,
-    );
-  });
 
   it("AC-3: RN 막힘 타이머는 코어 지연 쿨다운 상한 정책만 사용한다", () => {
     for (const policy of [

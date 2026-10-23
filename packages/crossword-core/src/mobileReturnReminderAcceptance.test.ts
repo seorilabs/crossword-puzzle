@@ -108,18 +108,45 @@ describe("#352 RN 복귀 알림 인수조건", () => {
     assert.match(core, /"declined"/);
     assert.match(core, /export function shouldRefreshLocalReturnReminder/);
     assert.match(core, /export function shouldCancelLocalReturnReminder/);
-    assert.match(core, /RETURN_REMINDER_PREPROMPT_EVENT = "return_reminder_preprompt"/);
+    assert.match(
+      core,
+      /RETURN_REMINDER_PREPROMPT_EVENT = "return_reminder_preprompt"/,
+    );
 
     // RN: prepare(shown) → confirm(accept → prompt → schedule → result) / decline.
-    assert.match(orchestration, /export async function prepareMobileReturnReminderPreprompt/);
-    assert.match(orchestration, /export async function confirmMobileReturnReminder/);
-    assert.match(orchestration, /export async function declineMobileReturnReminder/);
-    assert.match(orchestration, /export async function refreshMobileReturnReminderSchedule/);
-    assert.match(orchestration, /export async function cancelStaleMobileReturnReminder/);
+    assert.match(
+      orchestration,
+      /export async function prepareMobileReturnReminderPreprompt/,
+    );
+    assert.match(
+      orchestration,
+      /export async function confirmMobileReturnReminder/,
+    );
+    assert.match(
+      orchestration,
+      /export async function declineMobileReturnReminder/,
+    );
+    assert.match(
+      orchestration,
+      /export async function refreshMobileReturnReminderSchedule/,
+    );
+    assert.match(
+      orchestration,
+      /export async function cancelStaleMobileReturnReminder/,
+    );
     assert.doesNotMatch(orchestration, /maybeRequestMobileReturnReminder/);
-    assert.match(mobileApp, /refreshMobileReturnReminderSchedule\(promptDate, \{ telemetry \}\)/);
-    assert.match(mobileApp, /cancelStaleMobileReturnReminder\(getTodayDateKey\(\)\)/);
-    assert.match(mobileApp, /RETURN_REMINDER_PREPROMPT_COPY\.accept/);
+    assert.match(
+      mobileApp,
+      /refreshMobileReturnReminderSchedule\(promptDate, \{ telemetry \}\)/,
+    );
+    assert.match(
+      mobileApp,
+      /cancelStaleMobileReturnReminder\(getTodayDateKey\(\)\)/,
+    );
+    assert.match(
+      read("apps/mobile/TileResultScreen.tsx"),
+      /RETURN_REMINDER_PREPROMPT_COPY\.accept/,
+    );
     assert.match(mobileApp, /declineMobileReturnReminder\(prompted, \{/);
     assert.match(
       orchestrationTests,
@@ -136,11 +163,22 @@ describe("#352 RN 복귀 알림 인수조건", () => {
 
     // 카드는 축하 다이얼로그·모달이 떠 있을 때만 유도로 기록하고(카드 없이 예산 소진 방지),
     // 완료 후 확정한 스트릭을 카드 본문과 세 이벤트가 함께 쓴다.
-    assert.match(mobileApp, /completionCelebrationPuzzleIdRef\.current !== puzzle\.puzzleId/);
-    assert.match(mobileApp, /setReturnReminderPreprompt\(\{ prompted, streakDays \}\)/);
-    assert.match(webApp, /completionCelebrationIdRef\.current === puzzle\.puzzleId/);
-    assert.match(webApp, /openReturnReminderPreprompt\(nextStreak\)/);
-    assert.match(webApp, /setReturnReminderPreprompt\(\{ prompted, streakDays \}\)/);
+    assert.match(
+      mobileApp,
+      /completionCelebrationPuzzleIdRef\.current !== puzzle\.puzzleId/,
+    );
+    assert.match(
+      mobileApp,
+      /setReturnReminderPreprompt\(\{ prompted, streakDays \}\)/,
+    );
+    assert.match(
+      webApp,
+      /completionCelebrationIdRef\.current === puzzle\.puzzleId/,
+    );
+    assert.match(
+      webApp,
+      /setReturnReminderPreprompt\(\{ prompted, streakDays \}\)/,
+    );
 
     // Web: 같은 사전 안내 카드와 accept/decline 계측, 미응답 닫기는 보류.
     assert.match(webApp, /RETURN_REMINDER_PREPROMPT_EVENT/);

@@ -6,7 +6,6 @@ import { describe, expect, it } from "vitest";
 import {
   DAILY_PUZZLE_TIERS,
   DIFFICULTY_PROFILES,
-  formatDifficultyLabel,
   PUZZLE_KEEP_COUNT,
 } from "../packages/crossword-core/src";
 
@@ -70,21 +69,13 @@ describe("일간 퍼즐 전달 계약", () => {
     expect(DIFFICULTY_PROFILES.hard.minWordCount).toBe(12);
   });
 
-  it("AC-4: Web과 Mobile은 오늘의 두 난이도를 사다리 단계로 시작하고 스캐폴드를 렌더한다", () => {
-    expect(
-      DAILY_PUZZLE_TIERS.map((tier) => formatDifficultyLabel(tier.difficulty)),
-    ).toEqual(["쉬움", "어려움"]);
-    // 병렬 난이도 선택 대신 core 사다리(buildDailyLadder)로 단계를 만들고, 단계 탭이
-    // 곧 시작이 되도록 home_quick_start(source=ladder_step_N)로 계측한다.
+  it("AC-4: 세 마켓은 오늘 큰 판 하나와 공통 타일 입력을 사용한다", () => {
     for (const source of [webSource, mobileSource]) {
-      expect(source).toContain("buildDailyLadder(");
-      expect(source).toContain("buildDailyLadderCtaParams(");
-      expect(source).toContain("buildWeeklyStreakStrip(");
+      expect(source).toContain("getDailyFreePuzzleSummary(");
+      expect(source).toContain("TilePuzzleScreen");
+      expect(source).toContain("chooseFirstWordGuide(");
+      expect(source).not.toContain("buildDailyLadder(");
     }
-    expect(webSource).toContain('className="selectedPuzzleScaffold"');
-    expect(webSource).toContain("<MiniPuzzlePreview puzzle={puzzle}");
-    expect(mobileSource).toContain("renderSelectedPuzzleScaffold()");
-    expect(mobileSource).toContain("styles.selectedPuzzleScaffold");
   });
 
   it("AC-5: AIT·Android·iOS는 같은 manifest와 공용 난이도 라벨을 사용한다", () => {
@@ -106,21 +97,13 @@ describe("일간 퍼즐 전달 계약", () => {
     expect(generatorSource).not.toContain("selectWordsForManualClueCoverage(");
   });
 
-  it("AC-12: 플레이 방법 안내의 노출·이탈 단계를 Web/Mobile 모두 계측한다", () => {
-    // 무입력 이탈(93명·중앙 7초)이 이 구간에 몰려 있어, 안내를 어디까지 보고
-    // 떠났는지를 두 마켓이 같은 이벤트·파라미터로 보내야 한다.
+  it("AC-12: 첫 세 단어와 전체 완주를 별도 사건으로 기록한다", () => {
     for (const source of [webSource, mobileSource]) {
-      expect(source).toContain("HOW_TO_PLAY_SHOWN_EVENT");
-      expect(source).toContain("getHowToPlayOutcomeEvent(");
-      expect(source).toContain("buildHowToPlayParams({");
+      expect(source).toContain("first_three_words_complete");
+      expect(source).toContain("first_three_words_skip");
+      expect(source).toContain("game_puzzle_complete");
+      expect(source).toContain("TILE_INPUT_POLICY_VERSION");
     }
-    // 노출은 최초 1회만 남아야 재노출/리렌더로 지표가 부풀지 않는다.
-    for (const source of [webSource, mobileSource]) {
-      expect(source).toContain("howToPlayShownRef.current");
-    }
-    // 완료와 중도 이탈이 구분되어야 이탈 지점 분석이 성립한다.
-    expect(webSource).toContain("type HowToPlayCloseContext");
-    expect(mobileSource).toContain("dismissHowToPlay('complete')");
   });
 
   it("AC-11: 모든 난이도가 어휘 제한 없이 같은 워드뱅크를 후보로 쓴다", () => {
@@ -155,11 +138,19 @@ describe("일간 퍼즐 전달 계약", () => {
     // 파일로만 막을 수 있다. 정확 일치 배제 → 어근 배제 순서와, 슬롯 확정 직후 이력
     // 기록을 계약으로 고정한다.
     expect(generatorSource).toContain("excludeExactAnswers(");
-    expect(generatorSource).toContain("writeAnswerHistory(outDir, answerHistory)");
-    expect(generatorSource).toContain("selectAnswerHistoryWindow(answerHistory, {");
+    expect(generatorSource).toContain(
+      "writeAnswerHistory(outDir, answerHistory)",
+    );
+    expect(generatorSource).toContain(
+      "selectAnswerHistoryWindow(answerHistory, {",
+    );
     expect(runnerSource).toContain('!arg.startsWith("--answerHistoryUrl=")');
-    expect(runnerSource).toContain('["PUZZLE_ANSWER_HISTORY_DAYS", "answerHistoryDays"]');
-    expect(runnerSource).toContain('["PUZZLE_FRAGMENT_HISTORY_DAYS", "fragmentHistoryDays"]');
+    expect(runnerSource).toContain(
+      '["PUZZLE_ANSWER_HISTORY_DAYS", "answerHistoryDays"]',
+    );
+    expect(runnerSource).toContain(
+      '["PUZZLE_FRAGMENT_HISTORY_DAYS", "fragmentHistoryDays"]',
+    );
   });
 
   it("AC-9: 최근 발행 정답과 어근을 공유하는 후보도 제외한다", () => {

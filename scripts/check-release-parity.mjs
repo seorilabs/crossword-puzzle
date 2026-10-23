@@ -64,7 +64,8 @@ const deployAllWorkflowPath = ".github/workflows/deploy-all.yml";
 const deployAppsInTossWorkflowPath =
   ".github/workflows/deploy-apps-in-toss.yml";
 const deployGooglePlayWorkflowPath = ".github/workflows/deploy-google-play.yml";
-const promoteGooglePlayWorkflowPath = ".github/workflows/promote-google-play.yml";
+const promoteGooglePlayWorkflowPath =
+  ".github/workflows/promote-google-play.yml";
 const androidBuildEnvPath = "build.env";
 const androidCloudBuildConfigPath = "cloudbuild-android.yaml";
 const androidCloudBuildScriptPath = "scripts/build-android.sh";
@@ -306,13 +307,13 @@ const webPuzzleRepository = read(webPuzzleRepositoryPath);
 // like v0.3.63, where the answer input toggle shipped to web (src/App.tsx) but
 // was missing from mobile (apps/mobile/App.tsx).
 const featureParityMarkers = [
-  "answerInputMode",
-  "selectAnswerInputMode",
-  "buildDailyLadder",
-  "buildDailyLadderCtaParams",
+  "TILE_INPUT_POLICY_VERSION",
+  "createLetterTileState",
+  "restoreFirstWordGuide",
+  "FIRST_WORD_GUIDE_KEY",
+  "first_three_words_complete",
+  "first_three_words_skip",
   "buildWeeklyStreakStrip",
-  "startLadderStep",
-  "formatStreakStripHeadline",
   "formatReturnReminderPrepromptBody",
   "computePersonalStats",
   "buildStreakCalendarWeeks",
@@ -321,14 +322,9 @@ const featureParityMarkers = [
   "getCompletionAchievements",
   "getProgressMilestoneRewardMessage",
   "isNewBestTime",
-  "getNextRecommendedPuzzleSummary",
-  "onboardingDifficultyRampEnabled",
-  "buildNextPuzzleCtaEvent",
-  "result_overlay",
   "runRewardedHintAdFlow",
   "pickHintCellIndex",
   "retry:",
-  "selectedPuzzleScaffold",
   "computeLeaderboardScore",
   "leaderboardVisible",
 ];
@@ -336,13 +332,14 @@ for (const marker of featureParityMarkers) {
   assertIncludes(webApp, marker, webAppPath);
   assertIncludes(mobileApp, marker, mobileAppPath);
 }
-// 기록 열기 계측: 웹은 컴포넌트(완료 다이얼로그·기록 카드)에서, RN 은 App.tsx 에서 발화한다.
-for (const [path, source] of [
-  ["src/components/CompletionCelebrationDialog.tsx", "completion_dialog"],
-  ["src/components/MissionHistoryCard.tsx", "home_card"],
+// 새 홈과 완료 화면의 기록 진입은 같은 이벤트와 표면 이름을 사용한다.
+for (const [content, file] of [
+  [webApp, webAppPath],
+  [mobileApp, mobileAppPath],
 ]) {
-  assertIncludes(read(path), `telemetry.click("history_open", { source: "${source}" })`, path);
-  assertIncludes(mobileApp, `telemetry.click('history_open', { source: '${source}' })`, mobileAppPath);
+  assertIncludes(content, "history_open", file);
+  assertIncludes(content, "home_card", file);
+  assertIncludes(content, "result_screen", file);
 }
 for (const eventName of ["game_progress", "puzzle_progress"]) {
   assertIncludes(webApp, eventName, webAppPath);
@@ -358,12 +355,6 @@ for (const eventName of ["game_puzzle_abandon", "puzzle_abandon"]) {
 }
 assertIncludes(mobileApp, "state === 'background'", mobileAppPath);
 assertIncludes(mobileApp, "emitPuzzleAbandon('today')", mobileAppPath);
-assertIncludes(webApp, "const recommendationPuzzleSummaries", webAppPath);
-assertIncludes(mobileApp, "const recommendationPuzzleSummaries", mobileAppPath);
-assertIncludes(webApp, "...puzzleSummaries", webAppPath);
-assertIncludes(mobileApp, "...puzzlePack.summaries", mobileAppPath);
-assertIncludes(webApp, "recommendationPuzzleSummaries,", webAppPath);
-assertIncludes(mobileApp, "recommendationPuzzleSummaries,", mobileAppPath);
 // 공유 문구·계측은 core(shareText/shareGrid/shareResult) 하나여야 한다. RN 로컬 문구
 // 빌더나 표면별 스트릭 계산이 되살아나면 두 마켓의 공유 결과·스트릭 숫자가 갈린다.
 assertNotIncludes(
@@ -378,17 +369,41 @@ assertNotIncludes(
   mobileAppPath,
   "streak must come from crossword-core streakCalendar",
 );
-for (const eventName of ["SHARE_RESULT_CLICK_EVENT", "SHARE_RESULT_OUTCOME_EVENT"]) {
+for (const eventName of [
+  "SHARE_RESULT_CLICK_EVENT",
+  "SHARE_RESULT_OUTCOME_EVENT",
+]) {
   assertIncludes(read(webShareHookPath), eventName, webShareHookPath);
   assertIncludes(read(mobileShareResultPath), eventName, mobileShareResultPath);
 }
-const recommendationFallbackCtaMarkers =
-  mobileApp.match(/퍼즐 기록 보기/g) ?? [];
-if (recommendationFallbackCtaMarkers.length < 4) {
-  fail(
-    `${mobileAppPath}: completion overlay and result screen both need recommendation fallback CTA`,
+const mobileTileScreen = read("apps/mobile/TilePuzzleScreen.tsx");
+const mobileTileResult = read("apps/mobile/TileResultScreen.tsx");
+const mobileTileHome = read("apps/mobile/TileHomeScreen.tsx");
+const webTileScreen = read("src/components/TilePuzzleScreen.tsx");
+for (const [content, file] of [
+  [mobileTileScreen, "apps/mobile/TilePuzzleScreen.tsx"],
+  [webTileScreen, "src/components/TilePuzzleScreen.tsx"],
+]) {
+  for (const policy of [
+    "chooseLetterTile",
+    "clearLetterTile",
+    "getLetterTiles",
+    "selectLetterEntry",
+  ])
+    assertIncludes(content, policy, file);
+  assertNotMatches(
+    content,
+    /<TextInput|<input|<textarea/,
+    file,
+    "system keyboard input in tile gameplay",
   );
 }
+assertIncludes(
+  mobileTileResult,
+  "나의 기록",
+  "apps/mobile/TileResultScreen.tsx",
+);
+assertIncludes(mobileTileHome, "나의 기록", "apps/mobile/TileHomeScreen.tsx");
 const launchConfig = read(launchConfigPath);
 const webFirebaseClient = read(webFirebaseClientPath);
 const webTelemetry = read(webTelemetryPath);
@@ -467,18 +482,6 @@ assertImported(
   requiredMobileImports,
   mobileAppPath,
   "../../packages/crossword-core/src",
-);
-assertMatches(
-  webApp,
-  /getNextRecommendedPuzzleSummary\(\s*puzzleSummaries,\s*getCompletedPuzzleIds\(dateCardStates\),\s*current,\s*\{\s*onboardingRampEnabled,\s*onboardingPuzzleId:\s*onboardingPuzzle\.puzzleId\s*\}/,
-  webAppPath,
-  "shared onboarding recommendation policy call",
-);
-assertMatches(
-  mobileApp,
-  /getNextRecommendedPuzzleSummary\([\s\S]*?onboardingRampEnabled:\s*launchConfig\.onboardingDifficultyRampEnabled/,
-  mobileAppPath,
-  "shared onboarding recommendation policy call",
 );
 assertIncludes(
   launchConfig,
@@ -592,9 +595,8 @@ assertIncludes(
 );
 assertIncludes(marketParityDoc, "trigger=first_input", marketParityDocPath);
 for (const marker of [
-  "onboarding_guide_shown",
-  "onboarding_guide_complete",
-  "onboarding_guide_dismiss",
+  "first_three_words_complete",
+  "first_three_words_skip",
   "STUCK_HINT_PROMPT_EVENT",
   "STUCK_HINT_PROMPT_ACCEPT_EVENT",
   "STUCK_HINT_PROMPT_DISMISS_EVENT",
@@ -726,11 +728,7 @@ assertIncludes(
   "enabled: launchConfig.returnReminderEnabled",
   mobileAppPath,
 );
-assertIncludes(
-  mobileApp,
-  "RETURN_REMINDER_OPENED_EVENT",
-  mobileAppPath,
-);
+assertIncludes(mobileApp, "RETURN_REMINDER_OPENED_EVENT", mobileAppPath);
 assertIncludes(
   mobileReturnReminder,
   "buildReturnReminderPromptParams('mission_complete', undefined, 'local')",
@@ -827,38 +825,15 @@ assertIncludes(
 );
 assertIncludes(mobileApp, "shouldSubmitLeaderboardScore", mobileAppPath);
 assertIncludes(mobileApp, "computeLeaderboardScore", mobileAppPath);
-assertIncludes(mobileApp, ">순위 보기</Text>", mobileAppPath);
 assertIncludes(
-  mobileApp,
-  "const HOME_HEADER_TITLE = '가로세로 낱말 퍼즐';",
-  mobileAppPath,
+  mobileTileResult,
+  ">순위 보기</Text>",
+  "apps/mobile/TileResultScreen.tsx",
 );
-assertNotMatches(
-  mobileApp,
-  /HOME_HEADER_TITLE[\s\S]{0,240}Platform\.OS\s*===\s*["']ios["']/,
-  mobileAppPath,
-  "iOS-only mobile home title branch",
-);
-assertIncludes(
-  mobileApp,
-  "export const BOARD_TEXT_INPUT_REFOCUS_DELAY_MS",
-  mobileAppPath,
-);
-assertNotMatches(
-  mobileApp,
-  /platformOS\s*===\s*["']android["']\s*&&\s*!keyboardVisible/,
-  mobileAppPath,
-  "Android-only stale board input refocus",
-);
+assertIncludes(mobileTileHome, "낱말 한 판", "apps/mobile/TileHomeScreen.tsx");
 assertIncludes(
   mobileAppTest,
-  "formats mobile home puzzle labels without exposing remote ids",
-  mobileAppTestPath,
-);
-assertIncludes(mobileAppTest, "platformOS: 'ios'", mobileAppTestPath);
-assertIncludes(
-  mobileAppTest,
-  "BOARD_TEXT_INPUT_REFOCUS_DELAY_MS",
+  "last tile completes the mission once and opens the result",
   mobileAppTestPath,
 );
 assertNotIncludes(webApp, "showResultInterstitialAd", webAppPath);
@@ -1296,11 +1271,7 @@ assertNotIncludes(
   "GITHUB_PACKAGES_TOKEN",
   xcodeCloudPostClonePath,
 );
-assertNotIncludes(
-  xcodeCloudPostClone,
-  "_authToken",
-  xcodeCloudPostClonePath,
-);
+assertNotIncludes(xcodeCloudPostClone, "_authToken", xcodeCloudPostClonePath);
 assertIncludes(
   xcodeCloudPostBuild,
   "GameCenterLeaderboardIdentifier",
@@ -1318,20 +1289,40 @@ assertIncludes(
   'AUTHORITY_SHA="6db01149a7700c0557bbeaf2e045aac7df0e78f2"',
   xcodeCloudPreBuildPath,
 );
-assertIncludes(xcodeCloudPreBuild, "1da1dce81a5194a37f7a31475c29d899d95eb6da9ae1460927fe439aa329752c", xcodeCloudPreBuildPath);
-assertIncludes(xcodeCloudPreBuild, "xcode-cloud-apply-tag-version.mjs", xcodeCloudPreBuildPath);
+assertIncludes(
+  xcodeCloudPreBuild,
+  "1da1dce81a5194a37f7a31475c29d899d95eb6da9ae1460927fe439aa329752c",
+  xcodeCloudPreBuildPath,
+);
+assertIncludes(
+  xcodeCloudPreBuild,
+  "xcode-cloud-apply-tag-version.mjs",
+  xcodeCloudPreBuildPath,
+);
 // Apple build number 정본은 Xcode Cloud의 CI_BUILD_NUMBER다(중앙 계약 schemaVersion 2의
 // appleBuildNumberExceptions). 값 검증과 중앙 binding 대조가 둘 다 있어야 한다. 예전에는
 // 이 문자열을 금지했는데, 그때는 실행 번호 파생을 막는 것이 계약이었다.
-assertIncludes(xcodeCloudPreBuild, 'CLOUD_BUILD_NUMBER="${CI_BUILD_NUMBER:-}"', xcodeCloudPreBuildPath);
+assertIncludes(
+  xcodeCloudPreBuild,
+  'CLOUD_BUILD_NUMBER="${CI_BUILD_NUMBER:-}"',
+  xcodeCloudPreBuildPath,
+);
 assertIncludes(
   xcodeCloudPreBuild,
   '"$binding_build_number" != "$CLOUD_BUILD_NUMBER"',
   xcodeCloudPreBuildPath,
 );
 // 태그 파생 build number를 돌려주던 pin으로 되돌아가면 archive가 다시 어긋난다.
-assertNotIncludes(xcodeCloudPreBuild, "9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5", xcodeCloudPreBuildPath);
-assertNotIncludes(xcodeCloudPreBuild, "b399afde0016e23947e173437e266aa83071079d1345b41ff580ebfe63357d6f", xcodeCloudPreBuildPath);
+assertNotIncludes(
+  xcodeCloudPreBuild,
+  "9afa357f9ba6c8d6a813c7cec7ad3d35c626bdd5",
+  xcodeCloudPreBuildPath,
+);
+assertNotIncludes(
+  xcodeCloudPreBuild,
+  "b399afde0016e23947e173437e266aa83071079d1345b41ff580ebfe63357d6f",
+  xcodeCloudPreBuildPath,
+);
 assertIncludes(
   xcodeCloudPostBuild,
   "CFBundleShortVersionString",
@@ -1363,7 +1354,7 @@ assertIncludes(
 );
 assertIncludes(
   appStoreLocalBuild,
-  'authority.deriveReleaseVersion(process.argv[3])',
+  "authority.deriveReleaseVersion(process.argv[3])",
   appStoreLocalBuildPath,
 );
 assertIncludes(
@@ -1371,9 +1362,21 @@ assertIncludes(
   'tag_sha="$(git rev-parse "${tag}^{commit}"',
   appStoreLocalBuildPath,
 );
-assertIncludes(appStoreLocalBuild, "exact stable SemVer vX.Y.Z", appStoreLocalBuildPath);
-assertIncludes(xcodeCloudPreBuild, "exact stable SemVer CI_TAG", xcodeCloudPreBuildPath);
-assertNotIncludes(appStoreLocalBuild, "--marketing-version", appStoreLocalBuildPath);
+assertIncludes(
+  appStoreLocalBuild,
+  "exact stable SemVer vX.Y.Z",
+  appStoreLocalBuildPath,
+);
+assertIncludes(
+  xcodeCloudPreBuild,
+  "exact stable SemVer CI_TAG",
+  xcodeCloudPreBuildPath,
+);
+assertNotIncludes(
+  appStoreLocalBuild,
+  "--marketing-version",
+  appStoreLocalBuildPath,
+);
 assertNotIncludes(appStoreLocalBuild, "--build-number", appStoreLocalBuildPath);
 assertIncludes(agents, "3마켓 패리티", agentsPath);
 assertIncludes(agents, "packages/crossword-core", agentsPath);

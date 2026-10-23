@@ -22,6 +22,7 @@ export type PuzzleEntry = {
   col: number;
   generatedBy: "placed" | "auto";
   needsManualClue?: boolean;
+  vocabularyLevel?: string;
 };
 
 export type PuzzleQualityCheck = {

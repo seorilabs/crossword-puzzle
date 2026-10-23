@@ -423,7 +423,11 @@ export function getDailyFreePuzzleSummary(
   );
   const todaySummaries = publishedSummaries
     .filter((summary) => summary.date === today)
-    .sort(sortPuzzleSummariesAscending);
+    .sort(
+      (a, b) =>
+        Number(b.difficulty === "hard") - Number(a.difficulty === "hard") ||
+        sortPuzzleSummariesAscending(a, b),
+    );
 
   if (todaySummaries[0] != null) {
     return todaySummaries[0];
@@ -438,13 +442,18 @@ export function getDailyFreePuzzleSummary(
   if (latestPastDate != null) {
     return publishedSummaries
       .filter((summary) => summary.date === latestPastDate)
-      .sort(sortPuzzleSummariesAscending)[0];
+      .sort(
+        (a, b) =>
+          Number(b.difficulty === "hard") - Number(a.difficulty === "hard") ||
+          sortPuzzleSummariesAscending(a, b),
+      )[0];
   }
 
-  return (
-    publishedSummaries.sort(sortPuzzleSummariesAscending)[0] ??
-    puzzleSummaries[0]
-  );
+  return publishedSummaries.sort(
+    (a, b) =>
+      Number(b.difficulty === "hard") - Number(a.difficulty === "hard") ||
+      sortPuzzleSummariesAscending(a, b),
+  )[0];
 }
 
 export function uniquePuzzleSummaries(summaries: PuzzleManifestItem[]) {
@@ -683,7 +692,7 @@ export function getStuckHintPromptText(input: {
   hasHintCredits: boolean;
 }): string {
   if (input.trigger === "first_input") {
-    return "반짝이는 칸을 탭해 글자를 입력해 보세요 ✏️";
+    return "아래 글자 타일을 골라 빈칸을 채워보세요";
   }
   if (input.nearFinish) {
     return `거의 다 왔어요! 남은 단어 ${input.wordsRemaining}개 ✨`;

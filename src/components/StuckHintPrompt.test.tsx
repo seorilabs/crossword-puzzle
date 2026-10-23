@@ -28,7 +28,7 @@ describe("StuckHintPrompt 첫 입력 넛지(#346)", () => {
     const props = renderPrompt({ trigger: "first_input", nearFinish: true });
 
     expect(
-      screen.getByText("반짝이는 칸을 탭해 글자를 입력해 보세요 ✏️"),
+      screen.getByText("아래 글자 타일을 골라 빈칸을 채워보세요"),
     ).toBeTruthy();
     expect(screen.queryByRole("button", { name: /힌트 보기/ })).toBeNull();
     expect(

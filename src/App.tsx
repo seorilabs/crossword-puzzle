@@ -1,11 +1,5 @@
-import type {
-  CSSProperties,
-  KeyboardEvent,
-  MouseEvent as ReactMouseEvent,
-  PointerEvent as ReactPointerEvent,
-  ReactNode,
-  TouchEvent as ReactTouchEvent,
-} from "react";
+import { Top } from "@toss/tds-mobile";
+import type { CSSProperties, KeyboardEvent, ReactNode } from "react";
 import {
   useCallback,
   useEffect,
@@ -14,28 +8,43 @@ import {
   useRef,
   useState,
 } from "react";
-import { Button, Paragraph, Top } from "@toss/tds-mobile";
-import "./App.css";
 import {
+  applyReturnReminderOutcome,
+  applyTentativeUpdate,
   buildCellEntries,
+  buildReturnReminderPrepromptParams,
+  buildReturnReminderPromptParams,
+  buildReturnReminderResultParams,
   buildReviewEntries,
   buildShareGrid,
   buildShareText,
   buildStartLabels,
   buildStreakCalendarWeeks,
-  computeLongestStreakDays,
+  buildWeeklyStreakStrip,
+  chooseFirstWordGuide,
+  restoreFirstWordGuide,
   completeMission,
   computeElapsedMs,
   computeLeaderboardScore,
+  computeLongestStreakDays,
   computePersonalStats,
   computeSolveTimeDistribution,
+  computeTentativeUpdate,
+  confirmLetterTileCell,
   consumeDailyHintCredit,
   createDailyHintWallet,
-  getTextScaleFontMultiplier,
-  createPuzzleSummary,
   createDailyMissionState,
+  createLetterTileState,
+  createPuzzleSummary,
   DAILY_ATTEMPT_LIMIT,
-  getAnswerCommitLetters,
+  emitProgressionScreenView,
+  emitStreakMilestoneIfReached,
+  findPuzzleSummaryById,
+  FIRST_WORD_GUIDE_KEY,
+  formatPuzzleAliasLabel,
+  formatPuzzleCardSequenceLabel,
+  formatReturnReminderPrepromptBody,
+  RETURN_REMINDER_PREPROMPT_COPY,
   getAnswerInputLetters,
   getBounds,
   getCellAnswerLetter,
@@ -43,177 +52,98 @@ import {
   getCompletedEntries,
   getCompletionAchievements,
   getDailyFreePuzzleSummary,
+  isPublishedPuzzle,
   getDailyHintBalance,
-  findPuzzleSummaryById,
-  formatDateCardDay,
-  formatPuzzleAliasLabel,
-  formatPuzzleCardSequenceLabel,
-  getCompletedPuzzleIds,
   getEntryAnswerValue,
-  getFirstIncompleteEntry,
   getEntryCellIndex,
   getEntryCellKeyAt,
   getEntryCells,
   getEntryStartCellKey,
+  getFirstIncompleteEntry,
   getInitialEntryId,
   getInitialEntryStartCellKey,
-  getNextAnswerSlotCellKey,
-  getPendingAnswerCellValues,
-  getProgressPercent,
-  isCellLocked,
-  isHangulJamoInput,
   getNewlyReachedProgressMilestones,
-  buildNextPuzzleCtaEvent,
-  getNextRecommendedPuzzleSummary,
+  getNextAnswerSlotCellKey,
+  getNextFocusEntryAfterCompletion,
   getProgressMilestoneRewardMessage,
-  grantDailyHintCredits,
-  loadOrMigrateDailyHintWallet,
+  getProgressPercent,
   getPuzzlePackAlias,
+  getRemainingAttempts,
+  getTextScaleFontMultiplier,
+  getTodayDateKey,
+  grantDailyHintCredits,
+  isCellLocked,
+  loadOrMigrateDailyHintWallet,
+  mapRewardedAdFailureToAssistResult,
+  markReturnReminderPrompted,
+  normalizeFirstWordGuide,
   normalizeOptionalPuzzleIdentifier,
   normalizePuzzleIdentifier,
-  getNextFocusEntryAfterCompletion,
-  getRemainingAttempts,
-  getTodayDateKey,
-  emitProgressionScreenView,
-  emitStreakMilestoneIfReached,
-  getNextStreakMilestoneHint,
-  getStreakBadgeLabel,
-  getStreakMilestoneProgress,
-  applyTentativeUpdate,
-  computeTentativeUpdate,
-  shouldMarkTentative,
-  pickHintCellIndex,
-  resolveInitialActivePuzzleId,
-  shouldRecordBestTime,
-  buildDailyLadder,
-  buildDailyLadderCtaParams,
-  buildWeeklyStreakStrip,
-  formatDailyLadderNextLabel,
-  formatStreakStripHeadline,
-  type DailyLadder,
-  type DailyLadderStep,
-  type WeeklyStreakStripDay,
-  resolveStarterCell,
-  runRewardedHintAdFlow,
-  trackRewardedHintAdRequest,
-  trackRewardedHintAdResult,
-  shouldCelebrateOnboardingWordCompletion,
-  shouldOfferStuckWordReveal,
-  shouldShowFirstInputGuide,
-  shouldSubmitLeaderboardScore,
-  togglePauseState,
-  resolveVerticalArrowAction,
   ONBOARDING_WORD_COMPLETE_MESSAGE,
-  sortPuzzleSummariesByRecency,
-  startMissionAttempt,
-  uniquePuzzleSummaries,
-  validatePuzzleSlots,
-  shouldPromptReturnReminder,
-  markReturnReminderPrompted,
-  applyReturnReminderOutcome,
-  buildReturnReminderPrepromptParams,
-  buildReturnReminderPromptParams,
-  buildReturnReminderResultParams,
-  formatReturnReminderPrepromptBody,
+  pickHintCellIndex,
+  recommendLetterEntry,
+  resolveStarterCell,
   RETURN_REMINDER_PREPROMPT_EVENT,
   RETURN_REMINDER_PROMPT_EVENT,
   RETURN_REMINDER_RESULT_EVENT,
-  type ReturnReminderState,
+  REWARDED_HINT_AD_REWARD_EVENT,
+  runRewardedHintAdFlow,
+  selectLetterEntry,
+  shouldCelebrateOnboardingWordCompletion,
+  shouldMarkTentative,
+  shouldOfferStuckWordReveal,
+  shouldPromptReturnReminder,
+  shouldRecordBestTime,
+  shouldSubmitLeaderboardScore,
+  sortPuzzleSummariesByRecency,
+  startMissionAttempt,
   STUCK_HINT_PROMPT_ACCEPT_EVENT,
   STUCK_HINT_PROMPT_DISMISS_EVENT,
   STUCK_HINT_PROMPT_EVENT,
   STUCK_HINT_PROMPT_REVEAL_WORD_EVENT,
-  REWARDED_HINT_AD_REWARD_EVENT,
+  TILE_INPUT_POLICY_VERSION,
+  togglePauseState,
+  trackRewardedHintAdRequest,
+  trackRewardedHintAdResult,
+  trackRewardedHintAdTrace,
+  uniquePuzzleSummaries,
+  validatePuzzleSlots,
   type CellLetterChange,
-  type DailyMissionState,
   type DailyHintWallet,
+  type DailyMissionState,
   type Direction,
+  type FirstWordGuide,
   type GamePuzzleContext,
-  mapRewardedAdFailureToAssistResult,
+  type LetterTileProgress,
+  type LetterTileState,
+  type PersonalStatsRecord,
   type Puzzle,
   type PuzzleEntry,
   type PuzzleManifestItem,
   type PuzzleQualityCheck,
   type PuzzleSlotValidation,
-  type PersonalStatsRecord,
+  type ReturnReminderState,
   type ReviewEntry,
   type RewardedAdRetryAttempt,
   type SavedProgress,
   type TextScale,
-  HOW_TO_PLAY_SHOWN_EVENT,
-  buildHowToPlayParams,
-  getHowToPlayOutcomeEvent,
-  trackRewardedHintAdTrace,
+  type WeeklyStreakStripDay,
 } from "../packages/crossword-core/src";
-import { useStuckHintPrompt } from "./useStuckHintPrompt";
-import { MiniPuzzlePreview } from "./components/MiniPuzzlePreview";
-import { PersonalStatsCard } from "./components/PersonalStatsCard";
-import { StreakHeatmap } from "./components/StreakHeatmap";
-import { PuzzleBoard } from "./components/PuzzleBoard";
-import {
-  HowToPlayDialog,
-  type HowToPlayCloseContext,
-} from "./components/HowToPlayDialog";
-import { SettingsSheet } from "./components/SettingsSheet";
-import {
-  CompletionCelebrationDialog,
-  type CompletionReturnReminderPreprompt,
-} from "./components/CompletionCelebrationDialog";
-import { DailyLadderCard } from "./components/DailyLadderCard";
-import { WeeklyStreakStrip } from "./components/WeeklyStreakStrip";
-import { MissionHistoryCard } from "./components/MissionHistoryCard";
-import { PuzzleMetaChips } from "./components/PuzzleMetaChips";
-import { StuckHintPrompt } from "./components/StuckHintPrompt";
-import { useShareResult } from "./useShareResult";
-import { useLeaderboard } from "./useLeaderboard";
-import {
-  useFirstRunAutoStart,
-  type FirstRunSnapshot,
-} from "./useFirstRunAutoStart";
-import {
-  formatElapsedTime,
-  formatLiveTimer,
-  getElapsedSeconds,
-  shouldShowLiveTimer,
-} from "./timer";
-import {
-  createLocalMissionRepository,
-  getRecentCompletionDates,
-  invalidateStreakCache,
-  readConsecutiveStreakDays,
-} from "./adapters/localMissionRepository";
-import {
-  createLocalPuzzleArchiveRepository,
-  type PuzzleArchiveRecord,
-  type PuzzleArchiveSaveOptions,
-} from "./adapters/localPuzzleAccessRepository";
-import { createLocalDailyHintWalletRepository } from "./adapters/localDailyHintWalletRepository";
-import {
-  createLocalProgressRepository,
-  getAllBestTimePuzzleIds,
-  getBestTimeMs,
-  getOverallBestTimeMs,
-  saveBestTimeMs,
-} from "./adapters/localProgressRepository";
-import {
-  loadAutocheckEnabled,
-  saveAutocheckEnabled,
-} from "./adapters/autocheckSettingRepository";
 import {
   loadAnswerInputMode,
   saveAnswerInputMode,
   type AnswerInputMode,
 } from "./adapters/answerInputModeRepository";
 import {
-  loadFirstInputGuideSeen,
-  loadHowToPlaySeen,
-  markFirstInputGuideSeen as persistFirstInputGuideSeen,
-  markHowToPlaySeen as persistHowToPlaySeen,
-} from "./adapters/onboardingSeenRepository";
+  mapFullScreenAdTraceEvent,
+  showRewardedHintAd,
+  type FullScreenAdResult,
+} from "./adapters/appsInTossAds";
 import {
-  loadTimerVisible,
-  saveTimerVisible,
-} from "./adapters/timerVisibilitySettingRepository";
+  loadAutocheckEnabled,
+  saveAutocheckEnabled,
+} from "./adapters/autocheckSettingRepository";
+import { emitFeedback } from "./adapters/feedback";
 import {
   loadHapticEnabled,
   loadSoundEnabled,
@@ -222,36 +152,72 @@ import {
   saveSoundEnabled,
   saveTextScale,
 } from "./adapters/feedbackSettingsRepository";
-import { emitFeedback } from "./adapters/feedback";
-import {
-  mapFullScreenAdTraceEvent,
-  showRewardedHintAd,
-  type FullScreenAdResult,
-} from "./adapters/appsInTossAds";
 import { loadFirebaseLaunchConfig } from "./adapters/firebaseClient";
-import { initSafeAreaInsets } from "./adapters/safeArea";
-import { leaderboardAdapter } from "./adapters/leaderboardAdapter";
+import { gameAnalytics } from "./adapters/gameAnalytics";
 import {
-  loadReturnReminderState,
-  saveReturnReminderState,
-} from "./adapters/returnReminderRepository";
+  defaultLaunchConfig,
+  type LaunchConfig,
+} from "./adapters/launchConfig";
+import { leaderboardAdapter } from "./adapters/leaderboardAdapter";
+import { createLocalDailyHintWalletRepository } from "./adapters/localDailyHintWalletRepository";
+import {
+  createLocalMissionRepository,
+  getRecentCompletionDates,
+  invalidateStreakCache,
+  readConsecutiveStreakDays,
+} from "./adapters/localMissionRepository";
+import {
+  createLocalProgressRepository,
+  getAllBestTimePuzzleIds,
+  getBestTimeMs,
+  saveBestTimeMs,
+} from "./adapters/localProgressRepository";
+import {
+  createLocalPuzzleArchiveRepository,
+  type PuzzleArchiveRecord,
+  type PuzzleArchiveSaveOptions,
+} from "./adapters/localPuzzleAccessRepository";
 import {
   requestReturnReminderAgreement,
   RETURN_REMINDER_TEMPLATE_CODE_SOURCE,
 } from "./adapters/notificationAgreement";
 import {
-  defaultLaunchConfig,
-  type LaunchConfig,
-} from "./adapters/launchConfig";
+  loadFirstInputGuideSeen,
+  markFirstInputGuideSeen as persistFirstInputGuideSeen,
+} from "./adapters/onboardingSeenRepository";
+import {
+  loadReturnReminderState,
+  saveReturnReminderState,
+} from "./adapters/returnReminderRepository";
+import { initSafeAreaInsets } from "./adapters/safeArea";
 import {
   createFallbackPuzzleRepository,
   createOnboardingPuzzleRepository,
   createStaticPuzzleRepository,
 } from "./adapters/staticPuzzleRepository";
 import { telemetry } from "./adapters/telemetry";
-import { gameAnalytics } from "./adapters/gameAnalytics";
+import {
+  loadTimerVisible,
+  saveTimerVisible,
+} from "./adapters/timerVisibilitySettingRepository";
+import "./App.css";
+import { type CompletionReturnReminderPreprompt } from "./components/CompletionCelebrationDialog";
+import { MiniPuzzlePreview } from "./components/MiniPuzzlePreview";
+import { PersonalStatsCard } from "./components/PersonalStatsCard";
+import { PuzzleBoard } from "./components/PuzzleBoard";
+import { SettingsSheet } from "./components/SettingsSheet";
+import { StreakHeatmap } from "./components/StreakHeatmap";
+import { StuckHintPrompt } from "./components/StuckHintPrompt";
+import {
+  TilePuzzleScreen,
+  type TileInputAction,
+} from "./components/TilePuzzleScreen";
 import { fallbackPuzzle } from "./data/fallbackPuzzle";
 import { onboardingPuzzle } from "./data/onboardingPuzzle";
+import { formatElapsedTime, formatLiveTimer, getElapsedSeconds } from "./timer";
+import { useLeaderboard } from "./useLeaderboard";
+import { useShareResult } from "./useShareResult";
+import { useStuckHintPrompt } from "./useStuckHintPrompt";
 
 type AppRoute =
   | "home"
@@ -292,9 +258,6 @@ type DateCardState = {
   revealUsed: boolean;
 };
 
-const DIRECT_INPUT_COMMIT_DELAY_MS = 140;
-const COMPOSITION_COMMIT_DELAY_MS = 0;
-
 // PuzzleBoard의 checkedCellKeys 기본값. 매 렌더 새 Set 생성을 피한다.
 const EMPTY_CELL_KEY_SET: ReadonlySet<string> = new Set();
 
@@ -303,7 +266,7 @@ type DateSelectionProps = {
   loadState: LoadState;
   puzzleSummaries: PuzzleManifestItem[];
   selectedPuzzleId: string;
-  selectPuzzle: (puzzleId: string) => void;
+  selectPuzzle: (puzzleId: string) => Promise<boolean>;
 };
 
 type PuzzleSession = {
@@ -363,11 +326,6 @@ const puzzleArchiveRepository = createLocalPuzzleArchiveRepository();
 const directionLabels: Record<Direction, string> = {
   across: "가로",
   down: "세로",
-}; // ResultScreen 포함 전체 컴포넌트에서 공유하는 방향 레이블
-
-const directionOrder: Record<Direction, number> = {
-  across: 0,
-  down: 1,
 };
 
 const qualityLabels: Record<string, string> = {
@@ -528,24 +486,6 @@ function getInitialPuzzleId(
   );
 }
 
-// 완료 직후 "다음 퍼즐"로 이어줄 추천 퍼즐. 추천 규칙(오늘 사다리의 남은 단계 →
-// 난이도 상승 → 동일 티어 → 그 외 미완료 → 후보 없음)은 코어 정책
-// (getNextRecommendedPuzzleSummary)에 두어 3마켓이 공유한다. 여기서는 완료 집합과
-// 온보딩 퍼즐 ID(램프는 온보딩 완료에만 개입)만 넘겨 위임한다.
-function getNextRecommendedSummary(
-  puzzleSummaries: PuzzleManifestItem[],
-  dateCardStates: Record<string, DateCardState>,
-  current: { puzzleId: string; difficulty?: Puzzle["difficulty"]; date?: string },
-  onboardingRampEnabled = false,
-): PuzzleManifestItem | undefined {
-  return getNextRecommendedPuzzleSummary(
-    puzzleSummaries,
-    getCompletedPuzzleIds(dateCardStates),
-    current,
-    { onboardingRampEnabled, onboardingPuzzleId: onboardingPuzzle.puzzleId },
-  );
-}
-
 function getPuzzleSummaryFromArchive(
   records: PuzzleArchiveRecord[],
   puzzleId?: string,
@@ -618,6 +558,23 @@ function App() {
   );
   const [puzzle, setPuzzle] = useState<Puzzle>(fallbackPuzzle);
   const [cellValues, setCellValues] = useState<Record<string, string>>({});
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [tileInput, setTileInput] = useState<LetterTileProgress>();
+  const [tileStatus, setTileStatus] =
+    useState<LetterTileState["status"]>("idle");
+  const completionActionRef = useRef<string | null>(null);
+  const tileAdvanceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [firstWordGuide, setFirstWordGuide] = useState<
+    FirstWordGuide | undefined
+  >(() => {
+    try {
+      return normalizeFirstWordGuide(
+        JSON.parse(localStorage.getItem(FIRST_WORD_GUIDE_KEY) ?? "null"),
+      );
+    } catch {
+      return undefined;
+    }
+  });
   const [selectedDirection, setSelectedDirection] =
     useState<Direction>("across");
   const [selectedEntryId, setSelectedEntryId] = useState(
@@ -645,12 +602,6 @@ function App() {
     adapter: leaderboardAdapter,
     telemetry,
   });
-  // 원격 설정 fetch가 끝났는지(성공/실패 무관). 첫 실행 자동 진입(#205)은 게이트
-  // 값이 확정된 뒤에만 판정해, 원격에서 끈 상태로 자동 진입하는 레이스를 막는다.
-  const [launchConfigResolved, setLaunchConfigResolved] = useState(false);
-  // 퍼즐 팩 로드 시점에 계산한 신규(도전 이력 없음) 판정 입력. null이면 로드 전.
-  const [firstRunSnapshot, setFirstRunSnapshot] =
-    useState<FirstRunSnapshot | null>(null);
   const [rewardedAdStatus, setRewardedAdStatus] =
     useState<RewardedAdStatus>("idle");
   const [isRewardedHintPromptOpen, setIsRewardedHintPromptOpen] =
@@ -715,8 +666,6 @@ function App() {
   // 마운트 후 useEffect에서 동기화한다.
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [hapticEnabled, setHapticEnabled] = useState(true);
-  // "이 단어 확인"으로 잠시 강조 중인 셀. 일정 시간 후 비워 원상 복구한다.
-  const [hasSeenHowToPlay, setHasSeenHowToPlay] = useState(loadHowToPlaySeen);
   const [answerInputMode, setAnswerInputMode] =
     useState<AnswerInputMode>(loadAnswerInputMode);
   // 글자 크기(접근성). 사운드·햅틱처럼 기본값(보통)으로 시작하고 저장값은 마운트
@@ -727,13 +676,9 @@ function App() {
     loadFirstInputGuideSeen,
   );
   const firstAnswerInputKeysRef = useRef<Set<string>>(new Set());
-  const firstInputGuideShownRef = useRef(false);
   // 첫 입력 넛지 수락 때 TodayScreen 내부 native input에 포커스를 재요청한다. 숫자
   // 토큰으로 동일 퍼즐에서도 명시적 사용자 수락마다 effect가 다시 실행되게 한다.
   const [stuckHintFocusRequestId, setStuckHintFocusRequestId] = useState(0);
-  // 플레이 방법 안내: 노출 1회 보장과 체류 시간 측정용.
-  const howToPlayShownRef = useRef(false);
-  const howToPlayShownAtRef = useRef<number | null>(null);
   // 진행 마일스톤(부분 완료) 추적: 동일 퍼즐·시도 안에서 새로 넘어선 마일스톤만
   // 보상 피드백·이벤트로 노출하고, 이어풀기(resume)·재시작 시 이미 도달한 구간은
   // 다시 emit하지 않도록 baseline을 초기화한다.
@@ -783,7 +728,7 @@ function App() {
     // The celebration only belongs to the active 풀이 화면; clear it whenever we
     // leave so returning to a finished puzzle (incl. via browser history) does
     // not re-open the dialog over the read-only board.
-    if (route !== "today") {
+    if (route !== "today" && route !== "result") {
       setCompletionCelebrationId(null);
     }
     if (route === "home") {
@@ -813,13 +758,11 @@ function App() {
       .then((nextConfig) => {
         if (!isCancelled) {
           setLaunchConfig(nextConfig);
-          setLaunchConfigResolved(true);
         }
       })
       .catch(() => {
         if (!isCancelled) {
           setLaunchConfig(defaultLaunchConfig);
-          setLaunchConfigResolved(true);
         }
       });
 
@@ -868,13 +811,47 @@ function App() {
       const nextMission = options.mission ?? session.savedMission;
 
       setPuzzle(session.nextPuzzle);
-      setCellValues(session.savedProgress.cellValues);
+      const restored = createLetterTileState(
+        session.nextPuzzle,
+        session.savedProgress.cellValues,
+        session.savedProgress.tileInput,
+      );
+      const guideIds = chooseFirstWordGuide(session.nextPuzzle.entries);
+      setFirstWordGuide((previous) =>
+        restoreFirstWordGuide({
+          previous,
+          puzzleId: session.nextPuzzle.puzzleId,
+          entries: session.nextPuzzle.entries,
+          legacySeen: loadFirstInputGuideSeen(),
+          hasProgress:
+            session.savedMission.attemptsUsed > 0 ||
+            Object.keys(session.savedProgress.cellValues).length > 0,
+        }),
+      );
+      if (
+        !session.savedProgress.tileInput &&
+        Object.keys(restored.cellValues).length === 0 &&
+        !loadFirstInputGuideSeen() &&
+        guideIds[0]
+      ) {
+        Object.assign(
+          restored,
+          selectLetterEntry(session.nextPuzzle, restored, guideIds[0]),
+        );
+      }
+      setCellValues(restored.cellValues);
+      setTileInput(restored.progress);
+      setTileStatus("idle");
       setHintCount(session.savedProgress.hintCount);
       setRevealUsed(session.savedProgress.revealUsed ?? false);
       setTentativeCellKeys(new Set(session.savedProgress.tentativeCells ?? []));
-      setSelectedDirection("across");
-      setSelectedEntryId(getInitialEntryId(session.nextPuzzle));
-      setSelectedCellKey(getInitialEntryStartCellKey(session.nextPuzzle));
+      setSelectedDirection(
+        session.nextPuzzle.entries.find(
+          (entry) => entry.id === restored.progress.entryId,
+        )?.direction ?? "across",
+      );
+      setSelectedEntryId(restored.progress.entryId);
+      setSelectedCellKey(restored.progress.activeCellKey);
       setMission(nextMission);
       setDateCardStates((prev) => ({
         ...prev,
@@ -1005,41 +982,16 @@ function App() {
             createPuzzleSummary(record.puzzle),
           ),
         ];
-        const [nextDateCardStates, onboardingSession, nextDailyHintWallet] =
-          await Promise.all([
-            loadDateCardStates([...allSummaries]),
-            loadPuzzleSession(onboardingPuzzle.puzzleId),
-            loadDailyHintWalletForDate(today, allSummaries),
-          ]);
+        const [nextDateCardStates, nextDailyHintWallet] = await Promise.all([
+          loadDateCardStates([...allSummaries]),
+          loadDailyHintWalletForDate(today, allSummaries),
+        ]);
 
         // 신규 사용자(아직 첫 성공 전)면 입문 퍼즐을, 그 외에는 일반 일일 퍼즐을
         // 첫 활성 퍼즐로 둔다. 입문 퍼즐 세션은 위에서 미리 불러와 재사용한다.
-        const dateCardValues = Object.values(nextDateCardStates);
         const dailyPuzzleId = getInitialPuzzleId(nextSummaries, today);
-        const hasCompletedAnyDaily = dateCardValues.some(
-          (state) => state.completedAt != null,
-        );
-        const hasDailyProgress = dateCardValues.some(
-          (state) => state.hasProgress,
-        );
-        const initialPuzzleId = resolveInitialActivePuzzleId({
-          dailyPuzzleId,
-          hasCompletedAnyDaily,
-          hasDailyProgress,
-          onboardingAvailable: onboardingSession != null,
-          onboardingCompleted:
-            onboardingSession?.savedMission.completedAt != null,
-          onboardingPuzzleId: onboardingPuzzle.puzzleId,
-        });
-        // helper는 입문 세션이 가용할 때(onboardingAvailable)만 입문 id를 돌려주므로,
-        // 미리 불러온 입문 세션이 있고 결정된 id가 입문 id일 때만 그 세션을 재사용한다.
-        // 그 외(입문 완료·일반 진행/완료·입문 미가용 폴백)에는 결정된 id로 단일
-        // loadPuzzleSession을 호출한다 — 이 분기는 항상 일반 일일 퍼즐 id로만 들어온다.
-        const session =
-          onboardingSession != null &&
-          initialPuzzleId === onboardingPuzzle.puzzleId
-            ? onboardingSession
-            : await loadPuzzleSession(initialPuzzleId);
+        const initialPuzzleId = dailyPuzzleId;
+        const session = await loadPuzzleSession(initialPuzzleId);
 
         if (!isCancelled) {
           setPuzzleSummaries(nextSummaries);
@@ -1048,19 +1000,6 @@ function App() {
           setDailyHintWallet(nextDailyHintWallet);
           applyPuzzleSession(session);
           setLoadState(getPuzzlePackLoadState(nextSummaries));
-          // 첫 실행 자동 진입(#205) 판정 입력을 로드 시점 값으로 고정해 둔다.
-          setFirstRunSnapshot({
-            hasCompletedAnyDaily,
-            hasDailyProgress,
-            onboardingStarted:
-              onboardingSession != null &&
-              hasSavedProgress(
-                onboardingSession.savedMission,
-                onboardingSession.savedProgress,
-              ),
-            activePuzzleIsOnboarding:
-              session != null && initialPuzzleId === onboardingPuzzle.puzzleId,
-          });
         }
       } catch {
         if (!isCancelled) {
@@ -1084,7 +1023,7 @@ function App() {
   const selectPuzzle = useCallback(
     async (puzzleId: string) => {
       if (loadState === "loading") {
-        return;
+        return false;
       }
 
       try {
@@ -1105,6 +1044,7 @@ function App() {
                 status: "loaded",
               }),
         });
+        return session != null;
       } catch {
         setLoadState("fallback");
         setHintToast((prev) => ({
@@ -1115,6 +1055,7 @@ function App() {
           puzzle_id: puzzleId,
           status: "error",
         });
+        return false;
       }
     },
     [applyPuzzleSession, loadPuzzleSession, loadState],
@@ -1125,13 +1066,15 @@ function App() {
     if (
       Object.keys(cellValues).length === 0 &&
       hintCount === 0 &&
-      !revealUsed
+      !revealUsed &&
+      tileInput == null
     ) {
       return;
     }
     void progressRepository
       .saveProgress(puzzle.puzzleId, {
         cellValues,
+        tileInput,
         // 광고 보상은 날짜별 공용 지갑에 저장한다. 필드는 구버전 스키마 호환용이다.
         earnedHintCredits: 0,
         hintCount,
@@ -1142,11 +1085,19 @@ function App() {
         ),
       })
       .catch(() => {
+        showHintToast("진행을 저장하지 못했어요. 저장 공간을 확인해 주세요.");
         telemetry.impression("progress_save_error", {
           puzzle_id: puzzle.puzzleId,
         });
       });
-  }, [cellValues, hintCount, revealUsed, tentativeCellKeys, puzzle.puzzleId]);
+  }, [
+    cellValues,
+    tileInput,
+    hintCount,
+    revealUsed,
+    tentativeCellKeys,
+    puzzle.puzzleId,
+  ]);
 
   // autocheck 저장값은 마운트 후에만 반영한다(첫 렌더 기본값 true와 분리).
   useEffect(() => {
@@ -1179,6 +1130,65 @@ function App() {
     selectedDirection,
     cellValues,
   );
+  const tileState = useMemo(
+    () => ({
+      ...selectLetterEntry(
+        puzzle,
+        createLetterTileState(puzzle, cellValues, tileInput),
+        selectedEntryId,
+        selectedCellKey,
+      ),
+      status: tileStatus,
+    }),
+    [
+      puzzle,
+      cellValues,
+      tileInput,
+      selectedEntryId,
+      selectedCellKey,
+      tileStatus,
+    ],
+  );
+  const guideActive =
+    launchConfig.firstInputGuideEnabled &&
+    firstWordGuide?.status === "active" &&
+    firstWordGuide.puzzleId === puzzle.puzzleId;
+  const guideCompleted = guideActive
+    ? firstWordGuide.entryIds.filter((id) =>
+        viewModel.completedEntries.some((entry) => entry.id === id),
+      ).length
+    : 0;
+  useEffect(() => {
+    if (firstWordGuide == null) return;
+    try {
+      localStorage.setItem(
+        FIRST_WORD_GUIDE_KEY,
+        JSON.stringify(firstWordGuide),
+      );
+    } catch {
+      telemetry.impression("first_word_guide_save_error", {});
+    }
+  }, [firstWordGuide]);
+  useEffect(() => {
+    if (
+      guideActive &&
+      firstWordGuide.entryIds.length > 0 &&
+      guideCompleted === firstWordGuide.entryIds.length
+    ) {
+      setFirstWordGuide({ ...firstWordGuide, status: "complete" });
+      telemetry.impression("first_three_words_complete", {
+        puzzle_id: puzzle.puzzleId,
+        input_policy: TILE_INPUT_POLICY_VERSION,
+        word_count: guideCompleted,
+      });
+    }
+  }, [guideActive, guideCompleted, firstWordGuide, puzzle.puzzleId]);
+  useEffect(
+    () => () => {
+      if (tileAdvanceRef.current) clearTimeout(tileAdvanceRef.current);
+    },
+    [puzzle.puzzleId],
+  );
   const progressPercent = getProgressPercent(
     viewModel.completedEntries.length,
     puzzle.entries.length,
@@ -1205,15 +1215,6 @@ function App() {
   const isFirstInputPending =
     isBoardEmpty &&
     !firstAnswerInputKeysRef.current.has(currentAttemptFirstInputKey);
-  const isFirstInputGuideVisible =
-    launchConfig.firstInputGuideEnabled &&
-    shouldShowFirstInputGuide({
-      route,
-      hasStarted,
-      isCompleted,
-      hasSeenFirstInputGuide,
-      isBoardEmpty,
-    });
 
   // 최신 상태 스냅샷(ref): pagehide/visibilitychange 리스너가 stale closure 없이
   // 이탈 시점의 진행 상태를 읽을 수 있게 매 렌더마다 갱신한다.
@@ -1381,22 +1382,12 @@ function App() {
     () => puzzleSummaries.filter((summary) => summary.date === todayKey),
     [puzzleSummaries, todayKey],
   );
-  const dailyLadder = useMemo(
-    () =>
-      buildDailyLadder(todayPuzzleSummaries, dateCardStates, {
-        dailyAttemptLimit: launchConfig.dailyAttemptLimit,
-      }),
-    [dateCardStates, launchConfig.dailyAttemptLimit, todayPuzzleSummaries],
-  );
   // 홈 스트립은 최근 7일 완료일을 매 렌더 스캔한다(기록 화면 히트맵과 같은 소스).
   // 완료 직후 dateCardStates가 바뀌면 다시 계산되도록 의존성에 넣는다.
   const weeklyStrip = useMemo(
     () => buildWeeklyStreakStrip(getRecentCompletionDates(7), todayKey),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- localStorage 스캔 결과는 dateCardStates 변화와 함께 바뀐다
     [dateCardStates, todayKey],
-  );
-  const todayCompleted = weeklyStrip.some(
-    (day) => day.isToday && day.completed,
   );
   const archivePuzzleSummaries = useMemo(
     () =>
@@ -1559,18 +1550,6 @@ function App() {
     },
   });
 
-  // 첫 입력 가이드 노출 이벤트(최초 1회).
-  useEffect(() => {
-    if (!isFirstInputGuideVisible || firstInputGuideShownRef.current) {
-      return;
-    }
-    firstInputGuideShownRef.current = true;
-    telemetry.impression("onboarding_guide_shown", {
-      ...puzzleTelemetryParams,
-      attempt_number: mission.attemptsUsed,
-    });
-  }, [isFirstInputGuideVisible, mission.attemptsUsed, puzzleTelemetryParams]);
-
   useEffect(() => {
     telemetry.screen(route, {
       date: puzzle.date,
@@ -1590,6 +1569,7 @@ function App() {
     prompted: ReturnReminderState;
     streakDays: number;
   } | null>(null);
+  const [returnReminderReady, setReturnReminderReady] = useState<{puzzleId:string;streakDays:number} | null>(null);
   const completionCelebrationIdRef = useRef<string | null>(null);
   completionCelebrationIdRef.current = completionCelebrationId;
   const openReturnReminderPreprompt = useCallback(
@@ -1610,7 +1590,12 @@ function App() {
       saveReturnReminderState(prompted);
       telemetry.impression(
         RETURN_REMINDER_PREPROMPT_EVENT,
-        buildReturnReminderPrepromptParams("shown", prompted, "ait", streakDays),
+        buildReturnReminderPrepromptParams(
+          "shown",
+          prompted,
+          "ait",
+          streakDays,
+        ),
       );
       setReturnReminderPreprompt({ prompted, streakDays });
     },
@@ -1671,21 +1656,35 @@ function App() {
     setReturnReminderPreprompt(null);
     telemetry.impression(
       RETURN_REMINDER_PREPROMPT_EVENT,
-      buildReturnReminderPrepromptParams("decline", prompted, "ait", streakDays),
+      buildReturnReminderPrepromptParams(
+        "decline",
+        prompted,
+        "ait",
+        streakDays,
+      ),
     );
     saveReturnReminderState(applyReturnReminderOutcome(prompted, "declined"));
   }, [returnReminderPreprompt]);
 
-  // 축하 다이얼로그가 화면 이동 등으로 사라지면(카드에 답하지 않음) 보류로 정리한다.
+  // 저장이 끝나고 완료 화면을 실제로 표시한 뒤 사전 안내를 연다.
   useEffect(() => {
-    if (completionCelebrationId == null && returnReminderPreprompt != null) {
-      declineReturnReminder();
+    if (route === "result" && returnReminderReady?.puzzleId === puzzle.puzzleId) {
+      setReturnReminderReady(null);
+      openReturnReminderPreprompt(returnReminderReady.streakDays);
+    } else if (route !== "today" && route !== "result") {
+      if (returnReminderReady) setReturnReminderReady(null);
+      if (returnReminderPreprompt) declineReturnReminder();
     }
-  }, [completionCelebrationId, declineReturnReminder, returnReminderPreprompt]);
+  }, [route, puzzle.puzzleId, returnReminderReady, returnReminderPreprompt, openReturnReminderPreprompt, declineReturnReminder]);
 
   useEffect(() => {
-    if (!viewModel.isComplete || mission.completedAt != null) {
+    if (!viewModel.isComplete || mission.completedAt != null || completionActionRef.current !== puzzle.puzzleId) {
       return;
+    }
+    completionActionRef.current = null;
+    if (route === "today") {
+      completionCelebrationIdRef.current = puzzle.puzzleId;
+      setCompletionCelebrationId(puzzle.puzzleId);
     }
 
     // 퍼즐 완료 사운드·햅틱(설정에 따름). 완료 effect가 1회만 실행되므로 중복 없음.
@@ -1715,8 +1714,8 @@ function App() {
       // 복귀 리마인드 사전 안내는 축하 다이얼로그(오늘 화면 완료)에서만 그릴 수 있다.
       // 다이얼로그가 아직 떠 있을 때만 유도로 기록해 카드 없이 예산이 소진되지 않게
       // 하고, 완료 후 확정된 스트릭을 카드·계측이 함께 쓰도록 넘긴다.
-      if (completionCelebrationIdRef.current === puzzle.puzzleId) {
-        openReturnReminderPreprompt(nextStreak);
+      if (route === "today") {
+        setReturnReminderReady({puzzleId:puzzle.puzzleId,streakDays:nextStreak});
       }
     });
     // 완료 시점의 노힌트 판정 신호(힌트 수·정답 보기 여부)를 archive 기록에 동결해,
@@ -1821,9 +1820,7 @@ function App() {
     }
 
     if (route === "today") {
-      // Stay on the board and celebrate instead of jumping straight to the
-      // result screen, letting the player choose when to leave.
-      setCompletionCelebrationId(puzzle.puzzleId);
+      navigate("result");
     }
   }, [
     earnedHintCredits,
@@ -1936,6 +1933,8 @@ function App() {
     if (isPaused) {
       return;
     }
+    if (tileAdvanceRef.current) clearTimeout(tileAdvanceRef.current);
+    setTileStatus("idle");
     setSelectedEntryId(entry.id);
     setSelectedDirection(entry.direction);
     setSelectedCellKey(cellKey);
@@ -1989,6 +1988,50 @@ function App() {
     selectEntry(nextEntry, key);
   }
 
+  function markCompletionAction(values: Record<string, string>) {
+    if (!viewModel.isComplete && puzzle.entries.length > 0 && getCompletedEntries(puzzle.entries, values).length === puzzle.entries.length) completionActionRef.current = puzzle.puzzleId;
+  }
+
+  function changeTileState(next: LetterTileState, action: TileInputAction) {
+    if (isPaused || (!hasStarted && action !== "select")) return;
+    if (tileAdvanceRef.current) clearTimeout(tileAdvanceRef.current);
+    const entry = puzzle.entries.find(
+      (item) => item.id === next.progress.entryId,
+    );
+    markCompletionAction(next.cellValues);
+    setCellValues(next.cellValues);
+    setTileInput(next.progress);
+    setTileStatus(next.status);
+    setSelectedEntryId(next.progress.entryId);
+    setSelectedCellKey(next.progress.activeCellKey);
+    if (entry) setSelectedDirection(entry.direction);
+    if (action === "choice" && entry) {
+      trackFirstAnswerInput(entry, 1, "manual");
+      telemetry.click("letter_tile_choose", {
+        ...puzzleTelemetryParams,
+        entry_id: entry.id,
+        input_policy: TILE_INPUT_POLICY_VERSION,
+        result: next.status,
+      });
+      if (next.status === "repair")
+        emitFeedback("wrong", { soundEnabled, hapticEnabled });
+      if (next.status === "correct")
+        emitWordInputFeedback(entry, cellValues, next.cellValues);
+    }
+    if (next.status === "correct") {
+      const id = recommendLetterEntry(
+        puzzle,
+        next,
+        guideActive ? firstWordGuide.entryIds : [],
+      );
+      if (id)
+        tileAdvanceRef.current = setTimeout(
+          () => changeTileState(selectLetterEntry(puzzle, next, id), "select"),
+          650,
+        );
+    }
+  }
+
   function markFirstInputGuideSeen() {
     persistFirstInputGuideSeen();
     setHasSeenFirstInputGuide(true);
@@ -2023,13 +2066,6 @@ function App() {
 
       // 가이드가 떠 있는 동안(또는 보기 전) 첫 입력에 성공하면 가이드 완료로 본다.
       if (!hasSeenFirstInputGuide) {
-        if (firstInputGuideShownRef.current) {
-          telemetry.click("onboarding_guide_complete", {
-            ...puzzleTelemetryParams,
-            attempt_number: mission.attemptsUsed,
-            elapsed_seconds: getElapsedSeconds(mission.lastStartedAt),
-          });
-        }
         markFirstInputGuideSeen();
       }
     }
@@ -2151,6 +2187,7 @@ function App() {
       }
     });
 
+    markCompletionAction(nextValues);
     setCellValues(nextValues);
     const { adds, removes } = computeTentativeUpdate(
       tentativeChanges,
@@ -2202,6 +2239,7 @@ function App() {
       }
     });
 
+    markCompletionAction(nextValues);
     setCellValues(nextValues);
     const { adds, removes } = computeTentativeUpdate(
       tentativeChanges,
@@ -2260,6 +2298,7 @@ function App() {
     const nextValues = { ...cellValues };
 
     delete nextValues[targetKey];
+    markCompletionAction(nextValues);
     setCellValues(nextValues);
     updateTentativeCells([], [targetKey]);
     setSelectedCellKey(targetKey);
@@ -2279,6 +2318,7 @@ function App() {
       }
     }
 
+    markCompletionAction(nextValues);
     setCellValues(nextValues);
     updateTentativeCells([], tentativeRemoves);
     setSelectedCellKey(getEntryStartCellKey(entry));
@@ -2325,10 +2365,18 @@ function App() {
     }
     persistDailyHintWallet(nextWallet);
     setHintCount((prev) => prev + 1);
-    setCellValues((prev) => ({
-      ...prev,
-      [targetCellKey]: answerLetters[targetIndex],
-    }));
+    const hinted = confirmLetterTileCell(
+      puzzle,
+      {
+        ...tileState,
+        cellValues: {
+          ...cellValues,
+          [targetCellKey]: answerLetters[targetIndex],
+        },
+      },
+      targetCellKey,
+    );
+    changeTileState(hinted, "select");
     // 힌트로 채운 정답 글자는 임시가 아니므로 확정 처리한다.
     updateTentativeCells([], [targetCellKey]);
     setHintNotice(
@@ -2564,42 +2612,6 @@ function App() {
     });
   }
 
-  function dismissFirstInputGuide() {
-    telemetry.click("onboarding_guide_dismiss", {
-      ...puzzleTelemetryParams,
-      attempt_number: mission.attemptsUsed,
-    });
-    markFirstInputGuideSeen();
-  }
-
-  // 플레이 방법 안내 노출(최초 1회). 무입력 이탈이 이 구간에 몰려 있어 노출·이탈
-  // 단계를 함께 남긴다.
-  function handleHowToPlayShown(stepCount: number) {
-    if (howToPlayShownRef.current) {
-      return;
-    }
-    howToPlayShownRef.current = true;
-    howToPlayShownAtRef.current = Date.now();
-    telemetry.impression(HOW_TO_PLAY_SHOWN_EVENT, {
-      ...puzzleTelemetryParams,
-      ...buildHowToPlayParams({ stepIndex: 0, stepCount }),
-    });
-  }
-
-  function dismissHowToPlay(context: HowToPlayCloseContext) {
-    const shownAt = howToPlayShownAtRef.current;
-    telemetry.click(getHowToPlayOutcomeEvent(context.outcome), {
-      ...puzzleTelemetryParams,
-      ...buildHowToPlayParams({
-        stepIndex: context.stepIndex,
-        stepCount: context.stepCount,
-        elapsedSeconds: shownAt == null ? undefined : (Date.now() - shownAt) / 1000,
-      }),
-    });
-    persistHowToPlaySeen();
-    setHasSeenHowToPlay(true);
-  }
-
   function cancelRewardedHintPrompt() {
     setIsRewardedHintPromptOpen(false);
     telemetry.click("rewarded_hint_ad_cancel", {
@@ -2631,6 +2643,7 @@ function App() {
       });
     }
 
+    markCompletionAction(nextValues);
     setCellValues(nextValues);
     setTentativeCellKeys(new Set());
   }
@@ -2712,6 +2725,8 @@ function App() {
     await progressRepository.clearProgress(puzzle.puzzleId);
 
     setCellValues({});
+    setTileInput(undefined);
+    setTileStatus("idle");
     setTentativeCellKeys(new Set());
     setHintCount(0);
     setRevealUsed(false);
@@ -2787,52 +2802,6 @@ function App() {
     }
 
     navigate("today");
-  }
-
-  // 신규(도전 이력 없음) 첫 실행이면 홈을 건너뛰고 온보딩 퍼즐 풀이 화면으로 자동
-  // 진입한다(#205). 발동 조건·1회성 소비는 useFirstRunAutoStart 훅이 다루고,
-  // 시작 로직은 홈 원탭 CTA와 같은 startOrResumeMission을 재사용하므로
-  // attempt_start(attempt_kind=first)가 기존과 동일하게 발화된다.
-  useFirstRunAutoStart({
-    enabled: launchConfig.firstRunAutoStartEnabled,
-    launchConfigResolved,
-    isLoading: loadState === "loading",
-    isHomeRoute: route === "home",
-    snapshot: firstRunSnapshot,
-    onAutoStart: () => {
-      telemetry.impression("first_run_auto_start", puzzleTelemetryParams);
-      startOrResumeMission();
-    },
-  });
-
-  // 홈 사다리 단계 탭·하단 CTA. 단계의 퍼즐을 로드해 바로 시작(필요 시 첫 시도)한다.
-  // 신규 사용자에게 배정된 입문 온보딩 퍼즐이 아직 활성·미완료면 1단계(워밍업)를
-  // 눌러도 오늘의 일반 퍼즐로 전환하지 않고 온보딩을 이어 간다(#92). 온보딩 퍼즐은
-  // puzzleId가 달라 이 가드가 없으면 신규의 첫 경험이 입문 퍼즐을 건너뛴다.
-  async function startLadderStep(step: DailyLadderStep) {
-    if (loadState === "loading") {
-      return;
-    }
-
-    if (
-      step.step === 1 &&
-      puzzle.puzzleId === onboardingPuzzle.puzzleId &&
-      mission.completedAt == null
-    ) {
-      telemetry.click("home_quick_start", {
-        ...puzzleTelemetryParams,
-        ...buildDailyLadderCtaParams(step),
-        status: "onboarding",
-      });
-      startOrResumeMission();
-      return;
-    }
-
-    await startPuzzleById(
-      step.puzzleId,
-      buildDailyLadderCtaParams(step).source,
-      buildDailyLadderCtaParams(step),
-    );
   }
 
   // 특정 퍼즐을 로드해 바로 시작(필요 시 첫 시도)하고 풀이 화면으로 이동한다.
@@ -2913,7 +2882,7 @@ function App() {
       alreadyStarted &&
       getRemainingAttempts(nextMission) === 0;
     navigate(
-      nextMission.completedAt != null || isExhausted ? "result" : "today",
+      nextMission.completedAt != null || getCompletedEntries(session.nextPuzzle.entries, session.savedProgress.cellValues).length === session.nextPuzzle.entries.length || isExhausted ? "result" : "today",
     );
     telemetry.click("home_quick_start", {
       ...getPuzzleTelemetryParams(session.nextPuzzle),
@@ -3047,7 +3016,7 @@ function App() {
       className={[
         "appShell",
         route === "today" ? "appShellToday" : "",
-        isFirstInputGuideVisible ? "firstInputGuideActive" : "",
+        route === "home" || route === "result" ? "appShellTiles" : "",
       ]
         .filter(Boolean)
         .join(" ")}
@@ -3062,6 +3031,25 @@ function App() {
         <TodayScreen
           {...commonScreenProps}
           {...dateSelectionProps}
+          onOpenSettings={() => setSettingsOpen(true)}
+          tileState={tileState}
+          onTileChange={changeTileState}
+          tileGuide={
+            guideActive
+              ? {
+                  completed: guideCompleted,
+                  total: firstWordGuide.entryIds.length,
+                  onSkip: () => {
+                    setFirstWordGuide({ ...firstWordGuide, status: "skipped" });
+                    telemetry.click("first_three_words_skip", {
+                      puzzle_id: puzzle.puzzleId,
+                      input_policy: TILE_INPUT_POLICY_VERSION,
+                      word_count: guideCompleted,
+                    });
+                  },
+                }
+              : undefined
+          }
           completionCelebrationId={completionCelebrationId}
           consecutiveStreak={consecutiveStreak}
           dismissCompletionCelebration={() => setCompletionCelebrationId(null)}
@@ -3078,7 +3066,6 @@ function App() {
           }
           hasStarted={hasStarted}
           isCompleted={isCompleted}
-          isFirstInputGuideVisible={isFirstInputGuideVisible}
           stuckHintFocusRequestId={stuckHintFocusRequestId}
           isNewBestTime={isNewBestTime}
           isPaused={isPaused}
@@ -3094,6 +3081,17 @@ function App() {
       ) : route === "result" ? (
         <ResultScreen
           {...dateSelectionProps}
+          returnReminderPreprompt={
+            returnReminderPreprompt
+              ? {
+                  body: formatReturnReminderPrepromptBody(
+                    returnReminderPreprompt.streakDays,
+                  ),
+                  onAccept: acceptReturnReminder,
+                  onDecline: declineReturnReminder,
+                }
+              : undefined
+          }
           cellValues={cellValues}
           completedEntries={viewModel.completedEntries}
           consecutiveStreak={consecutiveStreak}
@@ -3147,29 +3145,36 @@ function App() {
         <LicenseScreen navigate={navigate} />
       ) : (
         <HomeScreen
-          {...dateSelectionProps}
-          completedEntries={viewModel.completedEntries}
-          consecutiveStreak={consecutiveStreak}
-          hasStarted={hasStarted}
-          hintBalance={hintBalance}
-          isCompleted={isCompleted}
-          ladder={dailyLadder}
-          launchConfig={launchConfig}
-          mission={mission}
-          navigate={navigate}
-          pausedMs={pause.pausedMs}
-          progressPercent={progressPercent}
           puzzle={puzzle}
-          remainingAttempts={remainingAttempts}
-          requestRewardedHint={requestRewardedHint}
-          selectedEntry={viewModel.selectedEntry}
-          startLabels={viewModel.startLabels}
-          startOrResumeMission={startOrResumeMission}
-          todayCompleted={todayCompleted}
+          puzzleSummaries={puzzleSummaries}
+          dateCardStates={dateCardStates}
+          loadState={loadState}
+          navigate={navigate}
+          consecutiveStreak={consecutiveStreak}
           weeklyStrip={weeklyStrip}
-          onLadderStep={(step) => void startLadderStep(step)}
+          onOpenSettings={() => setSettingsOpen(true)}
+          startDailyPuzzle={(id) => {
+            void startPuzzleById(id, "single_daily").catch(() =>
+              showHintToast("퍼즐을 불러오지 못했어요. 다시 눌러주세요."),
+            );
+          }}
         />
       )}
+      {settingsOpen ? (
+        <div className="settingsTileLayer">
+          <SettingsSheet
+            hapticEnabled={hapticEnabled}
+            soundEnabled={soundEnabled}
+            timerVisible={timerVisible}
+            textScale={textScale}
+            selectTextScale={selectTextScale}
+            toggleHaptic={toggleHaptic}
+            toggleSound={toggleSound}
+            toggleTimerVisible={toggleTimerVisible}
+            onClose={() => setSettingsOpen(false)}
+          />
+        </div>
+      ) : null}
       {isRewardedHintPromptOpen ? (
         <RewardedHintConfirmDialog
           credits={launchConfig.rewardedHintCredits}
@@ -3201,27 +3206,6 @@ function App() {
           onAcceptNearFinish={acceptNearFinishNudge}
           onRevealWord={acceptStuckWordReveal}
           onDismiss={dismissStuckHintPrompt}
-        />
-      ) : null}
-      {isFirstInputGuideVisible ? (
-        <div className="firstInputGuide" role="status">
-          <span className="firstInputGuideText">
-            반짝이는 첫 칸을 탭해 글자를 입력하면 시작돼요 ✏️
-          </span>
-          <button
-            type="button"
-            className="firstInputGuideClose"
-            aria-label="안내 닫기"
-            onClick={dismissFirstInputGuide}
-          >
-            ✕
-          </button>
-        </div>
-      ) : null}
-      {route === "today" && !hasSeenHowToPlay ? (
-        <HowToPlayDialog
-          onClose={dismissHowToPlay}
-          onShown={handleHowToPlayShown}
         />
       ) : null}
     </main>
@@ -3363,320 +3347,157 @@ function usePuzzleViewModel(
   };
 }
 
-type HomeScreenProps = DateSelectionProps & {
-  completedEntries: PuzzleEntry[];
-  consecutiveStreak: number;
-  hasStarted: boolean;
-  hintBalance: HintBalance;
-  isCompleted: boolean;
-  ladder: DailyLadder;
-  launchConfig: LaunchConfig;
-  mission: DailyMissionState;
-  navigate: (route: AppRoute) => void;
-  pausedMs: number;
-  progressPercent: number;
+type HomeScreenProps = {
   puzzle: Puzzle;
-  remainingAttempts: number;
-  requestRewardedHint: () => void;
-  selectedEntry?: PuzzleEntry;
-  startLabels: Map<string, number>;
-  startOrResumeMission: () => void;
-  todayCompleted: boolean;
+  puzzleSummaries: PuzzleManifestItem[];
+  dateCardStates: Record<string, DateCardState>;
+  loadState: LoadState;
+  navigate: (route: AppRoute) => void;
+  consecutiveStreak: number;
   weeklyStrip: WeeklyStreakStripDay[];
-  onLadderStep: (step: DailyLadderStep) => void;
+  startDailyPuzzle: (id: string) => void;
+  onOpenSettings: () => void;
 };
 
 function HomeScreen({
-  completedEntries,
-  consecutiveStreak,
-  hasStarted,
-  hintBalance,
-  isCompleted,
-  ladder,
-  loadState,
-  mission,
-  navigate,
-  pausedMs,
-  progressPercent,
   puzzle,
   puzzleSummaries,
-  remainingAttempts,
-  requestRewardedHint,
-  selectedEntry,
-  selectedPuzzleId,
-  startLabels,
-  startOrResumeMission,
-  todayCompleted,
+  dateCardStates,
+  loadState,
+  navigate,
+  consecutiveStreak,
   weeklyStrip,
-  onLadderStep,
+  startDailyPuzzle,
+  onOpenSettings,
 }: HomeScreenProps) {
-  const isLoadingPuzzlePack = loadState === "loading";
-  const isAttemptExhaustedUncompleted =
-    hasStarted && remainingAttempts <= 0 && !isCompleted;
-  const primaryLabel = isLoadingPuzzlePack
-    ? "불러오는 중"
-    : isCompleted
-      ? "결과 보기"
-      : isAttemptExhaustedUncompleted
-        ? "결과 보기"
-        : hasStarted
-          ? "이어 풀기"
-          : remainingAttempts > 0
-            ? "미션 시작"
-            : "내일 다시";
-  const missionStatusLabel = isLoadingPuzzlePack
-    ? "퍼즐팩을 확인하고 있어요"
-    : isCompleted
-      ? "완료"
-      : isAttemptExhaustedUncompleted
-        ? "도전 종료"
-        : hasStarted
-          ? `${completedEntries.length}/${puzzle.entries.length} 단어 · ${progressPercent}% 진행 중`
-          : "도전 준비 완료";
-  const selectedPuzzleSummary =
-    findPuzzleSummaryById(puzzleSummaries, selectedPuzzleId) ??
-    createPuzzleSummary(puzzle);
-  const selectedPuzzleLabel =
-    loadState === "remote"
-      ? formatPuzzleCardSequenceLabel(selectedPuzzleSummary)
-      : formatPuzzleAliasLabel(selectedPuzzleSummary);
-  const isPrimaryDisabled =
-    isLoadingPuzzlePack ||
-    (!isCompleted && !hasStarted && remainingAttempts === 0);
-  const missionLeadLabel = isLoadingPuzzlePack
-    ? "원격 퍼즐팩"
-    : loadState === "remote"
-      ? `퍼즐팩 ${selectedPuzzleLabel}`
-      : "선택한 미션";
-  const missionHeadline = isLoadingPuzzlePack
-    ? "불러오는 중"
-    : `${puzzle.entries.length}개 낱말`;
-  const missionDescription = isLoadingPuzzlePack
-    ? "최신 퍼즐 목록을 가져오는 중이에요"
-    : missionStatusLabel;
-  const streakMilestoneHint = !isLoadingPuzzlePack
-    ? getStreakMilestoneProgress(consecutiveStreak)
-    : null;
-  // 하단 고정 CTA는 사다리의 다음 미완료 단계를 가리킨다. 두 단계를 모두 끝냈으면
-  // "내일 다시"로 비활성화하고, 완료 판은 사다리 단계나 대표 단서 카드로 결과를 본다.
-  // 오늘 퍼즐이 아직 없으면(원격 미로드·번들 폴백) 선택 퍼즐 기준 기존 CTA로 폴백한다.
-  const ladderCta = ladder.cta;
-  const useLadderCta = ladderCta.kind !== "unavailable";
-  const isLadderCtaActionable =
-    ladderCta.kind === "start" || ladderCta.kind === "resume";
-  const bottomCtaLabel = isLoadingPuzzlePack
-    ? "불러오는 중"
-    : useLadderCta
-      ? ladderCta.label
-      : primaryLabel;
-  const isBottomCtaDisabled = useLadderCta
-    ? isLoadingPuzzlePack || !isLadderCtaActionable
-    : isPrimaryDisabled;
-  function pressBottomCta() {
-    if (useLadderCta) {
-      if (ladderCta.kind === "start" || ladderCta.kind === "resume") {
-        onLadderStep(ladderCta.step);
-      }
+  const summary = getDailyFreePuzzleSummary(puzzleSummaries, getTodayDateKey());
+  const [preview, setPreview] = useState<Puzzle | null>(
+    summary?.puzzleId === puzzle.puzzleId ? puzzle : null,
+  );
+  const [previewError, setPreviewError] = useState(false);
+  const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    setPreviewError(false);
+    if (!summary) {
+      setPreview(null);
+      setPreviewError(true);
       return;
     }
-    if (isCompleted) {
-      navigate("result");
-      return;
-    }
-    startOrResumeMission();
-  }
-
+    void puzzleRepository
+      .getPuzzleById(summary.puzzleId)
+      .then((next) => {
+        if (!cancelled) {
+          setPreview(next);
+          setPreviewError(next == null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setPreviewError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [summary, retry]);
+  const saved = summary ? dateCardStates[summary.puzzleId] : undefined;
+  const finished = saved?.completedAt != null;
+  const started = (saved?.attemptsUsed ?? 0) > 0 || saved?.hasProgress;
+  const loading = loadState === "loading" || (!preview && !previewError);
   return (
-    <>
-      <Top
-        title="가로세로 낱말 퍼즐"
-        subtitleBottom={`${
-          loadState === "remote"
-            ? `${selectedPuzzleLabel} · ${formatGameHeaderDate(mission.date)}`
-            : formatMissionDateLabel(mission.date, loadState)
-        }`}
-      />
-
-      <WeeklyStreakStrip
-        days={weeklyStrip}
-        headline={formatStreakStripHeadline(consecutiveStreak, todayCompleted)}
-        nudge={streakMilestoneHint}
-      />
-
-      <DailyLadderCard
-        ladder={ladder}
-        selectedPuzzleId={selectedPuzzleId}
-        disabled={isLoadingPuzzlePack}
-        onStepPress={onLadderStep}
-      />
-
-      <section className="todayMission" aria-label="선택한 미션">
-        <div className="missionLead">
-          <Paragraph typography="t5" color="#00866f" fontWeight="bold">
-            {missionLeadLabel}
-          </Paragraph>
-          <Paragraph typography="t2" fontWeight="bold">
-            {missionHeadline}
-          </Paragraph>
-          <Paragraph typography="t6" color="#4e5968">
-            {missionDescription}
-          </Paragraph>
-          {!isLoadingPuzzlePack && (
-            <PuzzleMetaChips
-              difficulty={puzzle.difficulty}
-              themeLabel={puzzle.themeLabel}
-              themeTag={puzzle.themeTag}
-            />
-          )}
-        </div>
-
-        <div
-          className="selectedPuzzleScaffold"
-          aria-label="선택한 퍼즐판 미리보기"
-        >
-          <MiniPuzzlePreview puzzle={puzzle} isLoading={isLoadingPuzzlePack} />
-        </div>
-
-        <div
-          className="attemptStrip"
-          aria-label={isCompleted ? "완료 통계" : "도전 상태"}
-        >
-          {isCompleted ? (
-            <>
-              <div>
-                <Paragraph typography="t7" color="#6b7684">
-                  도전 횟수
-                </Paragraph>
-                <Paragraph typography="t5" fontWeight="bold">
-                  {mission.attemptsUsed}회
-                </Paragraph>
-              </div>
-              <div>
-                <Paragraph typography="t7" color="#6b7684">
-                  풀이 시간
-                </Paragraph>
-                <Paragraph typography="t5" fontWeight="bold">
-                  {/* 일시정지 누적을 제외해 결과 화면과 같은 값을 보여준다(#203).
-                      pause는 세션 한정 상태라 앱 재시작 후에는 0으로 계산된다. */}
-                  {formatElapsedTime(
-                    mission.lastStartedAt,
-                    mission.completedAt,
-                    pausedMs,
-                  ) ?? "−"}
-                </Paragraph>
-              </div>
-              <div>
-                <Paragraph typography="t7" color="#6b7684">
-                  사용 힌트
-                </Paragraph>
-                <Paragraph typography="t5" fontWeight="bold">
-                  {hintBalance.used}회
-                </Paragraph>
-              </div>
-            </>
-          ) : (
-            <>
-              <div>
-                <Paragraph typography="t7" color="#6b7684">
-                  남은 도전
-                </Paragraph>
-                <Paragraph typography="t5" fontWeight="bold">
-                  {remainingAttempts}/{mission.maxAttempts}
-                </Paragraph>
-              </div>
-              <div>
-                <Paragraph typography="t7" color="#6b7684">
-                  완료
-                </Paragraph>
-                <Paragraph typography="t5" fontWeight="bold">
-                  {completedEntries.length}/{puzzle.entries.length}
-                </Paragraph>
-              </div>
-              <div>
-                <Paragraph typography="t7" color="#6b7684">
-                  힌트 남음
-                </Paragraph>
-                <Paragraph typography="t5" fontWeight="bold">
-                  {hintBalance.remaining}/{hintBalance.total}
-                </Paragraph>
-              </div>
-            </>
-          )}
-        </div>
-
-        <div
-          className="progressTrack"
-          role="progressbar"
-          aria-label="진행률"
-          aria-valuenow={progressPercent}
-          aria-valuemin={0}
-          aria-valuemax={100}
-        >
-          <span style={{ width: `${progressPercent}%` }} />
-        </div>
-      </section>
-
-      <button
-        className="cluePeek"
-        type="button"
-        aria-label={`${primaryLabel}: 대표 단서`}
-        disabled={isPrimaryDisabled}
-        onClick={isCompleted ? () => navigate("result") : startOrResumeMission}
-      >
-        <span>
-          {isLoadingPuzzlePack
-            ? "원격 퍼즐팩"
-            : selectedEntry == null
-              ? "대표 단서"
-              : formatEntryReference(selectedEntry, startLabels)}
+    <section className="tileHome" aria-label="홈">
+      <header className="tileHomeNav">
+        <span className="tileBrand">
+          낱말 한 판<span>DAILY WORD PLAY</span>
         </span>
-        <strong>
-          {isLoadingPuzzlePack
-            ? "불러오는 중"
-            : (selectedEntry?.clue ?? "단서 준비 중")}
-        </strong>
-      </button>
-
-      <HintRewardPanel
-        hintBalance={hintBalance}
-        requestRewardedHint={requestRewardedHint}
-      />
-
-      <section className="homeList" aria-label="진행 정보">
-        <button type="button" onClick={() => navigate("resume")}>
-          <div>
-            <strong>못 끝낸 퍼즐</strong>
-            <span>이어서 풀기</span>
-          </div>
-          <em>보기</em>
+        <button className="tileIcon" aria-label="설정" onClick={onOpenSettings}>
+          ⚙
         </button>
-        <MissionHistoryCard
-          attemptsUsed={mission.attemptsUsed}
-          consecutiveStreak={consecutiveStreak}
-          fastestBestTimeMs={getOverallBestTimeMs()}
-          onOpen={() => navigate("history")}
-        />
-      </section>
-
-      <section className="sourceNotice" aria-label="힌트 출처 안내">
-        <span>{contentSourceNotice}</span>
-        <button type="button" onClick={() => navigate("license")}>
-          출처/라이선스
-        </button>
-      </section>
-
-      <div className="fixedBottom homeBottomAction">
-        <Button
-          size="large"
-          display="full"
-          type="button"
-          disabled={isBottomCtaDisabled}
-          onClick={pressBottomCta}
-        >
-          {bottomCtaLabel}
-        </Button>
+      </header>
+      <p className="tileEyebrow">
+        {getTodayDateKey().replaceAll("-", ". ")} · 매일 새로운 낱말
+      </p>
+      <h1>
+        생각을 맞추는
+        <br />
+        오늘의 한 판.
+      </h1>
+      <p className="tileLead">단서를 읽고, 글자 타일을 골라보세요.</p>
+      <article className="tileDailyCard">
+        <div className="tileDailyCardHeading">
+          <strong>{finished ? "오늘도 한 판 완성!" : "오늘의 퍼즐"}</strong>
+          <span>{preview?.entries.length ?? "…"} 단어</span>
+        </div>
+        <div className="tileHomePreview">
+          {preview ? (
+            <MiniPuzzlePreview puzzle={preview} isLoading={loading} />
+          ) : (
+            <span>
+              {previewError
+                ? "퍼즐을 불러오지 못했어요"
+                : "오늘의 퍼즐을 준비하고 있어요"}
+            </span>
+          )}
+        </div>
+        <p>
+          {loadState === "fallback"
+            ? "연결이 어려워 저장된 퍼즐을 보여드려요."
+            : finished
+              ? "완성한 단어를 다시 만나보세요."
+              : started
+                ? "고른 글자는 그대로, 이어서 완성해요."
+                : "서두르지 않아도 괜찮아요. 한 단어씩 채워봐요."}
+        </p>
+        {previewError ? (
+          <button
+            className="tilePrimary"
+            onClick={() => setRetry((value) => value + 1)}
+          >
+            다시 불러오기
+          </button>
+        ) : (
+          <button
+            className="tilePrimary"
+            disabled={loading || !summary}
+            onClick={() => summary && startDailyPuzzle(summary.puzzleId)}
+          >
+            {loading
+              ? "불러오는 중"
+              : finished
+                ? "완성한 판 보기"
+                : started
+                  ? "이어서 풀기"
+                  : "오늘 한 판 시작"}
+            <span aria-hidden="true"> ›</span>
+          </button>
+        )}
+      </article>
+      <div className="tileHomeStreak">
+        <b>✦ {consecutiveStreak}일의 낱말 습관</b>
+        <div>
+          {weeklyStrip.map((day) => (
+            <span
+              key={day.date}
+              aria-label={`${day.date}${day.completed ? " 완료" : ""}`}
+              className={day.completed ? "done" : ""}
+            >
+              {day.completed ? "✓" : day.isToday ? "오늘" : "·"}
+            </span>
+          ))}
+        </div>
       </div>
-    </>
+      <nav className="tileHomeLinks">
+        <button onClick={() => navigate("resume")}>⌁ 이어 풀기</button>
+        <button
+          onClick={() => {
+            telemetry.click("history_open", { source: "home_card" });
+            navigate("history");
+          }}
+        >
+          ▤ 나의 기록
+        </button>
+        <button onClick={() => navigate("license")}>ⓘ 안내</button>
+      </nav>
+    </section>
   );
 }
 
@@ -3723,82 +3544,6 @@ function LicenseScreen({ navigate }: LicenseScreenProps) {
   );
 }
 
-type HintRewardPanelProps = {
-  compact?: boolean;
-  hintBalance: HintBalance;
-  requestRewardedHint: () => void;
-  useHint?: () => void;
-};
-
-function HintRewardPanel({
-  compact = false,
-  hintBalance,
-  requestRewardedHint,
-  useHint,
-}: HintRewardPanelProps) {
-  const adButtonLabel = hintBalance.isAdBusy
-    ? "광고 준비 중"
-    : `광고 보고 +${hintBalance.rewardedCredits}`;
-
-  return (
-    <section
-      className={["hintRewardPanel", compact ? "hintRewardPanelCompact" : ""]
-        .filter(Boolean)
-        .join(" ")}
-      aria-label="힌트 보유량"
-    >
-      <div>
-        <span>힌트 보유</span>
-        <strong>
-          {hintBalance.remaining}/{hintBalance.total}개
-        </strong>
-        <em>
-          오늘 기본 {hintBalance.defaultCredits}개 · 모든 퍼즐 공용
-          {hintBalance.earnedCredits > 0
-            ? ` · 광고 보상 ${hintBalance.earnedCredits}개`
-            : ""}
-        </em>
-      </div>
-      <div className="hintRewardActions">
-        {useHint == null ? null : (
-          <button
-            className="secondaryButton"
-            type="button"
-            disabled={hintBalance.remaining === 0}
-            onClick={useHint}
-          >
-            힌트 쓰기
-          </button>
-        )}
-        <button
-          className="primaryButton"
-          type="button"
-          disabled={!hintBalance.adsEnabled || hintBalance.isAdBusy}
-          onClick={requestRewardedHint}
-        >
-          {adButtonLabel}
-        </button>
-      </div>
-      {hintBalance.notice === "" ? null : <p>{hintBalance.notice}</p>}
-    </section>
-  );
-}
-
-function formatGameHeaderDate(date: string) {
-  const dayLabel = formatDateCardDay(date);
-  const value = new Date(`${date}T00:00:00`);
-
-  if (Number.isNaN(value.getTime())) {
-    return dayLabel;
-  }
-
-  const weekday = new Intl.DateTimeFormat("ko-KR", {
-    weekday: "long",
-  }).format(value);
-
-  return `${dayLabel} ${weekday}`;
-}
-
 function formatPuzzleSourceLabel(loadState: LoadState) {
   switch (loadState) {
     case "remote":
@@ -3821,17 +3566,6 @@ function formatMissionDateLabel(date: string, loadState: LoadState) {
   }
 }
 
-function formatPuzzleHeaderLabel(date: string, loadState: LoadState) {
-  switch (loadState) {
-    case "remote":
-      return formatGameHeaderDate(date);
-    case "loading":
-      return "불러오는 중";
-    case "fallback":
-      return "기기저장 퍼즐";
-  }
-}
-
 function formatPuzzleHistoryLabel(
   summary: PuzzleManifestItem,
   loadState: LoadState,
@@ -3841,49 +3575,6 @@ function formatPuzzleHistoryLabel(
   return loadState === "remote"
     ? `${formatPuzzleCardSequenceLabel(summary)} · ${aliasLabel}`
     : aliasLabel;
-}
-
-function LiveTimer({
-  startedAt,
-  pausedMs = 0,
-  pausedAt = null,
-}: {
-  startedAt: string;
-  pausedMs?: number;
-  pausedAt?: string | null;
-}) {
-  const [seconds, setSeconds] = useState(
-    () => getElapsedSeconds(startedAt, undefined, { pausedMs, pausedAt }) ?? 0,
-  );
-
-  // 시작 시각·일시정지 상태가 바뀌면 즉시 재계산한다(재개 직후 stale 표시 방지).
-  useEffect(() => {
-    setSeconds(
-      getElapsedSeconds(startedAt, undefined, { pausedMs, pausedAt }) ?? 0,
-    );
-  }, [startedAt, pausedMs, pausedAt]);
-
-  // 진행 중일 때만 1초 간격으로 카운트업한다. 일시정지(pausedAt != null) 중에는
-  // interval 자체를 멈춰 표시값을 고정하고, 재개 시 위 effect가 즉시 보정한 뒤
-  // 새 interval이 최신 pausedMs를 참조하므로 stale closure로 값이 줄지 않는다.
-  useEffect(() => {
-    if (pausedAt != null) {
-      return;
-    }
-    const id = window.setInterval(() => {
-      setSeconds(getElapsedSeconds(startedAt, undefined, { pausedMs }) ?? 0);
-    }, 1000);
-    return () => window.clearInterval(id);
-  }, [startedAt, pausedMs, pausedAt]);
-
-  return (
-    <span
-      className="liveTimerDisplay"
-      aria-label={`경과 시간 ${formatLiveTimer(seconds)}`}
-    >
-      {formatLiveTimer(seconds)}
-    </span>
-  );
 }
 
 type AppHeaderProps = {
@@ -3953,6 +3644,10 @@ function AppHeader({
 }
 
 type TodayScreenProps = DateSelectionProps & {
+  onOpenSettings: () => void;
+  tileState: LetterTileState;
+  onTileChange: (state: LetterTileState, action: TileInputAction) => void;
+  tileGuide?: { completed: number; total: number; onSkip: () => void };
   answerInputMode: AnswerInputMode;
   selectAnswerInputMode: (mode: AnswerInputMode) => void;
   applyAnswer: (entry: PuzzleEntry, value: string) => void;
@@ -3976,7 +3671,6 @@ type TodayScreenProps = DateSelectionProps & {
   hintBalance: HintBalance;
   hintCount: number;
   isCompleted: boolean;
-  isFirstInputGuideVisible: boolean;
   stuckHintFocusRequestId: number;
   isNewBestTime: boolean;
   isPaused: boolean;
@@ -4016,1313 +3710,60 @@ type TodayScreenProps = DateSelectionProps & {
 };
 
 function TodayScreen({
-  answerInputMode,
-  selectAnswerInputMode,
-  applyAnswer,
-  applyAnswerSegment,
-  autocheckEnabled,
-  cellValues,
-  checkedCellKeys,
-  clearAnswerCell,
-  clearEntryAnswer,
-  completedEntries,
-  completionCelebrationId,
-  consecutiveStreak,
-  dateCardStates,
-  dismissCompletionCelebration,
-  returnReminderPreprompt,
-  hasStarted,
-  hintBalance,
-  hintCount,
-  isCompleted,
-  isFirstInputGuideVisible,
-  stuckHintFocusRequestId,
-  isNewBestTime,
-  isPaused,
-  hapticEnabled,
-  loadState,
-  mission,
-  navigate,
-  onboardingDifficultyRampEnabled,
-  recommendationPuzzleSummaries,
-  pencilMode,
-  pause,
-  togglePause,
+  tileState,
+  onTileChange,
+  tileGuide,
   puzzle,
-  puzzleSummaries,
-  remainingAttempts,
-  revealUsed,
-  selectTextScale,
-  soundEnabled,
-  tentativeCellKeys,
-  textScale,
-  timerVisible,
-  toggleAutocheck,
-  toggleHaptic,
-  togglePencilMode,
-  toggleSound,
-  toggleTimerVisible,
-  selectedCellKey,
-  selectedDirection,
-  selectedPuzzleId,
-  selectedEntry,
-  selectPuzzle,
-  startLabels,
-  selectCell,
-  selectEntry,
+  hasStarted,
+  isPaused,
+  hintBalance,
+  navigate,
   startOrResumeMission,
+  togglePause,
   useHint,
-  viewModel,
+  onOpenSettings,
+  timerVisible,
+  textScale,
+  mission,
+  pause,
 }: TodayScreenProps) {
-  const [isClueListOpen, setIsClueListOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [answerInputResetKey, setAnswerInputResetKey] = useState(0);
-  const boardInputRef = useRef<HTMLInputElement>(null);
-  const boxInputRef = useRef<HTMLInputElement>(null);
-  const starterFocusPuzzleIdRef = useRef<string>("");
-  const commitTimerRef = useRef<number | null>(null);
-  // 지연 커밋에 걸린 값을 보관해, 셀/문항 전환이 타이머를 취소하기 전에 먼저
-  // 커밋(flush)할 수 있게 한다. cell 모드에서 마지막 글자가 유실되던 원인.
-  const pendingCommitRef = useRef<{
-    value: string;
-    startCellKey: string;
-  } | null>(null);
-  const isComposingRef = useRef(false);
-  const [inputValue, setInputValue] = useState("");
-  const [isComposing, setIsComposing] = useState(false);
-  const compositionStartCellKeyRef = useRef<string | null>(null);
-  const compositionEndValueRef = useRef<string | null>(null);
-  // A finished puzzle is shown read-only so the saved answers stay intact while
-  // the player reviews the completed board.
-  const isReviewMode = isCompleted;
-  const isAttemptExhaustedUncompleted =
-    hasStarted && remainingAttempts <= 0 && !isCompleted;
-  const selectedPuzzleSummary =
-    findPuzzleSummaryById(puzzleSummaries, selectedPuzzleId) ??
-    createPuzzleSummary(puzzle);
-  const selectedPuzzleLabel =
-    loadState === "remote"
-      ? formatPuzzleAliasLabel(selectedPuzzleSummary)
-      : formatPuzzleHeaderLabel(puzzle.date, loadState);
-  const showCompletionCelebration = completionCelebrationId === puzzle.puzzleId;
-  // 결과 화면·최고 기록 판정과 같은 기준으로 일시정지 누적을 제외한다(#203).
-  const celebrationElapsedLabel = formatElapsedTime(
-    mission.lastStartedAt,
-    mission.completedAt,
-    pause.pausedMs,
-  );
-  // 완료 축하 다이얼로그가 열릴 때만 공유 격자·문구를 계산한다(#202).
-  const celebrationShareGrid = showCompletionCelebration
-    ? buildShareGrid(puzzle, cellValues)
-    : "";
-  const celebrationShareText = showCompletionCelebration
-    ? buildShareText({
-        puzzleLabel: selectedPuzzleLabel,
-        elapsedLabel: celebrationElapsedLabel,
-        hintCount,
-        attemptsUsed: mission.attemptsUsed,
-        completedCount: completedEntries.length,
-        totalCount: puzzle.entries.length,
-        consecutiveStreak,
-        isComplete: true,
-        revealUsed,
-        shareGrid: celebrationShareGrid,
-        shareLandingUrl,
-      })
-    : "";
-  const completionNextRecommendedSummary = showCompletionCelebration
-    ? getNextRecommendedSummary(
-        recommendationPuzzleSummaries,
-        dateCardStates,
-        {
-          puzzleId: puzzle.puzzleId,
-          difficulty: puzzle.difficulty,
-          date: puzzle.date,
-        },
-        onboardingDifficultyRampEnabled,
-      )
-    : undefined;
-  const completionNextRecommendedButtonLabel =
-    completionNextRecommendedSummary == null
-      ? undefined
-      : formatDailyLadderNextLabel(
-          completionNextRecommendedSummary,
-          puzzle.date,
-        );
-
-  function startNextPuzzleFromCompletion() {
-    if (completionNextRecommendedSummary == null) {
-      return;
-    }
-
-    const nextPuzzleCtaEvent = buildNextPuzzleCtaEvent(
-      completionNextRecommendedSummary,
-      "result_overlay",
-    );
-    telemetry.click(nextPuzzleCtaEvent.name, {
-      ...getPuzzleTelemetryParams(puzzle),
-      ...nextPuzzleCtaEvent.params,
-    });
-    dismissCompletionCelebration();
-    selectPuzzle(completionNextRecommendedSummary.puzzleId);
-    navigate("today");
-  }
-  const selectedEntryCells = useMemo(
-    () => (selectedEntry == null ? [] : getEntryCells(selectedEntry)),
-    [selectedEntry],
-  );
-  const selectedEntryCellKeys = useMemo(
-    () => selectedEntryCells.map((cell) => getCellKey(cell.row, cell.col)),
-    [selectedEntryCells],
-  );
-  const selectedIndex = Math.max(
-    0,
-    selectedEntryCellKeys.indexOf(selectedCellKey),
-  );
-  const activeCellKey =
-    selectedEntryCellKeys[selectedIndex] ?? getEntryStartCellKey(selectedEntry);
-  const selectedRemainingCellCount = Math.max(
-    1,
-    selectedEntryCells.length - selectedIndex,
-  );
-  const pendingAnswerCellValues = useMemo(
-    () =>
-      selectedEntry == null
-        ? {}
-        : getPendingAnswerCellValues(
-            selectedEntry,
-            inputValue,
-            selectedCellKey,
-          ),
-    [inputValue, selectedCellKey, selectedEntry],
-  );
-  const selectedCellEntries = useMemo(() => {
-    const entries =
-      selectedCellKey === ""
-        ? []
-        : (viewModel.cellEntries.get(selectedCellKey) ?? []);
-    const entriesWithSelected =
-      selectedEntry == null ||
-      entries.some((entry) => entry.id === selectedEntry.id)
-        ? entries
-        : [...entries, selectedEntry];
-
-    return [...entriesWithSelected].sort(
-      (a, b) => directionOrder[a.direction] - directionOrder[b.direction],
-    );
-  }, [selectedCellKey, selectedEntry, viewModel.cellEntries]);
-
-  const isSelectedComplete =
-    selectedEntry != null &&
-    completedEntries.some((entry) => entry.id === selectedEntry.id);
-
-  const orderedEntries = useMemo(
-    () =>
-      [...puzzle.entries].sort((a, b) => {
-        const labelA = startLabels.get(getCellKey(a.row, a.col)) ?? 0;
-        const labelB = startLabels.get(getCellKey(b.row, b.col)) ?? 0;
-
-        return (
-          labelA - labelB ||
-          directionOrder[a.direction] - directionOrder[b.direction]
-        );
-      }),
-    [puzzle.entries, startLabels],
-  );
-
-  const moveBoardInputCaretToEnd = useCallback(
-    (input: HTMLInputElement | null = boardInputRef.current) => {
-      if (input == null) {
-        return;
-      }
-
-      const moveCaret = () => {
-        if (input == null || !input.isConnected) {
-          return;
-        }
-
-        const position = input.value.length;
-        input.setSelectionRange(position, position);
-      };
-
-      moveCaret();
-      requestAnimationFrame(moveCaret);
-    },
-    [],
-  );
-
-  const resetBoardInputValue = useCallback(() => {
-    setInputValue("");
-
-    if (boardInputRef.current != null) {
-      boardInputRef.current.value = "";
-      moveBoardInputCaretToEnd(boardInputRef.current);
-    }
-  }, [moveBoardInputCaretToEnd]);
-
-  function goToAdjacentClue(delta: number) {
-    if (selectedEntry == null || orderedEntries.length === 0) {
-      return;
-    }
-
-    const index = orderedEntries.findIndex(
-      (entry) => entry.id === selectedEntry.id,
-    );
-
-    if (index === -1) {
-      return;
-    }
-
-    const nextEntry =
-      orderedEntries[
-        (index + delta + orderedEntries.length) % orderedEntries.length
-      ];
-
-    if (nextEntry != null) {
-      selectEntry(nextEntry);
-      focusNativeInput();
-    }
-  }
-
-  function selectClueAndClose(entry: PuzzleEntry) {
-    selectEntry(entry);
-    setIsClueListOpen(false);
-    focusNativeInput();
-  }
-
-  function clearSelectedAnswer() {
-    if (selectedEntry == null) {
-      return;
-    }
-
-    setAnswerInputResetKey((prev) => prev + 1);
-    resetBoardInputValue();
-    clearEntryAnswer(selectedEntry);
-  }
-
-  const clearCommitTimer = useCallback(() => {
-    if (commitTimerRef.current != null) {
-      window.clearTimeout(commitTimerRef.current);
-      commitTimerRef.current = null;
-    }
-  }, []);
-
+  const [clock, setClock] = useState(Date.now());
   useEffect(() => {
-    // 셀/문항이 바뀌기 전, 대기 중인 마지막 글자 커밋을 취소하지 말고 반영한다.
-    const pending = pendingCommitRef.current;
-    if (pending != null) {
-      pendingCommitRef.current = null;
-      commitInputValue(pending.value, pending.startCellKey);
-    }
-    clearCommitTimer();
-    compositionEndValueRef.current = null;
-    compositionStartCellKeyRef.current = null;
-    isComposingRef.current = false;
-    resetBoardInputValue();
-    setIsComposing(false);
-    // commitInputValue를 deps에 넣으면 매 렌더 재실행되어 셀 전환 시에만 flush
-    // 하려는 의도가 깨진다. ref 기반 pending 값만 사용하므로 제외한다.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    activeCellKey,
-    answerInputResetKey,
-    clearCommitTimer,
-    resetBoardInputValue,
-    selectedEntry?.id,
-  ]);
-
-  useEffect(() => () => clearCommitTimer(), [clearCommitTimer]);
-
-  // In box mode the word input is uncontrolled, so external cell changes (most
-  // notably hint reveals) don't reach it on their own. Mirror the committed
-  // letters into it whenever they change — but skip while it's focused so live
-  // typing / IME composition isn't clobbered.
-  useEffect(() => {
-    if (answerInputMode !== "box") {
-      return;
-    }
-
-    const input = boxInputRef.current;
-
-    if (input == null || document.activeElement === input) {
-      return;
-    }
-
-    const committed = selectedEntryCellKeys
-      .map((key) => cellValues[key] ?? "")
-      .join("");
-
-    if (input.value !== committed) {
-      input.value = committed;
-    }
-  }, [answerInputMode, cellValues, selectedEntryCellKeys]);
-
-  // 시작 직후 침묵 이탈(첫 입력 0) 방지: 첫 입력 가이드가 처음 노출될 때 가장 쉬운
-  // 단어를 선택해 "여기부터" 하이라이트를 모으고, 입력창에 포커스해 키보드를 띄운다.
-  // 키보드 자동 노출은 브라우저/웹뷰 정책상 best-effort이며, 퍼즐당 1회만 실행한다.
-  useEffect(() => {
-    if (!isFirstInputGuideVisible) {
-      return;
-    }
-
-    if (starterFocusPuzzleIdRef.current === puzzle.puzzleId) {
-      return;
-    }
-    starterFocusPuzzleIdRef.current = puzzle.puzzleId;
-
-    // 시작 단어의 시작 칸이 아니라 "첫 빈 칸"을 선택·하이라이트해, 가이드가 가리키는
-    // 반짝이는 칸이 실제로 입력 가능한 위치가 되도록 한다(#183).
-    const starter = resolveStarterCell({ cellValues, puzzle });
-    if (starter != null) {
-      const starterEntry = puzzle.entries.find(
-        (entry) => entry.id === starter.entryId,
-      );
-      if (starterEntry != null) {
-        selectEntry(starterEntry, starter.cellKey);
-      }
-    }
-
-    requestAnimationFrame(() => {
-      if (answerInputMode === "box") {
-        boxInputRef.current?.focus({ preventScroll: true });
-      } else {
-        boardInputRef.current?.focus({ preventScroll: true });
-      }
-    });
-  }, [
-    answerInputMode,
-    cellValues,
-    isFirstInputGuideVisible,
-    puzzle,
-    selectEntry,
-  ]);
-
-  // 첫 입력 넛지 CTA는 사용자 제스처이므로 초기 best-effort 포커스와 별도로 현재
-  // 입력 모드의 input을 다시 포커스한다. 선택 상태 반영 뒤 실행되도록 RAF로 미룬다.
-  useEffect(() => {
-    if (stuckHintFocusRequestId <= 0) {
-      return;
-    }
-    requestAnimationFrame(() => {
-      if (answerInputMode === "box") {
-        boxInputRef.current?.focus({ preventScroll: true });
-      } else {
-        boardInputRef.current?.focus({ preventScroll: true });
-      }
-    });
-  }, [answerInputMode, stuckHintFocusRequestId]);
-
-  function focusPuzzleBoard() {
-    requestAnimationFrame(() => {
-      document.querySelector<HTMLElement>(".puzzleBoard")?.focus({
-        preventScroll: true,
-      });
-    });
-  }
-
-  function focusNativeInput() {
-    // In box mode the hidden per-cell input is not mounted; route focus to the
-    // visible word input instead so all existing call sites keep working.
-    if (answerInputMode === "box") {
-      boxInputRef.current?.focus({ preventScroll: true });
-      return;
-    }
-
-    boardInputRef.current?.focus({ preventScroll: true });
-  }
-
-  function selectCellAndFocus(row: number, col: number) {
-    selectCell(row, col);
-    focusNativeInput();
-  }
-
-  function getAnswerSlotCellKeyFromPoint(clientX: number, clientY: number) {
-    for (const slot of document.querySelectorAll<HTMLElement>(".answerSlot")) {
-      const cellKey = slot.dataset.cellKey;
-
-      if (cellKey == null || !selectedEntryCellKeys.includes(cellKey)) {
-        continue;
-      }
-
-      const rect = slot.getBoundingClientRect();
-
-      if (
-        clientX >= rect.left &&
-        clientX <= rect.right &&
-        clientY >= rect.top &&
-        clientY <= rect.bottom
-      ) {
-        return cellKey;
-      }
-    }
-
-    return null;
-  }
-
-  function selectAnswerSlotFromPoint(clientX: number, clientY: number) {
-    if (selectedEntry == null) {
-      return;
-    }
-
-    const cellKey = getAnswerSlotCellKeyFromPoint(clientX, clientY);
-
-    if (cellKey == null) {
-      focusNativeInput();
-      return;
-    }
-
-    if (isComposingRef.current || isComposing) {
-      focusNativeInput();
-      return;
-    }
-
-    selectEntry(selectedEntry, cellKey);
-    focusNativeInput();
-  }
-
-  function handleAnswerSlotInputPointerDown(
-    event: ReactPointerEvent<HTMLInputElement>,
-  ) {
-    selectAnswerSlotFromPoint(event.clientX, event.clientY);
-  }
-
-  function handleAnswerSlotInputClick(
-    event: ReactMouseEvent<HTMLInputElement>,
-  ) {
-    selectAnswerSlotFromPoint(event.clientX, event.clientY);
-  }
-
-  function handleAnswerSlotInputTouchStart(
-    event: ReactTouchEvent<HTMLInputElement>,
-  ) {
-    const touch = event.touches[0] ?? event.changedTouches[0];
-
-    if (touch == null) {
-      focusNativeInput();
-      return;
-    }
-
-    selectAnswerSlotFromPoint(touch.clientX, touch.clientY);
-  }
-
-  function commitInputValue(value: string, startCellKey = activeCellKey) {
-    if (selectedEntry == null) {
-      return;
-    }
-
-    clearCommitTimer();
-    pendingCommitRef.current = null;
-    const remainingCellCount =
-      selectedEntryCells.length -
-      getEntryCellIndex(selectedEntry, startCellKey);
-    const nextLetters = getAnswerCommitLetters(value, remainingCellCount);
-
-    if (nextLetters.length > 0) {
-      applyAnswerSegment(selectedEntry, nextLetters.join(""), startCellKey);
-    }
-
-    resetBoardInputValue();
-  }
-
-  function getDraftLetters(value: string, startCellKey = activeCellKey) {
-    if (selectedEntry == null) {
-      return [];
-    }
-
-    const remainingCellCount =
-      selectedEntryCells.length -
-      getEntryCellIndex(selectedEntry, startCellKey);
-
-    return getAnswerInputLetters(value, remainingCellCount);
-  }
-
-  function hasCommittableDraft(value: string, startCellKey = activeCellKey) {
-    const draftLetters = getDraftLetters(value, startCellKey);
-
-    return getAnswerCommitLetters(value, draftLetters.length).length > 0;
-  }
-
-  function hasCompleteDraft(value: string, startCellKey = activeCellKey) {
-    if (selectedEntry == null) {
-      return false;
-    }
-
-    const remainingCellCount =
-      selectedEntryCells.length -
-      getEntryCellIndex(selectedEntry, startCellKey);
-
-    return (
-      getAnswerCommitLetters(value, remainingCellCount).length >=
-      remainingCellCount
-    );
-  }
-
-  function handleAdvanceInput() {
-    const draftLetters = getDraftLetters(inputValue, activeCellKey);
-
-    if (hasCommittableDraft(inputValue, activeCellKey)) {
-      commitInputValue(inputValue, activeCellKey);
-      focusNativeInput();
-      return;
-    }
-
-    if (draftLetters.length > 0) {
-      focusNativeInput();
-      return;
-    }
-
-    boardInputRef.current?.blur();
-    focusPuzzleBoard();
-  }
-
-  function preserveInputOnBlur(value: string) {
-    if (isComposingRef.current) {
-      clearCommitTimer();
-      // Blur can interrupt IME composition without reliably firing compositionend.
-      // Reset composing flags so subsequent input is not ignored.
-      isComposingRef.current = false;
-      setIsComposing(false);
-      setInputValue(value);
-      return;
-    }
-
-    flushPendingCommit();
-
-    const draftLetters = getDraftLetters(value, activeCellKey);
-
-    if (hasCommittableDraft(value, activeCellKey)) {
-      commitInputValue(value, activeCellKey);
-      return;
-    }
-
-    if (draftLetters.length > 0) {
-      clearCommitTimer();
-    }
-  }
-
-  function queueCommitInputValue(
-    value: string,
-    startCellKey = activeCellKey,
-    delayMs = DIRECT_INPUT_COMMIT_DELAY_MS,
-  ) {
-    if (selectedEntry == null) {
-      return;
-    }
-
-    clearCommitTimer();
-    pendingCommitRef.current = null;
-
-    if (isHangulJamoInput(value)) {
-      return;
-    }
-
-    if (!hasCompleteDraft(value, startCellKey)) {
-      return;
-    }
-
-    // 지연 0(조합 종료 경로)이면 비동기 타이머의 취소 창을 없애기 위해 즉시
-    // 커밋한다. 마지막 글자 조합 직후 셀 전환이 타이머를 지워버리는 race 제거.
-    if (delayMs <= 0) {
-      commitInputValue(value, startCellKey);
-      return;
-    }
-
-    pendingCommitRef.current = { value, startCellKey };
-    commitTimerRef.current = window.setTimeout(() => {
-      commitInputValue(value, startCellKey);
-    }, delayMs);
-  }
-
-  // 대기 중인 지연 커밋이 있으면 취소 대신 먼저 반영한다.
-  function flushPendingCommit() {
-    const pending = pendingCommitRef.current;
-    if (pending == null) {
-      return;
-    }
-    pendingCommitRef.current = null;
-    commitInputValue(pending.value, pending.startCellKey);
-  }
-
-  function selectRelativeCell(delta: number) {
-    if (selectedEntry == null) {
-      return;
-    }
-
-    const nextIndex = Math.max(
-      0,
-      Math.min(selectedEntryCellKeys.length - 1, selectedIndex + delta),
-    );
-
-    selectEntry(
-      selectedEntry,
-      selectedEntryCellKeys[nextIndex] ?? activeCellKey,
-    );
-    focusNativeInput();
-  }
-
-  if (!hasStarted && !isCompleted) {
-    return (
-      <>
-        <AppHeader
-          eyebrow={`남은 도전 ${remainingAttempts}/${mission.maxAttempts}`}
-          title="퍼즐 풀기"
-          onBack={() => navigate("home")}
-        />
-        <section className="startPanel" aria-label="미션 시작">
-          <Paragraph typography="t2" fontWeight="bold">
-            도전 {mission.attemptsUsed + 1}
-          </Paragraph>
-          <Paragraph typography="t6" color="#6b7684">
-            {puzzle.entries.length}개 단어 · 교차율{" "}
-            {formatRatio(puzzle.metrics.crossRatio)}
-          </Paragraph>
-          <Button
-            size="large"
-            display="full"
-            type="button"
-            disabled={loadState === "loading" || remainingAttempts === 0}
-            onClick={startOrResumeMission}
-          >
-            {loadState === "loading" ? "불러오는 중" : "시작"}
-          </Button>
-        </section>
-      </>
-    );
-  }
-
-  const solvePercent = Math.round(
-    Math.min(
-      100,
-      Math.max(
-        0,
-        puzzle.entries.length > 0
-          ? (completedEntries.length / puzzle.entries.length) * 100
-          : 0,
-      ),
-    ),
-  );
-  const answerSlotColumnCount =
-    selectedEntryCells.length <= 5 ? selectedEntryCells.length : 4;
-  const answerSlotInputStyle = {
-    "--answer-slot-width": `${answerSlotColumnCount * 44 + Math.max(0, answerSlotColumnCount - 1) * 7}px`,
-  } as CSSProperties;
-  // Box mode edits the whole word at once, so seed the field with the letters
-  // already committed for the selected entry.
-  const selectedEntryCommittedValue = selectedEntryCellKeys
-    .map((key) => cellValues[key] ?? "")
-    .join("");
-  // Box mode edits the whole word at once. Cell mode never overwrites an
-  // already-correct (locked) cell because its caret skips them; mirror that
-  // here so editing one word can't undo a correct crossing letter.
-  function applyBoxValue(entry: PuzzleEntry, value: string) {
-    const cells = getEntryCells(entry);
-    const letters = getAnswerInputLetters(value, cells.length);
-    const merged = selectedEntryCellKeys
-      .map((key, index) =>
-        isCellLocked(puzzle, cellValues, key)
-          ? getCellAnswerLetter(puzzle, key)
-          : (letters[index] ?? ""),
-      )
-      .join("");
-
-    applyAnswer(entry, merged);
-  }
-  const answerInputElement =
-    selectedEntry != null && !isReviewMode ? (
-      <div className="answerInputArea">
-        {answerInputMode === "cell" ? (
-          <div className="answerSlotInput">
-            <div
-              className="answerSlotGrid"
-              style={answerSlotInputStyle}
-              role="group"
-              aria-label={`${formatEntryReference(selectedEntry, startLabels)} 답 입력`}
-            >
-              {selectedEntryCellKeys.map((key, index) => {
-                const pendingValue = pendingAnswerCellValues[key] ?? "";
-                const committedValue = cellValues[key] ?? "";
-                const displayValue =
-                  pendingValue !== "" ? pendingValue : committedValue;
-                const isActive = key === activeCellKey;
-                const isLocked = isCellLocked(puzzle, cellValues, key);
-                const isWrong =
-                  pendingValue === "" &&
-                  committedValue !== "" &&
-                  committedValue !== getCellAnswerLetter(puzzle, key);
-
-                return (
-                  <button
-                    key={key}
-                    data-cell-key={key}
-                    className={[
-                      "answerSlot",
-                      committedValue !== "" ? "answerSlotFilled" : "",
-                      isActive ? "answerSlotActive" : "",
-                      pendingValue !== "" ? "answerSlotPending" : "",
-                      isLocked ? "answerSlotLocked" : "",
-                      isWrong ? "answerSlotWrong" : "",
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
-                    type="button"
-                    aria-label={`${index + 1}번째 글자 ${
-                      displayValue === "" ? "비어 있음" : displayValue
-                    }${isWrong ? " 오답" : ""}`}
-                    aria-invalid={isWrong ? true : undefined}
-                    aria-pressed={isActive}
-                    onClick={() => {
-                      selectEntry(selectedEntry, key);
-                      focusNativeInput();
-                    }}
-                  >
-                    {displayValue}
-                    {/* 색상 외 형태(×) 신호로도 오답을 구분한다(WCAG 1.4.1). */}
-                    {isWrong ? (
-                      <span
-                        className="answerSlotWrongMark"
-                        aria-hidden="true"
-                      />
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-            <input
-              ref={boardInputRef}
-              className="answerSlotNativeInput"
-              inputMode="text"
-              autoCapitalize="off"
-              autoComplete="off"
-              autoCorrect="off"
-              enterKeyHint="next"
-              maxLength={selectedRemainingCellCount}
-              spellCheck={false}
-              disabled={isPaused}
-              aria-label={`${selectedRemainingCellCount}글자 답 입력`}
-              onClick={handleAnswerSlotInputClick}
-              onPointerDown={handleAnswerSlotInputPointerDown}
-              onTouchStart={handleAnswerSlotInputTouchStart}
-              onFocus={(event) => moveBoardInputCaretToEnd(event.currentTarget)}
-              onCompositionStart={(event) => {
-                clearCommitTimer();
-                compositionStartCellKeyRef.current = activeCellKey;
-                compositionEndValueRef.current = null;
-                isComposingRef.current = true;
-                setIsComposing(true);
-                moveBoardInputCaretToEnd(event.currentTarget);
-              }}
-              onCompositionUpdate={(event) => {
-                setInputValue(event.currentTarget.value || event.data);
-                clearCommitTimer();
-              }}
-              onCompositionEnd={(event) => {
-                const nextValue = event.currentTarget.value;
-                const startCellKey = compositionStartCellKeyRef.current;
-
-                isComposingRef.current = false;
-                compositionStartCellKeyRef.current = null;
-                setIsComposing(false);
-
-                if (startCellKey == null) {
-                  resetBoardInputValue();
-                  return;
-                }
-
-                compositionEndValueRef.current = nextValue;
-                setInputValue(nextValue);
-                moveBoardInputCaretToEnd(event.currentTarget);
-                queueCommitInputValue(
-                  nextValue,
-                  startCellKey,
-                  COMPOSITION_COMMIT_DELAY_MS,
-                );
-              }}
-              onChange={(event) => {
-                const nextValue = event.currentTarget.value;
-                const nativeEvent = event.nativeEvent as InputEvent;
-
-                if (
-                  isComposing ||
-                  isComposingRef.current ||
-                  nativeEvent.isComposing ||
-                  nativeEvent.inputType === "insertCompositionText"
-                ) {
-                  setInputValue(nextValue);
-                  clearCommitTimer();
-                  return;
-                }
-
-                setInputValue(nextValue);
-                if (compositionEndValueRef.current === nextValue) {
-                  compositionEndValueRef.current = null;
-                  return;
-                }
-
-                moveBoardInputCaretToEnd(event.currentTarget);
-                queueCommitInputValue(nextValue);
-              }}
-              onKeyDown={(event) => {
-                const nativeEvent = event.nativeEvent;
-
-                if (isComposing || nativeEvent.isComposing) {
-                  return;
-                }
-
-                if (
-                  event.key === "Backspace" &&
-                  inputValue === "" &&
-                  selectedEntry != null
-                ) {
-                  event.preventDefault();
-                  clearAnswerCell(selectedEntry, activeCellKey);
-                  return;
-                }
-
-                if (event.key === "ArrowLeft") {
-                  event.preventDefault();
-                  selectRelativeCell(-1);
-                  return;
-                }
-
-                if (event.key === "ArrowRight") {
-                  event.preventDefault();
-                  selectRelativeCell(1);
-                  return;
-                }
-
-                if (event.key === "ArrowUp" || event.key === "ArrowDown") {
-                  event.preventDefault();
-                  const crossingDownEntry = (
-                    viewModel.cellEntries.get(activeCellKey) ?? []
-                  ).find((entry) => entry.direction === "down");
-                  const action = resolveVerticalArrowAction({
-                    key: event.key,
-                    selectedDirection,
-                    hasCrossingDownEntry: crossingDownEntry != null,
-                  });
-                  if (action.type === "move") {
-                    selectRelativeCell(action.delta);
-                  } else if (
-                    action.type === "toggleDown" &&
-                    crossingDownEntry != null
-                  ) {
-                    selectEntry(crossingDownEntry, activeCellKey);
-                    focusNativeInput();
-                  }
-                  return;
-                }
-
-                if (
-                  event.key === "Enter" ||
-                  event.key === " " ||
-                  event.code === "Space"
-                ) {
-                  event.preventDefault();
-                  handleAdvanceInput();
-                }
-              }}
-              onBlur={(event) => preserveInputOnBlur(event.currentTarget.value)}
-            />
-          </div>
-        ) : null}
-        {answerInputMode === "box" ? (
-          <input
-            ref={boxInputRef}
-            key={`answer-box-${selectedEntry.id}-${answerInputResetKey}-${hintCount}`}
-            className="answerBoxInput"
-            inputMode="text"
-            autoCapitalize="off"
-            autoComplete="off"
-            autoCorrect="off"
-            enterKeyHint="next"
-            spellCheck={false}
-            maxLength={selectedEntryCells.length}
-            defaultValue={selectedEntryCommittedValue}
-            aria-label={`${selectedEntryCells.length}글자 답 입력`}
-            placeholder={`${selectedEntryCells.length}글자 입력`}
-            onChange={(event) =>
-              applyBoxValue(selectedEntry, event.currentTarget.value)
-            }
-            // iOS WKWebView는 마지막 글자를 IME 조합 중인 상태에서 필드가
-            // blur되면(다음 문항 이동/제출) 최종 change 이벤트를 발화하지 않아
-            // 마지막 글자가 유실된다. 조합 종료·blur 시점에 필드의 실제 값을
-            // 다시 반영(flush)해 마지막 글자 누락을 막는다.
-            onCompositionEnd={(event) =>
-              applyBoxValue(selectedEntry, event.currentTarget.value)
-            }
-            onBlur={(event) =>
-              applyBoxValue(selectedEntry, event.currentTarget.value)
-            }
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                goToAdjacentClue(1);
-              }
-            }}
-          />
-        ) : null}
-      </div>
-    ) : null;
-
+    if (!timerVisible || isPaused) return;
+    const timer = setInterval(() => setClock(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [timerVisible, isPaused]);
+  const elapsed = computeElapsedMs({
+    startedAt: mission.lastStartedAt,
+    endedAt: mission.completedAt,
+    pausedMs: pause.pausedMs,
+    pausedAt: pause.pausedAt ?? undefined,
+    now: clock,
+  });
   return (
-    <>
-      <AppHeader
-        compact
-        backVariant="home"
-        title={`${completedEntries.length}/${puzzle.entries.length} 낱말`}
-        eyebrow={
-          isReviewMode ? (
-            `다 푼 퍼즐 · ${selectedPuzzleLabel}`
-          ) : isAttemptExhaustedUncompleted ? (
-            `도전 종료 · ${selectedPuzzleLabel}`
-          ) : shouldShowLiveTimer(mission.lastStartedAt, timerVisible) ? (
-            <>
-              {selectedPuzzleLabel} ·{" "}
-              <LiveTimer
-                startedAt={mission.lastStartedAt ?? ""}
-                pausedMs={pause.pausedMs}
-                pausedAt={pause.pausedAt}
-              />
-            </>
-          ) : (
-            selectedPuzzleLabel
-          )
-        }
-        onBack={() => navigate("home")}
-        right={
-          <div className="headerActions">
-            {isReviewMode ? null : (
-              <>
-                <button
-                  className={[
-                    "hintIconButton",
-                    hintBalance.remaining === 0 ? "hintIconButtonEmpty" : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                  type="button"
-                  aria-label={
-                    selectedEntry == null
-                      ? "힌트 (먼저 단서를 선택하세요)"
-                      : hintBalance.isAdBusy
-                        ? "광고 준비 중"
-                        : hintBalance.remaining > 0
-                          ? `힌트 ${hintBalance.remaining}개 남음`
-                          : `힌트 얻기. 광고를 보고 ${hintBalance.rewardedCredits}개 받기`
-                  }
-                  title={
-                    selectedEntry == null
-                      ? "먼저 단서를 선택하세요"
-                      : hintBalance.isAdBusy
-                        ? "광고 준비 중"
-                        : hintBalance.remaining > 0
-                          ? `힌트 ${hintBalance.remaining}개 남음`
-                          : `힌트 얻기. 광고를 보고 ${hintBalance.rewardedCredits}개 받기`
-                  }
-                  disabled={
-                    selectedEntry == null ||
-                    hintBalance.isAdBusy ||
-                    (hintBalance.remaining === 0 && !hintBalance.adsEnabled)
-                  }
-                  onClick={useHint}
-                >
-                  <HintIcon />
-                  <span className="iconButtonBadge">
-                    {hintBalance.isAdBusy
-                      ? "…"
-                      : hintBalance.remaining > 0
-                        ? hintBalance.remaining
-                        : hintBalance.adsEnabled
-                          ? "+"
-                          : "0"}
-                  </span>
-                </button>
-                <button
-                  className="iconButton"
-                  type="button"
-                  aria-label="지우기"
-                  title="지우기"
-                  disabled={selectedEntry == null}
-                  onClick={clearSelectedAnswer}
-                >
-                  <EraserIcon />
-                </button>
-                <button
-                  className={["iconButton", pencilMode ? "iconButtonOn" : ""]
-                    .filter(Boolean)
-                    .join(" ")}
-                  type="button"
-                  aria-label={pencilMode ? "연필 모드 끄기" : "연필 모드 켜기"}
-                  aria-pressed={pencilMode}
-                  title={
-                    pencilMode
-                      ? "연필 모드 켜짐 — 입력한 글자가 임시(회색)로 표시돼요"
-                      : "연필 모드 — 확신 없는 답을 임시로 적어 두세요"
-                  }
-                  onClick={togglePencilMode}
-                >
-                  <PencilIcon />
-                </button>
-                {mission.lastStartedAt != null &&
-                !isAttemptExhaustedUncompleted ? (
-                  <button
-                    className="iconButton"
-                    type="button"
-                    aria-label={isPaused ? "재개" : "일시정지"}
-                    aria-pressed={isPaused}
-                    title={isPaused ? "재개" : "일시정지"}
-                    onClick={togglePause}
-                  >
-                    {isPaused ? <PlayIcon /> : <PauseIcon />}
-                  </button>
-                ) : null}
-                <button
-                  className="iconButton"
-                  type="button"
-                  aria-label="설정"
-                  title="설정 (입력 방식 · 사운드 · 햅틱)"
-                  onClick={() => setIsSettingsOpen(true)}
-                >
-                  <SettingsIcon />
-                </button>
-              </>
-            )}
-            <button
-              className="iconButton"
-              type="button"
-              aria-label="전체 문제 보기"
-              title="전체 문제"
-              onClick={() => setIsClueListOpen(true)}
-            >
-              <ListIcon />
-            </button>
-          </div>
-        }
-      />
-
-      {!isReviewMode ? (
-        <div
-          className="solveProgressBar"
-          role="progressbar"
-          aria-valuenow={solvePercent}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-label={`퍼즐 완성도 ${solvePercent}%`}
-        >
-          <span style={{ width: `${solvePercent}%` }} />
-        </div>
-      ) : null}
-
-      {selectedEntry != null ? (
-        <div className="solveClueBar">
-          <div className="solveClueRow">
-            <button
-              className="clueNavButton"
-              type="button"
-              aria-label="이전 문제"
-              disabled={orderedEntries.length < 2}
-              onClick={() => goToAdjacentClue(-1)}
-            >
-              ‹
-            </button>
-            <button
-              className="solveClueInfo"
-              type="button"
-              aria-label={`${formatEntryReference(
-                selectedEntry,
-                startLabels,
-              )} ${selectedEntry.clue}${isSelectedComplete ? " 완료" : ""}`}
-              onClick={() => {
-                selectEntry(selectedEntry, activeCellKey);
-                focusNativeInput();
-              }}
-            >
-              <strong
-                className={[
-                  "solveClueText",
-                  isSelectedComplete ? "solveClueTextComplete" : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-              >
-                {selectedEntry.clue}
-              </strong>
-            </button>
-            <button
-              className="clueNavButton"
-              type="button"
-              aria-label="다음 문제"
-              disabled={orderedEntries.length < 2}
-              onClick={() => goToAdjacentClue(1)}
-            >
-              ›
-            </button>
-          </div>
-          {answerInputElement}
-        </div>
-      ) : null}
-
-      {isReviewMode ? (
-        <div
-          className="reviewBanner"
-          role="region"
-          aria-label="완료한 퍼즐 안내"
-        >
-          <span>완료한 퍼즐이에요 · 읽기 전용으로 답을 확인할 수 있어요</span>
-          <button
-            className="reviewBannerLink"
-            type="button"
-            onClick={() => navigate("result")}
-          >
-            결과 보기
-          </button>
-        </div>
-      ) : isAttemptExhaustedUncompleted ? (
-        <div
-          className="exhaustedBanner"
-          role="region"
-          aria-label="도전 종료 안내"
-        >
-          <span>
-            오늘 도전 기회를 모두 사용했어요 · 내일 다시 도전해 보세요
-          </span>
-          <button
-            className="exhaustedBannerLink"
-            type="button"
-            onClick={() => navigate("result")}
-          >
-            결과 보기
-          </button>
-        </div>
-      ) : null}
-
-      <section className="puzzlePlayArea" aria-label="퍼즐 풀이">
-        {isPaused ? (
-          <button
-            type="button"
-            className="pauseOverlay"
-            aria-label="일시정지됨. 눌러서 재개"
-            onClick={togglePause}
-          >
-            <span className="pauseOverlayIcon" aria-hidden="true">
-              <PlayIcon />
-            </span>
-            <strong>일시정지됨</strong>
-            <span>눌러서 재개</span>
-          </button>
-        ) : null}
-        <PuzzleBoard
-          activeCellKey={selectedCellKey}
-          autocheckEnabled={autocheckEnabled}
-          cellEntries={viewModel.cellEntries}
-          cellValues={cellValues}
-          checkedCellKeys={checkedCellKeys}
-          cols={viewModel.cols}
-          completedEntries={completedEntries}
-          pendingCellValues={pendingAnswerCellValues}
-          rows={viewModel.rows}
-          selectedCells={viewModel.selectedCells}
-          selectCell={selectCellAndFocus}
-          startLabels={viewModel.startLabels}
-          tentativeCellKeys={tentativeCellKeys}
-          puzzle={puzzle}
-        />
-
-        {selectedEntry != null ? (
-          <div className="selectedClueList" aria-label="선택한 문제">
-            {selectedCellEntries.map((entry) => (
-              <button
-                key={entry.id}
-                className={[
-                  "selectedClue",
-                  entry.id === selectedEntry.id ? "selectedClueActive" : "",
-                ].join(" ")}
-                type="button"
-                aria-pressed={entry.id === selectedEntry.id}
-                onClick={() => {
-                  selectEntry(
-                    entry,
-                    selectedCellKey || getEntryStartCellKey(entry),
-                  );
-                  focusNativeInput();
-                }}
-              >
-                <span>{formatEntryReference(entry, startLabels)}</span>
-                <strong>{entry.clue}</strong>
-              </button>
-            ))}
-          </div>
-        ) : null}
-      </section>
-
-      {isClueListOpen ? (
-        <AllCluesOverlay
-          completedEntries={completedEntries}
-          entries={puzzle.entries}
-          onClose={() => setIsClueListOpen(false)}
-          onSelect={selectClueAndClose}
-          puzzle={puzzle}
-          selectedEntry={selectedEntry}
-          startLabels={startLabels}
-        />
-      ) : null}
-
-      {isSettingsOpen ? (
-        <SettingsSheet
-          answerInputMode={answerInputMode}
-          autocheckEnabled={autocheckEnabled}
-          hapticEnabled={hapticEnabled}
-          onClose={() => setIsSettingsOpen(false)}
-          selectAnswerInputMode={selectAnswerInputMode}
-          selectTextScale={selectTextScale}
-          soundEnabled={soundEnabled}
-          textScale={textScale}
-          timerVisible={timerVisible}
-          toggleAutocheck={toggleAutocheck}
-          toggleHaptic={toggleHaptic}
-          toggleSound={toggleSound}
-          toggleTimerVisible={toggleTimerVisible}
-        />
-      ) : null}
-
-      {showCompletionCelebration ? (
-        <CompletionCelebrationDialog
-          attemptsUsed={mission.attemptsUsed}
-          completedCount={completedEntries.length}
-          consecutiveStreak={consecutiveStreak}
-          difficulty={puzzle.difficulty}
-          elapsedLabel={celebrationElapsedLabel}
-          hintCount={hintCount}
-          isNewBestTime={isNewBestTime}
-          nextPuzzleButtonLabel={completionNextRecommendedButtonLabel}
-          puzzleId={puzzle.puzzleId}
-          returnReminderPreprompt={returnReminderPreprompt}
-          revealUsed={revealUsed}
-          shareGrid={celebrationShareGrid}
-          shareText={celebrationShareText}
-          themeLabel={puzzle.themeLabel}
-          totalCount={puzzle.entries.length}
-          onClose={dismissCompletionCelebration}
-          onGoHome={() => {
-            dismissCompletionCelebration();
-            navigate("home");
-          }}
-          onSeeHistory={() => {
-            dismissCompletionCelebration();
-            navigate("history");
-          }}
-          onSeeResult={() => {
-            dismissCompletionCelebration();
-            navigate("result");
-          }}
-          onStartNextPuzzle={
-            completionNextRecommendedSummary == null
-              ? undefined
-              : startNextPuzzleFromCompletion
-          }
-        />
-      ) : null}
-    </>
+    <TilePuzzleScreen
+      puzzle={puzzle}
+      state={tileState}
+      hints={hintBalance.remaining}
+      hasStarted={hasStarted}
+      isPaused={isPaused}
+      onChange={onTileChange}
+      onHint={useHint}
+      onBack={() => navigate("home")}
+      onStart={startOrResumeMission}
+      onResume={togglePause}
+      onPause={
+        hasStarted && mission.completedAt == null ? togglePause : undefined
+      }
+      onSettings={onOpenSettings}
+      guide={tileGuide}
+      timer={
+        timerVisible
+          ? formatLiveTimer(Math.floor((elapsed ?? 0) / 1000))
+          : undefined
+      }
+      textScale={getTextScaleFontMultiplier(textScale)}
+    />
   );
 }
 
@@ -5347,176 +3788,8 @@ function HomeIcon() {
   );
 }
 
-function PencilIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      focusable="false"
-      viewBox="0 0 24 24"
-      width="18"
-      height="18"
-    >
-      <path
-        d="M4 20l1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L8 19l-4 1z"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-      />
-      <path
-        d="M14.5 6.5l3 3"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeWidth="2"
-      />
-    </svg>
-  );
-}
-
-function EraserIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      focusable="false"
-      viewBox="0 0 24 24"
-      width="18"
-      height="18"
-    >
-      <path
-        d="M7 17l-3-3 8.5-8.5a2.1 2.1 0 0 1 3 0l3 3a2.1 2.1 0 0 1 0 3L13 17H7z"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-      />
-      <path
-        d="M10 8l6 6M5 19h14"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-      />
-    </svg>
-  );
-}
-
-function HintIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      focusable="false"
-      viewBox="0 0 24 24"
-      width="18"
-      height="18"
-    >
-      <path
-        d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1.3 1.4 1.5 2.5h5c.2-1.1.7-1.7 1.5-2.5A6 6 0 0 0 12 3z"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-      />
-    </svg>
-  );
-}
-
-function ListIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      focusable="false"
-      viewBox="0 0 24 24"
-      width="18"
-      height="18"
-    >
-      <path
-        d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-      />
-    </svg>
-  );
-}
-
-function PauseIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      focusable="false"
-      viewBox="0 0 24 24"
-      width="18"
-      height="18"
-    >
-      <path
-        d="M8 5v14M16 5v14"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-      />
-    </svg>
-  );
-}
-
-function PlayIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      focusable="false"
-      viewBox="0 0 24 24"
-      width="18"
-      height="18"
-    >
-      <path
-        d="M7 5l12 7-12 7z"
-        fill="currentColor"
-        stroke="currentColor"
-        strokeLinejoin="round"
-        strokeWidth="2"
-      />
-    </svg>
-  );
-}
-
-function SettingsIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      focusable="false"
-      viewBox="0 0 24 24"
-      width="18"
-      height="18"
-    >
-      <circle
-        cx="12"
-        cy="12"
-        r="3"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-      />
-      <path
-        d="M19.4 13a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-      />
-    </svg>
-  );
-}
-
 type ResultScreenProps = DateSelectionProps & {
+  returnReminderPreprompt?: CompletionReturnReminderPreprompt;
   cellValues: Record<string, string>;
   completedEntries: PuzzleEntry[];
   consecutiveStreak: number;
@@ -5537,316 +3810,156 @@ type ResultScreenProps = DateSelectionProps & {
 };
 
 function ResultScreen({
+  returnReminderPreprompt,
+  puzzle,
   cellValues,
   completedEntries,
-  consecutiveStreak,
-  dateCardStates,
   hintCount,
-  isNewBestTime,
-  leaderboardVisible,
-  loadState,
   mission,
-  navigate,
-  onboardingDifficultyRampEnabled,
-  recommendationPuzzleSummaries,
-  onOpenLeaderboard,
   pause,
-  progressPercent,
-  puzzle,
-  puzzleSummaries,
+  navigate,
+  isNewBestTime,
+  consecutiveStreak,
+  revealUsed,
+  leaderboardVisible,
+  onOpenLeaderboard,
   remainingAttempts,
   restartMissionAttempt,
-  revealUsed,
-  selectedPuzzleId,
-  selectPuzzle,
 }: ResultScreenProps) {
-  const isComplete = completedEntries.length === puzzle.entries.length;
-  // 완료 시 이어서 풀 다음 추천 퍼즐(난이도 상승 우선). 단발 세션을 줄이고 재플레이를
-  // 잇기 위한 연속 동선.
-  const nextRecommendedSummary = isComplete
-    ? getNextRecommendedSummary(
-        recommendationPuzzleSummaries,
-        dateCardStates,
-        {
-          puzzleId: puzzle.puzzleId,
-          difficulty: puzzle.difficulty,
-          date: puzzle.date,
-        },
-        onboardingDifficultyRampEnabled,
-      )
-    : undefined;
-  const nextRecommendedButtonLabel =
-    nextRecommendedSummary == null
-      ? ""
-      : formatDailyLadderNextLabel(nextRecommendedSummary, puzzle.date);
-  const nextRecommendedHint =
-    nextRecommendedSummary == null
-      ? ""
-      : formatPuzzleAliasLabel(nextRecommendedSummary);
-
-  function startNextPuzzle() {
-    if (nextRecommendedSummary == null) {
-      return;
-    }
-
-    const nextPuzzleCtaEvent = buildNextPuzzleCtaEvent(
-      nextRecommendedSummary,
-      "result_screen",
-    );
-    telemetry.click(nextPuzzleCtaEvent.name, {
-      ...getPuzzleTelemetryParams(puzzle),
-      ...nextPuzzleCtaEvent.params,
-    });
-    selectPuzzle(nextRecommendedSummary.puzzleId);
-    navigate("today");
-  }
-
-  const selectedPuzzleSummary =
-    findPuzzleSummaryById(puzzleSummaries, selectedPuzzleId) ??
-    createPuzzleSummary(puzzle);
-  const selectedPuzzleLabel =
-    loadState === "remote"
-      ? formatPuzzleAliasLabel(selectedPuzzleSummary)
-      : formatMissionDateLabel(mission.date, loadState);
-  const elapsedLabel = isComplete
-    ? formatElapsedTime(
-        mission.lastStartedAt,
-        mission.completedAt,
-        pause.pausedMs,
-      )
-    : null;
-  const streakAchievementLabel = isComplete
-    ? getStreakBadgeLabel(consecutiveStreak)
-    : null;
-  const nextStreakHint = isComplete
-    ? getNextStreakMilestoneHint(consecutiveStreak)
-    : null;
-  const resultAchievements = getCompletionAchievements({
-    hintCount,
-    attemptsUsed: mission?.attemptsUsed ?? 0,
-    revealUsed,
-  });
-  const resultStartLabels = useMemo(
-    () => buildStartLabels(puzzle.entries),
-    [puzzle.entries],
+  const complete = completedEntries.length === puzzle.entries.length;
+  const elapsed = formatElapsedTime(
+    mission.lastStartedAt,
+    mission.completedAt,
+    pause.pausedMs,
   );
   const { shareCopied, shareFailed, share } = useShareResult("result_screen");
-
-  function handleShare() {
-    share(
-      buildShareText({
-        puzzleLabel: selectedPuzzleLabel,
-        elapsedLabel,
-        hintCount,
-        attemptsUsed: mission.attemptsUsed,
-        completedCount: completedEntries.length,
-        totalCount: puzzle.entries.length,
-        consecutiveStreak,
-        isComplete,
-        revealUsed,
-        shareGrid: buildShareGrid(puzzle, cellValues),
-        shareLandingUrl,
-      }),
-      { puzzle_id: puzzle.puzzleId, difficulty: puzzle.difficulty },
-    );
-  }
-
+  const achievements = getCompletionAchievements({
+    hintCount,
+    attemptsUsed: mission.attemptsUsed,
+    revealUsed,
+  });
   return (
-    <>
-      <AppHeader
-        eyebrow={`${selectedPuzzleLabel} · 도전 ${mission.attemptsUsed}/${mission.maxAttempts}`}
-        title="미션 결과"
-        onBack={() => navigate("home")}
-      />
-
-      <section className="resultPanel" aria-label="미션 결과">
-        <strong>{isComplete ? "완료" : `${progressPercent}% 진행`}</strong>
-        {elapsedLabel != null && (
-          <p className="resultElapsedTime">⏱ {elapsedLabel}</p>
-        )}
-        {isComplete &&
-          (isNewBestTime ||
-            resultAchievements.noHint ||
-            resultAchievements.firstTry ||
-            streakAchievementLabel != null) && (
-            <div className="resultAchievements">
-              {isNewBestTime && (
-                <span className="resultAchievement resultAchievementBest">
-                  🏆 최고 기록 갱신!
-                </span>
-              )}
-              {resultAchievements.noHint && (
-                <span className="resultAchievement">🎯 노힌트 클리어</span>
-              )}
-              {resultAchievements.firstTry && (
-                <span className="resultAchievement">💎 첫 도전 성공</span>
-              )}
-              {streakAchievementLabel != null && (
-                <span className="resultAchievement">
-                  {streakAchievementLabel}
-                </span>
-              )}
-            </div>
-          )}
-        {nextStreakHint != null && (
-          <p className="streakNudge">{nextStreakHint}</p>
-        )}
-        <span>
-          {completedEntries.length}/{puzzle.entries.length} 단어 · 힌트{" "}
-          {hintCount}회 ·{" "}
-          {isComplete || remainingAttempts === 0
-            ? `도전 ${mission?.attemptsUsed}회`
-            : `남은 도전 ${remainingAttempts}`}
-        </span>
-        {!isComplete && remainingAttempts === 0 && (
-          <p className="resultDayLimitNotice" role="status" aria-live="polite">
-            오늘의 도전 기회를 모두 사용했어요. 내일 새로운 퍼즐이 기다려요.
-          </p>
-        )}
-      </section>
-
-      {completedEntries.length > 0 && (
-        <section
-          className="resultWordList"
-          aria-label={isComplete ? "완성한 단어" : "맞춘 단어"}
+    <section className="tileResult" aria-label="퍼즐 결과">
+      <header className="tileHomeNav">
+        <button
+          className="tileIcon"
+          aria-label="홈으로"
+          onClick={() => navigate("home")}
         >
-          <p className="resultWordListTitle">
-            {isComplete
-              ? "완성한 단어"
-              : `맞춘 단어 ${completedEntries.length}개`}
-          </p>
-          {(["across", "down"] as Direction[]).map((direction) => {
-            const entries = completedEntries.filter(
-              (e) => e.direction === direction,
-            );
-            if (entries.length === 0) return null;
-            return (
-              <div key={direction} className="resultWordGroup">
-                <p className="resultWordGroupLabel">
-                  {directionLabels[direction]}
-                </p>
-                {entries.map((entry) => (
-                  <div key={entry.id} className="resultWordItem">
-                    <span className="resultWordNumber">
-                      {getEntryStartLabel(entry, resultStartLabels) ?? "·"}
-                    </span>
-                    <strong className="resultWordAnswer">{entry.answer}</strong>
-                    <span className="resultWordClue">{entry.clue}</span>
-                  </div>
-                ))}
-              </div>
-            );
-          })}
-        </section>
-      )}
-
-      <section className="resultActions" aria-label="결과 메뉴">
-        {!isComplete && remainingAttempts > 0 ? (
-          <>
-            <button
-              className="primaryButton"
-              type="button"
-              onClick={() => navigate("today")}
-            >
-              이어 풀기
-            </button>
-            <button
-              className="secondaryButton"
-              type="button"
-              onClick={restartMissionAttempt}
-            >
-              다시 도전
-            </button>
-            <button
-              className="secondaryButton"
-              type="button"
-              onClick={() => navigate("home")}
-            >
-              홈으로
-            </button>
-          </>
-        ) : isComplete && nextRecommendedSummary != null ? (
-          <>
-            <button
-              className="primaryButton"
-              type="button"
-              onClick={startNextPuzzle}
-            >
-              {nextRecommendedButtonLabel}
-            </button>
-            {nextRecommendedHint !== "" && (
-              <p className="resultNextHint">추천 {nextRecommendedHint}</p>
-            )}
-            <button
-              className="secondaryButton"
-              type="button"
-              onClick={() => navigate("today")}
-            >
-              퍼즐 다시 보기
-            </button>
-            <button
-              className="secondaryButton"
-              type="button"
-              onClick={() => navigate("home")}
-            >
-              홈으로
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              className="primaryButton"
-              type="button"
-              onClick={() => navigate("home")}
-            >
-              홈으로
-            </button>
-            <button
-              className="secondaryButton"
-              type="button"
-              onClick={() => navigate("today")}
-            >
-              {isComplete ? "퍼즐 다시 보기" : "퍼즐 보기"}
-            </button>
-          </>
+          ‹
+        </button>
+        <span>{puzzle.date.replaceAll("-", ". ")}</span>
+        <span>✦ {consecutiveStreak}</span>
+      </header>
+      <div className="tileResultMedal" aria-hidden="true">
+        {complete ? "✦" : "⌁"}
+      </div>
+      <p className="tileEyebrow">
+        {complete ? "TODAY’S LITTLE WIN" : "YOUR WORD JOURNEY"}
+      </p>
+      <h1>{complete ? "한 판, 완성!" : "여기까지 잘했어요"}</h1>
+      <p className="tileLead">
+        {complete
+          ? "차곡차곡 맞춘 단어가 한 판이 되었어요."
+          : "고른 글자는 저장돼 있어요."}
+      </p>
+      <div
+        className="tileResultBoard"
+        style={{ "--tile-cols": puzzle.gridSize } as CSSProperties}
+      >
+        {puzzle.grid.flatMap((row, y) =>
+          row.map((value, x) => (
+            <span key={`${y}:${x}`} className={value ? "" : "block"}>
+              {value ? cellValues[getCellKey(y, x)] : ""}
+            </span>
+          )),
         )}
-        {leaderboardVisible && isComplete && (
-          <button
-            className="secondaryButton"
-            type="button"
-            onClick={onOpenLeaderboard}
-          >
-            순위 보기
-          </button>
-        )}
-        {(isComplete || remainingAttempts <= 0) &&
-          completedEntries.length > 0 && (
-            <div className="shareContainer">
-              <button
-                className="shareButton"
-                type="button"
-                onClick={handleShare}
-              >
-                결과 공유하기
-              </button>
-              {shareCopied && (
-                <p className="shareToast" role="status" aria-live="polite">
-                  클립보드에 복사됐어요!
-                </p>
-              )}
-              {shareFailed && (
-                <p
-                  className="shareToast shareToastError"
-                  role="alert"
-                  aria-live="assertive"
-                >
-                  클립보드 복사에 실패했어요.
-                </p>
-              )}
-            </div>
-          )}
-      </section>
-    </>
+      </div>
+      <div className="tileResultStats">
+        <span>
+          <b>
+            {completedEntries.length}/{puzzle.entries.length}
+          </b>
+          단어 완성
+        </span>
+        <span>
+          <b>{elapsed ?? "—"}</b>풀이 시간
+        </span>
+        <span>
+          <b>{hintCount}</b>사용한 힌트
+        </span>
+      </div>
+      {complete && (isNewBestTime || achievements.noHint) ? (
+        <p className="tileResultBadge">
+          {isNewBestTime ? "✧ 나의 최고 기록! " : ""}
+          {achievements.noHint ? "힌트 없이 완성" : ""}
+        </p>
+      ) : null}
+      <button className="tilePrimary" onClick={() => navigate("home")}>
+        홈으로 돌아가기
+      </button>
+      <div className="tileResultLinks">
+        <button
+          onClick={() => {
+            telemetry.click("history_open", { source: "result_screen" });
+            navigate("history");
+          }}
+        >
+          나의 기록
+        </button>
+        <button
+          onClick={() =>
+            share(
+              buildShareText({
+                puzzleLabel: puzzle.date,
+                elapsedLabel: elapsed,
+                hintCount,
+                attemptsUsed: mission.attemptsUsed,
+                completedCount: completedEntries.length,
+                totalCount: puzzle.entries.length,
+                consecutiveStreak,
+                isComplete: complete,
+                revealUsed,
+                shareGrid: buildShareGrid(puzzle, cellValues),
+                shareLandingUrl,
+              }),
+              { puzzle_id: puzzle.puzzleId },
+            )
+          }
+        >
+          결과 공유
+        </button>
+        {leaderboardVisible && complete ? (
+          <button onClick={onOpenLeaderboard}>순위 보기</button>
+        ) : null}
+      </div>
+      {shareCopied ? (
+        <p role="status">공유할 결과를 복사했어요.</p>
+      ) : shareFailed ? (
+        <p role="status">공유하지 못했어요. 다시 눌러주세요.</p>
+      ) : null}
+      {!complete && remainingAttempts > 0 ? (
+        <button className="tileSecondary" onClick={restartMissionAttempt}>
+          새로 도전하기
+        </button>
+      ) : null}
+      <button className="tileSecondary" onClick={() => {returnReminderPreprompt?.onDecline();navigate("today");}}>
+        {complete ? "완성한 단어 살펴보기" : "이어서 풀기"}
+      </button>
+      {returnReminderPreprompt ? (
+        <div className="tileReminder">
+          <p>{returnReminderPreprompt.body}</p>
+          <div className="tileResultLinks">
+            <button onClick={returnReminderPreprompt.onAccept}>
+              {RETURN_REMINDER_PREPROMPT_COPY.accept}
+            </button>
+            <button onClick={returnReminderPreprompt.onDecline}>
+              {RETURN_REMINDER_PREPROMPT_COPY.decline}
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </section>
   );
 }
 
@@ -5855,7 +3968,7 @@ type ResumeScreenProps = {
   dateCardStates: Record<string, DateCardState>;
   loadState: LoadState;
   navigate: (route: AppRoute) => void;
-  selectPuzzle: (puzzleId: string) => void;
+  selectPuzzle: (puzzleId: string) => Promise<boolean>;
 };
 
 // 오늘/과거에 시작했지만 끝내지 못한 퍼즐을 로컬 아카이브(기기 저장 사본)에서
@@ -6041,7 +4154,7 @@ function HistoryScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function openArchiveRecord(record: PuzzleArchiveRecord) {
+  async function openArchiveRecord(record: PuzzleArchiveRecord) {
     const state = dateCardStates[record.puzzleId];
     const isCompleted =
       record.completedAt != null || state?.completedAt != null;
@@ -6050,8 +4163,7 @@ function HistoryScreen({
       state?.attemptsUsed != null &&
       state.attemptsUsed >= state.maxAttempts;
 
-    void selectPuzzle(record.puzzleId);
-    navigate(isCompleted || isExhausted ? "result" : "today");
+    if (await selectPuzzle(record.puzzleId)) navigate(isCompleted || isExhausted ? "result" : "today");
   }
 
   return (
@@ -6153,6 +4265,20 @@ function HistoryScreen({
         )}
       </section>
 
+      <section className="historyList" aria-label="지난 퍼즐">
+        <h2>지난 퍼즐</h2>
+        {sortPuzzleSummariesByRecency(puzzleSummaries).filter(summary => isPublishedPuzzle(summary) && !archiveRecords.some(record => record.puzzleId === summary.puzzleId)).map(summary => {
+          const state=dateCardStates[summary.puzzleId];
+          const finished=state?.completedAt != null;
+          const exhausted=(state?.attemptsUsed ?? 0) >= (state?.maxAttempts ?? DAILY_ATTEMPT_LIMIT);
+          return <button key={summary.puzzleId} className="historyItem" type="button" onClick={async () => {if(await selectPuzzle(summary.puzzleId)) navigate(finished || exhausted ? "result" : "today");}}>
+            <span>{formatPuzzleHistoryLabel(summary, loadState)}</span>
+            <strong>{finished ? "완료" : state?.hasProgress ? "진행 중" : "아직 풀지 않은 판"}</strong>
+            <em>{summary.metrics?.wordCount ?? "—"}개 단어</em>
+          </button>;
+        })}
+      </section>
+
       <section className="historyNotice" aria-label="기기 저장 안내">
         내가 푼 퍼즐은 이 기기에 저장돼요. 앱 데이터 삭제, 기기 변경, 저장공간
         정리 시 사라질 수 있어요.
@@ -6165,6 +4291,9 @@ type DevSimulatorScreenProps = Omit<
   TodayScreenProps,
   // dev 시뮬레이터는 완료 축하·리워드 광고·일시정지·입력 가이드 UI를 렌더하지
   // 않으므로 관련 prop을 요구하지 않는다.
+  | "onOpenSettings"
+  | "tileState"
+  | "onTileChange"
   | "completionCelebrationId"
   | "dismissCompletionCelebration"
   | "pause"
@@ -6420,86 +4549,6 @@ function SlotValidationSummary({ validation }: SlotValidationSummaryProps) {
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-type AllCluesOverlayProps = {
-  completedEntries: PuzzleEntry[];
-  entries: PuzzleEntry[];
-  onClose: () => void;
-  onSelect: (entry: PuzzleEntry) => void;
-  puzzle: Puzzle;
-  selectedEntry?: PuzzleEntry;
-  startLabels: Map<string, number>;
-};
-
-function AllCluesOverlay({
-  completedEntries,
-  entries,
-  onClose,
-  onSelect,
-  puzzle,
-  selectedEntry,
-  startLabels,
-}: AllCluesOverlayProps) {
-  const completedIds = new Set(completedEntries.map((entry) => entry.id));
-
-  return (
-    <div className="clueOverlay" role="dialog" aria-modal="true">
-      <div className="clueOverlayHeader">
-        <div>
-          <Paragraph typography="t7" color="#6b7684">
-            전체 문제
-          </Paragraph>
-          <Paragraph typography="t4" fontWeight="bold">
-            {entries.length}개 단서
-          </Paragraph>
-        </div>
-        <button className="ghostButton" type="button" onClick={onClose}>
-          닫기
-        </button>
-      </div>
-
-      <div className="clueOverlayList">
-        {(["across", "down"] as Direction[]).map((direction) => (
-          <section key={direction} className="clueGroup">
-            <h2>{directionLabels[direction]}</h2>
-            {entries
-              .filter((entry) => entry.direction === direction)
-              .map((entry) => {
-                const isComplete = completedIds.has(entry.id);
-                return (
-                  <button
-                    key={entry.id}
-                    className={[
-                      "clueItem",
-                      entry.id === selectedEntry?.id ? "clueSelected" : "",
-                      isComplete ? "clueComplete" : "",
-                    ].join(" ")}
-                    type="button"
-                    aria-label={`${formatEntryReference(entry, startLabels)} ${entry.clue} ${entry.answer.length}자${isComplete ? " 완료" : ""}`}
-                    onClick={() => onSelect(entry)}
-                  >
-                    <span className="clueIndex">
-                      {getEntryStartLabel(entry, startLabels) ??
-                        puzzle.entries.findIndex(
-                          (candidate) => candidate.id === entry.id,
-                        ) + 1}
-                    </span>
-                    <span className="clueText">{entry.clue}</span>
-                    <span className="clueMeta">
-                      <span>{entry.answer.length}자</span>
-                      {isComplete ? (
-                        <span className="clueDoneBadge">완료</span>
-                      ) : null}
-                    </span>
-                  </button>
-                );
-              })}
-          </section>
-        ))}
-      </div>
     </div>
   );
 }

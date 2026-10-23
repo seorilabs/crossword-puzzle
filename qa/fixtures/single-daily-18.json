@@ -1,0 +1,305 @@
+{
+  "alias": "26102401",
+  "puzzleId": "26102401",
+  "date": "2026-10-24",
+  "difficulty": "hard",
+  "gridSize": 8,
+  "grid": [
+    ["", "신", "분", "증", "", "", "", ""],
+    ["결", "혼", "식", "", "", "", "", ""],
+    ["", "여", "", "", "", "", "", ""],
+    ["보", "행", "자", "", "해", "설", "", ""],
+    ["라", "", "초", "등", "학", "교", "", ""],
+    ["색", "소", "", "", "", "", "", ""],
+    ["", "주", "인", "", "입", "대", "", ""],
+    ["", "", "기", "숙", "사", "", "", ""]
+  ],
+  "entries": [
+    {
+      "id": "a1",
+      "answer": "신분증",
+      "clue": "자신의 신분이나 소속을 증명하는 문서나 카드",
+      "clueSource": "krdict-definition",
+      "direction": "across",
+      "row": 0,
+      "col": 1,
+      "generatedBy": "placed",
+      "needsManualClue": true,
+      "vocabularyLevel": "초급"
+    },
+    {
+      "id": "a2",
+      "answer": "결혼식",
+      "clue": "성인 남녀가 법적으로 부부가 됨을 알리는 의식",
+      "clueSource": "krdict-definition",
+      "direction": "across",
+      "row": 1,
+      "col": 0,
+      "generatedBy": "placed",
+      "needsManualClue": true,
+      "vocabularyLevel": "초급"
+    },
+    {
+      "id": "a3",
+      "answer": "보행자",
+      "clue": "길거리를 걸어 다니는 사람",
+      "clueSource": "krdict-definition",
+      "direction": "across",
+      "row": 3,
+      "col": 0,
+      "generatedBy": "placed",
+      "needsManualClue": true,
+      "vocabularyLevel": "중급"
+    },
+    {
+      "id": "a4",
+      "answer": "해설",
+      "clue": "어려운 문제나 사건의 내용 등을 알기 쉽게 풀어 설명함. 또는 그런 글이나 책",
+      "clueSource": "krdict-definition",
+      "direction": "across",
+      "row": 3,
+      "col": 4,
+      "generatedBy": "placed",
+      "needsManualClue": true,
+      "vocabularyLevel": "중급"
+    },
+    {
+      "id": "a5",
+      "answer": "초등학교",
+      "clue": "학교 교육의 첫 번째 단계로 만 여섯 살에 입학하여 육 년 동안 기본 교육을 받는 학교",
+      "clueSource": "krdict-definition",
+      "direction": "across",
+      "row": 4,
+      "col": 2,
+      "generatedBy": "placed",
+      "needsManualClue": true,
+      "vocabularyLevel": "초급"
+    },
+    {
+      "id": "a6",
+      "answer": "색소",
+      "clue": "물체의 색깔이 나타나도록 하는 성분",
+      "clueSource": "krdict-definition",
+      "direction": "across",
+      "row": 5,
+      "col": 0,
+      "generatedBy": "auto",
+      "needsManualClue": true,
+      "vocabularyLevel": "없음"
+    },
+    {
+      "id": "a7",
+      "answer": "주인",
+      "clue": "남이나 자신의 남편",
+      "clueSource": "krdict-definition",
+      "direction": "across",
+      "row": 6,
+      "col": 1,
+      "generatedBy": "placed",
+      "needsManualClue": true,
+      "vocabularyLevel": "초급"
+    },
+    {
+      "id": "a8",
+      "answer": "입대",
+      "clue": "군대에 들어가 군인이 됨",
+      "clueSource": "krdict-definition",
+      "direction": "across",
+      "row": 6,
+      "col": 4,
+      "generatedBy": "placed",
+      "needsManualClue": true,
+      "vocabularyLevel": "중급"
+    },
+    {
+      "id": "a9",
+      "answer": "기숙사",
+      "clue": "학교나 회사에서 학생이나 직원들이 함께 자고 식사하도록 제공하는 시설",
+      "clueSource": "krdict-definition",
+      "direction": "across",
+      "row": 7,
+      "col": 2,
+      "generatedBy": "placed",
+      "needsManualClue": true,
+      "vocabularyLevel": "초급"
+    },
+    {
+      "id": "d10",
+      "answer": "신혼여행",
+      "clue": "결혼식을 마치고 부부가 되어 함께 가는 여행",
+      "clueSource": "krdict-definition",
+      "direction": "down",
+      "row": 0,
+      "col": 1,
+      "generatedBy": "placed",
+      "needsManualClue": true,
+      "vocabularyLevel": "초급"
+    },
+    {
+      "id": "d11",
+      "answer": "분식",
+      "clue": "떡볶이와 튀김처럼 밀가루로 만든 간단한 먹을거리",
+      "clueSource": "manual",
+      "direction": "down",
+      "row": 0,
+      "col": 2,
+      "generatedBy": "auto",
+      "needsManualClue": false,
+      "vocabularyLevel": "초급"
+    },
+    {
+      "id": "d12",
+      "answer": "보라색",
+      "clue": "파랑과 빨강을 섞은 색",
+      "clueSource": "krdict-definition",
+      "direction": "down",
+      "row": 3,
+      "col": 0,
+      "generatedBy": "placed",
+      "needsManualClue": true,
+      "vocabularyLevel": "초급"
+    },
+    {
+      "id": "d13",
+      "answer": "자초",
+      "clue": "자기 스스로 어떤 결과가 생기게 함",
+      "clueSource": "krdict-definition",
+      "direction": "down",
+      "row": 3,
+      "col": 2,
+      "generatedBy": "auto",
+      "needsManualClue": true,
+      "vocabularyLevel": "없음"
+    },
+    {
+      "id": "d14",
+      "answer": "해학",
+      "clue": "우습고 재미있으면서도 품위가 있는 말이나 행동",
+      "clueSource": "krdict-definition",
+      "direction": "down",
+      "row": 3,
+      "col": 4,
+      "generatedBy": "auto",
+      "needsManualClue": true,
+      "vocabularyLevel": "없음"
+    },
+    {
+      "id": "d15",
+      "answer": "설교",
+      "clue": "다른 사람을 타이르고 가르침. 또는 그런 가르침",
+      "clueSource": "krdict-definition",
+      "direction": "down",
+      "row": 3,
+      "col": 5,
+      "generatedBy": "auto",
+      "needsManualClue": true,
+      "vocabularyLevel": "고급"
+    },
+    {
+      "id": "d16",
+      "answer": "소주",
+      "clue": "알코올에 물과 향료를 섞어서 만든 술",
+      "clueSource": "krdict-definition",
+      "direction": "down",
+      "row": 5,
+      "col": 1,
+      "generatedBy": "placed",
+      "needsManualClue": true,
+      "vocabularyLevel": "초급"
+    },
+    {
+      "id": "d17",
+      "answer": "인기",
+      "clue": "많은 사람이 관심을 갖고 좋아하는 정도",
+      "clueSource": "manual",
+      "direction": "down",
+      "row": 6,
+      "col": 2,
+      "generatedBy": "placed",
+      "needsManualClue": false,
+      "vocabularyLevel": "초급"
+    },
+    {
+      "id": "d18",
+      "answer": "입사",
+      "clue": "회사 등에 일자리를 얻어 들어감",
+      "clueSource": "krdict-definition",
+      "direction": "down",
+      "row": 6,
+      "col": 4,
+      "generatedBy": "auto",
+      "needsManualClue": true,
+      "vocabularyLevel": "중급"
+    }
+  ],
+  "metrics": {
+    "autoRunCount": 6,
+    "bboxDensity": 0.542,
+    "crossCells": 19,
+    "crossRatio": 0.731,
+    "filledCells": 26,
+    "multiCrossEntries": 17,
+    "placedWordCount": 12,
+    "wordCount": 18
+  },
+  "wordBank": {
+    "sourceName": "국립국어원 한국어기초사전 XML",
+    "sourceUrl": "https://github.com/spellcheck-ko/korean-dict-nikl-krdict",
+    "license": {
+      "name": "Creative Commons Attribution-ShareAlike 2.0 Korea",
+      "spdx": "CC-BY-SA-2.0-KR",
+      "url": "https://creativecommons.org/licenses/by-sa/2.0/kr/"
+    },
+    "wordCount": 24963
+  },
+  "packId": "pack-20261023150000-20261024",
+  "publishedAt": "2026-10-23T15:00:00.000Z",
+  "quality": {
+    "pass": true,
+    "checks": [
+      {
+        "key": "minWordCount",
+        "pass": true,
+        "actual": 18,
+        "expected": 18
+      },
+      {
+        "key": "minCrossRatio",
+        "pass": true,
+        "actual": 0.731,
+        "expected": 0.5
+      },
+      {
+        "key": "minBboxDensity",
+        "pass": true,
+        "actual": 0.542,
+        "expected": 0.45
+      },
+      {
+        "key": "minMultiCrossRatio",
+        "pass": true,
+        "actual": 0.944,
+        "expected": 0.65
+      },
+      {
+        "key": "maxAutoRunRatio",
+        "pass": true,
+        "actual": 0.333,
+        "expected": 0.5
+      }
+    ],
+    "ratios": {
+      "autoRunRatio": 0.333,
+      "multiCrossRatio": 0.944
+    },
+    "thresholds": {
+      "maxAutoRunRatio": 0.5,
+      "minBboxDensity": 0.45,
+      "minCrossRatio": 0.5,
+      "minMultiCrossRatio": 0.65,
+      "minWordCount": 18
+    }
+  },
+  "slotId": "2026-10-24-h01",
+  "generatedAt": "2026-10-23T07:14:05.985Z"
+}
