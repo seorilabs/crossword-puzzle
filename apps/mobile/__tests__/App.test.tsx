@@ -907,16 +907,30 @@ test.each([1, -1])(
 test('실제 앱 설정은 사용 통계의 현재 상태를 접근성 상태로 전달한다', async () => {
   let renderer: ReactTestRenderer.ReactTestRenderer | undefined;
   try {
-    await ReactTestRenderer.act(async () => { renderer = ReactTestRenderer.create(<App />); });
+    await ReactTestRenderer.act(async () => {
+      renderer = ReactTestRenderer.create(<App />);
+    });
     await flushAsyncWork(15);
-    await ReactTestRenderer.act(async () => { renderer!.root.findByType(TileHomeScreen).props.onSettings(); });
-    const toggle = renderer!.root.findAllByProps({ accessibilityLabel: '사용 통계' }).find(node => typeof node.props.onPress === 'function')!;
+    await ReactTestRenderer.act(async () => {
+      renderer!.root.findByType(TileHomeScreen).props.onSettings();
+    });
+    const toggle = renderer!.root
+      .findAllByProps({ accessibilityLabel: '사용 통계' })
+      .find(node => typeof node.props.onPress === 'function')!;
     expect(toggle.props['aria-checked']).toBe(true);
-    await ReactTestRenderer.act(async () => { toggle.props.onPress(); });
+    await ReactTestRenderer.act(async () => {
+      toggle.props.onPress();
+    });
     await flushAsyncWork(5);
     expect(toggle.props['aria-checked']).toBe(false);
-    expect(await AsyncStorage.getItem('crossword-puzzle:usage-statistics:v1')).toBe('0');
-    await ReactTestRenderer.act(async () => { toggle.props.onPress(); });
+    expect(
+      await AsyncStorage.getItem('crossword-puzzle:usage-statistics:v1'),
+    ).toBe('0');
+    await ReactTestRenderer.act(async () => {
+      toggle.props.onPress();
+    });
     await flushAsyncWork(5);
-  } finally { ReactTestRenderer.act(() => renderer?.unmount()); }
+  } finally {
+    ReactTestRenderer.act(() => renderer?.unmount());
+  }
 });
