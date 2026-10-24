@@ -12,7 +12,7 @@ npm run check:app-store
 
 ## 현재 판정
 
-현재 App Store 등록 및 론칭 준비는 `blocked`다. `apps/mobile` iOS 프로젝트, unsigned Release build, GitHub Actions TestFlight 업로드 workflow, 로컬 build/archive/upload 스크립트, Fastlane deliver 기반 metadata/screenshot 업로드 스크립트, `v0.1.5` App Store Connect 업로드는 준비 또는 완료됐지만, 아직 운영 퍼즐 데이터 연결, App Store Connect 등록값 확정, 스크린샷, TestFlight build selection, App Store Connect 수동 gate가 완료되지 않았다.
+v1.2.0 (1002000)은 2026-10-24 09:25 KST에 심사 제출됐고 `WAITING_FOR_REVIEW`다. App Privacy 8개 신고와 문구, 스크린샷 6장 및 실제 빌드 연결을 재조회했다. 승인 후 수동 공개가 남아 있다. 실행별 근거와 남은 단계는 [출시 기록](qa/2026-10-23-single-daily-puzzle/release-status.md)을 따른다. 실제 SDK와 기기 검수는 승인 계획대로 미실행이다.
 
 ```mermaid
 flowchart TD
@@ -22,49 +22,39 @@ flowchart TD
   Assets["app-store assets/screenshots"] --> Listing["App Store Connect listing"]
   Checker --> Console["Manual App Store Connect gates"]
   Archive --> Upload["TestFlight/App Store upload"]
-  Workflow["Backoffice - ASC ciBuildRuns"] --> XcodeCloud["Xcode Cloud - 매니지드 서명"]
-  XcodeCloud --> Archive
-  XcodeCloud --> Upload
+  Workflow["v1.2.0 tag"] --> ReleaseRunner["중앙 workflow와 GitHub-hosted macOS"]
+  ReleaseRunner --> Archive
+  ReleaseRunner --> Upload
   LocalBuild["scripts/app-store-local-build.sh - 대체 경로"] --> Archive
   LocalDeliver["scripts/app-store-local-deliver.sh"] --> Listing
 ```
 
 ## 현재 확정값
 
-| 항목                       | 값                                                               |
-| -------------------------- | ---------------------------------------------------------------- |
-| 기본 언어                  | `ko-KR`                                                          |
-| 앱 유형                    | `game`                                                           |
-| 가격                       | `free`                                                           |
-| 고객 문의 이메일           | `cs@seorilabs.com`                                               |
-| Bundle ID                  | `com.seorilabs.crosswordpuzzle`                                  |
-| SKU                        | `crossword-puzzle-app`                                           |
-| 광고                       | `yes`. `apps/mobile`에 AdMob native adapter 연결                 |
-| 추적/ATT                   | 현재 native mobile 기준 `no` 후보                                |
-| Game Center                | iOS adapter·entitlement·콘솔 리더보드 설정 완료                  |
-| CocoaPods                  | `bundle exec pod install` 완료                                   |
-| unsigned iOS Release build | `CODE_SIGNING_ALLOWED=NO build` 통과                             |
-| App Store CI               | Backoffice 가 ASC `ciBuildRuns` 로 Xcode Cloud 빌드를 트리거한다 |
-| 로컬 iOS build             | `npm run app-store:build:local` 준비                             |
-| 로컬 metadata 등록         | `npm run app-store:deliver:upload` 준비                          |
-| App Store profile          | `AppStore Crossword Puzzle Profile` secret 등록                  |
-| 최신 업로드 빌드           | `v0.1.5` / build `1005` / run `27087313726`                      |
+| 항목                       | 값                                                        |
+| -------------------------- | --------------------------------------------------------- |
+| 기본 언어                  | `ko-KR`                                                   |
+| 앱 유형                    | `game`                                                    |
+| 가격                       | `free`                                                    |
+| 고객 문의 이메일           | `cs@seorilabs.com`                                        |
+| Bundle ID                  | `com.seorilabs.crosswordpuzzle`                           |
+| SKU                        | `crossword-puzzle-app`                                    |
+| 광고                       | `yes`. `apps/mobile`에 AdMob native adapter 연결          |
+| 추적/ATT                   | v1.2.0 실제 신고 `no`, 기기와 SDK 실행은 미실행           |
+| Game Center                | iOS adapter·entitlement·콘솔 리더보드 설정 완료           |
+| CocoaPods                  | `bundle exec pod install` 완료                            |
+| unsigned iOS Release build | `CODE_SIGNING_ALLOWED=NO build` 통과                      |
+| App Store CI               | 중앙 GitHub Actions와 public 저장소의 GitHub-hosted macOS |
+| 로컬 iOS build             | `npm run app-store:build:local` 준비                      |
+| 로컬 metadata 등록         | `npm run app-store:deliver:upload` 준비                   |
+| App Store profile          | `AppStore Crossword Puzzle Profile` secret 등록           |
+| 최신 업로드 빌드           | `v1.2.0` / build `1002000` / run `39979354182`            |
 
-## 확정 필요
+## 남은 출시 단계
 
-| 항목               | 후보/메모                                                                                                 |
-| ------------------ | --------------------------------------------------------------------------------------------------------- |
-| Support URL        | 후보 `https://www.seorilabs.com/support`. 실제 페이지 존재와 앱별 문의 동선 확인 필요                     |
-| Privacy Policy URL | 후보 `https://www.seorilabs.com/privacy`. RNFirebase Analytics/Remote Config 사용 여부와 일치 확인 필요   |
-| App Privacy        | RNFirebase Analytics/Remote Config와 AdMob SDK 기준으로 App Store Connect 답변 재확인 필요                |
-| Age Rating         | 낱말 퍼즐 게임 기준 설문 완료 필요                                                                        |
-| Content Rights     | 힌트 자체 작성, 단어 후보 출처/라이선스 검수 완료 후 답변 확정                                            |
-| Export Compliance  | 표준 OS/HTTPS 외 비표준 암호화 없음 후보. `Info.plist` 반영 및 콘솔 답변 필요                             |
-| DSA/trader         | EU 배포/조직 계정/수익화 정책 기준 확인 필요                                                              |
-| Review contact     | 이름/전화번호 확정 필요                                                                                   |
-| TestFlight         | build processing 확인, 내부 테스트 그룹/빌드 선택 필요                                                    |
-| Game Center        | ID `com.seorilabs.crosswordpuzzle.global_score` 생성 완료. App Review 제출은 별도 gate                    |
-| Provisioning       | Bundle ID Game Center capability 활성화 완료. 새 Xcode Cloud archive에서 managed profile 재생성 확인 필요 |
+- 접수 `88d496c9-998a-49f8-80b0-93a038f396de`의 Apple 심사 승인
+- 기존 수동 공개 방식으로 한국에 공개하고 실제 스토어 버전 확인
+- 새 국가와 언어는 추가하지 않는다.
 
 ## 로컬 등록/빌드 명령
 
@@ -104,91 +94,28 @@ App Store 앱 이름은 iOS용으로 `가로세로 퍼즐`을 사용한다. `--u
 
 `GADApplicationIdentifier`와 `SKAdNetworkItems`는 `app.json`의 `react-native-google-mobile-ads` 설정을 CocoaPods build phase가 빌드 산출물 `Info.plist`에 주입한다. 로컬/App Store archive 경로는 업로드 전에 산출물 `Info.plist`에서 iOS AdMob app ID와 Google SKAdNetwork ID를 다시 검증한다. AdMob 개인화 광고, IDFA, cross-app ad measurement를 켜면 App Store Connect Tracking 답변, ATT/UMP 동선, `NSUserTrackingUsageDescription`도 같이 구현한다.
 
-## App Privacy 답변 가이드
+## 게시된 App Privacy 답변
 
-현재 `apps/mobile` binary는 RNFirebase Analytics/Remote Config를 포함하므로 `No Data Collected` 전제로 제출하면 안 된다. iOS Analytics는 `$RNFirebaseAnalyticsWithoutAdIdSupport = true`로 IDFA 없는 variant를 사용하지만, Firebase app instance/installation 및 Remote Config 관련 데이터 고지는 실제 App Store Connect 입력 전에 확인해야 한다. 향후 Firebase Hosting request log 보관/분석, Crashlytics/Performance, AdMob, App Check, 인증, 결제, Game Center, 리더보드, 서버 저장, 고객지원 폼, 사용자 생성 콘텐츠를 붙이면 답변 범위가 더 넓어진다.
+2026-10-24에 8개 유형을 게시한 뒤 각 질문을 다시 열어 저장값을 대조했다. 데이터 수집은 있음, 추적은 없음이다.
 
-최종 제출 binary 기준 추천 답변은 `Data Collected`다. AdMob 개인화 광고, IDFA, cross-app ad measurement를 켜면 `Tracking`도 `Yes`로 답하고 ATT/UMP 동선을 구현한다. App Store Connect에 실제 입력하기 전까지 `appPrivacyAnswers` gate는 `확정 필요`로 유지한다.
+| 유형               | 용도                     | 사용자 연결 | 추적   |
+| ------------------ | ------------------------ | ----------- | ------ |
+| 대략적인 위치      | 타사 광고, 분석          | 예          | 아니요 |
+| 게임 플레이 콘텐츠 | 앱 기능, 분석            | 예          | 아니요 |
+| 사용자 ID          | 앱 기능, 분석            | 예          | 아니요 |
+| 기기 ID            | 앱 기능, 분석, 타사 광고 | 예          | 아니요 |
+| 제품 상호 작용     | 분석, 타사 광고          | 예          | 아니요 |
+| 광고 데이터        | 분석, 타사 광고          | 예          | 아니요 |
+| 충돌 데이터        | 분석, 앱 기능            | 아니요      | 아니요 |
+| 실적 데이터        | 분석, 앱 기능, 타사 광고 | 예          | 아니요 |
 
-근거:
+신고는 iOS 비개인화 광고, ATT 및 UMP 호출 없음과 Firebase 광고 신호 거부 설정에 맞췄다. 실제 SDK 네트워크와 기기 실행의 통과 증거는 아니다. 이전 공개 버전의 설정도 별도로 대조했고 실제 코드 및 공개 개인정보 문서와 정합성을 확인했다. 세부 근거와 미실행 범위는 출시 기록에 남긴다.
 
-- Apple은 앱과 통합한 third-party partner가 수집하는 데이터까지 답변해야 한다고 안내한다.
-- Apple 기준 `Collect`는 기기 밖으로 전송되어 개발자 또는 third-party partner가 실시간 요청 처리에 필요한 시간보다 오래 접근 가능한 상태가 되는 것을 뜻한다.
-- Google Mobile Ads SDK는 IP address, crash logs, performance data, device ID, advertising data, user interaction을 수집할 수 있다고 안내한다.
-- Firebase Authentication은 user authentication identifiers, email, phone, display name, federated provider contact info, Game Center ID 등을 수집할 수 있다.
-- Firebase Crashlytics는 crash stack trace, application state, device/OS information, custom keys/logs/user IDs, Analytics breadcrumb를 수집할 수 있다.
-- Firebase Remote Config는 country code, language code, time zone, OS version, Firebase Apple app ID, bundle ID 등을 수집할 수 있다.
-- Firebase Performance는 IP address, app performance metrics, CPU/memory usage, device/OS/application information을 수집할 수 있다.
-- Firebase Hosting request log를 Cloud Logging에 연결하면 source IP, request URL, user agent, city 같은 요청 데이터가 기록될 수 있다.
-
-추천 답변:
-
-| App Store Connect 항목         | 답변                                                                                                     |
-| ------------------------------ | -------------------------------------------------------------------------------------------------------- |
-| 이 앱에서 데이터를 수집합니까? | `예` / `Data Collected`                                                                                  |
-| Tracking                       | AdMob 개인화 광고, IDFA, cross-app ad measurement 사용 시 `예`                                           |
-| Privacy Choices URL            | `확정 필요`. 로그인/서버 저장/UGC/고객지원 폼을 붙이면 데이터 삭제/문의 경로를 공개 URL로 두는 것을 권장 |
-
-데이터 수집 항목별 입력값:
-
-`조건부 예`는 최종 binary에서 해당 기능을 실제로 붙이면 선택한다. 선택적 피드백/고객지원 데이터가 Apple의 선택적 공개 조건을 모두 만족하면 공개하지 않을 수 있지만, 이 앱은 계정/UGC/서버 저장/고객지원 결합을 계획하므로 보수적으로 공개하는 기준을 둔다.
-
-| 분류             | 항목                    | 선택        | 목적                                  | 사용자 연결                                     | 추적                                               | 메모                                                                                                |
-| ---------------- | ----------------------- | ----------- | ------------------------------------- | ----------------------------------------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| 연락처 정보      | 이름                    | `예`        | 앱 기능, 제품 개인화                  | `예`                                            | 광고/마케팅 partner와 공유하면 `예`                | 인증 프로필, Game Center 표시명, 고객지원, UGC 프로필 이름                                          |
-| 연락처 정보      | 이메일 주소             | `예`        | 앱 기능, 고객지원                     | `예`                                            | 광고/마케팅 partner와 공유하면 `예`                | Firebase Auth 이메일 로그인, 고객지원 회신, 계정 복구                                               |
-| 연락처 정보      | 전화번호                | `조건부 예` | 앱 기능, 고객지원                     | `예`                                            | `아니요`                                           | 전화번호 인증 또는 고객지원 전화번호를 받으면 선택                                                  |
-| 연락처 정보      | 주소                    | `아니요`    | 해당 없음                             | 해당 없음                                       | `아니요`                                           | DSA/trader 사업자 주소 공개는 사용자 주소 수집과 별개                                               |
-| 연락처 정보      | 기타 사용자 연락처 정보 | `조건부 예` | 앱 기능, 고객지원                     | `예`                                            | `아니요`                                           | 외부 연락 가능한 SNS handle, messenger ID 등을 받으면 선택                                          |
-| 건강 및 피트니스 | 건강                    | `아니요`    | 해당 없음                             | 해당 없음                                       | `아니요`                                           | HealthKit/의료/건강 데이터 없음                                                                     |
-| 건강 및 피트니스 | 피트니스                | `아니요`    | 해당 없음                             | 해당 없음                                       | `아니요`                                           | 운동/피트니스 데이터 없음                                                                           |
-| 재무 정보        | 지불 정보               | `아니요`    | 해당 없음                             | 해당 없음                                       | `아니요`                                           | Apple IAP만 쓰고 개발자가 카드/계좌 정보에 접근하지 않는 전제                                       |
-| 재무 정보        | 신용 정보               | `아니요`    | 해당 없음                             | 해당 없음                                       | `아니요`                                           | 신용 점수/신용 정보 없음                                                                            |
-| 재무 정보        | 기타 재무 정보          | `아니요`    | 해당 없음                             | 해당 없음                                       | `아니요`                                           | 소득/자산/부채 등 재무 정보 없음                                                                    |
-| 위치             | 정확한 위치             | `아니요`    | 해당 없음                             | 해당 없음                                       | `아니요`                                           | GPS/정밀 위치 권한을 요청하지 않는 전제                                                             |
-| 위치             | 대략적인 위치           | `예`        | 타사 광고, 분석, 앱 기능              | 기기/사용자 식별자와 결합되면 `예`              | AdMob 타겟팅/광고 측정에 쓰면 `예`                 | AdMob IP 기반 위치 추정, Firebase Hosting request log의 city/source IP 후보                         |
-| 민감 정보        | 민감 정보               | `아니요`    | 해당 없음                             | 해당 없음                                       | `아니요`                                           | 인종, 종교, 정치 성향, 생체 데이터 등 민감 정보 없음                                                |
-| 연락처           | 연락처                  | `아니요`    | 해당 없음                             | 해당 없음                                       | `아니요`                                           | 주소록/소셜 그래프 접근 없음                                                                        |
-| 사용자 콘텐츠    | 이메일 또는 문자 메시지 | `아니요`    | 해당 없음                             | 해당 없음                                       | `아니요`                                           | 사용자 간 메시지/채팅을 붙이면 재검토                                                               |
-| 사용자 콘텐츠    | 사진 또는 비디오        | `조건부 예` | 앱 기능, 고객지원                     | `예`                                            | `아니요`                                           | 고객지원 첨부 또는 UGC 이미지/영상 업로드를 허용하면 선택                                           |
-| 사용자 콘텐츠    | 오디오 데이터           | `아니요`    | 해당 없음                             | 해당 없음                                       | `아니요`                                           | 음성 녹음/오디오 업로드 없음                                                                        |
-| 사용자 콘텐츠    | 게임 플레이 콘텐츠      | `예`        | 앱 기능, 분석, 제품 개인화            | `예`                                            | `아니요`                                           | 서버 저장 진행 상태, 퍼즐 완료 기록, 리더보드, Game Center, 게임 내 UGC                             |
-| 사용자 콘텐츠    | 고객 지원               | `예`        | 앱 기능, 고객지원                     | `예`                                            | `아니요`                                           | 고객지원 요청 본문, 문의 처리 기록                                                                  |
-| 사용자 콘텐츠    | 기타 사용자 콘텐츠      | `예`        | 앱 기능, 분석, 제품 개인화            | `예`                                            | `아니요`                                           | UGC, 자유 입력 텍스트, 커뮤니티/공유 콘텐츠                                                         |
-| 방문 기록        | 방문 기록               | `아니요`    | 해당 없음                             | 해당 없음                                       | `아니요`                                           | 앱 외부 웹사이트 탐색 기록 없음. open web/WebView를 붙이면 재검토                                   |
-| 검색 기록        | 검색 기록               | `아니요`    | 해당 없음                             | 해당 없음                                       | `아니요`                                           | 앱 내 검색어를 서버/Analytics로 보내면 선택                                                         |
-| 식별자           | 사용자 ID               | `예`        | 앱 기능, 분석, 제품 개인화            | `예`                                            | 광고 네트워크와 결합하면 `예`                      | Firebase UID, 계정 ID, Game Center ID, 리더보드 사용자 ID                                           |
-| 식별자           | 기기 ID                 | `예`        | 타사 광고, 분석, 앱 기능              | `예`                                            | AdMob 개인화 광고, IDFA, 교차 앱 광고 측정 시 `예` | IDFA, Firebase installation/app instance ID, AdMob device identifiers                               |
-| 구입 항목        | 구입 항목               | `예`        | 앱 기능, 분석, 제품 개인화            | `예`                                            | 광고/마케팅 partner와 공유하지 않으면 `아니요`     | IAP purchase history, entitlement, purchase tendency                                                |
-| 사용 데이터      | 제품 상호 작용          | `예`        | 타사 광고, 분석, 제품 개인화, 앱 기능 | 식별자와 결합되면 `예`                          | 타겟 광고/광고 측정에 쓰면 `예`                    | 앱 실행, 탭, 퍼즐 시작/완료, 힌트 사용, 리더보드 활동                                               |
-| 사용 데이터      | 광고 데이터             | `예`        | 타사 광고, 분석                       | `예`                                            | `예`                                               | AdMob 노출/클릭/광고 응답/광고 측정 데이터                                                          |
-| 사용 데이터      | 기타 사용 데이터        | `예`        | 분석, 제품 개인화, 앱 기능            | 식별자와 결합되면 `예`                          | 광고 측정에 쓰면 `예`                              | 완료율, 세션, Remote Config/Analytics 기반 활동 데이터                                              |
-| 진단             | 충돌 데이터             | `예`        | 분석, 앱 기능                         | Crashlytics user ID 또는 식별자와 결합되면 `예` | 광고 목적으로 사용하지 않으면 `아니요`             | Crashlytics crash logs                                                                              |
-| 진단             | 실적 데이터             | `예`        | 분석, 앱 기능, 타사 광고              | 식별자와 결합되면 `예`                          | AdMob 광고 성능/측정에 쓰이면 `예`                 | Firebase Performance, AdMob performance data, launch time, hang rate                                |
-| 진단             | 기타 진단 데이터        | `예`        | 분석, 앱 기능                         | 식별자와 결합되면 `예`                          | 광고 목적으로 사용하지 않으면 `아니요`             | custom keys/logs, device/OS/app diagnostics                                                         |
-| 주변 환경        | 환경 스캐닝             | `아니요`    | 해당 없음                             | 해당 없음                                       | `아니요`                                           | AR/공간 스캔 기능 없음                                                                              |
-| 신체             | 손                      | `아니요`    | 해당 없음                             | 해당 없음                                       | `아니요`                                           | 손 구조/움직임 데이터 없음                                                                          |
-| 신체             | 머리                    | `아니요`    | 해당 없음                             | 해당 없음                                       | `아니요`                                           | 머리 움직임 데이터 없음                                                                             |
-| 기타 데이터      | 기타 데이터             | `예`        | 분석, 앱 기능, 보안                   | 설정에 따라 다름                                | 광고/마케팅 partner와 공유하지 않으면 `아니요`     | App Check, Firebase user agent, Hosting request metadata 등 위 항목으로 명확히 분류되지 않는 데이터 |
-
-주의:
-
-- 결제 카드 번호 등 `Payment Info`는 Apple IAP만 쓰고 개발자가 결제수단 정보에 접근하지 않으면 보통 수집으로 보지 않는다. 대신 entitlement/purchase record를 저장하면 `Purchase History`는 답한다.
-- AdMob을 붙여도 비개인화/문맥 광고만 쓰고 IDFA/교차 앱 측정을 끄면 `Tracking=No` 경로가 가능할 수 있다. 이 경우 SDK 설정과 App Store Connect 답변을 별도로 검증해야 한다.
-- Tracking 또는 IDFA를 켜면 `NSUserTrackingUsageDescription`, `AppTrackingTransparency`, UMP/동의 동선을 구현한다.
-- App Privacy 답변은 `PrivacyInfo.xcprivacy`를 대체하지 않는다. RNFirebase Analytics/Remote Config와 AdMob SDK 기준으로 privacy manifest와 App Store Connect 답변을 다시 맞춘다.
-
-참고:
-
-- Apple App Privacy Details: https://developer.apple.com/app-store/app-privacy-details/
-- Google Mobile Ads App Store data disclosure: https://developers.google.com/admob/ios/privacy/data-disclosure
-- Google Mobile Ads IDFA/ATT: https://developers.google.com/admob/ios/privacy/idfa
-- Firebase Apple App Store data disclosure: https://firebase.google.com/docs/ios/app-store-data-collection
-- Firebase Hosting request logs: https://firebase.google.com/docs/hosting/web-request-logs-and-metrics
+[Apple 신고 기준](https://developer.apple.com/app-store/app-privacy-details/)과 [Google Mobile Ads 수집 항목](https://developers.google.com/admob/ios/privacy/data-disclosure)을 확인했다. SDK와 데이터 사용이 바뀌면 다시 검토한다.
 
 ## 연령등급 설문 답변 가이드
 
-현재 `apps/mobile` App Store 앱 기준 추천 답변이다. App Store Connect에 실제 입력하기 전까지 `ageRatingQuestionnaire` gate는 `확정 필요`로 유지한다.
+v1.2.0의 실제 기존 설문은 광고 있음과 지원하지 않는 콘텐츠 없음으로 재조회했다. 아래는 향후 기능을 바꿀 때의 재검토 기준이며 새 계산 등급을 확정한 기록이 아니다.
 
 전제:
 

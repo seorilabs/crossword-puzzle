@@ -177,7 +177,7 @@
     },
     "app_store": {
       "objective": "public_live",
-      "state": "metadata",
+      "state": "submission",
       "identity": {
         "applicationId": "com.seorilabs.crosswordpuzzle",
         "version": "1.2.0",
@@ -230,42 +230,50 @@
           "status": "pass",
           "evidence": [
             "활성 ko 문구와 최종 노트, 키워드 및 공개 URL이 검토 원본과 일치; iPhone 3장과 iPad 3장 COMPLETE 및 checksum 확인",
-            "초안 bd7a370c-12f5-498f-a23f-9a6d5638bc11에 동일 빌드 연결, 기존 심사 연락처 및 후보 설명 메모 저장"
+            "초안 bd7a370c-12f5-498f-a23f-9a6d5638bc11에 동일 빌드 연결, 기존 심사 연락처 및 후보 설명 메모 저장",
+            "제출 직전과 제출 도구 실행 뒤 활성 ko 및 최종 노트 133자, iPhone 3장과 iPad 3장 COMPLETE, URL 200 및 동일 빌드 연결 일치 재확인"
           ],
-          "checkedAt": "2026-10-23T16:35:29.632129+00:00",
+          "checkedAt": "2026-10-24T00:30:50.539381+00:00",
           "blocker": null
         },
         "policy": {
-          "status": "blocked",
+          "status": "pass",
           "evidence": [
-            "광고 있음과 지원하지 않는 콘텐츠 없음의 연령 신고, 타사 콘텐츠 권리 및 기존 KOR 배포 확인",
-            "8개 유형의 App Privacy 보완안은 준비했으며 실제 신고 게시는 아직 없음"
+            "실제 Apple wellknowngeek@gmail.com, Seori Labs 및 앱 6777292094 확인",
+            "App Privacy 8개 유형 게시 후 각 질문을 재개방하여 용도, 연결과 추적 답변 전부 대조; 7개 연결 및 충돌 데이터 비연결, 전부 tracking false",
+            "현행 KOR만 사용 가능, 새 국가 자동 추가 false, 광고 있음과 지원하지 않는 콘텐츠 없음 및 USES_THIRD_PARTY_CONTENT 재조회",
+            "실제 광고 및 인증 SDK와 OS 검수는 승인 계획대로 미실행이며 신고와 실행 증거를 구분한다"
           ],
-          "checkedAt": "2026-10-23T16:35:29.632129+00:00",
-          "blocker": "App Privacy 신고를 게시하려면 Apple 콘솔의 본인 확인 갱신이 필요하다"
+          "checkedAt": "2026-10-24T00:30:50.539381+00:00",
+          "blocker": null
         },
         "submission": {
-          "status": "pending",
-          "evidence": ["PREPARE_FOR_SUBMISSION, 실제 App Review 제출 전"],
-          "checkedAt": null,
+          "status": "pass",
+          "evidence": [
+            "중앙 a43f2c4에서 고정 source의 app-store before-release L3 통과",
+            "reviewSubmission 88d496c9-998a-49f8-80b0-93a038f396de, submittedDate 2026-10-24T00:25:33.646Z, WAITING_FOR_REVIEW",
+            "콘솔 2026-10-24 09:25 KST, iOS 1.2.0의 항목 1개 심사 대기 중",
+            "항목의 버전 bd7a370c-12f5-498f-a23f-9a6d5638bc11 및 build 92f26946-9b5f-41b9-bffd-692232c0455a, 1002000 연결 GET 대조; releaseType MANUAL 유지"
+          ],
+          "checkedAt": "2026-10-24T00:30:50.539381+00:00",
           "blocker": null
         },
         "approval": {
           "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
+          "evidence": ["심사 대기 중이며 v1.2.0 승인과 수동 공개는 아직 없음"],
+          "checkedAt": "2026-10-24T00:30:50.539381+00:00",
           "blocker": null
         },
         "release": {
           "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
+          "evidence": ["심사 대기 중이며 v1.2.0 승인과 수동 공개는 아직 없음"],
+          "checkedAt": "2026-10-24T00:30:50.539381+00:00",
           "blocker": null
         },
         "live_smoke": {
           "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
+          "evidence": ["심사 대기 중이며 v1.2.0 승인과 수동 공개는 아직 없음"],
+          "checkedAt": "2026-10-24T00:30:50.539381+00:00",
           "blocker": null
         }
       }
