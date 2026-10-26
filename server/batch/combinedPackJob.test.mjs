@@ -34,6 +34,8 @@ async function stagedJob({
           return "filtered-wordbank.json";
         },
         refreshLegacyHistory: async () => {},
+        restoreLegacyState: async () => ({ puzzles: [] }),
+        verifyLegacyState: async () => {},
         runLanguageJob: async (options) => {
           calls.push({ script: "languages", options });
           if (languageFailure) throw new Error("English generation failed");

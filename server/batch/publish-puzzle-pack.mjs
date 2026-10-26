@@ -235,11 +235,18 @@ export async function getLiveHostingRelease({ site, token }) {
   return release;
 }
 
-async function assertPublishedLanguagePuzzlesUnchanged({
-  versionName,
-  files,
-  token,
-}) {
+// These are the only mutable JSON resources owned by this pack publisher.
+// Every other issued puzzle JSON is immutable, including historical arbitrary IDs.
+const MUTABLE_PACK_JSON_PATHS = new Set([
+  "/puzzles/manifest.json",
+  "/puzzles/answer-history.json",
+  "/puzzles/generation-report.json",
+  "/puzzles/ko/manifest.json",
+  "/puzzles/ko/prior-answer-history.json",
+  "/puzzles/en/manifest.json",
+  "/puzzles/en/prior-answer-history.json",
+]);
+async function assertPublishedPuzzlesUnchanged({ versionName, files, token }) {
   const staged = new Map(files.map((file) => [file.path, file.hash]));
   let pageToken;
   do {
@@ -251,13 +258,13 @@ async function assertPublishedLanguagePuzzlesUnchanged({
     );
     for (const file of page.files ?? []) {
       if (
-        /^\/puzzles\/(ko|en)\/\1-\d{8}-[1-5]\.json$/.test(file.path) &&
+        file.path.startsWith("/puzzles/") &&
+        file.path.endsWith(".json") &&
+        !MUTABLE_PACK_JSON_PATHS.has(file.path) &&
         staged.has(file.path) &&
         staged.get(file.path) !== file.hash
       )
-        throw new Error(
-          `Refusing to replace an issued language puzzle: ${file.path}`,
-        );
+        throw new Error(`Refusing to replace an issued puzzle: ${file.path}`);
     }
     pageToken = page.nextPageToken;
   } while (pageToken);
@@ -336,7 +343,7 @@ export async function deployHosting({ options, token }) {
       "Cannot preserve the current finalized Hosting configuration",
     );
 
-  await assertPublishedLanguagePuzzlesUnchanged({
+  await assertPublishedPuzzlesUnchanged({
     versionName: baseline.version.name,
     files,
     token,

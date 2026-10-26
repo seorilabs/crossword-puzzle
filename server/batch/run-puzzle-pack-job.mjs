@@ -22,6 +22,12 @@ import { DAILY_PUZZLE_TIERS } from "../../packages/crossword-core/src/dailyPuzzl
 import { resolveScheduledDifficulty } from "../../packages/crossword-core/src/difficultyRotation.ts";
 import { resolveScheduledTheme } from "../../packages/crossword-core/src/themeRotation.ts";
 
+import {
+  restorePublishedLegacyPack,
+  legacySlotWasPublished,
+  assertPublishedLegacyUnchanged,
+} from "./publishedLegacyState.mjs";
+
 function readEnvBoolean(name) {
   const value = process.env[name];
   return value === "1" || value === "true";
@@ -340,6 +346,9 @@ export async function runPuzzlePackJob({
   prepareLanguages = prepareLanguagePublication,
   refreshLegacyHistory = refreshKoreanLegacyHistory,
   validateLanguages = validateLanguagePackDirectory,
+  restoreLegacyState = restorePublishedLegacyPack,
+  verifyLegacyState = assertPublishedLegacyUnchanged,
+  fetcher = fetch,
   resolveLiveRelease = async (site) =>
     getLiveHostingRelease({ site, token: await getAccessToken() }),
 } = {}) {
@@ -370,6 +379,24 @@ export async function runPuzzlePackJob({
       !options.skipPublish && !options.dryRun
         ? await resolveLiveRelease(process.env.FIREBASE_HOSTING_SITE)
         : null;
+    const publishedLegacy = baseUrl
+      ? await restoreLegacyState({
+          baseUrl,
+          outDir,
+          fetcher,
+          manifestUrl: getArgValue(generatorArgs, "appendManifestUrl"),
+          historyUrl: getArgValue(generatorArgs, "answerHistoryUrl"),
+        })
+      : null;
+    if (publishedLegacy) {
+      generatorArgs = generatorArgs.filter(
+        (arg) =>
+          !arg.startsWith("--appendManifestUrl=") &&
+          !arg.startsWith("--answerHistoryUrl="),
+      );
+      if (!generatorArgs.includes("--append")) generatorArgs.push("--append");
+    }
+    let retentionDate = getArgValue(generatorArgs, "start");
     if (languagesEnabled) {
       const filteredWordBankPath = await prepareLanguages({
         baseUrl,
@@ -390,7 +417,79 @@ export async function runPuzzlePackJob({
     // 처리하려면 검증을 try 안에 둬야 한다.
     async function generateThenValidate(args) {
       if (!options.skipGenerate) {
-        await runScript("server/batch/generate-puzzle-pack.mjs", args);
+        if (!publishedLegacy) {
+          await runScript("server/batch/generate-puzzle-pack.mjs", args);
+        } else {
+          const count = Number(getArgValue(args, "days") ?? 1);
+          const interval = Number(getArgValue(args, "intervalHours") ?? 1);
+          const timeZone = getArgValue(args, "timeZone") ?? "Asia/Seoul";
+          const publishedAt = new Date(getArgValue(args, "publishedAt"));
+          if (
+            !Number.isInteger(count) ||
+            count < 1 ||
+            !Number.isFinite(interval) ||
+            interval <= 0 ||
+            Number.isNaN(publishedAt.getTime())
+          )
+            throw new Error("Invalid legacy generation schedule");
+          for (let index = 0; index < count; index++) {
+            const date = new Date(
+              publishedAt.getTime() + index * interval * 3600000,
+            );
+            const dateKey = getDateKey(timeZone, date);
+            const hour =
+              getArgValue(args, "singleDaily") === "true"
+                ? 1
+                : getSlotHour(timeZone, date, interval);
+            const slotHour = String(hour).padStart(2, "0");
+            const slot = {
+              date: dateKey,
+              slotId: `${dateKey}-h${slotHour}`,
+              puzzleId: dateKey.slice(2).replaceAll("-", "") + slotHour,
+              difficulty: getArgValue(args, "difficulty"),
+            };
+            if (getArgValue(args, "singleDaily") === "true") {
+              const policy = publishedLegacy.manifest?.dailyPolicy;
+              const fromDate = getArgValue(args, "singleDailyFrom");
+              if (policy && fromDate && policy.singleFromDate !== fromDate)
+                throw new Error("Existing daily transition date is immutable");
+              if (
+                legacySlotWasPublished(publishedLegacy, slot) &&
+                (!policy || slot.date < policy.singleFromDate)
+              )
+                throw new Error(
+                  `Cannot replace or relabel an already issued legacy puzzle ${slot.puzzleId}`,
+                );
+            }
+            if (legacySlotWasPublished(publishedLegacy, slot)) {
+              console.log(
+                `[legacy-publication] keeping already issued slot ${slot.slotId}`,
+              );
+              continue;
+            }
+            let nextArgs = setArg(
+              setArg(
+                setArg(args, "days", "1"),
+                "publishedAt",
+                date.toISOString(),
+              ),
+              "start",
+              dateKey,
+            );
+            nextArgs = setArg(
+              nextArgs,
+              "seed",
+              String(Number(getArgValue(args, "seed")) + index * 100),
+            );
+            await runScript("server/batch/generate-puzzle-pack.mjs", nextArgs);
+            if (dateKey > retentionDate) retentionDate = dateKey;
+            await verifyLegacyState({
+              state: publishedLegacy,
+              outDir,
+              retentionDate,
+            });
+          }
+        }
       }
       if (!options.skipValidate) {
         await runScript("scripts/validate-puzzle-pack.mjs", [
@@ -434,7 +533,7 @@ export async function runPuzzlePackJob({
           );
         }
         console.log(
-          `[daily-tiers] generating difficulty=${tier.difficulty} date=${dateKey} publishedAt=${publishedAt}`,
+          `[daily-tiers] ensuring difficulty=${tier.difficulty} date=${dateKey} publishedAt=${publishedAt}`,
         );
         await generateThenValidate(tierArgs);
       }
@@ -468,6 +567,7 @@ export async function runPuzzlePackJob({
       await validateLanguages({ outDir, schedule: languagePackSchedule(now) });
     }
 
+    await verifyLegacyState({ state: publishedLegacy, outDir, retentionDate });
     if (!options.skipPublish) {
       const publishArgs = [
         `--manifest=${manifestPath}`,

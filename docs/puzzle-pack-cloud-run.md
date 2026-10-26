@@ -17,13 +17,27 @@ flowchart LR
 
 `npm run job:puzzle-pack`은 기존 `/puzzles/manifest.json` 공급을 유지하며 `/puzzles/ko/manifest.json`과 `/puzzles/en/manifest.json`을 함께 준비한다. 운영 실행에는 `PUZZLE_HOSTING_BASE_URL`, `FIREBASE_PROJECT_ID`와 `FIREBASE_HOSTING_SITE`가 필요하다. 출력 폴더를 지정하지 않으면 실행마다 임시 public 폴더를 만들고 종료 시 지운다. 이미지에 포함된 예전 manifest와 웹 자산을 게시 입력으로 사용하지 않는다.
 
+기존 한국어 manifest와 정답 이력, 참조하는 모든 퍼즐의 원문을 먼저 복원한다. 이미 공개된 슬롯은 생성기를 호출하지 않고 원래 JSON 바이트를 유지하며, 새 날짜나 빠진 슬롯만 하나씩 생성한다. 오늘의 쉬운 판만 있으면 어려운 판만 만든다. 새 한국어 판을 준비한 뒤 같은 날 재실행해도 구버전 판은 재생성하지 않는다. 복원 오류는 빈 상태로 대체하지 않고 중단한다.
+
+생성 뒤와 게시 직전에는 기존 공개 판의 바이트, 기존 manifest가 참조한 이력과 90일 보존 창 안의 이력 레코드를 대조한다. 날짜가 지난 레코드의 정상 만료 정리는 기존 `retentionDays` 기준으로 허용한다. 판 식별자는 숫자 길이나 현재 ID 모양으로 제한하지 않는다.
+
 한국어는 KST 오늘과 내일 10판, 영어는 UTC 어제부터 3일 뒤까지 25판을 준비한다. 영어의 현지 날짜 양끝과 미래 2일을 포함하는 범위이며 클라이언트가 미래 판을 숨긴다. 두 언어의 하루 5판, 단어 수, 단서, 연결성, 교차 칸 55%와 14일 정답 중복 조건을 낮추지 않는다. 복원한 모든 발행 판을 다시 검사하고 같은 슬롯의 퍼즐 원문은 보존한다.
 
 구버전 한국어 생성 전에 새 한국어의 발행 정답을 14일 범위에서 제외한 임시 단어 목록을 만든다. 구버전 생성 뒤에는 그 실행의 정답 이력을 새 한국어의 제외 이력에 합친다. 새 5판을 구버전의 90일 이력에 넣어 기존 검사 규칙을 바꾸지는 않는다.
 
 처음 언어별 manifest가 없는 경우에만 **해당 1회 실행의 환경 변수 override**로 `PUZZLE_LANGUAGE_BOOTSTRAP=true`를 전달한다. 이때도 404만 초기 공급으로 해석하며 네트워크 오류, 잘못된 원문과 정답 이력 누락은 실패한다. 한국어 초기 공급은 공개된 기존 정답 이력을 읽어야 한다. 이 변수를 Job의 지속 설정이나 Scheduler에 저장하지 않는다. 이후 실행은 두 언어의 공개 원문 복원이 필수다.
 
-게시기는 현재 live release와 config를 읽고 [`versions.clone(finalize:false)`](https://firebase.google.com/docs/reference/hosting/rest/v1beta1/sites.versions/clone)으로 전체 파일을 보존한다. 기존 리다이렉트, rewrite와 다른 경로의 헤더는 유지하고 퍼즐 경로의 CORS와 캐시 헤더만 설정한다. 생성한 `/puzzles/` 파일을 덮은 뒤 `FINALIZED`와 `releases.create`를 한 번씩 호출한다. 그 외 웹 파일을 로컬 원본으로 덮지 않으며, 이미 발행한 언어 퍼즐의 해시가 다르면 중단한다. 생성 시작부터 공개 직전 사이 live release가 바뀌어도 공개를 중단한다. API가 비교 후 쓰기의 원자적 조건을 제공하지 않으므로 생성 및 Hosting 배포를 동시에 실행하지 않는다.
+게시기는 현재 live release와 config를 읽고 [`versions.clone(finalize:false)`](https://firebase.google.com/docs/reference/hosting/rest/v1beta1/sites.versions/clone)으로 전체 파일을 보존한다. 기존 리다이렉트, rewrite와 다른 경로의 헤더는 유지하고 퍼즐 경로의 CORS와 캐시 헤더만 설정한다. 생성한 `/puzzles/` 파일을 덮은 뒤 `FINALIZED`와 `releases.create`를 한 번씩 호출한다. 그 외 웹 파일을 로컬 원본으로 덮지 않으며, 이미 발행한 퍼즐 JSON의 해시가 다르면 언어나 ID 모양과 관계없이 중단한다. 생성 시작부터 공개 직전 사이 live release가 바뀌어도 공개를 중단한다. API가 비교 후 쓰기의 원자적 조건을 제공하지 않으므로 생성 및 Hosting 배포를 동시에 실행하지 않는다.
+
+갱신을 허용하는 JSON은 아래 7개 경로뿐이다. 루트의 세 파일은 기존 생성기가 쓰며, 언어별 네 파일은 언어 생성과 상태 복원이 쓴다. 그 밖의 기존 `/puzzles/` JSON은 임의 ID의 과거 판과 하위 폴더의 판까지 불변으로 취급한다. 로컬에서 파일이 빠져도 Hosting clone에 남아 있는 기존 주소를 삭제하지 않는다.
+
+- `/puzzles/manifest.json`
+- `/puzzles/answer-history.json`
+- `/puzzles/generation-report.json`
+- `/puzzles/ko/manifest.json`
+- `/puzzles/ko/prior-answer-history.json`
+- `/puzzles/en/manifest.json`
+- `/puzzles/en/prior-answer-history.json`
 
 기존 보호 이미지 교체 절차에서 generator와 health는 같은 digest를 유지한다. 최초 언어 전환에서는 새 generator를 위의 실행 한정 bootstrap override로 한 번 실행한 뒤 새 health를 실행해야 한다. health만 먼저 실행하면 아직 없는 manifest를 실패로 보고 이전 이미지로 돌아간다. 기존 보호 태그와 이전 digest, live Hosting version을 기록한 뒤 전환하고, 실패하면 두 Job을 함께 이전 digest로 복원한다. IAM, 리소스 생성과 스케줄 변경을 포함하는 초기 설치 스크립트를 기존 이미지 교체에 무심코 재실행하지 않는다.
 

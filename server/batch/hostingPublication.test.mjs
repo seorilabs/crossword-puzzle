@@ -28,6 +28,8 @@ function hostingApi({
           "/asset/logo.svg": "remote-logo",
           "/puzzles/ko/issued.json": "issued",
           "/puzzles/en/issued.json": "issued-en",
+          "/puzzles/26102600.json": "issued-numeric",
+          "/puzzles/2026-05-25-normal-original.json": "issued-legacy",
         },
       },
     ],
@@ -158,6 +160,11 @@ test("AC-2 publication preserves live files and config while replacing only gene
   assert.equal(api.release.files["/asset/logo.svg"], "remote-logo");
   assert.equal(api.release.files["/puzzles/ko/issued.json"], "issued");
   assert.equal(api.release.files["/puzzles/en/issued.json"], "issued-en");
+  assert.equal(api.release.files["/puzzles/26102600.json"], "issued-numeric");
+  assert.equal(
+    api.release.files["/puzzles/2026-05-25-normal-original.json"],
+    "issued-legacy",
+  );
   assert.ok(api.release.files["/puzzles/en/manifest.json"]);
   assert.equal(api.release.config.cleanUrls, true);
   assert.deepEqual(api.release.config.rewrites, api.oldConfig.rewrites);
@@ -223,4 +230,82 @@ test("AC-2 published language puzzle identities cannot be overwritten by a later
     api.calls.some((call) => call.path.endsWith("/versions:clone")),
     false,
   );
+});
+
+test("AC-2 issued legacy numeric and arbitrary historical JSON identities cannot be replaced", async () => {
+  for (const issuedPath of [
+    "/puzzles/26102600.json",
+    "/puzzles/2026-05-25-normal-original.json",
+    "/puzzles/archive/opaque-old-id.json",
+  ]) {
+    const api = hostingApi();
+    const baseFetcher = api.fetcher;
+    api.fetcher = async (input, init) =>
+      new URL(input).pathname.endsWith("/versions/old/files")
+        ? new Response(
+            JSON.stringify({
+              files: [
+                {
+                  path: issuedPath,
+                  hash: "issued-original-bytes",
+                  status: "ACTIVE",
+                },
+              ],
+            }),
+          )
+        : baseFetcher(input, init);
+    await withPublication(api, async (options) => {
+      const target = path.join(options.publicDir, issuedPath);
+      await mkdir(path.dirname(target), { recursive: true });
+      await writeFile(
+        target,
+        '{"puzzleId":"arbitrary","entries":[],"grid":[]}',
+      );
+      await assert.rejects(
+        deployHosting({ options, token: "test-token" }),
+        /Refusing to replace an issued/,
+      );
+    });
+    assert.equal(api.release, undefined);
+    assert.equal(
+      api.calls.some((call) => call.path.endsWith("/versions:clone")),
+      false,
+    );
+  }
+});
+
+test("AC-2 only the seven pack metadata paths may update existing JSON resources", async () => {
+  const metadata = [
+    "/puzzles/manifest.json",
+    "/puzzles/answer-history.json",
+    "/puzzles/generation-report.json",
+    "/puzzles/ko/manifest.json",
+    "/puzzles/ko/prior-answer-history.json",
+    "/puzzles/en/manifest.json",
+    "/puzzles/en/prior-answer-history.json",
+  ];
+  const api = hostingApi();
+  const originalFetcher = api.fetcher;
+  api.fetcher = async (input, init) =>
+    new URL(input).pathname.endsWith("/versions/old/files")
+      ? new Response(
+          JSON.stringify({
+            files: metadata.map((path) => ({
+              path,
+              hash: "previous-metadata-bytes",
+              status: "ACTIVE",
+            })),
+          }),
+        )
+      : originalFetcher(input, init);
+  await withPublication(api, async (options) => {
+    for (const publishedPath of metadata) {
+      const target = path.join(options.publicDir, publishedPath);
+      await mkdir(path.dirname(target), { recursive: true });
+      await writeFile(target, '{"updated":true}');
+    }
+    await deployHosting({ options, token: "test-token" });
+  });
+  assert.ok(api.release);
+  assert.equal(api.release.files["/puzzles/26102600.json"], "issued-numeric");
 });
