@@ -1,3 +1,4 @@
+import { t } from './languageRepository';
 import React from 'react';
 import {
   Pressable,
@@ -13,6 +14,7 @@ import type {
   WeeklyStreakStripDay,
 } from '../../packages/crossword-core/src';
 type Props = {
+  completedToday: number;
   puzzle: Puzzle | null;
   date: string;
   finished: boolean;
@@ -29,6 +31,7 @@ type Props = {
   onLicense: () => void;
 };
 export function TileHomeScreen({
+  completedToday,
   puzzle,
   date,
   finished,
@@ -54,12 +57,12 @@ export function TileHomeScreen({
     <ScrollView style={s.screen} contentContainerStyle={s.content}>
       <View style={s.nav}>
         <View>
-          <Text style={s.brand}>낱말 한 판</Text>
+          <Text style={s.brand}>{t('낱말 한 판')}</Text>
           <Text style={s.brandEnglish}>DAILY WORD PLAY</Text>
         </View>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="설정"
+          accessibilityLabel={t('설정')}
           style={s.icon}
           onPress={onSettings}
         >
@@ -67,18 +70,21 @@ export function TileHomeScreen({
         </Pressable>
       </View>
       <Text style={s.eyebrow}>
-        {date.replaceAll('-', '. ')} · 매일 새로운 낱말
+        {date.replaceAll('-', '. ')} · {completedToday}/5
       </Text>
       <Text accessibilityRole="header" style={s.title}>
-        {'생각을 맞추는\n오늘의 한 판.'}
+        {t('생각을 맞추는\n오늘의 한 판.')}
       </Text>
-      <Text style={s.lead}>단서를 읽고, 글자 타일을 골라보세요.</Text>
+      <Text style={s.lead}>{t('단서를 읽고, 글자 타일을 골라보세요.')}</Text>
       <View style={s.card}>
         <View style={s.cardHeading}>
           <Text style={s.cardTitle}>
-            {finished ? '오늘도 한 판 완성!' : '오늘의 퍼즐'}
+            {finished ? t('오늘도 한 판 완성!') : t('오늘의 퍼즐')}
           </Text>
-          <Text style={s.wordCount}>{puzzle?.entries.length ?? '…'} 단어</Text>
+          <Text style={s.wordCount}>
+            {puzzle?.entries.length ?? '…'}
+            {t('단어')}
+          </Text>
         </View>
         <View style={[s.preview, { width: previewSize }]}>
           {puzzle?.grid.map((row, y) => (
@@ -91,16 +97,18 @@ export function TileHomeScreen({
         </View>
         <Text style={s.caption}>
           {loadError
-            ? '퍼즐을 불러오지 못했어요. 연결을 확인한 뒤 다시 불러와 주세요.'
+            ? t(
+                '퍼즐을 불러오지 못했어요. 연결을 확인한 뒤 다시 불러와 주세요.',
+              )
             : puzzle == null
-              ? '오늘의 퍼즐을 준비하고 있어요.'
+              ? t('오늘의 퍼즐을 준비하고 있어요.')
               : offline
-                ? '연결이 어려워 저장된 퍼즐을 보여드려요.'
+                ? t('연결이 어려워 저장된 퍼즐을 보여드려요.')
                 : finished
-                  ? '완성한 단어를 다시 만나보세요.'
+                  ? t('완성한 단어를 다시 만나보세요.')
                   : started
-                    ? '고른 글자는 그대로, 이어서 완성해요.'
-                    : '서두르지 않아도 괜찮아요. 한 단어씩 채워봐요.'}
+                    ? t('고른 글자는 그대로, 이어서 완성해요.')
+                    : t('서두르지 않아도 괜찮아요. 한 단어씩 채워봐요.')}
         </Text>
         <Pressable
           accessibilityRole="button"
@@ -110,29 +118,36 @@ export function TileHomeScreen({
         >
           <Text style={s.primaryText}>
             {loadError
-              ? '다시 불러오기'
+              ? t('다시 불러오기')
               : !puzzle
-                ? '오늘 퍼즐 준비 중'
+                ? t('오늘 퍼즐 준비 중')
                 : finished
-                  ? '완성한 판 보기'
+                  ? t('완성한 판 보기')
                   : started
-                    ? '이어서 풀기'
-                    : '오늘 한 판 시작'}{' '}
+                    ? t('이어서 풀기')
+                    : t('오늘 한 판 시작')}{' '}
             ›
           </Text>
         </Pressable>
       </View>
       <View style={s.streak}>
-        <Text style={s.streakTitle}>✦ {streak}일의 낱말 습관</Text>
+        <Text style={s.streakTitle}>
+          ✦ {streak}
+          {t('일의 낱말 습관')}
+        </Text>
         <View style={s.week}>
           {week.map(day => (
             <View
               key={day.date}
-              accessibilityLabel={`${day.date}${day.completed ? ' 완료' : ''}`}
+              accessibilityLabel={t(
+                '{0}{1}',
+                day.date,
+                day.completed ? t(' 완료') : '',
+              )}
               style={[s.day, day.completed && s.done]}
             >
               <Text style={[s.dayText, day.completed && s.doneText]}>
-                {day.completed ? '✓' : day.isToday ? '오늘' : '·'}
+                {day.completed ? '✓' : day.isToday ? t('오늘') : '·'}
               </Text>
             </View>
           ))}
@@ -140,21 +155,21 @@ export function TileHomeScreen({
       </View>
       <View style={s.links}>
         <Pressable accessibilityRole="button" style={s.link} onPress={onResume}>
-          <Text style={s.linkText}>⌁ 이어 풀기</Text>
+          <Text style={s.linkText}>{t('⌁ 이어 풀기')}</Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"
           style={s.link}
           onPress={onHistory}
         >
-          <Text style={s.linkText}>▤ 나의 기록</Text>
+          <Text style={s.linkText}>{t('▤ 나의 기록')}</Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"
           style={s.link}
           onPress={onLicense}
         >
-          <Text style={s.linkText}>ⓘ 안내</Text>
+          <Text style={s.linkText}>{t('ⓘ 안내')}</Text>
         </Pressable>
       </View>
     </ScrollView>

@@ -226,6 +226,8 @@ export function getPuzzlePackAlias(source: PuzzleAliasSource) {
 export function createPuzzleSummary(puzzle: Puzzle): PuzzleManifestItem {
   return {
     alias: puzzle.alias ?? getPuzzlePackAlias(puzzle),
+    language: puzzle.language,
+    dailySequence: puzzle.dailySequence,
     date: puzzle.date,
     difficulty: puzzle.difficulty,
     metrics: puzzle.metrics,

@@ -1,3 +1,4 @@
+import { t } from './languageRepository';
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -27,7 +28,7 @@ export function ShareGridPreview({ shareGrid }: ShareGridPreviewProps) {
   const rows = shareGrid.split('\n');
   return (
     <View
-      accessibilityLabel="완성한 퍼즐 결과 격자"
+      accessibilityLabel={t('완성한 퍼즐 결과 격자')}
       accessibilityRole="image"
       style={styles.shareGrid}
     >
@@ -80,23 +81,32 @@ export function PersonalStatsCard({
   const hasDistribution = solveTimeDistribution.total > 0;
 
   return (
-    <View accessibilityLabel="내 기록 요약" style={styles.card}>
-      <Text style={styles.cardTitle}>내 기록</Text>
+    <View accessibilityLabel={t('내 기록 요약')} style={styles.card}>
+      <Text style={styles.cardTitle}>{t('내 기록')}</Text>
       {stats.completedCount > 0 ? (
         <View style={styles.metricGrid}>
-          <Metric label="총 완료" value={`${stats.completedCount}판`} />
-          <Metric label="완료율" value={`${completionPercent}%`} />
-          <Metric label="현재 스트릭" value={`${consecutiveStreak}일`} />
-          <Metric label="최장 스트릭" value={`${longestStreak}일`} />
-          <Metric label="노힌트 완료" value={`${stats.noHintCompletedCount}판`} />
+          <Metric
+            label={t('총 완료')}
+            value={t('{0}판', stats.completedCount)}
+          />
+          <Metric label={t('완료율')} value={`${completionPercent}%`} />
+          <Metric
+            label={t('현재 스트릭')}
+            value={t('{0}일', consecutiveStreak)}
+          />
+          <Metric label={t('최장 스트릭')} value={t('{0}일', longestStreak)} />
+          <Metric
+            label={t('노힌트 완료')}
+            value={t('{0}판', stats.noHintCompletedCount)}
+          />
           {hasBestTime ? (
             <>
               <Metric
-                label="최고 기록"
+                label={t('최고 기록')}
                 value={formatBestTime(stats.fastestBestTimeMs as number)}
               />
               <Metric
-                label="평균 기록"
+                label={t('평균 기록')}
                 value={formatBestTime(stats.averageBestTimeMs as number)}
               />
             </>
@@ -104,16 +114,21 @@ export function PersonalStatsCard({
         </View>
       ) : (
         <Text style={styles.emptyText}>
-          첫 퍼즐을 완료하면 누적 기록이 여기에 쌓여요.
-          {consecutiveStreak > 0 ? ` 🔥 ${consecutiveStreak}일째 도전 중!` : ''}
+          {t('첫 퍼즐을 완료하면 누적 기록이 여기에 쌓여요.')}
+          {consecutiveStreak > 0
+            ? t(' 🔥 {0}일째 도전 중!', consecutiveStreak)
+            : ''}
         </Text>
       )}
       {hasDistribution ? (
         <View
-          accessibilityLabel={`풀이 시간 분포 (총 ${solveTimeDistribution.total}판)`}
+          accessibilityLabel={t(
+            '풀이 시간 분포 (총 {0}판)',
+            solveTimeDistribution.total,
+          )}
           style={styles.distribution}
         >
-          <Text style={styles.distributionTitle}>풀이 시간 분포</Text>
+          <Text style={styles.distributionTitle}>{t('풀이 시간 분포')}</Text>
           {solveTimeDistribution.buckets.map(bucket => {
             const widthPercent =
               bucket.count > 0
@@ -156,8 +171,8 @@ const WEEKDAY_AXIS_LABELS = ['일', '', '', '수', '', '금', ''];
 export function StreakHeatmap({ weeks }: StreakHeatmapProps) {
   const monthLabels = buildStreakCalendarMonthLabels(weeks);
   return (
-    <View accessibilityLabel="최근 완료 달력 히트맵" style={styles.card}>
-      <Text style={styles.cardTitle}>완료 달력</Text>
+    <View accessibilityLabel={t('최근 완료 달력 히트맵')} style={styles.card}>
+      <Text style={styles.cardTitle}>{t('완료 달력')}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View>
           <View style={styles.heatmapMonthRow}>
@@ -194,9 +209,12 @@ export function StreakHeatmap({ weeks }: StreakHeatmapProps) {
                   ) : (
                     <View
                       key={cell.date}
-                      accessibilityLabel={`${cell.date} ${
-                        cell.completed ? '완료' : '미완료'
-                      }${cell.isToday ? ' · 오늘' : ''}`}
+                      accessibilityLabel={t(
+                        '{0} {1}{2}',
+                        cell.date,
+                        cell.completed ? t('완료') : t('미완료'),
+                        cell.isToday ? t(' · 오늘') : '',
+                      )}
                       style={[
                         styles.heatmapCell,
                         cell.completed ? styles.heatmapCellDone : null,
@@ -212,9 +230,9 @@ export function StreakHeatmap({ weeks }: StreakHeatmapProps) {
       </ScrollView>
       <View style={styles.heatmapLegend}>
         <View style={styles.heatmapLegendSwatch} />
-        <Text style={styles.heatmapLegendLabel}>미완료</Text>
+        <Text style={styles.heatmapLegendLabel}>{t('미완료')}</Text>
         <View style={[styles.heatmapLegendSwatch, styles.heatmapCellDone]} />
-        <Text style={styles.heatmapLegendLabel}>완료</Text>
+        <Text style={styles.heatmapLegendLabel}>{t('완료')}</Text>
       </View>
     </View>
   );

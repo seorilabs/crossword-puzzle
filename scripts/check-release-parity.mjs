@@ -22,7 +22,6 @@ const mobileAppPath = "apps/mobile/App.tsx";
 const webShareHookPath = "src/useShareResult.ts";
 const mobileShareResultPath = "apps/mobile/shareResult.ts";
 const mobileGameplayTelemetryPath = "apps/mobile/gameplayTelemetry.ts";
-const mobileStuckHintPromptPath = "apps/mobile/useStuckHintPrompt.ts";
 const mobileIndexPath = "apps/mobile/index.js";
 const mobilePlatformAuthPath = "apps/mobile/platformAuth.ts";
 const mobileReturnReminderPath = "apps/mobile/mobileReturnReminder.ts";
@@ -100,7 +99,6 @@ const sharedPolicyExports = [
 const requiredWebImports = [
   "DAILY_ATTEMPT_LIMIT",
   "createPuzzleSummary",
-  "getDailyFreePuzzleSummary",
   "getPuzzlePackAlias",
   "sortPuzzleSummariesByRecency",
   "uniquePuzzleSummaries",
@@ -110,7 +108,6 @@ const requiredMobileImports = [
   "DAILY_ATTEMPT_LIMIT",
   "createPuzzleSummary",
   "defaultLaunchConfig",
-  "getDailyFreePuzzleSummary",
   "getPuzzlePackAlias",
   "sortPuzzleSummariesByRecency",
   "uniquePuzzleSummaries",
@@ -295,7 +292,6 @@ const webMain = read(webMainPath);
 const webPlatformAuth = read(webPlatformAuthPath);
 const mobileApp = read(mobileAppPath);
 const mobileGameplayTelemetry = read(mobileGameplayTelemetryPath);
-const mobileStuckHintPrompt = read(mobileStuckHintPromptPath);
 const mobileIndex = read(mobileIndexPath);
 const mobilePlatformAuth = read(mobilePlatformAuthPath);
 const mobileAppTest = read(mobileAppTestPath);
@@ -323,9 +319,9 @@ const featureParityMarkers = [
   "getCompletionAchievements",
   "getProgressMilestoneRewardMessage",
   "isNewBestTime",
-  "runRewardedHintAdFlow",
-  "pickHintCellIndex",
-  "retry:",
+  "createCompletionTransition",
+  "dailyPuzzles",
+  "languageTelemetry",
   "computeLeaderboardScore",
   "leaderboardVisible",
 ];
@@ -606,23 +602,10 @@ for (const event of [
   assertIncludes(read(guideFunnelPath), `'${event}'`, guideFunnelPath);
   assertIncludes(marketParityDoc, event, marketParityDocPath);
 }
-for (const marker of [
-  "FIRST_WORD_GUIDE_EVENTS",
-  "STUCK_HINT_PROMPT_EVENT",
-  "STUCK_HINT_PROMPT_ACCEPT_EVENT",
-  "STUCK_HINT_PROMPT_DISMISS_EVENT",
-  "useStuckHintPrompt",
-]) {
+for (const marker of ["FIRST_WORD_GUIDE_EVENTS"]) {
   assertIncludes(mobileApp, marker, mobileAppPath);
 }
-for (const marker of [
-  "getStuckHintBackoffDelayMs",
-  "getStuckHintDelayMs",
-  "isNearFinishNudge",
-  "shouldScheduleStuckHintPrompt",
-]) {
-  assertIncludes(mobileStuckHintPrompt, marker, mobileStuckHintPromptPath);
-}
+
 assertIncludes(
   remoteConfigTemplate,
   '"first_input_guide_enabled"',
@@ -808,11 +791,16 @@ assertIncludes(
   xcodeCloudPostBuildPath,
 );
 assertIncludes(mobileAds, "initializeMobileAds", mobileAdsPath);
-assertIncludes(mobileAds, "showRewardedAd", mobileAdsPath);
+assertNotIncludes(mobileAds, "showRewardedAd", mobileAdsPath);
 assertNotIncludes(mobileAds, "showInterstitialAd", mobileAdsPath);
-assertIncludes(mobileAds, "requestNonPersonalizedAdsOnly: true", mobileAdsPath);
+assertIncludes(
+  read("apps/mobile/completionInterstitial.ts"),
+  "requestNonPersonalizedAdsOnly: true",
+  "apps/mobile/completionInterstitial.ts",
+);
 assertIncludes(mobileAds, "setRequestConfiguration", mobileAdsPath);
-assertIncludes(mobileApp, "showRewardedAd", mobileAppPath);
+assertIncludes(mobileApp, "createMobileCompletionInterstitial", mobileAppPath);
+assertIncludes(webApp, "createAitCompletionInterstitial", webAppPath);
 assertNotIncludes(mobileApp, "showInterstitialAd", mobileAppPath);
 assertIncludes(
   mobileLeaderboardAdapter,
@@ -838,7 +826,7 @@ assertIncludes(mobileApp, "shouldSubmitLeaderboardScore", mobileAppPath);
 assertIncludes(mobileApp, "computeLeaderboardScore", mobileAppPath);
 assertIncludes(
   mobileTileResult,
-  ">순위 보기</Text>",
+  "순위 보기",
   "apps/mobile/TileResultScreen.tsx",
 );
 assertIncludes(mobileTileHome, "낱말 한 판", "apps/mobile/TileHomeScreen.tsx");

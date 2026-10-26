@@ -34,6 +34,13 @@ export const getNumber = (
   Number(
     window.__crosswordQa.remoteConfigValues?.[key] ?? config.defaultConfig[key],
   );
+export const getString = (
+  config: { defaultConfig: Record<string, unknown> },
+  key: string,
+) =>
+  String(
+    window.__crosswordQa.remoteConfigValues?.[key] ?? config.defaultConfig[key] ?? "",
+  );
 const user = {
   uid: "native-qa-user",
   getIdToken: async () => "qa-fixture-id-token",

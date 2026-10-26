@@ -42,6 +42,7 @@ export type MobileShareTextInput = {
 // 웹과 같은 core 문구·이모지 격자로 공유 텍스트를 만든다.
 export function buildMobileShareText(input: MobileShareTextInput): string {
   return buildShareText({
+    language: input.puzzle.language ?? 'ko',
     puzzleLabel: input.puzzleLabel,
     elapsedLabel: input.elapsedLabel,
     hintCount: input.hintCount,

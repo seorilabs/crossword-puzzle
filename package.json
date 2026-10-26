@@ -45,7 +45,9 @@
     "dev:qa-native": "vite --config vite.qa-native.config.ts",
     "build:qa-native": "vite build --config vite.qa-native.config.ts",
     "dev:qa-web": "vite --config vite.qa-web.config.ts",
-    "build:qa-web": "vite build --config vite.qa-web.config.ts"
+    "build:qa-web": "vite build --config vite.qa-web.config.ts",
+    "batch:languages": "node server/batch/generate-language-packs.mjs",
+    "job:language-packs": "node server/batch/run-language-pack-job.mjs"
   },
   "dependencies": {
     "@apps-in-toss/web-framework": "3.4.1",

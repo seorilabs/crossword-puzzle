@@ -23,15 +23,6 @@
       ]
     },
     {
-      "id": "hint-wallet",
-      "core": true,
-      "paths": [
-        "packages/crossword-core/src/dailyHintWallet.ts",
-        "src/adapters/localDailyHintWalletRepository.ts",
-        "apps/mobile/dailyHintWalletRepository.ts"
-      ]
-    },
-    {
       "id": "progress-and-archive",
       "core": true,
       "paths": [
@@ -85,7 +76,13 @@
         "server/batch/generate-puzzle-pack.mjs",
         "server/batch/run-puzzle-pack-job.mjs",
         "server/batch/publish-puzzle-pack.mjs",
-        "scripts/validate-puzzle-pack.mjs"
+        "scripts/validate-puzzle-pack.mjs",
+        "server/batch/generate-language-packs.mjs",
+        "server/batch/fillCrosswordTemplate.mjs",
+        "server/batch/run-language-pack-job.mjs",
+        "data/puzzles/daily-board-templates.json",
+        "data/lexicon/en-wordbank.json",
+        "data/lexicon/ko-daily-clues.json"
       ],
       "runtimeKind": "service"
     },
@@ -126,20 +123,20 @@
       "core": false,
       "foundation": true,
       "paths": [
-        "src/adapters/appsInTossAds.ts",
         "apps/mobile/mobileAds.ts",
         "apps/mobile/ios/CrosswordPuzzleMobile/ConsentPreferences.swift",
         "apps/mobile/ios/CrosswordPuzzleMobile/AppDelegate.swift",
-        "apps/mobile/firebase.json"
+        "apps/mobile/firebase.json",
+        "src/adapters/completionInterstitial.ts",
+        "apps/mobile/completionInterstitial.ts",
+        "packages/crossword-core/src/completionInterstitial.ts"
       ]
     },
     {
       "id": "remote-configuration",
       "core": false,
       "foundation": true,
-      "paths": [
-        "src/adapters/launchConfig.ts"
-      ]
+      "paths": ["src/adapters/launchConfig.ts"]
     },
     {
       "id": "analytics",
@@ -152,16 +149,9 @@
         "apps/mobile/telemetry.ts",
         "apps/mobile/gameAnalytics.ts",
         "src/adapters/analyticsSinks.ts",
-        "apps/mobile/analyticsSinks.ts"
-      ]
-    },
-    {
-      "id": "single-daily-puzzle",
-      "core": true,
-      "paths": [
-        "packages/crossword-core/src/uiPolicy.ts",
-        "apps/mobile/TileHomeScreen.tsx",
-        "src/App.tsx"
+        "apps/mobile/analyticsSinks.ts",
+        "packages/crossword-core/src/gameAnalytics.ts",
+        "packages/crossword-core/src/dailyLanguage.ts"
       ]
     },
     {

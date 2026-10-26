@@ -1,3 +1,4 @@
+import { t } from "../adapters/languageRepository";
 import { formatBestTime } from "../../packages/crossword-core/src";
 import type {
   PersonalStats,
@@ -35,38 +36,50 @@ export function PersonalStatsCard({
     .join(", ");
 
   return (
-    <section className="personalStatsCard" aria-label="내 기록 요약">
-      <h2 className="personalStatsTitle">내 기록</h2>
+    <section className="personalStatsCard" aria-label={t("내 기록 요약")}>
+      <h2 className="personalStatsTitle">{t("내 기록")}</h2>
       {stats.completedCount > 0 ? (
         <dl className="personalStatsGrid">
           <div className="personalStat">
-            <dt>총 완료</dt>
-            <dd>{stats.completedCount}판</dd>
+            <dt>{t("총 완료")}</dt>
+            <dd>
+              {stats.completedCount}
+              {t("판")}
+            </dd>
           </div>
           <div className="personalStat">
-            <dt>완료율</dt>
+            <dt>{t("완료율")}</dt>
             <dd>{completionPercent}%</dd>
           </div>
           <div className="personalStat">
-            <dt>현재 스트릭</dt>
-            <dd>{consecutiveStreak}일</dd>
+            <dt>{t("현재 스트릭")}</dt>
+            <dd>
+              {consecutiveStreak}
+              {t("일")}
+            </dd>
           </div>
           <div className="personalStat">
-            <dt>최장 스트릭</dt>
-            <dd>{longestStreak}일</dd>
+            <dt>{t("최장 스트릭")}</dt>
+            <dd>
+              {longestStreak}
+              {t("일")}
+            </dd>
           </div>
           <div className="personalStat">
-            <dt>노힌트 완료</dt>
-            <dd>{stats.noHintCompletedCount}판</dd>
+            <dt>{t("노힌트 완료")}</dt>
+            <dd>
+              {stats.noHintCompletedCount}
+              {t("판")}
+            </dd>
           </div>
           {hasBestTime && (
             <>
               <div className="personalStat">
-                <dt>최고 기록</dt>
+                <dt>{t("최고 기록")}</dt>
                 <dd>{formatBestTime(stats.fastestBestTimeMs as number)}</dd>
               </div>
               <div className="personalStat">
-                <dt>평균 기록</dt>
+                <dt>{t("평균 기록")}</dt>
                 <dd>{formatBestTime(stats.averageBestTimeMs as number)}</dd>
               </div>
             </>
@@ -74,17 +87,23 @@ export function PersonalStatsCard({
         </dl>
       ) : (
         <p className="personalStatsEmpty">
-          첫 퍼즐을 완료하면 누적 기록이 여기에 쌓여요.
-          {consecutiveStreak > 0 ? ` 🔥 ${consecutiveStreak}일째 도전 중!` : ""}
+          {t("첫 퍼즐을 완료하면 누적 기록이 여기에 쌓여요.")}
+          {consecutiveStreak > 0
+            ? t(" 🔥 {0}일째 도전 중!", consecutiveStreak)
+            : ""}
         </p>
       )}
       {hasDistribution && (
         <figure
           className="solveTimeDistribution"
-          aria-label={`풀이 시간 분포 (총 ${solveTimeDistribution.total}판): ${distributionSummary}`}
+          aria-label={t(
+            "풀이 시간 분포 (총 {0}판): {1}",
+            solveTimeDistribution.total,
+            distributionSummary,
+          )}
         >
           <figcaption className="solveTimeDistributionTitle">
-            풀이 시간 분포
+            {t("풀이 시간 분포")}
           </figcaption>
           <div className="solveTimeDistributionBars" aria-hidden="true">
             {solveTimeDistribution.buckets.map((bucket) => {

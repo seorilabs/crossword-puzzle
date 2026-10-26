@@ -1,3 +1,7 @@
+import {
+  puzzleLanguage,
+  type ContentLanguage,
+} from '../../packages/crossword-core/src/dailyLanguage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { collectCompletedDates } from '../../packages/crossword-core/src';
@@ -17,7 +21,7 @@ export type MobileCompletionDatesRepository = {
   migrateCompletionDatesIfNeeded(input: {
     archiveRecords: ReadonlyArray<{
       completedAt: string | undefined;
-      puzzle: { date: string };
+      puzzle: { date: string; language?: ContentLanguage };
     }>;
   }): Promise<string[]>;
 };
@@ -46,9 +50,11 @@ function normalizeDates(value: unknown): string[] {
 // 남기지 않아 다음 실행에서 다시 백필한다.
 export function createMobileCompletionDatesRepository({
   storage = AsyncStorage,
-  key = COMPLETION_DATES_KEY,
-  migratedKey = COMPLETION_DATES_MIGRATED_KEY,
+  language = 'ko',
+  key = language === 'en' ? COMPLETION_DATES_KEY + ':en' : COMPLETION_DATES_KEY,
+  migratedKey = key + ':migrated',
 }: {
+  language?: ContentLanguage;
   storage?: AsyncKeyValueStorage;
   key?: string;
   migratedKey?: string;
@@ -86,8 +92,14 @@ export function createMobileCompletionDatesRepository({
       return [];
     }
     try {
-      const keys = (await storage.getAllKeys()).filter(candidate =>
-        candidate.startsWith(MISSION_KEY_PREFIX),
+      const keys = (await storage.getAllKeys()).filter(
+        candidate =>
+          candidate.startsWith(MISSION_KEY_PREFIX) &&
+          (candidate
+            .slice(MISSION_KEY_PREFIX.length)
+            .split(':')[1]
+            ?.startsWith('en-') ?? false) ===
+            (language === 'en'),
       );
       const rows = await storage.multiGet(keys);
       const dates: string[] = [];
@@ -100,7 +112,9 @@ export function createMobileCompletionDatesRepository({
           if (typeof parsed.completedAt !== 'string') {
             continue;
           }
-          const date = missionKey.slice(MISSION_KEY_PREFIX.length).split(':')[0];
+          const date = missionKey
+            .slice(MISSION_KEY_PREFIX.length)
+            .split(':')[0];
           dates.push(date);
         } catch {
           // 손상된 항목은 건너뛴다.
@@ -133,12 +147,16 @@ export function createMobileCompletionDatesRepository({
         return current;
       }
 
-      const archiveDates = [...collectCompletedDates(
-        archiveRecords.map(record => ({
-          date: record.puzzle.date,
-          completedAt: record.completedAt,
-        })),
-      )];
+      const archiveDates = [
+        ...collectCompletedDates(
+          archiveRecords
+            .filter(record => puzzleLanguage(record.puzzle) === language)
+            .map(record => ({
+              date: record.puzzle.date,
+              completedAt: record.completedAt,
+            })),
+        ),
+      ];
       const missionDates = await scanMissionCompletionDates();
       const merged = normalizeDates([
         ...current,

@@ -1,9 +1,14 @@
 export type CrosswordQaState = {
   events: Array<{ source: string; name: string; params?: unknown }>;
   adOutcome: "rewarded" | "dismissed" | "error";
+  interstitialOutcome?: "closed" | "error" | "show-error" | "unready" | "manual";
+  interstitialLoadDelayMs?: number;
+  interstitialCloseDelayMs?: number;
+  interstitialLateLoad?: boolean;
+  closeInterstitial?: () => void;
   authFailure: boolean;
   remoteConfigFailure: boolean;
-  remoteConfigValues?: Record<string, boolean | number>;
+  remoteConfigValues?: Record<string, boolean | number | string>;
   updateGate: { kind: string; message?: string };
   notificationPermission: number;
   storageFailure: boolean;

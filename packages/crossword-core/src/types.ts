@@ -17,6 +17,9 @@ export type PuzzleEntry = {
   answer: string;
   clue: string;
   clueSource?: string;
+  senseKey?: string;
+  synsetId?: string;
+  sourceLemma?: string;
   direction: Direction;
   row: number;
   col: number;
@@ -54,6 +57,8 @@ export type PuzzleMetrics = {
 };
 
 export type Puzzle = {
+  language?: import("./dailyLanguage.ts").ContentLanguage;
+  dailySequence?: number;
   alias?: string;
   puzzleId: string;
   date: string;
@@ -102,6 +107,8 @@ export type PuzzleSlotValidation = {
 };
 
 export type PuzzleManifestItem = {
+  language?: import("./dailyLanguage.ts").ContentLanguage;
+  dailySequence?: number;
   alias?: string;
   date: string;
   difficulty?: Puzzle["difficulty"];

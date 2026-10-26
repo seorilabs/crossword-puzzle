@@ -1,3 +1,4 @@
+import { t } from "../adapters/languageRepository";
 import { useMemo, useState, type CSSProperties } from "react";
 import {
   buildCellEntries,
@@ -18,12 +19,10 @@ export type TileInputAction = "choice" | "clear" | "select";
 export type TilePuzzleScreenProps = {
   puzzle: Puzzle;
   state: LetterTileState;
-  hints: number;
   hasStarted: boolean;
   isPaused: boolean;
   feedback?: string;
   onChange: (state: LetterTileState, action: TileInputAction) => void;
-  onHint: () => void;
   onBack: () => void;
   onStart: () => void;
   onResume: () => void;
@@ -37,12 +36,10 @@ export type TilePuzzleScreenProps = {
 export function TilePuzzleScreen({
   puzzle,
   state,
-  hints,
   hasStarted,
   isPaused,
   feedback,
   onChange,
-  onHint,
   onBack,
   onStart,
   onResume,
@@ -76,12 +73,12 @@ export function TilePuzzleScreen({
   const message =
     feedback ||
     (state.status === "repair"
-      ? "맞는 글자는 그대로! 빈칸만 다시 골라봐요."
+      ? t("맞는 글자는 그대로! 빈칸만 다시 골라봐요.")
       : state.status === "correct"
-        ? "단어 완성!"
+        ? t("단어 완성!")
         : solved
-          ? "이미 완성한 단어예요."
-          : "타일을 눌러 빈칸을 채워봐요.");
+          ? t("이미 완성한 단어예요.")
+          : t("타일을 눌러 빈칸을 채워봐요."));
 
   function select(id: string, cellKey = "") {
     const next = selectLetterEntry(puzzle, state, id, cellKey);
@@ -104,15 +101,15 @@ export function TilePuzzleScreen({
   return (
     <section
       className="tileGame"
-      aria-label="오늘의 타일 퍼즐"
+      aria-label={t("오늘의 타일 퍼즐")}
       style={{ "--tile-text-scale": textScale } as CSSProperties}
     >
       <header className="tileNav">
-        <button className="tileIcon" onClick={onBack} aria-label="홈으로">
+        <button className="tileIcon" onClick={onBack} aria-label={t("홈으로")}>
           ‹
         </button>
         <h1>
-          오늘의 퍼즐{" "}
+          {t("오늘의 퍼즐")}{" "}
           <small className="tileCompactProgress">
             {completed.length}/{puzzle.entries.length}
           </small>
@@ -121,23 +118,16 @@ export function TilePuzzleScreen({
           <button
             className="tileIcon tilePauseButton"
             onClick={onPause}
-            aria-label="일시정지"
+            aria-label={t("일시정지")}
           >
             Ⅱ
           </button>
         ) : null}
-        <button
-          className="tileHint"
-          onClick={onHint}
-          disabled={!hasStarted || isPaused || solved}
-          aria-label={`힌트 ${hints}개`}
-        >
-          ♧ <span>{hints}</span>
-        </button>
       </header>
       <div className="tileProgress">
         <span>
-          <b>{completed.length}</b> / {puzzle.entries.length} 단어
+          <b>{completed.length}</b> / {puzzle.entries.length}
+          {t("단어")}
           {timer ? ` · ${timer}` : ""}
         </span>
         <div className="tileProgressTrack">
@@ -151,10 +141,10 @@ export function TilePuzzleScreen({
           <button
             className="tileGuide"
             onClick={guide.onSkip}
-            aria-label="첫 세 단어 안내 건너뛰기"
+            aria-label={t("첫 세 단어 안내 건너뛰기")}
           >
-            첫걸음 {guide.completed}/{guide.total}{" "}
-            <span aria-hidden="true">×</span>
+            {t("첫걸음")}
+            {guide.completed}/{guide.total} <span aria-hidden="true">×</span>
           </button>
         ) : (
           <span aria-hidden="true">✓</span>
@@ -164,7 +154,7 @@ export function TilePuzzleScreen({
         <div
           className="tileBoard"
           style={{ "--tile-cols": puzzle.gridSize } as CSSProperties}
-          aria-label="퍼즐판"
+          aria-label={t("퍼즐판")}
         >
           {puzzle.grid.flatMap((row, y) =>
             row.map((value, x) => {
@@ -183,7 +173,12 @@ export function TilePuzzleScreen({
                     locked.has(key) ? "tileConfirmed" : "",
                     state.progress.activeCellKey === key ? "tileCurrent" : "",
                   ].join(" ")}
-                  aria-label={`${y + 1}행 ${x + 1}열${text ? `, ${text}` : ""}`}
+                  aria-label={t(
+                    "{0}행 {1}열{2}",
+                    y + 1,
+                    x + 1,
+                    text ? `, ${text}` : "",
+                  )}
                   onClick={() => {
                     const matches = cellEntries.get(key) ?? [];
                     const next =
@@ -202,12 +197,15 @@ export function TilePuzzleScreen({
       <section className="tileClue">
         <div className="tileClueLabel">
           <b>{entry ? labels.get(getCellKey(entry.row, entry.col)) : ""}</b>
-          <span>{entry?.direction === "across" ? "가로" : "세로"}</span>
-          <span>{keys.length} 글자</span>
+          <span>{entry?.direction === "across" ? t("가로") : t("세로")}</span>
+          <span>
+            {keys.length}
+            {t("글자")}
+          </span>
         </div>
         <p tabIndex={0}>{entry?.clue}</p>
       </section>
-      <div className="tileAnswer" role="group" aria-label="현재 단어 답칸">
+      <div className="tileAnswer" role="group" aria-label={t("현재 단어 답칸")}>
         {keys.map((key, i) => (
           <button
             type="button"
@@ -218,7 +216,12 @@ export function TilePuzzleScreen({
               locked.has(key) ? "tileConfirmed" : "",
               state.progress.activeCellKey === key ? "tileCurrent" : "",
             ].join(" ")}
-            aria-label={`${i + 1}번째 글자 ${state.cellValues[key] || "비어 있음"}${locked.has(key) ? ", 확정" : ""}`}
+            aria-label={t(
+              "{0}번째 글자 {1}{2}",
+              i + 1,
+              state.cellValues[key] || "비어 있음",
+              locked.has(key) ? t(", 확정") : "",
+            )}
             onClick={() =>
               onChange(clearLetterTile(puzzle, state, key), "clear")
             }
@@ -231,13 +234,16 @@ export function TilePuzzleScreen({
       <section className="tileTraySection">
         <div className="tileTrayHeading">
           <strong>
-            <span aria-hidden="true">✦</span> 글자를 골라보세요
+            <span aria-hidden="true">✦</span>
+            {t("글자를 골라보세요")}
           </strong>
-          <button onClick={() => setCluesOpen(true)}>☷ 단서 목록</button>
+          <button onClick={() => setCluesOpen(true)}>
+            {t("☷ 단서 목록")}
+          </button>
         </div>
         <div
           className="tileTray"
-          aria-label="글자 후보"
+          aria-label={t("글자 후보")}
           tabIndex={tiles.length > 10 ? 0 : undefined}
         >
           {tiles.map((tile) => (
@@ -248,7 +254,11 @@ export function TilePuzzleScreen({
               data-tile-id={tile.id}
               data-letter={tile.letter}
               disabled={!canEdit || tile.used}
-              aria-label={`${tile.letter}${tile.used ? ", 사용함" : ", 선택 가능"}`}
+              aria-label={t(
+                "{0}{1}",
+                tile.letter,
+                tile.used ? t(", 사용함") : t(", 선택 가능"),
+              )}
               onClick={() =>
                 onChange(chooseLetterTile(puzzle, state, tile.id), "choice")
               }
@@ -265,9 +275,9 @@ export function TilePuzzleScreen({
       >
         {message}
       </p>
-      <nav className="tileTools" aria-label="단서 이동과 수정">
+      <nav className="tileTools" aria-label={t("단서 이동과 수정")}>
         <button type="button" disabled={isPaused} onClick={() => adjacent(-1)}>
-          ‹ 이전
+          {t("‹ 이전")}
         </button>
         <button
           className="tileUndo"
@@ -277,23 +287,25 @@ export function TilePuzzleScreen({
           }
           onClick={() => onChange(clearLetterTile(puzzle, state), "clear")}
         >
-          ⌫ 지우기
+          {t("⌫ 지우기")}
         </button>
         <button type="button" disabled={isPaused} onClick={() => adjacent(1)}>
-          다음 ›
+          {t("다음 ›")}
         </button>
       </nav>
       {!hasStarted || isPaused ? (
         <div className="tilePause">
           <div>
-            <h2>{isPaused ? "잠시 쉬어가요" : "오늘 한 판, 시작해볼까요?"}</h2>
+            <h2>
+              {isPaused ? t("잠시 쉬어가요") : t("오늘 한 판, 시작해볼까요?")}
+            </h2>
             <button
               className="tilePrimary"
               onClick={isPaused ? onResume : onStart}
             >
-              {isPaused ? "이어서 풀기" : "퍼즐 시작"}
+              {isPaused ? t("이어서 풀기") : t("퍼즐 시작")}
             </button>
-            <button onClick={onBack}>홈으로</button>
+            <button onClick={onBack}>{t("홈으로")}</button>
           </div>
         </div>
       ) : null}
@@ -303,10 +315,10 @@ export function TilePuzzleScreen({
             className="tileClueSheet"
             role="dialog"
             aria-modal="true"
-            aria-label="단서 목록"
+            aria-label={t("단서 목록")}
             onClick={(event) => event.stopPropagation()}
           >
-            <h2>원하는 단서를 골라보세요</h2>
+            <h2>{t("원하는 단서를 골라보세요")}</h2>
             <div className="tileClueList">
               {puzzle.entries.map((e) => (
                 <button key={e.id} onClick={() => select(e.id)}>
@@ -315,7 +327,7 @@ export function TilePuzzleScreen({
                   <small>
                     {completed.some((c) => c.id === e.id)
                       ? "✓"
-                      : `${[...e.answer].length} 글자`}
+                      : t("{0} 글자", [...e.answer].length)}
                   </small>
                 </button>
               ))}
@@ -327,14 +339,16 @@ export function TilePuzzleScreen({
                   onSettings();
                 }}
               >
-                설정
+                {t("설정")}
               </button>
               {guide ? (
                 <button onClick={guide.onSkip}>
-                  첫걸음 {guide.completed}/{guide.total} 건너뛰기
+                  {t("첫걸음")}
+                  {guide.completed}/{guide.total}
+                  {t("건너뛰기")}
                 </button>
               ) : null}
-              <button onClick={() => setCluesOpen(false)}>닫기</button>
+              <button onClick={() => setCluesOpen(false)}>{t("닫기")}</button>
             </footer>
           </section>
         </div>

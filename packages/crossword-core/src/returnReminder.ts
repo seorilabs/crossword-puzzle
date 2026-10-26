@@ -85,12 +85,20 @@ export const RETURN_REMINDER_PREPROMPT_COPY = {
 
 export type ReturnReminderPrepromptAction = "shown" | "accept" | "decline";
 
-export function formatReturnReminderPrepromptBody(streakDays: number): string {
+export function formatReturnReminderPrepromptBody(
+  streakDays: number,
+  language: "ko" | "en" = "ko",
+): string {
   const safeStreak = Number.isFinite(streakDays)
     ? Math.max(0, Math.floor(streakDays))
     : 0;
+  if (language === "en") {
+    return `${safeStreak > 0 ? `🔥 Keep your ${safeStreak}-day streak` : "🔥 Start a daily streak"} · Daily reminder at 09:00 Korea time`;
+  }
   const streakLine =
-    safeStreak > 0 ? `🔥 ${safeStreak}일 연속 기록 지키기` : "🔥 연속 기록 시작하기";
+    safeStreak > 0
+      ? `🔥 ${safeStreak}일 연속 기록 지키기`
+      : "🔥 연속 기록 시작하기";
   return `${streakLine} · 매일 아침 ${RETURN_REMINDER_LOCAL_HOUR_KST}시 알림`;
 }
 

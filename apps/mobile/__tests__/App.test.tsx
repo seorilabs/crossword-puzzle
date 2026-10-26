@@ -82,6 +82,7 @@ async function flushAsyncWork(cycles = 1) {
 beforeEach(async () => {
   jest.clearAllMocks();
   await AsyncStorage.clear();
+  await AsyncStorage.setItem('crossword-language-v1', 'ko');
 });
 
 afterEach(() => {
@@ -101,7 +102,7 @@ test('renders correctly', async () => {
   });
 }, 45_000);
 
-test('홈에서 다시 불러오면 저장한 글자와 힌트 잔액을 복원한다', async () => {
+test('홈에서 다시 불러오면 기존 확정 글자와 과거 힌트 값을 보존한다', async () => {
   const today = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Seoul',
     year: 'numeric',
@@ -162,7 +163,14 @@ test('홈에서 다시 불러오면 저장한 글자와 힌트 잔액을 복원�
     await flushAsyncWork(10);
     const board = renderer!.root.findByType(TilePuzzleScreen);
     expect(board.props.state.cellValues['0:0']).toBe('가');
-    expect(board.props.hints).toBe(1);
+    expect(board.props.hints).toBeUndefined();
+    expect(
+      JSON.parse(
+        (await AsyncStorage.getItem(
+          `crossword-puzzle:progress:${puzzle.puzzleId}`,
+        ))!,
+      ).hintCount,
+    ).toBe(2);
     expect(JSON.parse((await AsyncStorage.getItem(walletKey))!)).toEqual(
       wallet,
     );
@@ -945,14 +953,7 @@ test.each([1, -1])(
         renderer = ReactTestRenderer.create(<App />);
       });
       await flushAsyncWork(15);
-      if (offset > 0)
-        expect(
-          renderer!.root.findByType(TileHomeScreen).props.puzzle,
-        ).toBeNull();
-      else
-        expect(
-          renderer!.root.findByType(TileHomeScreen).props.puzzle.date,
-        ).toBe(tomorrow);
+      expect(renderer!.root.findByType(TileHomeScreen).props.puzzle).toBeNull();
       await ReactTestRenderer.act(async () => {
         renderer!.unmount();
       });

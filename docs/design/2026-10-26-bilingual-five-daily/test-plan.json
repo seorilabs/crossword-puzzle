@@ -13,9 +13,7 @@
     "records-leaderboard",
     "settings-and-help"
   ],
-  "environments": [
-    "dev"
-  ],
+  "environments": ["dev"],
   "redesign": true,
   "foundationRerun": true,
   "floorOverrides": [
@@ -33,6 +31,11 @@
       "rule": "foundation",
       "featureId": "remote-configuration",
       "reason": "승인된 범위는 개발 환경 전체 회귀와 PR 병합이다. 실제 App과 SDK 경계 대체 구현으로 정책, 실패와 복구를 독립 검수하며 실제 제공자 SDK 및 OS 노출은 미실행으로 남긴다. release는 null이며 기기를 사용하지 않는다."
+    },
+    {
+      "rule": "foundation",
+      "featureId": "platform-auth",
+      "reason": "사용자는 전체 작업을 개발 환경 검증과 PR 병합으로 승인했다. 공용 Firebase 파일의 변경은 전면광고 설정 문자열 읽기이며 인증 정책과 SDK 연결은 변경하지 않는다. 실제 App의 인증 실패와 복구를 SDK 경계 대체로 다시 검수하며 제공자 인증은 미실행으로 구분한다. 기기와 운영 배포는 사용하지 않는다."
     }
   ],
   "release": null

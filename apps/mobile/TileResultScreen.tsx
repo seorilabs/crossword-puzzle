@@ -1,3 +1,4 @@
+import { t } from './languageRepository';
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
@@ -7,14 +8,16 @@ import {
   type Puzzle,
 } from '../../packages/crossword-core/src';
 type Props = {
+  busy?:boolean;
+  primaryLabel?: string;
+  notice?: string;
+  onPrimary?: () => void;
   puzzle: Puzzle;
   values: Record<string, string>;
   completed: number;
   elapsed: string | null;
-  hints: number;
   streak: number;
   best: boolean;
-  noHint: boolean;
   onHome: () => void;
   onHistory: () => void;
   onReview: () => void;
@@ -25,14 +28,16 @@ type Props = {
   reminder?: { body: string; accept: () => void; decline: () => void };
 };
 export function TileResultScreen({
+  busy=false,
+  primaryLabel,
+  onPrimary,
+  notice,
   puzzle,
   values,
   completed,
   elapsed,
-  hints,
   streak,
   best,
-  noHint,
   onHome,
   onHistory,
   onReview,
@@ -46,9 +51,9 @@ export function TileResultScreen({
   return (
     <ScrollView style={s.screen} contentContainerStyle={s.content}>
       <View style={s.nav}>
-        <Pressable
+        <Pressable disabled={busy}
           accessibilityRole="button"
-          accessibilityLabel="홈으로"
+          accessibilityLabel={t('홈으로')}
           style={s.icon}
           onPress={onHome}
         >
@@ -64,12 +69,12 @@ export function TileResultScreen({
         {complete ? 'TODAY’S LITTLE WIN' : 'YOUR WORD JOURNEY'}
       </Text>
       <Text accessibilityRole="header" style={s.title}>
-        {complete ? '한 판, 완성!' : '여기까지 잘했어요'}
+        {complete ? t('한 판, 완성!') : t('여기까지 잘했어요')}
       </Text>
       <Text style={s.lead}>
         {complete
-          ? '차곡차곡 맞춘 단어가 한 판이 되었어요.'
-          : '고른 글자는 저장돼 있어요.'}
+          ? t('차곡차곡 맞춘 단어가 한 판이 되었어요.')
+          : t('고른 글자는 저장돼 있어요.')}
       </Text>
       <View style={s.board}>
         {puzzle.grid.map((row, y) => (
@@ -86,9 +91,8 @@ export function TileResultScreen({
       </View>
       <View style={s.stats}>
         {[
-          [`${completed}/${puzzle.entries.length}`, '단어 완성'],
-          [elapsed ?? '—', '풀이 시간'],
-          [String(hints), '사용한 힌트'],
+          [`${completed}/${puzzle.entries.length}`, t('단어 완성')],
+          [elapsed ?? '—', t('풀이 시간')],
         ].map(([value, label]) => (
           <View key={label}>
             <Text style={s.statValue}>{value}</Text>
@@ -96,10 +100,12 @@ export function TileResultScreen({
           </View>
         ))}
       </View>
-      {complete && (best || noHint) ? (
-        <Text style={s.badge}>
-          {best ? '✧ 나의 최고 기록! ' : ''}
-          {noHint ? '힌트 없이 완성' : ''}
+      {complete && best ? (
+        <Text style={s.badge}>{best ? t('✧ 나의 최고 기록! ') : ''}</Text>
+      ) : null}
+      {notice ? (
+        <Text accessibilityRole="alert" style={s.lead}>
+          {notice}
         </Text>
       ) : null}
       {leaderboardOpenFailed ? (
@@ -107,45 +113,51 @@ export function TileResultScreen({
           {LEADERBOARD_OPEN_FAILURE_MESSAGE}
         </Text>
       ) : null}
-      <Pressable accessibilityRole="button" style={s.primary} onPress={onHome}>
-        <Text style={s.primaryText}>홈으로 돌아가기</Text>
+      <Pressable disabled={busy}
+        accessibilityRole="button"
+        style={s.primary}
+        onPress={onPrimary ?? onHome}
+      >
+        <Text style={s.primaryText}>
+          {primaryLabel ?? t('홈으로 돌아가기')}
+        </Text>
       </Pressable>
       <View style={s.links}>
-        <Pressable
+        <Pressable disabled={busy}
           accessibilityRole="button"
           style={s.link}
           onPress={onHistory}
         >
-          <Text style={s.linkText}>나의 기록</Text>
+          <Text style={s.linkText}>{t('나의 기록')}</Text>
         </Pressable>
-        <Pressable accessibilityRole="button" style={s.link} onPress={onShare}>
-          <Text style={s.linkText}>결과 공유</Text>
+        <Pressable disabled={busy} accessibilityRole="button" style={s.link} onPress={onShare}>
+          <Text style={s.linkText}>{t('결과 공유')}</Text>
         </Pressable>
         {onLeaderboard ? (
-          <Pressable
+          <Pressable disabled={busy}
             accessibilityRole="button"
             style={s.link}
             onPress={onLeaderboard}
           >
-            <Text style={s.linkText}>순위 보기</Text>
+            <Text style={s.linkText}>{t('순위 보기')}</Text>
           </Pressable>
         ) : null}
       </View>
       {onRetry ? (
-        <Pressable accessibilityRole="button" style={s.link} onPress={onRetry}>
-          <Text style={s.linkText}>새로 도전하기</Text>
+        <Pressable disabled={busy} accessibilityRole="button" style={s.link} onPress={onRetry}>
+          <Text style={s.linkText}>{t('새로 도전하기')}</Text>
         </Pressable>
       ) : null}
-      <Pressable accessibilityRole="button" style={s.link} onPress={onReview}>
+      <Pressable disabled={busy} accessibilityRole="button" style={s.link} onPress={onReview}>
         <Text style={s.linkText}>
-          {complete ? '완성한 단어 살펴보기' : '이어서 풀기'}
+          {complete ? t('완성한 단어 살펴보기') : t('이어서 풀기')}
         </Text>
       </Pressable>
       {reminder ? (
         <View style={s.reminder}>
           <Text style={s.lead}>{reminder.body}</Text>
           <View style={s.links}>
-            <Pressable
+            <Pressable disabled={busy}
               accessibilityRole="button"
               style={s.link}
               onPress={reminder.accept}
@@ -154,7 +166,7 @@ export function TileResultScreen({
                 {RETURN_REMINDER_PREPROMPT_COPY.accept}
               </Text>
             </Pressable>
-            <Pressable
+            <Pressable disabled={busy}
               accessibilityRole="button"
               style={s.link}
               onPress={reminder.decline}

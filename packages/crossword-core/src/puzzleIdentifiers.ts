@@ -1,3 +1,4 @@
+import { normalizeEnglishAnswer } from "./dailyLanguage.ts";
 import type { Puzzle, PuzzleManifest, PuzzleManifestItem } from "./types.ts";
 
 export function normalizePuzzleIdentifier(value: string | number): string {
@@ -19,6 +20,17 @@ function normalizeOptionalStoredPuzzleIdentifier(
 export function normalizePuzzleIdentifiers(puzzle: Puzzle): Puzzle {
   return {
     ...puzzle,
+    ...(puzzle.language === "en"
+      ? {
+          entries: puzzle.entries.map((entry) => ({
+            ...entry,
+            answer: normalizeEnglishAnswer(entry.answer),
+          })),
+          grid: puzzle.grid.map((row) =>
+            row.map((cell) => (cell ? normalizeEnglishAnswer(cell) : cell)),
+          ),
+        }
+      : {}),
     alias: normalizeOptionalStoredPuzzleIdentifier(puzzle.alias),
     puzzleId: normalizePuzzleIdentifier(puzzle.puzzleId),
     packId: normalizeOptionalStoredPuzzleIdentifier(puzzle.packId),

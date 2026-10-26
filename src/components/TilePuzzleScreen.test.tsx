@@ -22,11 +22,9 @@ const puzzle = source as Puzzle;
 afterEach(cleanup);
 function Harness({
   paused = false,
-  onHint = () => {},
   guide,
 }: {
   paused?: boolean;
-  onHint?: () => void;
   guide?: TilePuzzleScreenProps["guide"];
 }) {
   const [state, setState] = useState(() => createLetterTileState(puzzle));
@@ -36,9 +34,7 @@ function Harness({
       state={state}
       hasStarted
       isPaused={paused}
-      hints={0}
       onChange={setState}
-      onHint={onHint}
       onBack={() => {}}
       onStart={() => {}}
       onResume={() => {}}
@@ -92,12 +88,10 @@ describe("실제 타일 입력 화면", () => {
       container.querySelector(`[data-tile-id="${id}"]`)?.className,
     ).not.toContain("tileUsed");
   });
-  it("힌트가 없으면 선택 광고 안내를 열 수 있고, 정지 중에는 입력이 막힌다", () => {
-    const onHint = vi.fn();
-    const { rerender, container } = render(<Harness onHint={onHint} />);
-    fireEvent.click(screen.getByRole("button", { name: "힌트 0개" }));
-    expect(onHint).toHaveBeenCalledOnce();
-    rerender(<Harness paused onHint={onHint} />);
+  it("힌트와 보상 광고 진입이 없고, 정지 중에는 입력이 막힌다", () => {
+    const { rerender, container } = render(<Harness />);
+    expect(screen.queryByRole("button", { name: /힌트|광고/ })).toBeNull();
+    rerender(<Harness paused />);
     expect(
       [...container.querySelectorAll<HTMLButtonElement>(".tilePiece")].every(
         (tile) => tile.disabled,

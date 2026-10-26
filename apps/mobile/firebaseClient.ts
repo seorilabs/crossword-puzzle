@@ -34,6 +34,16 @@ export async function loadFirebaseLaunchConfig(): Promise<LaunchConfig> {
       await remoteConfigClient.fetchAndActivate();
 
       return normalizeLaunchConfig({
+        completionInterstitialAit: remoteConfigClient
+          .getValue(launchConfigKeys.completionInterstitialAit)
+          .asString(),
+        completionInterstitialAndroid: remoteConfigClient
+          .getValue(launchConfigKeys.completionInterstitialAndroid)
+          .asString(),
+        completionInterstitialIos: remoteConfigClient
+          .getValue(launchConfigKeys.completionInterstitialIos)
+          .asString(),
+
         dailyFreeHintCredits: remoteConfigClient
           .getValue(launchConfigKeys.dailyFreeHintCredits)
           .asNumber(),

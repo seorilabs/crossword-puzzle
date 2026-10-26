@@ -1,3 +1,4 @@
+import type { ContentLanguage } from "./dailyLanguage.ts";
 import { getCompletionAchievements } from "./mission.ts";
 
 // 결과 공유 텍스트를 만든다(Wordle식). 제목·이모지 격자·풀이 통계·성취 배지·연속
@@ -7,6 +8,7 @@ import { getCompletionAchievements } from "./mission.ts";
 // (하위호환). 정답 글자는 노출하지 않고(격자는 buildShareGrid가 담당) React import
 // 없는 순수 함수라 3마켓(웹/모바일)이 공유하고 단위 테스트로 고정할 수 있다.
 export function buildShareText({
+  language = "ko",
   puzzleLabel,
   elapsedLabel,
   hintCount,
@@ -19,6 +21,7 @@ export function buildShareText({
   shareGrid,
   shareLandingUrl,
 }: {
+  language?: ContentLanguage;
   puzzleLabel: string;
   elapsedLabel: string | null;
   hintCount: number;
@@ -32,6 +35,17 @@ export function buildShareText({
   // 앱 진입 링크(선택). 환경변수/Remote Config 주입값. 비어 있으면 링크 줄을 생략한다.
   shareLandingUrl?: string;
 }): string {
+  if (language === "en")
+    return [
+      `Daily Word Play ${puzzleLabel}`,
+      shareGrid,
+      "",
+      ...(elapsedLabel ? [`Time ${elapsedLabel}`] : []),
+      `Attempt ${attemptsUsed}`,
+      `${completedCount}/${totalCount} words ${isComplete ? "complete" : "filled"}`,
+      `${consecutiveStreak} day streak`,
+      ...(shareLandingUrl?.trim() ? [shareLandingUrl.trim()] : []),
+    ].join("\n");
   const lines: string[] = [`가로세로 낱말 퍼즐 ${puzzleLabel}`];
   // 제목 바로 아래에 완성 상태를 표현하는 이모지 격자를 덧붙인다(정답 글자 노출 없음).
   if (shareGrid.length > 0) lines.push(shareGrid);
@@ -40,7 +54,6 @@ export function buildShareText({
   const stats: string[] = [];
   if (elapsedLabel != null) stats.push(`⏱ ${elapsedLabel}`);
   stats.push(`도전 ${attemptsUsed}회`);
-  if (hintCount > 0) stats.push(`힌트 ${hintCount}회`);
   lines.push(stats.join(" · "));
 
   const achievements = getCompletionAchievements({
@@ -49,7 +62,6 @@ export function buildShareText({
     revealUsed,
   });
   const badges: string[] = [];
-  if (isComplete && achievements.noHint) badges.push("🎯 노힌트 클리어");
   if (isComplete && achievements.firstTry) badges.push("💎 첫 도전 성공");
   if (badges.length > 0) lines.push(badges.join(" · "));
 
