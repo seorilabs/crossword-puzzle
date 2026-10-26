@@ -124,7 +124,7 @@
 - 세로 스크린샷 3장은 로컬 앱을 실행해 실제 UI에서 캡처했다.
 - 앱 아이콘과 표시 이름은 SDK 3.x에서 config 필드(`brand.icon`, `brand.displayName`)가 제거돼 AppsInToss Console 앱 설정이 정본이다. 저장소에는 값을 두지 않는다.
 - 현재 퍼즐 힌트는 한국어기초사전 뜻풀이 기반이다. 앱 홈과 `/license` 화면에서 출처와 `CC-BY-SA-2.0-KR` 조건을 상시 표시한다. 검수 대상 문장은 `docs/hint-license-review.md`에 정리했다.
-- 광고 그룹 ID는 힌트 보상형 `ait.v2.live.bf12924f4bf84b74`를 사용한다. (결과 전면 광고 `ait.v2.live.a1439d344fa34821`는 광고 힌트 한정 리팩터에서 제거됨)
+- v1.3.0 완료 전환에는 새 전면 그룹 `ait.v2.live.5c3f0f0e527e4fab`를 사용하고 운영 Remote Config version10에 연결했다. 생성 직후 공급자 상태는 REGISTERING이며 실제 SDK 노출은 미검증이다. 과거 보상형 `ait.v2.live.bf12924f4bf84b74`는 구버전용으로 보존하며 v1.3.0에 힌트 지급은 없다. 옛 전면 그룹 `ait.v2.live.a1439d344fa34821`는 제거된 이력으로 새 지면과 혼동하거나 재사용하지 않는다.
 - 보상형 광고 힌트는 `userEarnedReward` 이벤트 수신 즉시 지급한다. `dismissed`는 광고 닫힘 이벤트일 뿐 보상 지급 근거로 쓰지 않는다.
 - Firebase Analytics / Remote Config 설정과 QA는 `docs/firebase-analytics-remote-config.md`를 기준으로 한다. Firebase Web app 값은 GitHub Variables에 등록해 AIT 배포 워크플로에서 읽는다.
 - 퍼즐별 참여자/완료율은 `docs/puzzle-completion-stats.md`의 공개 JSON 계약과 Remote Config gate를 기준으로 한다.
