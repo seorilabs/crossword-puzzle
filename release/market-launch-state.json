@@ -3,7 +3,7 @@
   "app": {
     "name": "가로세로 낱말 퍼즐",
     "repo": "seorilabs/crossword-puzzle",
-    "sourceRevision": "53df872b533d31155917263ef5863101d8963066"
+    "sourceRevision": "5910893f4b5615bd588763ebc49a45910d540432"
   },
   "release": {
     "version": "1.3.1",
@@ -12,7 +12,7 @@
     "countries": [
       "KR"
     ],
-    "rolloutMode": "Google Play 전체1, App Store 수동공개, AppsInToss 공개"
+    "rolloutMode": "Google Play 전체 1, App Store 수동 공개, AppsInToss 공개"
   },
   "deploymentApproval": {
     "status": "approved",
@@ -32,61 +32,82 @@
   },
   "commonGates": {
     "candidate": {
-      "status": "pending",
-      "evidence": [],
-      "checkedAt": null,
+      "status": "pass",
+      "evidence": [
+        "v1.3.1 annotated receipt: source 5910893f4b5615bd588763ebc49a45910d540432, Android1001001016, Apple1003001",
+        "https://github.com/seorilabs/crossword-puzzle/actions/runs/40342773450"
+      ],
+      "checkedAt": "2026-10-26T15:42:18.590163Z",
       "blocker": null
     },
     "quality": {
-      "status": "pending",
-      "evidence": [],
-      "checkedAt": null,
+      "status": "pass",
+      "evidence": [
+        "실제 독립 L3: 1185 tests, 30판, 광고18,300판검사,14판fulljob2회보존",
+        "중앙 실제12phase는 2026-10-26T15시대 exported CLI로 재검증. 이전 /tmp CLI 48개no-op보고의 통과주장은 철회. 서버배포전검사로 소급하지 않음.",
+        "/Volumes/Data/Backup/agent-artifacts/crossword-puzzle/2026-10-27/5910893/central-verification-correction-20261026T151242Z/correction-ready-nas.json"
+      ],
+      "checkedAt": "2026-10-26T15:42:18.590163Z",
       "blocker": null
     },
     "production_dependencies": {
-      "status": "pending",
+      "status": "pass",
       "evidence": [
-        "기존 서비스 복구 완료, 언어별 공급은 아직 미공개. v1.3.1의 배포와 URL 읽기를 새로 실행해야 한다."
+        "CloudBuild5108d685-9df8-4bc1-8196-0ba64b313eb6 source5910893/imagefdbc20a1c27367ca371f5f57486218cc12c1b1ac59e724ec915f6d6f9a73a8b0",
+        "generator2qbjf,health6v55m성공,KO10/EN25public200",
+        "이전발행14판과manifest/history16파일은전환직후HTTP원문불변,한국자정뒤에도KO와영어현지날짜각5판확인",
+        "새광고3지면등록및RC연결. 실제SDK광고노출은미검증.",
+        "2026-10-27KST정기운영:00:05generator-z9bzc 15:11:58Z성공,00:40health-5755h 15:40:24Z성공,두job현재fdbc20a이미지일치"
       ],
-      "checkedAt": null,
+      "checkedAt": "2026-10-26T15:42:18.590163Z",
       "blocker": null
     },
     "observability": {
       "status": "pending",
-      "evidence": [],
-      "checkedAt": null,
+      "evidence": [
+        "개발 telemetry 계약과 실제 서버 작업 로그는 확인. 새 클라이언트 운영 이벤트 수신은 아직 관찰하지 않음."
+      ],
+      "checkedAt": "2026-10-26T15:42:18.590163Z",
       "blocker": null
     }
   },
   "markets": {
     "google_play": {
       "objective": "public_live",
-      "state": "pending",
+      "state": "artifact",
       "identity": {
         "applicationId": "com.seorilabs.crosswordpuzzle",
         "version": "1.3.1",
-        "build": null
+        "build": "1001001016"
       },
       "gates": {
         "candidate": {
-          "status": "pending",
+          "status": "pass",
           "evidence": [
-            "최종소스와태그번호발급전, 현재공개v1.2.0과구분"
+            "source/tag/receipt와실제AAB패키지com.seorilabs.crosswordpuzzle,1.3.1/1001001016일치"
           ],
-          "checkedAt": null,
+          "checkedAt": "2026-10-26T15:42:18.590163Z",
           "blocker": null
         },
         "artifact": {
-          "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
+          "status": "pass",
+          "evidence": [
+            "https://github.com/seorilabs/crossword-puzzle/actions/runs/40344297467",
+            "AABsha256536c731486ea58d5509140f5d8297ad322a919a717dcefa0abfaed95a1d04416",
+            "jarsigner verified,accepteduploadcertSHA256일치,targetSdk36,debuggablefalse",
+            "/Volumes/Data/Backup/agent-artifacts/crossword-puzzle/2026-10-27/5910893/release-artifact-static-20261026T153438Z/android-static-gate.json"
+          ],
+          "checkedAt": "2026-10-26T15:42:18.590163Z",
           "blocker": null
         },
         "upload": {
-          "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
-          "blocker": null
+          "status": "blocked",
+          "evidence": [
+            "upload_to_internal=false: 업로드job skipped,신규Publisher mutation없음",
+            "실제소유SeoriLabs개인7593567020638200144와게시권한확인. identity-verification 완료상태는unknown. 사용자에게예외진행또는완료확인질문발송,답변대기."
+          ],
+          "checkedAt": "2026-10-26T15:42:18.590163Z",
+          "blocker": "Play스킬의liveverification기록요건에대한사용자확인대기,Google거절로단정하지않음"
         },
         "processing": {
           "status": "pending",
@@ -95,15 +116,19 @@
           "blocker": null
         },
         "qa": {
-          "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
+          "status": "pass",
+          "evidence": [
+            "현재소스개발L3통과,기기와실제SDK미실행/계획에구분"
+          ],
+          "checkedAt": "2026-10-26T15:42:18.590163Z",
           "blocker": null
         },
         "metadata": {
           "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
+          "evidence": [
+            "로컬KO등록정보와phone/tablet이미지준비완료,외부적용은아직안함"
+          ],
+          "checkedAt": "2026-10-26T15:42:18.590163Z",
           "blocker": null
         },
         "policy": {
@@ -140,72 +165,102 @@
     },
     "app_store": {
       "objective": "public_live",
-      "state": "pending",
+      "state": "submission",
       "identity": {
         "applicationId": "com.seorilabs.crosswordpuzzle",
         "version": "1.3.1",
-        "build": null
+        "build": "1003001",
+        "buildId": "bc9cf2ab-243a-4932-a610-654129668cd9",
+        "versionId": "7e66e636-6247-485e-aed8-017669781ff9"
       },
       "gates": {
         "candidate": {
-          "status": "pending",
+          "status": "pass",
           "evidence": [
-            "최종소스와태그번호발급전, 현재공개v1.2.0과구분"
+            "동일source/tag/receipt,실제CI최종Info.plist/version/build/bundleID일치"
           ],
-          "checkedAt": null,
+          "checkedAt": "2026-10-26T15:42:18.590163Z",
           "blocker": null
         },
         "artifact": {
-          "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
+          "status": "pass",
+          "evidence": [
+            "실제CI최종Info.plist대조,AppleDistribution서명/packagingentitlement,PrivacyInfo복사및Icon컴파일출력",
+            "archive실물미보관: 독립 archive바이트/certSHA256/signed-entitlement/최종privacy내용검사는미실행",
+            "https://github.com/seorilabs/crossword-puzzle/actions/runs/40344305819"
+          ],
+          "checkedAt": "2026-10-26T15:42:18.590163Z",
           "blocker": null
         },
         "upload": {
-          "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
+          "status": "pass",
+          "evidence": [
+            "CI AppStoreConnect upload success,같은buildIdproviderGET확인",
+            "TestFlight기존내부그룹b0587880-a87c-46df-abf7-050d1090d09d targetBuildListed/IN_BETA_TESTING 확인"
+          ],
+          "checkedAt": "2026-10-26T15:42:18.590163Z",
           "blocker": null
         },
         "processing": {
-          "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
+          "status": "pass",
+          "evidence": [
+            "1.3.1/1003001 VALID,APP_STORE_ELIGIBLE,usesNonExemptEncryptionfalse"
+          ],
+          "checkedAt": "2026-10-26T15:42:18.590163Z",
           "blocker": null
         },
         "qa": {
-          "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
+          "status": "pass",
+          "evidence": [
+            "현재소스개발L3통과,기기와실제SDK미실행/계획에구분"
+          ],
+          "checkedAt": "2026-10-26T15:42:18.590163Z",
           "blocker": null
         },
         "metadata": {
-          "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
+          "status": "pass",
+          "evidence": [
+            "ko전체문구/부제/심사노트및새6스크린샷완료,제공자이미지원본픽셀일치",
+            "KOR만,MANUAL,4+와연락처유지,기존1.2.0공개정보보호",
+            "/Volumes/Data/Backup/agent-artifacts/crossword-puzzle/2026-10-26/public-market-readback-20261026T1156Z/v131-apple-applied-20261026T151446Z/VERIFIED.json"
+          ],
+          "checkedAt": "2026-10-26T15:42:18.590163Z",
           "blocker": null
         },
         "policy": {
-          "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
-          "blocker": null
+          "status": "pass",
+          "checkedAt": "2026-10-26T15:55:33.744307Z",
+          "blocker": null,
+          "evidence": [
+            "실제current API age4+,KOR,MANUAL,contentRights원본유지,같은build usesNonExemptEncryptionfalse",
+            "기존AppPrivacy8유형은2026-10-24저장값대조기록: docs/app-store-registration.md. nativeSDK의존성/Podfile.lock/PrivacyInfo/AndroidManifest는v1.2.0→5910893차이0. 언어와일일순번및광고형식변경은기존gameplay/productinteraction/ad-data범주이며신고확장없음. 이번에AppPrivacyConsole양식을새로저장하거나전체재조회했다고표시하지않음.",
+            "privacy/support공개URL HTTP200 재확인,추가국가/가격/ATT/권한변경없음"
+          ]
         },
         "submission": {
-          "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
+          "status": "pass",
+          "evidence": [
+            "submissionId a15715e5-19d2-4e3f-bbbd-0c662b81a546",
+            "submittedDate 2026-10-26T15:43:08.73Z, WAITING_FOR_REVIEW",
+            "version7e66e636-6247-485e-aed8-017669781ff9/buildbc9cf2ab-243a-4932-a610-654129668cd9 GET일치",
+            "제출직전remote app-store before-release 실제exportedCLI성공문구/result.ok확인"
+          ],
+          "checkedAt": "2026-10-26T15:50:27.007260Z",
           "blocker": null
         },
         "approval": {
           "status": "pending",
-          "evidence": [],
+          "evidence": [
+            "Apple심사대기,승인미확인"
+          ],
           "checkedAt": null,
           "blocker": null
         },
         "release": {
           "status": "pending",
-          "evidence": [],
+          "evidence": [
+            "MANUAL:승인뒤공개작업남음"
+          ],
           "checkedAt": null,
           "blocker": null
         },
@@ -215,60 +270,78 @@
           "checkedAt": null,
           "blocker": null
         }
-      }
+      },
+      "providerState": "WAITING_FOR_REVIEW"
     },
     "apps_in_toss": {
       "objective": "public_live",
-      "state": "pending",
+      "state": "processing",
       "identity": {
         "applicationId": "crossword-puzzle-game",
         "version": "1.3.1",
-        "build": null
+        "build": "20261027-23",
+        "deploymentId": "01a178c3-6ae2-7f52-975a-eee366ac7284"
       },
       "gates": {
         "candidate": {
-          "status": "pending",
+          "status": "pass",
           "evidence": [
-            "최종소스와태그번호발급전, 현재공개v1.2.0과구분"
+            "source/tag/canonicalmemo/실제.aitSHA34273d26a164a864c42dc8da0a81f1c5fb5b8b1a921e4fb295ee370a754b515a일치"
           ],
-          "checkedAt": null,
+          "checkedAt": "2026-10-26T15:42:18.590163Z",
           "blocker": null
         },
         "artifact": {
-          "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
+          "status": "pass",
+          "evidence": [
+            "GitHubartifact12661930973직접다운로드해동일SHA검증",
+            "https://github.com/seorilabs/crossword-puzzle/actions/runs/40344315439/attempts/2"
+          ],
+          "checkedAt": "2026-10-26T15:42:18.590163Z",
           "blocker": null
         },
         "upload": {
-          "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
+          "status": "pass",
+          "evidence": [
+            "privateupload성공,providerGET정확deploymentId/memo/accepted확인"
+          ],
+          "checkedAt": "2026-10-26T15:42:18.590163Z",
           "blocker": null
         },
         "processing": {
-          "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
+          "status": "pass",
+          "evidence": [
+            "CREATED,failureReasonnull,private테스트링크등록",
+            "intoss-private://crossword-puzzle-game?_deploymentId=01a178c3-6ae2-7f52-975a-eee366ac7284&host=appsInTossHost"
+          ],
+          "checkedAt": "2026-10-26T15:42:18.590163Z",
           "blocker": null
         },
         "qa": {
-          "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
-          "blocker": null
+          "status": "blocked",
+          "evidence": [
+            "개발L3통과,providerisTestedfalse:테스트먼저진행disabled",
+            "QR로기존Toss앱진입/19세이상로그인안내,Android1대15분최대2회테스트별도승인질문발송.기기조회0"
+          ],
+          "checkedAt": "2026-10-26T15:42:18.590163Z",
+          "blocker": "사용자기기승인대기"
         },
         "metadata": {
           "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
+          "evidence": [
+            "KO문구와4이미지임시저장/GET,provider원본바이트/픽셀일치.공개검토요청미제출",
+            "기존등급원문그대로전송,provider가draftcontentRatings NONE을빈배열로정규화.공개원본/연령/나머지필드유지,등급새선택안함"
+          ],
+          "checkedAt": "2026-10-26T15:42:18.590163Z",
           "blocker": null
         },
         "policy": {
-          "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
-          "blocker": null
+          "status": "blocked",
+          "evidence": [
+            "추가법적확인5개중인허가/등록/신고및파트너사책임/토스손해보상동의가있어미체크.기존광고수수료승인과별도로사용자질문발송"
+          ],
+          "checkedAt": "2026-10-26T15:42:18.590163Z",
+          "blocker": "사용자법적확인승인대기"
         },
         "submission": {
           "status": "pending",
@@ -294,7 +367,8 @@
           "checkedAt": null,
           "blocker": null
         }
-      }
+      },
+      "providerState": "CREATED"
     }
   },
   "history": [
@@ -309,6 +383,16 @@
       "path": "release/history/v1.3.0/market-launch-state.pre-freeze.json",
       "sha256": "b4427955ae728e00a1a4a7d27a43c593664ad4aab7676e52ca881fad8ec8540a",
       "preservation": "보류 후보의 동결 전 원장 원문. 실제 태그 소스는 068b3b68dc122db0b653ef5a5a1f260b492e0975이며 신규 마켓 업로드는 없었다."
+    },
+    {
+      "version": "1.3.0",
+      "sourceSha": "068b3b68dc122db0b653ef5a5a1f260b492e0975",
+      "tag": "v1.3.0",
+      "state": "withheld",
+      "evidence": [
+        "기존발행판재생성경로발견후게시전취소,기존job/tag복구,마켓업로드없음",
+        "태그는재사용하지않고v1.3.1로대체"
+      ]
     }
   ]
 }
