@@ -3,7 +3,7 @@
   "app": {
     "name": "가로세로 낱말 퍼즐",
     "repo": "seorilabs/crossword-puzzle",
-    "sourceRevision": "pending-final-candidate"
+    "sourceRevision": "52d4d39"
   },
   "release": {
     "version": "1.3.0",
@@ -64,7 +64,7 @@
       "objective": "public_live",
       "state": "pending",
       "identity": {
-        "applicationId": "확정 필요",
+        "applicationId": "com.seorilabs.crosswordpuzzle",
         "version": "1.3.0",
         "build": null
       },
@@ -143,7 +143,7 @@
       "objective": "public_live",
       "state": "pending",
       "identity": {
-        "applicationId": "확정 필요",
+        "applicationId": "com.seorilabs.crosswordpuzzle",
         "version": "1.3.0",
         "build": null
       },
@@ -222,7 +222,7 @@
       "objective": "public_live",
       "state": "pending",
       "identity": {
-        "applicationId": "확정 필요",
+        "applicationId": "crossword-puzzle-game",
         "version": "1.3.0",
         "build": null
       },
