@@ -8,10 +8,12 @@ const expected = {
   android: {
     appId: "ca-app-pub-9932778305312246~7356925389",
     rewardedHint: "ca-app-pub-9932778305312246/1613644113",
+    completionInterstitial: "ca-app-pub-9932778305312246/8094375680",
   },
   ios: {
     appId: "ca-app-pub-9932778305312246~5361317430",
     rewardedHint: "ca-app-pub-9932778305312246/5603016700",
+    completionInterstitial: "ca-app-pub-9932778305312246/4842148506",
   },
 };
 
@@ -61,8 +63,19 @@ for (const [label, config, platform] of [
     expected[platform].rewardedHint,
     `${label} rewardedHint`,
   );
+  equal(
+    config.adMob?.adUnits?.completionInterstitial,
+    expected[platform].completionInterstitial,
+    `${label} completionInterstitial`,
+  );
+  if (
+    config.adMob?.adUnits?.completionInterstitial ===
+    config.adMob?.adUnits?.rewardedHint
+  ) {
+    fail(`${label} completionInterstitial: rewarded unit cannot be reused`);
+  }
   const placements = Object.keys(config.adMob?.adUnits ?? {}).sort();
-  if (placements.join(",") !== "rewardedHint") {
+  if (placements.join(",") !== "completionInterstitial,rewardedHint") {
     fail(`${label} placements: unexpected placement set`);
   }
 }

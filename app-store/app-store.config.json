@@ -10,19 +10,19 @@
       "ko-KR": "가로세로 퍼즐"
     },
     "subtitle": {
-      "ko-KR": "매일 한 판 한글 퍼즐"
+      "ko-KR": "한국어와 영어, 하루 다섯 판씩"
     },
     "promotionalText": {
-      "ko-KR": "오늘의 한글 낱말을 가로세로로 맞히고 기록을 남겨보세요."
+      "ko-KR": "한국어와 쉬운 영어 퍼즐을 언어별로 하루 다섯 판씩 만나보세요. 오늘의 진행과 기록을 확인하고 저장된 풀이를 이어갈 수 있어요."
     },
     "description": {
-      "ko-KR": "가로세로 낱말 퍼즐은 여러 한글 낱말이 서로 글자를 공유하며 교차하는 날짜별 퍼즐을 제공하는 게임입니다.\n\n홈 화면에서 날짜별 퍼즐을 선택하고, 퍼즐판의 칸이나 힌트 목록을 누르면 가로 또는 세로 단어가 선택됩니다. 사용자는 힌트를 읽은 뒤 정답을 입력하고, 한 단어를 맞히면 교차된 다른 단어의 일부 글자도 함께 열려 다음 풀이의 단서가 됩니다.\n\n막히는 경우 선택한 단어의 다음 글자를 힌트로 확인할 수 있고, 풀이가 끝나면 완료 단어 수, 사용한 힌트 횟수, 남은 도전 횟수를 확인할 수 있습니다.\n\n현재 앱은 로그인, 결제, 서버 저장을 사용하지 않습니다. 날짜별 미션 상태, 퍼즐 진행 상태, 힌트 사용 횟수는 사용자의 기기에 저장됩니다."
+      "ko-KR": "단서를 읽고 글자 타일을 놓아 가로세로 낱말을 완성해요.\n\n한국어와 쉬운 미국식 영어 퍼즐을 언어별로 하루 다섯 판씩 제공해요. 한국어는 한국 시간 자정에, 영어는 기기의 현지 날짜에 맞춰 새 퍼즐이 열려요.\n\n홈에서 오늘의 진행을 확인하고, 미완료 퍼즐을 이어 풀 수 있어요. 한 판을 끝내면 결과를 확인하고 다음 판으로 넘어가요. 다섯 판을 모두 풀면 오늘의 완료 기록이 남아요.\n\n설정에서 한국어와 영어를 바꿀 수 있어요. 풀이 진행과 완료 기록은 언어별로 기기에 저장돼요.\n\n앱에는 광고가 포함돼요. 광고가 준비된 경우 완료 결과에서 다음 판이나 홈으로 이동할 때 전면광고가 표시될 수 있어요."
     },
     "keywords": {
-      "ko-KR": "가로세로,낱말,퍼즐,퀴즈,단어,한글,두뇌,매일,crossword,word"
+      "ko-KR": "가로세로,낱말,퍼즐,퀴즈,단어,한글,영어,두뇌,매일,crossword,word"
     },
     "releaseNotes": {
-      "ko-KR": "가로세로 낱말 퍼즐을 처음 출시합니다.\n\n날짜별 한글 낱말 퍼즐, 힌트 기능, 기기 내 기록 저장을 사용할 수 있습니다."
+      "ko-KR": "- 한국어와 쉬운 영어 퍼즐을 언어별로 하루 다섯 판씩 풀 수 있어요.\n- 오늘의 진행과 언어별 기록을 확인하고 다음 판으로 이어갈 수 있어요.\n- 설정에서 언어를 바꾸고 저장된 풀이를 이어할 수 있어요.\n- 글자 힌트 기능을 제거했어요."
     },
     "category": "Games",
     "subcategory": "Puzzle",
@@ -40,12 +40,13 @@
     "reviewNotes": "로그인 없이 오늘의 퍼즐을 바로 풀 수 있습니다. 단어 선택 후 아래 글자 타일을 누르면 입력됩니다. 첫 세 단어 안내가 같은 퍼즐 안에서 진행됩니다. iOS는 ATT와 Google UMP 동의 창을 표시하지 않으며 비개인화 광고만 요청합니다. Firebase 광고 저장, 광고 사용자 데이터 및 광고 개인화 신호는 거부합니다. 앱 개선을 위한 사용 통계는 설정의 사용 통계 보내기에서 끌 수 있습니다. 퍼즐 진행과 힌트는 기기에 저장하며 광고 시청 보상은 완료 결과에만 반영합니다."
   },
   "adMob": {
-    "status": "v1.2.0의 비개인화 광고 설정과 App Privacy 신고 대조 완료. 실제 SDK 실행은 승인 계획대로 미실행",
+    "status": "v1.3.0 전면형 지면 생성과 공급자 조회 완료. 실제 광고 SDK 노출은 미검증이며 개발 경계 대체 실행과 구분한다.",
     "publisherId": "pub-9932778305312246",
     "catalogLogicalId": "app/crossword-puzzle/admob/public-identifiers",
     "appId": "ca-app-pub-9932778305312246~5361317430",
     "adUnits": {
-      "rewardedHint": "ca-app-pub-9932778305312246/5603016700"
+      "rewardedHint": "ca-app-pub-9932778305312246/5603016700",
+      "completionInterstitial": "ca-app-pub-9932778305312246/4842148506"
     },
     "productionPolicy": "Development builds use Google test ad units through react-native-google-mobile-ads; release builds use these production IDs after adapter QA. Personalized ads stay off for the first launch; requests set requestNonPersonalizedAdsOnly=true, global request configuration marks child-directed and under-age-of-consent treatment false, and simulator/emulator devices are allowlisted as test devices."
   },
@@ -66,21 +67,30 @@
         "dataTypes": [
           {
             "type": "대략적인 위치",
-            "purposes": ["THIRD_PARTY_ADVERTISING", "ANALYTICS"],
+            "purposes": [
+              "THIRD_PARTY_ADVERTISING",
+              "ANALYTICS"
+            ],
             "linkedToUser": true,
             "tracking": false,
             "reason": "광고 SDK의 IP 추정 위치와 앱 식별자 수집 범위를 신고한다."
           },
           {
             "type": "게임 플레이 콘텐츠",
-            "purposes": ["APP_FUNCTIONALITY", "ANALYTICS"],
+            "purposes": [
+              "APP_FUNCTIONALITY",
+              "ANALYTICS"
+            ],
             "linkedToUser": true,
             "tracking": false,
             "reason": "풀이 결과와 앱의 인증 및 순위 서비스에서 사용하는 게임 데이터를 신고한다."
           },
           {
             "type": "사용자 ID",
-            "purposes": ["APP_FUNCTIONALITY", "ANALYTICS"],
+            "purposes": [
+              "APP_FUNCTIONALITY",
+              "ANALYTICS"
+            ],
             "linkedToUser": true,
             "tracking": false,
             "reason": "Firebase 인증과 앱 계정에 사용하는 식별자를 신고한다."
@@ -98,21 +108,30 @@
           },
           {
             "type": "제품 상호 작용",
-            "purposes": ["ANALYTICS", "THIRD_PARTY_ADVERTISING"],
+            "purposes": [
+              "ANALYTICS",
+              "THIRD_PARTY_ADVERTISING"
+            ],
             "linkedToUser": true,
             "tracking": false,
             "reason": "앱 사용 이벤트와 광고 상호 작용을 신고한다."
           },
           {
             "type": "광고 데이터",
-            "purposes": ["ANALYTICS", "THIRD_PARTY_ADVERTISING"],
+            "purposes": [
+              "ANALYTICS",
+              "THIRD_PARTY_ADVERTISING"
+            ],
             "linkedToUser": true,
             "tracking": false,
             "reason": "비개인화 광고의 노출과 보상 이벤트 데이터를 신고한다."
           },
           {
             "type": "충돌 데이터",
-            "purposes": ["ANALYTICS", "APP_FUNCTIONALITY"],
+            "purposes": [
+              "ANALYTICS",
+              "APP_FUNCTIONALITY"
+            ],
             "linkedToUser": false,
             "tracking": false,
             "reason": "광고 SDK가 안내한 사용자 비관련 충돌 로그이며 별도 충돌 사용자 ID는 설정하지 않는다."
