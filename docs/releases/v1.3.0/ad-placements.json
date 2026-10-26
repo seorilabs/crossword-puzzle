@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "placement": "completion_interstitial",
+  "approval": "2026-10-26 사용자 신규 전면광고 지면3개 생성과 연결 승인; AIT수수료안내확인별도승인",
+  "sdkDisplay": "unverified",
+  "units": [
+    {
+      "market": "google_play",
+      "provider": "AdMob",
+      "unitId": "ca-app-pub-9932778305312246/8094375680",
+      "format": "INTERSTITIAL",
+      "status": "CREATED_AND_LISTED"
+    },
+    {
+      "market": "app_store",
+      "provider": "AdMob",
+      "unitId": "ca-app-pub-9932778305312246/4842148506",
+      "format": "INTERSTITIAL",
+      "status": "CREATED_AND_LISTED"
+    },
+    {
+      "market": "apps_in_toss",
+      "provider": "AppsInToss",
+      "unitId": "ait.v2.live.5c3f0f0e527e4fab",
+      "format": "INTERSTITIAL",
+      "status": "CREATED_REGISTERING"
+    }
+  ]
+}

@@ -5,13 +5,16 @@ const expected = {
   publisherId: "pub-9932778305312246",
   catalogLogicalId: "app/crossword-puzzle/admob/public-identifiers",
   packageId: "com.seorilabs.crosswordpuzzle",
+  aitCompletionInterstitial: "ait.v2.live.5c3f0f0e527e4fab",
   android: {
     appId: "ca-app-pub-9932778305312246~7356925389",
     rewardedHint: "ca-app-pub-9932778305312246/1613644113",
+    completionInterstitial: "ca-app-pub-9932778305312246/8094375680",
   },
   ios: {
     appId: "ca-app-pub-9932778305312246~5361317430",
     rewardedHint: "ca-app-pub-9932778305312246/5603016700",
+    completionInterstitial: "ca-app-pub-9932778305312246/4842148506",
   },
 };
 
@@ -34,6 +37,7 @@ const excludesPattern = (content, pattern, label) => {
 
 const play = json("play-store/google-play.config.json");
 const appStore = json("app-store/app-store.config.json");
+const remoteConfig = json("remoteconfig.template.json");
 const appJson = json("apps/mobile/app.json");
 const mobileAds = read("apps/mobile/mobileAds.ts");
 const androidManifest = read(
@@ -61,11 +65,34 @@ for (const [label, config, platform] of [
     expected[platform].rewardedHint,
     `${label} rewardedHint`,
   );
+  equal(
+    config.adMob?.adUnits?.completionInterstitial,
+    expected[platform].completionInterstitial,
+    `${label} completionInterstitial`,
+  );
+  equal(
+    remoteConfig.parameters?.[`completion_interstitial_${platform}`]
+      ?.defaultValue?.value,
+    expected[platform].completionInterstitial,
+    `${label} Remote Config completionInterstitial`,
+  );
+  if (
+    config.adMob?.adUnits?.completionInterstitial ===
+    config.adMob?.adUnits?.rewardedHint
+  ) {
+    fail(`${label} completionInterstitial: rewarded unit cannot be reused`);
+  }
   const placements = Object.keys(config.adMob?.adUnits ?? {}).sort();
-  if (placements.join(",") !== "rewardedHint") {
+  if (placements.join(",") !== "completionInterstitial,rewardedHint") {
     fail(`${label} placements: unexpected placement set`);
   }
 }
+
+equal(
+  remoteConfig.parameters?.completion_interstitial_ait?.defaultValue?.value,
+  expected.aitCompletionInterstitial,
+  "AIT Remote Config completionInterstitial",
+);
 
 equal(
   appJson["react-native-google-mobile-ads"]?.android_app_id,
