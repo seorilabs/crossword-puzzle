@@ -221,6 +221,27 @@
       },
       "description": "리더보드 점수: 풀이 1초당 보너스 감쇠량(#216). 허용 0~100000",
       "valueType": "NUMBER"
+    },
+    "completion_interstitial_ait": {
+      "defaultValue": {
+        "value": ""
+      },
+      "valueType": "STRING",
+      "description": "완료 후 전환용 별도 전면광고 지면. 미설정 시 건너뜀."
+    },
+    "completion_interstitial_android": {
+      "defaultValue": {
+        "value": ""
+      },
+      "valueType": "STRING",
+      "description": "완료 후 전환용 별도 전면광고 지면. 미설정 시 건너뜀."
+    },
+    "completion_interstitial_ios": {
+      "defaultValue": {
+        "value": ""
+      },
+      "valueType": "STRING",
+      "description": "완료 후 전환용 별도 전면광고 지면. 미설정 시 건너뜀."
     }
   }
 }

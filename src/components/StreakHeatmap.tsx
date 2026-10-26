@@ -1,3 +1,8 @@
+import {
+  calendarMonthText,
+  calendarWeekdayText,
+} from "../../packages/crossword-core/src/uiCopy";
+import { t, getUiLanguage } from "../adapters/languageRepository";
 import { buildStreakCalendarMonthLabels } from "../../packages/crossword-core/src";
 import type { StreakCalendarWeek } from "../../packages/crossword-core/src";
 
@@ -19,8 +24,8 @@ export function StreakHeatmap({ weeks }: StreakHeatmapProps) {
   const monthLabels = buildStreakCalendarMonthLabels(weeks);
 
   return (
-    <section className="streakHeatmap" aria-label="최근 완료 달력 히트맵">
-      <h3 className="streakHeatmapTitle">완료 달력</h3>
+    <section className="streakHeatmap" aria-label={t("최근 완료 달력 히트맵")}>
+      <h3 className="streakHeatmapTitle">{t("완료 달력")}</h3>
       <div className="streakHeatmapScroll">
         <div className="streakHeatmapMonths" aria-hidden="true">
           <div className="streakHeatmapDaysSpacer" />
@@ -30,7 +35,7 @@ export function StreakHeatmap({ weeks }: StreakHeatmapProps) {
                 className="streakHeatmapMonth"
                 key={weeks[weekIndex]?.[0]?.date ?? weekIndex}
               >
-                {label}
+                {calendarMonthText(getUiLanguage(), label)}
               </div>
             ))}
           </div>
@@ -39,7 +44,7 @@ export function StreakHeatmap({ weeks }: StreakHeatmapProps) {
           <div className="streakHeatmapDays" aria-hidden="true">
             {WEEKDAY_AXIS_LABELS.map((label, dayIndex) => (
               <div className="streakHeatmapDay" key={dayIndex}>
-                {label}
+                {label ? calendarWeekdayText(getUiLanguage(), dayIndex) : ""}
               </div>
             ))}
           </div>
@@ -62,7 +67,7 @@ export function StreakHeatmap({ weeks }: StreakHeatmapProps) {
                     );
                   }
                   // isFuture와 상호배타이므로 오늘 칸은 항상 완료/미완료 상태를 가진다.
-                  const status = cell.completed ? "완료" : "미완료";
+                  const status = cell.completed ? t("완료") : t("미완료");
                   return (
                     <div
                       key={cell.date}
@@ -73,9 +78,12 @@ export function StreakHeatmap({ weeks }: StreakHeatmapProps) {
                       ]
                         .filter(Boolean)
                         .join(" ")}
-                      aria-label={`${cell.date} ${status}${
-                        cell.isToday ? " · 오늘" : ""
-                      }`}
+                      aria-label={t(
+                        "{0} {1}{2}",
+                        cell.date,
+                        status,
+                        cell.isToday ? t(" · 오늘") : "",
+                      )}
                     />
                   );
                 })}
@@ -86,9 +94,9 @@ export function StreakHeatmap({ weeks }: StreakHeatmapProps) {
       </div>
       <div className="streakHeatmapLegend" aria-hidden="true">
         <span className="streakHeatmapLegendSwatch" />
-        <span className="streakHeatmapLegendLabel">미완료</span>
+        <span className="streakHeatmapLegendLabel">{t("미완료")}</span>
         <span className="streakHeatmapLegendSwatch streakHeatmapLegendSwatchDone" />
-        <span className="streakHeatmapLegendLabel">완료</span>
+        <span className="streakHeatmapLegendLabel">{t("완료")}</span>
       </div>
     </section>
   );

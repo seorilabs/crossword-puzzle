@@ -173,7 +173,7 @@ export async function loadFirebaseLaunchConfig(): Promise<LaunchConfig> {
   }
 
   try {
-    const { fetchAndActivate, getBoolean, getNumber } =
+    const { fetchAndActivate, getBoolean, getNumber, getString } =
       await import("firebase/remote-config");
     try {
       await fetchAndActivate(remoteConfig);
@@ -185,6 +185,19 @@ export async function loadFirebaseLaunchConfig(): Promise<LaunchConfig> {
     }
 
     return normalizeLaunchConfig({
+      completionInterstitialAit: getString(
+        remoteConfig,
+        launchConfigKeys.completionInterstitialAit,
+      ),
+      completionInterstitialAndroid: getString(
+        remoteConfig,
+        launchConfigKeys.completionInterstitialAndroid,
+      ),
+      completionInterstitialIos: getString(
+        remoteConfig,
+        launchConfigKeys.completionInterstitialIos,
+      ),
+
       dailyFreeHintCredits: getNumber(
         remoteConfig,
         launchConfigKeys.dailyFreeHintCredits,

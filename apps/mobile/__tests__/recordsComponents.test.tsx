@@ -1,3 +1,4 @@
+import { setUiLanguage } from '../languageRepository';
 import React from 'react';
 import ReactTestRenderer from 'react-test-renderer';
 
@@ -66,6 +67,7 @@ test('PersonalStatsCard 는 완료 0건이면 빈 상태 안내만, 기록이 �
     />,
   );
   const text = collectText(populated);
+  expect(text).not.toContain('노힌트 완료');
   expect(text).toEqual(
     expect.arrayContaining([
       '총 완료',
@@ -76,8 +78,6 @@ test('PersonalStatsCard 는 완료 0건이면 빈 상태 안내만, 기록이 �
       '3일',
       '최장 스트릭',
       '5일',
-      '노힌트 완료',
-      '1판',
       '최고 기록',
       '평균 기록',
       '풀이 시간 분포',
@@ -98,7 +98,9 @@ test('StreakHeatmap 은 12주 × 7칸을 그리고 오늘 칸을 표시한다', 
   // 오늘 이후(이번 주 남은 3일)는 접근성 라벨이 없다.
   expect(labelled).toHaveLength(12 * 7 - 3);
   expect(
-    labelled.some(node => node.props.accessibilityLabel === `${today} 완료 · 오늘`),
+    labelled.some(
+      node => node.props.accessibilityLabel === `${today} 완료 · 오늘`,
+    ),
   ).toBe(true);
   expect(
     labelled.some(node => node.props.accessibilityLabel === '2026-06-30 완료'),
@@ -127,4 +129,38 @@ test('ShareGridPreview 는 줄·코드포인트 단위로 타일을 그리고 �
 
   const empty = render(<ShareGridPreview shareGrid="" />);
   expect(empty.toJSON()).toBeNull();
+});
+
+test('AC-6 English records show English time and calendar labels without hint awards', () => {
+  setUiLanguage('en');
+  try {
+    const renderer = render(
+      <>
+        <PersonalStatsCard
+          stats={{
+            totalPuzzles: 1,
+            completedCount: 1,
+            completionRate: 1,
+            noHintCompletedCount: 1,
+            bestTimeCount: 1,
+            fastestBestTimeMs: 150000,
+            averageBestTimeMs: 150000,
+          }}
+          consecutiveStreak={1}
+          longestStreak={1}
+          solveTimeDistribution={computeSolveTimeDistribution([150000])}
+        />
+        <StreakHeatmap
+          weeks={buildStreakCalendarWeeks(['2026-10-26'], '2026-10-26', 12)}
+        />
+      </>,
+    );
+    const text = collectText(renderer).join(' ');
+    expect(text).not.toMatch(/[가-힣]/);
+    expect(text).not.toMatch(/No-hint|no hints/i);
+    expect(text).not.toContain('1 days');
+    expect(text).toContain('2–3m');
+  } finally {
+    setUiLanguage('ko');
+  }
 });

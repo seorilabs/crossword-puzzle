@@ -13,6 +13,10 @@ import {
 } from "./uiPolicy.ts";
 
 export type LaunchConfig = {
+  completionInterstitialAit: string;
+  completionInterstitialAndroid: string;
+  completionInterstitialIos: string;
+
   // 세 난이도와 지난 퍼즐이 함께 쓰는 KST 날짜별 무료 힌트 개수.
   dailyFreeHintCredits: number;
   // normal(및 난이도 미상) 퍼즐의 기본 힌트 크레딧. easy/hard 는 아래 전용 키로
@@ -80,6 +84,10 @@ export type LaunchConfig = {
 };
 
 export const launchConfigKeys = {
+  completionInterstitialAit: "completion_interstitial_ait",
+  completionInterstitialAndroid: "completion_interstitial_android",
+  completionInterstitialIos: "completion_interstitial_ios",
+
   dailyFreeHintCredits: "daily_free_hint_credits",
   defaultHintCredits: "default_hint_credits",
   defaultHintCreditsEasy: "default_hint_credits_easy",
@@ -115,6 +123,10 @@ export const launchConfigKeys = {
 } as const;
 
 export const defaultLaunchConfig: LaunchConfig = {
+  completionInterstitialAit: "",
+  completionInterstitialAndroid: "",
+  completionInterstitialIos: "",
+
   dailyFreeHintCredits: DEFAULT_DAILY_FREE_HINT_CREDITS,
   defaultHintCredits: DEFAULT_HINT_CREDITS,
   // 난이도별 기본 힌트 크레딧 기본값은 uiPolicy 코드 기본값(easy:2/hard:5)과 동일(#251).
@@ -209,6 +221,19 @@ export function normalizeLaunchConfig(
   value: Partial<LaunchConfig>,
 ): LaunchConfig {
   return {
+    completionInterstitialAit:
+      typeof value.completionInterstitialAit === "string"
+        ? value.completionInterstitialAit.trim()
+        : "",
+    completionInterstitialAndroid:
+      typeof value.completionInterstitialAndroid === "string"
+        ? value.completionInterstitialAndroid.trim()
+        : "",
+    completionInterstitialIos:
+      typeof value.completionInterstitialIos === "string"
+        ? value.completionInterstitialIos.trim()
+        : "",
+
     dailyFreeHintCredits: clampInteger(
       value.dailyFreeHintCredits ?? defaultLaunchConfig.dailyFreeHintCredits,
       defaultLaunchConfig.dailyFreeHintCredits,
@@ -403,6 +428,13 @@ export function normalizeLaunchConfig(
 
 export function getLaunchConfigDefaultsForRemoteConfig() {
   return {
+    [launchConfigKeys.completionInterstitialAit]:
+      defaultLaunchConfig.completionInterstitialAit,
+    [launchConfigKeys.completionInterstitialAndroid]:
+      defaultLaunchConfig.completionInterstitialAndroid,
+    [launchConfigKeys.completionInterstitialIos]:
+      defaultLaunchConfig.completionInterstitialIos,
+
     [launchConfigKeys.dailyFreeHintCredits]:
       defaultLaunchConfig.dailyFreeHintCredits,
     [launchConfigKeys.defaultHintCredits]:

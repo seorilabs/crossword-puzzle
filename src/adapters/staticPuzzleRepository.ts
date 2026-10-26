@@ -21,12 +21,29 @@ type StaticPuzzleRepositoryOptions = {
 };
 
 async function fetchJson<T>(fetcher: Fetcher, path: string): Promise<T> {
-  const response = await fetcher(path);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch ${path}: ${response.status}`);
+  const key = "crossword-puzzle:content:" + path;
+  try {
+    const response = await fetcher(path);
+    if (!response.ok)
+      throw new Error(`Failed to fetch ${path}: ${response.status}`);
+    const value = (await response.json()) as T;
+    try {
+      if (typeof localStorage !== "undefined")
+        localStorage.setItem(key, JSON.stringify(value));
+    } catch {
+      /* Content caching must not prevent play. */
+    }
+    return value;
+  } catch (error) {
+    try {
+      const cached =
+        typeof localStorage !== "undefined" ? localStorage.getItem(key) : null;
+      if (cached) return JSON.parse(cached) as T;
+    } catch {
+      /* Report the original loading failure. */
+    }
+    throw error;
   }
-
-  return (await response.json()) as T;
 }
 
 function sortPuzzleSummaries(puzzles: PuzzleManifestItem[]) {

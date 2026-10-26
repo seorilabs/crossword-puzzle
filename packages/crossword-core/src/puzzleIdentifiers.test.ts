@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { describe, it, test } from "node:test";
 
 import {
   normalizePuzzleIdentifiers,
@@ -41,4 +41,15 @@ describe("원격 퍼즐 식별자 런타임 정규화 (#351)", () => {
     assert.equal(normalized.puzzles[0]?.packId, undefined);
     assert.equal(normalized.puzzles[0]?.slotId, undefined);
   });
+});
+
+test("AC-2 English payloads normalize answers and repeated grid letters through the shared repository boundary", () => {
+  const puzzle = normalizePuzzleIdentifiers({
+    puzzleId: "en-test",
+    language: "en",
+    entries: [{ answer: "letter" }],
+    grid: [["l", "e", "t", "t", "e", "r", ""]],
+  } as unknown as Puzzle);
+  assert.equal(puzzle.entries[0].answer, "LETTER");
+  assert.deepEqual(puzzle.grid[0], ["L", "E", "T", "T", "E", "R", ""]);
 });

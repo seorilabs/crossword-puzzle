@@ -1,3 +1,4 @@
+import { t } from './languageRepository';
 import React, { useMemo, useState } from 'react';
 import {
   Modal,
@@ -25,11 +26,9 @@ export type TileInputAction = 'choice' | 'clear' | 'select';
 type Props = {
   puzzle: Puzzle;
   state: LetterTileState;
-  hints: number;
   hasStarted: boolean;
   isPaused: boolean;
   onChange: (state: LetterTileState, action: TileInputAction) => void;
-  onHint: () => void;
   onBack: () => void;
   onStart: () => void;
   onResume: () => void;
@@ -44,11 +43,9 @@ type Props = {
 export function TilePuzzleScreen({
   puzzle,
   state,
-  hints,
   hasStarted,
   isPaused,
   onChange,
-  onHint,
   onBack,
   onStart,
   onResume,
@@ -92,12 +89,12 @@ export function TilePuzzleScreen({
   const message =
     feedback ||
     (state.status === 'repair'
-      ? '맞는 글자는 그대로! 빈칸만 다시 골라봐요.'
+      ? t('맞는 글자는 그대로! 빈칸만 다시 골라봐요.')
       : state.status === 'correct'
-      ? '단어 완성!'
-      : solved
-      ? '이미 완성한 단어예요.'
-      : '타일을 눌러 빈칸을 채워봐요.');
+        ? t('단어 완성!')
+        : solved
+          ? t('이미 완성한 단어예요.')
+          : t('타일을 눌러 빈칸을 채워봐요.'));
   function select(id: string, key = '') {
     onChange(selectLetterEntry(puzzle, state, id, key), 'select');
     setCluesOpen(false);
@@ -133,40 +130,32 @@ export function TilePuzzleScreen({
       <View style={[s.nav, { height: compact ? 44 : 48 }]}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="홈으로"
+          accessibilityLabel={t('홈으로')}
           style={s.iconButton}
           onPress={onBack}
         >
           <Text style={s.back}>‹</Text>
         </Pressable>
         <Text style={s.title}>
-          오늘의 퍼즐
+          {t('오늘의 퍼즐')}
           {compact ? `  ${completed.length}/${puzzle.entries.length}` : ''}
         </Text>
         {onPause ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="일시정지"
+            accessibilityLabel={t('일시정지')}
             style={s.iconButton}
             onPress={onPause}
           >
             <Text style={s.ink}>Ⅱ</Text>
           </Pressable>
         ) : null}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`힌트 ${hints}개`}
-          disabled={!hasStarted || isPaused || solved}
-          style={s.hint}
-          onPress={onHint}
-        >
-          <Text style={s.ink}>♧ {hints}</Text>
-        </Pressable>
       </View>
       {!compact ? (
         <View style={s.progress}>
           <Text style={s.progressLabel}>
-            {completed.length} / {puzzle.entries.length} 단어
+            {completed.length} / {puzzle.entries.length}
+            {t('단어')}
             {timer ? ` · ${timer}` : ''}
           </Text>
           <View style={s.progressTrack}>
@@ -185,12 +174,13 @@ export function TilePuzzleScreen({
           {guide ? (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="첫 세 단어 안내 건너뛰기"
+              accessibilityLabel={t('첫 세 단어 안내 건너뛰기')}
               onPress={guide.onSkip}
               style={s.guide}
             >
               <Text style={s.guideText}>
-                첫걸음 {guide.completed}/{guide.total} ×
+                {t('첫걸음')}
+                {guide.completed}/{guide.total} ×
               </Text>
             </Pressable>
           ) : null}
@@ -199,7 +189,7 @@ export function TilePuzzleScreen({
       <View
         style={[s.board, { width: boardSize, height: boardSize }]}
         testID="tile-board"
-        accessibilityLabel="퍼즐판"
+        accessibilityLabel={t('퍼즐판')}
       >
         {puzzle.grid.map((row, y) => (
           <View key={y} style={s.boardRow}>
@@ -211,9 +201,12 @@ export function TilePuzzleScreen({
                 <Pressable
                   key={key}
                   accessibilityRole="button"
-                  accessibilityLabel={`${y + 1}행 ${x + 1}열${
-                    text ? `, ${text}` : ''
-                  }`}
+                  accessibilityLabel={t(
+                    '{0}행 {1}열{2}',
+                    y + 1,
+                    x + 1,
+                    text ? `, ${text}` : '',
+                  )}
                   disabled={isPaused}
                   style={[
                     s.cell,
@@ -226,8 +219,9 @@ export function TilePuzzleScreen({
                     const current = matches.find(item => item.id === entry?.id);
                     const next =
                       key === state.progress.activeCellKey
-                        ? matches.find(item => item.id !== entry?.id) ?? current
-                        : current ?? matches[0];
+                        ? (matches.find(item => item.id !== entry?.id) ??
+                          current)
+                        : (current ?? matches[0]);
                     if (next) select(next.id, key);
                   }}
                 >
@@ -266,9 +260,12 @@ export function TilePuzzleScreen({
             {entry ? labels.get(getCellKey(entry.row, entry.col)) : ''}
           </Text>
           <Text style={s.clueMeta}>
-            {entry?.direction === 'across' ? '가로' : '세로'}
+            {entry?.direction === 'across' ? t('가로') : t('세로')}
           </Text>
-          <Text style={[s.clueMeta, s.length]}>{keys.length} 글자</Text>
+          <Text style={[s.clueMeta, s.length]}>
+            {keys.length}
+            {t('글자')}
+          </Text>
         </View>
         <ScrollView style={s.clueScroll} nestedScrollEnabled>
           <Text
@@ -283,15 +280,18 @@ export function TilePuzzleScreen({
           s.answer,
           { height: compact ? 48 : 52, marginTop: compact ? 6 : 8 },
         ]}
-        accessibilityLabel="현재 단어 답칸"
+        accessibilityLabel={t('현재 단어 답칸')}
       >
         {keys.map((key, i) => (
           <Pressable
             key={key}
             accessibilityRole="button"
-            accessibilityLabel={`${i + 1}번째 글자 ${
-              state.cellValues[key] || '비어 있음'
-            }${locked.has(key) ? ', 확정' : ''}`}
+            accessibilityLabel={t(
+              '{0}번째 글자 {1}{2}',
+              i + 1,
+              state.cellValues[key] || t('비어 있음'),
+              locked.has(key) ? t(', 확정') : '',
+            )}
             disabled={!editable || locked.has(key)}
             onPress={() =>
               onChange(clearLetterTile(puzzle, state, key), 'clear')
@@ -317,14 +317,14 @@ export function TilePuzzleScreen({
             { height: compact ? 16 : 19, marginBottom: compact ? 8 : 11 },
           ]}
         >
-          <Text style={s.trayTitle}>✦ 글자를 골라보세요</Text>
+          <Text style={s.trayTitle}>{t('✦ 글자를 골라보세요')}</Text>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="단서 목록"
+            accessibilityLabel={t('단서 목록')}
             style={s.clueListButton}
             onPress={() => setCluesOpen(true)}
           >
-            <Text style={s.small}>☷ 단서 목록</Text>
+            <Text style={s.small}>{t('☷ 단서 목록')}</Text>
           </Pressable>
         </View>
         <ScrollView
@@ -341,9 +341,11 @@ export function TilePuzzleScreen({
               <Pressable
                 key={tile.id}
                 accessibilityRole="button"
-                accessibilityLabel={`${tile.letter}${
-                  tile.used ? ', 사용함' : ', 선택 가능'
-                }`}
+                accessibilityLabel={t(
+                  '{0}{1}',
+                  tile.letter,
+                  tile.used ? t(', 사용함') : t(', 선택 가능'),
+                )}
                 disabled={!editable || tile.used}
                 onPress={() =>
                   onChange(chooseLetterTile(puzzle, state, tile.id), 'choice')
@@ -393,11 +395,11 @@ export function TilePuzzleScreen({
           style={s.toolButton}
           onPress={() => adjacent(-1)}
         >
-          <Text style={s.toolText}>‹ 이전</Text>
+          <Text style={s.toolText}>{t('‹ 이전')}</Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="지우기"
+          accessibilityLabel={t('지우기')}
           disabled={
             !editable ||
             !keys.some(key => state.cellValues[key] && !locked.has(key))
@@ -405,7 +407,7 @@ export function TilePuzzleScreen({
           style={[s.toolButton, s.undo]}
           onPress={() => onChange(clearLetterTile(puzzle, state), 'clear')}
         >
-          <Text style={s.toolText}>⌫ 지우기</Text>
+          <Text style={s.toolText}>{t('⌫ 지우기')}</Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"
@@ -413,14 +415,14 @@ export function TilePuzzleScreen({
           style={s.toolButton}
           onPress={() => adjacent(1)}
         >
-          <Text style={s.toolText}>다음 ›</Text>
+          <Text style={s.toolText}>{t('다음 ›')}</Text>
         </Pressable>
       </View>
       {!hasStarted || isPaused ? (
         <View style={s.pauseShade}>
           <View style={s.pauseCard}>
             <Text style={s.pauseTitle}>
-              {isPaused ? '잠시 쉬어가요' : '오늘 한 판, 시작해볼까요?'}
+              {isPaused ? t('잠시 쉬어가요') : t('오늘 한 판, 시작해볼까요?')}
             </Text>
             <Pressable
               accessibilityRole="button"
@@ -428,7 +430,7 @@ export function TilePuzzleScreen({
               onPress={isPaused ? onResume : onStart}
             >
               <Text style={s.primaryText}>
-                {isPaused ? '이어서 풀기' : '퍼즐 시작'}
+                {isPaused ? t('이어서 풀기') : t('퍼즐 시작')}
               </Text>
             </Pressable>
             <Pressable
@@ -436,7 +438,7 @@ export function TilePuzzleScreen({
               style={s.toolButton}
               onPress={onBack}
             >
-              <Text style={s.toolText}>홈으로</Text>
+              <Text style={s.toolText}>{t('홈으로')}</Text>
             </Pressable>
           </View>
         </View>
@@ -452,11 +454,11 @@ export function TilePuzzleScreen({
             <Pressable
               style={StyleSheet.absoluteFill}
               accessibilityRole="button"
-              accessibilityLabel="단서 목록 닫기"
+              accessibilityLabel={t('단서 목록 닫기')}
               onPress={() => setCluesOpen(false)}
             />
             <View style={s.sheet}>
-              <Text style={s.sheetTitle}>원하는 단서를 골라보세요</Text>
+              <Text style={s.sheetTitle}>{t('원하는 단서를 골라보세요')}</Text>
               <ScrollView>
                 {puzzle.entries.map(item => (
                   <Pressable
@@ -473,7 +475,7 @@ export function TilePuzzleScreen({
                     <Text style={s.small}>
                       {completed.some(done => done.id === item.id)
                         ? '✓'
-                        : `${[...item.answer].length} 글자`}
+                        : t('{0} 글자', [...item.answer].length)}
                     </Text>
                   </Pressable>
                 ))}
@@ -487,7 +489,7 @@ export function TilePuzzleScreen({
                     onSettings();
                   }}
                 >
-                  <Text style={s.toolText}>설정</Text>
+                  <Text style={s.toolText}>{t('설정')}</Text>
                 </Pressable>
                 {compact && guide ? (
                   <Pressable
@@ -496,7 +498,9 @@ export function TilePuzzleScreen({
                     onPress={guide.onSkip}
                   >
                     <Text style={s.toolText}>
-                      첫걸음 {guide.completed}/{guide.total} 건너뛰기
+                      {t('첫걸음')}
+                      {guide.completed}/{guide.total}
+                      {t('건너뛰기')}
                     </Text>
                   </Pressable>
                 ) : null}
@@ -505,7 +509,7 @@ export function TilePuzzleScreen({
                   style={s.toolButton}
                   onPress={() => setCluesOpen(false)}
                 >
-                  <Text style={s.toolText}>닫기</Text>
+                  <Text style={s.toolText}>{t('닫기')}</Text>
                 </Pressable>
               </View>
             </View>

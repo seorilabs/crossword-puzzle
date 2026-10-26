@@ -1,4 +1,3 @@
-import { usageStatistics } from './usageStatistics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   useCallback,
@@ -23,14 +22,39 @@ import {
   type AppStateStatus,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { createCompletionTransition } from '../../packages/crossword-core/src/completionInterstitial';
+import {
+  WORDFREQ_NOTICE,
+  WORDNET_LICENSE,
+} from '../../packages/crossword-core/src/contentLicenses';
+import {
+  contentDate,
+  contentDateRefreshDelay,
+  dailyPuzzles,
+  languageTelemetry,
+  puzzleLanguage,
+  type ContentLanguage,
+} from '../../packages/crossword-core/src/dailyLanguage';
+import {
+  completionTransitionStore,
+  createMobileCompletionInterstitial,
+} from './completionInterstitial';
+import {
+  getUiLanguage,
+  loadLanguage,
+  saveLanguage,
+  setUiLanguage,
+  t,
+} from './languageRepository';
+import { usageStatistics } from './usageStatistics';
 
 import {
   buildCellEntries,
+  buildFirstWordGuideTelemetryParams,
   buildStartLabels,
   buildStreakCalendarWeeks,
   buildWeeklyStreakStrip,
   chooseFirstWordGuide,
-  restoreFirstWordGuide,
   completeMission,
   computeConsecutiveStreakDays,
   computeElapsedMs,
@@ -39,9 +63,6 @@ import {
   computeLongestStreakDays,
   computePersonalStats,
   computeSolveTimeDistribution,
-  confirmLetterTileCell,
-  consumeDailyHintCredit,
-  createDailyHintWallet,
   createDailyMissionState,
   createEmptyProgress,
   createLetterTileState,
@@ -51,64 +72,46 @@ import {
   emitProgressionScreenView,
   emitStreakMilestoneIfReached,
   findPuzzleSummaryById,
-  FIRST_WORD_GUIDE_KEY,
   FIRST_WORD_GUIDE_EVENTS,
-  buildFirstWordGuideTelemetryParams,
-  LETTER_TILE_CHOOSE_EVENT,
+  FIRST_WORD_GUIDE_KEY,
   formatDateCardDay,
   formatDateCardWeekday,
   formatPuzzleAliasLabel,
   formatPuzzleCardSequenceLabel,
   formatReturnReminderPrepromptBody,
   getBounds,
-  getCellAnswerLetter,
   getCellKey,
   getCompletedEntries,
   getCompletionAchievements,
   getDailyFreePuzzleSummary,
-  isPublishedPuzzle,
-  getDailyHintBalance,
   getEntryCells,
-  getFirstIncompleteEntry,
   getInitialEntryId,
   getInitialEntryStartCellKey,
   getProgressMilestoneRewardMessage,
   getProgressPercent,
   getPuzzlePackAlias,
   getRemainingAttempts,
-  getStuckHintPromptText,
   getTodayDateKey,
-  grantDailyHintCredits,
   HOME_QUICK_START_EVENT,
-  loadOrMigrateDailyHintWallet,
-  mapRewardedAdFailureToAssistResult,
+  isPublishedPuzzle,
+  LETTER_TILE_CHOOSE_EVENT,
   normalizeFirstWordGuide,
   normalizeLetterTileProgress,
   normalizeOptionalPuzzleIdentifier,
   normalizePuzzleIdentifier,
   normalizePuzzleIdentifiers,
   normalizePuzzleManifestIdentifiers,
-  pickHintCellIndex,
   recommendLetterEntry,
-  resolveStarterCell,
+  restoreFirstWordGuide,
   RETURN_REMINDER_OPENED_EVENT,
-  REWARDED_HINT_AD_REWARD_EVENT,
-  runRewardedHintAdFlow,
   selectLetterEntry,
   shouldSubmitLeaderboardScore,
   sortPuzzleSummariesByRecency,
   startMissionAttempt,
-  STUCK_HINT_PROMPT_ACCEPT_EVENT,
-  STUCK_HINT_PROMPT_DISMISS_EVENT,
-  STUCK_HINT_PROMPT_EVENT,
   TILE_INPUT_POLICY_VERSION,
   togglePauseState,
-  trackRewardedHintAdRequest,
-  trackRewardedHintAdResult,
-  trackRewardedHintAdTrace,
   uniquePuzzleSummaries,
   validatePuzzleSlots,
-  type DailyHintWallet,
   type DailyMissionState,
   type Direction,
   type FirstWordGuide,
@@ -123,7 +126,6 @@ import {
   type PuzzleManifest,
   type PuzzleManifestItem,
   type ReturnReminderState,
-  type RewardedAdRetryAttempt,
   type SavedProgress,
 } from '../../packages/crossword-core/src';
 
@@ -140,8 +142,7 @@ import {
   mobileBestTimeRepository,
   type BestTimes,
 } from './bestTimeRepository';
-import { mobileCompletionDatesRepository } from './completionDatesRepository';
-import { createMobileDailyHintWalletRepository } from './dailyHintWalletRepository';
+import { createMobileCompletionDatesRepository } from './completionDatesRepository';
 import { loadFirebaseLaunchConfig } from './firebaseClient';
 import {
   loadFirstInputGuideSeen,
@@ -153,18 +154,7 @@ import {
   type MobilePuzzleAbandonSnapshot,
 } from './gameplayTelemetry';
 import { leaderboardAdapter } from './leaderboardAdapter';
-import {
-  getMobileRewardedAdRetryStatus,
-  initializeMobileAds,
-  mapMobileAdTraceEvent,
-  mapRewardedAdRetryError,
-  openMobileAdsInspector,
-  showMobileAdsPrivacyOptions,
-  showRewardedAd,
-  type MobileAdEvent,
-  type MobileAdUnitMode,
-  type RewardedAdPlacement,
-} from './mobileAds';
+import { initializeMobileAds, showMobileAdsPrivacyOptions } from './mobileAds';
 import {
   cancelStaleMobileReturnReminder,
   confirmMobileReturnReminder,
@@ -192,7 +182,6 @@ import { TileHomeScreen } from './TileHomeScreen';
 import { TilePuzzleScreen, type TileInputAction } from './TilePuzzleScreen';
 import { TileResultScreen } from './TileResultScreen';
 import { useLeaderboard } from './useLeaderboard';
-import { useStuckHintPrompt } from './useStuckHintPrompt';
 
 export type AppRoute =
   | 'home'
@@ -261,11 +250,6 @@ type PuzzleViewModel = {
   slotValidationPass: boolean;
 };
 
-type AdDiagnosticState = {
-  isRunning: boolean;
-  message: string;
-};
-
 const REMOTE_PUZZLE_PACK_BASE_URL = 'https://crossword-puzzle-79ae0.web.app';
 const PROGRESS_KEY_PREFIX = 'crossword-puzzle:progress';
 const MISSION_KEY_PREFIX = 'crossword-puzzle:mission';
@@ -295,7 +279,6 @@ const bundledPuzzlePack: PuzzlePack = {
 const initialPuzzle =
   bundledPuzzlesById.get(getInitialPuzzleId(bundledPuzzleSummaries)) ??
   fallbackPuzzle;
-const dailyHintWalletRepository = createMobileDailyHintWalletRepository();
 
 function sortPuzzleSummaries(puzzles: PuzzleManifestItem[]) {
   return dedupePuzzleSummaries(sortPuzzleSummariesByRecency(puzzles));
@@ -357,6 +340,7 @@ function getPuzzleTelemetryParams(
       summary?.slotId ?? puzzle.slotId,
     ),
     word_count: summary?.metrics?.wordCount ?? puzzle.metrics.wordCount,
+    ...languageTelemetry(puzzle, getUiLanguage()),
   };
 }
 
@@ -364,6 +348,9 @@ function getPuzzleTelemetryParams(
 // (난이도/테마/팩)으로 실린다. 계약은 core gameAnalytics.ts의 GamePuzzleContext.
 function getGamePuzzleContext(puzzle: Puzzle): GamePuzzleContext {
   return {
+    language: puzzleLanguage(puzzle),
+    uiLanguage: getUiLanguage(),
+    dailySequence: puzzle.dailySequence ?? 1,
     puzzleId: puzzle.puzzleId,
     puzzleAlias: getPuzzlePackAlias(puzzle),
     difficulty: puzzle.difficulty,
@@ -401,7 +388,7 @@ export function formatPuzzleHomeSubtitle(
     return summary.date;
   }
 
-  const weekday = formatDateCardWeekday(summary.date, 'long');
+  const weekday = formatDateCardWeekday(summary.date, 'long', getUiLanguage());
   const dayLabel = formatDateCardDay(summary.date);
 
   return weekday === '' ? dayLabel : `${dayLabel} ${weekday}`;
@@ -415,7 +402,7 @@ export function formatPuzzleCardTitle(
     return summary.date;
   }
 
-  const weekday = formatDateCardWeekday(summary.date, 'short');
+  const weekday = formatDateCardWeekday(summary.date, 'short', getUiLanguage());
   const dayLabel = formatDateCardDay(summary.date);
 
   return weekday === '' ? dayLabel : `${dayLabel} ${weekday}`;
@@ -439,17 +426,19 @@ export function formatElapsedTime(
   );
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
-  return minutes > 0 ? `${minutes}분 ${seconds}초` : `${seconds}초`;
+  return minutes > 0 ? t('{0}분 {1}초', minutes, seconds) : t('{0}초', seconds);
 }
 
 export function formatPuzzleHistoryTitle(
   summary: PuzzleManifestItem,
   source: PuzzlePackSource,
 ) {
+  if (summary.dailySequence != null)
+    return `${summary.date} · ${formatPuzzleCardSequenceLabel(summary, getUiLanguage())}`;
   const aliasLabel = formatPuzzleAliasLabel(summary);
 
   return source === 'remote'
-    ? `${formatPuzzleCardSequenceLabel(summary)} · ${aliasLabel}`
+    ? `${formatPuzzleCardSequenceLabel(summary, getUiLanguage())} · ${aliasLabel}`
     : aliasLabel;
 }
 
@@ -534,23 +523,6 @@ async function clearStoredProgress(puzzleId: string) {
   } catch {
     // Local persistence is best effort.
   }
-}
-
-async function loadDailyHintWalletForDate(
-  date: string,
-  summaries: PuzzleManifestItem[],
-) {
-  const dateSummaries = uniquePuzzleSummaries(summaries).filter(
-    summary => summary.date === date,
-  );
-  return loadOrMigrateDailyHintWallet({
-    date,
-    loadLegacyProgresses: () =>
-      Promise.all(
-        dateSummaries.map(summary => loadStoredProgress(summary.puzzleId)),
-      ),
-    repository: dailyHintWalletRepository,
-  });
 }
 
 function createMissionState(
@@ -672,20 +644,32 @@ function resolveRemotePuzzleUrl(pack: PuzzlePack, puzzlePath: string) {
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
-  const response = await fetch(url);
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch ${url}: ${response.status}`);
+  const key = 'crossword-puzzle:content:' + url;
+  try {
+    const response = await fetch(url);
+    if (!response.ok)
+      throw new Error(`Failed to fetch ${url}: ${response.status}`);
+    const value = (await response.json()) as T;
+    try {
+      await AsyncStorage.setItem(key, JSON.stringify(value));
+    } catch {}
+    return value;
+  } catch (error) {
+    try {
+      const cached = await AsyncStorage.getItem(key);
+      if (cached) return JSON.parse(cached) as T;
+    } catch {}
+    throw error;
   }
-
-  return (await response.json()) as T;
 }
 
-async function loadRemotePuzzlePack(): Promise<PuzzlePack> {
+async function loadRemotePuzzlePack(
+  language: ContentLanguage,
+): Promise<PuzzlePack> {
   const assetBaseUrl = REMOTE_PUZZLE_PACK_BASE_URL;
   const manifest = normalizePuzzleManifestIdentifiers(
     await fetchJson<PuzzleManifest>(
-      `${assetBaseUrl.replace(/\/+$/, '')}/puzzles/manifest.json`,
+      `${assetBaseUrl.replace(/\/+$/, '')}/puzzles/${language}/manifest.json`,
     ),
   );
 
@@ -727,7 +711,14 @@ export async function loadPuzzleSession(
     (await loadPuzzleFromPack(puzzleId, pack)) ??
     (await loadArchivedPuzzle(puzzleId))?.puzzle;
 
-  if (nextPuzzle == null) {
+  const expectedLanguage =
+    pack.summaries.find(p => p.puzzleId === puzzleId)?.language ??
+    (puzzleId.startsWith('en-') ? 'en' : 'ko');
+  if (
+    nextPuzzle == null ||
+    nextPuzzle.puzzleId !== puzzleId ||
+    puzzleLanguage(nextPuzzle) !== expectedLanguage
+  ) {
     return null;
   }
 
@@ -767,39 +758,57 @@ async function loadDateCardStates(summaries: PuzzleManifestItem[]) {
   return Object.fromEntries(entries);
 }
 
-function formatMobileAdEvent(event: MobileAdEvent) {
-  const parts: string[] = [event.type];
-
-  if (event.adUnitMode != null) {
-    parts.push(event.adUnitMode);
-  }
-
-  if (event.errorCode != null) {
-    parts.push(event.errorCode);
-  }
-
-  return parts.join(':');
-}
-
-function formatMobileAdEventSequence(events: MobileAdEvent[]) {
-  return events.map(formatMobileAdEvent).join(' -> ');
-}
-
-function getMobileAdFailureCode(events: MobileAdEvent[]) {
-  const eventWithCode = events.find(event => event.errorCode != null);
-
-  if (eventWithCode?.errorCode != null) {
-    return eventWithCode.errorCode;
-  }
-
-  return events.at(-1)?.type;
-}
-
 function getEntryCellKeys(entry: PuzzleEntry) {
   return getEntryCells(entry).map(cell => getCellKey(cell.row, cell.col));
 }
 
 function AppContent() {
+  const [language, setLanguage] = useState<ContentLanguage>('ko');
+  const [languageReady, setLanguageReady] = useState(false);
+  const mobileCompletionDatesRepository = useMemo(
+    () => createMobileCompletionDatesRepository({ language }),
+    [language],
+  );
+  setUiLanguage(language);
+  const [day, setDay] = useState(() => contentDate('ko'));
+  useEffect(() => {
+    void loadLanguage()
+      .then(value => {
+        setLanguage(value);
+        setDay(contentDate(value));
+        setLanguageReady(true);
+      })
+      .catch(() => setLanguageReady(true));
+  }, []);
+  useEffect(() => {
+    let boundary: ReturnType<typeof setTimeout>;
+    const update = () => {
+      clearTimeout(boundary);
+      setDay(contentDate(language));
+      boundary = setTimeout(update, contentDateRefreshDelay(language));
+    };
+    update();
+    const timer = setInterval(update, 30000);
+    return () => {
+      clearTimeout(boundary);
+      clearInterval(timer);
+    };
+  }, [language]);
+  async function selectLanguage(next: ContentLanguage) {
+    try {
+      await saveLanguage(next);
+    } catch {
+      setNotice(t('언어 설정을 저장하지 못했어요.'));
+      return;
+    }
+    activeSessionRef.current = null;
+    setLanguage(next);
+    setDay(contentDate(next));
+    setIsLoading(true);
+    setSettingsOpen(false);
+    navigateTo('home');
+  }
+
   const usageStatisticsState = useSyncExternalStore(
     usageStatistics.subscribe,
     usageStatistics.getSnapshot,
@@ -810,6 +819,10 @@ function AppContent() {
   const [route, setRoute] = useState<AppRoute>('home');
   const [isLoading, setIsLoading] = useState(true);
   const [puzzle, setPuzzle] = useState(initialPuzzle);
+  const activeSessionRef = useRef<string | null>(null);
+  const currentRouteRef = useRef(route);
+  currentRouteRef.current = route;
+
   const [dateCardStates, setDateCardStates] = useState<
     Record<string, DateCardState>
   >({});
@@ -829,10 +842,8 @@ function AppContent() {
   const [tileTextScale, setTileTextScale] = useState(1);
   const [tileTimerVisible, setTileTimerVisible] = useState(true);
   const [tileClock, setTileClock] = useState(Date.now());
-  const [dailyHintWallet, setDailyHintWallet] = useState<DailyHintWallet>(() =>
-    createDailyHintWallet(getTodayDateKey()),
-  );
   const [hintCount, setHintCount] = useState(0);
+  const [earnedHintCredits, setEarnedHintCredits] = useState(0);
   const [mission, setMission] = useState<MissionState>(() =>
     createMissionState(
       initialPuzzle.date,
@@ -849,7 +860,6 @@ function AppContent() {
     getInitialEntryStartCellKey(initialPuzzle),
   );
   const [tileFeedback, setNotice] = useState('');
-  const [rewardPromptOpen, setRewardPromptOpen] = useState(false);
   useEffect(() => {
     if (!tileFeedback) return;
     const timer = setTimeout(() => setNotice(''), 2200);
@@ -857,13 +867,46 @@ function AppContent() {
   }, [tileFeedback]);
   const [launchConfig, setLaunchConfig] =
     useState<LaunchConfig>(defaultLaunchConfig);
+  const completionAd = useMemo(
+    () =>
+      createMobileCompletionInterstitial(
+        Platform.OS === 'ios'
+          ? launchConfig.completionInterstitialIos
+          : launchConfig.completionInterstitialAndroid,
+      ),
+    [
+      launchConfig.completionInterstitialIos,
+      launchConfig.completionInterstitialAndroid,
+    ],
+  );
+  const completionAdContext = useRef<Record<string, string | number>>({});
+  completionAdContext.current = {
+    ...languageTelemetry(puzzle, language),
+    puzzle_id: puzzle.puzzleId,
+  };
+  const transition = useMemo(
+    () =>
+      createCompletionTransition(
+        completionAd,
+        completionTransitionStore(),
+        event => telemetry.impression(event, completionAdContext.current),
+      ),
+    [completionAd],
+  );
+  const completionNavigationRef = useRef(false);
+  const [completionNavigationBusy, setCompletionNavigationBusy] =
+    useState(false);
+  useEffect(() => {
+    completionAd.preload();
+    return () => completionAd.dispose();
+  }, [completionAd]);
   const {
     visible: leaderboardVisible,
     openFailed: leaderboardOpenFailed,
     submitScore: submitLeaderboardScore,
     openLeaderboard,
   } = useLeaderboard({
-    enabled: launchConfig.leaderboardEnabled,
+    enabled: launchConfig.leaderboardEnabled && language === 'ko',
     adapter: leaderboardAdapter,
     telemetry,
   });
@@ -885,16 +928,6 @@ function AppContent() {
   } | null>(null);
   const [completionCelebrationPuzzleId, setCompletionCelebrationPuzzleId] =
     useState<string | null>(null);
-  const [rewardedAdPlacement, setRewardedAdPlacement] =
-    useState<RewardedAdPlacement | null>(null);
-  const [, setAdDiagnosticsTapCount] = useState(0);
-  const [isAdDiagnosticsOpen, setIsAdDiagnosticsOpen] = useState(false);
-  const [adDiagnosticState, setAdDiagnosticState] = useState<AdDiagnosticState>(
-    {
-      isRunning: false,
-      message: '대기 중',
-    },
-  );
   const submittedLeaderboardPuzzleIdsRef = useRef(new Set<string>());
   const returnReminderPromptedPuzzleIdsRef = useRef(new Set<string>());
   const returnReminderPrepromptRef = useRef<{
@@ -931,11 +964,6 @@ function AppContent() {
   const missionRef = useRef(mission);
   missionRef.current = mission;
 
-  const persistDailyHintWallet = useCallback((wallet: DailyHintWallet) => {
-    setDailyHintWallet(wallet);
-    dailyHintWalletRepository.saveWallet(wallet).catch(() => {});
-  }, []);
-
   const navigateTo = useCallback((nextRoute: AppRoute) => {
     setRoute(nextRoute);
   }, []);
@@ -967,6 +995,7 @@ function AppContent() {
   }, [handleReturnReminderOpen]);
 
   const goBackWithinSceneGraph = useCallback(() => {
+    if (completionNavigationRef.current) return true;
     if (settingsOpen) {
       setSettingsOpen(false);
       return true;
@@ -1063,33 +1092,25 @@ function AppContent() {
     const timer = setInterval(() => setTileClock(Date.now()), 1000);
     return () => clearInterval(timer);
   }, [tileTimerVisible, mission.pausedAt]);
-  const selectedEntry = viewModel.selectedEntry;
   const progressPercent = getProgressPercent(
     viewModel.completedEntries.length,
     puzzle.entries.length,
   );
   const remainingAttempts = getRemainingAttempts(mission);
-  const todayKey = getTodayDateKey();
-  // KST 날짜별 공용 지갑. 난이도·재시도·지난 퍼즐을 오가도 같은 잔액을 쓴다.
-  const activeDailyHintWallet =
-    dailyHintWallet.date === todayKey
-      ? dailyHintWallet
-      : createDailyHintWallet(todayKey);
-  const dailyHintBalance = getDailyHintBalance(
-    activeDailyHintWallet,
-    launchConfig.dailyFreeHintCredits,
-  );
-  const remainingHintCredits = dailyHintBalance.remainingCredits;
+  const todayKey = day;
   const hasProgress =
     Object.keys(cellValues).length > 0 ||
     hintCount > 0 ||
     viewModel.completedEntries.length > 0;
   const hasStarted = mission.attemptsUsed > 0 || hasProgress;
   const isCompleted = viewModel.isComplete || mission.completedAt != null;
-  const dailySummary = getDailyFreePuzzleSummary(
-    puzzlePack.summaries,
-    todayKey,
-  );
+  const todayPuzzles = dailyPuzzles(puzzlePack.summaries, language, todayKey);
+  const completedToday = todayPuzzles.filter(
+    p => dateCardStates[p.puzzleId]?.completedAt,
+  ).length;
+  const dailySummary =
+    todayPuzzles.find(p => !dateCardStates[p.puzzleId]?.completedAt) ??
+    todayPuzzles.at(-1);
   const [homePreview, setHomePreview] = useState<Puzzle | null>(null);
   const [homePreviewError, setHomePreviewError] = useState(false);
   const [packReload, setPackReload] = useState(0);
@@ -1196,79 +1217,6 @@ function AppContent() {
     [archivePuzzleSummaries, puzzle, puzzlePack.summaries],
   );
 
-  const isBoardEmpty = Object.keys(cellValues).length === 0;
-  const currentAttemptFirstInputKey = `${puzzle.puzzleId}:${mission.attemptsUsed}`;
-  const isFirstInputPending =
-    isBoardEmpty &&
-    !gameplayAttemptTrackerRef.current.hasFirstInput(
-      currentAttemptFirstInputKey,
-    );
-  const wrongCellCount = useMemo(
-    () =>
-      Object.entries(cellValues).filter(
-        ([key, value]) =>
-          value !== '' && value !== getCellAnswerLetter(puzzle, key),
-      ).length,
-    [cellValues, puzzle],
-  );
-  const stuckHintWordsRemaining =
-    puzzle.entries.length - viewModel.completedEntries.length;
-  const {
-    isVisible: isStuckHintPromptVisible,
-    trigger: stuckHintTrigger,
-    nearFinish: isStuckHintNearFinish,
-    wordsRemaining: stuckHintShownWordsRemaining,
-    hide: hideStuckHintPrompt,
-    dismiss: dismissStuckHintPromptCta,
-  } = useStuckHintPrompt({
-    active:
-      launchConfig.stuckHintPromptEnabled &&
-      route === 'today' &&
-      hasStarted &&
-      !isCompleted,
-    resetKeys: [cellValues],
-    firstInputPending: isFirstInputPending,
-    firstInputIdleMs: launchConfig.stuckHintFirstInputIdleMs,
-    wrongCellCount,
-    wrongCellThreshold: launchConfig.stuckHintWrongCellThreshold,
-    idleMs: launchConfig.stuckHintIdleMs,
-    wrongIdleMs: launchConfig.stuckHintWrongIdleMs,
-    puzzleKey: puzzle.puzzleId,
-    maxPromptsPerAttempt: launchConfig.stuckHintMaxPromptsPerAttempt,
-    maxDismissals: launchConfig.stuckHintMaxDismissals,
-    dismissBackoffFactor: launchConfig.stuckHintDismissBackoffFactor,
-    minCooldownMs: launchConfig.stuckHintMinCooldownMs,
-    progressPercent,
-    wordsRemaining: stuckHintWordsRemaining,
-    finishNudgeProgressThreshold: launchConfig.finishNudgeProgressThreshold,
-    finishNudgeWordsRemaining: launchConfig.finishNudgeWordsRemaining,
-    onShow: ({
-      trigger,
-      delayMs,
-      promptSeq,
-      dismissCount,
-      nearFinish,
-      wordsRemaining,
-    }) => {
-      telemetry.impression(STUCK_HINT_PROMPT_EVENT, {
-        ...getPuzzleTelemetryParams(puzzle, selectedPuzzleSummary),
-        attempt_number: mission.attemptsUsed,
-        hint_count: hintCount,
-        idle_seconds: delayMs / 1000,
-        progress_percent: progressPercent,
-        remaining_hint_credits: remainingHintCredits,
-        total_words: puzzle.entries.length,
-        trigger,
-        prompt_seq: promptSeq,
-        dismiss_count: dismissCount,
-        words_filled: viewModel.completedEntries.length,
-        wrong_cell_count: wrongCellCount,
-        near_finish: nearFinish,
-        words_remaining: wordsRemaining,
-      });
-    },
-  });
-
   // AppState와 route listener가 stale closure 없이 이탈 직전 상태를 사용하도록
   // 최신 진행 스냅샷을 매 렌더 갱신한다.
   abandonSnapshotRef.current = {
@@ -1312,14 +1260,16 @@ function AppContent() {
   }, [emitPuzzleAbandon, route]);
 
   const refreshPuzzleArchive = useCallback(async () => {
-    const nextArchiveRecords = await listArchivedPuzzles();
+    const nextArchiveRecords = (await listArchivedPuzzles()).filter(
+      p => puzzleLanguage(p.puzzle) === language,
+    );
     const archiveStates = await loadDateCardStates(
       nextArchiveRecords.map(record => createPuzzleSummary(record.puzzle)),
     );
 
     setPuzzleArchiveRecords(nextArchiveRecords);
     setDateCardStates(previous => ({ ...previous, ...archiveStates }));
-  }, []);
+  }, [language]);
 
   const savePuzzleSnapshot = useCallback(
     async (nextPuzzle: Puzzle, options: PuzzleArchiveSaveOptions = {}) => {
@@ -1364,6 +1314,7 @@ function AppContent() {
       }
 
       setCompletionCelebrationPuzzleId(null);
+      activeSessionRef.current = session.nextPuzzle.puzzleId;
       setPuzzle(session.nextPuzzle);
       const restored = createLetterTileState(
         session.nextPuzzle,
@@ -1401,6 +1352,7 @@ function AppContent() {
       setTileInput(restored.progress);
       setTileStatus('idle');
       setHintCount(session.savedProgress.hintCount);
+      setEarnedHintCredits(session.savedProgress.earnedHintCredits);
       setMission(session.savedMission);
       setSelectedDirection(
         session.nextPuzzle.entries.find(
@@ -1409,7 +1361,6 @@ function AppContent() {
       );
       setSelectedEntryId(restored.progress.entryId);
       setSelectedCellKey(restored.progress.activeCellKey);
-      setNotice(`${session.nextPuzzle.date} 퍼즐을 불러왔습니다.`);
     },
     [],
   );
@@ -1419,16 +1370,35 @@ function AppContent() {
 
     async function hydrateInitialSession() {
       cancelStaleMobileReturnReminder(getTodayDateKey()).catch(() => {});
-      let nextPuzzlePack = bundledPuzzlePack;
+      let nextPuzzlePack = {
+        ...bundledPuzzlePack,
+        summaries: bundledPuzzlePack.summaries.filter(
+          p => puzzleLanguage(p) === language,
+        ),
+      };
 
       try {
-        nextPuzzlePack = await loadRemotePuzzlePack();
+        nextPuzzlePack = await loadRemotePuzzlePack(language);
+        nextPuzzlePack.summaries = nextPuzzlePack.summaries.filter(
+          p => puzzleLanguage(p) === language && p.date <= day,
+        );
       } catch {
-        nextPuzzlePack = bundledPuzzlePack;
+        nextPuzzlePack = {
+          ...bundledPuzzlePack,
+          summaries: bundledPuzzlePack.summaries.filter(
+            p => puzzleLanguage(p) === language,
+          ),
+        };
       }
 
-      const nextSummaries = nextPuzzlePack.summaries;
-      const nextArchiveRecords = await listArchivedPuzzles();
+      const nextArchiveRecords = (await listArchivedPuzzles()).filter(
+        p => puzzleLanguage(p.puzzle) === language,
+      );
+      const nextSummaries = uniquePuzzleSummaries([
+        ...nextPuzzlePack.summaries,
+        ...nextArchiveRecords.map(record => createPuzzleSummary(record.puzzle)),
+      ]);
+      nextPuzzlePack.summaries = nextSummaries;
       const [nextCompletionDates, nextBestTimes] = await Promise.all([
         mobileCompletionDatesRepository.migrateCompletionDatesIfNeeded({
           archiveRecords: nextArchiveRecords,
@@ -1439,11 +1409,17 @@ function AppContent() {
         ...nextSummaries,
         ...nextArchiveRecords.map(record => createPuzzleSummary(record.puzzle)),
       ]);
-      const initialPuzzleId = getInitialPuzzleId(nextSummaries);
-      const [states, session, nextDailyHintWallet] = await Promise.all([
+      const hydratedStates = await loadDateCardStates(hydratedSummaries);
+      const todayPuzzles = dailyPuzzles(nextSummaries, language, day);
+      const initialPuzzleId = (
+        todayPuzzles.find(p => !hydratedStates[p.puzzleId]?.completedAt) ??
+        todayPuzzles.at(-1)
+      )?.puzzleId;
+      const [states, session] = await Promise.all([
         loadDateCardStates(hydratedSummaries),
-        loadPuzzleSession(initialPuzzleId, nextPuzzlePack),
-        loadDailyHintWalletForDate(getTodayDateKey(), hydratedSummaries),
+        initialPuzzleId
+          ? loadPuzzleSession(initialPuzzleId, nextPuzzlePack)
+          : Promise.resolve(null),
       ]);
 
       if (isCancelled) {
@@ -1468,47 +1444,38 @@ function AppContent() {
           setTileTimerVisible(display.timer !== false);
         }
       } catch {}
+      for (const row of dailyPuzzles(nextSummaries, language, day))
+        loadPuzzleFromPack(row.puzzleId, nextPuzzlePack).catch(() => {});
       setPuzzlePack(nextPuzzlePack);
       setPuzzleArchiveRecords(nextArchiveRecords);
       completionDatesRef.current = nextCompletionDates;
       setCompletionDates(nextCompletionDates);
       setBestTimes(nextBestTimes);
       setDateCardStates(states);
-      setDailyHintWallet(nextDailyHintWallet);
-      applyPuzzleSession(session);
-      setNotice(
-        nextPuzzlePack.source === 'remote'
-          ? `${session?.nextPuzzle.date ?? '원격'} 퍼즐팩을 불러왔습니다.`
-          : `${session?.nextPuzzle.date ?? '기본'} 퍼즐팩을 불러왔습니다.`,
-      );
+      if (!activeSessionRef.current || currentRouteRef.current === 'home')
+        applyPuzzleSession(session);
       setIsLoading(false);
     }
 
+    if (!languageReady) return;
     hydrateInitialSession().catch(() => {
       if (!isCancelled) {
         setIsLoading(false);
-        setNotice('퍼즐 데이터를 불러오지 못했습니다.');
+        setNotice(t('퍼즐 데이터를 불러오지 못했습니다.'));
       }
     });
 
     return () => {
       isCancelled = true;
     };
-  }, [applyPuzzleSession, packReload]);
-
-  const refreshDailyHintWallet = useCallback(async () => {
-    const date = getTodayDateKey();
-    if (dailyHintWallet.date === date) {
-      return;
-    }
-
-    const summaries = uniquePuzzleSummaries([
-      ...puzzlePack.summaries,
-      ...puzzleArchiveRecords.map(record => createPuzzleSummary(record.puzzle)),
-    ]);
-    const wallet = await loadDailyHintWalletForDate(date, summaries);
-    setDailyHintWallet(wallet);
-  }, [dailyHintWallet.date, puzzleArchiveRecords, puzzlePack.summaries]);
+  }, [
+    applyPuzzleSession,
+    packReload,
+    language,
+    languageReady,
+    day,
+    mobileCompletionDatesRepository,
+  ]);
 
   // 백그라운드 전환 시 풀이 타이머 자동 일시정지/재개(#384, 웹 #232와 동일 규칙).
   // "오늘" 화면에서 시작·미완료·시도 소진 전 진행 중일 때만 정지하고, active 복귀에서
@@ -1543,7 +1510,6 @@ function AppContent() {
   }, [completionCelebrationPuzzleId]);
 
   useEffect(() => {
-    refreshDailyHintWallet().catch(() => {});
     const subscription = AppState.addEventListener('change', state => {
       if (state === 'active') {
         const nextMission = applyAppStateTransition(
@@ -1556,7 +1522,6 @@ function AppContent() {
           setMission(nextMission);
           saveStoredMission(nextMission);
         }
-        refreshDailyHintWallet().catch(() => {});
         // 알림 시각 전에 이미 돌아왔으면 오늘자 예약은 소음이라 취소한다.
         cancelStaleMobileReturnReminder(getTodayDateKey()).catch(() => {});
         consumePendingReturnReminderOpen()
@@ -1588,7 +1553,7 @@ function AppContent() {
     });
 
     return () => subscription.remove();
-  }, [emitPuzzleAbandon, handleReturnReminderOpen, refreshDailyHintWallet]);
+  }, [emitPuzzleAbandon, handleReturnReminderOpen]);
 
   useEffect(() => {
     if (isLoading) {
@@ -1625,18 +1590,25 @@ function AppContent() {
     saveStoredProgress(puzzle.puzzleId, {
       cellValues,
       // 광고 보상은 날짜별 공용 지갑에 저장한다. 필드는 구버전 스키마 호환용이다.
-      earnedHintCredits: 0,
+      earnedHintCredits,
       hintCount,
       tileInput,
     }).then(saved => {
       if (!saved) {
-        setNotice('진행을 저장하지 못했어요. 저장 공간을 확인해 주세요.');
+        setNotice(t('진행을 저장하지 못했어요. 저장 공간을 확인해 주세요.'));
         telemetry.impression('progress_save_error', {
           puzzle_id: puzzle.puzzleId,
         });
       }
     });
-  }, [cellValues, hintCount, tileInput, isLoading, puzzle.puzzleId]);
+  }, [
+    cellValues,
+    hintCount,
+    earnedHintCredits,
+    tileInput,
+    isLoading,
+    puzzle.puzzleId,
+  ]);
 
   useEffect(() => {
     if (isLoading) {
@@ -1647,105 +1619,29 @@ function AppContent() {
       ...previous,
       [puzzle.puzzleId]: createDateCardState(mission, {
         cellValues,
-        earnedHintCredits: 0,
+        earnedHintCredits,
         hintCount,
       }),
     }));
-  }, [cellValues, hintCount, isLoading, mission, puzzle.puzzleId]);
-
-  const getMobileAdTelemetryParams = useCallback(
-    (
-      placement: string,
-      nextPuzzle = puzzle,
-      summary = selectedPuzzleSummary,
-    ) => ({
-      ...getPuzzleTelemetryParams(nextPuzzle, summary),
-      ad_placement: placement,
-      ad_provider: 'admob',
-    }),
-    [puzzle, selectedPuzzleSummary],
-  );
-
-  const openAdDiagnostics = useCallback(() => {
-    setIsAdDiagnosticsOpen(true);
-    setAdDiagnosticState({
-      isRunning: false,
-      message: '대기 중',
-    });
-  }, []);
-
-  const handleAdDiagnosticsUnlockTap = useCallback(() => {
-    setAdDiagnosticsTapCount(previous => {
-      const next = previous + 1;
-
-      if (next >= 7) {
-        openAdDiagnostics();
-        return 0;
-      }
-
-      return next;
-    });
-  }, [openAdDiagnostics]);
-
-  const runRewardedAdDiagnostic = useCallback(
-    async (placement: RewardedAdPlacement, adUnitMode: MobileAdUnitMode) => {
-      setAdDiagnosticState({
-        isRunning: true,
-        message: `${placement} ${adUnitMode} 요청 중`,
-      });
-
-      const result = await showRewardedAd(placement, { adUnitMode });
-      const eventSequence = formatMobileAdEventSequence(result.events);
-      const failureCode = getMobileAdFailureCode(result.events);
-      const message = `${placement} ${adUnitMode}: ${result.status}${
-        failureCode == null ? '' : ` (${failureCode})`
-      }\n${eventSequence}`;
-
-      telemetry.impression('mobile_ad_diagnostic_result', {
-        ad_mode: adUnitMode,
-        ad_placement: placement,
-        ad_provider: 'admob',
-        ad_status: result.status,
-        ad_summary: eventSequence,
-      });
-      setAdDiagnosticState({
-        isRunning: false,
-        message,
-      });
-    },
-    [],
-  );
-
-  const openAdInspector = useCallback(async () => {
-    setAdDiagnosticState({
-      isRunning: true,
-      message: 'Ad Inspector 여는 중',
-    });
-
-    const result = await openMobileAdsInspector();
-
-    telemetry.impression('mobile_ad_inspector_open', {
-      ad_error_code: result.errorCode,
-      ad_provider: 'admob',
-      ad_status: result.status,
-    });
-    setAdDiagnosticState({
-      isRunning: false,
-      message:
-        result.status === 'opened'
-          ? 'Ad Inspector를 닫았습니다.'
-          : `Ad Inspector 실패 (${result.errorCode ?? 'unknown'})`,
-    });
-  }, []);
+  }, [
+    cellValues,
+    hintCount,
+    earnedHintCredits,
+    isLoading,
+    mission,
+    puzzle.puzzleId,
+  ]);
 
   const openAdPrivacySettings = useCallback(async () => {
     const result = await showMobileAdsPrivacyOptions();
     setNotice(
       result.status === 'shown'
-        ? '광고 개인정보 선택을 반영했습니다.'
+        ? t('광고 개인정보 선택을 반영했습니다.')
         : result.status === 'not_required'
-          ? '현재 지역에서는 별도의 광고 개인정보 선택이 필요하지 않습니다.'
-          : '광고 개인정보 설정을 열지 못했습니다. 네트워크 연결 후 다시 시도해 주세요.',
+          ? t('현재 지역에서는 별도의 광고 개인정보 선택이 필요하지 않습니다.')
+          : t(
+              '광고 개인정보 설정을 열지 못했습니다. 네트워크 연결 후 다시 시도해 주세요.',
+            ),
     );
   }, []);
 
@@ -1809,7 +1705,7 @@ function AppContent() {
     }
     // 완료일을 누적하고 스트릭 마일스톤(7/30/100)을 1회 계측한다. 이전 값은 오늘 몫을
     // 더하지 않는 비관 계산으로 읽어야 완료 전후가 갈린다(웹과 동일 규칙).
-    const completionToday = getTodayDateKey();
+    const completionToday = puzzle.date;
     const previousStreak = computeConsecutiveStreakDays(
       completionDatesRef.current,
       completionToday,
@@ -1926,7 +1822,9 @@ function AppContent() {
         elapsedSeconds,
       }).catch(() => undefined);
     }
-    setNotice('퍼즐을 완료했습니다. 정답판을 확인한 뒤 결과를 볼 수 있습니다.');
+    setNotice(
+      t('퍼즐을 완료했습니다. 정답판을 확인한 뒤 결과를 볼 수 있습니다.'),
+    );
     if (route === 'today') {
       navigateTo('result');
     }
@@ -1935,6 +1833,8 @@ function AppContent() {
     completedDates,
     consecutiveStreak,
     hintCount,
+    earnedHintCredits,
+    mobileCompletionDatesRepository,
     isLoading,
     launchConfig.leaderboardScoreCompletedWord,
     launchConfig.leaderboardScoreHint,
@@ -1968,6 +1868,7 @@ function AppContent() {
         attempt_number: mission.attemptsUsed,
         completed_word_count: viewModel.completedEntries.length,
         word_count: puzzle.entries.length,
+        ...languageTelemetry(puzzle, puzzleLanguage(puzzle)),
         progress_percent: progressPercent,
         milestone,
         elapsed_seconds: getElapsedSeconds(mission.lastStartedAt, undefined, {
@@ -2020,103 +1921,6 @@ function AppContent() {
     };
   }, [goBackWithinSceneGraph]);
 
-  async function requestRewardedHintCredits() {
-    if (!launchConfig.rewardedHintAdsEnabled) {
-      setNotice('운영 설정에서 힌트 광고가 꺼져 있습니다.');
-      return;
-    }
-
-    if (rewardedAdPlacement != null) {
-      setNotice('광고를 불러오는 중입니다.');
-      return;
-    }
-
-    // 게임 세부 지표: 리워드 광고 보조 요청(힌트).
-    gameAnalytics.track('game_assist_ad', getGamePuzzleContext(puzzle), {
-      assistType: 'rewarded_hint',
-      result: 'request',
-    });
-
-    await runRewardedHintAdFlow({
-      attempt: async (attempt: RewardedAdRetryAttempt) => {
-        const result = await showRewardedAd('rewardedHint');
-        result.events.forEach(event => {
-          trackRewardedHintAdTrace(telemetry, mapMobileAdTraceEvent(event), {
-            ...getMobileAdTelemetryParams('rewardedHint'),
-            retry: attempt,
-          });
-        });
-        return result;
-      },
-      getStatus: getMobileRewardedAdRetryStatus,
-      mapError: mapRewardedAdRetryError,
-      onAttemptResult: (result, retry) => {
-        trackRewardedHintAdResult(
-          telemetry,
-          {
-            ...getMobileAdTelemetryParams('rewardedHint'),
-            ad_status: result.status,
-          },
-          retry,
-        );
-      },
-      onAttemptStart: retry => {
-        trackRewardedHintAdRequest(
-          telemetry,
-          {
-            ...getMobileAdTelemetryParams('rewardedHint'),
-            rewarded_hint_credits: launchConfig.rewardedHintCredits,
-          },
-          retry,
-        );
-      },
-      onFailure: result => {
-        // 게임 세부 지표: 리워드 광고 보조 실패/취소(힌트). 유저 취소(closed)는
-        // dismiss, 그 외 실패(failed 등)는 error로 계측한다(#321).
-        gameAnalytics.track('game_assist_ad', getGamePuzzleContext(puzzle), {
-          assistType: 'rewarded_hint',
-          result: mapRewardedAdFailureToAssistResult(result.status),
-        });
-        if (result.status === 'closed') {
-          setNotice('광고를 끝까지 보지 않아 힌트가 지급되지 않았습니다.');
-        } else {
-          setNotice(
-            `광고를 불러오지 못했습니다. (${getMobileAdFailureCode(
-              result.events,
-            )})`,
-          );
-        }
-      },
-      onLoadingChange: loading => {
-        setRewardedAdPlacement(loading ? 'rewardedHint' : null);
-      },
-      onRetry: () => {
-        setNotice('광고를 다시 준비하는 중입니다.');
-      },
-      onReward: (_result, retry) => {
-        persistDailyHintWallet(
-          grantDailyHintCredits(
-            activeDailyHintWallet,
-            launchConfig.rewardedHintCredits,
-          ),
-        );
-        telemetry.impression(REWARDED_HINT_AD_REWARD_EVENT, {
-          ...getMobileAdTelemetryParams('rewardedHint'),
-          retry,
-          rewarded_hint_credits: launchConfig.rewardedHintCredits,
-        });
-        // 게임 세부 지표: 리워드 광고 보조 보상 지급(힌트).
-        gameAnalytics.track('game_assist_ad', getGamePuzzleContext(puzzle), {
-          assistType: 'rewarded_hint',
-          result: 'reward',
-        });
-        setNotice(
-          `광고 보상으로 힌트 ${launchConfig.rewardedHintCredits}개를 받았습니다.`,
-        );
-      },
-    });
-  }
-
   async function selectPuzzle(
     puzzleId: string,
     destination: AppRoute = 'home',
@@ -2139,7 +1943,7 @@ function AppContent() {
     navigateTo(destination);
 
     if (session == null) {
-      setNotice('퍼즐 데이터를 찾을 수 없습니다.');
+      setNotice(t('퍼즐 데이터를 찾을 수 없습니다.'));
       return;
     }
 
@@ -2250,138 +2054,6 @@ function AppContent() {
     }
   }
 
-  function revealLetter() {
-    if (selectedEntry == null) {
-      return;
-    }
-
-    if (remainingHintCredits === 0) {
-      // [#381] attempt() 예외는 runRewardedHintAdFlow 안에서 정규화되지만,
-      // 요청 진입점 자체가 미처리 rejection을 남기지 않도록 방어적으로 처리한다.
-      setRewardPromptOpen(true);
-      return;
-    }
-
-    const cells = getEntryCells(selectedEntry);
-    const answerLetters = [...selectedEntry.answer];
-    const targetIndex = pickHintCellIndex(
-      selectedEntry,
-      cellValues,
-      viewModel.cellEntries,
-    );
-
-    if (targetIndex === -1) {
-      setNotice('선택한 단어는 이미 모두 채워졌습니다.');
-      return;
-    }
-
-    const targetCell = cells[targetIndex];
-    const targetKey = getCellKey(targetCell.row, targetCell.col);
-    const nextWallet = consumeDailyHintCredit(
-      activeDailyHintWallet,
-      launchConfig.dailyFreeHintCredits,
-    );
-    if (nextWallet == null) {
-      setNotice('오늘의 무료 힌트를 모두 사용했습니다.');
-      return;
-    }
-    persistDailyHintWallet(nextWallet);
-    const nextValues = {
-      ...cellValues,
-      [targetKey]: answerLetters[targetIndex],
-    };
-
-    telemetry.click('hint_reveal', {
-      ...getPuzzleTelemetryParams(puzzle, selectedPuzzleSummary),
-      hint_count: hintCount + 1,
-      remaining_hint_credits: remainingHintCredits - 1,
-    });
-    // 게임 세부 지표: 힌트 사용(콘텐츠 난이도 체감 신호).
-    gameAnalytics.track('game_hint_use', getGamePuzzleContext(puzzle), {
-      hintType: 'hint',
-      hintRemainingAfter: remainingHintCredits - 1,
-    });
-    setHintCount(previous => previous + 1);
-    changeTileState(
-      confirmLetterTileCell(
-        puzzle,
-        { ...tileState, cellValues: nextValues },
-        targetKey,
-      ),
-      'select',
-    );
-    setNotice(
-      `힌트 1개를 사용했습니다. 남은 힌트 ${remainingHintCredits - 1}개`,
-    );
-  }
-
-  function acceptFirstInputNudge() {
-    hideStuckHintPrompt();
-    telemetry.click(STUCK_HINT_PROMPT_ACCEPT_EVENT, {
-      ...getPuzzleTelemetryParams(puzzle, selectedPuzzleSummary),
-      attempt_number: mission.attemptsUsed,
-      progress_percent: progressPercent,
-      remaining_hint_credits: remainingHintCredits,
-      trigger: 'first_input',
-      near_finish: false,
-      words_remaining: stuckHintShownWordsRemaining,
-    });
-    const starter = resolveStarterCell({ cellValues, puzzle });
-    if (starter == null) {
-      return;
-    }
-    const entry = puzzle.entries.find(item => item.id === starter.entryId);
-    if (entry != null) {
-      changeTileState(
-        selectLetterEntry(puzzle, tileState, entry.id, starter.cellKey),
-        'select',
-      );
-    }
-  }
-
-  function acceptStuckHintPrompt() {
-    hideStuckHintPrompt();
-    telemetry.click(STUCK_HINT_PROMPT_ACCEPT_EVENT, {
-      ...getPuzzleTelemetryParams(puzzle, selectedPuzzleSummary),
-      attempt_number: mission.attemptsUsed,
-      progress_percent: progressPercent,
-      remaining_hint_credits: remainingHintCredits,
-      trigger: stuckHintTrigger,
-      near_finish: isStuckHintNearFinish,
-      words_remaining: stuckHintShownWordsRemaining,
-    });
-    revealLetter();
-  }
-
-  function acceptNearFinishNudge() {
-    hideStuckHintPrompt();
-    telemetry.click(STUCK_HINT_PROMPT_ACCEPT_EVENT, {
-      ...getPuzzleTelemetryParams(puzzle, selectedPuzzleSummary),
-      attempt_number: mission.attemptsUsed,
-      progress_percent: progressPercent,
-      remaining_hint_credits: remainingHintCredits,
-      trigger: stuckHintTrigger,
-      near_finish: true,
-      words_remaining: stuckHintShownWordsRemaining,
-    });
-    const entry = getFirstIncompleteEntry(puzzle.entries, cellValues);
-    if (entry != null) {
-      changeTileState(selectLetterEntry(puzzle, tileState, entry.id), 'select');
-    }
-  }
-
-  function dismissStuckHintPrompt() {
-    dismissStuckHintPromptCta();
-    telemetry.click(STUCK_HINT_PROMPT_DISMISS_EVENT, {
-      ...getPuzzleTelemetryParams(puzzle, selectedPuzzleSummary),
-      attempt_number: mission.attemptsUsed,
-      progress_percent: progressPercent,
-      trigger: stuckHintTrigger,
-      near_finish: isStuckHintNearFinish,
-      words_remaining: stuckHintShownWordsRemaining,
-    });
-  }
-
   function clearProgress() {
     setCellValues({});
     setTileInput(undefined);
@@ -2390,7 +2062,7 @@ function AppContent() {
     setSelectedDirection('across');
     setSelectedEntryId(getInitialEntryId(puzzle));
     setSelectedCellKey(getInitialEntryStartCellKey(puzzle));
-    setNotice('진행 상황을 초기화했습니다.');
+    setNotice(t('진행 상황을 초기화했습니다.'));
     clearStoredProgress(puzzle.puzzleId);
   }
 
@@ -2406,7 +2078,7 @@ function AppContent() {
 
     if (!hasStarted) {
       if (remainingAttempts === 0) {
-        setNotice('오늘 시도 기회를 모두 사용했습니다.');
+        setNotice(t('오늘 시도 기회를 모두 사용했습니다.'));
         return;
       }
 
@@ -2465,7 +2137,7 @@ function AppContent() {
     const session = await loadPuzzleSession(puzzleId, puzzlePack);
     if (session == null) {
       setIsLoading(false);
-      setNotice('퍼즐 데이터를 찾을 수 없습니다.');
+      setNotice(t('퍼즐 데이터를 찾을 수 없습니다.'));
       telemetry.click(HOME_QUICK_START_EVENT, {
         puzzle_id: puzzleId,
         source: 'single_daily',
@@ -2523,7 +2195,7 @@ function AppContent() {
 
   function restartMissionAttempt() {
     if (remainingAttempts === 0 || isCompleted) {
-      setNotice('다시 풀 수 있는 시도 기회가 없습니다.');
+      setNotice(t('다시 풀 수 있는 시도 기회가 없습니다.'));
       return;
     }
 
@@ -2562,7 +2234,7 @@ function AppContent() {
         </View>
         <View style={styles.progressBadge}>
           <Text style={styles.progressValue}>{progressPercent}%</Text>
-          <Text style={styles.progressLabel}>완료</Text>
+          <Text style={styles.progressLabel}>{t('완료')}</Text>
         </View>
       </View>
     );
@@ -2582,7 +2254,10 @@ function AppContent() {
     });
     return (
       <ScrollView contentContainerStyle={styles.homeContent}>
-        {renderHeader('이어 풀기', `못 끝낸 퍼즐 ${incomplete.length}개`)}
+        {renderHeader(
+          t('이어 풀기'),
+          t('못 끝낸 퍼즐 {0}개', incomplete.length),
+        )}
         {incomplete.length > 0 ? (
           incomplete.map(record => {
             const state = dateCardStates[record.puzzleId];
@@ -2602,11 +2277,14 @@ function AppContent() {
                 style={styles.summaryPanel}
               >
                 <Text style={styles.panelTitle}>
-                  {record.puzzle.gridSize}×{record.puzzle.gridSize} 판
+                  {record.puzzle.gridSize}×{record.puzzle.gridSize}
+                  {t('판')}
                 </Text>
                 <Text style={styles.smallText}>
-                  {record.puzzle.entries.length}개 단어 ·{' '}
-                  {isExhausted ? '결과 보기' : '이어 풀기'} · 기기 저장 사본
+                  {record.puzzle.entries.length}
+                  {t('개 단어 ·')}{' '}
+                  {isExhausted ? t('결과 보기') : t('이어 풀기')}
+                  {t('· 기기 저장 사본')}
                 </Text>
               </Pressable>
             );
@@ -2614,7 +2292,7 @@ function AppContent() {
         ) : (
           <View style={styles.summaryPanel}>
             <Text style={styles.smallText}>
-              못 끝낸 퍼즐이 없어요. 오늘의 퍼즐을 풀어보세요.
+              {t('못 끝낸 퍼즐이 없어요. 오늘의 퍼즐을 풀어보세요.')}
             </Text>
           </View>
         )}
@@ -2622,7 +2300,7 @@ function AppContent() {
           onPress={() => navigateTo('home')}
           style={styles.secondaryButton}
         >
-          <Text style={styles.secondaryButtonText}>홈으로</Text>
+          <Text style={styles.secondaryButtonText}>{t('홈으로')}</Text>
         </Pressable>
       </ScrollView>
     );
@@ -2634,9 +2312,10 @@ function AppContent() {
       : undefined;
     return (
       <TileHomeScreen
+        completedToday={completedToday}
         puzzle={homePreview}
         date={todayKey}
-        finished={saved?.completedAt != null}
+        finished={completedToday >= 5}
         started={(saved?.attemptsUsed ?? 0) > 0 || saved?.hasProgress === true}
         streak={consecutiveStreak}
         week={weeklyStrip}
@@ -2651,7 +2330,7 @@ function AppContent() {
           if (dailySummary)
             startDailyPuzzle(dailySummary.puzzleId).catch(() => {
               setIsLoading(false);
-              setNotice('퍼즐을 불러오지 못했어요. 다시 눌러주세요.');
+              setNotice(t('퍼즐을 불러오지 못했어요. 다시 눌러주세요.'));
             });
         }}
         onResume={() => navigateTo('resume')}
@@ -2662,65 +2341,6 @@ function AppContent() {
         onSettings={() => setSettingsOpen(true)}
         onLicense={() => navigateTo('license')}
       />
-    );
-  }
-
-  function renderAdDiagnosticsModal() {
-    return (
-      <Modal
-        animationType="fade"
-        onRequestClose={() => setIsAdDiagnosticsOpen(false)}
-        transparent
-        visible={isAdDiagnosticsOpen}
-      >
-        <View style={styles.completionModalOverlay}>
-          <View
-            accessibilityLabel="광고 진단"
-            accessibilityRole="alert"
-            style={styles.completionDialog}
-          >
-            <View style={styles.completionDialogText}>
-              <Text style={styles.completionDialogTitle}>광고 진단</Text>
-              <Text style={styles.adDiagnosticText}>
-                {adDiagnosticState.message}
-              </Text>
-            </View>
-            <View style={styles.adDiagnosticActions}>
-              <Pressable
-                disabled={adDiagnosticState.isRunning}
-                onPress={() => runRewardedAdDiagnostic('rewardedHint', 'test')}
-                style={styles.secondaryButton}
-              >
-                <Text style={styles.secondaryButtonText}>힌트 테스트</Text>
-              </Pressable>
-              <Pressable
-                disabled={adDiagnosticState.isRunning}
-                onPress={() =>
-                  runRewardedAdDiagnostic('rewardedHint', 'production')
-                }
-                style={styles.secondaryButton}
-              >
-                <Text style={styles.secondaryButtonText}>힌트 운영</Text>
-              </Pressable>
-            </View>
-            <View style={styles.completionDialogActions}>
-              <Pressable
-                disabled={adDiagnosticState.isRunning}
-                onPress={openAdInspector}
-                style={styles.primaryButton}
-              >
-                <Text style={styles.primaryButtonText}>Ad Inspector</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => setIsAdDiagnosticsOpen(false)}
-                style={styles.secondaryButton}
-              >
-                <Text style={styles.secondaryButtonText}>닫기</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
     );
   }
 
@@ -2737,11 +2357,9 @@ function AppContent() {
       <TilePuzzleScreen
         puzzle={puzzle}
         state={tileState}
-        hints={remainingHintCredits}
         hasStarted={hasStarted}
         isPaused={mission.pausedAt != null}
         onChange={changeTileState}
-        onHint={revealLetter}
         onBack={() => navigateTo('home')}
         onStart={startOrResumeMission}
         onResume={() =>
@@ -2761,47 +2379,6 @@ function AppContent() {
         }
         onSettings={() => setSettingsOpen(true)}
         feedback={tileFeedback || progressToast.message || undefined}
-        assistance={
-          isStuckHintPromptVisible ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Pressable
-                accessibilityRole="button"
-                style={{ flex: 1, minHeight: 44, justifyContent: 'center' }}
-                onPress={
-                  stuckHintTrigger === 'first_input'
-                    ? acceptFirstInputNudge
-                    : isStuckHintNearFinish
-                      ? acceptNearFinishNudge
-                      : acceptStuckHintPrompt
-                }
-              >
-                <Text
-                  style={{ fontSize: 11, lineHeight: 16, color: '#61765e' }}
-                >
-                  {getStuckHintPromptText({
-                    trigger: stuckHintTrigger,
-                    nearFinish: isStuckHintNearFinish,
-                    wordsRemaining: stuckHintShownWordsRemaining,
-                    hasHintCredits: remainingHintCredits > 0,
-                  })}
-                </Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="힌트 안내 닫기"
-                style={{
-                  minWidth: 44,
-                  minHeight: 44,
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                }}
-                onPress={dismissStuckHintPrompt}
-              >
-                <Text>×</Text>
-              </Pressable>
-            </View>
-          ) : undefined
-        }
         textScale={tileTextScale}
         timer={
           tileTimerVisible
@@ -2832,28 +2409,95 @@ function AppContent() {
     );
   }
 
+  async function leaveResult(next: boolean) {
+    if (completionNavigationRef.current) return;
+    completionNavigationRef.current = true;
+    setCompletionNavigationBusy(true);
+    try {
+      await transition.leave(
+        puzzle.puzzleId,
+        isCompleted && puzzle.dailySequence != null,
+        async () => {
+          const upcoming = todayPuzzles.find(
+            row =>
+              row.puzzleId !== puzzle.puzzleId &&
+              !dateCardStates[row.puzzleId]?.completedAt,
+          );
+          if (next && upcoming) await startDailyPuzzle(upcoming.puzzleId);
+          else navigateTo('home');
+        },
+        async () => {
+          await AsyncStorage.setItem(
+            getProgressKey(puzzle.puzzleId),
+            JSON.stringify({
+              cellValues,
+              hintCount,
+              earnedHintCredits,
+              tileInput,
+            }),
+          );
+          await AsyncStorage.setItem(
+            getMissionKey(mission.date, mission.puzzleId),
+            JSON.stringify(mission),
+          );
+          await savePuzzleSnapshot(puzzle, {
+            completedAt: mission.completedAt,
+            hintCount,
+          });
+        },
+      );
+    } catch {
+      setNotice(t('진행을 저장하지 못했어요. 저장 공간을 확인해 주세요.'));
+    } finally {
+      completionNavigationRef.current = false;
+      setCompletionNavigationBusy(false);
+    }
+  }
   function renderResult() {
     const elapsed = formatElapsedTime(
       mission.lastStartedAt,
       mission.completedAt,
       mission.pausedMs,
     );
-    const achievements = getCompletionAchievements({
-      hintCount,
-      attemptsUsed: mission.attemptsUsed,
-      revealUsed: false,
-    });
     return (
       <TileResultScreen
+        busy={completionNavigationBusy}
+        notice={
+          /못|없습니다|실패|couldn.t|failed/i.test(tileFeedback)
+            ? tileFeedback
+            : undefined
+        }
+        primaryLabel={
+          todayPuzzles.some(
+            row =>
+              row.puzzleId !== puzzle.puzzleId &&
+              !dateCardStates[row.puzzleId]?.completedAt,
+          )
+            ? t('다음 판')
+            : completedToday >= 5
+              ? t('오늘 완료, 홈으로')
+              : t('홈으로 돌아가기')
+        }
         puzzle={puzzle}
         values={cellValues}
         completed={viewModel.completedEntries.length}
         elapsed={elapsed}
-        hints={hintCount}
         streak={consecutiveStreak}
         best={isNewBestTime}
-        noHint={achievements.noHint}
-        onHome={() => navigateTo('home')}
+        onHome={() => {
+          if (
+            todayPuzzles.some(
+              row =>
+                row.puzzleId !== puzzle.puzzleId &&
+                !dateCardStates[row.puzzleId]?.completedAt,
+            )
+          )
+            navigateTo('home');
+          else void leaveResult(false);
+        }}
+        onPrimary={() => {
+          void leaveResult(true);
+        }}
         onHistory={() => {
           telemetry.click('history_open', { source: 'result_screen' });
           navigateTo('history');
@@ -2899,6 +2543,7 @@ function AppContent() {
             ? {
                 body: formatReturnReminderPrepromptBody(
                   returnReminderPreprompt.streakDays,
+                  language,
                 ),
                 accept: () => {
                   void acceptReturnReminder();
@@ -2926,8 +2571,10 @@ function AppContent() {
     return (
       <ScrollView contentContainerStyle={styles.homeContent}>
         {renderHeader(
-          '퍼즐 기록',
-          puzzleArchiveRecords.length > 0 ? '기기 저장 사본' : '최근 공개 퍼즐',
+          t('퍼즐 기록'),
+          puzzleArchiveRecords.length > 0
+            ? t('기기 저장 사본')
+            : t('최근 공개 퍼즐'),
         )}
         <PersonalStatsCard
           stats={historyStats.stats}
@@ -2964,27 +2611,28 @@ function AppContent() {
                   {formatPuzzleHistoryTitle(summary, puzzlePack.source)}
                 </Text>
                 <Text style={styles.historyMeta}>
-                  {summary.date} · {summary.metrics?.wordCount ?? '-'}단어 ·
-                  힌트 {state?.hintCount ?? 0}개
+                  {summary.date} · {summary.metrics?.wordCount ?? '-'}
+                  {t('단어')}
                 </Text>
               </View>
               <Text style={styles.historyState}>
                 {state?.completedAt != null
-                  ? '완료'
+                  ? t('완료')
                   : (state?.attemptsUsed ?? 0) >= DAILY_ATTEMPT_LIMIT
-                    ? '도전 종료'
+                    ? t('도전 종료')
                     : state?.hasProgress
-                      ? '진행 중'
-                      : '대기'}
+                      ? t('진행 중')
+                      : t('대기')}
               </Text>
             </Pressable>
           );
         })}
         <View style={styles.policyPanel}>
-          <Text style={styles.policyTitle}>기기 저장 기록</Text>
+          <Text style={styles.policyTitle}>{t('기기 저장 기록')}</Text>
           <Text style={styles.smallText}>
-            시작하거나 완료한 퍼즐은 기기에 스냅샷으로 남습니다. 원격 보존
-            기간에서 빠진 퍼즐도 앱 데이터가 유지되는 동안 다시 열 수 있습니다.
+            {t(
+              '시작하거나 완료한 퍼즐은 기기에 스냅샷으로 남습니다. 원격 보존 기간에서 빠진 퍼즐도 앱 데이터가 유지되는 동안 다시 열 수 있습니다.',
+            )}
           </Text>
         </View>
         <View style={styles.actions}>
@@ -2992,21 +2640,23 @@ function AppContent() {
             onPress={() => navigateTo('home')}
             style={styles.secondaryButton}
           >
-            <Text style={styles.secondaryButtonText}>홈으로</Text>
+            <Text style={styles.secondaryButtonText}>{t('홈으로')}</Text>
           </Pressable>
           <Pressable
             onPress={() => navigateTo('license')}
             style={styles.secondaryButton}
           >
-            <Text style={styles.secondaryButtonText}>출처</Text>
+            <Text style={styles.secondaryButtonText}>{t('출처')}</Text>
           </Pressable>
           {Platform.OS !== 'ios' ? (
             <Pressable
-              accessibilityLabel="광고 개인정보 설정"
+              accessibilityLabel={t('광고 개인정보 설정')}
               onPress={openAdPrivacySettings}
               style={styles.secondaryButton}
             >
-              <Text style={styles.secondaryButtonText}>광고 개인정보 설정</Text>
+              <Text style={styles.secondaryButtonText}>
+                {t('광고 개인정보 설정')}
+              </Text>
             </Pressable>
           ) : null}
         </View>
@@ -3017,24 +2667,33 @@ function AppContent() {
   function renderLicense() {
     return (
       <ScrollView contentContainerStyle={styles.homeContent}>
-        {renderHeader('자료 출처', '라이선스')}
+        {renderHeader(t('자료 출처'), t('라이선스'))}
         <View style={styles.summaryPanel}>
-          <Pressable onPress={handleAdDiagnosticsUnlockTap}>
-            <Text style={styles.panelTitle}>한국어기초사전</Text>
+          <Pressable>
+            <Text style={styles.panelTitle}>{t('한국어기초사전')}</Text>
           </Pressable>
           <Text style={styles.summaryText}>
-            일부 단어 힌트는 국립국어원 한국어기초사전 뜻풀이를 바탕으로
-            구성했습니다.
+            {t(
+              '일부 단어 힌트는 국립국어원 한국어기초사전 뜻풀이를 바탕으로 구성했습니다.',
+            )}
           </Text>
           <Text style={styles.smallText}>
-            Creative Commons Attribution-ShareAlike 2.0 Korea 조건을 따릅니다.
+            {t(
+              'Creative Commons Attribution-ShareAlike 2.0 Korea 조건을 따릅니다.',
+            )}
+          </Text>
+        </View>
+        <View style={styles.summaryPanel}>
+          <Text style={styles.panelTitle}>{t('영어 단서 출처')}</Text>
+          <Text style={styles.smallText}>
+            {WORDNET_LICENSE + '\n' + WORDFREQ_NOTICE}
           </Text>
         </View>
         <Pressable
           onPress={() => navigateTo('home')}
           style={styles.secondaryButton}
         >
-          <Text style={styles.secondaryButtonText}>홈으로</Text>
+          <Text style={styles.secondaryButtonText}>{t('홈으로')}</Text>
         </Pressable>
       </ScrollView>
     );
@@ -3046,7 +2705,35 @@ function AppContent() {
         <StatusBar barStyle="dark-content" backgroundColor="#f8f3e7" />
         <View style={styles.loadingScreen}>
           <ActivityIndicator color="#0f766e" size="large" />
-          <Text style={styles.notice}>퍼즐 데이터를 불러오는 중입니다.</Text>
+          <Text style={styles.notice}>
+            {t('퍼즐 데이터를 불러오는 중입니다.')}
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (
+    (route === 'today' || route === 'result') &&
+    puzzleLanguage(puzzle) !== language
+  ) {
+    return (
+      <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
+        <View style={styles.loadingScreen}>
+          <Text accessibilityRole="alert" style={styles.notice}>
+            {t(
+              '퍼즐을 불러오지 못했어요. 연결을 확인한 뒤 다시 불러와 주세요.',
+            )}
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            style={styles.secondaryButton}
+            onPress={() => navigateTo('home')}
+          >
+            <Text style={styles.secondaryButtonText}>
+              {t('홈으로 돌아가기')}
+            </Text>
+          </Pressable>
         </View>
       </SafeAreaView>
     );
@@ -3067,63 +2754,7 @@ function AppContent() {
                 : route === 'license'
                   ? renderLicense()
                   : renderHome()}
-        {renderAdDiagnosticsModal()}
-        <Modal
-          visible={rewardPromptOpen}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setRewardPromptOpen(false)}
-        >
-          <View
-            style={{
-              flex: 1,
-              justifyContent: 'center',
-              padding: 25,
-              backgroundColor: '#26402c77',
-            }}
-          >
-            <View
-              style={{
-                padding: 24,
-                borderRadius: 20,
-                backgroundColor: '#fffdf3',
-              }}
-            >
-              <Text
-                style={{ fontSize: 19, fontWeight: '700', color: '#254344' }}
-              >
-                광고를 보고 힌트 받기
-              </Text>
-              <Text
-                style={{ fontSize: 13, lineHeight: 21, marginVertical: 15 }}
-              >
-                광고를 끝까지 보면 힌트 {launchConfig.rewardedHintCredits}개를
-                받아요.
-              </Text>
-              <Pressable
-                accessibilityRole="button"
-                style={{ minHeight: 48, justifyContent: 'center' }}
-                onPress={() => {
-                  setRewardPromptOpen(false);
-                  requestRewardedHintCredits().catch(() =>
-                    setNotice(
-                      '광고를 불러오지 못했어요. 잠시 후 다시 눌러주세요.',
-                    ),
-                  );
-                }}
-              >
-                <Text>광고 보기</Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                style={{ minHeight: 48, justifyContent: 'center' }}
-                onPress={() => setRewardPromptOpen(false)}
-              >
-                <Text>계속 풀기</Text>
-              </Pressable>
-            </View>
-          </View>
-        </Modal>
+
         <Modal
           visible={settingsOpen}
           transparent
@@ -3148,11 +2779,26 @@ function AppContent() {
               <Text
                 style={{ fontSize: 22, fontWeight: '700', color: '#254344' }}
               >
-                설정
+                {t('설정')}
               </Text>
+              <View style={{ flexDirection: 'row', gap: 16 }}>
+                {(['ko', 'en'] as const).map(value => (
+                  <Pressable
+                    key={value}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: language === value }}
+                    onPress={() => {
+                      void selectLanguage(value);
+                    }}
+                    style={{ minHeight: 48, justifyContent: 'center' }}
+                  >
+                    <Text>{value === 'ko' ? '한국어' : 'English'}</Text>
+                  </Pressable>
+                ))}
+              </View>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="글자 크기"
+                accessibilityLabel={t('글자 크기')}
                 style={{ minHeight: 56, justifyContent: 'center' }}
                 onPress={() => {
                   const next = tileTextScale === 1 ? 1.15 : 1;
@@ -3166,11 +2812,14 @@ function AppContent() {
                   ).catch(() => {});
                 }}
               >
-                <Text>글자 크기: {tileTextScale === 1 ? '보통' : '크게'}</Text>
+                <Text>
+                  {t('글자 크기:')}
+                  {tileTextScale === 1 ? t('보통') : t('크게')}
+                </Text>
               </Pressable>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="타이머 표시"
+                accessibilityLabel={t('타이머 표시')}
                 style={{ minHeight: 56, justifyContent: 'center' }}
                 onPress={() => {
                   setTileTimerVisible(!tileTimerVisible);
@@ -3183,11 +2832,14 @@ function AppContent() {
                   ).catch(() => {});
                 }}
               >
-                <Text>타이머: {tileTimerVisible ? '켜짐' : '꺼짐'}</Text>
+                <Text>
+                  {t('타이머:')}
+                  {tileTimerVisible ? t('켜짐') : t('꺼짐')}
+                </Text>
               </Pressable>
               <Pressable
                 accessibilityRole="switch"
-                accessibilityLabel="사용 통계"
+                accessibilityLabel={t('사용 통계')}
                 aria-checked={usageStatisticsState.enabled}
                 accessibilityState={{
                   checked: usageStatisticsState.enabled,
@@ -3213,18 +2865,22 @@ function AppContent() {
                 }}
               >
                 <Text>
-                  사용 통계: {usageStatisticsState.enabled ? '켜짐' : '꺼짐'}
+                  {t('사용 통계:')}
+                  {usageStatisticsState.enabled ? t('켜짐') : t('꺼짐')}
                 </Text>
                 <Text>
-                  앱 개선을 위한 이용 통계예요. 꺼도 퍼즐 기록과 힌트는
-                  유지돼요.
+                  {t(
+                    '앱 개선을 위한 이용 통계예요. 꺼도 퍼즐 기록은 유지돼요.',
+                  )}
                 </Text>
               </Pressable>
               {usageStatisticsState.error ? (
                 <Text accessibilityRole="alert">
                   {usageStatisticsState.error === 'storage'
-                    ? '설정을 저장하지 못했어요. 이번 실행에만 적용되므로 다음 실행에서 다시 확인해 주세요.'
-                    : '통계 설정을 적용하지 못했어요. 다시 선택해 주세요.'}
+                    ? t(
+                        '설정을 저장하지 못했어요. 이번 실행에만 적용되므로 다음 실행에서 다시 확인해 주세요.',
+                      )
+                    : t('통계 설정을 적용하지 못했어요. 다시 선택해 주세요.')}
                 </Text>
               ) : null}
               {Platform.OS !== 'ios' ? (
@@ -3233,7 +2889,7 @@ function AppContent() {
                   style={{ minHeight: 56, justifyContent: 'center' }}
                   onPress={openAdPrivacySettings}
                 >
-                  <Text>광고 개인정보 설정</Text>
+                  <Text>{t('광고 개인정보 설정')}</Text>
                 </Pressable>
               ) : null}
               <Pressable
@@ -3241,7 +2897,7 @@ function AppContent() {
                 style={{ minHeight: 56, justifyContent: 'center' }}
                 onPress={() => setSettingsOpen(false)}
               >
-                <Text>닫기</Text>
+                <Text>{t('닫기')}</Text>
               </Pressable>
             </View>
           </View>

@@ -1,3 +1,4 @@
+import { t } from './languageRepository';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import notifee, {
@@ -185,8 +186,8 @@ export async function scheduleLocalReturnReminder(
     await client.createTriggerNotification(
       {
         id: RETURN_REMINDER_NOTIFICATION_ID,
-        title: '오늘의 가로세로 퍼즐이 도착했어요',
-        body: '새 낱말 퍼즐로 가볍게 하루를 시작해 보세요.',
+        title: t('오늘의 가로세로 퍼즐이 도착했어요'),
+        body: t('새 낱말 퍼즐로 가볍게 하루를 시작해 보세요.'),
         data: {
           notification_kind: RETURN_REMINDER_KIND,
           reminder_date: schedule.reminderDate,

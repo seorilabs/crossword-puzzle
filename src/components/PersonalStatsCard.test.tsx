@@ -1,3 +1,6 @@
+import { setUiLanguage } from "../adapters/languageRepository";
+import { StreakHeatmap } from "./StreakHeatmap";
+import { buildStreakCalendarWeeks } from "../../packages/crossword-core/src";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -8,7 +11,10 @@ import {
   type SolveTimeDistribution,
 } from "../../packages/crossword-core/src";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  setUiLanguage("ko");
+});
 
 function stats(overrides: Partial<PersonalStats> = {}): PersonalStats {
   return {
@@ -95,17 +101,18 @@ describe("PersonalStatsCard", () => {
 
     expect(container.querySelector(".personalStatsEmpty")).toBeNull();
     const items = container.querySelectorAll(".personalStat");
-    expect(items).toHaveLength(7);
+    expect(items).toHaveLength(6);
 
     // 완료율은 Math.round(completionRate*100) = 75%
-    const text = container.querySelector(".personalStatsGrid")?.textContent ?? "";
+    const text =
+      container.querySelector(".personalStatsGrid")?.textContent ?? "";
     expect(text).toContain("6판"); // 총 완료
     expect(text).toContain("75%"); // 완료율
     expect(text).toContain("현재 스트릭");
     expect(text).toContain("5일"); // 현재 스트릭
     expect(text).toContain("최장 스트릭");
     expect(text).toContain("12일"); // 최장 스트릭
-    expect(text).toContain("2판"); // 노힌트 완료
+    expect(text).not.toContain("노힌트 완료");
     expect(text).toContain("최고 기록");
     expect(text).toContain("01:05"); // 최고 기록(실제 시간)
     expect(text).toContain("평균 기록");
@@ -133,8 +140,9 @@ describe("PersonalStatsCard", () => {
     );
 
     const items = container.querySelectorAll(".personalStat");
-    expect(items).toHaveLength(5);
-    const text = container.querySelector(".personalStatsGrid")?.textContent ?? "";
+    expect(items).toHaveLength(4);
+    const text =
+      container.querySelector(".personalStatsGrid")?.textContent ?? "";
     // 현재 스트릭이 0이어도 최장 스트릭은 통산 기록으로 노출된다.
     expect(text).toContain("최장 스트릭");
     expect(text).toContain("4일");
@@ -230,4 +238,36 @@ describe("PersonalStatsCard 풀이 시간 분포 차트(#235)", () => {
     );
     expect(container.querySelector(".solveTimeDistribution")).toBeNull();
   });
+});
+
+it("AC-6 English records translate distribution and calendar axes and omit the removed hint statistic", () => {
+  setUiLanguage("en");
+  const { container } = render(
+    <>
+      <PersonalStatsCard
+        stats={stats({
+          completedCount: 1,
+          completionRate: 1,
+          noHintCompletedCount: 1,
+          fastestBestTimeMs: 150000,
+          averageBestTimeMs: 150000,
+        })}
+        consecutiveStreak={1}
+        longestStreak={1}
+        solveTimeDistribution={dist([150000])}
+      />
+      <StreakHeatmap
+        weeks={buildStreakCalendarWeeks(["2026-10-26"], "2026-10-26", 12)}
+      />
+    </>,
+  );
+  expect(container.textContent).not.toMatch(/[가-힣]/);
+  expect(
+    [...container.querySelectorAll("[aria-label]")].every(
+      (node) => !/[가-힣]/.test(node.getAttribute("aria-label") ?? ""),
+    ),
+  ).toBe(true);
+  expect(container.textContent).not.toMatch(/No-hint|no hints/i);
+  expect(container.textContent).not.toContain("1 days");
+  expect(container.textContent).toContain("2–3m");
 });

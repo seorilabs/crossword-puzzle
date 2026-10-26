@@ -39,6 +39,9 @@ export const GAME_ANALYTICS_EVENT_PREFIX = "game_";
  * 채워 넘긴다(코어는 Puzzle import 순환을 피하려 필요한 값만 받는다).
  */
 export type GamePuzzleContext = {
+  language?: "ko" | "en";
+  uiLanguage?: "ko" | "en";
+  dailySequence?: number;
   puzzleId: string | number;
   puzzleAlias?: string | number | null;
   difficulty: string;
@@ -174,6 +177,9 @@ export type GameAnalyticsSink = {
 };
 
 const CONTEXT_KEYS: Array<[keyof GamePuzzleContext, string]> = [
+  ["language", "content_language"],
+  ["uiLanguage", "ui_language"],
+  ["dailySequence", "daily_sequence"],
   ["puzzleId", "puzzle_id"],
   ["puzzleAlias", "puzzle_alias"],
   ["difficulty", "difficulty"],

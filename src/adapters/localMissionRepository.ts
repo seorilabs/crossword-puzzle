@@ -1,9 +1,13 @@
+import { getUiLanguage } from "./languageRepository.ts";
+import {
+  contentDate,
+  type ContentLanguage,
+} from "../../packages/crossword-core/src/dailyLanguage.ts";
 import {
   createDailyMissionState,
   type DailyMissionRepository,
   type DailyMissionState,
 } from "../../packages/crossword-core/src/mission.ts";
-import { getTodayDateKey } from "../../packages/crossword-core/src/puzzle.ts";
 import { computeConsecutiveStreakDays } from "../../packages/crossword-core/src/streakCalendar.ts";
 
 type KeyValueStorage = {
@@ -77,7 +81,10 @@ function getPreviousDateKey(dateKey: string): string {
 }
 
 // Build the set of dates within the lookback window to avoid parsing old data.
-function buildLookbackDates(today: string, maxLookbackDays: number): Set<string> {
+function buildLookbackDates(
+  today: string,
+  maxLookbackDays: number,
+): Set<string> {
   const lookbackDates = new Set<string>();
   let d = today;
   for (let i = 0; i < maxLookbackDays; i++) {
@@ -95,6 +102,7 @@ function scanCompletedDates(
   storage: IterableStorage,
   keyPrefix: string,
   lookbackDates: Set<string>,
+  language: ContentLanguage,
 ): Set<string> {
   const prefix = `${keyPrefix}:`;
   const completedDates = new Set<string>();
@@ -108,6 +116,8 @@ function scanCompletedDates(
     // New key format:    "{prefix}:{date}:{puzzleId}"
     const date = sepIdx < 0 ? rest : rest.slice(0, sepIdx);
     if (!lookbackDates.has(date)) continue;
+    const english = sepIdx >= 0 && rest.slice(sepIdx + 1).startsWith("en-");
+    if (english !== (language === "en")) continue;
 
     try {
       const raw = storage.getItem(key);
@@ -129,7 +139,7 @@ function scanCompletedDates(
 // 따로 캐시한다.
 let _streakCache: {
   date: string;
-  values: Partial<Record<"optimistic" | "pessimistic", number>>;
+  values: Partial<Record<string, number>>;
 } | null = null;
 
 export function invalidateStreakCache(): void {
@@ -146,9 +156,11 @@ export function getRecentCompletionDates(
   storage: IterableStorage | null = getIterableStorage(),
 ): string[] {
   if (storage == null) return [];
-  const today = getTodayDateKey();
+  const today = contentDate(getUiLanguage());
   const lookbackDates = buildLookbackDates(today, lookbackDays);
-  return [...scanCompletedDates(storage, keyPrefix, lookbackDates)].sort();
+  return [
+    ...scanCompletedDates(storage, keyPrefix, lookbackDates, getUiLanguage()),
+  ].sort();
 }
 
 // 현재 스트릭. 규칙(오늘 미완료면 어제까지 이어진 구간 + 낙관 모드에서 오늘 몫 1)은
@@ -160,8 +172,9 @@ export function readConsecutiveStreakDays(
   maxLookbackDays = 366,
 ): number {
   const countTodayPending = options.countTodayPending ?? true;
-  const cacheKey = countTodayPending ? "optimistic" : "pessimistic";
-  const today = getTodayDateKey();
+  const cacheKey =
+    getUiLanguage() + (countTodayPending ? "optimistic" : "pessimistic");
+  const today = contentDate(getUiLanguage());
 
   if (_streakCache != null && _streakCache.date === today) {
     const cached = _streakCache.values[cacheKey];
@@ -174,7 +187,12 @@ export function readConsecutiveStreakDays(
   if (storage == null) return 0;
 
   const lookbackDates = buildLookbackDates(today, maxLookbackDays);
-  const completedDates = scanCompletedDates(storage, keyPrefix, lookbackDates);
+  const completedDates = scanCompletedDates(
+    storage,
+    keyPrefix,
+    lookbackDates,
+    getUiLanguage(),
+  );
   const result = computeConsecutiveStreakDays(completedDates, today, {
     countTodayPending,
   });

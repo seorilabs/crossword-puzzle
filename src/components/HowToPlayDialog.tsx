@@ -1,3 +1,4 @@
+import { t } from "../adapters/languageRepository";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { HowToPlayOutcome } from "../../packages/crossword-core/src";
@@ -152,7 +153,7 @@ export function HowToPlayDialog({
         return;
       }
       const focusable = container.querySelectorAll<HTMLElement>(
-        'button:not([disabled])',
+        "button:not([disabled])",
       );
       if (focusable.length === 0) {
         return;
@@ -184,7 +185,7 @@ export function HowToPlayDialog({
         onKeyDown={handleKeyDown}
       >
         <div className="rewardDialogText">
-          <h2 id="howToPlayTitle">크로스워드 어떻게 풀까요?</h2>
+          <h2 id="howToPlayTitle">{t("크로스워드 어떻게 풀까요?")}</h2>
           <p className="howToPlayStepTitle">{step.title}</p>
         </div>
 
@@ -245,7 +246,11 @@ export function HowToPlayDialog({
         <div
           className="howToPlayDots"
           role="group"
-          aria-label={`전체 ${HOW_TO_PLAY_STEPS.length}단계 중 ${stepIndex + 1}단계`}
+          aria-label={t(
+            "전체 {0}단계 중 {1}단계",
+            HOW_TO_PLAY_STEPS.length,
+            stepIndex + 1,
+          )}
         >
           {HOW_TO_PLAY_STEPS.map((_, index) => (
             <span
@@ -267,7 +272,7 @@ export function HowToPlayDialog({
             type="button"
             onClick={() => close("dismiss")}
           >
-            건너뛰기
+            {t("건너뛰기")}
           </button>
           <button
             ref={primaryButtonRef}
@@ -275,7 +280,7 @@ export function HowToPlayDialog({
             type="button"
             onClick={handlePrimary}
           >
-            {isLastStep ? "시작할게요!" : "다음"}
+            {isLastStep ? t("시작할게요!") : t("다음")}
           </button>
         </div>
       </section>

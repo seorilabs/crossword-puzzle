@@ -1,3 +1,4 @@
+import { t } from "../adapters/languageRepository";
 import {
   SHARE_GRID_CORRECT,
   SHARE_GRID_INCOMPLETE,
@@ -22,7 +23,7 @@ export function ShareGridPreview({ shareGrid }: ShareGridPreviewProps) {
     <div
       className="shareGridPreview"
       role="img"
-      aria-label="완성한 퍼즐 결과 격자"
+      aria-label={t("완성한 퍼즐 결과 격자")}
     >
       {rows.map((cells, rowIndex) => (
         <div key={rowIndex} className="shareGridPreviewRow">

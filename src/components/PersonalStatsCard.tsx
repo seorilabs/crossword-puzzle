@@ -1,3 +1,4 @@
+import { t } from "../adapters/languageRepository";
 import { formatBestTime } from "../../packages/crossword-core/src";
 import type {
   PersonalStats,
@@ -12,7 +13,7 @@ type PersonalStatsCardProps = {
 };
 
 // "내 기록" 누적 통계 요약 카드. 완료 1건 이상이면 지표(총 완료/완료율/현재
-// 스트릭/최장 스트릭/노힌트 완료)와, 보유한 최고 기록이 있으면 실제 풀이 시간
+// 스트릭/최장 스트릭)와, 보유한 최고 기록이 있으면 실제 풀이 시간
 // (최고·평균)을 dt·dd로 보여준다. 0건이면 빈 상태 안내를 보여준다(스트릭이 있으면
 // 격려 문구를 덧붙임). 집계는 상위에서 끝낸 순수 값만 받아 렌더만 담당하므로 헤드리스
 // 컴포넌트 테스트로 분기를 고정할 수 있다. 최장 스트릭은 하루 놓쳐 현재 스트릭이
@@ -31,42 +32,38 @@ export function PersonalStatsCard({
   const hasDistribution = solveTimeDistribution.total > 0;
   const distributionSummary = solveTimeDistribution.buckets
     .filter((bucket) => bucket.count > 0)
-    .map((bucket) => `${bucket.label} ${bucket.count}판`)
+    .map((bucket) => `${t(bucket.label)} ${t("{0}판", bucket.count)}`)
     .join(", ");
 
   return (
-    <section className="personalStatsCard" aria-label="내 기록 요약">
-      <h2 className="personalStatsTitle">내 기록</h2>
+    <section className="personalStatsCard" aria-label={t("내 기록 요약")}>
+      <h2 className="personalStatsTitle">{t("내 기록")}</h2>
       {stats.completedCount > 0 ? (
         <dl className="personalStatsGrid">
           <div className="personalStat">
-            <dt>총 완료</dt>
-            <dd>{stats.completedCount}판</dd>
+            <dt>{t("총 완료")}</dt>
+            <dd>{t("{0}판", stats.completedCount)}</dd>
           </div>
           <div className="personalStat">
-            <dt>완료율</dt>
+            <dt>{t("완료율")}</dt>
             <dd>{completionPercent}%</dd>
           </div>
           <div className="personalStat">
-            <dt>현재 스트릭</dt>
-            <dd>{consecutiveStreak}일</dd>
+            <dt>{t("현재 스트릭")}</dt>
+            <dd>{t("{0}일", consecutiveStreak)}</dd>
           </div>
           <div className="personalStat">
-            <dt>최장 스트릭</dt>
-            <dd>{longestStreak}일</dd>
-          </div>
-          <div className="personalStat">
-            <dt>노힌트 완료</dt>
-            <dd>{stats.noHintCompletedCount}판</dd>
+            <dt>{t("최장 스트릭")}</dt>
+            <dd>{t("{0}일", longestStreak)}</dd>
           </div>
           {hasBestTime && (
             <>
               <div className="personalStat">
-                <dt>최고 기록</dt>
+                <dt>{t("최고 기록")}</dt>
                 <dd>{formatBestTime(stats.fastestBestTimeMs as number)}</dd>
               </div>
               <div className="personalStat">
-                <dt>평균 기록</dt>
+                <dt>{t("평균 기록")}</dt>
                 <dd>{formatBestTime(stats.averageBestTimeMs as number)}</dd>
               </div>
             </>
@@ -74,17 +71,23 @@ export function PersonalStatsCard({
         </dl>
       ) : (
         <p className="personalStatsEmpty">
-          첫 퍼즐을 완료하면 누적 기록이 여기에 쌓여요.
-          {consecutiveStreak > 0 ? ` 🔥 ${consecutiveStreak}일째 도전 중!` : ""}
+          {t("첫 퍼즐을 완료하면 누적 기록이 여기에 쌓여요.")}
+          {consecutiveStreak > 0
+            ? t(" 🔥 {0}일째 도전 중!", consecutiveStreak)
+            : ""}
         </p>
       )}
       {hasDistribution && (
         <figure
           className="solveTimeDistribution"
-          aria-label={`풀이 시간 분포 (총 ${solveTimeDistribution.total}판): ${distributionSummary}`}
+          aria-label={t(
+            "풀이 시간 분포 (총 {0}판): {1}",
+            solveTimeDistribution.total,
+            distributionSummary,
+          )}
         >
           <figcaption className="solveTimeDistributionTitle">
-            풀이 시간 분포
+            {t("풀이 시간 분포")}
           </figcaption>
           <div className="solveTimeDistributionBars" aria-hidden="true">
             {solveTimeDistribution.buckets.map((bucket) => {
@@ -100,9 +103,9 @@ export function PersonalStatsCard({
                     )
                   : 0;
               return (
-                <div key={bucket.label} className="solveTimeDistributionRow">
+                <div key={t(bucket.label)} className="solveTimeDistributionRow">
                   <span className="solveTimeDistributionLabel">
-                    {bucket.label}
+                    {t(bucket.label)}
                   </span>
                   <span className="solveTimeDistributionTrack">
                     <span

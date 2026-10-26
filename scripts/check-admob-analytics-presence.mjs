@@ -78,8 +78,22 @@ equal(
   "app.json iOS app ID",
 );
 includes(androidManifest, expected.android.appId, "Android manifest");
-includes(mobileAds, expected.android.rewardedHint, "Android rewarded source");
-includes(mobileAds, expected.ios.rewardedHint, "iOS rewarded source");
+const interstitial = read("apps/mobile/completionInterstitial.ts");
+excludes(
+  interstitial,
+  expected.android.rewardedHint,
+  "Android rewarded unit is not reused",
+);
+excludes(
+  interstitial,
+  expected.ios.rewardedHint,
+  "iOS rewarded unit is not reused",
+);
+includes(
+  interstitial,
+  "InterstitialAd.createForAdRequest",
+  "dedicated interstitial adapter",
+);
 excludes(mobileAds, "showInterstitialAd", "unused interstitial implementation");
 
 for (const [path, content] of [

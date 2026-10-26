@@ -1,3 +1,4 @@
+import { t } from "./adapters/languageRepository";
 // 풀이 경과 시간 표시용 순수 헬퍼. 일시정지 누적/진행 중 정지 제외 계산은
 // 공유 코어(computeElapsedMs/Seconds)에 위임하고, 여기서는 표시 포맷과 얇은
 // 어댑터만 둔다. App.tsx에서 분리해 단위 테스트로 회귀를 고정한다.
@@ -67,8 +68,8 @@ export function formatElapsedTime(
   const seconds = totalSeconds % 60;
 
   if (minutes === 0) {
-    return `${totalSeconds}초`;
+    return t("{0}초", totalSeconds);
   }
 
-  return `${minutes}분 ${String(seconds).padStart(2, "0")}초`;
+  return t("{0}분 {1}초", minutes, String(seconds).padStart(2, "0"));
 }

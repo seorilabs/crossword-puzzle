@@ -71,9 +71,9 @@ describe("일간 퍼즐 전달 계약", () => {
     expect(DIFFICULTY_PROFILES.hard.minWordCount).toBe(12);
   });
 
-  it("AC-4: 세 마켓은 오늘 큰 판 하나와 공통 타일 입력을 사용한다", () => {
+  it("AC-4: 세 마켓은 언어별 다섯 판 선택과 공통 타일 입력을 사용한다", () => {
     for (const source of [webSource, mobileSource]) {
-      expect(source).toContain("getDailyFreePuzzleSummary(");
+      expect(source).toContain("dailyPuzzles(");
       expect(source).toContain("TilePuzzleScreen");
       expect(source).toContain("chooseFirstWordGuide(");
       expect(source).not.toContain("buildDailyLadder(");

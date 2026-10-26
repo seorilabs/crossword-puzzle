@@ -44,3 +44,6 @@ export * from "./types";
 export * from "./uiPolicy";
 
 export * from "./usageStatistics";
+
+export * from "./dailyLanguage.ts";
+export * from "./completionInterstitial.ts";

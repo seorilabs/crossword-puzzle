@@ -1,3 +1,4 @@
+import { t } from "../adapters/languageRepository";
 import { formatMissionHistoryCardSummary } from "../../packages/crossword-core/src";
 import { telemetry } from "../adapters/telemetry";
 
@@ -30,10 +31,10 @@ export function MissionHistoryCard({
   return (
     <button type="button" onClick={open}>
       <div>
-        <strong>미션 기록</strong>
+        <strong>{t("미션 기록")}</strong>
         <span>{summary}</span>
       </div>
-      <em>보기</em>
+      <em>{t("보기")}</em>
     </button>
   );
 }
