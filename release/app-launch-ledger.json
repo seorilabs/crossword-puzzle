@@ -15,7 +15,7 @@
   },
   "ledger": {
     "createdAt": "2026-10-26T11:23:20Z",
-    "updatedAt": "2026-10-26T11:37:49+00:00",
+    "updatedAt": "2026-10-26T11:57:41.188361+00:00",
     "currentReleaseLedger": "release/market-launch-state.json"
   },
   "sections": {
@@ -525,14 +525,25 @@
             "all"
           ],
           "reviewCadence": "per_release",
-          "status": "pending",
-          "value": "확정 필요",
-          "owner": null,
-          "evidence": [],
-          "checkedAt": null,
+          "status": "pass",
+          "value": "Static Checks에 lint, typecheck, 퍼즐 검증, core/adapter/component/operations, build, release parity와 mobile 검사가 연결돼 있다.",
+          "owner": "Seorilabs",
+          "evidence": [
+            {
+              "kind": "repo",
+              "ref": ".github/workflows/static-checks.yml@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            },
+            {
+              "kind": "repo",
+              "ref": "package.json@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            }
+          ],
+          "checkedAt": "2026-10-26T11:54:15.720448+00:00",
           "reviewBy": null,
           "blocker": null,
-          "notes": null
+          "notes": "CI 검사 구성의 존재를 판정한다. 후보별 실행 성공과 중앙 검증은 별도로 exact SHA의 근거를 연결해야 하며 이 항목으로 대신하지 않는다."
         },
         {
           "id": "engineering.release_pipeline",
@@ -541,14 +552,40 @@
             "all"
           ],
           "reviewCadence": "per_release",
-          "status": "pending",
-          "value": "확정 필요",
-          "owner": null,
-          "evidence": [],
-          "checkedAt": null,
+          "status": "pass",
+          "value": "세 마켓 업로드는 workflow_dispatch 또는 workflow_call에서 exact stable release tag를 해석하며 main push는 Static Checks만 실행한다.",
+          "owner": "Seorilabs",
+          "evidence": [
+            {
+              "kind": "repo",
+              "ref": ".github/workflows/deploy-apps-in-toss.yml@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            },
+            {
+              "kind": "repo",
+              "ref": ".github/workflows/deploy-google-play.yml@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            },
+            {
+              "kind": "repo",
+              "ref": ".github/workflows/deploy-app-store.yml@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            },
+            {
+              "kind": "repo",
+              "ref": ".github/workflows/static-checks.yml@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            },
+            {
+              "kind": "repo",
+              "ref": "docs/release-versioning.md@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            }
+          ],
+          "checkedAt": "2026-10-26T11:54:15.720448+00:00",
           "reviewBy": null,
           "blocker": null,
-          "notes": null
+          "notes": "기존 v1.2.0 원장에는 AIT39971837384, Play39987898311, App Store39979354182 실행 식별자가 있다. 이는 파이프라인의 기존 실행 근거이며 v1.3.0 업로드나 공개 근거가 아니다."
         },
         {
           "id": "engineering.signing_provisioning",
@@ -606,14 +643,35 @@
             "all"
           ],
           "reviewCadence": "per_release",
-          "status": "pending",
-          "value": "확정 필요",
-          "owner": null,
-          "evidence": [],
-          "checkedAt": null,
+          "status": "pass",
+          "value": "한국어 기존 저장과 확정 글자 보존, 언어별 키 분리, 발행 ID 보존과 이전 Hosting/version 및 두 Job 이미지 복구 기준을 기록했다.",
+          "owner": "Seorilabs",
+          "evidence": [
+            {
+              "kind": "repo",
+              "ref": "docs/design/2026-10-26-bilingual-five-daily/design.md@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            },
+            {
+              "kind": "repo",
+              "ref": "docs/puzzle-pack-cloud-run.md@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            },
+            {
+              "kind": "repo",
+              "ref": "src/adapters/languageRepository.ts@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            },
+            {
+              "kind": "repo",
+              "ref": "server/batch/imageRetention.test.mjs@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            }
+          ],
+          "checkedAt": "2026-10-26T11:54:15.720448+00:00",
           "reviewBy": null,
           "blocker": null,
-          "notes": null
+          "notes": "마이그레이션과 복구 기준의 존재를 판정한다. 실제 새 바이너리의 이전 버전 업데이트 결과인 qa.upgrade_migration이나 운영 장애 복구 실행으로 확대하지 않는다."
         }
       ]
     },
@@ -675,14 +733,40 @@
             "all"
           ],
           "reviewCadence": "per_release",
-          "status": "pending",
-          "value": "확정 필요",
-          "owner": null,
-          "evidence": [],
-          "checkedAt": null,
+          "status": "na",
+          "value": "제품 전용 Firestore Rules, indexes와 TTL을 사용하는 사용자 데이터 저장 기능이 없다.",
+          "owner": "Seorilabs",
+          "evidence": [
+            {
+              "kind": "repo",
+              "ref": "docs/qa/feature-inventory.json@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            },
+            {
+              "kind": "repo",
+              "ref": "package.json@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            },
+            {
+              "kind": "repo",
+              "ref": "apps/mobile/package.json@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            },
+            {
+              "kind": "repo",
+              "ref": "src/adapters/localProgressRepository.ts@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            },
+            {
+              "kind": "repo",
+              "ref": "docs/architecture.md@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            }
+          ],
+          "checkedAt": "2026-10-26T11:54:15.720448+00:00",
           "reviewBy": null,
           "blocker": null,
-          "notes": null
+          "notes": "진행은 기기 로컬 저장, 퍼즐은 공개 Hosting JSON이다. 공통 Platform의 내부 데이터 저장과 Cloud Build의 GCS는 이 제품 전용 Firestore 기능으로 취급하지 않는다. Auth와 Platform 기능은 별도 적용 항목으로 남긴다."
         },
         {
           "id": "backend.storage",
@@ -691,14 +775,40 @@
             "all"
           ],
           "reviewCadence": "per_release",
-          "status": "pending",
-          "value": "확정 필요",
-          "owner": null,
-          "evidence": [],
-          "checkedAt": null,
+          "status": "na",
+          "value": "제품의 사용자 파일 업로드와 Firebase Storage Rules 및 사용자 bucket 데이터 경로가 없다.",
+          "owner": "Seorilabs",
+          "evidence": [
+            {
+              "kind": "repo",
+              "ref": "docs/qa/feature-inventory.json@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            },
+            {
+              "kind": "repo",
+              "ref": "package.json@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            },
+            {
+              "kind": "repo",
+              "ref": "apps/mobile/package.json@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            },
+            {
+              "kind": "repo",
+              "ref": "firebase.json@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            },
+            {
+              "kind": "repo",
+              "ref": "src/adapters/staticPuzzleRepository.ts@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            }
+          ],
+          "checkedAt": "2026-10-26T11:54:15.720448+00:00",
           "reviewBy": null,
           "blocker": null,
-          "notes": null
+          "notes": "정적 퍼즐은 Firebase Hosting으로 읽는다. 빌드 아티팩트 보관용 GCS나 백업 NAS의 운영 점검까지 해당 없음으로 만드는 판정은 아니다."
         },
         {
           "id": "backend.functions_services",
@@ -730,16 +840,16 @@
           ],
           "reviewCadence": "per_release",
           "status": "pass",
-          "value": "기존 템플릿 GET200, 새 전면 지면 키는 아직 없음",
+          "value": "운영 version10에 전면형3개 연결 후 GET대조, 기존9개값과condition 보존. 실제SDK표시는미검증이다.",
           "owner": "Seorilabs",
           "evidence": [
             {
               "kind": "api",
-              "ref": "2026-10-26 remote-config-readback.json",
-              "observedAt": "2026-10-26T11:37:49+00:00"
+              "ref": "Remote Config version10 etag-547625965706-10 2026-10-26",
+              "observedAt": "2026-10-26T11:59:15.570824+00:00"
             }
           ],
-          "checkedAt": "2026-10-26T11:37:49+00:00",
+          "checkedAt": "2026-10-26T11:59:15.570824+00:00",
           "reviewBy": null,
           "blocker": null,
           "notes": null
@@ -1050,14 +1160,40 @@
             "all"
           ],
           "reviewCadence": "on_change",
-          "status": "pending",
-          "value": "확정 필요",
-          "owner": null,
-          "evidence": [],
-          "checkedAt": null,
+          "status": "pass",
+          "value": "AIT는 AppsInToss 전면광고, Android와 iOS는 AdMob 전면광고를 사용한다. 완료 결과에서 다음 판 또는 마지막 판 홈 이동 때 판마다 한 번 시도하며 미준비와 오류는 진행한다. IAP와 구독은 현재 기능 범위에 없다.",
+          "owner": "Seorilabs",
+          "evidence": [
+            {
+              "kind": "repo",
+              "ref": "docs/design/2026-10-26-bilingual-five-daily/design.md@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            },
+            {
+              "kind": "repo",
+              "ref": "packages/crossword-core/src/completionInterstitial.ts@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            },
+            {
+              "kind": "repo",
+              "ref": "src/adapters/completionInterstitial.ts@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            },
+            {
+              "kind": "repo",
+              "ref": "apps/mobile/completionInterstitial.ts@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            },
+            {
+              "kind": "repo",
+              "ref": "docs/qa/feature-inventory.json@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            }
+          ],
+          "checkedAt": "2026-10-26T11:54:15.720448+00:00",
           "reviewBy": null,
           "blocker": null,
-          "notes": null
+          "notes": "운영 지면 연결과 실제 SDK 표시 여부는 ad_configuration과 ad_end_to_end에서 별도로 판정한다. 기존 보상형 지면을 전면용으로 재사용하지 않는 정책이며 실제 광고 송출을 통과했다는 뜻이 아니다."
         },
         {
           "id": "monetization.ad_configuration",
@@ -1100,14 +1236,35 @@
             "apps_in_toss"
           ],
           "reviewCadence": "per_release",
-          "status": "pending",
-          "value": "확정 필요",
-          "owner": null,
-          "evidence": [],
-          "checkedAt": null,
+          "status": "na",
+          "value": "IAP 상품과 구독는 현재 광고 기반 무료 퍼즐의 제공 기능에 없다.",
+          "owner": "Seorilabs",
+          "evidence": [
+            {
+              "kind": "repo",
+              "ref": "docs/qa/feature-inventory.json@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            },
+            {
+              "kind": "repo",
+              "ref": "package.json@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            },
+            {
+              "kind": "repo",
+              "ref": "apps/mobile/package.json@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            },
+            {
+              "kind": "repo",
+              "ref": "docs/design/2026-10-26-bilingual-five-daily/design.md@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            }
+          ],
+          "checkedAt": "2026-10-26T11:54:15.720448+00:00",
           "reviewBy": null,
           "blocker": null,
-          "notes": null
+          "notes": "현재 승인 기능 목록과 클라이언트 의존성에 인앱결제 경로 및 상품 카탈로그가 없다. SDK에 일반 결제 능력이 존재할 가능성만으로 사용 중이라고 간주하지 않는다. 광고 보상과 앱 저장 복원은 이 항목과 별도로 판정한다."
         },
         {
           "id": "monetization.purchase_verification",
@@ -1116,14 +1273,35 @@
             "all"
           ],
           "reviewCadence": "per_release",
-          "status": "pending",
-          "value": "확정 필요",
-          "owner": null,
-          "evidence": [],
-          "checkedAt": null,
+          "status": "na",
+          "value": "결제 검증과 거래 정산는 현재 광고 기반 무료 퍼즐의 제공 기능에 없다.",
+          "owner": "Seorilabs",
+          "evidence": [
+            {
+              "kind": "repo",
+              "ref": "docs/qa/feature-inventory.json@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            },
+            {
+              "kind": "repo",
+              "ref": "package.json@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            },
+            {
+              "kind": "repo",
+              "ref": "apps/mobile/package.json@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            },
+            {
+              "kind": "repo",
+              "ref": "docs/design/2026-10-26-bilingual-five-daily/design.md@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            }
+          ],
+          "checkedAt": "2026-10-26T11:54:15.720448+00:00",
           "reviewBy": null,
           "blocker": null,
-          "notes": null
+          "notes": "현재 승인 기능 목록과 클라이언트 의존성에 인앱결제 경로 및 상품 카탈로그가 없다. SDK에 일반 결제 능력이 존재할 가능성만으로 사용 중이라고 간주하지 않는다. 광고 보상과 앱 저장 복원은 이 항목과 별도로 판정한다."
         },
         {
           "id": "monetization.restore_refund",
@@ -1132,14 +1310,35 @@
             "all"
           ],
           "reviewCadence": "per_release",
-          "status": "pending",
-          "value": "확정 필요",
-          "owner": null,
-          "evidence": [],
-          "checkedAt": null,
+          "status": "na",
+          "value": "유료 entitlement 복원과 환불는 현재 광고 기반 무료 퍼즐의 제공 기능에 없다.",
+          "owner": "Seorilabs",
+          "evidence": [
+            {
+              "kind": "repo",
+              "ref": "docs/qa/feature-inventory.json@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            },
+            {
+              "kind": "repo",
+              "ref": "package.json@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            },
+            {
+              "kind": "repo",
+              "ref": "apps/mobile/package.json@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            },
+            {
+              "kind": "repo",
+              "ref": "docs/design/2026-10-26-bilingual-five-daily/design.md@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            }
+          ],
+          "checkedAt": "2026-10-26T11:54:15.720448+00:00",
           "reviewBy": null,
           "blocker": null,
-          "notes": null
+          "notes": "현재 승인 기능 목록과 클라이언트 의존성에 인앱결제 경로 및 상품 카탈로그가 없다. SDK에 일반 결제 능력이 존재할 가능성만으로 사용 중이라고 간주하지 않는다. 광고 보상과 앱 저장 복원은 이 항목과 별도로 판정한다."
         },
         {
           "id": "monetization.revenue_signals",
@@ -1404,14 +1603,30 @@
             "all"
           ],
           "reviewCadence": "on_change",
-          "status": "pending",
-          "value": "확정 필요",
-          "owner": null,
-          "evidence": [],
-          "checkedAt": null,
+          "status": "pass",
+          "value": "승인 계획은 L3 개발 환경 전체 회귀, 작성자 외 실행과 화면 검수 3회, 기능별 AC 및 세 마켓과 service 공개 범위를 명시한다.",
+          "owner": "Seorilabs",
+          "evidence": [
+            {
+              "kind": "repo",
+              "ref": "docs/design/2026-10-26-bilingual-five-daily/test-plan.json@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            },
+            {
+              "kind": "repo",
+              "ref": "docs/design/2026-10-26-bilingual-five-daily/design.md@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            },
+            {
+              "kind": "repo",
+              "ref": "docs/qa/feature-inventory.json@0e0a7153d446ae99381a0cf9c7d0009d937e4f00",
+              "observedAt": "2026-10-26T11:54:15.720448+00:00"
+            }
+          ],
+          "checkedAt": "2026-10-26T11:54:15.720448+00:00",
           "reviewBy": null,
           "blocker": null,
-          "notes": null
+          "notes": "테스트 계획과 담당 분리 및 합격 기준의 정의를 판정한다. 기존 3회 원본과 실패 수정을 보존하고 새 UI4를 만들지 않는다. 새 최종 SHA의 실행 결과와 중앙 gate는 별도로 연결한다. 기기 사용이나 실제 SDK 실행은 수행하지 않았다."
         },
         {
           "id": "qa.artifact_identity",

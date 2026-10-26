@@ -1,386 +1,309 @@
 {
   "schemaVersion": 1,
   "app": {
-    "name": "가로세로 퍼즐",
+    "name": "가로세로 낱말 퍼즐",
     "repo": "seorilabs/crossword-puzzle",
-    "sourceRevision": "1cece06bb64e90ffba7b2406bccab6ac4baa84d6"
+    "sourceRevision": "pending-final-candidate"
   },
   "release": {
-    "version": "1.2.0",
-    "tag": "v1.2.0",
+    "version": "1.3.0",
+    "tag": "v1.3.0",
     "objective": "public_live",
-    "countries": ["KR"],
-    "rolloutMode": "Google Play 전체 1, App Store 수동 공개, AppsInToss 공개"
+    "countries": [
+      "KR"
+    ],
+    "rolloutMode": "Google Play 전체1, App Store 수동공개, AppsInToss 공개"
   },
   "deploymentApproval": {
     "status": "approved",
-    "markets": ["google_play", "app_store", "apps_in_toss"],
+    "markets": [
+      "google_play",
+      "app_store",
+      "apps_in_toss"
+    ],
     "objective": "public_live",
-    "approvedAt": "2026-10-23",
+    "approvedAt": "2026-10-26",
     "evidence": [
-      "docs/design/2026-10-23-ios-consent/test-plan.json의 세 마켓 공개와 rollout 1",
-      "사용자 승인: 보완안 승인, v1.2.0 진행; 보완 후 세 마켓 진행",
-      "후속 승인: 테스트 완료, 검토 요청; 러너 분기 보완 후 진행; 변수 연결 보완 후 진행",
-      "승인 날짜는 대화 기록의 날짜이며 시각은 기록하지 않았다"
+      "사용자 명시: 공개출시까지 진행",
+      "PR453 414ed5f test-plan.json 공개 범위",
+      "후속 승인: 신규 전면광고 지면3개 생성과 연결"
     ]
   },
   "commonGates": {
     "candidate": {
-      "status": "pass",
-      "evidence": [
-        "고정 태그 v1.2.0, 제품 source 1cece06bb64e90ffba7b2406bccab6ac4baa84d6",
-        "중앙 원장 실행 39970717731, Android 1001001014와 iOS 1002000"
-      ],
-      "checkedAt": "2026-10-23T16:35:29.632129+00:00",
+      "status": "pending",
+      "evidence": [],
+      "checkedAt": null,
       "blocker": null
     },
     "quality": {
-      "status": "pass",
-      "evidence": [
-        "독립 UI3 전체 17개 기능과 UX, 68개 시나리오 통과 및 134장 직접 확인; 서비스 30일씩 같은 예산의 실제 CLI 통과",
-        "중앙 a43f2c4의 네 대상, 세 단계 총 12개 출시 검사 통과; 실제 SDK와 OS는 승인 계획대로 미실행"
-      ],
-      "checkedAt": "2026-10-23T16:35:29.632129+00:00",
+      "status": "pending",
+      "evidence": [],
+      "checkedAt": null,
       "blocker": null
     },
     "production_dependencies": {
-      "status": "pass",
+      "status": "pending",
       "evidence": [
-        "GCP 이미지 0cdc467e, 실제 예약 generator dbrv5와 health 4sg8n 성공, 오늘 공개 팩 검증 통과",
-        "앱 전용 개인정보 문서 HTTP 200; 단일 판 서버 전환은 세 클라이언트 공개 뒤 적용"
+        "2026-10-26 사용자 저장소 한 곳 Writer추가 및 REST tags.create/update확인, 기존보호태그3개존재",
+        "CloudBuild와runtime기존SA actAs확인",
+        "언어별공급배포와URL읽기아직실행전"
       ],
-      "checkedAt": "2026-10-23T16:35:29.632129+00:00",
+      "checkedAt": null,
       "blocker": null
     },
     "observability": {
-      "status": "pass",
-      "evidence": [
-        "같은 source의 UI3 실제 개발 화면에서 통계 설정과 이벤트 여정 통과; 이벤트 및 릴리스 계약 검사 통과",
-        "실제 공급자 SDK 실행과 공개 v1.2.0 원격 수집 관찰은 미실행이며 실행한 것으로 해석하지 않는다"
-      ],
-      "checkedAt": "2026-10-23T16:35:29.632129+00:00",
+      "status": "pending",
+      "evidence": [],
+      "checkedAt": null,
       "blocker": null
     }
   },
   "markets": {
     "google_play": {
       "objective": "public_live",
-      "state": "live_smoke",
+      "state": "pending",
       "identity": {
-        "applicationId": "com.seorilabs.crosswordpuzzle",
-        "version": "1.2.0",
-        "build": "1001001014"
+        "applicationId": "확정 필요",
+        "version": "1.3.0",
+        "build": null
       },
       "gates": {
         "candidate": {
-          "status": "pass",
+          "status": "pending",
           "evidence": [
-            "동일 v1.2.0 태그와 등록된 앱 식별자; 기존 한국 배포를 유지하고 국가를 추가하지 않는다"
+            "최종소스와태그번호발급전, 현재공개v1.2.0과구분"
           ],
-          "checkedAt": "2026-10-23T16:35:29.632129+00:00",
+          "checkedAt": null,
           "blocker": null
         },
         "artifact": {
-          "status": "pass",
-          "evidence": [
-            "Cloud Build 52d45c56-fb22-4042-8391-9417b22e5b71 및 실행 39987898311 성공; 실제 AAB 48,196,734바이트",
-            "AAB SHA-256 d3944f1e4feff1cb6fb8b55ec7153961bbd0ea3a735c575d774ea2373965c941; 실제 CI binding과 manifest를 독립 대조",
-            "com.seorilabs.crosswordpuzzle, 1.2.0 (1001001014), min SDK 24와 target SDK 36, debuggable false 및 jar 서명 검증 통과",
-            "업로드 인증서 SHA-256 2F:29:66:18:77:6D:79:BF:26:FD:46:EF:0D:30:21:85:41:D9:8A:52:A5:10:57:14:05:88:2F:DA:CC:62:FB:F8가 등록 원본과 일치",
-            "NAS /Volumes/Data/Backup/agent-artifacts/crossword-puzzle/2026-10-23/1cece06bb64e90ffba7b2406bccab6ac4baa84d6/release-execution-20261023T171106119126Z/release-preparation/android-signed-v120/crossword-puzzle.aab; VERIFIED.json SHA-256 b4aa06e113aaba73dabdc4d32e5916298f8f25778eba49386d1c30772a320ea3"
-          ],
-          "checkedAt": "2026-10-23T17:09:31.267813+00:00",
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
           "blocker": null
         },
         "upload": {
-          "status": "pass",
-          "evidence": [
-            "실행 39987898311의 내부 업로드 성공; Play API internal 1.2.0, 코드 1001001014, completed 및 ko-KR 노트 일치"
-          ],
-          "checkedAt": "2026-10-23T17:09:31.267813+00:00",
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
           "blocker": null
         },
         "processing": {
-          "status": "pass",
-          "evidence": [
-            "동일 AAB의 내부 트랙 처리가 끝났고 production 승격 실행 39991782728이 성공했다",
-            "공급자 빠른 검사와 production 심사 및 공개는 별도 단계다"
-          ],
-          "checkedAt": "2026-10-23T17:09:31.267813+00:00",
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
           "blocker": null
         },
         "qa": {
-          "status": "pass",
-          "evidence": [
-            "독립 L3 개발 환경의 UI3와 서비스 통과; 실제 SDK 및 OS 실행은 승인된 계획 조정에 따라 미실행; 기기 사용 없음"
-          ],
-          "checkedAt": "2026-10-23T16:35:29.632129+00:00",
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
           "blocker": null
         },
         "metadata": {
-          "status": "pass",
-          "evidence": [
-            "활성 ko-KR 새 소개와 이미지 5개를 v1.2.0 공개 확인 후 적용, commit edit 04437394154694586409",
-            "API 문구와 준비안 일치 및 이미지 5개 API, 실제 다운로드 SHA-256 전부 일치",
-            "새 마케팅 제출 19는 2026-10-24 08:52 KST 접수, 검토 중. 공개 소개는 중립 설명이며 새 화면의 공개 반영은 남아 있다"
-          ],
-          "checkedAt": "2026-10-23T23:54:40.906992+00:00",
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
           "blocker": null
         },
         "policy": {
-          "status": "pass",
-          "evidence": [
-            "데이터 보안 저장 및 재내보내기 782개 응답이 검토한 44개 보완과 전부 일치; SHA-256 509add5e15096b55046cb5290a4f15c9f386c7fdd1c7a54e26de4ce9af4de3e1",
-            "광고 있음, 별도 접근 권한 없이 사용, 대상 13~15세와 16~17세 및 성인, IARC 완료와 GRAC 전체이용가 확인",
-            "production 기존 국가 KR 하나 확인, 국가 변경 없음"
-          ],
-          "checkedAt": "2026-10-23T16:35:29.632129+00:00",
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
           "blocker": null
         },
         "submission": {
-          "status": "pass",
-          "evidence": [
-            "production 승격 실행 39991782728 성공, 동일 1001001014를 internal에서 production completed로 승격",
-            "콘솔 제출 ID 18, 2026-10-24 02:02 KST의 기존 한국 전체 출시, 데이터 보안과 교정 소개 접수"
-          ],
-          "checkedAt": "2026-10-23T23:54:40.906992+00:00",
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
           "blocker": null
         },
         "approval": {
-          "status": "pass",
-          "evidence": [
-            "제출 18 상세의 출시됨, 2026-10-24 02:28 KST 확인; 심사 중 상태가 해소됐다"
-          ],
-          "checkedAt": "2026-10-23T23:54:40.906992+00:00",
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
           "blocker": null
         },
         "release": {
-          "status": "pass",
-          "evidence": [
-            "기존 관리형 게시 사용 중지를 유지하여 제출 18의 production v1.2.0이 02:28 KST 전체 출시됨",
-            "기존 KR 배포와 rollout 1 유지; API completed만으로 공개를 판정하지 않았다"
-          ],
-          "checkedAt": "2026-10-23T23:54:40.906992+00:00",
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
           "blocker": null
         },
         "live_smoke": {
-          "status": "pass",
-          "evidence": [
-            "한국 공개 스토어의 게임 소개 상세에 버전 1.2.0과 2026-10-24 업데이트 날짜, 후보 출시 노트 확인",
-            "https://play.google.com/store/apps/details?id=com.seorilabs.crosswordpuzzle&hl=ko-KR&gl=KR",
-            "기기 설치 및 실제 네이티브 SDK와 원격 telemetry 실행은 승인 계획대로 미실행; 새 마케팅 제출 19 공개는 별도 대기"
-          ],
-          "checkedAt": "2026-10-23T23:54:40.906992+00:00",
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
           "blocker": null
         }
       }
     },
     "app_store": {
       "objective": "public_live",
-      "state": "submission",
+      "state": "pending",
       "identity": {
-        "applicationId": "com.seorilabs.crosswordpuzzle",
-        "version": "1.2.0",
-        "build": "1002000"
+        "applicationId": "확정 필요",
+        "version": "1.3.0",
+        "build": null
       },
       "gates": {
         "candidate": {
-          "status": "pass",
+          "status": "pending",
           "evidence": [
-            "동일 v1.2.0 태그와 등록된 앱 식별자; 기존 한국 배포를 유지하고 국가를 추가하지 않는다"
+            "최종소스와태그번호발급전, 현재공개v1.2.0과구분"
           ],
-          "checkedAt": "2026-10-23T16:35:29.632129+00:00",
+          "checkedAt": null,
           "blocker": null
         },
         "artifact": {
-          "status": "pass",
-          "evidence": [
-            "실행 39979354182의 archive, 실제 plist 및 버전 결속 검사와 export 성공; 기존 활성 배포 프로파일 재사용",
-            "완전한 성공 로그 SHA-256 d6ce92b1d1e460eb4f63e22c72eec638dc718f9042bdb291fa4d46290703c35a를 NAS에 보존; IPA 보관 증거로 해석하지 않는다"
-          ],
-          "checkedAt": "2026-10-23T16:35:29.632129+00:00",
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
           "blocker": null
         },
         "upload": {
-          "status": "pass",
-          "evidence": [
-            "build 92f26946-9b5f-41b9-bffd-692232c0455a, uploadedDate 2026-10-23T08:55:21-07:00"
-          ],
-          "checkedAt": "2026-10-23T16:35:29.632129+00:00",
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
           "blocker": null
         },
         "processing": {
-          "status": "pass",
-          "evidence": [
-            "build 1002000, prerelease 1.2.0 IOS, VALID, APP_STORE_ELIGIBLE 및 usesNonExemptEncryption false",
-            "동일 빌드를 기존 내부 TestFlight 그룹 b0587880-a87c-46df-abf7-050d1090d09d에 연결하고 GET 확인"
-          ],
-          "checkedAt": "2026-10-23T16:35:29.632129+00:00",
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
           "blocker": null
         },
         "qa": {
-          "status": "pass",
-          "evidence": [
-            "독립 L3 개발 환경의 UI3와 서비스 통과; 실제 SDK 및 OS 실행은 승인된 계획 조정에 따라 미실행; 기기 사용 없음"
-          ],
-          "checkedAt": "2026-10-23T16:35:29.632129+00:00",
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
           "blocker": null
         },
         "metadata": {
-          "status": "pass",
-          "evidence": [
-            "활성 ko 문구와 최종 노트, 키워드 및 공개 URL이 검토 원본과 일치; iPhone 3장과 iPad 3장 COMPLETE 및 checksum 확인",
-            "초안 bd7a370c-12f5-498f-a23f-9a6d5638bc11에 동일 빌드 연결, 기존 심사 연락처 및 후보 설명 메모 저장",
-            "제출 직전과 제출 도구 실행 뒤 활성 ko 및 최종 노트 133자, iPhone 3장과 iPad 3장 COMPLETE, URL 200 및 동일 빌드 연결 일치 재확인"
-          ],
-          "checkedAt": "2026-10-24T00:30:50.539381+00:00",
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
           "blocker": null
         },
         "policy": {
-          "status": "pass",
-          "evidence": [
-            "실제 Apple wellknowngeek@gmail.com, Seori Labs 및 앱 6777292094 확인",
-            "App Privacy 8개 유형 게시 후 각 질문을 재개방하여 용도, 연결과 추적 답변 전부 대조; 7개 연결 및 충돌 데이터 비연결, 전부 tracking false",
-            "현행 KOR만 사용 가능, 새 국가 자동 추가 false, 광고 있음과 지원하지 않는 콘텐츠 없음 및 USES_THIRD_PARTY_CONTENT 재조회",
-            "실제 광고 및 인증 SDK와 OS 검수는 승인 계획대로 미실행이며 신고와 실행 증거를 구분한다"
-          ],
-          "checkedAt": "2026-10-24T00:30:50.539381+00:00",
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
           "blocker": null
         },
         "submission": {
-          "status": "pass",
-          "evidence": [
-            "중앙 a43f2c4에서 고정 source의 app-store before-release L3 통과",
-            "reviewSubmission 88d496c9-998a-49f8-80b0-93a038f396de, submittedDate 2026-10-24T00:25:33.646Z, WAITING_FOR_REVIEW",
-            "콘솔 2026-10-24 09:25 KST, iOS 1.2.0의 항목 1개 심사 대기 중",
-            "항목의 버전 bd7a370c-12f5-498f-a23f-9a6d5638bc11 및 build 92f26946-9b5f-41b9-bffd-692232c0455a, 1002000 연결 GET 대조; releaseType MANUAL 유지"
-          ],
-          "checkedAt": "2026-10-24T00:30:50.539381+00:00",
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
           "blocker": null
         },
         "approval": {
           "status": "pending",
-          "evidence": ["심사 대기 중이며 v1.2.0 승인과 수동 공개는 아직 없음"],
-          "checkedAt": "2026-10-24T00:30:50.539381+00:00",
+          "evidence": [],
+          "checkedAt": null,
           "blocker": null
         },
         "release": {
           "status": "pending",
-          "evidence": ["심사 대기 중이며 v1.2.0 승인과 수동 공개는 아직 없음"],
-          "checkedAt": "2026-10-24T00:30:50.539381+00:00",
+          "evidence": [],
+          "checkedAt": null,
           "blocker": null
         },
         "live_smoke": {
           "status": "pending",
-          "evidence": ["심사 대기 중이며 v1.2.0 승인과 수동 공개는 아직 없음"],
-          "checkedAt": "2026-10-24T00:30:50.539381+00:00",
+          "evidence": [],
+          "checkedAt": null,
           "blocker": null
         }
       }
     },
     "apps_in_toss": {
       "objective": "public_live",
-      "state": "live_smoke",
+      "state": "pending",
       "identity": {
-        "applicationId": "crossword-puzzle-game",
-        "version": "1.2.0",
-        "build": "20261023-22"
+        "applicationId": "확정 필요",
+        "version": "1.3.0",
+        "build": null
       },
       "gates": {
         "candidate": {
-          "status": "pass",
+          "status": "pending",
           "evidence": [
-            "동일 v1.2.0 태그와 등록된 앱 식별자; 기존 한국 배포를 유지하고 국가를 추가하지 않는다"
+            "최종소스와태그번호발급전, 현재공개v1.2.0과구분"
           ],
-          "checkedAt": "2026-10-23T16:35:29.632129+00:00",
+          "checkedAt": null,
           "blocker": null
         },
         "artifact": {
-          "status": "pass",
-          "evidence": [
-            "빌드 39971837384 성공; .ait SHA-256 bd4500434109227c96fba25b015766310805640f710ad4a576d6fc4aac96dc0c"
-          ],
-          "checkedAt": "2026-10-23T16:35:29.632129+00:00",
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
           "blocker": null
         },
         "upload": {
-          "status": "pass",
-          "evidence": [
-            "deployment 01a16936-e9cb-74cb-9a3e-307b5eb47598, versionName 20261023-22"
-          ],
-          "checkedAt": "2026-10-23T16:35:29.632129+00:00",
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
           "blocker": null
         },
         "processing": {
-          "status": "pass",
-          "evidence": [
-            "동일 번들 빌드 및 isTested=true 확인; 사용자가 실제 테스트 완료 명시"
-          ],
-          "checkedAt": "2026-10-23T16:35:29.632129+00:00",
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
           "blocker": null
         },
         "qa": {
-          "status": "pass",
-          "evidence": [
-            "독립 L3 개발 환경의 UI3와 서비스 통과; 실제 SDK 및 OS 실행은 승인된 계획 조정에 따라 미실행; 기기 사용 없음"
-          ],
-          "checkedAt": "2026-10-23T16:35:29.632129+00:00",
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
           "blocker": null
         },
         "metadata": {
-          "status": "pass",
-          "evidence": [
-            "miniapp_meta_status APPROVED, miniapp_get의 새 소개가 준비안과 일치",
-            "승인된 썸네일 1장과 세로 화면 3장, 총 4개 URL이 등록돼 있다"
-          ],
-          "checkedAt": "2026-10-23T17:09:31.267813+00:00",
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
           "blocker": null
         },
         "policy": {
-          "status": "pass",
-          "evidence": [
-            "기존 승인 게임, 운영자 확약 5개 사용자 동의 완료; releaseDecision ALLOWED"
-          ],
-          "checkedAt": "2026-10-23T16:35:29.632129+00:00",
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
           "blocker": null
         },
         "submission": {
-          "status": "pass",
-          "evidence": [
-            "사용자 테스트 완료, 검토 요청 뒤 동일 deployment의 검토를 제출하고 재조회"
-          ],
-          "checkedAt": "2026-10-23T16:35:29.632129+00:00",
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
           "blocker": null
         },
         "approval": {
-          "status": "pass",
-          "evidence": [
-            "동일 deployment 01a16936-e9cb-74cb-9a3e-307b5eb47598의 reviewStatus APPROVED, 실제 공개 뒤 deployed true"
-          ],
-          "checkedAt": "2026-10-23T23:54:40.906992+00:00",
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
           "blocker": null
         },
         "release": {
-          "status": "pass",
-          "evidence": [
-            "사용자 로그인 완료 뒤 실제 ih@seorilabs.com, workspace 38345와 crossword-puzzle-game을 확인하고 전체 사용자 출시 실행",
-            "2026-10-24 08:49:24 KST, versionName 20261023-22의 lastDeployedAt와 deployed true 확인",
-            "공개 직전 최신 중앙 a43f2c4에서 같은 source의 apps-in-toss before-release L3 통과"
-          ],
-          "checkedAt": "2026-10-23T23:54:40.906992+00:00",
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
           "blocker": null
         },
         "live_smoke": {
-          "status": "pass",
-          "evidence": [
-            "miniapp_release_status liveBundleVersionName 20261023-22, miniapp_get_status OPEN; 콘솔 현재 출시됨과 같은 버전 및 08:49 출시 시각 대조",
-            "서비스 링크 intoss://crossword-puzzle-game, 승인 소개와 이미지 4개 유지",
-            "공개 상태는 지원되는 콘솔 및 API로 확인했다. 기기, 실제 네이티브 SDK 및 공개 채널 실행은 승인 계획대로 미실행"
-          ],
-          "checkedAt": "2026-10-23T23:54:40.906992+00:00",
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
           "blocker": null
         }
       }
     }
-  }
+  },
+  "history": [
+    {
+      "version": "1.2.0",
+      "path": "release/history/v1.2.0/market-launch-state.json",
+      "sha256": "f8ee3236eacaed830d3629495c396738bff7aa958bdf2b77acbcc4765de42759",
+      "preservation": "이전 후보 원장 바이트 전체 보존"
+    }
+  ]
 }
