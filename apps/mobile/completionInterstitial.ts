@@ -6,14 +6,16 @@ import type {
 import { initializeMobileAds } from './mobileAds';
 export function createMobileCompletionInterstitial(
   adUnitId: string,
-  loadTimeoutMs=15000,
-  loadSdk:()=>Promise<typeof import("react-native-google-mobile-ads")> = ()=>import("react-native-google-mobile-ads"),
+  loadTimeoutMs = 15000,
+  loadSdk: () => Promise<
+    typeof import('react-native-google-mobile-ads')
+  > = () => import('react-native-google-mobile-ads'),
 ): InterstitialPort {
   let loaded = false,
     loading = false,
     disposed = false,
     version = 0;
-  let loadTimer:ReturnType<typeof setTimeout>|undefined;
+  let loadTimer: ReturnType<typeof setTimeout> | undefined;
   let ad: import('react-native-google-mobile-ads').InterstitialAd | undefined;
   let unsubscribers: Array<() => void> = [];
   let callback: ((event: InterstitialEvent) => void) | undefined;
@@ -28,7 +30,13 @@ export function createMobileCompletionInterstitial(
       if (!adUnitId || loaded || loading || disposed) return;
       loading = true;
       const own = ++version;
-      loadTimer=setTimeout(()=>{if(own!==version)return;version++;loaded=false;loading=false;cleanup();},loadTimeoutMs);
+      loadTimer = setTimeout(() => {
+        if (own !== version) return;
+        version++;
+        loaded = false;
+        loading = false;
+        cleanup();
+      }, loadTimeoutMs);
       void (async () => {
         if (!(await initializeMobileAds())) throw Error('unavailable');
         const module = await loadSdk();
@@ -44,9 +52,12 @@ export function createMobileCompletionInterstitial(
             loaded = true;
             loading = false;
           }),
-          ad.addAdEventListener(module.AdEventType.OPENED, () => {if(disposed||own!==version)return;callback?.('ad_impression');}),
+          ad.addAdEventListener(module.AdEventType.OPENED, () => {
+            if (disposed || own !== version) return;
+            callback?.('ad_impression');
+          }),
           ad.addAdEventListener(module.AdEventType.CLOSED, () => {
-            if(disposed||own!==version)return;
+            if (disposed || own !== version) return;
             callback?.('ad_closed');
             close?.();
             close = undefined;
@@ -55,7 +66,7 @@ export function createMobileCompletionInterstitial(
             cleanup();
           }),
           ad.addAdEventListener(module.AdEventType.ERROR, () => {
-            if(disposed||own!==version)return;
+            if (disposed || own !== version) return;
             clearTimeout(loadTimer);
             loaded = false;
             loading = false;

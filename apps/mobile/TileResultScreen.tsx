@@ -8,7 +8,7 @@ import {
   type Puzzle,
 } from '../../packages/crossword-core/src';
 type Props = {
-  busy?:boolean;
+  busy?: boolean;
   primaryLabel?: string;
   notice?: string;
   onPrimary?: () => void;
@@ -28,7 +28,7 @@ type Props = {
   reminder?: { body: string; accept: () => void; decline: () => void };
 };
 export function TileResultScreen({
-  busy=false,
+  busy = false,
   primaryLabel,
   onPrimary,
   notice,
@@ -51,7 +51,8 @@ export function TileResultScreen({
   return (
     <ScrollView style={s.screen} contentContainerStyle={s.content}>
       <View style={s.nav}>
-        <Pressable disabled={busy}
+        <Pressable
+          disabled={busy}
           accessibilityRole="button"
           accessibilityLabel={t('홈으로')}
           style={s.icon}
@@ -113,7 +114,8 @@ export function TileResultScreen({
           {LEADERBOARD_OPEN_FAILURE_MESSAGE}
         </Text>
       ) : null}
-      <Pressable disabled={busy}
+      <Pressable
+        disabled={busy}
         accessibilityRole="button"
         style={s.primary}
         onPress={onPrimary ?? onHome}
@@ -123,18 +125,25 @@ export function TileResultScreen({
         </Text>
       </Pressable>
       <View style={s.links}>
-        <Pressable disabled={busy}
+        <Pressable
+          disabled={busy}
           accessibilityRole="button"
           style={s.link}
           onPress={onHistory}
         >
           <Text style={s.linkText}>{t('나의 기록')}</Text>
         </Pressable>
-        <Pressable disabled={busy} accessibilityRole="button" style={s.link} onPress={onShare}>
+        <Pressable
+          disabled={busy}
+          accessibilityRole="button"
+          style={s.link}
+          onPress={onShare}
+        >
           <Text style={s.linkText}>{t('결과 공유')}</Text>
         </Pressable>
         {onLeaderboard ? (
-          <Pressable disabled={busy}
+          <Pressable
+            disabled={busy}
             accessibilityRole="button"
             style={s.link}
             onPress={onLeaderboard}
@@ -144,11 +153,21 @@ export function TileResultScreen({
         ) : null}
       </View>
       {onRetry ? (
-        <Pressable disabled={busy} accessibilityRole="button" style={s.link} onPress={onRetry}>
+        <Pressable
+          disabled={busy}
+          accessibilityRole="button"
+          style={s.link}
+          onPress={onRetry}
+        >
           <Text style={s.linkText}>{t('새로 도전하기')}</Text>
         </Pressable>
       ) : null}
-      <Pressable disabled={busy} accessibilityRole="button" style={s.link} onPress={onReview}>
+      <Pressable
+        disabled={busy}
+        accessibilityRole="button"
+        style={s.link}
+        onPress={onReview}
+      >
         <Text style={s.linkText}>
           {complete ? t('완성한 단어 살펴보기') : t('이어서 풀기')}
         </Text>
@@ -157,22 +176,24 @@ export function TileResultScreen({
         <View style={s.reminder}>
           <Text style={s.lead}>{reminder.body}</Text>
           <View style={s.links}>
-            <Pressable disabled={busy}
+            <Pressable
+              disabled={busy}
               accessibilityRole="button"
               style={s.link}
               onPress={reminder.accept}
             >
               <Text style={s.linkText}>
-                {RETURN_REMINDER_PREPROMPT_COPY.accept}
+                {t(RETURN_REMINDER_PREPROMPT_COPY.accept)}
               </Text>
             </Pressable>
-            <Pressable disabled={busy}
+            <Pressable
+              disabled={busy}
               accessibilityRole="button"
               style={s.link}
               onPress={reminder.decline}
             >
               <Text style={s.linkText}>
-                {RETURN_REMINDER_PREPROMPT_COPY.decline}
+                {t(RETURN_REMINDER_PREPROMPT_COPY.decline)}
               </Text>
             </Pressable>
           </View>

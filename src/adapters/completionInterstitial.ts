@@ -5,25 +5,33 @@ import {
 import type { InterstitialPort } from "../../packages/crossword-core/src/completionInterstitial.ts";
 export function createAitCompletionInterstitial(
   adGroupId: string,
-  loadTimeoutMs=15000,
+  loadTimeoutMs = 15000,
 ): InterstitialPort {
   let loaded = false,
     loading = false,
     disposed = false,
     generation = 0;
   let unload: (() => void) | undefined, unshow: (() => void) | undefined;
-  let loadTimer:ReturnType<typeof setTimeout>|undefined;
-  let cancelShow:(()=>void)|undefined;
+  let loadTimer: ReturnType<typeof setTimeout> | undefined;
+  let cancelShow: (() => void) | undefined;
   return {
     preload() {
       if (!adGroupId || loaded || loading || disposed) return;
       try {
         if (!loadFullScreenAd.isSupported() || !showFullScreenAd.isSupported())
           return;
-        unload?.();unload=undefined;
+        unload?.();
+        unload = undefined;
         loading = true;
         const own = ++generation;
-        loadTimer=setTimeout(()=>{if(own!==generation)return;generation++;loaded=false;loading=false;unload?.();unload=undefined;},loadTimeoutMs);
+        loadTimer = setTimeout(() => {
+          if (own !== generation) return;
+          generation++;
+          loaded = false;
+          loading = false;
+          unload?.();
+          unload = undefined;
+        }, loadTimeoutMs);
         unload = loadFullScreenAd({
           options: { adGroupId },
           onEvent: (e) => {
@@ -60,14 +68,14 @@ export function createAitCompletionInterstitial(
         const finish = (error = false) => {
           if (done) return;
           done = true;
-          cancelShow=undefined;
+          cancelShow = undefined;
           unshow?.();
           unshow = undefined;
           if (!error) track("ad_closed");
           if (error) reject(Error("show failed"));
           else resolve();
         };
-        cancelShow=()=>finish(true);
+        cancelShow = () => finish(true);
         try {
           unshow = showFullScreenAd({
             options: { adGroupId },
@@ -79,7 +87,10 @@ export function createAitCompletionInterstitial(
             },
             onError: () => finish(true),
           });
-          if(done){unshow?.();unshow=undefined;}
+          if (done) {
+            unshow?.();
+            unshow = undefined;
+          }
         } catch {
           finish(true);
         }

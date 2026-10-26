@@ -96,3 +96,28 @@ test("AC-1 date refresh waits exactly for KST midnight", () => {
     86400000,
   );
 });
+
+test("AC-1 local midnight refresh handles 23 and 25 hour DST days and timezone changes", () => {
+  const previous = process.env.TZ;
+  try {
+    process.env.TZ = "America/New_York";
+    assert.equal(
+      contentDateRefreshDelay("en", new Date("2026-03-08T05:00:00Z")),
+      23 * 3600000,
+    );
+    assert.equal(
+      contentDateRefreshDelay("en", new Date("2026-11-01T04:00:00Z")),
+      25 * 3600000,
+    );
+    const now = new Date("2026-10-26T04:00:00Z");
+    assert.equal(contentDate("en", now), "2026-10-26");
+    process.env.TZ = "America/Los_Angeles";
+    assert.equal(contentDate("en", now), "2026-10-25");
+    assert.equal(contentDateRefreshDelay("en", now), 3 * 3600000);
+    process.env.TZ = "America/New_York";
+    assert.equal(contentDate("en", now), "2026-10-26");
+  } finally {
+    if (previous === undefined) delete process.env.TZ;
+    else process.env.TZ = previous;
+  }
+});
