@@ -44,4 +44,8 @@ Google Play는 기존 개발자 계정 확인의 미해결 사항을 유지하�
 - [영문 개인정보처리방침](https://www.seorilabs.com/en/apps/crossword-puzzle/privacy/)
 - [영문 지원](https://www.seorilabs.com/en/support/)
 
-검증 원본과 API 조회 원본은 별도 NAS 증적 목록에 보관한다. 공개 개인정보처리방침의 과거 힌트 안내는 공식 사이트 저장소의 별도 PR에서 1.3.1 동작과 이전 버전 설명으로 정정한다.
+검증 원본, 캡처 원본과 API 조회 원본 137개, 4,865,686바이트를 다음 위치에 보관했다. 파일을 직접 기록한 뒤 flush, fsync, 직접 재읽기와 SHA-256 대조를 완료했다. 작업에서 생긴 AppleDouble 보조 파일은 제거했고 원장에 든 파일은 유지했다.
+
+`/Volumes/Data/Backup/agent-artifacts/crossword-puzzle/2026-10-27/english-storefront-20261026T235625Z/VERIFIED.json`
+
+공개 개인정보처리방침의 과거 힌트 안내는 [공식 사이트 PR #100](https://github.com/seorilabs/seorilabs-official/pull/100)에서 1.3.1 동작과 이전 버전 설명으로 정정한다. 두 언어의 320px 실행, 사이트 검사, lint와 83개 페이지 빌드도 통과했다.
