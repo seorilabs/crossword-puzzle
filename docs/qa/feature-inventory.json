@@ -75,6 +75,7 @@
       "paths": [
         "server/batch/generate-puzzle-pack.mjs",
         "server/batch/run-puzzle-pack-job.mjs",
+        "server/batch/publishedLegacyState.mjs",
         "server/batch/publish-puzzle-pack.mjs",
         "scripts/validate-puzzle-pack.mjs",
         "server/batch/generate-language-packs.mjs",

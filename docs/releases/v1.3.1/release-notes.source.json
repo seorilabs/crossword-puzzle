@@ -1,0 +1,17 @@
+{
+  "tag": "v1.3.1",
+  "markets": {
+    "googlePlay": {
+      "ko-KR": "- 한국어와 쉬운 영어 퍼즐을 언어별로 하루 다섯 판씩 풀 수 있어요.\n- 오늘의 진행과 언어별 기록을 확인하고 다음 판으로 이어갈 수 있어요.\n- 설정에서 언어를 바꾸고 저장된 풀이를 이어할 수 있어요.\n- 글자 힌트 기능을 제거했어요.",
+      "en-US": "- Play five daily puzzles in Korean and five in easy English.\n- See today’s progress and records for each language, then continue to the next puzzle.\n- Switch languages in Settings and resume saved puzzles.\n- Removed letter hints."
+    },
+    "appStore": {
+      "ko-KR": "- 한국어와 쉬운 영어 퍼즐을 언어별로 하루 다섯 판씩 풀 수 있어요.\n- 오늘의 진행과 언어별 기록을 확인하고 다음 판으로 이어갈 수 있어요.\n- 설정에서 언어를 바꾸고 저장된 풀이를 이어할 수 있어요.\n- 글자 힌트 기능을 제거했어요.",
+      "en-US": "- Play five daily puzzles in Korean and five in easy English.\n- See today’s progress and records for each language, then continue to the next puzzle.\n- Switch languages in Settings and resume saved puzzles.\n- Removed letter hints."
+    },
+    "appsInToss": {
+      "ko-KR": "- 한국어와 쉬운 영어 퍼즐을 언어별로 하루 다섯 판씩 풀 수 있어요.\n- 오늘의 진행과 언어별 기록을 확인하고 다음 판으로 이어갈 수 있어요.\n- 설정에서 언어를 바꾸고 저장된 풀이를 이어할 수 있어요.\n- 글자 힌트 기능을 제거했어요.",
+      "en-US": "- Play five daily puzzles in Korean and five in easy English.\n- See today’s progress and records for each language, then continue to the next puzzle.\n- Switch languages in Settings and resume saved puzzles.\n- Removed letter hints."
+    }
+  }
+}

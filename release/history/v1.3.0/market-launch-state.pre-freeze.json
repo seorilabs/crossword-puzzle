@@ -1,0 +1,309 @@
+{
+  "schemaVersion": 1,
+  "app": {
+    "name": "가로세로 낱말 퍼즐",
+    "repo": "seorilabs/crossword-puzzle",
+    "sourceRevision": "52d4d39"
+  },
+  "release": {
+    "version": "1.3.0",
+    "tag": "v1.3.0",
+    "objective": "public_live",
+    "countries": [
+      "KR"
+    ],
+    "rolloutMode": "Google Play 전체1, App Store 수동공개, AppsInToss 공개"
+  },
+  "deploymentApproval": {
+    "status": "approved",
+    "markets": [
+      "google_play",
+      "app_store",
+      "apps_in_toss"
+    ],
+    "objective": "public_live",
+    "approvedAt": "2026-10-26",
+    "evidence": [
+      "사용자 명시: 공개출시까지 진행",
+      "PR453 414ed5f test-plan.json 공개 범위",
+      "후속 승인: 신규 전면광고 지면3개 생성과 연결"
+    ]
+  },
+  "commonGates": {
+    "candidate": {
+      "status": "pending",
+      "evidence": [],
+      "checkedAt": null,
+      "blocker": null
+    },
+    "quality": {
+      "status": "pending",
+      "evidence": [],
+      "checkedAt": null,
+      "blocker": null
+    },
+    "production_dependencies": {
+      "status": "pending",
+      "evidence": [
+        "2026-10-26 사용자 저장소 한 곳 Writer추가 및 REST tags.create/update확인, 기존보호태그3개존재",
+        "CloudBuild와runtime기존SA actAs확인",
+        "언어별공급배포와URL읽기아직실행전"
+      ],
+      "checkedAt": null,
+      "blocker": null
+    },
+    "observability": {
+      "status": "pending",
+      "evidence": [],
+      "checkedAt": null,
+      "blocker": null
+    }
+  },
+  "markets": {
+    "google_play": {
+      "objective": "public_live",
+      "state": "pending",
+      "identity": {
+        "applicationId": "com.seorilabs.crosswordpuzzle",
+        "version": "1.3.0",
+        "build": null
+      },
+      "gates": {
+        "candidate": {
+          "status": "pending",
+          "evidence": [
+            "최종소스와태그번호발급전, 현재공개v1.2.0과구분"
+          ],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "artifact": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "upload": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "processing": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "qa": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "metadata": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "policy": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "submission": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "approval": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "release": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "live_smoke": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        }
+      }
+    },
+    "app_store": {
+      "objective": "public_live",
+      "state": "pending",
+      "identity": {
+        "applicationId": "com.seorilabs.crosswordpuzzle",
+        "version": "1.3.0",
+        "build": null
+      },
+      "gates": {
+        "candidate": {
+          "status": "pending",
+          "evidence": [
+            "최종소스와태그번호발급전, 현재공개v1.2.0과구분"
+          ],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "artifact": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "upload": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "processing": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "qa": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "metadata": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "policy": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "submission": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "approval": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "release": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "live_smoke": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        }
+      }
+    },
+    "apps_in_toss": {
+      "objective": "public_live",
+      "state": "pending",
+      "identity": {
+        "applicationId": "crossword-puzzle-game",
+        "version": "1.3.0",
+        "build": null
+      },
+      "gates": {
+        "candidate": {
+          "status": "pending",
+          "evidence": [
+            "최종소스와태그번호발급전, 현재공개v1.2.0과구분"
+          ],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "artifact": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "upload": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "processing": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "qa": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "metadata": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "policy": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "submission": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "approval": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "release": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        },
+        "live_smoke": {
+          "status": "pending",
+          "evidence": [],
+          "checkedAt": null,
+          "blocker": null
+        }
+      }
+    }
+  },
+  "history": [
+    {
+      "version": "1.2.0",
+      "path": "release/history/v1.2.0/market-launch-state.json",
+      "sha256": "f8ee3236eacaed830d3629495c396738bff7aa958bdf2b77acbcc4765de42759",
+      "preservation": "이전 후보 원장 바이트 전체 보존"
+    }
+  ]
+}
