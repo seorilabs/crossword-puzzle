@@ -55,17 +55,19 @@ test("AC-2 published manifest restoration fails closed and preserves exact ident
       language: "en",
       baseUrl: "https://example.test",
       outDir: dir,
-      fetcher: async (url) => ({
-        ok: true,
-        json: async () =>
-          url.endsWith("manifest.json")
-            ? {
-                puzzles: [
-                  { ...puzzle, path: "/puzzles/en/en-20261026-1.json" },
-                ],
-              }
-            : puzzle,
-      }),
+      fetcher: async (url) =>
+        new Response(
+          JSON.stringify(
+            new URL(url).pathname.endsWith("manifest.json")
+              ? {
+                  language: "en",
+                  puzzles: [
+                    { ...puzzle, path: "/puzzles/en/en-20261026-1.json" },
+                  ],
+                }
+              : puzzle,
+          ),
+        ),
     });
     assert.deepEqual(
       JSON.parse(
