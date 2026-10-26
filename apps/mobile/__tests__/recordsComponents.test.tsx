@@ -158,6 +158,7 @@ test('AC-6 English records show English time and calendar labels without hint aw
     const text = collectText(renderer).join(' ');
     expect(text).not.toMatch(/[가-힣]/);
     expect(text).not.toMatch(/No-hint|no hints/i);
+    expect(text).not.toContain('1 days');
     expect(text).toContain('2–3m');
   } finally {
     setUiLanguage('ko');

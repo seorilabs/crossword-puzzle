@@ -268,5 +268,6 @@ it("AC-6 English records translate distribution and calendar axes and omit the r
     ),
   ).toBe(true);
   expect(container.textContent).not.toMatch(/No-hint|no hints/i);
+  expect(container.textContent).not.toContain("1 days");
   expect(container.textContent).toContain("2–3m");
 });

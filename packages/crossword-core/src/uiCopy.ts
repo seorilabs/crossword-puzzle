@@ -316,7 +316,16 @@ export function translate(
   source: string,
   ...values: unknown[]
 ): string {
-  const copy = language === "en" ? (englishCopy[source] ?? source) : source;
+  const singular: Record<string, string> = {
+    "{0}판": "{0} puzzle",
+    "{0}일": "{0} day",
+  };
+  const copy =
+    language === "en"
+      ? ((values[0] === 1 ? singular[source] : undefined) ??
+        englishCopy[source] ??
+        source)
+      : source;
   return copy.replace(/\{(\d+)\}/g, (_, i) => String(values[Number(i)] ?? ""));
 }
 

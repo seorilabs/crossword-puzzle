@@ -42,10 +42,7 @@ export function PersonalStatsCard({
         <dl className="personalStatsGrid">
           <div className="personalStat">
             <dt>{t("총 완료")}</dt>
-            <dd>
-              {stats.completedCount}
-              {t("판")}
-            </dd>
+            <dd>{t("{0}판", stats.completedCount)}</dd>
           </div>
           <div className="personalStat">
             <dt>{t("완료율")}</dt>
@@ -53,17 +50,11 @@ export function PersonalStatsCard({
           </div>
           <div className="personalStat">
             <dt>{t("현재 스트릭")}</dt>
-            <dd>
-              {consecutiveStreak}
-              {t("일")}
-            </dd>
+            <dd>{t("{0}일", consecutiveStreak)}</dd>
           </div>
           <div className="personalStat">
             <dt>{t("최장 스트릭")}</dt>
-            <dd>
-              {longestStreak}
-              {t("일")}
-            </dd>
+            <dd>{t("{0}일", longestStreak)}</dd>
           </div>
           {hasBestTime && (
             <>
