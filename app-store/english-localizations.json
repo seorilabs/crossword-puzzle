@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "sourceLocale": "en-US",
+  "appStore": {
+    "locales": ["en-US", "en-CA", "en-AU"],
+    "supportUrl": "https://www.seorilabs.com/en/support/",
+    "marketingUrl": "https://www.seorilabs.com/en/",
+    "privacyPolicyUrl": "https://www.seorilabs.com/en/apps/crossword-puzzle/privacy/",
+    "iphoneScreenshots": [
+      "app-store/screenshots/en-US/iphone/01-home.png",
+      "app-store/screenshots/en-US/iphone/02-play.png",
+      "app-store/screenshots/en-US/iphone/03-result.png"
+    ],
+    "ipadScreenshots": [
+      "app-store/screenshots/en-US/ipad/01-home.png",
+      "app-store/screenshots/en-US/ipad/02-play.png",
+      "app-store/screenshots/en-US/ipad/03-result.png"
+    ]
+  },
+  "googlePlay": {
+    "locales": ["en-US"],
+    "phoneScreenshots": [
+      "play-store/screenshots/en-US/phone/01-home.png",
+      "play-store/screenshots/en-US/phone/02-play.png",
+      "play-store/screenshots/en-US/phone/03-result.png"
+    ],
+    "sevenInchTabletScreenshots": [
+      "play-store/screenshots/en-US/tablet-7/01-home.png",
+      "play-store/screenshots/en-US/tablet-7/02-play.png"
+    ],
+    "tenInchTabletScreenshots": [
+      "play-store/screenshots/en-US/tablet-10/01-home.png",
+      "play-store/screenshots/en-US/tablet-10/02-play.png"
+    ],
+    "playIcon": "play-store/assets/icon-512.png",
+    "featureGraphic": "play-store/assets/feature-graphic-1024x500.png"
+  }
+}

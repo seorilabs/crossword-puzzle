@@ -290,3 +290,7 @@ python3 -m pip install --user google-api-python-client google-auth google-auth-h
 - [Target API level requirements](https://support.google.com/googleplay/android-developer/answer/11926878)
 - [Android Publisher edits.bundles.upload](https://developers.google.com/android-publisher/api-ref/rest/v3/edits.bundles/upload)
 - [Google Cloud Workload Identity Federation for deployment pipelines](https://cloud.google.com/iam/docs/workload-identity-federation-with-deployment-pipelines)
+
+## 2026년 10월 27일 영문 등록정보
+
+다음 업데이트용 영문 문구와 실제 플레이 스크린샷을 준비했다. [원본, 검증과 남은 단계](qa/2026-10-27-english-storefront/README.md)를 따른다. 현재 공개 버전이나 판매 국가의 변경을 뜻하지 않는다.
