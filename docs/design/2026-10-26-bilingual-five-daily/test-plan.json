@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "level": "L3",
+  "baseline": "85a6109873d22d440696d738eef129cab80234a9",
+  "changedFeatures": [
+    "bilingual-five-daily",
+    "crossword-play",
+    "puzzle-progress-persistence",
+    "puzzle-pack-generation",
+    "platform-ads",
+    "analytics",
+    "results-and-share",
+    "records-leaderboard",
+    "settings-and-help"
+  ],
+  "environments": [
+    "dev"
+  ],
+  "redesign": true,
+  "foundationRerun": true,
+  "floorOverrides": [
+    {
+      "rule": "foundation",
+      "featureId": "platform-ads",
+      "reason": "승인된 범위는 개발 환경 전체 회귀와 PR 병합이다. 실제 App과 SDK 경계 대체 구현으로 정책, 실패와 복구를 독립 검수하며 실제 제공자 SDK 및 OS 노출은 미실행으로 남긴다. release는 null이며 기기를 사용하지 않는다."
+    },
+    {
+      "rule": "foundation",
+      "featureId": "analytics",
+      "reason": "승인된 범위는 개발 환경 전체 회귀와 PR 병합이다. 실제 App과 SDK 경계 대체 구현으로 정책, 실패와 복구를 독립 검수하며 실제 제공자 SDK 및 OS 노출은 미실행으로 남긴다. release는 null이며 기기를 사용하지 않는다."
+    },
+    {
+      "rule": "foundation",
+      "featureId": "remote-configuration",
+      "reason": "승인된 범위는 개발 환경 전체 회귀와 PR 병합이다. 실제 App과 SDK 경계 대체 구현으로 정책, 실패와 복구를 독립 검수하며 실제 제공자 SDK 및 OS 노출은 미실행으로 남긴다. release는 null이며 기기를 사용하지 않는다."
+    }
+  ],
+  "release": null
+}

@@ -208,6 +208,16 @@
         "src/adapters/usageStatistics.ts",
         "apps/mobile/usageStatistics.ts"
       ]
+    },
+    {
+      "id": "bilingual-five-daily",
+      "core": true,
+      "paths": [
+        "packages/crossword-core/src/dailyLanguage.ts",
+        "server/batch/generate-language-packs.mjs",
+        "src/adapters/languageRepository.ts",
+        "apps/mobile/languageRepository.ts"
+      ]
     }
   ]
 }
