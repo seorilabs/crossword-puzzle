@@ -224,21 +224,21 @@
     },
     "completion_interstitial_ait": {
       "defaultValue": {
-        "value": ""
+        "value": "ait.v2.live.5c3f0f0e527e4fab"
       },
       "valueType": "STRING",
       "description": "완료 후 전환용 별도 전면광고 지면. 미설정 시 건너뜀."
     },
     "completion_interstitial_android": {
       "defaultValue": {
-        "value": ""
+        "value": "ca-app-pub-9932778305312246/8094375680"
       },
       "valueType": "STRING",
       "description": "완료 후 전환용 별도 전면광고 지면. 미설정 시 건너뜀."
     },
     "completion_interstitial_ios": {
       "defaultValue": {
-        "value": ""
+        "value": "ca-app-pub-9932778305312246/4842148506"
       },
       "valueType": "STRING",
       "description": "완료 후 전환용 별도 전면광고 지면. 미설정 시 건너뜀."

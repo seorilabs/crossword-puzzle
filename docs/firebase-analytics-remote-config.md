@@ -37,6 +37,20 @@ GitHub Actions AIT 배포는 같은 값을 GitHub Variables에서 읽는다. 미
 
 `remoteconfig.template.json`이 현재 운영 기본값의 source of truth다.
 
+### v1.3.0 완료 후 전면광고
+
+| Key | 운영 기본값 |
+| --- | --- |
+| `completion_interstitial_ait` | `ait.v2.live.5c3f0f0e527e4fab` |
+| `completion_interstitial_android` | `ca-app-pub-9932778305312246/8094375680` |
+| `completion_interstitial_ios` | `ca-app-pub-9932778305312246/4842148506` |
+
+세 키는 운영 version10의 GET 값과 일치한다. 운영 배포 템플릿을 다시 적용해도 빈 값으로 돌아가지 않도록 `check:release-contracts`에서 대조한다. 완료 결과에서 다음 판, 마지막 판에서는 홈으로 이동할 때 판마다 한 번 시도한다. 미준비와 오류는 바로 진행한다. AIT 공급자 등록 처리 중 상태와 실제 SDK 노출 미검증은 별도로 기록하며 연결만으로 게재 성공을 주장하지 않는다.
+
+### 구버전과 저장 복원용 키
+
+v1.3.0에는 무료 힌트와 보상형 힌트 기능이 없다. 아래 힌트 관련 값과 과거 이벤트는 이전 공개 버전과 저장 복원 설명이며 새 힌트 지급 정책으로 해석하지 않는다.
+
 | Key                                  | 기본값 | 설명                                                      |
 | ------------------------------------ | -----: | --------------------------------------------------------- |
 | `daily_free_hint_credits`            |    `3` | KST 날짜별 공용 무료 힌트 개수                            |
