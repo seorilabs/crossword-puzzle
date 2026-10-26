@@ -2665,6 +2665,26 @@ function App() {
     );
   }
 
+  if (
+    (route === "today" || route === "result") &&
+    puzzleLanguage(puzzle) !== language
+  ) {
+    return (
+      <main className="appShell appShellTiles">
+        <section className="tileHome">
+          <p className="tileLead" role="alert">
+            {t(
+              "퍼즐을 불러오지 못했어요. 연결을 확인한 뒤 다시 불러와 주세요.",
+            )}
+          </p>
+          <button className="tilePrimary" onClick={() => navigate("home")}>
+            {t("홈으로 돌아가기")}
+          </button>
+        </section>
+      </main>
+    );
+  }
+
   if (route === "dev-simulator") {
     return (
       <DevSimulatorScreen
@@ -3262,10 +3282,12 @@ function formatPuzzleHistoryLabel(
   summary: PuzzleManifestItem,
   loadState: LoadState,
 ) {
+  if (summary.dailySequence != null)
+    return `${summary.date} · ${formatPuzzleCardSequenceLabel(summary, getUiLanguage())}`;
   const aliasLabel = formatPuzzleAliasLabel(summary);
 
   return loadState === "remote"
-    ? `${formatPuzzleCardSequenceLabel(summary)} · ${aliasLabel}`
+    ? `${formatPuzzleCardSequenceLabel(summary, getUiLanguage())} · ${aliasLabel}`
     : aliasLabel;
 }
 
@@ -3791,7 +3813,6 @@ function HistoryScreen({
   completedEntries,
   consecutiveStreak,
   dateCardStates,
-  hintCount,
   isCompleted,
   loadState,
   mission,
@@ -3977,8 +3998,7 @@ function HistoryScreen({
               </strong>
               <em>
                 {completedEntries.length}/{puzzle.entries.length}
-                {t("단어 · 힌트")} {hintCount}
-                {t("회 ·")}{" "}
+                {t("단어")} ·
                 {isCompleted || (hasStarted && remainingAttempts <= 0)
                   ? t("도전 {0}회", mission?.attemptsUsed ?? 0)
                   : t("남은 도전 {0}", remainingAttempts)}

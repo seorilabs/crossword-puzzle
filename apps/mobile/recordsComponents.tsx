@@ -1,4 +1,8 @@
-import { t } from './languageRepository';
+import {
+  calendarMonthText,
+  calendarWeekdayText,
+} from '../../packages/crossword-core/src/uiCopy';
+import { t, getUiLanguage } from './languageRepository';
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -95,10 +99,6 @@ export function PersonalStatsCard({
             value={t('{0}일', consecutiveStreak)}
           />
           <Metric label={t('최장 스트릭')} value={t('{0}일', longestStreak)} />
-          <Metric
-            label={t('노힌트 완료')}
-            value={t('{0}판', stats.noHintCompletedCount)}
-          />
           {hasBestTime ? (
             <>
               <Metric
@@ -140,8 +140,8 @@ export function PersonalStatsCard({
                   )
                 : 0;
             return (
-              <View key={bucket.label} style={styles.distributionRow}>
-                <Text style={styles.distributionLabel}>{bucket.label}</Text>
+              <View key={t(bucket.label)} style={styles.distributionRow}>
+                <Text style={styles.distributionLabel}>{t(bucket.label)}</Text>
                 <View style={styles.distributionTrack}>
                   <View
                     style={[
@@ -182,7 +182,7 @@ export function StreakHeatmap({ weeks }: StreakHeatmapProps) {
                 key={weeks[weekIndex]?.[0]?.date ?? `month-${weekIndex}`}
                 style={styles.heatmapMonth}
               >
-                {label}
+                {calendarMonthText(getUiLanguage(), label)}
               </Text>
             ))}
           </View>
@@ -190,7 +190,7 @@ export function StreakHeatmap({ weeks }: StreakHeatmapProps) {
             <View style={styles.heatmapDayAxis}>
               {WEEKDAY_AXIS_LABELS.map((label, dayIndex) => (
                 <Text key={`day-${dayIndex}`} style={styles.heatmapDayLabel}>
-                  {label}
+                  {label ? calendarWeekdayText(getUiLanguage(), dayIndex) : ''}
                 </Text>
               ))}
             </View>

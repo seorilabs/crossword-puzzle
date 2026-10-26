@@ -1,4 +1,8 @@
-import { t } from "../adapters/languageRepository";
+import {
+  calendarMonthText,
+  calendarWeekdayText,
+} from "../../packages/crossword-core/src/uiCopy";
+import { t, getUiLanguage } from "../adapters/languageRepository";
 import { buildStreakCalendarMonthLabels } from "../../packages/crossword-core/src";
 import type { StreakCalendarWeek } from "../../packages/crossword-core/src";
 
@@ -31,7 +35,7 @@ export function StreakHeatmap({ weeks }: StreakHeatmapProps) {
                 className="streakHeatmapMonth"
                 key={weeks[weekIndex]?.[0]?.date ?? weekIndex}
               >
-                {label}
+                {calendarMonthText(getUiLanguage(), label)}
               </div>
             ))}
           </div>
@@ -40,7 +44,7 @@ export function StreakHeatmap({ weeks }: StreakHeatmapProps) {
           <div className="streakHeatmapDays" aria-hidden="true">
             {WEEKDAY_AXIS_LABELS.map((label, dayIndex) => (
               <div className="streakHeatmapDay" key={dayIndex}>
-                {label}
+                {label ? calendarWeekdayText(getUiLanguage(), dayIndex) : ""}
               </div>
             ))}
           </div>

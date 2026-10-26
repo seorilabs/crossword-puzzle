@@ -219,7 +219,7 @@ export function TilePuzzleScreen({
             aria-label={t(
               "{0}번째 글자 {1}{2}",
               i + 1,
-              state.cellValues[key] || "비어 있음",
+              state.cellValues[key] || t("비어 있음"),
               locked.has(key) ? t(", 확정") : "",
             )}
             onClick={() =>

@@ -4,6 +4,7 @@ import { test } from "node:test";
 import type { PuzzleManifestItem } from "./types.ts";
 import {
   findPuzzleSummaryById,
+  formatPuzzleCardSequenceLabel,
   formatDifficultyLabel,
   formatDateCardDay,
   formatDateCardWeekday,
@@ -46,4 +47,14 @@ test("formatDateCardWeekday: 기본 short, 잘못된 날짜는 빈 문자열", (
   assert.equal(typeof formatDateCardWeekday("2026-07-09"), "string");
   assert.notEqual(formatDateCardWeekday("2026-07-09"), "");
   assert.equal(formatDateCardWeekday("bad"), "");
+});
+
+test("AC-1 and AC-6 issued daily sequence is independent of publication hour and translated for English", () => {
+  const row = {
+    puzzleId: "en-20261026-3",
+    dailySequence: 3,
+    publishedAt: "2026-10-26T03:00:00Z",
+  } as PuzzleManifestItem;
+  assert.equal(formatPuzzleCardSequenceLabel(row), "퍼즐 03번");
+  assert.equal(formatPuzzleCardSequenceLabel(row, "en"), "Puzzle 03");
 });

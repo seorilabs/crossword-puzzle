@@ -1,3 +1,4 @@
+import { DAILY_PUZZLE_COUNT } from "./dailyLanguage.ts";
 import { type Difficulty, isDifficulty } from "./difficultyProfiles.ts";
 import { getCellKey, getEntryCells } from "./puzzle.ts";
 import type {
@@ -111,9 +112,16 @@ function getPuzzleSlotHour(
 }
 
 export function getPuzzleDailySequenceNumber(
-  source: Pick<PuzzleAliasSource, "publishedAt" | "slotId">,
+  source: Pick<PuzzleAliasSource, "publishedAt" | "slotId"> &
+    Pick<PuzzleManifestItem, "dailySequence">,
   intervalHours = PUZZLE_GENERATION_INTERVAL_HOURS,
 ) {
+  if (
+    Number.isInteger(source.dailySequence) &&
+    source.dailySequence! >= 1 &&
+    source.dailySequence! <= DAILY_PUZZLE_COUNT
+  )
+    return source.dailySequence;
   const hour = getPuzzleSlotHour(source);
   const safeInterval = Math.max(1, Math.floor(intervalHours));
 

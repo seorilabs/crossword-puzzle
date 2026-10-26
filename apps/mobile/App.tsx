@@ -388,7 +388,7 @@ export function formatPuzzleHomeSubtitle(
     return summary.date;
   }
 
-  const weekday = formatDateCardWeekday(summary.date, 'long');
+  const weekday = formatDateCardWeekday(summary.date, 'long', getUiLanguage());
   const dayLabel = formatDateCardDay(summary.date);
 
   return weekday === '' ? dayLabel : `${dayLabel} ${weekday}`;
@@ -402,7 +402,7 @@ export function formatPuzzleCardTitle(
     return summary.date;
   }
 
-  const weekday = formatDateCardWeekday(summary.date, 'short');
+  const weekday = formatDateCardWeekday(summary.date, 'short', getUiLanguage());
   const dayLabel = formatDateCardDay(summary.date);
 
   return weekday === '' ? dayLabel : `${dayLabel} ${weekday}`;
@@ -433,10 +433,12 @@ export function formatPuzzleHistoryTitle(
   summary: PuzzleManifestItem,
   source: PuzzlePackSource,
 ) {
+  if (summary.dailySequence != null)
+    return `${summary.date} · ${formatPuzzleCardSequenceLabel(summary, getUiLanguage())}`;
   const aliasLabel = formatPuzzleAliasLabel(summary);
 
   return source === 'remote'
-    ? `${formatPuzzleCardSequenceLabel(summary)} · ${aliasLabel}`
+    ? `${formatPuzzleCardSequenceLabel(summary, getUiLanguage())} · ${aliasLabel}`
     : aliasLabel;
 }
 
@@ -2610,9 +2612,7 @@ function AppContent() {
                 </Text>
                 <Text style={styles.historyMeta}>
                   {summary.date} · {summary.metrics?.wordCount ?? '-'}
-                  {t('단어 · 힌트')}
-                  {state?.hintCount ?? 0}
-                  {t('개')}
+                  {t('단어')}
                 </Text>
               </View>
               <Text style={styles.historyState}>
@@ -2708,6 +2708,32 @@ function AppContent() {
           <Text style={styles.notice}>
             {t('퍼즐 데이터를 불러오는 중입니다.')}
           </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (
+    (route === 'today' || route === 'result') &&
+    puzzleLanguage(puzzle) !== language
+  ) {
+    return (
+      <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
+        <View style={styles.loadingScreen}>
+          <Text accessibilityRole="alert" style={styles.notice}>
+            {t(
+              '퍼즐을 불러오지 못했어요. 연결을 확인한 뒤 다시 불러와 주세요.',
+            )}
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            style={styles.secondaryButton}
+            onPress={() => navigateTo('home')}
+          >
+            <Text style={styles.secondaryButtonText}>
+              {t('홈으로 돌아가기')}
+            </Text>
+          </Pressable>
         </View>
       </SafeAreaView>
     );

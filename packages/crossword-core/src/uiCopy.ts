@@ -1,5 +1,11 @@
 import type { ContentLanguage } from "./dailyLanguage.ts";
 export const englishCopy: Record<string, string> = {
+  "비어 있음": "empty",
+  "1분 미만": "<1m",
+  "1–2분": "1–2m",
+  "2–3분": "2–3m",
+  "3–5분": "3–5m",
+  "5분+": "5m+",
   "내일 새 퍼즐이 나오면 알려드릴게요": "Get a reminder for tomorrow's puzzles",
   "알림 받기": "Get reminders",
   괜찮아요: "No thanks",
@@ -312,4 +318,21 @@ export function translate(
 ): string {
   const copy = language === "en" ? (englishCopy[source] ?? source) : source;
   return copy.replace(/\{(\d+)\}/g, (_, i) => String(values[Number(i)] ?? ""));
+}
+
+export function calendarMonthText(
+  language: ContentLanguage,
+  label: string,
+): string {
+  return language === "en" ? label.replace(/월$/, "") : label;
+}
+export function calendarWeekdayText(
+  language: ContentLanguage,
+  day: number,
+): string {
+  return (
+    (language === "en"
+      ? ["S", "M", "T", "W", "T", "F", "S"]
+      : ["일", "월", "화", "수", "목", "금", "토"])[day] ?? ""
+  );
 }

@@ -1,3 +1,4 @@
+import type { ContentLanguage } from "./dailyLanguage.ts";
 // 퍼즐/날짜 카드 표시 라벨·조회 순수 함수. AIT WebView(src)와 RN(apps/mobile)이
 // 동일하게 사용하므로 core에 단일 정의한다. React/RN/SDK 의존 금지.
 
@@ -47,12 +48,13 @@ export function formatPuzzleAliasLabel(summary: PuzzleManifestItem): string {
 
 export function formatPuzzleCardSequenceLabel(
   summary: PuzzleManifestItem,
+  language: ContentLanguage = "ko",
 ): string {
   const sequenceNumber = getPuzzleDailySequenceNumber(summary);
 
-  return sequenceNumber == null
-    ? "퍼즐 --번"
-    : `퍼즐 ${String(sequenceNumber).padStart(2, "0")}번`;
+  const number =
+    sequenceNumber == null ? "--" : String(sequenceNumber).padStart(2, "0");
+  return language === "en" ? `Puzzle ${number}` : `퍼즐 ${number}번`;
 }
 
 export function formatDateCardDay(date: string): string {
@@ -68,11 +70,14 @@ export function formatDateCardDay(date: string): string {
 export function formatDateCardWeekday(
   date: string,
   variant: "long" | "short" = "short",
+  language: ContentLanguage = "ko",
 ): string {
   const value = new Date(`${date}T00:00:00`);
   if (Number.isNaN(value.getTime())) {
     return "";
   }
 
-  return new Intl.DateTimeFormat("ko-KR", { weekday: variant }).format(value);
+  return new Intl.DateTimeFormat(language === "en" ? "en-US" : "ko-KR", {
+    weekday: variant,
+  }).format(value);
 }

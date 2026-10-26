@@ -1,3 +1,4 @@
+import { setUiLanguage } from "../adapters/languageRepository";
 import {
   cleanup,
   fireEvent,
@@ -19,7 +20,10 @@ import {
   type TilePuzzleScreenProps,
 } from "./TilePuzzleScreen";
 const puzzle = source as Puzzle;
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  setUiLanguage("ko");
+});
 function Harness({
   paused = false,
   guide,
@@ -110,4 +114,22 @@ describe("실제 타일 입력 화면", () => {
     expect(onSkip).toHaveBeenCalledOnce();
     expect(container.querySelectorAll(".tileUsed")).toHaveLength(0);
   });
+});
+
+it("AC-6 empty English answer slots have fully translated accessibility labels", () => {
+  setUiLanguage("en");
+  render(<Harness />);
+  const slots = screen.getByRole("group", {
+    name: "Current word answer slots",
+  });
+  expect(
+    within(slots)
+      .getAllByRole("button")
+      .every(
+        (button) => !/[가-힣]/.test(button.getAttribute("aria-label") ?? ""),
+      ),
+  ).toBe(true);
+  expect(
+    within(slots).getAllByRole("button")[0].getAttribute("aria-label"),
+  ).toContain("empty");
 });
