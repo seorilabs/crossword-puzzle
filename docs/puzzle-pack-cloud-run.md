@@ -4,12 +4,30 @@
 
 ```mermaid
 flowchart LR
-  Scheduler["Cloud Scheduler - 매일 자정"] --> Job["Cloud Run Job"]
-  Job --> Generator["Easy Normal Hard 생성"]
-  Generator --> Validator["slot validator"]
-  Validator --> Hosting["Firebase Hosting: /puzzles/*.json"]
-  App["AIT WebView"] --> Hosting
+  Scheduler["Cloud Scheduler"] --> Restore["공개 상태 복원"]
+  Restore --> Legacy["구버전 한국어 생성과 검증"]
+  Legacy --> Languages["한국어와 영어 하루 5판 생성"]
+  Languages --> Validator["분량, 연결, 교차 55%, 14일 중복 검사"]
+  Validator --> Clone["현재 Hosting 버전 복제"]
+  Clone --> Hosting["한 번에 공개 후 양언어 검사"]
+  App["AIT, Android, iOS"] --> Hosting
 ```
+
+## 언어별 하루 5판 운영
+
+`npm run job:puzzle-pack`은 기존 `/puzzles/manifest.json` 공급을 유지하며 `/puzzles/ko/manifest.json`과 `/puzzles/en/manifest.json`을 함께 준비한다. 운영 실행에는 `PUZZLE_HOSTING_BASE_URL`, `FIREBASE_PROJECT_ID`와 `FIREBASE_HOSTING_SITE`가 필요하다. 출력 폴더를 지정하지 않으면 실행마다 임시 public 폴더를 만들고 종료 시 지운다. 이미지에 포함된 예전 manifest와 웹 자산을 게시 입력으로 사용하지 않는다.
+
+한국어는 KST 오늘과 내일 10판, 영어는 UTC 어제부터 3일 뒤까지 25판을 준비한다. 영어의 현지 날짜 양끝과 미래 2일을 포함하는 범위이며 클라이언트가 미래 판을 숨긴다. 두 언어의 하루 5판, 단어 수, 단서, 연결성, 교차 칸 55%와 14일 정답 중복 조건을 낮추지 않는다. 복원한 모든 발행 판을 다시 검사하고 같은 슬롯의 퍼즐 원문은 보존한다.
+
+구버전 한국어 생성 전에 새 한국어의 발행 정답을 14일 범위에서 제외한 임시 단어 목록을 만든다. 구버전 생성 뒤에는 그 실행의 정답 이력을 새 한국어의 제외 이력에 합친다. 새 5판을 구버전의 90일 이력에 넣어 기존 검사 규칙을 바꾸지는 않는다.
+
+처음 언어별 manifest가 없는 경우에만 **해당 1회 실행의 환경 변수 override**로 `PUZZLE_LANGUAGE_BOOTSTRAP=true`를 전달한다. 이때도 404만 초기 공급으로 해석하며 네트워크 오류, 잘못된 원문과 정답 이력 누락은 실패한다. 한국어 초기 공급은 공개된 기존 정답 이력을 읽어야 한다. 이 변수를 Job의 지속 설정이나 Scheduler에 저장하지 않는다. 이후 실행은 두 언어의 공개 원문 복원이 필수다.
+
+게시기는 현재 live release와 config를 읽고 [`versions.clone(finalize:false)`](https://firebase.google.com/docs/reference/hosting/rest/v1beta1/sites.versions/clone)으로 전체 파일을 보존한다. 기존 리다이렉트, rewrite와 다른 경로의 헤더는 유지하고 퍼즐 경로의 CORS와 캐시 헤더만 설정한다. 생성한 `/puzzles/` 파일을 덮은 뒤 `FINALIZED`와 `releases.create`를 한 번씩 호출한다. 그 외 웹 파일을 로컬 원본으로 덮지 않으며, 이미 발행한 언어 퍼즐의 해시가 다르면 중단한다. 생성 시작부터 공개 직전 사이 live release가 바뀌어도 공개를 중단한다. API가 비교 후 쓰기의 원자적 조건을 제공하지 않으므로 생성 및 Hosting 배포를 동시에 실행하지 않는다.
+
+기존 보호 이미지 교체 절차에서 generator와 health는 같은 digest를 유지한다. 최초 언어 전환에서는 새 generator를 위의 실행 한정 bootstrap override로 한 번 실행한 뒤 새 health를 실행해야 한다. health만 먼저 실행하면 아직 없는 manifest를 실패로 보고 이전 이미지로 돌아간다. 기존 보호 태그와 이전 digest, live Hosting version을 기록한 뒤 전환하고, 실패하면 두 Job을 함께 이전 digest로 복원한다. IAM, 리소스 생성과 스케줄 변경을 포함하는 초기 설치 스크립트를 기존 이미지 교체에 무심코 재실행하지 않는다.
+
+`health:puzzles`는 기존 한국어 검사에 더해 두 언어의 오늘과 준비 범위, 모든 날짜의 5판 구성, 보드 품질과 14일 중복을 공개 원문으로 검사한다. 생성과 복제, 업로드가 실패하면 `releases.create`를 실행하지 않는다. 공개 뒤 검사가 실패하면 명령도 실패하며 운영 기록에 실패 상태를 남긴다.
 
 ## 로컬 검증
 
@@ -116,30 +134,31 @@ gcloud run jobs execute crossword-puzzle-pack-generator \
 
 Cloud Run Job은 다음 환경 변수를 사용한다.
 
-| 변수                             |                   기본값 | 설명                                                                                                                      |
-| -------------------------------- | -----------------------: | ------------------------------------------------------------------------------------------------------------------------- |
-| `FIREBASE_PROJECT_ID`            |                     필수 | Firebase Hosting project                                                                                                  |
-| `FIREBASE_HOSTING_SITE`          |                     필수 | Firebase Hosting site ID                                                                                                  |
-| `PUZZLE_DAYS`                    |                      `1` | 한 번에 생성할 퍼즐 슬롯 수                                                                                               |
-| `PUZZLE_TIME_ZONE`               |             `Asia/Seoul` | 동적 시작 날짜 계산 timezone                                                                                              |
-| `PUZZLE_SINGLE_DAILY_FROM_DATE`   |                     비움 | 단일 큰 판 전환 날짜. 지정하면 다음 날짜 자정 공개를 준비하며 manifest에 최초 전환일을 보존 |
-| `PUZZLE_SEED`                    |                     자동 | 재현용 고정 seed. 지정하지 않으면 `PUZZLE_TIME_ZONE`, 시작 날짜, `PUZZLE_PUBLISHED_AT`을 섞어 실행마다 다른 seed를 만든다 |
-| `PUZZLE_OUT_DIR`                 |         `public/puzzles` | 생성 결과 출력 폴더                                                                                                       |
-| `PUZZLE_HOSTING_BASE_URL`        | `https://<site>.web.app` | 앱/운영자가 참조할 base URL                                                                                               |
-| `PUZZLE_APPEND`                  |                   `true` | 기존 manifest를 불러와 새 퍼즐을 append할지 여부                                                                          |
-| `PUZZLE_KEEP`                    |                     `14` | manifest에 유지할 최근 퍼즐 수. 일간 2판 기준 7일치                                                                       |
-| `PUZZLE_INTERVAL_HOURS`          |                      `1` | Easy/Hard의 내부 `slotId`를 h00/h01로 분리하는 간격                                                                       |
-| `PUZZLE_DIFFICULTY`              |                     비움 | 지정하면 모든 슬롯을 해당 난이도(`easy`/`hard`)로 고정                                                           |
-| `PUZZLE_DAILY_TIERS`             |                   `true` | 고정 난이도가 없을 때 매일 Easy 5×5, Hard 8×8을 한 판씩 생성                                                  |
-| `PUZZLE_DIFFICULTY_ROTATION`     |                  `false` | `PUZZLE_DAILY_TIERS=false`인 레거시 다회 실행에서만 `easy/hard` 순환                                        |
-| `PUZZLE_DIVERSITY_HISTORY`       |                      `7` | 같은 난이도에서 다양성을 비교할 최근 퍼즐 수                                                                              |
-| `PUZZLE_MAX_ANSWER_REUSE`        |                    `0.5` | 최근 동일 난이도 한 판과 겹쳐도 되는 후보 정답 비율 상한                                                                  |
-| `PUZZLE_MAX_SCAFFOLD_SIMILARITY` |                   `0.75` | 최근 동일 난이도 한 판과 겹쳐도 되는 채운 칸 골격 Jaccard 유사도 상한                                                     |
-| `PUZZLE_MAX_SYLLABLE_ANSWERS`    |                      `3` | 한 판에서 같은 음절이 등장해도 되는 최대 정답 수                                                                          |
-| `PUZZLE_ANSWER_HISTORY_DAYS`     |                     `90` | 발행 정답 이력(`answer-history.json`)에서 정확히 같은 정답을 배제할 일수. 두 난이도 모두에 적용                            |
-| `PUZZLE_FRAGMENT_HISTORY_DAYS`   |                     `14` | 발행 정답 이력에서 어근(2음절 조각)이 겹치는 후보를 배제할 일수. 두 난이도 모두에 적용                                     |
-| `PUZZLE_EXISTING_ANSWER_HISTORY_URL` | `<base>/puzzles/answer-history.json` | 실행 시작 시 읽을 원격 정답 이력. 없으면(404) 로컬 파일 → manifest bootstrap 순으로 폴백                      |
-| `PUZZLE_CORS_ORIGIN`             |                      `*` | AIT WebView에서 JSON을 fetch할 수 있도록 `/puzzles/**` 응답에 넣을 CORS origin                                            |
+| 변수                                 |                               기본값 | 설명                                                                                                                      |
+| ------------------------------------ | -----------------------------------: | ------------------------------------------------------------------------------------------------------------------------- |
+| `FIREBASE_PROJECT_ID`                |                                 필수 | Firebase Hosting project                                                                                                  |
+| `FIREBASE_HOSTING_SITE`              |                                 필수 | Firebase Hosting site ID                                                                                                  |
+| `PUZZLE_DAYS`                        |                                  `1` | 한 번에 생성할 퍼즐 슬롯 수                                                                                               |
+| `PUZZLE_TIME_ZONE`                   |                         `Asia/Seoul` | 동적 시작 날짜 계산 timezone                                                                                              |
+| `PUZZLE_SINGLE_DAILY_FROM_DATE`      |                                 비움 | 단일 큰 판 전환 날짜. 지정하면 다음 날짜 자정 공개를 준비하며 manifest에 최초 전환일을 보존                               |
+| `PUZZLE_SEED`                        |                                 자동 | 재현용 고정 seed. 지정하지 않으면 `PUZZLE_TIME_ZONE`, 시작 날짜, `PUZZLE_PUBLISHED_AT`을 섞어 실행마다 다른 seed를 만든다 |
+| `PUZZLE_OUT_DIR`                     |                     실행별 임시 폴더 | 명시하면 생성 결과를 해당 폴더에 보존                                                                                     |
+| `PUZZLE_HOSTING_BASE_URL`            |             `https://<site>.web.app` | 앱/운영자가 참조할 base URL                                                                                               |
+| `PUZZLE_APPEND`                      |                               `true` | 기존 manifest를 불러와 새 퍼즐을 append할지 여부                                                                          |
+| `PUZZLE_KEEP`                        |                                 `14` | manifest에 유지할 최근 퍼즐 수. 일간 2판 기준 7일치                                                                       |
+| `PUZZLE_INTERVAL_HOURS`              |                                  `1` | Easy/Hard의 내부 `slotId`를 h00/h01로 분리하는 간격                                                                       |
+| `PUZZLE_DIFFICULTY`                  |                                 비움 | 지정하면 모든 슬롯을 해당 난이도(`easy`/`hard`)로 고정                                                                    |
+| `PUZZLE_DAILY_TIERS`                 |                               `true` | 고정 난이도가 없을 때 매일 Easy 5×5, Hard 8×8을 한 판씩 생성                                                              |
+| `PUZZLE_DIFFICULTY_ROTATION`         |                              `false` | `PUZZLE_DAILY_TIERS=false`인 레거시 다회 실행에서만 `easy/hard` 순환                                                      |
+| `PUZZLE_DIVERSITY_HISTORY`           |                                  `7` | 같은 난이도에서 다양성을 비교할 최근 퍼즐 수                                                                              |
+| `PUZZLE_MAX_ANSWER_REUSE`            |                                `0.5` | 최근 동일 난이도 한 판과 겹쳐도 되는 후보 정답 비율 상한                                                                  |
+| `PUZZLE_MAX_SCAFFOLD_SIMILARITY`     |                               `0.75` | 최근 동일 난이도 한 판과 겹쳐도 되는 채운 칸 골격 Jaccard 유사도 상한                                                     |
+| `PUZZLE_MAX_SYLLABLE_ANSWERS`        |                                  `3` | 한 판에서 같은 음절이 등장해도 되는 최대 정답 수                                                                          |
+| `PUZZLE_ANSWER_HISTORY_DAYS`         |                                 `90` | 발행 정답 이력(`answer-history.json`)에서 정확히 같은 정답을 배제할 일수. 두 난이도 모두에 적용                           |
+| `PUZZLE_FRAGMENT_HISTORY_DAYS`       |                                 `14` | 발행 정답 이력에서 어근(2음절 조각)이 겹치는 후보를 배제할 일수. 두 난이도 모두에 적용                                    |
+| `PUZZLE_EXISTING_ANSWER_HISTORY_URL` | `<base>/puzzles/answer-history.json` | 실행 시작 시 읽을 원격 정답 이력. 없으면(404) 로컬 파일 → manifest bootstrap 순으로 폴백                                  |
+| `PUZZLE_LANGUAGE_BOOTSTRAP`          |                              `false` | 최초 언어 manifest 404 때만 허용하는 1회 실행 override. 지속 설정 금지                                                    |
+| `PUZZLE_CORS_ORIGIN`                 |                                  `*` | AIT WebView에서 JSON을 fetch할 수 있도록 `/puzzles/**` 응답에 넣을 CORS origin                                            |
 
 생성 옵션은 `PUZZLE_ATTEMPTS`, `PUZZLE_BEAM`, `PUZZLE_BRANCH`, `PUZZLE_CANDIDATES`, `PUZZLE_DENSE`, `PUZZLE_DIVERSITY_HISTORY`, `PUZZLE_MAX_ANSWER_REUSE`, `PUZZLE_MAX_SCAFFOLD_SIMILARITY`, `PUZZLE_MAX_SYLLABLE_ANSWERS`, `PUZZLE_MIN_CROSS`, `PUZZLE_MIN_DENSITY`, `PUZZLE_MIN_ENTRIES`, `PUZZLE_MIN_MULTI`, `PUZZLE_MAX_AUTO`, `PUZZLE_RETRIES`, `PUZZLE_SAMPLES`, `PUZZLE_SIZE`, `PUZZLE_WORDS`, `PUZZLE_WORDBANK`, `PUZZLE_PUBLISHED_AT`, `PUZZLE_EXISTING_MANIFEST_URL`, `PUZZLE_ANSWER_HISTORY_DAYS`, `PUZZLE_FRAGMENT_HISTORY_DAYS`, `PUZZLE_EXISTING_ANSWER_HISTORY_URL`로 override할 수 있다. `PUZZLE_SEED`를 지정하면 같은 입력에서 같은 퍼즐이 다시 생성될 수 있으므로, 운영 스케줄에서는 보통 비워 둔다.
 
@@ -186,10 +205,10 @@ GitHub Actions의 AppsInToss 배포 workflow는 `vars.PUZZLE_PACK_BASE_URL`이 �
 
 동작 방식:
 
-- `VITE_PUZZLE_PACK_BASE_URL`이 있으면 `<base>/puzzles/manifest.json`을 읽고, manifest의 `/puzzles/*.json` 경로도 같은 base URL로 해석한다.
+- 새 클라이언트는 `VITE_PUZZLE_PACK_BASE_URL` 아래 선택한 언어의 `/puzzles/ko/manifest.json` 또는 `/puzzles/en/manifest.json`을 읽는다. 구버전 `/puzzles/manifest.json`은 계속 제공한다.
 - `VITE_PUZZLE_MANIFEST_URL`을 넣으면 manifest 위치만 직접 override한다.
-- 원격 로딩이 실패하면 번들에 포함된 `/puzzles/manifest.json`으로 fallback한다.
-- 두 환경 변수가 없으면 기존처럼 번들에 포함된 `/puzzles/manifest.json`만 읽는다.
+- 언어별 공급에 실패하면 같은 언어의 저장된 공급만 복구에 사용하며 영어를 한국어로 대체하지 않는다.
+- 운영 빌드는 언어별 manifest가 준비된 base URL을 명시한다.
 
 Firebase Hosting을 AIT 앱 origin과 다른 도메인에서 읽기 때문에 CORS가 필요하다. `npm run publish:puzzles`는 `/puzzles/**` 응답에 `Access-Control-Allow-Origin`을 기본 `*`로 배포한다. 퍼즐 pack은 공개 읽기 전용 정적 데이터라 이 설정을 기본으로 둔다.
 

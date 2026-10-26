@@ -1,3 +1,4 @@
+import { checkPublishedLanguagePacks } from "./languagePackHealth.mjs";
 import { evaluatePublishedPuzzlePackHealth } from "../../packages/crossword-core/src/puzzlePackHealth.ts";
 import { requiredDailyDifficulties } from "../../packages/crossword-core/src/singleDailyPublication.ts";
 import {
@@ -130,6 +131,7 @@ async function run() {
     .map((difficulty) => `${difficulty}=${health.puzzleIds[difficulty]}`)
     .join(" ");
 
+  await checkPublishedLanguagePacks({ baseUrl });
   console.log(`[puzzle-pack-health] PASS date=${expectedDate} ${summary}`);
 }
 
