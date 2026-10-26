@@ -23,6 +23,12 @@ import { resolveScheduledDifficulty } from "../../packages/crossword-core/src/di
 import { resolveScheduledTheme } from "../../packages/crossword-core/src/themeRotation.ts";
 
 import {
+  DEFAULT_ANSWER_HISTORY_DAYS,
+  DEFAULT_FRAGMENT_HISTORY_DAYS,
+  resolveAnswerHistoryRetentionDays,
+} from "../../packages/crossword-core/src/answerHistory.ts";
+
+import {
   restorePublishedLegacyPack,
   legacySlotWasPublished,
   assertPublishedLegacyUnchanged,
@@ -397,6 +403,16 @@ export async function runPuzzlePackJob({
       if (!generatorArgs.includes("--append")) generatorArgs.push("--append");
     }
     let retentionDate = getArgValue(generatorArgs, "start");
+    const retentionDays = resolveAnswerHistoryRetentionDays(
+      Number(
+        getArgValue(generatorArgs, "answerHistoryDays") ??
+          DEFAULT_ANSWER_HISTORY_DAYS,
+      ),
+      Number(
+        getArgValue(generatorArgs, "fragmentHistoryDays") ??
+          DEFAULT_FRAGMENT_HISTORY_DAYS,
+      ),
+    );
     if (languagesEnabled) {
       const filteredWordBankPath = await prepareLanguages({
         baseUrl,
@@ -487,6 +503,7 @@ export async function runPuzzlePackJob({
               state: publishedLegacy,
               outDir,
               retentionDate,
+              retentionDays,
             });
           }
         }
@@ -567,7 +584,12 @@ export async function runPuzzlePackJob({
       await validateLanguages({ outDir, schedule: languagePackSchedule(now) });
     }
 
-    await verifyLegacyState({ state: publishedLegacy, outDir, retentionDate });
+    await verifyLegacyState({
+      state: publishedLegacy,
+      outDir,
+      retentionDate,
+      retentionDays,
+    });
     if (!options.skipPublish) {
       const publishArgs = [
         `--manifest=${manifestPath}`,

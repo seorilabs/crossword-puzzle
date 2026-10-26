@@ -135,6 +135,7 @@ export async function assertPublishedLegacyUnchanged({
   state,
   outDir,
   retentionDate,
+  retentionDays = state?.retentionDays,
 }) {
   if (!state) return;
   for (const original of state.puzzles)
@@ -154,7 +155,7 @@ export async function assertPublishedLegacyUnchanged({
       String(item.puzzleId),
     ]),
   );
-  const cutoff = shiftDateKey(retentionDate, -state.retentionDays);
+  const cutoff = shiftDateKey(retentionDate, -retentionDays);
   const current = new Map(
     history.puzzles.map((item) => [identity(item), item]),
   );

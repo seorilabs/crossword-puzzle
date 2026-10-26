@@ -327,3 +327,54 @@ test("AC-2 language-less published puzzles with arbitrary string IDs are skipped
   assert.equal(result.generated.length, 0);
   assert.equal(result.published.length, 1);
 });
+
+test("AC-2 the configured 60-day retention permits expired history pruning", async () => {
+  const { assertPublishedLegacyUnchanged } = await import("./publishedLegacyState.mjs");
+  const root = await mkdtemp(path.join(tmpdir(), "legacy-retention-60-"));
+  const original = {
+    puzzleId: "expired-record",
+    date: "2026-08-20",
+    answers: ["기록"],
+  };
+  try {
+    await writeFile(
+      path.join(root, "answer-history.json"),
+      JSON.stringify({ version: 1, retentionDays: 60, puzzles: [] }),
+    );
+    await assertPublishedLegacyUnchanged({
+      state: { puzzles: [], history: { puzzles: [original] }, retentionDays: 90 },
+      outDir: root,
+      retentionDate: "2026-10-27",
+      retentionDays: 60,
+    });
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("AC-2 the configured 120-day retention protects still-current history", async () => {
+  const { assertPublishedLegacyUnchanged } = await import("./publishedLegacyState.mjs");
+  const root = await mkdtemp(path.join(tmpdir(), "legacy-retention-120-"));
+  const original = {
+    puzzleId: "retained-record",
+    date: "2026-07-10",
+    answers: ["기록"],
+  };
+  try {
+    await writeFile(
+      path.join(root, "answer-history.json"),
+      JSON.stringify({ version: 1, retentionDays: 120, puzzles: [] }),
+    );
+    await assert.rejects(
+      assertPublishedLegacyUnchanged({
+        state: { puzzles: [], history: { puzzles: [original] }, retentionDays: 90 },
+        outDir: root,
+        retentionDate: "2026-10-27",
+        retentionDays: 120,
+      }),
+      /published legacy history/,
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
