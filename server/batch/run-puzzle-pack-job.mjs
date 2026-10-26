@@ -2,6 +2,21 @@ import { fileURLToPath } from "node:url";
 import { resolveSingleDailyPublication } from "../../packages/crossword-core/src/singleDailyPublication.ts";
 import { spawn } from "node:child_process";
 import path from "node:path";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import {
+  runLanguagePackJob,
+  languagePackSchedule,
+} from "./run-language-pack-job.mjs";
+import {
+  prepareLanguagePublication,
+  refreshKoreanLegacyHistory,
+} from "./prepare-language-publication.mjs";
+import { validateLanguagePackDirectory } from "./languagePackValidation.mjs";
+import {
+  getAccessToken,
+  getLiveHostingRelease,
+} from "./publish-puzzle-pack.mjs";
 
 import { DAILY_PUZZLE_TIERS } from "../../packages/crossword-core/src/dailyPuzzleTiers.ts";
 import { resolveScheduledDifficulty } from "../../packages/crossword-core/src/difficultyRotation.ts";
@@ -317,131 +332,180 @@ function stripThemeArgs(args) {
   );
 }
 
-async function run() {
-  const options = parseArgs(process.argv.slice(2));
-  const generatorArgs = getGeneratorArgs(options);
-  const outDir = getArgValue(generatorArgs, "outDir") ?? "public/puzzles";
-  const manifestPath = path.join(outDir, "manifest.json");
-  const publicDir = getAssetRoot(outDir);
-  if (
-    !options.skipPublish &&
-    !options.dryRun &&
-    getArgValue(generatorArgs, "singleDaily") === "true" &&
-    !process.env.PUZZLE_HOSTING_BASE_URL
-  )
+export async function runPuzzlePackJob({
+  argv = process.argv.slice(2),
+  now = new Date(),
+  runScript = runNode,
+  runLanguageJob = runLanguagePackJob,
+  prepareLanguages = prepareLanguagePublication,
+  refreshLegacyHistory = refreshKoreanLegacyHistory,
+  validateLanguages = validateLanguagePackDirectory,
+  resolveLiveRelease = async (site) =>
+    getLiveHostingRelease({ site, token: await getAccessToken() }),
+} = {}) {
+  const options = parseArgs(argv);
+  let generatorArgs = getGeneratorArgs(options, now);
+  const baseUrl = process.env.PUZZLE_HOSTING_BASE_URL;
+  if (!options.skipPublish && !options.dryRun && !baseUrl)
     throw new Error(
-      "PUZZLE_HOSTING_BASE_URL is required before publishing a single daily pack",
+      "PUZZLE_HOSTING_BASE_URL is required before publishing a puzzle pack",
     );
-
-  // 생성 → 검증을 하나의 단위로 실행한다. 주제 슬롯은 후보 부족이나 보드 품질
-  // 게이트에서 실패할 수 있어, 둘 중 어느 단계가 실패하든 같은 보강 경로로
-  // 처리하려면 검증을 try 안에 둬야 한다.
-  async function generateThenValidate(args) {
-    if (!options.skipGenerate) {
-      await runNode("server/batch/generate-puzzle-pack.mjs", args);
-    }
-    if (!options.skipValidate) {
-      await runNode("scripts/validate-puzzle-pack.mjs", [
-        `--manifest=${manifestPath}`,
-        `--assetRoot=${publicDir}`,
-      ]);
-    }
-  }
-
-  // 당일 2판(easy 5×5 + hard 8×8) 생성 모드. 자정 1회 실행에서
-  // 두 난이도를 서로 다른 내부 슬롯(h00/h01)으로 append 생성해, 같은 날짜에
-  // 두 퍼즐이 모두 발행되도록 한다. 명시 난이도(PUZZLE_DIFFICULTY)가 주어지면
-  // 단일 생성(기존 경로)으로 폴백한다.
-  const dailyTiers =
-    readEnvBooleanWithDefault("PUZZLE_DAILY_TIERS", true) &&
-    getArgValue(generatorArgs, "difficulty") == null;
-
-  if (dailyTiers) {
-    const timeZone = getArgValue(generatorArgs, "timeZone") ?? "Asia/Seoul";
-    const dateKey =
-      getArgValue(generatorArgs, "start") ?? getDateKey(timeZone, new Date());
-    for (const [index, tier] of DAILY_PUZZLE_TIERS.entries()) {
-      const publishedAt = new Date(
-        `${dateKey}T${String(tier.slotHour).padStart(2, "0")}:00:00+09:00`,
-      ).toISOString();
-      let tierArgs = setArg(generatorArgs, "difficulty", tier.difficulty);
-      tierArgs = setArg(tierArgs, "publishedAt", publishedAt);
-      tierArgs = setArg(tierArgs, "intervalHours", "1");
-      if (getArgValue(tierArgs, "append") == null) {
-        tierArgs = [...tierArgs, "--append"];
-      }
-      // 두 번째 티어부터는 방금 로컬에 쓴 manifest(앞 티어 결과)에 누적해야 하므로
-      // 원격 manifest(appendManifestUrl)를 다시 읽지 않게 한다. 원격을 다시 읽으면
-      // 앞 티어(easy)가 빠진 상태로 로드돼 덮어써진다. 정답 이력(answerHistoryUrl)도
-      // 같은 이유로 앞 티어가 로컬에 쓴 파일을 읽어야 한다.
-      if (index > 0) {
-        tierArgs = tierArgs.filter(
-          (arg) =>
-            !arg.startsWith("--appendManifestUrl=") &&
-            !arg.startsWith("--answerHistoryUrl="),
-        );
-      }
-      console.log(
-        `[daily-tiers] generating difficulty=${tier.difficulty} date=${dateKey} publishedAt=${publishedAt}`,
-      );
-      await generateThenValidate(tierArgs);
-    }
-  } else {
-    // 로테이션이 자동 배정한 주제만 보강 대상이다. 명시 지정(PUZZLE_THEME)으로
-    // 실패한 경우는 의도된 실패이므로 그대로 전파한다.
-    const themeInjectedByRotation =
-      (process.env.PUZZLE_THEME == null || process.env.PUZZLE_THEME === "") &&
-      getArgValue(generatorArgs, "theme") != null;
-
-    try {
-      await generateThenValidate(generatorArgs);
-    } catch (error) {
-      if (!themeInjectedByRotation) {
-        throw error;
-      }
-
-      // 주제 제약으로 생성/검증이 실패하면, 일간 발행이 끊기지 않도록 주제를 풀고
-      // 한 번 더 생성·검증한다(보강). 주제 단어 풀이 보드 조건을 만족하면 이
-      // 폴백 없이 주제 퍼즐이 그대로 발행된다.
-      console.warn(
-        `[theme-rotation] themed pack failed (${error.message}); retrying without theme constraint to keep the daily pack published.`,
-      );
-      await generateThenValidate(stripThemeArgs(generatorArgs));
-    }
-  }
-
-  if (!options.skipPublish) {
-    const publishArgs = [
-      `--manifest=${manifestPath}`,
-      `--publicDir=${publicDir}`,
-    ];
-
-    if (options.dryRun) {
-      publishArgs.push("--dryRun");
-    }
-
-    await runNode("server/batch/publish-puzzle-pack.mjs", publishArgs);
+  const workspace = await mkdtemp(path.join(tmpdir(), "crossword-pack-job-"));
+  try {
     if (
-      !options.dryRun &&
-      getArgValue(generatorArgs, "singleDaily") === "true"
-    ) {
-      const baseUrl = process.env.PUZZLE_HOSTING_BASE_URL;
-      if (!baseUrl)
-        throw new Error(
-          "PUZZLE_HOSTING_BASE_URL is required for post-publish health",
-        );
-      await runNode("server/batch/check-puzzle-pack-health.mjs", [
-        `--baseUrl=${baseUrl}`,
-        `--date=${getArgValue(generatorArgs, "start")}`,
-      ]);
+      !getArgValue(options.generatorArgs, "outDir") &&
+      !process.env.PUZZLE_OUT_DIR
+    )
+      generatorArgs = setArg(
+        generatorArgs,
+        "outDir",
+        path.join(workspace, "public/puzzles"),
+      );
+    const outDir = getArgValue(generatorArgs, "outDir") ?? "public/puzzles";
+    const manifestPath = path.join(outDir, "manifest.json");
+    const publicDir = getAssetRoot(outDir);
+
+    const languagesEnabled = !!baseUrl;
+    const baselineRelease =
+      !options.skipPublish && !options.dryRun
+        ? await resolveLiveRelease(process.env.FIREBASE_HOSTING_SITE)
+        : null;
+    if (languagesEnabled) {
+      const filteredWordBankPath = await prepareLanguages({
+        baseUrl,
+        outDir,
+        workspace,
+        bootstrap: readEnvBoolean("PUZZLE_LANGUAGE_BOOTSTRAP"),
+        wordBankPath:
+          getArgValue(generatorArgs, "wordbank") ??
+          "data/lexicon/krdict-puzzle-wordbank.json",
+        start: getArgValue(generatorArgs, "start"),
+        days: Number(getArgValue(generatorArgs, "days") ?? 1),
+      });
+      generatorArgs = setArg(generatorArgs, "wordbank", filteredWordBankPath);
     }
+
+    // 생성 → 검증을 하나의 단위로 실행한다. 주제 슬롯은 후보 부족이나 보드 품질
+    // 게이트에서 실패할 수 있어, 둘 중 어느 단계가 실패하든 같은 보강 경로로
+    // 처리하려면 검증을 try 안에 둬야 한다.
+    async function generateThenValidate(args) {
+      if (!options.skipGenerate) {
+        await runScript("server/batch/generate-puzzle-pack.mjs", args);
+      }
+      if (!options.skipValidate) {
+        await runScript("scripts/validate-puzzle-pack.mjs", [
+          `--manifest=${manifestPath}`,
+          `--assetRoot=${publicDir}`,
+        ]);
+      }
+    }
+
+    // 당일 2판(easy 5×5 + hard 8×8) 생성 모드. 자정 1회 실행에서
+    // 두 난이도를 서로 다른 내부 슬롯(h00/h01)으로 append 생성해, 같은 날짜에
+    // 두 퍼즐이 모두 발행되도록 한다. 명시 난이도(PUZZLE_DIFFICULTY)가 주어지면
+    // 단일 생성(기존 경로)으로 폴백한다.
+    const dailyTiers =
+      readEnvBooleanWithDefault("PUZZLE_DAILY_TIERS", true) &&
+      getArgValue(generatorArgs, "difficulty") == null;
+
+    if (dailyTiers) {
+      const timeZone = getArgValue(generatorArgs, "timeZone") ?? "Asia/Seoul";
+      const dateKey =
+        getArgValue(generatorArgs, "start") ?? getDateKey(timeZone, new Date());
+      for (const [index, tier] of DAILY_PUZZLE_TIERS.entries()) {
+        const publishedAt = new Date(
+          `${dateKey}T${String(tier.slotHour).padStart(2, "0")}:00:00+09:00`,
+        ).toISOString();
+        let tierArgs = setArg(generatorArgs, "difficulty", tier.difficulty);
+        tierArgs = setArg(tierArgs, "publishedAt", publishedAt);
+        tierArgs = setArg(tierArgs, "intervalHours", "1");
+        if (getArgValue(tierArgs, "append") == null) {
+          tierArgs = [...tierArgs, "--append"];
+        }
+        // 두 번째 티어부터는 방금 로컬에 쓴 manifest(앞 티어 결과)에 누적해야 하므로
+        // 원격 manifest(appendManifestUrl)를 다시 읽지 않게 한다. 원격을 다시 읽으면
+        // 앞 티어(easy)가 빠진 상태로 로드돼 덮어써진다. 정답 이력(answerHistoryUrl)도
+        // 같은 이유로 앞 티어가 로컬에 쓴 파일을 읽어야 한다.
+        if (index > 0) {
+          tierArgs = tierArgs.filter(
+            (arg) =>
+              !arg.startsWith("--appendManifestUrl=") &&
+              !arg.startsWith("--answerHistoryUrl="),
+          );
+        }
+        console.log(
+          `[daily-tiers] generating difficulty=${tier.difficulty} date=${dateKey} publishedAt=${publishedAt}`,
+        );
+        await generateThenValidate(tierArgs);
+      }
+    } else {
+      // 로테이션이 자동 배정한 주제만 보강 대상이다. 명시 지정(PUZZLE_THEME)으로
+      // 실패한 경우는 의도된 실패이므로 그대로 전파한다.
+      const themeInjectedByRotation =
+        (process.env.PUZZLE_THEME == null || process.env.PUZZLE_THEME === "") &&
+        getArgValue(generatorArgs, "theme") != null;
+
+      try {
+        await generateThenValidate(generatorArgs);
+      } catch (error) {
+        if (!themeInjectedByRotation) {
+          throw error;
+        }
+
+        // 주제 제약으로 생성/검증이 실패하면, 일간 발행이 끊기지 않도록 주제를 풀고
+        // 한 번 더 생성·검증한다(보강). 주제 단어 풀이 보드 조건을 만족하면 이
+        // 폴백 없이 주제 퍼즐이 그대로 발행된다.
+        console.warn(
+          `[theme-rotation] themed pack failed (${error.message}); retrying without theme constraint to keep the daily pack published.`,
+        );
+        await generateThenValidate(stripThemeArgs(generatorArgs));
+      }
+    }
+
+    if (languagesEnabled) {
+      await refreshLegacyHistory({ outDir });
+      await runLanguageJob({ baseUrl, outDir, now, restored: true });
+      await validateLanguages({ outDir, schedule: languagePackSchedule(now) });
+    }
+
+    if (!options.skipPublish) {
+      const publishArgs = [
+        `--manifest=${manifestPath}`,
+        `--publicDir=${publicDir}`,
+      ];
+
+      if (options.dryRun) publishArgs.push("--dryRun");
+      if (baselineRelease)
+        publishArgs.push(`--expectedRelease=${baselineRelease.name}`);
+
+      await runScript("server/batch/publish-puzzle-pack.mjs", publishArgs);
+      if (
+        !options.dryRun &&
+        (languagesEnabled ||
+          getArgValue(generatorArgs, "singleDaily") === "true")
+      ) {
+        const baseUrl = process.env.PUZZLE_HOSTING_BASE_URL;
+        if (!baseUrl)
+          throw new Error(
+            "PUZZLE_HOSTING_BASE_URL is required for post-publish health",
+          );
+        await runScript("server/batch/check-puzzle-pack-health.mjs", [
+          `--baseUrl=${baseUrl}`,
+          `--date=${getArgValue(generatorArgs, "start")}`,
+        ]);
+      }
+    }
+  } finally {
+    await rm(workspace, { recursive: true, force: true });
   }
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-run().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
-
+if (
+  process.argv[1] &&
+  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
+  runPuzzlePackJob().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
 }
