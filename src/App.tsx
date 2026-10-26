@@ -3074,6 +3074,7 @@ function HomeScreen({
     };
   }, [summary, retry, repository]);
   const saved = summary ? dateCardStates[summary.puzzleId] : undefined;
+  const loadFailed = previewError || (!summary && loadState === "fallback");
   const finished = completedToday >= 5;
   const started = (saved?.attemptsUsed ?? 0) > 0 || saved?.hasProgress;
   const loading =
@@ -3117,14 +3118,14 @@ function HomeScreen({
             <MiniPuzzlePreview puzzle={preview} isLoading={loading} />
           ) : (
             <span>
-              {previewError
+              {loadFailed
                 ? t("퍼즐을 불러오지 못했어요")
                 : t("오늘의 퍼즐을 준비하고 있어요")}
             </span>
           )}
         </div>
         <p>
-          {previewError
+          {loadFailed
             ? t("연결을 확인한 뒤 다시 불러와 주세요.")
             : preview == null
               ? t("오늘의 퍼즐을 준비하고 있어요.")
@@ -3136,7 +3137,7 @@ function HomeScreen({
                     ? t("고른 글자는 그대로, 이어서 완성해요.")
                     : t("서두르지 않아도 괜찮아요. 한 단어씩 채워봐요.")}
         </p>
-        {previewError ? (
+        {loadFailed ? (
           <button
             className="tilePrimary"
             onClick={() => {
