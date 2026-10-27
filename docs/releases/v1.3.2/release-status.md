@@ -1,6 +1,6 @@
 # v1.3.2 App Store 실행 기록
 
-2026년 10월 27일 10:20 KST 조회에서 `1.3.2 (1003002)`는 `WAITING_FOR_REVIEW`다. 수동 공개이며 승인, 공개 전환과 새 국가 4개 추가는 아직 실행하지 않았다. 기존 한국의 `1.3.1` 공개와 무료 가격은 유지했다. 공개 완료로 판정하지 않는다.
+2026년 10월 27일 10:23 KST 조회에서 `1.3.2 (1003002)`는 `WAITING_FOR_REVIEW`다. 수동 공개이며 승인, 공개 전환과 새 국가 4개 추가는 아직 실행하지 않았다. 기존 한국의 `1.3.1` 공개와 무료 가격은 유지했다. 공개 완료로 판정하지 않는다.
 
 ## 고정한 대상
 
@@ -26,7 +26,7 @@
 
 Apple API에서 빌드 `VALID`, `APP_STORE_ELIGIBLE`, 암호화 신고 `false`를 확인했다. 기존 TestFlight 내부 그룹 `b0587880-a87c-46df-abf7-050d1090d09d`에 대상 빌드가 포함되고 `IN_BETA_TESTING`이다. 등록된 릴리스 스킬의 Discord `release-ops` 경로로 내부 테스트 링크와 현재 상태를 알렸다. 사용자 빌드 확인은 진행 조건으로 두지 않았다.
 
-심사 항목 하나가 위 버전과 빌드에 연결됐고, 버전과 제출 모두 `WAITING_FOR_REVIEW`, 공개 방식 `MANUAL`임을 API로 재조회했다. 국가 변경은 하지 않았으며 한국만 판매 중이다. 한국과 새 국가 4개의 현재 가격과 예약 가격은 모두 0이다. 연령은 4+, 콘텐츠 권리 신고와 심사 연락처를 보존했다. App Privacy 기존 8개 신고는 SDK, 수집과 추적 코드 변경 없이 이어받았다. 전체 Console 설문을 새로 읽거나 저장했다고 기록하지 않는다.
+심사 항목 하나가 위 버전과 빌드에 연결됐고, 버전과 제출 모두 `WAITING_FOR_REVIEW`, 공개 방식 `MANUAL`임을 API로 재조회했다. 국가 변경은 하지 않았으며 한국만 판매 중이다. 한국 공개 상품 페이지의 버전과 캐시를 새로 조회한 lookup에서 `1.3.1`을 확인했다. 최초 lookup의 `1.2.0` 응답도 보존했으며 공개 페이지와 새로운 lookup으로 교차 확인했다. 한국과 새 국가 4개의 현재 가격과 예약 가격은 모두 0이다. 연령은 4+, 콘텐츠 권리 신고와 심사 연락처를 보존했다. App Privacy 기존 8개 신고는 SDK, 수집과 추적 코드 변경 없이 이어받았다. 전체 Console 설문을 새로 읽거나 저장했다고 기록하지 않는다.
 
 실제 기기 조회, 설치와 실행, 실제 광고 SDK 노출은 미실행이다. 개발 환경의 대체 실행과 App Store 조회가 해당 근거를 대신하지 않는다. 현재 빌드의 운영 이벤트 수신도 아직 관찰하지 못했다.
 
@@ -42,6 +42,8 @@ Apple API에서 빌드 `VALID`, `APP_STORE_ELIGIBLE`, 암호화 신고 `false`�
 - 등록정보와 이미지 적용: `/Volumes/Data/Backup/agent-artifacts/crossword-puzzle/2026-10-27/app-store-v1.3.2/metadata-applied-20261027T004448Z/VERIFIED.json`
 - archive 정적 검사: `/Volumes/Data/Backup/agent-artifacts/crossword-puzzle/2026-10-27/3c36e7e/archive-static-20261027T005528Z/VERIFIED-MANIFEST.json`
 - export 후 독립 확인: `/Volumes/Data/Backup/agent-artifacts/crossword-puzzle/2026-10-27/3c36e7e/post-export-static-20261027T010710Z/VERIFIED-MANIFEST.json`
+
+검증 보관 뒤 이번 작업의 archive ZIP과 풀어 둔 archive, 전체 CI 로그, 재생성 가능한 OpenAPI ZIP을 로컬에서 제거했다. 작은 실행 스크립트와 현재 조회 결과는 심사 후속 작업 동안 유지한다. 사용자 기본 checkout과 기존 미완료 작업은 보존했다.
 
 ## 남은 단계
 

@@ -165,7 +165,7 @@
             "Immediately pre-submit latest central a43f2c4 actual app-store before-release L3 ok:true, nonempty successful output, source3c36e7e",
             "/Volumes/Data/Backup/agent-artifacts/crossword-puzzle/2026-10-27/3c36e7e/app-store-submission-20261027T012239Z/VERIFIED.json"
           ],
-          "checkedAt": "2026-10-27T01:20:05.300916Z",
+          "checkedAt": "2026-10-27T01:23:12.330677Z",
           "blocker": null
         },
         "approval": {
@@ -195,10 +195,10 @@
       },
       "providerState": "WAITING_FOR_REVIEW",
       "reviewSubmissionId": "ebdce813-cbb9-4fb2-90d4-9b1508904a4d",
-      "lastProviderCheckedAt": "2026-10-27T01:20:05.300916Z"
+      "lastProviderCheckedAt": "2026-10-27T01:23:12.330677Z"
     }
   },
-  "updatedAt": "2026-10-27T01:20:05.300916Z",
+  "updatedAt": "2026-10-27T01:23:12.330677Z",
   "evidenceArchives": [
     {
       "manifest": "/Volumes/Data/Backup/agent-artifacts/crossword-puzzle/2026-10-27/3c36e7e/app-store-artifact-20261027T012239Z/VERIFIED.json",
