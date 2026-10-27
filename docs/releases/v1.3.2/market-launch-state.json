@@ -1,0 +1,216 @@
+{
+  "schemaVersion": 1,
+  "app": {
+    "name": "가로세로 퍼즐",
+    "repo": "seorilabs/crossword-puzzle",
+    "sourceRevision": "3c36e7e88a16ff3b12d490e4cbfb016f3ccbf7c9"
+  },
+  "release": {
+    "version": "1.3.2",
+    "tag": "v1.3.2",
+    "objective": "public_live",
+    "countries": [
+      "KOR",
+      "USA",
+      "CAN",
+      "AUS",
+      "NZL"
+    ],
+    "rolloutMode": "manual, full release after approval",
+    "appleBuildNumber": "1003002",
+    "androidVersionCodeAllocatedNotDispatched": "1001001017"
+  },
+  "deploymentApproval": {
+    "status": "approved",
+    "markets": [
+      "app_store"
+    ],
+    "objective": "public_live",
+    "approvedAt": "2026-10-27T00:06:46.029Z",
+    "evidence": [
+      "사용자 응답: 1.3.2 공개, 미국, 캐나다, 호주, 뉴질랜드 추가. 기존 KOR 유지.",
+      "https://github.com/seorilabs/crossword-puzzle/pull/458",
+      "https://github.com/seorilabs/crossword-puzzle/pull/459"
+    ]
+  },
+  "commonGates": {
+    "candidate": {
+      "status": "pass",
+      "evidence": [
+        "Source3c36e7e, user scope and tag v1.3.2 receipt Apple1003002, KOR+USA/CAN/AUS/NZL, free/MANUAL",
+        "https://github.com/seorilabs/crossword-puzzle/actions/runs/40426609848"
+      ],
+      "checkedAt": "2026-10-27T00:32:09.413661Z",
+      "blocker": null
+    },
+    "quality": {
+      "status": "pass",
+      "evidence": [
+        "/Volumes/Data/Backup/agent-artifacts/crossword-puzzle/2026-10-27/3c36e7e/independent-l3-20261027T001704Z/final-summary.json",
+        "1185 automated tests, 30 actual boards, ad18, 300 existing boards checked, service4, public legacy14 preserved twice; actual App Store 3 central phases ok:true",
+        "Extra Play readiness failed7 and original masked-status claim corrected separately; native SDK/device unrun, no new UI review round"
+      ],
+      "checkedAt": "2026-10-27T00:32:09.413661Z",
+      "blocker": null
+    },
+    "production_dependencies": {
+      "status": "pass",
+      "evidence": [
+        "/tmp/crossword-v132-release-run/production-dependencies.readback.json",
+        "Current Remote Config interstitial IDs match3 with no conditional overrides; version omitted by CLI, not assumed. Public KO local-date27 and EN26/27 each5. Four actual support/privacyURLs200. Runtime not redeployed."
+      ],
+      "checkedAt": "2026-10-27T00:32:09.413661Z",
+      "blocker": null
+    },
+    "observability": {
+      "status": "pending",
+      "checkedAt": "2026-10-27T01:20:05.300916Z",
+      "blocker": null,
+      "evidence": [
+        "Current-candidate development telemetry contract and version/platform labeling verified in L3; actual native/current-build production event receipt not observed. Unknown is not zero."
+      ]
+    }
+  },
+  "markets": {
+    "app_store": {
+      "objective": "public_live",
+      "state": "submission",
+      "identity": {
+        "applicationId": "com.seorilabs.crosswordpuzzle",
+        "version": "1.3.2",
+        "build": "1003002",
+        "versionId": "425b5081-813f-4369-b6af-4b79d0c90e0d",
+        "appId": "6777292094",
+        "buildId": "fa097088-40d4-42fa-beb7-628611cd775f"
+      },
+      "gates": {
+        "candidate": {
+          "status": "pass",
+          "evidence": [
+            "Source3c36e7e, user scope and tag v1.3.2 receipt Apple1003002, KOR+USA/CAN/AUS/NZL, free/MANUAL",
+            "https://github.com/seorilabs/crossword-puzzle/actions/runs/40426609848"
+          ],
+          "checkedAt": "2026-10-27T00:32:09.413661Z",
+          "blocker": null
+        },
+        "artifact": {
+          "status": "pass",
+          "checkedAt": "2026-10-27T01:02:21.293247Z",
+          "blocker": null,
+          "evidence": [
+            "https://github.com/seorilabs/crossword-puzzle/actions/runs/40427022085",
+            "artifact12701245531 SHA256150f6acdc742df2785f3ec1923f2679f844ab8b60e13e9bebbe55447b423a059,112959064bytes,downloaded and digest matched",
+            "/Volumes/Data/Backup/agent-artifacts/crossword-puzzle/2026-10-27/3c36e7e/archive-static-20261027T005528Z/archive-static-small-report.json",
+            "41actual static checks: cert/profile/version/build/bundle/entitlements/encryption/17privacy manifests/main source equivalence/icons;67files content+mode unchanged; no executable restoration needed",
+            "After export root Info.plist gained only Distributions metadata; whole archive invariance is false. Other66files content+mode and compiledapp unchanged, independently checked; original ZIP immutable."
+          ]
+        },
+        "upload": {
+          "status": "pass",
+          "evidence": [
+            "CI archive source3c36e7e, exact zip SHA256150f6acdc742df2785f3ec1923f2679f844ab8b60e13e9bebbe55447b423a059; existing manual identity export actual xcodebuild exit0 and Upload succeeded",
+            "Build fa097088-40d4-42fa-beb7-628611cd775f /1003002 exists in Apple API; no rebuild or second upload",
+            "Post-export original custom guard exit1 retained: archive root Info.plist gained Distributions; original other66files content/mode unchanged, compiled app and signatures unchanged. Independent addendum verified.",
+            "/Volumes/Data/Backup/agent-artifacts/crossword-puzzle/2026-10-27/3c36e7e/app-store-submission-20261027T012239Z/VERIFIED.json"
+          ],
+          "checkedAt": "2026-10-27T01:20:05.300916Z",
+          "blocker": null
+        },
+        "processing": {
+          "status": "pass",
+          "evidence": [
+            "Apple actual build1003002 VALID, APP_STORE_ELIGIBLE, prerelease1.3.2/IOS, export encryption false",
+            "TestFlight internal b0587880-a87c-46df-abf7-050d1090d09d targetBuildListed:true, IN_BETA_TESTING; release-ops notified via registered seorilabs-release-run webhook",
+            "/Volumes/Data/Backup/agent-artifacts/crossword-puzzle/2026-10-27/3c36e7e/app-store-submission-20261027T012239Z/VERIFIED.json"
+          ],
+          "checkedAt": "2026-10-27T01:20:05.300916Z",
+          "blocker": null
+        },
+        "qa": {
+          "status": "pass",
+          "evidence": [
+            "/Volumes/Data/Backup/agent-artifacts/crossword-puzzle/2026-10-27/3c36e7e/independent-l3-20261027T001704Z/final-summary.json",
+            "1185 automated tests, 30 actual boards, ad18, 300 existing boards checked, service4, public legacy14 preserved twice; actual App Store 3 central phases ok:true",
+            "Extra Play readiness failed7 and original masked-status claim corrected separately; native SDK/device unrun, no new UI review round"
+          ],
+          "checkedAt": "2026-10-27T00:32:09.413661Z",
+          "blocker": null
+        },
+        "metadata": {
+          "status": "pass",
+          "evidence": [
+            "2026-10-27T01:15:01.517623Z final four locales and effective notes exact,24 screens COMPLETE including18 English with exact order/checksums, all4 preview sets0; prior Korean public metadata preserved",
+            "/Volumes/Data/Backup/agent-artifacts/crossword-puzzle/2026-10-27/3c36e7e/app-store-submission-20261027T012239Z/VERIFIED.json"
+          ],
+          "checkedAt": "2026-10-27T01:20:05.300916Z",
+          "blocker": null
+        },
+        "policy": {
+          "status": "pass",
+          "evidence": [
+            "Current provider age FOUR_PLUS, content rights USES_THIRD_PARTY_CONTENT, build usesNonExemptEncryption:false; exact review notes and existing contact; no login/IAP/account deletion requirement",
+            "App Privacy existing8 declared types from2026-10-24 are inherited with no SDK/permission/tracking/collection-code changes vs v1.3.1; whole Console questionnaire was not newly reread or saved",
+            "English and Korean privacy pages updated to five-daily/no-hints/completion interstitial behavior and actual HTTP200; no EU storefront in approved scope, no DSA distribution expansion",
+            "Actual5 current/scheduled prices zero, existing KOR only until English version approval/public; no price change",
+            "/Volumes/Data/Backup/agent-artifacts/crossword-puzzle/2026-10-27/3c36e7e/app-store-submission-20261027T012239Z/VERIFIED.json"
+          ],
+          "checkedAt": "2026-10-27T01:20:05.300916Z",
+          "blocker": null
+        },
+        "submission": {
+          "status": "pass",
+          "evidence": [
+            "reviewSubmissionId ebdce813-cbb9-4fb2-90d4-9b1508904a4d, submittedDate 2026-10-27T01:19:09.03Z, provider WAITING_FOR_REVIEW",
+            "exact sole review item binds version 425b5081-813f-4369-b6af-4b79d0c90e0d to build fa097088-40d4-42fa-beb7-628611cd775f,1003002; releaseType MANUAL",
+            "Immediately pre-submit latest central a43f2c4 actual app-store before-release L3 ok:true, nonempty successful output, source3c36e7e",
+            "/Volumes/Data/Backup/agent-artifacts/crossword-puzzle/2026-10-27/3c36e7e/app-store-submission-20261027T012239Z/VERIFIED.json"
+          ],
+          "checkedAt": "2026-10-27T01:23:12.330677Z",
+          "blocker": null
+        },
+        "approval": {
+          "status": "pending",
+          "evidence": [
+            "Apple WAITING_FOR_REVIEW; approval not observed"
+          ],
+          "checkedAt": "2026-10-27T01:20:05.300916Z",
+          "blocker": null
+        },
+        "release": {
+          "status": "pending",
+          "evidence": [
+            "MANUAL: exact1.3.2 approval required before public release; then only USA,CAN,AUS,NZL added with KOR preserved"
+          ],
+          "checkedAt": "2026-10-27T01:20:05.300916Z",
+          "blocker": null
+        },
+        "live_smoke": {
+          "status": "pending",
+          "evidence": [
+            "Public5country exact1.3.2 readback not yet possible; physical device/native SDK not run and no device-only change required for this metadata-only patch"
+          ],
+          "checkedAt": "2026-10-27T01:20:05.300916Z",
+          "blocker": null
+        }
+      },
+      "providerState": "WAITING_FOR_REVIEW",
+      "reviewSubmissionId": "ebdce813-cbb9-4fb2-90d4-9b1508904a4d",
+      "lastProviderCheckedAt": "2026-10-27T01:23:12.330677Z"
+    }
+  },
+  "updatedAt": "2026-10-27T01:23:12.330677Z",
+  "evidenceArchives": [
+    {
+      "manifest": "/Volumes/Data/Backup/agent-artifacts/crossword-puzzle/2026-10-27/3c36e7e/app-store-artifact-20261027T012239Z/VERIFIED.json",
+      "manifestSha256": "de4d9971c45958997899b69dd7e56f9b97a26c3c280fc466cd1a55a316099fe6",
+      "fileCount": 3,
+      "totalBytes": 112977653
+    },
+    {
+      "manifest": "/Volumes/Data/Backup/agent-artifacts/crossword-puzzle/2026-10-27/3c36e7e/app-store-submission-20261027T012239Z/VERIFIED.json",
+      "manifestSha256": "516d8fa38b758138cc2cf916fcfe1be4cb51adfb9a6ee46a83d87c6150b98b2a",
+      "fileCount": 108,
+      "totalBytes": 26040038
+    }
+  ]
+}
