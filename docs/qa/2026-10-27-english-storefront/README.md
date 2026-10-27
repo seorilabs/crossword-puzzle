@@ -25,7 +25,7 @@
 - App Store 필드와 이미지에서 다른 모바일 마켓의 홍보나 구현하지 않은 기능 주장 없음
 - 기존 deliver 준비 도구에 언어별 파생 config를 전달해 3개 영어 언어의 필드 9개와 이미지 6장씩 생성, 누락 없음
 - Play 등록 스크립트의 영문 config dry-run 통과. 외부 API 호출 없음
-- `check:app-store`, `check:play`, `typecheck`, `lint`, `check:release-parity`, `build`, `check:mobile` 통과. 모바일 21개 묶음, 130개 테스트 통과
+- `check:app-store`, `typecheck`, `lint`, `check:release-parity`, `build`, `check:mobile` 통과. 모바일 21개 묶음, 130개 테스트 통과
 
 `check:app-store`와 `check:play`는 로컬 자료 검사이며 스토어 저장이나 공개의 증거가 아니다. 이번 변경은 문구, 번역, 이미지와 등록 메타데이터뿐이라 로컬 모델 코드 리뷰 대상이 아니다.
 
@@ -49,3 +49,9 @@ Google Play는 기존 개발자 계정 확인의 미해결 사항을 유지하�
 `/Volumes/Data/Backup/agent-artifacts/crossword-puzzle/2026-10-27/english-storefront-20261026T235625Z/VERIFIED.json`
 
 공개 개인정보처리방침의 과거 힌트 안내는 [공식 사이트 PR #100](https://github.com/seorilabs/seorilabs-official/pull/100)에서 1.3.1 동작과 이전 버전 설명으로 정정한다. 두 언어의 320px 실행, 사이트 검사, lint와 83개 페이지 빌드도 통과했다.
+
+## 2026년 10월 27일 Play 준비 검사 표기 정정
+
+초기 기록의 `check:play` 통과 주장을 철회한다. npm 명령 뒤 로그를 출력한 tail의 종료값 0을 검사 성공으로 잘못 읽었다. 원본 로그에는 실패가 그대로 남아 있으며 새 독립 L3의 같은 검사도 실패했다. 실패 항목은 Data safety, 콘텐츠 등급, 대상 연령과 한국 등급의 미확정 값 4개, 로컬 key.properties 없음, core returnReminder.ts의 AppsInToss import 감지, 기본 경로 AAB 없음의 총 7개다.
+
+API로 쓸 수 있는 영문 문구 및 이미지 dry-run 통과와 전체 Google Play 출시 준비는 별도다. 이번 App Store 1.3.2 범위의 독립 검사와 중앙 근거에 Play 실패를 통과로 넣지 않는다. 서명 원본을 새로 만들거나 기존 CI 전용 키 예외를 바꾸지 않는다. 초기 원본 로그와 잘못된 요약은 보존하고 NAS의 CORRECTION.play-readiness.json 및 validation-summary.corrected.json으로 정정한다. 후보 3c36e7e의 제품 및 승인 계획은 바꾸지 않고 후속 문서에 정정을 남긴다.
