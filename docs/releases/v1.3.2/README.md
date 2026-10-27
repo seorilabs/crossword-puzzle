@@ -1,5 +1,7 @@
 # v1.3.2 App Store 영문 등록과 5개국 공개
 
+[실행 상태와 남은 단계](release-status.md), [이번 App Store 원장](market-launch-state.json)을 확인한다. 루트의 v1.3.1 3마켓 원장은 이 버전의 심사 상태를 대신하지 않는다.
+
 [승인 범위와 테스트 계획](../../design/2026-10-27-english-storefront/design.md)에 따라 실행한다. 원래 v1.3.1의 Play와 AIT 작업은 별도 상태로 보존한다.
 
 이번 버전은 App Store 영문 등록정보를 추가한다. 게임 기능과 운영 공급 코드는 바꾸지 않는다. 출시노트는 같은 폴더 release-notes.source.json의 appStore만 사용한다. 실제 개선 문구는 영문 앱 소개와 스크린샷 추가 한 줄이며 기존 1.3.1 기능을 새로 추가했다고 쓰지 않는다.
