@@ -1,0 +1,11 @@
+{
+  "tag": "v1.3.2",
+  "markets": {
+    "appStore": {
+      "ko-KR": "- 앱 소개와 스크린샷에 영어를 추가했어요.",
+      "en-US": "- Added English descriptions and screenshots for the App Store.",
+      "en-CA": "- Added English descriptions and screenshots for the App Store.",
+      "en-AU": "- Added English descriptions and screenshots for the App Store."
+    }
+  }
+}
