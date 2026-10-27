@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "level": "L3",
+  "baseline": "v1.3.1",
+  "changedFeatures": [
+    "bilingual-five-daily"
+  ],
+  "environments": [
+    "dev"
+  ],
+  "redesign": false,
+  "foundationRerun": true,
+  "floorOverrides": [
+    {
+      "rule": "foundation",
+      "featureId": "platform-ads",
+      "reason": "사용자가 영문 등록정보를 App Store 1.3.2로 공개하고 기존 한국과 미국, 캐나다, 호주, 뉴질랜드 5개국에 제공하도록 승인했다. 게임, 저장, SDK 버전, 네이티브 권한과 인증 연결은 v1.3.1과 동일하다. 기존 L3 dev 전체 회귀와 실제 RN App의 플랫폼 경계 대체 실행을 유지한다. 실제 네이티브 SDK와 OS 노출은 미실행으로 구분하고 개발 실행을 실기기 통과로 기록하지 않는다. 새로운 기기 전용 검증 조건이 없는 등록 메타데이터 변경이며 기기 조회와 사용은 승인되지 않았다."
+    },
+    {
+      "rule": "foundation",
+      "featureId": "analytics",
+      "reason": "사용자가 영문 등록정보를 App Store 1.3.2로 공개하고 기존 한국과 미국, 캐나다, 호주, 뉴질랜드 5개국에 제공하도록 승인했다. 게임, 저장, SDK 버전, 네이티브 권한과 인증 연결은 v1.3.1과 동일하다. 기존 L3 dev 전체 회귀와 실제 RN App의 플랫폼 경계 대체 실행을 유지한다. 실제 네이티브 SDK와 OS 노출은 미실행으로 구분하고 개발 실행을 실기기 통과로 기록하지 않는다. 새로운 기기 전용 검증 조건이 없는 등록 메타데이터 변경이며 기기 조회와 사용은 승인되지 않았다."
+    },
+    {
+      "rule": "foundation",
+      "featureId": "remote-configuration",
+      "reason": "사용자가 영문 등록정보를 App Store 1.3.2로 공개하고 기존 한국과 미국, 캐나다, 호주, 뉴질랜드 5개국에 제공하도록 승인했다. 게임, 저장, SDK 버전, 네이티브 권한과 인증 연결은 v1.3.1과 동일하다. 기존 L3 dev 전체 회귀와 실제 RN App의 플랫폼 경계 대체 실행을 유지한다. 실제 네이티브 SDK와 OS 노출은 미실행으로 구분하고 개발 실행을 실기기 통과로 기록하지 않는다. 새로운 기기 전용 검증 조건이 없는 등록 메타데이터 변경이며 기기 조회와 사용은 승인되지 않았다."
+    },
+    {
+      "rule": "foundation",
+      "featureId": "platform-auth",
+      "reason": "사용자가 영문 등록정보를 App Store 1.3.2로 공개하고 기존 한국과 미국, 캐나다, 호주, 뉴질랜드 5개국에 제공하도록 승인했다. 게임, 저장, SDK 버전, 네이티브 권한과 인증 연결은 v1.3.1과 동일하다. 기존 L3 dev 전체 회귀와 실제 RN App의 플랫폼 경계 대체 실행을 유지한다. 실제 네이티브 SDK와 OS 노출은 미실행으로 구분하고 개발 실행을 실기기 통과로 기록하지 않는다. 새로운 기기 전용 검증 조건이 없는 등록 메타데이터 변경이며 기기 조회와 사용은 승인되지 않았다."
+    }
+  ],
+  "release": {
+    "markets": [
+      "app-store"
+    ],
+    "until": "public"
+  }
+}
