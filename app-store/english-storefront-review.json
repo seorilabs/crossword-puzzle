@@ -1,0 +1,128 @@
+{
+  "checkedAt": "2026-10-26T23:49:22.916228Z",
+  "sourceSha": "900b346608b0b35c165c185ebae51741c6bff4b2",
+  "productCodeChanged": false,
+  "newUiReviewRound": false,
+  "nativeSdkOrPhysicalDeviceExecuted": false,
+  "locales": {
+    "appStore": ["ko", "en-US", "en-CA", "en-AU"],
+    "googlePlay": ["ko-KR", "en-US"]
+  },
+  "screenshots": [
+    {
+      "path": "app-store/screenshots/en-US/iphone/01-home.png",
+      "sha256": "48ba57774bd8abca44c73ecf2f9f69cb2ce5ed4c5bbd1de38519ae0054f7a6f2",
+      "size": 180016,
+      "pixels": [1290, 2796],
+      "capturedAt": "2026-10-26T23:46:44.036373Z",
+      "contentDate": "2026-10-27"
+    },
+    {
+      "path": "app-store/screenshots/en-US/ipad/01-home.png",
+      "sha256": "9cba8c667e78c0a3850fdecdf4505cde3ef52333fbe66ef41d4fd5e3b20d6e33",
+      "size": 138495,
+      "pixels": [2048, 2732],
+      "capturedAt": "2026-10-26T23:46:44.240004Z",
+      "contentDate": "2026-10-27"
+    },
+    {
+      "path": "app-store/screenshots/en-US/iphone/02-play.png",
+      "sha256": "772d1ef5e3b5ed1f0fe0bb4a5ee3f415fc37ee065707d9ad1e3546be5383396f",
+      "size": 115897,
+      "pixels": [1290, 2796],
+      "capturedAt": "2026-10-26T23:46:47.666503Z",
+      "contentDate": "2026-10-27"
+    },
+    {
+      "path": "app-store/screenshots/en-US/ipad/02-play.png",
+      "sha256": "ef061361bf10dd0255a7227cda86be2c44b08d0cb8401d1966ee9512fd3231c4",
+      "size": 90946,
+      "pixels": [2048, 2732],
+      "capturedAt": "2026-10-26T23:46:47.792909Z",
+      "contentDate": "2026-10-27"
+    },
+    {
+      "path": "app-store/screenshots/en-US/iphone/03-result.png",
+      "sha256": "c096c5600539f334d5721f8d27d2d374a0043d5558de88bc3c20e4a68534359f",
+      "size": 116116,
+      "pixels": [1290, 2796],
+      "capturedAt": "2026-10-26T23:47:00.387158Z",
+      "contentDate": "2026-10-27"
+    },
+    {
+      "path": "app-store/screenshots/en-US/ipad/03-result.png",
+      "sha256": "921473cb1642e3c66deafb06cd14abbe25af507f854611d0a68512c6cc7ad0d4",
+      "size": 111237,
+      "pixels": [2048, 2732],
+      "capturedAt": "2026-10-26T23:47:00.531148Z",
+      "contentDate": "2026-10-27"
+    },
+    {
+      "path": "play-store/screenshots/en-US/phone/01-home.png",
+      "sha256": "2972f5f3788be6b82b5a78ebacfc48c09a6abf086dc40253636b41b769132a10",
+      "size": 137155,
+      "pixels": [1080, 1920],
+      "capturedAt": "2026-10-26T23:47:01.176646Z",
+      "contentDate": "2026-10-27"
+    },
+    {
+      "path": "play-store/screenshots/en-US/tablet-7/01-home.png",
+      "sha256": "dc6aff2357c3329d26dd880b0c4a3d7f2fc8bb226231b8a6fab3ac898e146d8d",
+      "size": 124272,
+      "pixels": [1296, 2304],
+      "capturedAt": "2026-10-26T23:47:01.290257Z",
+      "contentDate": "2026-10-27"
+    },
+    {
+      "path": "play-store/screenshots/en-US/tablet-10/01-home.png",
+      "sha256": "7b01ecc09cab15ce4126f65f7cc00060cb9ab418122bc3118a57fb05bc1c265e",
+      "size": 134245,
+      "pixels": [1620, 2880],
+      "capturedAt": "2026-10-26T23:47:01.455515Z",
+      "contentDate": "2026-10-27"
+    },
+    {
+      "path": "play-store/screenshots/en-US/phone/02-play.png",
+      "sha256": "e4d55b8ae99306e30b44f6705ad5e1709102ce3d26a24351b2acc43ece36d9d4",
+      "size": 96855,
+      "pixels": [1080, 1920],
+      "capturedAt": "2026-10-26T23:47:04.674308Z",
+      "contentDate": "2026-10-27"
+    },
+    {
+      "path": "play-store/screenshots/en-US/tablet-7/02-play.png",
+      "sha256": "32368d2b1d6ced121a6f695ea971a64077eab48c5854477838cfa531ebe1f6ee",
+      "size": 80264,
+      "pixels": [1296, 2304],
+      "capturedAt": "2026-10-26T23:47:04.746755Z",
+      "contentDate": "2026-10-27"
+    },
+    {
+      "path": "play-store/screenshots/en-US/tablet-10/02-play.png",
+      "sha256": "43423f4031f7381c6cd85588668c8d514a9afeb2477060ac5bf20ac60ec93eaa",
+      "size": 88048,
+      "pixels": [1620, 2880],
+      "capturedAt": "2026-10-26T23:47:04.873903Z",
+      "contentDate": "2026-10-27"
+    },
+    {
+      "path": "play-store/screenshots/en-US/phone/03-result.png",
+      "sha256": "83690b1b61c426525bd67c14ea82ce3b3e60dbafb35dacb37aed64f3fce56cd3",
+      "size": 82338,
+      "pixels": [1080, 1920],
+      "capturedAt": "2026-10-26T23:47:16.720901Z",
+      "contentDate": "2026-10-27"
+    }
+  ],
+  "checks": [
+    "13 images visually reviewed",
+    "real UI input through actual RN Web app",
+    "no horizontal overflow or page errors",
+    "screenshots have no other-market branding",
+    "support and privacy pages HTTP 200",
+    "all character limits satisfied"
+  ],
+  "providerMutation": false,
+  "publishedVersion": "1.3.1",
+  "publishedCountries": ["KOR"]
+}

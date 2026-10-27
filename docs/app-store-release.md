@@ -188,3 +188,7 @@ npm run app-store:deliver:upload -- --screenshots-only --tag v1.0.0
 ## 9. 남은 blocker
 
 남은 blocker는 `npm run check:app-store`와 `app-store/app-store.config.json.manualGates`를 기준으로 관리한다.
+
+## 2026년 10월 27일 영문 등록정보
+
+다음 업데이트용 영문 문구와 실제 플레이 스크린샷을 준비했다. [원본, 검증과 남은 단계](qa/2026-10-27-english-storefront/README.md)를 따른다. 현재 공개 버전이나 판매 국가의 변경을 뜻하지 않는다.

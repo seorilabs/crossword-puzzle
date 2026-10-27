@@ -215,3 +215,7 @@ v1.2.0의 실제 기존 설문은 광고 있음과 지원하지 않는 콘텐츠
 - RNFirebase Analytics/Remote Config와 AdMob SDK를 붙였으므로 `PrivacyInfo.xcprivacy`, App Store Connect privacy 답변, ATT/IDFA 정책을 다시 확인해야 한다. 현재 iOS Analytics는 IDFA 없는 variant이며, AdMob은 비개인화 광고 요청으로 호출한다.
 - 2026-04-28 이후 App Store Connect 업로드는 Xcode 26/iOS 26 SDK 이상이 필요하므로 workflow는 `macos-26` runner와 SDK major check를 사용한다.
 - 2026-06-07 `v0.1.5` / build `1005` 업로드 run `27087313726`, job `79945275484`는 성공했다.
+
+## 2026년 10월 27일 영문 등록정보
+
+다음 업데이트용 영문 문구와 실제 플레이 스크린샷을 준비했다. [원본, 검증과 남은 단계](qa/2026-10-27-english-storefront/README.md)를 따른다. 현재 공개 버전이나 판매 국가의 변경을 뜻하지 않는다.
