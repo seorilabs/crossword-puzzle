@@ -8,6 +8,7 @@ async function stagedJob({
   languageFailure = false,
   bootstrap = false,
   explicitOutDir = true,
+  visibilityFailure = false,
 } = {}) {
   const previous = { ...process.env };
   const outDir = await mkdtemp(path.join(tmpdir(), "crossword-combined-job-"));
@@ -40,6 +41,10 @@ async function stagedJob({
           calls.push({ script: "languages", options });
           if (languageFailure) throw new Error("English generation failed");
         },
+        waitForPublication: async (options) => {
+          calls.push({ script: "wait-publication", options });
+          if (visibilityFailure) throw new Error("Publication not visible");
+        },
         validateLanguages: async (options) => {
           calls.push({ script: "validate-languages", options });
         },
@@ -47,7 +52,9 @@ async function stagedJob({
           name: "sites/test/releases/source",
         }),
       });
-    if (languageFailure)
+    if (visibilityFailure)
+      await assert.rejects(execute(), /Publication not visible/);
+    else if (languageFailure)
       await assert.rejects(execute(), /English generation failed/);
     else await execute();
     return { calls, preparation };
@@ -69,6 +76,7 @@ test("AC-2 scheduled job stages legacy and both languages before a single atomic
       "languages",
       "validate-languages",
       "server/batch/publish-puzzle-pack.mjs",
+      "wait-publication",
       "server/batch/check-puzzle-pack-health.mjs",
     ],
   );
@@ -83,6 +91,18 @@ test("AC-2 English generation failure prevents legacy-only publication", async (
   const { calls } = await stagedJob({ languageFailure: true });
   assert.equal(
     calls.some((call) => call.script.endsWith("publish-puzzle-pack.mjs")),
+    false,
+  );
+});
+test("SUPPLY-2 visibility failure keeps one publication and skips the health verdict", async () => {
+  const { calls } = await stagedJob({ visibilityFailure: true });
+  assert.equal(
+    calls.filter((call) => call.script.endsWith("publish-puzzle-pack.mjs"))
+      .length,
+    1,
+  );
+  assert.equal(
+    calls.some((call) => call.script.endsWith("check-puzzle-pack-health.mjs")),
     false,
   );
 });

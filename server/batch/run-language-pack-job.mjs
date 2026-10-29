@@ -11,11 +11,17 @@ const plus = (date, n) =>
   new Date(Date.parse(date + "T00:00:00Z") + n * 86400000)
     .toISOString()
     .slice(0, 10);
-export function languagePackSchedule(now = new Date()) {
+export function languagePackSchedule(
+  now = new Date(),
+  { generation = false } = {},
+) {
   const utc = now.toISOString().slice(0, 10);
+  const koreanDate = contentDate("ko", now);
+  // 다음 KST 자정 실행 전 UTC 날짜가 바뀌어도 현지 미래 2일을 확보한다.
+  const englishDays = generation && koreanDate > utc ? 6 : 5;
   return [
-    { language: "ko", start: contentDate("ko", now), days: 2 },
-    { language: "en", start: plus(utc, -1), days: 5 },
+    { language: "ko", start: koreanDate, days: 2 },
+    { language: "en", start: plus(utc, -1), days: englishDays },
   ];
 }
 export async function restoreLanguagePackState({
@@ -98,7 +104,7 @@ export async function runLanguagePackJob({
   restored = false,
 } = {}) {
   if (!baseUrl) throw new Error("Published state base URL is required");
-  const schedule = languagePackSchedule(now);
+  const schedule = languagePackSchedule(now, { generation: true });
   for (const task of schedule) {
     if (!restored)
       await restoreLanguagePackState({
@@ -121,7 +127,13 @@ if (
     process.argv.slice(2).map((x) => x.replace(/^--/, "").split("=")),
   );
   if (args["dry-run"] !== undefined)
-    console.log(JSON.stringify(languagePackSchedule(), null, 2));
+    console.log(
+      JSON.stringify(
+        languagePackSchedule(new Date(), { generation: true }),
+        null,
+        2,
+      ),
+    );
   else
     await runLanguagePackJob({
       baseUrl: args.baseUrl,

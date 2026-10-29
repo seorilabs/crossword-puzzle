@@ -13,6 +13,7 @@ import {
   refreshKoreanLegacyHistory,
 } from "./prepare-language-publication.mjs";
 import { validateLanguagePackDirectory } from "./languagePackValidation.mjs";
+import { waitForPublishedPack } from "./publishedPackVisibility.mjs";
 import {
   getAccessToken,
   getLiveHostingRelease,
@@ -352,6 +353,7 @@ export async function runPuzzlePackJob({
   prepareLanguages = prepareLanguagePublication,
   refreshLegacyHistory = refreshKoreanLegacyHistory,
   validateLanguages = validateLanguagePackDirectory,
+  waitForPublication = waitForPublishedPack,
   restoreLegacyState = restorePublishedLegacyPack,
   verifyLegacyState = assertPublishedLegacyUnchanged,
   fetcher = fetch,
@@ -581,7 +583,10 @@ export async function runPuzzlePackJob({
     if (languagesEnabled) {
       await refreshLegacyHistory({ outDir });
       await runLanguageJob({ baseUrl, outDir, now, restored: true });
-      await validateLanguages({ outDir, schedule: languagePackSchedule(now) });
+      await validateLanguages({
+        outDir,
+        schedule: languagePackSchedule(now, { generation: true }),
+      });
     }
 
     await verifyLegacyState({
@@ -611,6 +616,12 @@ export async function runPuzzlePackJob({
           throw new Error(
             "PUZZLE_HOSTING_BASE_URL is required for post-publish health",
           );
+        await waitForPublication({
+          baseUrl,
+          outDir,
+          languages: languagesEnabled,
+          fetcher,
+        });
         await runScript("server/batch/check-puzzle-pack-health.mjs", [
           `--baseUrl=${baseUrl}`,
           `--date=${getArgValue(generatorArgs, "start")}`,

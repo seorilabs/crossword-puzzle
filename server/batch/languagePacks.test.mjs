@@ -18,6 +18,31 @@ test("AC-1 English supply covers both international date extremes plus two futur
     { language: "en", start: "2026-10-25", days: 5 },
   ]);
 });
+test("SUPPLY-1 generation covers every health window before the next KST midnight", () => {
+  for (const instant of [
+    "2026-10-28T15:05:00Z",
+    "2026-10-29T00:00:00Z",
+    "2026-10-31T15:05:00Z",
+    "2026-12-31T15:05:00Z",
+  ]) {
+    const now = new Date(instant);
+    const generated = languagePackSchedule(now, { generation: true });
+    const ko = generated.find((x) => x.language === "ko");
+    const english = generated.find((x) => x.language === "en");
+    const nextRun = Date.parse(ko.start + "T00:00:00+09:00") + 86400000;
+    const end = Date.parse(english.start) + (english.days - 1) * 86400000;
+    for (let at = now.getTime(); at < nextRun; at += 3600000) {
+      const needed = languagePackSchedule(new Date(at)).find(
+        (x) => x.language === "en",
+      );
+      assert.ok(Date.parse(english.start) <= Date.parse(needed.start));
+      assert.ok(
+        end >= Date.parse(needed.start) + (needed.days - 1) * 86400000,
+        `${instant}: generation ends before the next health window`,
+      );
+    }
+  }
+});
 test("AC-2 published manifest restoration fails closed and preserves exact identities", async () => {
   const dir = await mkdtemp(path.join(tmpdir(), "crossword-language-state-"));
   try {
