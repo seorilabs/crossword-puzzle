@@ -83,7 +83,8 @@
         "server/batch/run-language-pack-job.mjs",
         "data/puzzles/daily-board-templates.json",
         "data/lexicon/en-wordbank.json",
-        "data/lexicon/ko-daily-clues.json"
+        "data/lexicon/ko-daily-clues.json",
+        "server/batch/publishedPackVisibility.mjs"
       ],
       "runtimeKind": "service"
     },
@@ -104,7 +105,10 @@
       "core": false,
       "paths": [
         "scripts/setup-puzzle-pack-monitoring.sh",
-        "server/batch/check-puzzle-pack-health.mjs"
+        "server/batch/check-puzzle-pack-health.mjs",
+        "server/batch/publishedPackVisibility.mjs",
+        "server/batch/languagePackHealth.mjs",
+        "server/batch/languagePackValidation.mjs"
       ],
       "runtimeKind": "service"
     },
@@ -137,7 +141,9 @@
       "id": "remote-configuration",
       "core": false,
       "foundation": true,
-      "paths": ["src/adapters/launchConfig.ts"]
+      "paths": [
+        "src/adapters/launchConfig.ts"
+      ]
     },
     {
       "id": "analytics",

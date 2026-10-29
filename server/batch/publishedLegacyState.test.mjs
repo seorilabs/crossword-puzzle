@@ -141,6 +141,7 @@ async function scenario({
           );
         },
         validateLanguages: async () => {},
+        waitForPublication: async () => {},
         resolveLiveRelease: async () => ({
           name: "sites/fixture/releases/before",
         }),
