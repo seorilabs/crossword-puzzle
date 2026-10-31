@@ -95,7 +95,7 @@
   "markets": {
     "google_play": {
       "objective": "public_live",
-      "state": "submission",
+      "state": "live_smoke",
       "identity": {
         "applicationId": "com.seorilabs.crosswordpuzzle",
         "version": "1.4.1",
@@ -180,21 +180,29 @@
           "blocker": null
         },
         "approval": {
-          "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
+          "status": "pass",
+          "checkedAt": "2026-10-31T08:36:13.341244Z",
+          "evidence": [
+            "PublicKorea storefront already serves exact1.4.1 and new notes; PublishingConsole no longer has review changes and lastpublicationOct31. Approval substantiated by public release."
+          ],
           "blocker": null
         },
         "release": {
-          "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
+          "status": "pass",
+          "checkedAt": "2026-10-31T08:36:13.341244Z",
+          "evidence": [
+            "Production1001001019 completed/fullrollout1/KR unchanged, managedpublishingdisabled and publicversion1.4.1 verified",
+            "play-public-store-readback.json + play-review-monitor-083340.json"
+          ],
           "blocker": null
         },
         "live_smoke": {
-          "status": "pending",
-          "evidence": [],
-          "checkedAt": null,
+          "status": "pass",
+          "checkedAt": "2026-10-31T08:36:13.341244Z",
+          "evidence": [
+            "UnauthenticatedpublicKorea HTTP200 embeds1.4.1 with target36/min24, new release note and price0KRW/InStock",
+            "Finalcandidate actual development App journeys passed; publicchannel native install/runtime and actual adSDK execution0; approveddev floorOverrides apply."
+          ],
           "blocker": null
         }
       },
@@ -210,6 +218,17 @@
         "conclusion": "success",
         "createdAt": "2026-10-31T07:06:14Z",
         "updatedAt": "2026-10-31T07:06:30Z"
+      },
+      "publicReadback": {
+        "checkedAt": "2026-10-31T08:36:13.341244Z",
+        "version": "1.4.1",
+        "versionCode": 1001001019,
+        "country": "KR",
+        "price": 0,
+        "currency": "KRW",
+        "url": "https://play.google.com/store/apps/details?id=com.seorilabs.crosswordpuzzle&hl=ko&gl=KR&release_readback=20261031T083612Z",
+        "rawRecord": "/Volumes/Data/Backup/agent-artifacts/crossword-puzzle/2026-10-31/171d4f18726df918bf3be62c97d881e60d83610d/continuous-play-v141-20261031T051027Z/operator-closeout-084133Z/originals.tar.gz :: operations/play-public-store-readback.json",
+        "productionConsole": "/Volumes/Data/Backup/agent-artifacts/crossword-puzzle/2026-10-31/171d4f18726df918bf3be62c97d881e60d83610d/continuous-play-v141-20261031T051027Z/operator-closeout-084133Z/originals.tar.gz :: operations/play-production-public-readback.json"
       }
     },
     "app_store": {
@@ -527,8 +546,15 @@
       ],
       "derivation": "Only path references replaced. Original source/time/verdict and execution metadata preserved. Frozen originals retained in NAS."
     },
-    "relativeEvidencePaths": "Relative operator evidence paths resolve under originals.tar.gz :: operations/. Identical reused files are listed by SHA256 in TRANSFER-VERIFIED.json. QA originals are in passed-round5/originals.tar.gz :: qa/.",
-    "currentCandidateEvidence": "GitHub Release v1.4.1 development-evidence.<target>.before-build.json, with durable NAS references"
+    "relativeEvidencePaths": "Operator paths resolve under operatorCloseout originals.tar.gz :: operations/ first, then marketArtifacts originals.tar.gz :: operations/. Identical reused files are recorded by SHA256 in each TRANSFER-VERIFIED.json.",
+    "currentCandidateEvidence": "GitHub Release v1.4.1 development-evidence.<target>.before-build.json, with durable NAS references",
+    "operatorCloseout": {
+      "stage": "/Volumes/Data/Backup/agent-artifacts/crossword-puzzle/2026-10-31/171d4f18726df918bf3be62c97d881e60d83610d/continuous-play-v141-20261031T051027Z/operator-closeout-084133Z",
+      "files": 28,
+      "containerBytes": 1813030,
+      "manifestSha256": "7d33f7c0cf3ab8077fea0dbdd304650b91a93a3a741d625169c2141e9ec8385a",
+      "allMembersVerifiedFromNas": true
+    }
   },
   "verificationLimits": {
     "actualDevicesUsed": 0,
