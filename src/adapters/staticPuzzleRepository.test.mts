@@ -8,6 +8,7 @@ import type {
   PuzzleRepository,
 } from "../../packages/crossword-core/src/index.ts";
 import {
+  createFallbackPuzzleRepository,
   createOnboardingPuzzleRepository,
   createStaticPuzzleRepository,
 } from "./staticPuzzleRepository.ts";
@@ -72,6 +73,98 @@ describe("createOnboardingPuzzleRepository", () => {
     assert.deepEqual(summaries, []);
     assert.deepEqual(base.calls, ["listPuzzleSummaries"]);
   });
+});
+
+it("보조 목록이 처음 오프라인이어도 저장된 원격 원본을 복원한다", async () => {
+  const cache = new Map<string, string>();
+  const previous = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: {
+      getItem: (key: string) => cache.get(key) ?? null,
+      setItem: (key: string, value: string) => cache.set(key, value),
+    },
+  });
+  let offline = false;
+  const calls: string[] = [];
+  const manifest = {
+    puzzles: [
+      {
+        puzzleId: "ko-saved",
+        date: "2026-10-31",
+        path: "/boards/ko-saved.json",
+      },
+    ],
+  };
+  const fetcher = (async (input: string | URL | Request) => {
+    const url = String(input);
+    calls.push(url);
+    if (offline) return new Response(null, { status: 503 });
+    return new Response(
+      JSON.stringify(
+        url.endsWith("manifest.json")
+          ? manifest
+          : { ...dailyPuzzle, puzzleId: "ko-saved" },
+      ),
+    );
+  }) as typeof fetch;
+  const reopen = () =>
+    createFallbackPuzzleRepository(
+      createStaticPuzzleRepository({
+        fetcher,
+        manifestUrl: "https://example.com/puzzles/ko/manifest.json",
+      }),
+      createStaticPuzzleRepository({
+        fetcher,
+        manifestPath: "/puzzles/ko/manifest.json",
+      }),
+    );
+  try {
+    const online = reopen();
+    await online.listPuzzleSummaries();
+    await online.getPuzzleById("ko-saved");
+    assert.equal(calls.includes("/puzzles/ko/manifest.json"), false);
+    offline = true;
+    const restored = reopen();
+    assert.equal(
+      (await restored.listPuzzleSummaries())[0]?.puzzleId,
+      "ko-saved",
+    );
+    assert.equal(restored.isOffline?.(), true);
+    assert.deepEqual(await restored.cachedPuzzleIds?.(), ["ko-saved"]);
+    assert.equal(
+      (await restored.getPuzzleById("ko-saved"))?.puzzleId,
+      "ko-saved",
+    );
+    assert.equal(
+      calls.filter((url) => url.endsWith("ko-saved.json")).length,
+      1,
+    );
+  } finally {
+    if (previous) Object.defineProperty(globalThis, "localStorage", previous);
+    else Reflect.deleteProperty(globalThis, "localStorage");
+  }
+});
+
+it("캐시 목록 실패는 각 공급자에 한정하고 둘 다 실패하면 빈 목록을 돌려준다", async () => {
+  const failing = {
+    ...createBaseRepository(),
+    cachedPuzzleIds: async () => {
+      throw Error("unavailable");
+    },
+  };
+  const saved = {
+    ...createBaseRepository(),
+    cachedPuzzleIds: async () => ["fallback-saved"],
+  };
+  assert.deepEqual(
+    await createFallbackPuzzleRepository(failing, saved).cachedPuzzleIds?.(),
+    ["fallback-saved"],
+  );
+  assert.deepEqual(
+    await createFallbackPuzzleRepository(failing, failing).cachedPuzzleIds?.(),
+    [],
+  );
 });
 
 describe("createStaticPuzzleRepository 식별자 정규화 (#351)", () => {

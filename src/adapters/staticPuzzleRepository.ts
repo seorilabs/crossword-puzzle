@@ -327,12 +327,14 @@ export function createFallbackPuzzleRepository(
   return {
     isOffline: () => primaryRepository.isOffline?.() ?? false,
     async cachedPuzzleIds() {
-      return [
-        ...(await (primaryRepository.cachedPuzzleIds?.() ??
-          Promise.resolve([]))),
-        ...(await (fallbackRepository.cachedPuzzleIds?.() ??
-          Promise.resolve([]))),
-      ];
+      const results = await Promise.allSettled(
+        [primaryRepository, fallbackRepository].map(
+          async (repository) => (await repository.cachedPuzzleIds?.()) ?? [],
+        ),
+      );
+      return results.flatMap((result) =>
+        result.status === "fulfilled" ? result.value : [],
+      );
     },
     async listPuzzleSummaries() {
       try {
