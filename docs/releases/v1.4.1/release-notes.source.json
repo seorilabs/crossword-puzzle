@@ -1,0 +1,16 @@
+{
+  "tag": "v1.4.1",
+  "markets": {
+    "googlePlay": {
+      "ko-KR": "- 오늘 다섯 판을 마치면 지난 미완료 판으로 이어져요.\n- 홈에서 한 번 눌러 시작하고 결과 화면 아래에서 다음 판을 바로 풀 수 있어요.",
+      "en-US": "- Keep playing earlier unfinished puzzles after today’s five.\n- Start with one tap and continue from the next-puzzle button at the bottom of your result."
+    },
+    "appStore": {
+      "ko-KR": "- 오늘 다섯 판을 마치면 지난 미완료 판으로 이어져요.\n- 홈에서 한 번 눌러 시작하고 결과 화면 아래에서 다음 판을 바로 풀 수 있어요.",
+      "en-US": "- Keep playing earlier unfinished puzzles after today’s five.\n- Start with one tap and continue from the next-puzzle button at the bottom of your result."
+    },
+    "appsInToss": {
+      "ko-KR": "- 오늘 다섯 판을 마치면 지난 미완료 판으로 이어져요.\n- 홈에서 한 번 눌러 시작하고 결과 화면 아래에서 다음 판을 바로 풀 수 있어요."
+    }
+  }
+}
