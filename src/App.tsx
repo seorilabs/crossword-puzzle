@@ -201,7 +201,10 @@ import {
 import { usageStatistics } from "./adapters/usageStatistics";
 import "./App.css";
 import { type CompletionReturnReminderPreprompt } from "./components/CompletionCelebrationDialog";
-import { selectPlayablePuzzle } from "../packages/crossword-core/src/continuousPlay";
+import {
+  allAvailablePuzzlesCompleted,
+  selectPlayablePuzzle,
+} from "../packages/crossword-core/src/continuousPlay";
 import { PersonalStatsCard } from "./components/PersonalStatsCard";
 import { PuzzleBoard } from "./components/PuzzleBoard";
 import { SettingsSheet } from "./components/SettingsSheet";
@@ -972,10 +975,12 @@ function App() {
     async function loadPuzzlePack() {
       try {
         let loadedSummaries: PuzzleManifestItem[] = [];
+        let summariesLoaded = false;
         try {
           loadedSummaries = (
             await puzzleRepository.listPuzzleSummaries()
           ).filter((p) => puzzleLanguage(p) === language && p.date <= day);
+          summariesLoaded = true;
         } catch {
           /* Saved boards remain available through the archive. */
         }
@@ -1033,8 +1038,10 @@ function App() {
           if (!activeSessionRef.current || currentRouteRef.current === "home")
             applyPuzzleSession(session);
           setLoadState(
-            loadedSummaries.length && !puzzleRepository.isOffline?.()
-              ? getPuzzlePackLoadState(nextSummaries)
+            summariesLoaded && !puzzleRepository.isOffline?.()
+              ? nextSummaries.length
+                ? getPuzzlePackLoadState(nextSummaries)
+                : "remote"
               : "fallback",
           );
           if (session == null && currentRouteRef.current !== "home")
@@ -2891,16 +2898,13 @@ function App() {
           emptyMessage={
             !nextDailyRow
               ? t(
-                  puzzleSummaries
-                    .filter(
-                      (row) =>
-                        puzzleLanguage(row) === language && row.date <= day,
-                    )
-                    .every(
-                      (row) =>
-                        dateCardStates[row.puzzleId]?.completedAt ||
-                        (row.puzzleId === puzzle.puzzleId && isCompleted),
-                    )
+                  allAvailablePuzzlesCompleted(
+                    puzzleSummaries,
+                    dateCardStates,
+                    language,
+                    day,
+                    isCompleted ? puzzle.puzzleId : undefined,
+                  )
                     ? "모든 판을 완성했어요"
                     : "지금 풀 수 있는 판이 없어요.",
                 )
@@ -3148,11 +3152,12 @@ function HomeScreen({
     language,
     today,
   );
-  const allComplete =
-    puzzleSummaries.length > 0 &&
-    puzzleSummaries
-      .filter((row) => row.date <= today)
-      .every((row) => dateCardStates[row.puzzleId]?.completedAt);
+  const allComplete = allAvailablePuzzlesCompleted(
+    puzzleSummaries,
+    dateCardStates,
+    language,
+    today,
+  );
   const saved = summary ? dateCardStates[summary.puzzleId] : undefined;
   const loadFailed = !summary && loadState === "fallback";
   const started = (saved?.attemptsUsed ?? 0) > 0 || saved?.hasProgress;
@@ -3219,7 +3224,7 @@ function HomeScreen({
                     ? t("고른 글자는 그대로, 이어서 완성해요.")
                     : t("한 단어씩, 다음 판을 완성해요.")}
         </p>
-        {loadFailed ? (
+        {loadFailed || (!summary && !allComplete && !loading) ? (
           <button
             className="tilePrimary"
             onClick={() => {

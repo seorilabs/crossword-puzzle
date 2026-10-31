@@ -42,12 +42,12 @@
     }
   },
   "contentDeclarations": {
-    "dataSafety": "확정 필요",
-    "contentRating": "확정 필요",
-    "targetAudience": "확정 필요",
+    "dataSafety": "2026-10-31 Play Console CSV 조회: 데이터 수집과 공유 있음, 7개 유형 신고, 전송 중 암호화, 앱 내 계정 생성 없음. docs/qa/2026-10-31-continuous-play/play-policy-readback.json",
+    "contentRating": "IARC 완료, 인증 f718a5f5-a841-8515-8010-3f4884c08df9. 2026-10-31 Play Console 조회",
+    "targetAudience": "13-15세, 16-17세, 만 18세 이상. 2026-10-31 Play Console 저장값 조회, 변경 없음",
     "ads": "yes",
     "koreaDistribution": "yes",
-    "koreaGameRating": "확정 필요"
+    "koreaGameRating": "IARC 경유 GRAC 전체이용가, 인증 f718a5f5-a841-8515-8010-3f4884c08df9. 2026-10-31 저장값 조회"
   },
   "assets": {
     "playIcon": "play-store/assets/icon-512.png",

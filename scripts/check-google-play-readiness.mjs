@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
+import { hasAppsInTossImport } from "./lib/native-imports.mjs";
 
 const root = process.cwd();
 const jsonMode = process.argv.includes("--json");
@@ -242,10 +243,7 @@ function checkNativeSourceImports(sourceRoots) {
   );
   const appsInTossFiles = sourceFiles.filter((path) => {
     const contents = readFileSync(repoPath(path), "utf8");
-    return (
-      contents.includes("@apps-in-toss/") ||
-      contents.includes("@toss/tds-mobile-ait")
-    );
+    return hasAppsInTossImport(contents, path);
   });
 
   if (appsInTossFiles.length > 0) {

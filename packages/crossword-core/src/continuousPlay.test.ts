@@ -1,6 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { selectPlayablePuzzle } from "./continuousPlay.ts";
+import {
+  allAvailablePuzzlesCompleted,
+  selectPlayablePuzzle,
+} from "./continuousPlay.ts";
 import type { PuzzleManifestItem } from "./types.ts";
 const row = (
   id: string,
@@ -91,5 +94,51 @@ test("completion selection is independent of a 30-record archive window", () => 
       "2026-10-31",
     )?.puzzleId,
     "remaining",
+  );
+});
+
+test("unavailable and exhausted puzzles are not described as completed", () => {
+  const today = "2026-10-31";
+  assert.equal(allAvailablePuzzlesCompleted([], {}, "en", today), false);
+  assert.equal(
+    allAvailablePuzzlesCompleted(
+      [row("future", "2026-11-01"), row("ko", undefined, 1, "ko")],
+      {},
+      "en",
+      today,
+    ),
+    false,
+  );
+  const rows = [row("today"), row("past", "2026-10-30")];
+  assert.equal(
+    allAvailablePuzzlesCompleted(
+      rows,
+      {
+        today: { completedAt: "x" },
+        past: { attemptsUsed: 3, maxAttempts: 3 },
+      },
+      "en",
+      today,
+    ),
+    false,
+  );
+  assert.equal(
+    allAvailablePuzzlesCompleted(
+      rows,
+      { today: { completedAt: "x" }, past: { completedAt: "x" } },
+      "en",
+      today,
+    ),
+    true,
+  );
+  assert.equal(
+    allAvailablePuzzlesCompleted(
+      rows,
+      { past: { completedAt: "x" } },
+      "en",
+      today,
+      "today",
+    ),
+    true,
   );
 });
