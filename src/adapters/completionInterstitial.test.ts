@@ -22,10 +22,22 @@ describe("AC-5 AIT preloaded completion ads", () => {
     const move = vi.fn();
     const flow = createCompletionTransition(
       ad,
-      { consumed: async () => false, consume: async () => {} },
+      {
+        consumed: async () => false,
+        consume: async () => {},
+        loadHistory: async () => null,
+        saveHistory: async () => {},
+      },
       () => {},
+      {
+        enabled: true,
+        initialWaitMs: 0,
+        intervalMs: 90000,
+        sessionCap: 3,
+        dailyCap: 10,
+      },
     );
-    await flow.leave("en-1", true, move);
+    await flow.complete("en-1", move);
     load!.onEvent({ type: "loaded" });
     expect(move).toHaveBeenCalledOnce();
     expect(sdk.show).not.toHaveBeenCalled();
@@ -39,6 +51,7 @@ describe("AC-5 AIT preloaded completion ads", () => {
     const unregister = vi.fn();
     sdk.show.mockImplementation((options) => {
       options.onEvent({ type: "show" });
+      options.onEvent({ type: "impression" });
       options.onEvent({ type: "dismissed" });
       return unregister;
     });
@@ -47,6 +60,7 @@ describe("AC-5 AIT preloaded completion ads", () => {
     const track = vi.fn();
     await ad.show(track);
     expect(track.mock.calls.map((x) => x[0])).toEqual([
+      "ad_shown",
       "ad_impression",
       "ad_closed",
     ]);

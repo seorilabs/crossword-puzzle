@@ -115,7 +115,7 @@ function scanCompletedDates(
     // Legacy key format: "{prefix}:{date}" (no puzzleId suffix)
     // New key format:    "{prefix}:{date}:{puzzleId}"
     const date = sepIdx < 0 ? rest : rest.slice(0, sepIdx);
-    if (!lookbackDates.has(date)) continue;
+
     const english = sepIdx >= 0 && rest.slice(sepIdx + 1).startsWith("en-");
     if (english !== (language === "en")) continue;
 
@@ -124,7 +124,11 @@ function scanCompletedDates(
       if (raw == null) continue;
       const parsed = JSON.parse(raw) as { completedAt?: string };
       if (typeof parsed.completedAt === "string") {
-        completedDates.add(date);
+        const completed = new Date(parsed.completedAt);
+        const activityDate = Number.isFinite(completed.getTime())
+          ? contentDate(language, completed)
+          : date;
+        if (lookbackDates.has(activityDate)) completedDates.add(activityDate);
       }
     } catch {
       continue;

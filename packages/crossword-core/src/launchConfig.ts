@@ -13,6 +13,11 @@ import {
 } from "./uiPolicy.ts";
 
 export type LaunchConfig = {
+  completionInterstitialDailyCap: number;
+  completionInterstitialSessionCap: number;
+  completionInterstitialIntervalMs: number;
+  completionInterstitialInitialWaitMs: number;
+  completionInterstitialEnabled: boolean;
   completionInterstitialAit: string;
   completionInterstitialAndroid: string;
   completionInterstitialIos: string;
@@ -84,6 +89,12 @@ export type LaunchConfig = {
 };
 
 export const launchConfigKeys = {
+  completionInterstitialDailyCap: "completion_interstitial_daily_cap",
+  completionInterstitialSessionCap: "completion_interstitial_session_cap",
+  completionInterstitialIntervalMs: "completion_interstitial_interval_ms",
+  completionInterstitialInitialWaitMs:
+    "completion_interstitial_initial_wait_ms",
+  completionInterstitialEnabled: "completion_interstitial_enabled",
   completionInterstitialAit: "completion_interstitial_ait",
   completionInterstitialAndroid: "completion_interstitial_android",
   completionInterstitialIos: "completion_interstitial_ios",
@@ -123,6 +134,11 @@ export const launchConfigKeys = {
 } as const;
 
 export const defaultLaunchConfig: LaunchConfig = {
+  completionInterstitialDailyCap: 10,
+  completionInterstitialSessionCap: 3,
+  completionInterstitialIntervalMs: 90000,
+  completionInterstitialInitialWaitMs: 90000,
+  completionInterstitialEnabled: true,
   completionInterstitialAit: "",
   completionInterstitialAndroid: "",
   completionInterstitialIos: "",
@@ -221,6 +237,33 @@ export function normalizeLaunchConfig(
   value: Partial<LaunchConfig>,
 ): LaunchConfig {
   return {
+    completionInterstitialDailyCap: clampInteger(
+      value.completionInterstitialDailyCap ?? 10,
+      10,
+      0,
+      10,
+    ),
+    completionInterstitialSessionCap: clampInteger(
+      value.completionInterstitialSessionCap ?? 3,
+      3,
+      0,
+      3,
+    ),
+    completionInterstitialIntervalMs: clampInteger(
+      value.completionInterstitialIntervalMs ?? 90000,
+      90000,
+      90000,
+      3600000,
+    ),
+    completionInterstitialInitialWaitMs: clampInteger(
+      value.completionInterstitialInitialWaitMs ?? 90000,
+      90000,
+      90000,
+      3600000,
+    ),
+    completionInterstitialEnabled:
+      value.completionInterstitialEnabled ??
+      defaultLaunchConfig.completionInterstitialEnabled,
     completionInterstitialAit:
       typeof value.completionInterstitialAit === "string"
         ? value.completionInterstitialAit.trim()
@@ -428,6 +471,16 @@ export function normalizeLaunchConfig(
 
 export function getLaunchConfigDefaultsForRemoteConfig() {
   return {
+    [launchConfigKeys.completionInterstitialEnabled]:
+      defaultLaunchConfig.completionInterstitialEnabled,
+    [launchConfigKeys.completionInterstitialInitialWaitMs]:
+      defaultLaunchConfig.completionInterstitialInitialWaitMs,
+    [launchConfigKeys.completionInterstitialIntervalMs]:
+      defaultLaunchConfig.completionInterstitialIntervalMs,
+    [launchConfigKeys.completionInterstitialSessionCap]:
+      defaultLaunchConfig.completionInterstitialSessionCap,
+    [launchConfigKeys.completionInterstitialDailyCap]:
+      defaultLaunchConfig.completionInterstitialDailyCap,
     [launchConfigKeys.completionInterstitialAit]:
       defaultLaunchConfig.completionInterstitialAit,
     [launchConfigKeys.completionInterstitialAndroid]:

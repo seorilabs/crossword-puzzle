@@ -57,7 +57,10 @@ describe("RN 기록·통계·공유 패리티 인수조건", () => {
     assert.match(mobileCompletionDates, /getAllKeys/);
     assert.match(mobileCompletionDates, /COMPLETION_DATES_MIGRATED_KEY/);
     assert.match(mobileApp, /migrateCompletionDatesIfNeeded\(\{/);
-    assert.match(mobileApp, /\.addCompletionDate\(nextMission\.date\)/);
+    assert.match(
+      mobileApp,
+      /\.addCompletionDate\(\s*contentDate\(language,\s*new Date\(nextMission\.completedAt!\)\),?\s*\)/,
+    );
     assert.match(
       completionDatesTests,
       /구버전 archive와 mission 키에서 완료일을 1회 백필한다/,

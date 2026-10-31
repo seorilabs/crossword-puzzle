@@ -156,7 +156,7 @@ test('홈에서 다시 불러오면 기존 확정 글자와 과거 힌트 값을
     await flushAsyncWork(15);
     const recoveredHome = renderer!.root.findByType(TileHomeScreen);
     expect(recoveredHome.props.loadError).toBe(false);
-    expect(recoveredHome.props.puzzle.puzzleId).toBe(puzzle.puzzleId);
+    expect(recoveredHome.props.summary.puzzleId).toBe(puzzle.puzzleId);
     await ReactTestRenderer.act(async () => {
       recoveredHome.props.onStart();
     });
@@ -916,7 +916,7 @@ describe('formatElapsedTime', () => {
 });
 
 test.each([1, -1])(
-  'preloading a board %i days away on home cannot consume the first guide',
+  'home metadata for a board %i days away cannot consume the first guide',
   async offset => {
     const key = (date: Date) =>
       new Intl.DateTimeFormat('en-CA', {
@@ -953,7 +953,7 @@ test.each([1, -1])(
         renderer = ReactTestRenderer.create(<App />);
       });
       await flushAsyncWork(15);
-      expect(renderer!.root.findByType(TileHomeScreen).props.puzzle).toBeNull();
+      expect(fetchMock.mock.calls.filter(([url]: [string]) => !url.endsWith('manifest.json'))).toHaveLength(0);
       await ReactTestRenderer.act(async () => {
         renderer!.unmount();
       });

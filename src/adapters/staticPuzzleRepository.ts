@@ -20,8 +20,21 @@ type StaticPuzzleRepositoryOptions = {
   manifestUrl?: string;
 };
 
-async function fetchJson<T>(fetcher: Fetcher, path: string): Promise<T> {
+async function fetchJson<T>(
+  fetcher: Fetcher,
+  path: string,
+  cacheFirst = false,
+  onOffline?: () => void,
+): Promise<T> {
   const key = "crossword-puzzle:content:" + path;
+  if (cacheFirst) {
+    try {
+      const cached = localStorage.getItem(key);
+      if (cached) return JSON.parse(cached) as T;
+    } catch {
+      /* Cached data is optional. */
+    }
+  }
   try {
     const response = await fetcher(path);
     if (!response.ok)
@@ -35,6 +48,7 @@ async function fetchJson<T>(fetcher: Fetcher, path: string): Promise<T> {
     }
     return value;
   } catch (error) {
+    onOffline?.();
     try {
       const cached =
         typeof localStorage !== "undefined" ? localStorage.getItem(key) : null;
@@ -162,38 +176,92 @@ export function createStaticPuzzleRepository({
     manifestUrl,
   });
 
-  async function loadManifest() {
-    return normalizePuzzleManifestIdentifiers(
-      await fetchJson<PuzzleManifest>(fetcher, resolvedManifestUrl),
-    );
+  let manifestPromise: Promise<PuzzleManifest> | undefined;
+  let loadedAt = 0;
+  let offline = false;
+  const boards = new Map<string, Promise<Puzzle | null>>();
+  async function loadManifest(refresh = false) {
+    if (!manifestPromise || (refresh && Date.now() - loadedAt >= 60000)) {
+      loadedAt = Date.now();
+      offline = false;
+      manifestPromise = fetchJson<PuzzleManifest>(
+        fetcher,
+        resolvedManifestUrl,
+        false,
+        () => {
+          offline = true;
+        },
+      )
+        .then(normalizePuzzleManifestIdentifiers)
+        .catch((error) => {
+          manifestPromise = undefined;
+          throw error;
+        });
+    }
+    return manifestPromise;
   }
 
   return {
-    async listPuzzleSummaries() {
+    isOffline: () => offline,
+    async cachedPuzzleIds() {
       const manifest = await loadManifest();
+      return manifest.puzzles
+        .filter((row) => {
+          try {
+            return (
+              localStorage.getItem(
+                "crossword-puzzle:content:" +
+                  resolvePuzzleUrl({
+                    assetBaseUrl,
+                    manifestUrl: resolvedManifestUrl,
+                    puzzlePath: row.path,
+                  }),
+              ) != null
+            );
+          } catch {
+            return false;
+          }
+        })
+        .map((row) => row.puzzleId);
+    },
+    async listPuzzleSummaries() {
+      const manifest = await loadManifest(true);
       return sortPuzzleSummaries(manifest.puzzles);
     },
 
     async getPuzzleById(puzzleId) {
-      const manifest = await loadManifest();
-      const selectedPuzzle = manifest.puzzles.find(
-        (item) => item.puzzleId === puzzleId,
-      );
+      if (boards.has(puzzleId)) return boards.get(puzzleId)!;
+      const loading = (async () => {
+        const manifest = await loadManifest();
+        const selectedPuzzle = manifest.puzzles.find(
+          (item) => item.puzzleId === puzzleId,
+        );
 
-      if (selectedPuzzle == null) {
-        return null;
+        if (selectedPuzzle == null) {
+          return null;
+        }
+
+        return normalizePuzzleIdentifiers(
+          await fetchJson<Puzzle>(
+            fetcher,
+            resolvePuzzleUrl({
+              assetBaseUrl,
+              manifestUrl: resolvedManifestUrl,
+              puzzlePath: selectedPuzzle.path,
+            }),
+            true,
+          ),
+        );
+      })();
+      boards.set(puzzleId, loading);
+      try {
+        const result = await loading;
+        if (result == null) boards.delete(puzzleId);
+        return result;
+      } catch (error) {
+        boards.delete(puzzleId);
+        throw error;
       }
-
-      return normalizePuzzleIdentifiers(
-        await fetchJson<Puzzle>(
-          fetcher,
-          resolvePuzzleUrl({
-            assetBaseUrl,
-            manifestUrl: resolvedManifestUrl,
-            puzzlePath: selectedPuzzle.path,
-          }),
-        ),
-      );
     },
 
     async getPuzzleForDate(date) {
@@ -231,6 +299,9 @@ export function createOnboardingPuzzleRepository(
   onboardingPuzzle: Puzzle,
 ): PuzzleRepository {
   return {
+    isOffline: () => baseRepository.isOffline?.() ?? false,
+    cachedPuzzleIds: () =>
+      baseRepository.cachedPuzzleIds?.() ?? Promise.resolve([]),
     listPuzzleSummaries() {
       return baseRepository.listPuzzleSummaries();
     },
@@ -254,6 +325,15 @@ export function createFallbackPuzzleRepository(
   fallbackRepository: PuzzleRepository,
 ): PuzzleRepository {
   return {
+    isOffline: () => primaryRepository.isOffline?.() ?? false,
+    async cachedPuzzleIds() {
+      return [
+        ...(await (primaryRepository.cachedPuzzleIds?.() ??
+          Promise.resolve([]))),
+        ...(await (fallbackRepository.cachedPuzzleIds?.() ??
+          Promise.resolve([]))),
+      ];
+    },
     async listPuzzleSummaries() {
       try {
         const summaries = await primaryRepository.listPuzzleSummaries();

@@ -343,8 +343,7 @@ button:disabled {
 @media (prefers-reduced-motion: reduce) {
   .dateLoading span,
   .dateLoading strong,
-  .dateLoading em,
-  .miniCellSkeleton {
+  .dateLoading em {
     animation: none;
   }
 }
@@ -619,42 +618,9 @@ button:disabled {
   color: var(--cw-text-2);
 }
 
-.miniBoard {
-  display: grid;
-  /* 실제 보드 폭(--mini-cols)을 따라 열 수를 잡아 5×5/8×8 도 잘리지 않게 한다.
-     변수가 없으면 발행 기본값인 normal 보드(8열)로 폴백한다. */
-  grid-template-columns: repeat(var(--mini-cols, 8), minmax(0, 1fr));
-  gap: 3px;
-  align-self: center;
-}
-
 .selectedPuzzleScaffold {
   align-self: center;
   width: 100%;
-}
-
-.miniCell {
-  aspect-ratio: 1;
-  border-radius: 3px;
-  background: var(--cw-surface);
-  box-shadow: inset 0 0 0 1px var(--cw-brand-line);
-}
-
-.miniBlock {
-  background: #4e5968;
-  box-shadow: none;
-}
-
-.miniCellSkeleton {
-  background: linear-gradient(
-    90deg,
-    var(--cw-border) 25%,
-    #f2f4f6 50%,
-    var(--cw-border) 75%
-  );
-  background-size: 200px 100%;
-  animation: skeletonShimmer 1.2s ease-in-out infinite;
-  box-shadow: none;
 }
 
 .attemptStrip {
@@ -3506,11 +3472,6 @@ button:disabled {
   /* 와이드 화면 거터/루트 배경 */
   #root {
     background-color: var(--cw-bg) !important;
-  }
-
-  /* 미니 보드 블록 셀 — 빈칸(surface)보다 더 어둡게 유지 */
-  .miniBlock {
-    background: #0d0f13;
   }
 
   /* 분절 컨트롤/모드 탭: 활성 탭이 트랙보다 밝게 보이도록 보정 */

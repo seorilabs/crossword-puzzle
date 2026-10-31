@@ -683,41 +683,6 @@
   background: #e9eddd;
   color: #63805e;
 }
-.tileHomePreview {
-  margin: 24px auto 20px;
-  width: min(
-    100%,
-    clamp(
-      96px,
-      calc(
-        100dvh - 500px - var(--ait-safe-area-top, 0px) -
-          var(--ait-safe-area-bottom, 0px)
-      ),
-      220px
-    )
-  );
-  aspect-ratio: 1;
-}
-.tileHomePreview .miniBoard {
-  width: 100%;
-  height: 100%;
-  padding: 10px;
-  background: #d7dfca;
-  border-radius: 15px;
-  gap: 3px;
-  box-shadow: 0 4px 0 #b3bea1;
-  transform: rotate(-3deg);
-}
-.tileHomePreview .miniCell {
-  border: 0;
-  background: #fffdf1;
-  box-shadow: 0 2px 0 #bcc8ae;
-  border-radius: 4px;
-}
-.tileHomePreview .miniBlock {
-  background: #c3cdb5;
-  box-shadow: none;
-}
 .tileDailyCard > p {
   text-align: center;
   margin: 22px 0 20px;
@@ -959,4 +924,55 @@
   background: #fffdf3;
   font-size: 12px;
   line-height: 1.7;
+}
+
+.tileDailyProgress {
+  display: flex;
+  gap: 10px;
+  margin: 24px 0;
+}
+.tileDailyProgress span {
+  flex: 1;
+  min-height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: #e9eddd;
+  color: #54715c;
+}
+.tileDailyProgress .done {
+  background: #4a7357;
+  color: #fffdf0;
+}
+.tileResult {
+  padding-bottom: calc(144px + env(safe-area-inset-bottom));
+}
+.tileResultFooter {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(100%, 430px);
+  box-sizing: border-box;
+  z-index: 20;
+  padding: 8px 24px calc(12px + env(safe-area-inset-bottom));
+  background: #f8f3e7;
+  border-top: 1px solid #d9ddc9;
+}
+.tileResultFooter p {
+  font-size: 12px;
+  margin: 4px 0;
+}
+.tileResultFooter .tilePrimary {
+  width: 100%;
+  margin: 0;
+}
+.tileResultBoard {
+  width: 140px;
+}
+.tileResultMedal {
+  width: 56px;
+  height: 56px;
+  margin-top: 8px;
+  font-size: 36px;
 }

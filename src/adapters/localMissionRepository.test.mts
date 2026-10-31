@@ -3,9 +3,7 @@
 import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
 
-import {
-  getRecentCompletionDates,
-} from "./localMissionRepository.ts";
+import { getRecentCompletionDates } from "./localMissionRepository.ts";
 import { getTodayDateKey } from "../../packages/crossword-core/src/puzzle.ts";
 
 // length/key(i) 열거를 지원하는 Web Storage 호환 메모리 저장소.
@@ -39,11 +37,23 @@ describe("getRecentCompletionDates", () => {
     const dOld = shiftDate(today, -200); // lookback(90) 밖
     const dOngoing = shiftDate(today, -1); // 완료 안 함
 
-    storage.setItem(`${PREFIX}:${today}:p1`, JSON.stringify({ completedAt: "t" }));
+    storage.setItem(
+      `${PREFIX}:${today}:p1`,
+      JSON.stringify({ completedAt: "t" }),
+    );
     storage.setItem(`${PREFIX}:${d3}:p2`, JSON.stringify({ completedAt: "t" }));
-    storage.setItem(`${PREFIX}:${d10}:p3`, JSON.stringify({ completedAt: "t" }));
-    storage.setItem(`${PREFIX}:${dOld}:p4`, JSON.stringify({ completedAt: "t" }));
-    storage.setItem(`${PREFIX}:${dOngoing}:p5`, JSON.stringify({ lastStartedAt: "t" }));
+    storage.setItem(
+      `${PREFIX}:${d10}:p3`,
+      JSON.stringify({ completedAt: "t" }),
+    );
+    storage.setItem(
+      `${PREFIX}:${dOld}:p4`,
+      JSON.stringify({ completedAt: "t" }),
+    );
+    storage.setItem(
+      `${PREFIX}:${dOngoing}:p5`,
+      JSON.stringify({ lastStartedAt: "t" }),
+    );
 
     const dates = getRecentCompletionDates(90, PREFIX, storage);
     assert.deepEqual(dates, [d10, d3, today]);
@@ -62,4 +72,14 @@ describe("getRecentCompletionDates", () => {
   it("스토리지가 없으면 빈 배열을 반환한다", () => {
     assert.deepEqual(getRecentCompletionDates(90, PREFIX, null), []);
   });
+});
+
+it("지난 판을 오늘 완료하면 실제 완료일에 활동을 기록한다", () => {
+  const storage = createEnumerableStorage();
+  const today = getTodayDateKey();
+  storage.setItem(
+    `${PREFIX}:2020-01-01:past-puzzle`,
+    JSON.stringify({ completedAt: new Date().toISOString() }),
+  );
+  assert.deepEqual(getRecentCompletionDates(90, PREFIX, storage), [today]);
 });

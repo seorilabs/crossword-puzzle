@@ -185,6 +185,26 @@ export async function loadFirebaseLaunchConfig(): Promise<LaunchConfig> {
     }
 
     return normalizeLaunchConfig({
+      completionInterstitialEnabled: getBoolean(
+        remoteConfig,
+        launchConfigKeys.completionInterstitialEnabled,
+      ),
+      completionInterstitialInitialWaitMs: getNumber(
+        remoteConfig,
+        launchConfigKeys.completionInterstitialInitialWaitMs,
+      ),
+      completionInterstitialIntervalMs: getNumber(
+        remoteConfig,
+        launchConfigKeys.completionInterstitialIntervalMs,
+      ),
+      completionInterstitialSessionCap: getNumber(
+        remoteConfig,
+        launchConfigKeys.completionInterstitialSessionCap,
+      ),
+      completionInterstitialDailyCap: getNumber(
+        remoteConfig,
+        launchConfigKeys.completionInterstitialDailyCap,
+      ),
       completionInterstitialAit: getString(
         remoteConfig,
         launchConfigKeys.completionInterstitialAit,
