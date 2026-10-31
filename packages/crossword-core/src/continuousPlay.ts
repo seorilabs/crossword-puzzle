@@ -9,6 +9,25 @@ export type PlayableState = {
   lastStartedAt?: string;
 };
 
+export function allAvailablePuzzlesCompleted(
+  rows: readonly PuzzleManifestItem[],
+  states: Readonly<Record<string, PlayableState>>,
+  language: ContentLanguage,
+  today: string,
+  justCompletedId?: string,
+): boolean {
+  const available = rows.filter(
+    (row) => puzzleLanguage(row) === language && row.date <= today,
+  );
+  return (
+    available.length > 0 &&
+    available.every(
+      (row) =>
+        !!states[row.puzzleId]?.completedAt || row.puzzleId === justCompletedId,
+    )
+  );
+}
+
 // A manifest is metadata only. This policy never downloads a board.
 export function selectPlayablePuzzle(
   rows: readonly PuzzleManifestItem[],

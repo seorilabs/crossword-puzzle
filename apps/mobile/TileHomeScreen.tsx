@@ -8,6 +8,7 @@ import type {
 type Props = {
   completedToday: number;
   summary?: PuzzleManifestItem;
+  allComplete: boolean;
   loading: boolean;
   notice?: string;
   date: string;
@@ -26,6 +27,7 @@ type Props = {
 export function TileHomeScreen({
   completedToday,
   summary,
+  allComplete,
   loading,
   notice,
   date,
@@ -88,7 +90,11 @@ export function TileHomeScreen({
               : loadError
                 ? t('오프라인에서 풀 수 있는 판이 없어요.')
                 : !summary
-                  ? t('모든 판을 완성했어요')
+                  ? t(
+                      allComplete
+                        ? '모든 판을 완성했어요'
+                        : '지금 풀 수 있는 판이 없어요.',
+                    )
                   : summary.date < date
                     ? t('지난 판을 이어서 풀어보세요.')
                     : offline
@@ -109,7 +115,7 @@ export function TileHomeScreen({
               : loading
                 ? t('불러오는 중')
                 : !summary
-                  ? t('모두 완료')
+                  ? t(allComplete ? '모두 완료' : '다음 판 없음')
                   : started
                     ? t('이어서 풀기')
                     : t('다음 판 풀기')}{' '}

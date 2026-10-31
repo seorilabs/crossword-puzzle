@@ -22,7 +22,10 @@ import {
   type AppStateStatus,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { selectPlayablePuzzle } from '../../packages/crossword-core/src/continuousPlay';
+import {
+  allAvailablePuzzlesCompleted,
+  selectPlayablePuzzle,
+} from '../../packages/crossword-core/src/continuousPlay';
 import { createCompletionTransition } from '../../packages/crossword-core/src/completionInterstitial';
 import {
   WORDFREQ_NOTICE,
@@ -2450,6 +2453,12 @@ function AppContent() {
       <TileHomeScreen
         completedToday={completedToday}
         summary={dailySummary}
+        allComplete={allAvailablePuzzlesCompleted(
+          puzzlePack.summaries,
+          dateCardStates,
+          language,
+          todayKey,
+        )}
         loading={isLoading || puzzleStarting}
         notice={tileFeedback}
         date={todayKey}
@@ -2601,15 +2610,13 @@ function AppContent() {
         emptyMessage={
           !nextDailyRow
             ? t(
-                puzzlePack.summaries
-                  .filter(
-                    row => puzzleLanguage(row) === language && row.date <= day,
-                  )
-                  .every(
-                    row =>
-                      dateCardStates[row.puzzleId]?.completedAt ||
-                      (row.puzzleId === puzzle.puzzleId && isCompleted),
-                  )
+                allAvailablePuzzlesCompleted(
+                  puzzlePack.summaries,
+                  dateCardStates,
+                  language,
+                  day,
+                  isCompleted ? puzzle.puzzleId : undefined,
+                )
                   ? '모든 판을 완성했어요'
                   : '지금 풀 수 있는 판이 없어요.',
               )

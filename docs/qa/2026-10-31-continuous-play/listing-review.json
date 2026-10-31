@@ -1,6 +1,6 @@
 {
   "checkedAt": "2026-10-31",
-  "scope": "홈과 결과 변경 이미지 및 한국어, 영어 설명 검수. App Store 영어는 en-US, en-CA, en-AU 공용 원본. 기존 플레이 이미지와 아이콘 유지. 모든 활성 언어의 실제 provider 저장값은 제출 직전에 별도 확인한다.",
+  "scope": "홈과 결과 변경 이미지 및 한국어, 영어 설명 검수. App Store 영어는 en-US, en-CA, en-AU 공용 원본. 기존 플레이 이미지와 아이콘 유지. 모든 활성 언어의 실제 provider 저장값은 제출 직전에 별도 확인한다. AppsInToss 기존 게임 crossword-puzzle-game의 상세 설명, 홈과 결과 원본도 갱신한다.",
   "runtime": "실제 RN App의 Android/iOS 분기를 React Native Web에서 실행했다. 콘텐츠 HTTP 및 외부 SDK 경계는 고정 입력, 시계는 검수용 날짜로 고정했다. 실기기 또는 실제 네이티브 SDK 실행 근거가 아니다.",
   "visualReview": "선택한 기존 색상, 새 오늘 진행과 한 번 시작, 결과 하단 고정 버튼, 한글/영문, phone/tablet/iPhone/iPad 크기를 직접 열어 확인했다. 변경 이미지에 다른 모바일 플랫폼 또는 마켓 이름/아이콘 없음.",
   "captures": [
@@ -179,6 +179,30 @@
       "platformBranch": "android",
       "runtime": "actual RN App via React Native Web; SDK boundaries replaced",
       "sha256": "8944694d971094074c244f9c4e8a50764e646b8b2bbf1a27c06eb88badb83dbc"
+    },
+    {
+      "target": "release-assets/apps-in-toss/screenshots/crossword-puzzle-game-start-636x1048.png",
+      "pixels": [
+        636,
+        1048
+      ],
+      "language": "ko",
+      "platformBranch": "web",
+      "runtime": "actual AIT App in browser, content/ad/auth SDK boundaries replaced; fixed QA clock; not device SDK proof",
+      "captureSourceSha": "73e5d495ad9e73b06aced7c1a8f5ee59bd9e0384",
+      "sha256": "b869019fd209e7b9d47dab0ac85e20906bf42c3986c86165b0647191e58ade0b"
+    },
+    {
+      "target": "release-assets/apps-in-toss/screenshots/crossword-puzzle-game-result-636x1048.png",
+      "pixels": [
+        636,
+        1048
+      ],
+      "language": "ko",
+      "platformBranch": "web",
+      "runtime": "actual AIT App in browser, content/ad/auth SDK boundaries replaced; fixed QA clock; not device SDK proof",
+      "captureSourceSha": "73e5d495ad9e73b06aced7c1a8f5ee59bd9e0384",
+      "sha256": "76ed179c263200eed47f779c55e75013c458ae44c40b5fe455b1a74bcc23dcb5"
     }
   ]
 }
