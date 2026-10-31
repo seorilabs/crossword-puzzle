@@ -1,11 +1,11 @@
 # v1.4.1 실행 상태
 
-세 마켓 전체 공개는 미완료다. 앱인토스의 새 코드 버전은 공개됐고 등록정보 개정은 별도 심사 중이다. Google Play와 App Store는 심사 상태를 확인했다. 아래 시각은 UTC다.
+세 마켓 전체 공개는 미완료다. 앱인토스의 새 코드 버전은 공개됐고 등록정보 개정은 별도 심사 중이다. Google Play도 한국 전체 공개를 확인했고 App Store는 심사 대기 중이다. 아래 시각은 UTC다.
 
 | 마켓 | 후보와 빌드 | 실제 확인 상태 | 남은 단계 |
 |---|---|---|---|
 | AppsInToss | v1.4.1, 20261031-24 | 07:24 모든 사용자 공개, 08:08 현재 출시됨 재확인 | 등록정보 개정 심사 완료, 공개 후 이벤트 관측 |
-| Google Play | 1.4.1, 1001001019 | 내부 배포와 원본 해시 일치, 게시 개요의 프로덕션 전체 출시 변경 검토 중 | 승인 후 자동 공개, 한국 공개 버전 확인 |
+| Google Play | 1.4.1, 1001001019 | 08:36 한국 공개 1.4.1과 무료 가격, 08:38 프로덕션 활성 최신 버전 확인 | 공개 후 이벤트 관측 |
 | App Store | 1.4.1, 1004001 | 08:08 WAITING_FOR_REVIEW, MANUAL | 승인 후 수동 공개, 기존 5개국 공개 버전 확인 |
 
 ## 후보와 승인
@@ -42,6 +42,8 @@ Google Play의 [서명 AAB 빌드](https://github.com/seorilabs/crossword-puzzle
 
 등록정보만 임시 보관하려던 edit는 제공자가 `changesNotSentForReview=true`를 거절해 삭제됐고 기존 등록정보 보존을 다시 확인했다. 자동으로 매개변수를 빼서 재시도하지 않았다. 서명과 내부 배포 확인 뒤 새 edit `00428938531143580045`에서 두 언어, 스크린샷 14장과 정확한 1001001019의 프로덕션 전체 출시를 함께 제출했다. API 등록값과 게시 개요의 검토 중 상태를 각각 읽었다. 국가 KR, 무료 가격, 연락처, 아이콘과 feature graphic은 유지했다. 관리형 게시는 사용 중지 상태다. 사전 출시 보고서는 현재 없으며 기기 검수 통과로 대체하지 않았다.
 
+08:33 게시 개요에서 검토 중 항목이 사라지고 최근 게시일 10월 31일을 확인했다. 08:36 비로그인 [한국 공개 상품](https://play.google.com/store/apps/details?id=com.seorilabs.crosswordpuzzle&hl=ko&gl=KR)의 HTTP 200에서 소프트웨어 버전 1.4.1, SDK 36과 최소 24, 새 출시노트와 가격 0 KRW, InStock을 읽었다. 08:38 콘솔도 프로덕션 활성 최신 버전 1.4.1과 국가 1개를 표시했다. 이는 공개 상태의 근거이며 실제 기기 설치와 SDK 노출 근거로 세지 않는다.
+
 App Store의 [기존 archive 경로](https://github.com/seorilabs/crossword-puzzle/actions/runs/41179258696)를 build-only로 실행했다. 원본 ZIP은 112,968,588바이트, SHA-256 `fc878cb299eb32c21873a8007d47e826c2d2ccdc65fbb181064d7ebc7f56e9c5`이다. 실제 archive의 1.4.1과 1004001, bundle ID, 배포 인증서와 profile, entitlement, 암호화 false, 개인정보 manifest와 아이콘을 확인했다. 등록된 인증서와 바이트가 같으며 새 자격증명을 만들지 않았다. 같은 archive를 export하고 upload했고 종료 코드 0, 제공자 `VALID`와 기존 내부 그룹 포함을 확인했다.
 
 export 전 원본 ZIP의 67개 파일 내용이 같았으며 실행 비트 6개만 복원했다. export 후 Xcode가 archive 최상위 Info.plist에 Distributions 이력만 추가했다. 앱과 나머지 66개 파일, 원본 ZIP은 바뀌지 않았다. archive 전체가 export 뒤에도 그대로라고 기록하지 않는다.
@@ -66,7 +68,8 @@ NAS의 실제 SMB 연결을 확인하고 스트림 복사 뒤 사본에서 크�
 - 배포 원본과 운영 기록: `/Volumes/Data/Backup/agent-artifacts/crossword-puzzle/2026-10-31/171d4f18726df918bf3be62c97d881e60d83610d/continuous-play-v141-20261031T051027Z/market-artifacts-and-submission-081011Z/ARTIFACTS-COMPLETION-VERIFIED.json`, SHA-256 `34fa449e090606f3a1133990ce5607f04a6d1901e0b881e7bd7b600afc2a0efa`
 - 배포 원본 489개와 재사용 49개, 압축 161,340,494바이트의 검증 목록: `TRANSFER-VERIFIED.json`, SHA-256 `bd061c3b552a59abee6c830c714a6579b3b62a1cbe32ce0c321df9981be01fce`
 - 내부 ZIP 검증: `NESTED-ZIP-READBACK-VERIFIED.json`, SHA-256 `7c62d1966c9b4a7462df77abf24ecfc2cb6f82908275c38ee97bf6ba4a985f8e`
+- 공개 후 제공자 조회와 6개 CI 로그 추가 보관: `/Volumes/Data/Backup/agent-artifacts/crossword-puzzle/2026-10-31/171d4f18726df918bf3be62c97d881e60d83610d/continuous-play-v141-20261031T051027Z/operator-closeout-084133Z/TRANSFER-VERIFIED.json`, SHA-256 `7d33f7c0cf3ab8077fea0dbdd304650b91a93a3a741d625169c2141e9ec8385a`
 
-Google 승인이 확인되면 자동 공개 상태와 한국 공개 상품의 1.4.1을 읽는다. Apple 승인이 확인되면 같은 버전과 빌드의 MANUAL 공개를 실행하고 5개국 무료 공개 버전을 확인한다. 앱인토스 등록정보 개정 승인과 표시 내용도 별도로 확인한다. 공개 범위는 이미 승인됐으므로 추가 출시 승인은 필요하지 않다.
+Google은 승인 후 전체 공개와 한국 공개 상품의 1.4.1을 확인했다. Apple 승인이 확인되면 같은 버전과 빌드의 MANUAL 공개를 실행하고 5개국 무료 공개 버전을 확인한다. 앱인토스 등록정보 개정 승인과 표시 내용도 별도로 확인한다. 공개 범위는 이미 승인됐으므로 추가 출시 승인은 필요하지 않다.
 
 심사와 당일 export는 외부 대기 상태다. 범용 자동 감시를 설정하지 않았으며 이를 설정했다고 보고하지 않는다. 세 마켓 공개와 남은 관측이 끝나지 않아 원장 전체 완료 검사는 미통과다.

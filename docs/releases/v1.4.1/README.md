@@ -1,6 +1,6 @@
 # v1.4.1 연속 플레이와 세 마켓 출시
 
-구현과 검수는 완료했으며 세 마켓 전체 공개는 진행 중이다. [현재 상태와 남은 단계](release-status.md), [마켓별 원장](market-launch-state.json)을 확인한다.
+구현과 검수는 완료했다. 앱인토스와 Google Play의 코드 버전은 공개됐고 App Store는 심사 대기 중이다. [현재 상태와 남은 단계](release-status.md), [마켓별 원장](market-launch-state.json)을 확인한다.
 
 출시 후보는 `171d4f18726df918bf3be62c97d881e60d83610d`, 태그는 `v1.4.1`이다. 기록을 위한 이 문서 커밋은 배포 후보를 바꾸지 않는다. 버전과 빌드는 중앙 태그 receipt가 정본이며 Android `1001001019`, Apple `1004001`이다.
 
