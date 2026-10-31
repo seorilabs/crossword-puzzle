@@ -4,7 +4,7 @@ CREATE TEMP TABLE journey AS
 SELECT user_pseudo_id, event_name, event_timestamp,
  (SELECT value.int_value FROM UNNEST(event_params) WHERE key='ga_session_id' LIMIT 1) session_id,
  (SELECT value.string_value FROM UNNEST(event_params) WHERE key='puzzle_id' LIMIT 1) puzzle_id,
- (SELECT value.string_value FROM UNNEST(event_params) WHERE key='market' LIMIT 1) market,
+ (SELECT value.string_value FROM UNNEST(event_params) WHERE key='app_market' LIMIT 1) market,
  (SELECT value.string_value FROM UNNEST(event_params) WHERE key='release_version' LIMIT 1) version,
  (SELECT value.string_value FROM UNNEST(event_params) WHERE key='content_language' LIMIT 1) language
 FROM `crossword-puzzle-79ae0.analytics_539639687.events_*`
@@ -24,12 +24,13 @@ SELECT market,version,language,COUNT(*) completed_puzzles,COUNTIF(next_started) 
  SAFE_DIVIDE(COUNTIF(next_started),COUNT(*)) next_start_rate
 FROM conversion GROUP BY market,version,language;
 WITH sessions AS (
- SELECT DISTINCT market,version,language,user_pseudo_id,session_id FROM journey WHERE session_id IS NOT NULL
+ SELECT DISTINCT market,version,user_pseudo_id,session_id FROM journey WHERE session_id IS NOT NULL
 ), counts AS (
  SELECT s.*, COUNT(c.puzzle_id) completed_puzzles FROM sessions s LEFT JOIN completions c
  ON s.user_pseudo_id=c.user_pseudo_id AND s.session_id=c.session_id AND s.market IS NOT DISTINCT FROM c.market
- AND s.version IS NOT DISTINCT FROM c.version AND s.language IS NOT DISTINCT FROM c.language
- GROUP BY s.market,s.version,s.language,s.user_pseudo_id,s.session_id
+ AND s.version IS NOT DISTINCT FROM c.version
+ GROUP BY s.market,s.version,s.user_pseudo_id,s.session_id
 )
-SELECT market,version,language,COUNT(*) sessions,COUNTIF(completed_puzzles>0) completing_sessions,AVG(completed_puzzles) puzzles_per_session
-FROM counts GROUP BY market,version,language;
+SELECT market,version,COUNT(*) sessions,COUNTIF(completed_puzzles>0) completing_sessions,AVG(completed_puzzles) puzzles_per_session
+FROM counts GROUP BY market,version;
+-- 세션 전체 평균은 시장/버전 단위이며, 언어별 비교는 위 완료 후 다음 판 시작률로 확인한다.

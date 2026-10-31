@@ -242,6 +242,41 @@
       },
       "valueType": "STRING",
       "description": "완료 후 전환용 별도 전면광고 지면. 미설정 시 건너뜀."
+    },
+    "completion_interstitial_enabled": {
+      "defaultValue": {
+        "value": "true"
+      },
+      "valueType": "BOOLEAN",
+      "description": "완료 구간 일반 전면광고 사용 여부"
+    },
+    "completion_interstitial_initial_wait_ms": {
+      "defaultValue": {
+        "value": "90000"
+      },
+      "valueType": "NUMBER",
+      "description": "첫 세션부터 필요한 실제 전경 풀이 시간(ms), 최소 90000"
+    },
+    "completion_interstitial_interval_ms": {
+      "defaultValue": {
+        "value": "90000"
+      },
+      "valueType": "NUMBER",
+      "description": "이전 광고 닫힘 후 최소 간격(ms), 최소 90000"
+    },
+    "completion_interstitial_session_cap": {
+      "defaultValue": {
+        "value": "3"
+      },
+      "valueType": "NUMBER",
+      "description": "30분 비활동으로 구분한 세션의 최대 표시 횟수"
+    },
+    "completion_interstitial_daily_cap": {
+      "defaultValue": {
+        "value": "10"
+      },
+      "valueType": "NUMBER",
+      "description": "UTC 하루 최대 표시 횟수"
     }
   }
 }

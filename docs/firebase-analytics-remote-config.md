@@ -37,7 +37,7 @@ GitHub Actions AIT 배포는 같은 값을 GitHub Variables에서 읽는다. 미
 
 `remoteconfig.template.json`이 현재 운영 기본값의 source of truth다.
 
-### v1.3.0 완료 후 전면광고
+### 연속 플레이 완료 전면광고
 
 | Key | 운영 기본값 |
 | --- | --- |
@@ -45,7 +45,17 @@ GitHub Actions AIT 배포는 같은 값을 GitHub Variables에서 읽는다. 미
 | `completion_interstitial_android` | `ca-app-pub-9932778305312246/8094375680` |
 | `completion_interstitial_ios` | `ca-app-pub-9932778305312246/4842148506` |
 
-세 키는 운영 version10의 GET 값과 일치한다. 운영 배포 템플릿을 다시 적용해도 빈 값으로 돌아가지 않도록 `check:release-contracts`에서 대조한다. 완료 결과에서 다음 판, 마지막 판에서는 홈으로 이동할 때 판마다 한 번 시도한다. 미준비와 오류는 바로 진행한다. AIT 공급자 등록 처리 중 상태와 실제 SDK 노출 미검증은 별도로 기록하며 연결만으로 게재 성공을 주장하지 않는다.
+기존 세 광고 지면은 재사용한다. 새 완료 구간 정책은 다음 키를 읽으며 클라이언트 기본값과 템플릿 값이 같다. 운영 Remote Config 게시 상태는 출시 시 실제 GET으로 별도 확인한다.
+
+| Key | 기본값 | 의미 |
+| --- | --- | --- |
+| `completion_interstitial_enabled` | `true` | 완료 구간 일반 전면광고 활성 |
+| `completion_interstitial_initial_wait_ms` | `90000` | 첫 실제 전경 풀이 시간 |
+| `completion_interstitial_interval_ms` | `90000` | 이전 광고 닫힘 이후 간격 |
+| `completion_interstitial_session_cap` | `3` | 30분 비활동으로 구분한 세션 상한 |
+| `completion_interstitial_daily_cap` | `10` | UTC 하루 상한 |
+
+완료를 저장한 뒤 결과 요약과 사전 안내를 먼저 그리고 준비된 광고만 검사한다. 결과의 다음 판 버튼이 활성화된 뒤에는 늦게 로드된 광고를 표시하지 않는다. 홈 이동, 뒤로 이동, 결과 재방문은 광고 기회가 아니다. 실제 SDK 노출은 개발 대체 실행과 구분한다. [이벤트와 조회 기준](ad-funnel.md)을 따른다.
 
 ### 구버전과 저장 복원용 키
 
@@ -110,8 +120,7 @@ AIT는 AppsInToss Analytics와 Firebase Analytics를 함께 호출한다. 샌드
 `return_reminder_prompt`와 `return_reminder_result`는 `channel=ait|local`로 시장별 발송 경로를 구분한다. AIT만 실제 스마트발송 템플릿 출처인 `template_code_source=env|default`를 싣고, RN local은 이 파라미터를 생략한다. `return_reminder_result`는 `outcome`, `prompt_count`, `error_reason`, `error_code`에 `error_wrapper_code`와 `stage`를 추가한다. `stage`는 `preflight`, `sdk_callback`, `timeout` 중 하나다. `notification_opened`는 `channel=local`, `notification_kind=daily_puzzle`, 예약 대상 `reminder_date`를 싣는다.
 
 레거시 `result_interstitial_ad_*` 이벤트와
-`result_interstitial_ads_enabled` 키는 현재 코드 계약이 아니다. 과거 배포 데이터의 잔존
-여부만 `scripts/analytics/result-interstitial-config-audit.sql`에서 감사한다.
+`result_interstitial_ads_enabled` 키는 구버전 계약이다. 현재 표시, 실제 노출, 건너뛰기는 [완료 광고 계약](ad-funnel.md)에 따르며 `scripts/analytics/result-interstitial-config-audit.sql`은 새 `ad_shown` 중복을 감사한다.
 
 ## Android / iOS
 
@@ -143,9 +152,7 @@ node scripts/restore-mobile-firebase-config.mjs --ios --require
 ## Native AdMob IDs
 
 공개 원장은 `.github#167`, catalog logical ID는
-`app/crossword-puzzle/admob/public-identifiers`다. 현재 유지 placement는
-`rewardedHint` 하나뿐이며 호출되지 않던 결과 interstitial 구현과 제거된 보너스 퍼즐 ID는
-운영 설정에서 제거했다. 개발·QA 빌드의 Google 테스트 ID 경로는 유지한다.
+`app/crossword-puzzle/admob/public-identifiers`다. 현재 사용하는 placement는 `completionInterstitial`이며 이 문서 위의 세 지면 키를 재사용한다. 아래 `rewardedHint` 식별자는 구버전 등록 보존용이며 현재 힌트 보상 경로에서는 호출하지 않는다. 개발·QA 빌드의 Google 테스트 ID 경로는 유지한다.
 
 | Platform | App ID                                   | rewarded hint                            |
 | -------- | ---------------------------------------- | ---------------------------------------- |

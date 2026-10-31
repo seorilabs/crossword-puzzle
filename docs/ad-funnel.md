@@ -17,7 +17,7 @@
 | `ad_skipped_session_cap`, `ad_skipped_daily_cap` | 상한 도달 |
 | `ad_skipped_disabled`, `ad_skipped_storage` | 원격 비활성 또는 광고 이력을 안전하게 저장할 수 없음 |
 
-앱 이벤트에는 `placement=completion_interstitial`, `ad_policy_version=2`, `puzzle_id`, `content_language`, `ui_language`, `daily_sequence`, `market`, `release_version`이 붙는다. SDK 자동 `ad_impression`은 앱의 퍼즐 맥락이 없을 수 있어 마켓과 버전별로 따로 집계한다. SDK 화면 열림을 수익 발생으로 합성하지 않는다. AIT와 Firebase 팬아웃을 합치지 않고 BigQuery의 Firebase 스트림을 사용한다.
+앱 이벤트에는 `placement=completion_interstitial`, `ad_policy_version=2`, `puzzle_id`, `content_language`, `ui_language`, `daily_sequence`, `app_market`, `runtime_platform`, `release_version`이 붙는다. SDK 자동 `ad_impression`은 앱의 퍼즐 맥락이 없을 수 있어 마켓과 버전별로 따로 집계한다. SDK 화면 열림을 수익 발생으로 합성하지 않는다. AIT와 Firebase 팬아웃을 합치지 않고 BigQuery의 Firebase 스트림을 사용한다.
 
 - [광고 집계](../scripts/analytics/ad-funnel.sql)는 표시 요청, 화면 표시, 실제 노출, 닫힘, 실패와 건너뛰기를 분리한다. 실패율 분모는 표시 요청이며 미준비와 정책 제한은 실패가 아니다.
 - [정합 감사](../scripts/analytics/result-interstitial-config-audit.sql)는 같은 사용자, 퍼즐, 버전의 중복 표시를 찾는다. 화면 재방문과 홈 이동에 표시가 있으면 원시 시각을 조사한다.

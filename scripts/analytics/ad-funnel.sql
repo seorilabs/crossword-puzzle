@@ -3,7 +3,7 @@ DECLARE from_suffix STRING DEFAULT FORMAT_DATE('%Y%m%d', DATE_SUB(CURRENT_DATE('
 DECLARE to_suffix STRING DEFAULT FORMAT_DATE('%Y%m%d', CURRENT_DATE('UTC'));
 WITH events AS (
  SELECT event_name, user_pseudo_id,
-  COALESCE((SELECT value.string_value FROM UNNEST(event_params) WHERE key='market' LIMIT 1),platform) market,
+  COALESCE((SELECT value.string_value FROM UNNEST(event_params) WHERE key='app_market' LIMIT 1),platform) market,
   COALESCE((SELECT value.string_value FROM UNNEST(event_params) WHERE key='release_version' LIMIT 1),app_info.version) version,
   (SELECT value.string_value FROM UNNEST(event_params) WHERE key='content_language' LIMIT 1) language
  FROM `crossword-puzzle-79ae0.analytics_539639687.events_*`

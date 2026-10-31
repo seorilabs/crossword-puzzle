@@ -332,7 +332,8 @@ async def run_chain(session, *, platform, run_id, language, packs, today,
         for index, puzzle in enumerate(todays + past[:1]):
             if index == 5:
                 past_leaderboard_count = len([e for e in await app_events(page)
-                                              if "leaderboard" in e["name"] and "submit" in e["name"]])
+                                              if (e["source"] == "leaderboard" and e["name"] == "submit") or
+                                              ("leaderboard" in e["name"] and "submit" in e["name"])])
             await solve(page, puzzle, language=language, native=native, step=step, first=index == 0)
             next_button = page.get_by_role("button", name=NEXT).first
             await assert_fixed_result_action(page, next_button, width=width, height=height)
@@ -356,7 +357,8 @@ async def run_chain(session, *, platform, run_id, language, packs, today,
         today_mission_key = storage_key(platform, run_id,
                                        f"crossword-puzzle:mission:{today}:{past[0]['puzzleId']}")
         assert await page.evaluate("key=>localStorage.getItem(key)", arg=today_mission_key) is None
-        assert len([e for e in events if "leaderboard" in e["name"] and "submit" in e["name"]]) == past_leaderboard_count
+        assert len([e for e in events if (e["source"] == "leaderboard" and e["name"] == "submit") or
+                    ("leaderboard" in e["name"] and "submit" in e["name"])]) == past_leaderboard_count
         await page.get_by_role("button", name=re.compile(r"^(홈으로|Back home|Home)$")).first.click()
         await page.get_by_text(re.compile(r"5\s*/\s*5")).first.wait_for()
         completed_suffix = " 완료" if language == "ko" else " complete"
