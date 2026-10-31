@@ -28,6 +28,26 @@ export function allAvailablePuzzlesCompleted(
   );
 }
 
+export function getEmptyPuzzleMessage(
+  rows: readonly PuzzleManifestItem[],
+  states: Readonly<Record<string, PlayableState>>,
+  language: ContentLanguage,
+  today: string,
+  options: { offline: boolean; justCompletedId?: string },
+) {
+  // An offline cache is only a subset of the published puzzles.
+  if (options.offline) return "오프라인에서 풀 수 있는 판이 없어요.";
+  return allAvailablePuzzlesCompleted(
+    rows,
+    states,
+    language,
+    today,
+    options.justCompletedId,
+  )
+    ? "모든 판을 완성했어요"
+    : "지금 풀 수 있는 판이 없어요.";
+}
+
 // A manifest is metadata only. This policy never downloads a board.
 export function selectPlayablePuzzle(
   rows: readonly PuzzleManifestItem[],

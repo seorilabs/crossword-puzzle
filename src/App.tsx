@@ -203,6 +203,7 @@ import "./App.css";
 import { type CompletionReturnReminderPreprompt } from "./components/CompletionCelebrationDialog";
 import {
   allAvailablePuzzlesCompleted,
+  getEmptyPuzzleMessage,
   selectPlayablePuzzle,
 } from "../packages/crossword-core/src/continuousPlay";
 import { PersonalStatsCard } from "./components/PersonalStatsCard";
@@ -2898,15 +2899,16 @@ function App() {
           emptyMessage={
             !nextDailyRow
               ? t(
-                  allAvailablePuzzlesCompleted(
+                  getEmptyPuzzleMessage(
                     puzzleSummaries,
                     dateCardStates,
                     language,
                     day,
-                    isCompleted ? puzzle.puzzleId : undefined,
-                  )
-                    ? "모든 판을 완성했어요"
-                    : "지금 풀 수 있는 판이 없어요.",
+                    {
+                      offline: loadState === "fallback",
+                      justCompletedId: isCompleted ? puzzle.puzzleId : undefined,
+                    },
+                  ),
                 )
               : undefined
           }
