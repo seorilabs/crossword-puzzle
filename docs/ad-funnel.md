@@ -9,7 +9,8 @@
 | `ad_opportunity` | 새로 완료하고 저장한 판의 검사. 재방문은 제외 |
 | `ad_requested` | 이미 준비된 광고의 SDK 표시 호출 |
 | `ad_shown` | AIT `show`, 네이티브 `OPENED` 콜백, 표시 횟수 상한 기준 |
-| `ad_impression` | AIT SDK `impression` 또는 네이티브 AdMob/Firebase 자동 노출 이벤트 |
+| `completion_ad_impression` | AIT SDK `impression` 콜백의 웹 전용 사용자 정의 이벤트 |
+| `ad_impression` | 네이티브 AdMob/Firebase 자동 노출. 앱에서 중복 전송하지 않음 |
 | `ad_closed` | 닫힘 콜백, 다음 간격 시작 |
 | `ad_failed` | 준비된 광고의 표시 실패 |
 | `ad_skipped_unready` | 준비되지 않아 즉시 진행 |
@@ -17,7 +18,7 @@
 | `ad_skipped_session_cap`, `ad_skipped_daily_cap` | 상한 도달 |
 | `ad_skipped_disabled`, `ad_skipped_storage` | 원격 비활성 또는 광고 이력을 안전하게 저장할 수 없음 |
 
-앱 이벤트에는 `placement=completion_interstitial`, `ad_policy_version=2`, `puzzle_id`, `content_language`, `ui_language`, `daily_sequence`, `app_market`, `runtime_platform`, `release_version`이 붙는다. SDK 자동 `ad_impression`은 앱의 퍼즐 맥락이 없을 수 있어 마켓과 버전별로 따로 집계한다. SDK 화면 열림을 수익 발생으로 합성하지 않는다. AIT와 Firebase 팬아웃을 합치지 않고 BigQuery의 Firebase 스트림을 사용한다.
+앱 이벤트에는 `placement=completion_interstitial`, `ad_policy_version=2`, `puzzle_id`, `content_language`, `ui_language`, `daily_sequence`, `app_market`, `runtime_platform`, `release_version`이 붙는다. GA4 웹 스트림의 `ad_impression` 예약 이름을 피하기 위해 AIT는 `completion_ad_impression`을 쓴다. 네이티브 자동 `ad_impression`은 BigQuery로 내보내지지 않으므로 AdMob/GA4 보고서에서 따로 확인하고 BigQuery의 0건을 무노출로 해석하지 않는다. SDK 화면 열림을 수익 발생으로 합성하지 않는다. AIT와 Firebase 팬아웃을 합치지 않고 BigQuery의 Firebase 스트림을 사용한다.
 
 - [광고 집계](../scripts/analytics/ad-funnel.sql)는 표시 요청, 화면 표시, 실제 노출, 닫힘, 실패와 건너뛰기를 분리한다. 실패율 분모는 표시 요청이며 미준비와 정책 제한은 실패가 아니다.
 - [정합 감사](../scripts/analytics/result-interstitial-config-audit.sql)는 같은 사용자, 퍼즐, 버전의 중복 표시를 찾는다. 화면 재방문과 홈 이동에 표시가 있으면 원시 시각을 조사한다.
@@ -26,3 +27,5 @@
 출시 후 24시간은 누락과 중복을, 7일과 28일에는 이전 버전과 다음 판 시작률 및 세션당 완료 수를 비교한다. 배포 직후 표본 0은 정상 동작 증거가 아니다. 전송량은 같은 언어와 완료 판 수의 HTTP 요청 수, JSON 응답 바이트로 비교한다. 생성 횟수, Cloud Run과 예약 작업은 바꾸지 않는다.
 
 광고 배치는 [Google 권고](https://support.google.com/admob/answer/6201350?hl=en), AIT 이벤트는 [토스 SDK 정의](https://developers-apps-in-toss.toss.im/documentation/common/monetization/iaa/interstitial-rewarded-ad)에 따른다. 개발 SDK 대체 실행은 실제 노출이나 수익 증거가 아니다.
+
+계측 제약: [GA4 예약 이벤트 이름](https://support.google.com/analytics/answer/13316687), [자동 노출 이벤트와 BigQuery 제외](https://support.google.com/analytics/answer/9234069), [Firebase 광고 수익 측정](https://firebase.google.com/docs/analytics/measure-ad-revenue).

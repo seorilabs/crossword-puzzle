@@ -599,7 +599,11 @@ function App() {
       createCompletionTransition(
         completionAd,
         completionTransitionStore(),
-        (event) => telemetry.impression(event, completionAdContext.current),
+        (event) =>
+          telemetry.impression(
+            event === "ad_impression" ? "completion_ad_impression" : event,
+            completionAdContext.current,
+          ),
         {
           enabled: launchConfig.completionInterstitialEnabled,
           initialWaitMs: launchConfig.completionInterstitialInitialWaitMs,
