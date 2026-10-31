@@ -1,0 +1,184 @@
+{
+  "checkedAt": "2026-10-31",
+  "scope": "홈과 결과 변경 이미지 및 한국어, 영어 설명 검수. App Store 영어는 en-US, en-CA, en-AU 공용 원본. 기존 플레이 이미지와 아이콘 유지. 모든 활성 언어의 실제 provider 저장값은 제출 직전에 별도 확인한다.",
+  "runtime": "실제 RN App의 Android/iOS 분기를 React Native Web에서 실행했다. 콘텐츠 HTTP 및 외부 SDK 경계는 고정 입력, 시계는 검수용 날짜로 고정했다. 실기기 또는 실제 네이티브 SDK 실행 근거가 아니다.",
+  "visualReview": "선택한 기존 색상, 새 오늘 진행과 한 번 시작, 결과 하단 고정 버튼, 한글/영문, phone/tablet/iPhone/iPad 크기를 직접 열어 확인했다. 변경 이미지에 다른 모바일 플랫폼 또는 마켓 이름/아이콘 없음.",
+  "captures": [
+    {
+      "target": "app-store/screenshots/iphone/iphone-1.png",
+      "pixels": [
+        1290,
+        2796
+      ],
+      "language": "ko",
+      "platformBranch": "ios",
+      "runtime": "actual RN App via React Native Web; SDK boundaries replaced",
+      "sha256": "181b50865c9be3212c6b564a37ab7d1a96793076dac5404fe3618fb3ce804394"
+    },
+    {
+      "target": "app-store/screenshots/ipad/ipad-1.png",
+      "pixels": [
+        2048,
+        2732
+      ],
+      "language": "ko",
+      "platformBranch": "ios",
+      "runtime": "actual RN App via React Native Web; SDK boundaries replaced",
+      "sha256": "a166f1f399ea18a20b57beef8462849f315d36f0a7acbc0b917bf0b2d082b1e1"
+    },
+    {
+      "target": "app-store/screenshots/iphone/iphone-3.png",
+      "pixels": [
+        1290,
+        2796
+      ],
+      "language": "ko",
+      "platformBranch": "ios",
+      "runtime": "actual RN App via React Native Web; SDK boundaries replaced",
+      "sha256": "f6f24df6dd77ae69f558179ad3f40dfc043a036318e96ca591a8fe7db1af7aa8"
+    },
+    {
+      "target": "app-store/screenshots/ipad/ipad-3.png",
+      "pixels": [
+        2048,
+        2732
+      ],
+      "language": "ko",
+      "platformBranch": "ios",
+      "runtime": "actual RN App via React Native Web; SDK boundaries replaced",
+      "sha256": "2b2545e6e0ce1d938801160b055555a39248714ca8f6c984e98e72b174d468ba"
+    },
+    {
+      "target": "app-store/screenshots/en-US/iphone/01-home.png",
+      "pixels": [
+        1290,
+        2796
+      ],
+      "language": "en",
+      "platformBranch": "ios",
+      "runtime": "actual RN App via React Native Web; SDK boundaries replaced",
+      "sha256": "813566913d2abc72271b32d2f0245e163e87688977554d69a453e499293e36ae"
+    },
+    {
+      "target": "app-store/screenshots/en-US/ipad/01-home.png",
+      "pixels": [
+        2048,
+        2732
+      ],
+      "language": "en",
+      "platformBranch": "ios",
+      "runtime": "actual RN App via React Native Web; SDK boundaries replaced",
+      "sha256": "8b17d08fe07b6d210124bedc56c712d16d061247646de5b7d4feb89feab6df6f"
+    },
+    {
+      "target": "app-store/screenshots/en-US/iphone/03-result.png",
+      "pixels": [
+        1290,
+        2796
+      ],
+      "language": "en",
+      "platformBranch": "ios",
+      "runtime": "actual RN App via React Native Web; SDK boundaries replaced",
+      "sha256": "5fa46ac1bf9bef4c84b35d7e806ad8752eab2d7b6fc36a93a1f5977854ac7d15"
+    },
+    {
+      "target": "app-store/screenshots/en-US/ipad/03-result.png",
+      "pixels": [
+        2048,
+        2732
+      ],
+      "language": "en",
+      "platformBranch": "ios",
+      "runtime": "actual RN App via React Native Web; SDK boundaries replaced",
+      "sha256": "c8f1d40df55134772a5693ef9b2864b22ec634e57308fcba266b04668bb1fe3d"
+    },
+    {
+      "target": "play-store/screenshots/phone/phone-1.png",
+      "pixels": [
+        1080,
+        1920
+      ],
+      "language": "ko",
+      "platformBranch": "android",
+      "runtime": "actual RN App via React Native Web; SDK boundaries replaced",
+      "sha256": "3c09b9c6eb4bc1636811433cf14b554ee1811d84a10a1c33ae017e355e32f096"
+    },
+    {
+      "target": "play-store/screenshots/tablet-7/tablet-7-1.png",
+      "pixels": [
+        1296,
+        2304
+      ],
+      "language": "ko",
+      "platformBranch": "android",
+      "runtime": "actual RN App via React Native Web; SDK boundaries replaced",
+      "sha256": "a3a21e261d41374b588c9893d6895f535a8fe46b3653b37fd4978e8d71cd7d0c"
+    },
+    {
+      "target": "play-store/screenshots/tablet-10/tablet-10-1.png",
+      "pixels": [
+        1620,
+        2880
+      ],
+      "language": "ko",
+      "platformBranch": "android",
+      "runtime": "actual RN App via React Native Web; SDK boundaries replaced",
+      "sha256": "bdee80827923516f7c1aab98b0dc85a60ac721dfa4585b53390afa194aaf4312"
+    },
+    {
+      "target": "play-store/screenshots/phone/phone-3.png",
+      "pixels": [
+        1080,
+        1920
+      ],
+      "language": "ko",
+      "platformBranch": "android",
+      "runtime": "actual RN App via React Native Web; SDK boundaries replaced",
+      "sha256": "9b9087687ecda05f0567de0d0a84d1be5d1c951d684b71449c3871276963b7df"
+    },
+    {
+      "target": "play-store/screenshots/en-US/phone/01-home.png",
+      "pixels": [
+        1080,
+        1920
+      ],
+      "language": "en",
+      "platformBranch": "android",
+      "runtime": "actual RN App via React Native Web; SDK boundaries replaced",
+      "sha256": "a0605479e46ac0120901a096ef3e87b363705b7abe02351b6d108e2c45ea5276"
+    },
+    {
+      "target": "play-store/screenshots/en-US/tablet-7/01-home.png",
+      "pixels": [
+        1296,
+        2304
+      ],
+      "language": "en",
+      "platformBranch": "android",
+      "runtime": "actual RN App via React Native Web; SDK boundaries replaced",
+      "sha256": "280d24687010a0a671f46f3ddc33a9e0ffccfd61a75bf601c8a6fa717c881106"
+    },
+    {
+      "target": "play-store/screenshots/en-US/tablet-10/01-home.png",
+      "pixels": [
+        1620,
+        2880
+      ],
+      "language": "en",
+      "platformBranch": "android",
+      "runtime": "actual RN App via React Native Web; SDK boundaries replaced",
+      "sha256": "58c14cd01fc574bb8d79e32cede6028f50f920a44d16786c9e98f39907d89fef"
+    },
+    {
+      "target": "play-store/screenshots/en-US/phone/03-result.png",
+      "pixels": [
+        1080,
+        1920
+      ],
+      "language": "en",
+      "platformBranch": "android",
+      "runtime": "actual RN App via React Native Web; SDK boundaries replaced",
+      "sha256": "8944694d971094074c244f9c4e8a50764e646b8b2bbf1a27c06eb88badb83dbc"
+    }
+  ]
+}

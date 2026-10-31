@@ -1,4 +1,8 @@
 import {
+  AD_HISTORY_KEY,
+  type AdHistory,
+} from "../../packages/crossword-core/src/completionInterstitial.ts";
+import {
   loadFullScreenAd,
   showFullScreenAd,
 } from "@apps-in-toss/web-framework";
@@ -81,7 +85,8 @@ export function createAitCompletionInterstitial(
             options: { adGroupId },
             onEvent: (event) => {
               if (done || disposed) return;
-              if (event.type === "show") track("ad_impression");
+              if (event.type === "show") track("ad_shown");
+              if (event.type === "impression") track("ad_impression");
               if (event.type === "dismissed") finish();
               if (event.type === "failedToShow") finish(true);
             },
@@ -110,6 +115,13 @@ export function createAitCompletionInterstitial(
 }
 export function completionTransitionStore() {
   return {
+    async loadHistory(): Promise<AdHistory | null> {
+      const raw = localStorage.getItem(AD_HISTORY_KEY);
+      return raw ? JSON.parse(raw) : null;
+    },
+    async saveHistory(history: AdHistory) {
+      localStorage.setItem(AD_HISTORY_KEY, JSON.stringify(history));
+    },
     async consumed(id: string) {
       return localStorage.getItem("crossword-completion-ad:" + id) === "1";
     },

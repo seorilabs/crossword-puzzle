@@ -1,23 +1,16 @@
 import { t } from './languageRepository';
 import React from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-  useWindowDimensions,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type {
-  Puzzle,
+  PuzzleManifestItem,
   WeeklyStreakStripDay,
 } from '../../packages/crossword-core/src';
 type Props = {
   completedToday: number;
-  puzzle: Puzzle | null;
+  summary?: PuzzleManifestItem;
+  loading: boolean;
+  notice?: string;
   date: string;
-  finished: boolean;
   started: boolean;
   streak: number;
   week: WeeklyStreakStripDay[];
@@ -32,9 +25,10 @@ type Props = {
 };
 export function TileHomeScreen({
   completedToday,
-  puzzle,
+  summary,
+  loading,
+  notice,
   date,
-  finished,
   started,
   streak,
   week,
@@ -47,12 +41,6 @@ export function TileHomeScreen({
   onSettings,
   onLicense,
 }: Props) {
-  const { height } = useWindowDimensions();
-  const insets = useSafeAreaInsets();
-  const previewSize = Math.max(
-    96,
-    Math.min(220, height - insets.top - insets.bottom - 500),
-  );
   return (
     <ScrollView style={s.screen} contentContainerStyle={s.content}>
       <View style={s.nav}>
@@ -78,54 +66,53 @@ export function TileHomeScreen({
       <Text style={s.lead}>{t('단서를 읽고, 글자 타일을 골라보세요.')}</Text>
       <View style={s.card}>
         <View style={s.cardHeading}>
-          <Text style={s.cardTitle}>
-            {finished ? t('오늘도 한 판 완성!') : t('오늘의 퍼즐')}
-          </Text>
-          <Text style={s.wordCount}>
-            {puzzle?.entries.length ?? '…'}
-            {t('단어')}
-          </Text>
+          <Text style={s.cardTitle}>{t('오늘 진행')}</Text>
+          <Text style={s.wordCount}>{completedToday}/5</Text>
         </View>
-        <View style={[s.preview, { width: previewSize }]}>
-          {puzzle?.grid.map((row, y) => (
-            <View key={y} style={s.boardRow}>
-              {row.map((letter, x) => (
-                <View key={x} style={[s.cell, !letter && s.block]} />
-              ))}
+        <View
+          style={s.progress}
+          accessibilityLabel={t('오늘 {0}/5판 완료', completedToday)}
+        >
+          {[1, 2, 3, 4, 5].map(n => (
+            <View key={n} style={[s.step, n <= completedToday && s.done]}>
+              <Text style={n <= completedToday ? s.doneText : s.dayText}>
+                {n <= completedToday ? '✓' : n}
+              </Text>
             </View>
           ))}
         </View>
-        <Text style={s.caption}>
-          {loadError
-            ? t(
-                '퍼즐을 불러오지 못했어요. 연결을 확인한 뒤 다시 불러와 주세요.',
-              )
-            : puzzle == null
-              ? t('오늘의 퍼즐을 준비하고 있어요.')
-              : offline
-                ? t('연결이 어려워 저장된 퍼즐을 보여드려요.')
-                : finished
-                  ? t('완성한 단어를 다시 만나보세요.')
-                  : started
-                    ? t('고른 글자는 그대로, 이어서 완성해요.')
-                    : t('서두르지 않아도 괜찮아요. 한 단어씩 채워봐요.')}
+        <Text style={s.caption} accessibilityLiveRegion="polite">
+          {notice ||
+            (loading
+              ? t('불러오는 중')
+              : loadError
+                ? t('오프라인에서 풀 수 있는 판이 없어요.')
+                : !summary
+                  ? t('모든 판을 완성했어요')
+                  : summary.date < date
+                    ? t('지난 판을 이어서 풀어보세요.')
+                    : offline
+                      ? t('연결이 어려워 저장된 퍼즐을 보여드려요.')
+                      : started
+                        ? t('고른 글자는 그대로, 이어서 완성해요.')
+                        : t('한 단어씩, 다음 판을 완성해요.'))}
         </Text>
         <Pressable
           accessibilityRole="button"
-          disabled={!loadError && !puzzle}
+          disabled={loading || (!loadError && !summary)}
           style={s.primary}
           onPress={loadError ? onRetry : onStart}
         >
           <Text style={s.primaryText}>
             {loadError
               ? t('다시 불러오기')
-              : !puzzle
-                ? t('오늘 퍼즐 준비 중')
-                : finished
-                  ? t('완성한 판 보기')
+              : loading
+                ? t('불러오는 중')
+                : !summary
+                  ? t('모두 완료')
                   : started
                     ? t('이어서 풀기')
-                    : t('오늘 한 판 시작')}{' '}
+                    : t('다음 판 풀기')}{' '}
             ›
           </Text>
         </Pressable>
@@ -259,30 +246,20 @@ const s = StyleSheet.create({
     backgroundColor: '#e9eddd',
     color: '#63805e',
   },
-  preview: {
-    width: 220,
-    maxWidth: '100%',
-    aspectRatio: 1,
-    alignSelf: 'center',
-    padding: 10,
-    gap: 3,
-    marginTop: 24,
-    marginBottom: 20,
-    backgroundColor: '#d7dfca',
-    borderRadius: 15,
-    borderBottomWidth: 4,
-    borderBottomColor: '#b3bea1',
-    transform: [{ rotate: '-3deg' }],
+  progress: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginVertical: 24,
   },
-  boardRow: { flex: 1, flexDirection: 'row', gap: 3 },
-  cell: {
+  step: {
     flex: 1,
-    backgroundColor: '#fffdf1',
-    borderRadius: 4,
-    borderBottomWidth: 2,
-    borderBottomColor: '#bcc8ae',
+    minHeight: 42,
+    borderRadius: 12,
+    backgroundColor: '#e9eddd',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  block: { backgroundColor: '#c3cdb5', borderBottomWidth: 0 },
   caption: {
     fontSize: 11,
     lineHeight: 19,

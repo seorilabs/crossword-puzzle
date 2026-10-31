@@ -1,3 +1,4 @@
+import { contentDate } from '../../packages/crossword-core/src/dailyLanguage';
 import {
   puzzleLanguage,
   type ContentLanguage,
@@ -115,7 +116,12 @@ export function createMobileCompletionDatesRepository({
           const date = missionKey
             .slice(MISSION_KEY_PREFIX.length)
             .split(':')[0];
-          dates.push(date);
+          const completed = new Date(parsed.completedAt);
+          dates.push(
+            Number.isFinite(completed.getTime())
+              ? contentDate(language, completed)
+              : date,
+          );
         } catch {
           // 손상된 항목은 건너뛴다.
         }
@@ -152,7 +158,11 @@ export function createMobileCompletionDatesRepository({
           archiveRecords
             .filter(record => puzzleLanguage(record.puzzle) === language)
             .map(record => ({
-              date: record.puzzle.date,
+              date:
+                record.completedAt &&
+                Number.isFinite(new Date(record.completedAt).getTime())
+                  ? contentDate(language, new Date(record.completedAt))
+                  : record.puzzle.date,
               completedAt: record.completedAt,
             })),
         ),

@@ -11,7 +11,7 @@
       "height": 2796,
       "transparent": false,
       "source": "app-store/screenshots/en-US/iphone/01-home.png",
-      "sha256": "48ba57774bd8abca44c73ecf2f9f69cb2ce5ed4c5bbd1de38519ae0054f7a6f2"
+      "sha256": "813566913d2abc72271b32d2f0245e163e87688977554d69a453e499293e36ae"
     },
     {
       "id": "app-store-screenshots-en-US-ipad-01-home",
@@ -21,7 +21,7 @@
       "height": 2732,
       "transparent": false,
       "source": "app-store/screenshots/en-US/ipad/01-home.png",
-      "sha256": "9cba8c667e78c0a3850fdecdf4505cde3ef52333fbe66ef41d4fd5e3b20d6e33"
+      "sha256": "8b17d08fe07b6d210124bedc56c712d16d061247646de5b7d4feb89feab6df6f"
     },
     {
       "id": "app-store-screenshots-en-US-iphone-02-play",
@@ -51,7 +51,7 @@
       "height": 2796,
       "transparent": false,
       "source": "app-store/screenshots/en-US/iphone/03-result.png",
-      "sha256": "c096c5600539f334d5721f8d27d2d374a0043d5558de88bc3c20e4a68534359f"
+      "sha256": "5fa46ac1bf9bef4c84b35d7e806ad8752eab2d7b6fc36a93a1f5977854ac7d15"
     },
     {
       "id": "app-store-screenshots-en-US-ipad-03-result",
@@ -61,7 +61,7 @@
       "height": 2732,
       "transparent": false,
       "source": "app-store/screenshots/en-US/ipad/03-result.png",
-      "sha256": "921473cb1642e3c66deafb06cd14abbe25af507f854611d0a68512c6cc7ad0d4"
+      "sha256": "c8f1d40df55134772a5693ef9b2864b22ec634e57308fcba266b04668bb1fe3d"
     },
     {
       "id": "play-store-screenshots-en-US-phone-01-home",
@@ -71,7 +71,7 @@
       "height": 1920,
       "transparent": false,
       "source": "play-store/screenshots/en-US/phone/01-home.png",
-      "sha256": "2972f5f3788be6b82b5a78ebacfc48c09a6abf086dc40253636b41b769132a10"
+      "sha256": "a0605479e46ac0120901a096ef3e87b363705b7abe02351b6d108e2c45ea5276"
     },
     {
       "id": "play-store-screenshots-en-US-tablet-7-01-home",
@@ -81,7 +81,7 @@
       "height": 2304,
       "transparent": false,
       "source": "play-store/screenshots/en-US/tablet-7/01-home.png",
-      "sha256": "dc6aff2357c3329d26dd880b0c4a3d7f2fc8bb226231b8a6fab3ac898e146d8d"
+      "sha256": "280d24687010a0a671f46f3ddc33a9e0ffccfd61a75bf601c8a6fa717c881106"
     },
     {
       "id": "play-store-screenshots-en-US-tablet-10-01-home",
@@ -91,7 +91,7 @@
       "height": 2880,
       "transparent": false,
       "source": "play-store/screenshots/en-US/tablet-10/01-home.png",
-      "sha256": "7b01ecc09cab15ce4126f65f7cc00060cb9ab418122bc3118a57fb05bc1c265e"
+      "sha256": "58c14cd01fc574bb8d79e32cede6028f50f920a44d16786c9e98f39907d89fef"
     },
     {
       "id": "play-store-screenshots-en-US-phone-02-play",
@@ -131,7 +131,7 @@
       "height": 1920,
       "transparent": false,
       "source": "play-store/screenshots/en-US/phone/03-result.png",
-      "sha256": "83690b1b61c426525bd67c14ea82ce3b3e60dbafb35dacb37aed64f3fce56cd3"
+      "sha256": "8944694d971094074c244f9c4e8a50764e646b8b2bbf1a27c06eb88badb83dbc"
     }
   ],
   "rules": [

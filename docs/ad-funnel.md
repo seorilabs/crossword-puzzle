@@ -1,102 +1,31 @@
-# 광고 라이프사이클 퍼널 표준 모니터링 (rewarded ads)
+# 완료 전면광고와 연속 플레이 측정
 
-## 목적
+현재 광고는 `completion_interstitial` 일반 전면광고다. 힌트 보상형과 `result_interstitial_ad_*`는 구버전 이력으로만 분석한다. 신규판은 언어별 하루 5판이며 지난 미완료 판으로 이어진다.
 
-광고 노출→보상 완주 퍼널을 **placement(광고 위치)별로 표준 산출**한다. 요청(`request`) → 결과(`result`, status) → 보상(`reward`) 단계와 **fill(노출 성공)·완주율·실패/취소 분포**를 한 번에 본다. 표본이 작아 단계 정의가 분산돼 있던 문제를 표준 쿼리로 정리한다. 행동 변경 없는 **계측 전용** 작업이다.
+완료 저장 후 결과 요약과 사전 안내를 그리고 준비된 광고만 검사한다. 다음 판 버튼이 활성화된 후 광고를 띄우지 않는다. 첫 세션부터 실제 전경 풀이 90초 이후, 이전 광고 닫힘 후 최소 90초, 세션 3회와 UTC 하루 10회다. 30분 비활동으로 새 세션을 시작한다. 언어를 바꾸거나 앱을 다시 열어도 이력은 유지한다.
 
-- 표준 쿼리: [`scripts/analytics/ad-funnel.sql`](../scripts/analytics/ad-funnel.sql)
-- 소스: GA4 → BigQuery export `crossword-puzzle-79ae0.analytics_539639687.events_*`
-
-## placement·단계 계약 (코드 점검 결과)
-
-현재 광고 이벤트는 **placement 파라미터 없이 이벤트명 prefix로 위치를 구분**한다(`src/App.tsx`). 표준 쿼리는 이를 placement로 정규화한다:
-
-| placement | 이벤트 prefix | 활성 여부 |
-| --- | --- | --- |
-| `rewarded_hint` | `rewarded_hint_ad_*` | ✅ 활성(힌트 보상형) |
-| `result_interstitial` | `result_interstitial_ad_*` | ❌ 비활성 — 호출부 없음(parity로 차단, #98). 데이터에 나오면 구버전 잔존 |
-
-단계(stage) 이벤트와 파라미터:
-
-| stage | 이벤트 | 파라미터 |
-| --- | --- | --- |
-| `request` | `*_ad_request` | `puzzle_id` (+ rewarded_hint: `rewarded_hint_credits`) |
-| `event` | `*_ad_event` | `phase`, `type`, `puzzle_id` (load/show 추적) |
-| `result` | `*_ad_result` | `status`(rewarded/dismissed/failed/timeout/unsupported), `reason`(failed/timeout 시) |
-| `reward` | `*_ad_reward` | `puzzle_id` (= 완주) |
-| `cancel` | `rewarded_hint_ad_cancel` | 프롬프트 취소 |
-| `disabled` | `*_ad_disabled` | Remote Config off |
-
-### 표준 정의
-
-- **fill(노출 성공)** = `result.status IN ('rewarded','dismissed')` — 광고가 실제 표시됨.
-- **완주(reward)** = `result.status = 'rewarded'` (또는 `*_ad_reward` 이벤트).
-- **no_fill/실패** = `status IN ('failed','timeout','unsupported')`.
-
-> placement를 emit-side 파라미터로 통일(예: 모든 광고 이벤트에 `placement` 추가)하는 것은 web/mobile 양쪽 emit을 함께 바꿔야 하는 parity-민감 변경이라, 본 작업은 **분석 레이어에서 prefix→placement 정규화**로 표준화했다. 이벤트 종류가 늘어 prefix 규칙이 불충분해지면 그때 emit-side `placement` 도입을 별도 PR로 검토한다.
-
-### 크로스마켓 `game_assist_ad` result 매핑 (#321)
-
-레거시 `*_ad_*` 이벤트와 별개로, 크로스마켓 택소노미 `game_assist_ad`(`assistType=rewarded_hint`)는 리워드 광고 보조 단계를 `result` 4종으로 계측한다. #321에서 실패/취소 경로(`dismiss`/`error`)를 웹·모바일 양쪽에 배선해, 이전에 `request`/`reward`만 발화하던 결함을 해소했다.
-
-| `game_assist_ad.result` | 발화 시점 | 레거시 매핑 |
-| --- | --- | --- |
-| `request` | 리워드 광고 보조 요청 | `rewarded_hint_ad_request` |
-| `reward` | 보상 지급(완주) | `rewarded_hint_ad_result` status=`rewarded` / `*_ad_reward` |
-| `dismiss` | 유저가 광고를 끝까지 보지 않고 닫음(취소) | 웹 result status=`dismissed` / 모바일 `closed` / `rewarded_hint_ad_cancel` |
-| `error` | 그 외 실패 | result status ∈ (`failed`,`timeout`,`unsupported`) |
-
-> 검증: 배포 후 `game_assist_ad`의 `result` 분포가 레거시 `rewarded_hint_ad_result` status 분포와 정합하는지 BQ로 대조한다(`dismiss`↔`dismissed`+cancel, `error`↔`failed`+`timeout`+`unsupported`).
-
-## 실행
-
-```bash
-bq query \
-  --project_id=crossword-puzzle-79ae0 \
-  --location=asia-southeast3 \
-  --use_legacy_sql=false \
-  < scripts/analytics/ad-funnel.sql
-```
-
-기본값은 최근 28일 롤링 구간이며, 구간을 고정하려면 SQL 상단 두 `DECLARE` 줄의 `DEFAULT`만 바꾼다.
-
-## 출력 스키마
-
-### 결과 1: `ad_funnel` — placement별 퍼널
-
-| 컬럼 | 의미 |
+| 이벤트 | 의미 |
 | --- | --- |
-| `placement` | 광고 위치(`rewarded_hint`/`result_interstitial`) |
-| `requests` | `*_ad_request` 건수(분모) |
-| `results` | `*_ad_result` 건수 |
-| `filled` | 노출 성공(status rewarded+dismissed) 건수 |
-| `rewards` | `*_ad_reward` 건수(완주) |
-| `rewarded_results` | result status=rewarded 건수(reward 이벤트와 교차검증) |
-| `cancels` | 프롬프트 취소 건수 |
-| `users` | 관련 광고 이벤트 distinct user |
-| `fill_rate` | `filled / requests` |
-| `reward_rate` | `rewards / requests` (완주율) |
-| `reward_given_fill` | `rewarded / filled` (노출 대비 완주율) |
+| `ad_opportunity` | 새로 완료하고 저장한 판의 검사. 재방문은 제외 |
+| `ad_requested` | 이미 준비된 광고의 SDK 표시 호출 |
+| `ad_shown` | AIT `show`, 네이티브 `OPENED` 콜백, 표시 횟수 상한 기준 |
+| `completion_ad_impression` | AIT SDK `impression` 콜백의 웹 전용 사용자 정의 이벤트 |
+| `ad_impression` | 네이티브 AdMob/Firebase 자동 노출. 앱에서 중복 전송하지 않음 |
+| `ad_closed` | 닫힘 콜백, 다음 간격 시작 |
+| `ad_failed` | 준비된 광고의 표시 실패 |
+| `ad_skipped_unready` | 준비되지 않아 즉시 진행 |
+| `ad_skipped_initial_wait`, `ad_skipped_interval` | 최초 실제 플레이 시간 또는 닫힘 간격 부족 |
+| `ad_skipped_session_cap`, `ad_skipped_daily_cap` | 상한 도달 |
+| `ad_skipped_disabled`, `ad_skipped_storage` | 원격 비활성 또는 광고 이력을 안전하게 저장할 수 없음 |
 
-### 결과 2: `result_status` — placement × status 분포
+앱 이벤트에는 `placement=completion_interstitial`, `ad_policy_version=2`, `puzzle_id`, `content_language`, `ui_language`, `daily_sequence`, `app_market`, `runtime_platform`, `release_version`이 붙는다. GA4 웹 스트림의 `ad_impression` 예약 이름을 피하기 위해 AIT는 `completion_ad_impression`을 쓴다. 네이티브 자동 `ad_impression`은 BigQuery로 내보내지지 않으므로 AdMob/GA4 보고서에서 따로 확인하고 BigQuery의 0건을 무노출로 해석하지 않는다. SDK 화면 열림을 수익 발생으로 합성하지 않는다. AIT와 Firebase 팬아웃을 합치지 않고 BigQuery의 Firebase 스트림을 사용한다.
 
-| 컬럼 | 의미 |
-| --- | --- |
-| `placement` | 광고 위치 |
-| `status` | result status(rewarded/dismissed/failed/timeout/unsupported) |
-| `result_count` | 건수 |
-| `status_share` | placement 내 status 비중 |
+- [광고 집계](../scripts/analytics/ad-funnel.sql)는 표시 요청, 화면 표시, 실제 노출, 닫힘, 실패와 건너뛰기를 분리한다. 실패율 분모는 표시 요청이며 미준비와 정책 제한은 실패가 아니다.
+- [정합 감사](../scripts/analytics/result-interstitial-config-audit.sql)는 같은 사용자, 퍼즐, 버전의 중복 표시를 찾는다. 화면 재방문과 홈 이동에 표시가 있으면 원시 시각을 조사한다.
+- [연속 플레이 비교](../scripts/analytics/continuous-play.sql)는 완료 후 10분 안에 다른 판을 시작한 비율과 세션당 완료 수를 마켓, 언어, 버전별로 비교한다. 중복 완료는 사용자, 세션, 퍼즐로 제거하며 지난 판과 오늘 판을 섞어 일일 진행률로 해석하지 않는다.
 
-## 추이 기록 (정기 갱신)
+출시 후 24시간은 누락과 중복을, 7일과 28일에는 이전 버전과 다음 판 시작률 및 세션당 완료 수를 비교한다. 배포 직후 표본 0은 정상 동작 증거가 아니다. 전송량은 같은 언어와 완료 판 수의 HTTP 요청 수, JSON 응답 바이트로 비교한다. 생성 횟수, Cloud Run과 예약 작업은 바꾸지 않는다.
 
-| 산출일(KST) | 구간(from~to) | placement | requests | fill_rate | reward_rate | 비고 |
-| ----------- | ------------- | --------- | -------- | --------- | ----------- | ---- |
-| _측정 후 기입_ | 2026-06-03~2026-06-24 | rewarded_hint | _기입_ | _기입_ | _기입_ | request 8→reward 7 baseline |
+광고 배치는 [Google 권고](https://support.google.com/admob/answer/6201350?hl=en), AIT 이벤트는 [토스 SDK 정의](https://developers-apps-in-toss.toss.im/documentation/common/monetization/iaa/interstitial-rewarded-ad)에 따른다. 개발 SDK 대체 실행은 실제 노출이나 수익 증거가 아니다.
 
-> 표본이 작으면 비율과 함께 분자/분모(건수)를 같이 적는다.
-
-## 후속
-
-- 표본이 누적되면 placement별 **fill rate·완주율**을 안정 산출해, fill이 낮은 placement(노출 실패)·완주율이 낮은 placement(취소/이탈)를 식별하는 후속 개선 이슈를 연다.
-- `rewarded_hint`의 과노출/피로는 #99(노출당 완주율·과노출 코호트)와 함께 본다.
-- `result_interstitial`에 이벤트가 계속 관측되면(구버전 잔존이 아니라 활성 경로 존재) #98로 게이팅을 재점검한다.
+계측 제약: [GA4 예약 이벤트 이름](https://support.google.com/analytics/answer/13316687), [자동 노출 이벤트와 BigQuery 제외](https://support.google.com/analytics/answer/9234069), [Firebase 광고 수익 측정](https://firebase.google.com/docs/analytics/measure-ad-revenue).

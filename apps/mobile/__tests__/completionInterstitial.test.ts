@@ -53,10 +53,10 @@ test('AC-5 mobile preloading never shows late and close settles the active trans
   const events: string[] = [];
   const shown = ad.show(e => events.push(e));
   mockAds[0].handlers.opened();
-  expect(events).toEqual(['ad_impression']);
+  expect(events).toEqual(['ad_shown']);
   mockAds[0].handlers.closed();
   await shown;
-  expect(events).toEqual(['ad_impression', 'ad_closed']);
+  expect(events).toEqual(['ad_shown', 'ad_closed']);
   ad.dispose();
 });
 test('AC-5 stale mobile load errors cannot clear a newer loaded ad', async () => {

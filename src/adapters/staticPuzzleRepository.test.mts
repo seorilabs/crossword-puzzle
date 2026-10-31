@@ -120,3 +120,59 @@ describe("createStaticPuzzleRepository 식별자 정규화 (#351)", () => {
     assert.equal(loaded?.slotId, "26082102");
   });
 });
+
+it("목록을 재사용하고 선택한 원본만 읽으며 재실행과 오프라인에서 캐시를 우선한다", async () => {
+  const cache = new Map<string, string>();
+  const previous = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: {
+      getItem: (key: string) => cache.get(key) ?? null,
+      setItem: (key: string, value: string) => cache.set(key, value),
+    },
+  });
+  const calls: string[] = [];
+  let offline = false;
+  const manifest = {
+    puzzles: [
+      { puzzleId: "ko-test", date: "2026-10-31", path: "/boards/ko-test.json" },
+    ],
+  };
+  const fetcher = async (url: string | URL | Request) => {
+    calls.push(String(url));
+    if (offline) throw Error("offline");
+    return new Response(
+      JSON.stringify(
+        String(url).endsWith("manifest.json")
+          ? manifest
+          : { ...onboardingPuzzle, puzzleId: "ko-test" },
+      ),
+    );
+  };
+  try {
+    const repo = createStaticPuzzleRepository({
+      fetcher: fetcher as typeof fetch,
+    });
+    await repo.listPuzzleSummaries();
+    await Promise.all([
+      repo.getPuzzleById("ko-test"),
+      repo.getPuzzleById("ko-test"),
+    ]);
+    assert.deepEqual(calls, ["/puzzles/manifest.json", "/boards/ko-test.json"]);
+    offline = true;
+    const reopened = createStaticPuzzleRepository({
+      fetcher: fetcher as typeof fetch,
+    });
+    await reopened.listPuzzleSummaries();
+    assert.equal(reopened.isOffline?.(), true);
+    assert.deepEqual(await reopened.cachedPuzzleIds?.(), ["ko-test"]);
+    assert.equal(
+      (await reopened.getPuzzleById("ko-test"))?.puzzleId,
+      "ko-test",
+    );
+    assert.equal(calls.filter((x) => x === "/boards/ko-test.json").length, 1);
+  } finally {
+    if (previous) Object.defineProperty(globalThis, "localStorage", previous);
+    else Reflect.deleteProperty(globalThis, "localStorage");
+  }
+});

@@ -22,6 +22,7 @@ import {
   type AppStateStatus,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { selectPlayablePuzzle } from '../../packages/crossword-core/src/continuousPlay';
 import { createCompletionTransition } from '../../packages/crossword-core/src/completionInterstitial';
 import {
   WORDFREQ_NOTICE,
@@ -210,6 +211,8 @@ export function shouldUseSystemBack(route: AppRoute) {
 
 type DateCardState = {
   attemptsUsed: number;
+  maxAttempts: number;
+  lastStartedAt?: string;
   completedAt?: string;
   hasProgress: boolean;
   hintCount: number;
@@ -230,6 +233,7 @@ type PuzzleSession = {
 type PuzzlePackSource = 'remote' | 'bundled';
 
 type PuzzlePack = {
+  offline?: boolean;
   assetBaseUrl?: string;
   generatedAt?: string;
   source: PuzzlePackSource;
@@ -449,6 +453,8 @@ function createDateCardState(
   return {
     attemptsUsed: mission.attemptsUsed,
     completedAt: mission.completedAt,
+    maxAttempts: mission.maxAttempts,
+    lastStartedAt: mission.lastStartedAt,
     hasProgress:
       mission.attemptsUsed > 0 ||
       Object.keys(progress.cellValues).length > 0 ||
@@ -643,8 +649,18 @@ function resolveRemotePuzzleUrl(pack: PuzzlePack, puzzlePath: string) {
   )}`;
 }
 
-async function fetchJson<T>(url: string): Promise<T> {
+async function fetchJson<T>(
+  url: string,
+  cacheFirst = false,
+  onOffline?: () => void,
+): Promise<T> {
   const key = 'crossword-puzzle:content:' + url;
+  if (cacheFirst) {
+    try {
+      const cached = await AsyncStorage.getItem(key);
+      if (cached) return JSON.parse(cached) as T;
+    } catch {}
+  }
   try {
     const response = await fetch(url);
     if (!response.ok)
@@ -655,6 +671,7 @@ async function fetchJson<T>(url: string): Promise<T> {
     } catch {}
     return value;
   } catch (error) {
+    onOffline?.();
     try {
       const cached = await AsyncStorage.getItem(key);
       if (cached) return JSON.parse(cached) as T;
@@ -667,14 +684,20 @@ async function loadRemotePuzzlePack(
   language: ContentLanguage,
 ): Promise<PuzzlePack> {
   const assetBaseUrl = REMOTE_PUZZLE_PACK_BASE_URL;
+  let offline = false;
   const manifest = normalizePuzzleManifestIdentifiers(
     await fetchJson<PuzzleManifest>(
       `${assetBaseUrl.replace(/\/+$/, '')}/puzzles/${language}/manifest.json`,
+      false,
+      () => {
+        offline = true;
+      },
     ),
   );
 
   return {
     assetBaseUrl,
+    offline,
     generatedAt: manifest.generatedAt,
     source: 'remote',
     summaries: sortPuzzleSummaries(manifest.puzzles),
@@ -696,7 +719,7 @@ async function loadPuzzleFromPack(puzzleId: string, pack: PuzzlePack) {
 
   try {
     return normalizePuzzleIdentifiers(
-      await fetchJson<Puzzle>(resolveRemotePuzzleUrl(pack, summary.path)),
+      await fetchJson<Puzzle>(resolveRemotePuzzleUrl(pack, summary.path), true),
     );
   } catch {
     return bundledPuzzle ?? null;
@@ -708,8 +731,8 @@ export async function loadPuzzleSession(
   pack: PuzzlePack,
 ): Promise<PuzzleSession | null> {
   const nextPuzzle =
-    (await loadPuzzleFromPack(puzzleId, pack)) ??
-    (await loadArchivedPuzzle(puzzleId))?.puzzle;
+    (await loadArchivedPuzzle(puzzleId))?.puzzle ??
+    (await loadPuzzleFromPack(puzzleId, pack));
 
   const expectedLanguage =
     pack.summaries.find(p => p.puzzleId === puzzleId)?.language ??
@@ -881,6 +904,8 @@ function AppContent() {
   );
   const completionAdContext = useRef<Record<string, string | number>>({});
   completionAdContext.current = {
+    placement: 'completion_interstitial',
+    ad_policy_version: 2,
     ...languageTelemetry(puzzle, language),
     puzzle_id: puzzle.puzzleId,
   };
@@ -890,9 +915,21 @@ function AppContent() {
         completionAd,
         completionTransitionStore(),
         event => telemetry.impression(event, completionAdContext.current),
+        {
+          enabled: launchConfig.completionInterstitialEnabled,
+          initialWaitMs: launchConfig.completionInterstitialInitialWaitMs,
+          intervalMs: launchConfig.completionInterstitialIntervalMs,
+          sessionCap: launchConfig.completionInterstitialSessionCap,
+          dailyCap: launchConfig.completionInterstitialDailyCap,
+        },
       ),
-    [completionAd],
+    [completionAd, launchConfig],
   );
+  const [completionSaveError, setCompletionSaveError] = useState(false);
+  const [completionAdPending, setCompletionAdPending] = useState(false);
+  const retryCompletionRef = useRef<(() => Promise<void>) | null>(null);
+  const puzzleStartRef = useRef(false);
+  const [puzzleStarting, setPuzzleStarting] = useState(false);
   const completionNavigationRef = useRef(false);
   const [completionNavigationBusy, setCompletionNavigationBusy] =
     useState(false);
@@ -1104,38 +1141,47 @@ function AppContent() {
     viewModel.completedEntries.length > 0;
   const hasStarted = mission.attemptsUsed > 0 || hasProgress;
   const isCompleted = viewModel.isComplete || mission.completedAt != null;
+  useEffect(() => {
+    let foreground = AppState.currentState === 'active';
+    const tick = () => {
+      void transition
+        .activity(
+          route === 'today' &&
+            hasStarted &&
+            !isCompleted &&
+            mission.pausedAt == null,
+          foreground,
+        )
+        .catch(() => {});
+    };
+    tick();
+    const timer = setInterval(tick, 1000);
+    const listener = AppState.addEventListener('change', state => {
+      foreground = state === 'active';
+      tick();
+    });
+    return () => {
+      clearInterval(timer);
+      listener.remove();
+      void transition.activity(false, foreground).catch(() => {});
+    };
+  }, [transition, route, hasStarted, isCompleted, mission.pausedAt]);
+
   const todayPuzzles = dailyPuzzles(puzzlePack.summaries, language, todayKey);
   const completedToday = todayPuzzles.filter(
     p => dateCardStates[p.puzzleId]?.completedAt,
   ).length;
-  const dailySummary =
-    todayPuzzles.find(p => !dateCardStates[p.puzzleId]?.completedAt) ??
-    todayPuzzles.at(-1);
-  const [homePreview, setHomePreview] = useState<Puzzle | null>(null);
-  const [homePreviewError, setHomePreviewError] = useState(false);
+  const dailySummary = selectPlayablePuzzle(
+    puzzlePack.summaries,
+    dateCardStates,
+    language,
+    todayKey,
+  );
   const [packReload, setPackReload] = useState(0);
   const homeLoadError =
-    homePreviewError ||
-    (!isLoading && puzzlePack.source === 'bundled' && dailySummary == null);
-  useEffect(() => {
-    let cancelled = false;
-    setHomePreview(null);
-    setHomePreviewError(false);
-    if (dailySummary)
-      loadPuzzleSession(dailySummary.puzzleId, puzzlePack)
-        .then(session => {
-          if (!cancelled) {
-            setHomePreview(session?.nextPuzzle ?? null);
-            setHomePreviewError(session == null);
-          }
-        })
-        .catch(() => {
-          if (!cancelled) setHomePreviewError(true);
-        });
-    return () => {
-      cancelled = true;
-    };
-  }, [dailySummary, puzzlePack]);
+    !isLoading &&
+    (puzzlePack.source === 'bundled' || puzzlePack.offline) &&
+    dailySummary == null;
   // 완료일 집합은 아카이브 레코드에서 만든다(웹은 localStorage 미션 레코드). 스트릭
   // 숫자와 7일 스트립이 같은 집합을 근거로 삼도록 한 곳에서 계산한다.
   // 완료일은 아카이브(30건 상한)가 아니라 누적 저장소(completionDates)에서 읽는다.
@@ -1394,8 +1440,30 @@ function AppContent() {
       const nextArchiveRecords = (await listArchivedPuzzles()).filter(
         p => puzzleLanguage(p.puzzle) === language,
       );
+      let availableSummaries = nextPuzzlePack.summaries;
+      if (nextPuzzlePack.offline) {
+        const cached = new Set(
+          nextArchiveRecords.map(record => record.puzzleId),
+        );
+        const checks = await Promise.all(
+          availableSummaries.map(
+            async row =>
+              [
+                row.puzzleId,
+                (await AsyncStorage.getItem(
+                  'crossword-puzzle:content:' +
+                    resolveRemotePuzzleUrl(nextPuzzlePack, row.path),
+                )) != null,
+              ] as const,
+          ),
+        );
+        for (const [id, exists] of checks) if (exists) cached.add(id);
+        availableSummaries = availableSummaries.filter(row =>
+          cached.has(row.puzzleId),
+        );
+      }
       const nextSummaries = uniquePuzzleSummaries([
-        ...nextPuzzlePack.summaries,
+        ...availableSummaries,
         ...nextArchiveRecords.map(record => createPuzzleSummary(record.puzzle)),
       ]);
       nextPuzzlePack.summaries = nextSummaries;
@@ -1410,17 +1478,17 @@ function AppContent() {
         ...nextArchiveRecords.map(record => createPuzzleSummary(record.puzzle)),
       ]);
       const hydratedStates = await loadDateCardStates(hydratedSummaries);
-      const todayPuzzles = dailyPuzzles(nextSummaries, language, day);
-      const initialPuzzleId = (
-        todayPuzzles.find(p => !hydratedStates[p.puzzleId]?.completedAt) ??
-        todayPuzzles.at(-1)
+      const initialPuzzleId = selectPlayablePuzzle(
+        nextSummaries,
+        hydratedStates,
+        language,
+        day,
       )?.puzzleId;
-      const [states, session] = await Promise.all([
-        loadDateCardStates(hydratedSummaries),
-        initialPuzzleId
-          ? loadPuzzleSession(initialPuzzleId, nextPuzzlePack)
-          : Promise.resolve(null),
-      ]);
+      const states = hydratedStates;
+      const session =
+        initialPuzzleId && currentRouteRef.current !== 'home'
+          ? await loadPuzzleSession(initialPuzzleId, nextPuzzlePack)
+          : null;
 
       if (isCancelled) {
         return;
@@ -1444,8 +1512,6 @@ function AppContent() {
           setTileTimerVisible(display.timer !== false);
         }
       } catch {}
-      for (const row of dailyPuzzles(nextSummaries, language, day))
-        loadPuzzleFromPack(row.puzzleId, nextPuzzlePack).catch(() => {});
       setPuzzlePack(nextPuzzlePack);
       setPuzzleArchiveRecords(nextArchiveRecords);
       completionDatesRef.current = nextCompletionDates;
@@ -1672,14 +1738,8 @@ function AppContent() {
       pausedAt: resolvedMission.pausedAt,
     };
     setMission(nextMission);
-    saveStoredMission(nextMission);
     // 완료 시점의 노힌트 판정 신호를 아카이브에 동결한다(웹과 동일). RN 은 정답 보기가
     // 없어 revealUsed 는 항상 false 지만 규칙은 core getCompletionAchievements 하나다.
-    savePuzzleSnapshot(puzzle, {
-      completedAt: nextMission.completedAt,
-      hintCount,
-      revealUsed: false,
-    });
     const elapsedMs =
       computeElapsedMs({
         startedAt: nextMission.lastStartedAt,
@@ -1712,7 +1772,9 @@ function AppContent() {
       { countTodayPending: false },
     );
     mobileCompletionDatesRepository
-      .addCompletionDate(nextMission.date)
+      .addCompletionDate(
+        contentDate(language, new Date(nextMission.completedAt!)),
+      )
       .then(nextDates => {
         completionDatesRef.current = nextDates;
         setCompletionDates(nextDates);
@@ -1785,6 +1847,7 @@ function AppContent() {
     }
 
     if (
+      puzzle.date === contentDate(language) &&
       leaderboardVisible &&
       shouldSubmitLeaderboardScore({
         completed: true,
@@ -1826,7 +1889,60 @@ function AppContent() {
       t('퍼즐을 완료했습니다. 정답판을 확인한 뒤 결과를 볼 수 있습니다.'),
     );
     if (route === 'today') {
-      navigateTo('result');
+      const finish = async () => {
+        setCompletionNavigationBusy(true);
+        setCompletionSaveError(false);
+        try {
+          await transition.activity(false);
+          await transition.complete(
+            puzzle.puzzleId,
+            async () => {
+              await AsyncStorage.setItem(
+                getProgressKey(puzzle.puzzleId),
+                JSON.stringify({
+                  cellValues,
+                  hintCount,
+                  earnedHintCredits,
+                  tileInput,
+                }),
+              );
+              await AsyncStorage.setItem(
+                getMissionKey(nextMission.date, nextMission.puzzleId),
+                JSON.stringify(nextMission),
+              );
+              await savePuzzleSnapshot(puzzle, {
+                completedAt: nextMission.completedAt,
+                hintCount,
+              });
+              if (
+                activeSessionRef.current === puzzle.puzzleId &&
+                (currentRouteRef.current === 'today' ||
+                  currentRouteRef.current === 'result')
+              ) {
+                setCompletionAdPending(true);
+                navigateTo('result');
+                await new Promise<void>(resolve =>
+                  requestAnimationFrame(() =>
+                    requestAnimationFrame(() => resolve()),
+                  ),
+                );
+              }
+            },
+            () =>
+              currentRouteRef.current === 'result' &&
+              activeSessionRef.current === puzzle.puzzleId,
+          );
+        } catch {
+          setCompletionSaveError(true);
+          setNotice(t('진행을 저장하지 못했어요. 저장 공간을 확인해 주세요.'));
+          navigateTo('result');
+        } finally {
+          setCompletionAdPending(false);
+          setCompletionNavigationBusy(false);
+        }
+      };
+      retryCompletionRef.current = finish;
+      void finish();
     }
   }, [
     navigateTo,
@@ -1850,6 +1966,10 @@ function AppContent() {
     savePuzzleSnapshot,
     selectedPuzzleSummary,
     submitLeaderboardScore,
+    cellValues,
+    language,
+    tileInput,
+    transition,
     viewModel.completedEntries.length,
     viewModel.isComplete,
   ]);
@@ -2129,68 +2249,84 @@ function AppContent() {
   // 풀이 화면으로 간다. 완료 판은 결과 화면으로 간다. 웹 startLadderStep과 같은
   // home_quick_start(source=ladder_step_N) 계측을 남긴다.
   async function startDailyPuzzle(puzzleId: string) {
-    if (isLoading) {
+    if (puzzleStartRef.current || isLoading) {
       return;
     }
+    puzzleStartRef.current = true;
+    setPuzzleStarting(true);
+    try {
+      setIsLoading(true);
+      const session = await loadPuzzleSession(puzzleId, puzzlePack);
+      if (session == null) {
+        setIsLoading(false);
+        setNotice(t('퍼즐 데이터를 찾을 수 없습니다.'));
+        telemetry.click(HOME_QUICK_START_EVENT, {
+          puzzle_id: puzzleId,
+          source: 'single_daily',
+          status: 'missing',
+        });
+        return;
+      }
 
-    setIsLoading(true);
-    const session = await loadPuzzleSession(puzzleId, puzzlePack);
-    if (session == null) {
-      setIsLoading(false);
-      setNotice(t('퍼즐 데이터를 찾을 수 없습니다.'));
-      telemetry.click(HOME_QUICK_START_EVENT, {
-        puzzle_id: puzzleId,
-        source: 'single_daily',
-        status: 'missing',
-      });
-      return;
-    }
-
-    const summary = findPuzzleSummaryById(
-      puzzlePack.summaries,
-      session.nextPuzzle.puzzleId,
-    );
-    const alreadyStarted =
-      session.savedMission.attemptsUsed > 0 ||
-      Object.keys(session.savedProgress.cellValues).length > 0 ||
-      session.savedProgress.hintCount > 0;
-    let nextMission = session.savedMission;
-    if (
-      !alreadyStarted &&
-      nextMission.completedAt == null &&
-      getRemainingAttempts(nextMission) > 0
-    ) {
-      nextMission = startMissionForPuzzle(
-        session.nextPuzzle,
-        nextMission,
-        summary,
+      const summary = findPuzzleSummaryById(
+        puzzlePack.summaries,
+        session.nextPuzzle.puzzleId,
       );
-    }
+      const alreadyStarted =
+        session.savedMission.attemptsUsed > 0 ||
+        Object.keys(session.savedProgress.cellValues).length > 0 ||
+        session.savedProgress.hintCount > 0;
+      let nextMission = session.savedMission;
+      if (
+        !alreadyStarted &&
+        nextMission.completedAt == null &&
+        getRemainingAttempts(nextMission) > 0
+      ) {
+        nextMission = startMissionForPuzzle(
+          session.nextPuzzle,
+          nextMission,
+          summary,
+        );
+      }
 
-    applyPuzzleSession(session, true);
-    setMission(nextMission);
-    setIsLoading(false);
-    telemetry.click(HOME_QUICK_START_EVENT, {
-      ...getPuzzleTelemetryParams(session.nextPuzzle, summary),
-      source: 'single_daily',
-      status: 'loaded',
-    });
-    // 완료했거나 도전 기회를 모두 써 더 풀 수 없는 판은 결과 화면으로 보낸다(이전 홈
-    // CTA와 동일). 풀이 화면은 읽기 전용이라 결과 동선이 없다.
-    const isExhausted =
-      nextMission.completedAt == null &&
-      alreadyStarted &&
-      getRemainingAttempts(nextMission) === 0;
-    navigateTo(
-      nextMission.completedAt != null ||
-        getCompletedEntries(
-          session.nextPuzzle.entries,
-          session.savedProgress.cellValues,
-        ).length === session.nextPuzzle.entries.length ||
-        isExhausted
-        ? 'result'
-        : 'today',
-    );
+      await AsyncStorage.setItem(
+        getMissionKey(nextMission.date, nextMission.puzzleId),
+        JSON.stringify(nextMission),
+      );
+      await savePuzzleSnapshot(session.nextPuzzle, {
+        startedAt: nextMission.lastStartedAt,
+      });
+      applyPuzzleSession(session, true);
+      setMission(nextMission);
+      setIsLoading(false);
+      telemetry.click(HOME_QUICK_START_EVENT, {
+        ...getPuzzleTelemetryParams(session.nextPuzzle, summary),
+        source: 'single_daily',
+        status: 'loaded',
+      });
+      // 완료했거나 도전 기회를 모두 써 더 풀 수 없는 판은 결과 화면으로 보낸다(이전 홈
+      // CTA와 동일). 풀이 화면은 읽기 전용이라 결과 동선이 없다.
+      const isExhausted =
+        nextMission.completedAt == null &&
+        alreadyStarted &&
+        getRemainingAttempts(nextMission) === 0;
+      navigateTo(
+        nextMission.completedAt != null ||
+          getCompletedEntries(
+            session.nextPuzzle.entries,
+            session.savedProgress.cellValues,
+          ).length === session.nextPuzzle.entries.length ||
+          isExhausted
+          ? 'result'
+          : 'today',
+      );
+    } catch {
+      setNotice(t('퍼즐을 불러오거나 저장하지 못했어요. 다시 눌러주세요.'));
+    } finally {
+      puzzleStartRef.current = false;
+      setPuzzleStarting(false);
+      setIsLoading(false);
+    }
   }
 
   function restartMissionAttempt() {
@@ -2313,17 +2449,17 @@ function AppContent() {
     return (
       <TileHomeScreen
         completedToday={completedToday}
-        puzzle={homePreview}
+        summary={dailySummary}
+        loading={isLoading || puzzleStarting}
+        notice={tileFeedback}
         date={todayKey}
-        finished={completedToday >= 5}
         started={(saved?.attemptsUsed ?? 0) > 0 || saved?.hasProgress === true}
         streak={consecutiveStreak}
         week={weeklyStrip}
-        offline={puzzlePack.source === 'bundled'}
+        offline={puzzlePack.source === 'bundled' || puzzlePack.offline === true}
         loadError={homeLoadError}
         onRetry={() => {
           setIsLoading(true);
-          setHomePreviewError(false);
           setPackReload(value => value + 1);
         }}
         onStart={() => {
@@ -2409,45 +2545,32 @@ function AppContent() {
     );
   }
 
+  const nextDailyRow = selectPlayablePuzzle(
+    puzzlePack.summaries,
+    dateCardStates,
+    language,
+    day,
+    puzzle.puzzleId,
+  );
   async function leaveResult(next: boolean) {
-    if (completionNavigationRef.current) return;
+    if (completionNavigationRef.current || completionNavigationBusy) return;
+    if (completionSaveError) {
+      void retryCompletionRef.current?.();
+      return;
+    }
     completionNavigationRef.current = true;
     setCompletionNavigationBusy(true);
     try {
-      await transition.leave(
-        puzzle.puzzleId,
-        isCompleted && puzzle.dailySequence != null,
-        async () => {
-          const upcoming = todayPuzzles.find(
-            row =>
-              row.puzzleId !== puzzle.puzzleId &&
-              !dateCardStates[row.puzzleId]?.completedAt,
-          );
-          if (next && upcoming) await startDailyPuzzle(upcoming.puzzleId);
-          else navigateTo('home');
-        },
-        async () => {
-          await AsyncStorage.setItem(
-            getProgressKey(puzzle.puzzleId),
-            JSON.stringify({
-              cellValues,
-              hintCount,
-              earnedHintCredits,
-              tileInput,
-            }),
-          );
-          await AsyncStorage.setItem(
-            getMissionKey(mission.date, mission.puzzleId),
-            JSON.stringify(mission),
-          );
-          await savePuzzleSnapshot(puzzle, {
-            completedAt: mission.completedAt,
-            hintCount,
-          });
-        },
-      );
+      if (next && nextDailyRow) {
+        telemetry.click('next_puzzle_cta', {
+          source: 'result_screen',
+          next_puzzle_id: nextDailyRow.puzzleId,
+          ...languageTelemetry(puzzle, language),
+        });
+        await startDailyPuzzle(nextDailyRow.puzzleId);
+      } else navigateTo('home');
     } catch {
-      setNotice(t('진행을 저장하지 못했어요. 저장 공간을 확인해 주세요.'));
+      setNotice(t('퍼즐을 불러오지 못했어요. 다시 눌러주세요.'));
     } finally {
       completionNavigationRef.current = false;
       setCompletionNavigationBusy(false);
@@ -2468,15 +2591,29 @@ function AppContent() {
             : undefined
         }
         primaryLabel={
-          todayPuzzles.some(
-            row =>
-              row.puzzleId !== puzzle.puzzleId &&
-              !dateCardStates[row.puzzleId]?.completedAt,
-          )
-            ? t('다음 판')
-            : completedToday >= 5
-              ? t('오늘 완료, 홈으로')
+          completionSaveError
+            ? t('저장 다시 시도')
+            : nextDailyRow
+              ? t('다음 판 풀기')
               : t('홈으로 돌아가기')
+        }
+        adPending={completionAdPending}
+        emptyMessage={
+          !nextDailyRow
+            ? t(
+                puzzlePack.summaries
+                  .filter(
+                    row => puzzleLanguage(row) === language && row.date <= day,
+                  )
+                  .every(
+                    row =>
+                      dateCardStates[row.puzzleId]?.completedAt ||
+                      (row.puzzleId === puzzle.puzzleId && isCompleted),
+                  )
+                  ? '모든 판을 완성했어요'
+                  : '지금 풀 수 있는 판이 없어요.',
+              )
+            : undefined
         }
         puzzle={puzzle}
         values={cellValues}
@@ -2484,17 +2621,7 @@ function AppContent() {
         elapsed={elapsed}
         streak={consecutiveStreak}
         best={isNewBestTime}
-        onHome={() => {
-          if (
-            todayPuzzles.some(
-              row =>
-                row.puzzleId !== puzzle.puzzleId &&
-                !dateCardStates[row.puzzleId]?.completedAt,
-            )
-          )
-            navigateTo('home');
-          else void leaveResult(false);
-        }}
+        onHome={() => navigateTo('home')}
         onPrimary={() => {
           void leaveResult(true);
         }}

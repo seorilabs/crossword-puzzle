@@ -6,7 +6,8 @@
       "core": true,
       "paths": [
         "src/adapters/staticPuzzleRepository.ts",
-        "packages/crossword-core/src/daily*.ts"
+        "packages/crossword-core/src/daily*.ts",
+        "packages/crossword-core/src/continuousPlay.ts"
       ]
     },
     {

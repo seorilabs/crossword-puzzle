@@ -1,5 +1,22 @@
 import type { ContentLanguage } from "./dailyLanguage.ts";
 export const englishCopy: Record<string, string> = {
+  "지금 풀 수 있는 판이 없어요.":
+    "No playable puzzles are available right now.",
+  "퍼즐을 불러오거나 저장하지 못했어요. 다시 눌러주세요.":
+    "Couldn’t load or save the puzzle. Please try again.",
+  "오늘 진행": "Today’s progress",
+  "오늘 {0}/5판 완료": "{0} of 5 completed today",
+  "다음 판 풀기": "Play next puzzle",
+  "모두 완료": "All completed",
+  "모든 판을 완성했어요": "You’ve completed every puzzle",
+  "오프라인에서 풀 수 있는 판이 없어요.":
+    "No saved puzzles are available offline.",
+  "지난 판을 이어서 풀어보세요.": "Continue with an earlier puzzle.",
+  "한 단어씩, 다음 판을 완성해요.":
+    "One word at a time. Play your next puzzle.",
+  "잠시 광고가 표시될 수 있어요.": "An ad may appear before you continue.",
+  "저장 다시 시도": "Retry saving",
+
   "비어 있음": "empty",
   "1분 미만": "<1m",
   "1–2분": "1–2m",

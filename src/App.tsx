@@ -201,7 +201,7 @@ import {
 import { usageStatistics } from "./adapters/usageStatistics";
 import "./App.css";
 import { type CompletionReturnReminderPreprompt } from "./components/CompletionCelebrationDialog";
-import { MiniPuzzlePreview } from "./components/MiniPuzzlePreview";
+import { selectPlayablePuzzle } from "../packages/crossword-core/src/continuousPlay";
 import { PersonalStatsCard } from "./components/PersonalStatsCard";
 import { PuzzleBoard } from "./components/PuzzleBoard";
 import { SettingsSheet } from "./components/SettingsSheet";
@@ -249,6 +249,7 @@ type DateCardState = {
   // dailyAttemptLimit로 결정되므로, "도전 종료" 판정을 상수 대신 이 값으로 한다(#225).
   maxAttempts: number;
   completedAt?: string;
+  lastStartedAt?: string;
   hasProgress: boolean;
   hintCount: number;
   // 정답 보기로 단어를 공개했는지. 노힌트 완료 집계에서 제외하기 위해 보존한다.
@@ -448,6 +449,7 @@ function createDateCardState(
     attemptsUsed: mission.attemptsUsed,
     maxAttempts: mission.maxAttempts,
     completedAt: mission.completedAt,
+    lastStartedAt: mission.lastStartedAt,
     hasProgress:
       mission.attemptsUsed > 0 ||
       progress.hintCount > 0 ||
@@ -587,6 +589,8 @@ function App() {
   );
   const completionAdContext = useRef<Record<string, string | number>>({});
   completionAdContext.current = {
+    placement: "completion_interstitial",
+    ad_policy_version: 2,
     ...languageTelemetry(puzzle, language),
     puzzle_id: puzzle.puzzleId,
   };
@@ -595,10 +599,26 @@ function App() {
       createCompletionTransition(
         completionAd,
         completionTransitionStore(),
-        (event) => telemetry.impression(event, completionAdContext.current),
+        (event) =>
+          telemetry.impression(
+            event === "ad_impression" ? "completion_ad_impression" : event,
+            completionAdContext.current,
+          ),
+        {
+          enabled: launchConfig.completionInterstitialEnabled,
+          initialWaitMs: launchConfig.completionInterstitialInitialWaitMs,
+          intervalMs: launchConfig.completionInterstitialIntervalMs,
+          sessionCap: launchConfig.completionInterstitialSessionCap,
+          dailyCap: launchConfig.completionInterstitialDailyCap,
+        },
       ),
-    [completionAd],
+    [completionAd, launchConfig],
   );
+  const [completionSaveError, setCompletionSaveError] = useState(false);
+  const [completionAdPending, setCompletionAdPending] = useState(false);
+  const retryCompletionRef = useRef<(() => Promise<void>) | null>(null);
+  const puzzleStartRef = useRef(false);
+  const [puzzleStarting, setPuzzleStarting] = useState(false);
   const completionNavigationRef = useRef(false);
   const [completionNavigationBusy, setCompletionNavigationBusy] =
     useState(false);
@@ -784,9 +804,10 @@ function App() {
 
   const loadPuzzleSession = useCallback(
     async (puzzleId: string) => {
-      let nextPuzzle: Puzzle | null = null;
+      let nextPuzzle: Puzzle | null =
+        await puzzleArchiveRepository.loadPuzzle(puzzleId);
       try {
-        nextPuzzle = await puzzleRepository.getPuzzleById(puzzleId);
+        nextPuzzle ??= await puzzleRepository.getPuzzleById(puzzleId);
       } catch {
         /* An archived board can be resumed offline. */
       }
@@ -966,8 +987,17 @@ function App() {
             record.puzzleId !== onboardingPuzzle.puzzleId &&
             puzzleLanguage(record.puzzle) === language,
         );
+        const cachedIds = new Set([
+          ...(puzzleRepository.isOffline?.()
+            ? ((await puzzleRepository.cachedPuzzleIds?.()) ?? [])
+            : []),
+          ...nextArchiveRecords.map((record) => record.puzzleId),
+        ]);
+        const availableSummaries = puzzleRepository.isOffline?.()
+          ? loadedSummaries.filter((row) => cachedIds.has(row.puzzleId))
+          : loadedSummaries;
         const nextSummaries = uniquePuzzleSummaries([
-          ...loadedSummaries,
+          ...availableSummaries,
           ...nextArchiveRecords.map((record) =>
             createPuzzleSummary(record.puzzle),
           ),
@@ -985,31 +1015,30 @@ function App() {
 
         // 신규 사용자(아직 첫 성공 전)면 입문 퍼즐을, 그 외에는 일반 일일 퍼즐을
         // 첫 활성 퍼즐로 둔다. 입문 퍼즐 세션은 위에서 미리 불러와 재사용한다.
-        const todayPuzzles = dailyPuzzles(nextSummaries, language, day);
-        const dailyPuzzleId = (
-          todayPuzzles.find(
-            (p) => !nextDateCardStates[p.puzzleId]?.completedAt,
-          ) ?? todayPuzzles.at(-1)
+        const initialPuzzleId = selectPlayablePuzzle(
+          nextSummaries,
+          nextDateCardStates,
+          language,
+          day,
         )?.puzzleId;
-        const initialPuzzleId = dailyPuzzleId;
-        const session = initialPuzzleId
-          ? await loadPuzzleSession(initialPuzzleId)
-          : null;
+        const session =
+          initialPuzzleId && currentRouteRef.current !== "home"
+            ? await loadPuzzleSession(initialPuzzleId)
+            : null;
 
         if (!isCancelled) {
-          for (const row of dailyPuzzles(nextSummaries, language, day))
-            void puzzleRepository.getPuzzleById(row.puzzleId).catch(() => {});
           setPuzzleSummaries(nextSummaries);
           setPuzzleArchiveRecords(nextArchiveRecords);
           setDateCardStates(nextDateCardStates);
           if (!activeSessionRef.current || currentRouteRef.current === "home")
             applyPuzzleSession(session);
           setLoadState(
-            loadedSummaries.length
+            loadedSummaries.length && !puzzleRepository.isOffline?.()
               ? getPuzzlePackLoadState(nextSummaries)
               : "fallback",
           );
-          if (session == null) recoverMissingPuzzle();
+          if (session == null && currentRouteRef.current !== "home")
+            recoverMissingPuzzle();
         }
       } catch {
         if (!isCancelled) {
@@ -1245,6 +1274,27 @@ function App() {
     viewModel.completedEntries.length > 0;
   const hasStarted = mission.attemptsUsed > 0 || hasProgress;
   const isCompleted = viewModel.isComplete || mission.completedAt != null;
+  useEffect(() => {
+    const tick = () => {
+      void transition
+        .activity(
+          route === "today" && hasStarted && !isCompleted && !isPaused,
+          document.visibilityState === "visible",
+        )
+        .catch(() => {});
+    };
+    tick();
+    const timer = setInterval(tick, 1000);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", tick);
+      void transition
+        .activity(false, document.visibilityState === "visible")
+        .catch(() => {});
+    };
+  }, [transition, route, hasStarted, isCompleted, isPaused]);
+
   const isAttemptExhaustedUncompleted =
     hasStarted && remainingAttempts <= 0 && !isCompleted;
   // 첫 진입 1스텝 온보딩: 시작했지만 아직 한 글자도 입력하지 않은 최초 진입에서만 첫
@@ -1641,7 +1691,7 @@ function App() {
     const previousStreak = readConsecutiveStreakDays({
       countTodayPending: false,
     });
-    void missionRepository.saveMission(nextMission).then(() => {
+    const afterMissionSaved = () => {
       invalidateStreakCache();
       const nextStreak = readConsecutiveStreakDays();
       setConsecutiveStreak(nextStreak);
@@ -1657,14 +1707,7 @@ function App() {
           streakDays: nextStreak,
         });
       }
-    });
-    // 완료 시점의 노힌트 판정 신호(힌트 수·정답 보기 여부)를 archive 기록에 동결해,
-    // 진행상태 저장소가 비워져도 히스토리 노힌트 집계가 결과 화면과 일치하게 한다.
-    void savePuzzleSnapshot(puzzle, {
-      completedAt: nextMission.completedAt,
-      hintCount,
-      revealUsed,
-    });
+    };
     telemetry.impression("mission_complete", {
       ...puzzleTelemetryParams,
       attempt_number: nextMission.attemptsUsed,
@@ -1697,6 +1740,7 @@ function App() {
     // 점수를 제출한다. 완료 effect는 시도당 1회 실행되지만, ref로 puzzleId 단위
     // 중복 제출까지 막는다(미완료/revealUsed는 shouldSubmitLeaderboardScore가 제외).
     if (
+      puzzle.date === contentDate(language) &&
       leaderboardVisible &&
       shouldSubmitLeaderboardScore({
         completed: true,
@@ -1760,7 +1804,59 @@ function App() {
     }
 
     if (route === "today") {
-      navigate("result");
+      const finish = async () => {
+        setCompletionNavigationBusy(true);
+        setCompletionSaveError(false);
+        try {
+          await transition.activity(false);
+          await transition.complete(
+            puzzle.puzzleId,
+            async () => {
+              await progressRepository.saveProgress(puzzle.puzzleId, {
+                cellValues,
+                hintCount,
+                earnedHintCredits,
+                revealUsed,
+                tileInput,
+              });
+              await missionRepository.saveMission(nextMission);
+              afterMissionSaved();
+              await savePuzzleSnapshot(puzzle, {
+                completedAt: nextMission.completedAt,
+                hintCount,
+                revealUsed,
+              });
+              if (
+                activeSessionRef.current === puzzle.puzzleId &&
+                (currentRouteRef.current === "today" ||
+                  currentRouteRef.current === "result")
+              ) {
+                setCompletionAdPending(true);
+                navigate("result");
+                await new Promise<void>((resolve) =>
+                  requestAnimationFrame(() =>
+                    requestAnimationFrame(() => resolve()),
+                  ),
+                );
+              }
+            },
+            () =>
+              currentRouteRef.current === "result" &&
+              activeSessionRef.current === puzzle.puzzleId,
+          );
+        } catch {
+          setCompletionSaveError(true);
+          showHintToast(
+            t("진행을 저장하지 못했어요. 저장 공간을 확인해 주세요."),
+          );
+          navigate("result");
+        } finally {
+          setCompletionAdPending(false);
+          setCompletionNavigationBusy(false);
+        }
+      };
+      retryCompletionRef.current = finish;
+      void finish();
     }
   }, [
     earnedHintCredits,
@@ -1778,6 +1874,10 @@ function App() {
     soundEnabled,
     leaderboardVisible,
     submitLeaderboardScore,
+    cellValues,
+    language,
+    tileInput,
+    transition,
     viewModel.completedEntries.length,
     viewModel.isComplete,
   ]);
@@ -2430,92 +2530,100 @@ function App() {
     source: string,
     extraParams: Record<string, string | number> = {},
   ) {
-    if (loadState === "loading") {
+    if (puzzleStartRef.current || loadState === "loading") {
       return;
     }
+    puzzleStartRef.current = true;
+    setPuzzleStarting(true);
+    try {
+      const session = await loadPuzzleSession(targetPuzzleId);
 
-    const session = await loadPuzzleSession(targetPuzzleId);
+      if (session == null) {
+        setLoadState("fallback");
+        setHintToast((prev) => ({
+          id: prev.id + 1,
+          message: t("퍼즐을 불러오지 못했어요. 다시 눌러주세요."),
+        }));
+        telemetry.click("home_quick_start", {
+          puzzle_id: targetPuzzleId,
+          ...extraParams,
+          source,
+          status: "missing",
+        });
+        return;
+      }
 
-    if (session == null) {
-      setLoadState("fallback");
-      setHintToast((prev) => ({
-        id: prev.id + 1,
-        message: t("오늘의 퍼즐을 불러오지 못했어요."),
-      }));
+      const alreadyStarted = hasSavedProgress(
+        session.savedMission,
+        session.savedProgress,
+      );
+      let nextMission = session.savedMission;
+
+      if (
+        !alreadyStarted &&
+        nextMission.completedAt == null &&
+        getRemainingAttempts(nextMission) > 0
+      ) {
+        nextMission = startMissionAttempt(nextMission);
+        await missionRepository.saveMission(nextMission);
+        telemetry.impression("mission_start", {
+          ...getPuzzleTelemetryParams(session.nextPuzzle),
+          attempt_number: nextMission.attemptsUsed,
+          earned_hint_credits: earnedHintCredits,
+          hint_count: session.savedProgress.hintCount,
+          remaining_attempts: getRemainingAttempts(nextMission),
+          started_at: nextMission.lastStartedAt,
+        });
+        telemetry.impression("attempt_start", {
+          ...getPuzzleTelemetryParams(session.nextPuzzle),
+          attempt_kind: "first",
+          attempt_number: nextMission.attemptsUsed,
+          earned_hint_credits: earnedHintCredits,
+          hint_count: session.savedProgress.hintCount,
+          remaining_attempts: getRemainingAttempts(nextMission),
+          started_at: nextMission.lastStartedAt,
+        });
+        // 게임 세부 지표: 시도 시작(완료 퍼널 시작점, 마켓 차원 포함).
+        gameAnalytics.track(
+          "game_puzzle_start",
+          getGamePuzzleContext(session.nextPuzzle),
+          { attemptKind: "first", attemptNumber: nextMission.attemptsUsed },
+        );
+      }
+
+      await savePuzzleSnapshot(session.nextPuzzle, {
+        completedAt: nextMission.completedAt,
+        startedAt: nextMission.lastStartedAt,
+      });
+      applyPuzzleSession(session, { mission: nextMission });
+      // 완료했거나 도전 기회를 모두 써 더 풀 수 없는 판은 결과 화면으로 보낸다(이전 홈
+      // CTA와 동일). 풀이 화면은 읽기 전용이라 결과 동선이 없다.
+      const isExhausted =
+        nextMission.completedAt == null &&
+        alreadyStarted &&
+        getRemainingAttempts(nextMission) === 0;
+      navigate(
+        nextMission.completedAt != null ||
+          getCompletedEntries(
+            session.nextPuzzle.entries,
+            session.savedProgress.cellValues,
+          ).length === session.nextPuzzle.entries.length ||
+          isExhausted
+          ? "result"
+          : "today",
+      );
       telemetry.click("home_quick_start", {
-        puzzle_id: targetPuzzleId,
+        ...getPuzzleTelemetryParams(session.nextPuzzle),
         ...extraParams,
         source,
-        status: "missing",
+        status: "loaded",
       });
-      return;
+    } catch {
+      showHintToast(t("퍼즐을 불러오거나 저장하지 못했어요. 다시 눌러주세요."));
+    } finally {
+      puzzleStartRef.current = false;
+      setPuzzleStarting(false);
     }
-
-    const alreadyStarted = hasSavedProgress(
-      session.savedMission,
-      session.savedProgress,
-    );
-    let nextMission = session.savedMission;
-
-    if (
-      !alreadyStarted &&
-      nextMission.completedAt == null &&
-      getRemainingAttempts(nextMission) > 0
-    ) {
-      nextMission = startMissionAttempt(nextMission);
-      void missionRepository.saveMission(nextMission);
-      telemetry.impression("mission_start", {
-        ...getPuzzleTelemetryParams(session.nextPuzzle),
-        attempt_number: nextMission.attemptsUsed,
-        earned_hint_credits: earnedHintCredits,
-        hint_count: session.savedProgress.hintCount,
-        remaining_attempts: getRemainingAttempts(nextMission),
-        started_at: nextMission.lastStartedAt,
-      });
-      telemetry.impression("attempt_start", {
-        ...getPuzzleTelemetryParams(session.nextPuzzle),
-        attempt_kind: "first",
-        attempt_number: nextMission.attemptsUsed,
-        earned_hint_credits: earnedHintCredits,
-        hint_count: session.savedProgress.hintCount,
-        remaining_attempts: getRemainingAttempts(nextMission),
-        started_at: nextMission.lastStartedAt,
-      });
-      // 게임 세부 지표: 시도 시작(완료 퍼널 시작점, 마켓 차원 포함).
-      gameAnalytics.track(
-        "game_puzzle_start",
-        getGamePuzzleContext(session.nextPuzzle),
-        { attemptKind: "first", attemptNumber: nextMission.attemptsUsed },
-      );
-    }
-
-    await savePuzzleSnapshot(session.nextPuzzle, {
-      completedAt: nextMission.completedAt,
-      startedAt: nextMission.lastStartedAt,
-    });
-    applyPuzzleSession(session, { mission: nextMission });
-    // 완료했거나 도전 기회를 모두 써 더 풀 수 없는 판은 결과 화면으로 보낸다(이전 홈
-    // CTA와 동일). 풀이 화면은 읽기 전용이라 결과 동선이 없다.
-    const isExhausted =
-      nextMission.completedAt == null &&
-      alreadyStarted &&
-      getRemainingAttempts(nextMission) === 0;
-    navigate(
-      nextMission.completedAt != null ||
-        getCompletedEntries(
-          session.nextPuzzle.entries,
-          session.savedProgress.cellValues,
-        ).length === session.nextPuzzle.entries.length ||
-        isExhausted
-        ? "result"
-        : "today",
-    );
-    telemetry.click("home_quick_start", {
-      ...getPuzzleTelemetryParams(session.nextPuzzle),
-      ...extraParams,
-      source,
-      status: "loaded",
-    });
   }
 
   // 재도전 시작 공통 로직. 결과 화면 '다시 도전'과 소진 구제 충전(#204) 직후
@@ -2564,43 +2672,32 @@ function App() {
     saveAnswerInputMode(mode);
   }
 
-  const dailyRows = dailyPuzzles(puzzleSummaries, language, day);
-  const nextDailyRow = dailyRows.find(
-    (row) =>
-      row.puzzleId !== puzzle.puzzleId &&
-      !dateCardStates[row.puzzleId]?.completedAt,
+  const nextDailyRow = selectPlayablePuzzle(
+    puzzleSummaries,
+    dateCardStates,
+    language,
+    day,
+    puzzle.puzzleId,
   );
   async function leaveResult(next: boolean) {
-    if (completionNavigationRef.current) return;
+    if (completionNavigationRef.current || completionNavigationBusy) return;
+    if (completionSaveError) {
+      void retryCompletionRef.current?.();
+      return;
+    }
     completionNavigationRef.current = true;
     setCompletionNavigationBusy(true);
     try {
-      await transition.leave(
-        puzzle.puzzleId,
-        isCompleted && puzzle.dailySequence != null,
-        async () => {
-          if (next && nextDailyRow)
-            await startPuzzleById(nextDailyRow.puzzleId, "daily_next");
-          else navigate("home");
-        },
-        async () => {
-          await progressRepository.saveProgress(puzzle.puzzleId, {
-            cellValues,
-            hintCount,
-            earnedHintCredits,
-            revealUsed,
-            tileInput,
-          });
-          await missionRepository.saveMission(mission);
-          await savePuzzleSnapshot(puzzle, {
-            completedAt: mission.completedAt,
-            hintCount,
-            revealUsed,
-          });
-        },
-      );
+      if (next && nextDailyRow) {
+        telemetry.click("next_puzzle_cta", {
+          source: "result_screen",
+          next_puzzle_id: nextDailyRow.puzzleId,
+          ...languageTelemetry(puzzle, language),
+        });
+        await startPuzzleById(nextDailyRow.puzzleId, "completion_next");
+      } else navigate("home");
     } catch {
-      showHintToast(t("진행을 저장하지 못했어요. 저장 공간을 확인해 주세요."));
+      showHintToast(t("퍼즐을 불러오지 못했어요. 다시 눌러주세요."));
     } finally {
       completionNavigationRef.current = false;
       setCompletionNavigationBusy(false);
@@ -2779,23 +2876,35 @@ function App() {
       ) : route === "result" ? (
         <ResultScreen
           busy={completionNavigationBusy}
-          onHome={() => {
-            if (nextDailyRow) navigate("home");
-            else void leaveResult(false);
-          }}
+          onHome={() => navigate("home")}
           onLeave={() => {
             void leaveResult(Boolean(nextDailyRow));
           }}
           primaryLabel={
-            nextDailyRow
-              ? t("다음 판")
-              : dailyRows.filter(
-                    (row) =>
-                      dateCardStates[row.puzzleId]?.completedAt ||
-                      (row.puzzleId === puzzle.puzzleId && isCompleted),
-                  ).length >= 5
-                ? t("오늘 완료, 홈으로")
+            completionSaveError
+              ? t("저장 다시 시도")
+              : nextDailyRow
+                ? t("다음 판 풀기")
                 : t("홈으로 돌아가기")
+          }
+          adPending={completionAdPending}
+          emptyMessage={
+            !nextDailyRow
+              ? t(
+                  puzzleSummaries
+                    .filter(
+                      (row) =>
+                        puzzleLanguage(row) === language && row.date <= day,
+                    )
+                    .every(
+                      (row) =>
+                        dateCardStates[row.puzzleId]?.completedAt ||
+                        (row.puzzleId === puzzle.puzzleId && isCompleted),
+                    )
+                    ? "모든 판을 완성했어요"
+                    : "지금 풀 수 있는 판이 없어요.",
+                )
+              : undefined
           }
           {...dateSelectionProps}
           returnReminderPreprompt={
@@ -2866,11 +2975,9 @@ function App() {
         <HomeScreen
           language={language}
           today={day}
-          repository={puzzleRepository}
-          puzzle={puzzle}
           puzzleSummaries={puzzleSummaries}
           dateCardStates={dateCardStates}
-          loadState={loadState}
+          loadState={puzzleStarting ? "loading" : loadState}
           navigate={navigate}
           consecutiveStreak={consecutiveStreak}
           weeklyStrip={weeklyStrip}
@@ -3007,8 +3114,6 @@ function usePuzzleViewModel(
 type HomeScreenProps = {
   language: ContentLanguage;
   today: string;
-  repository: ReturnType<typeof createLanguagePuzzleRepository>;
-  puzzle: Puzzle;
   puzzleSummaries: PuzzleManifestItem[];
   dateCardStates: Record<string, DateCardState>;
   loadState: LoadState;
@@ -3023,8 +3128,6 @@ type HomeScreenProps = {
 function HomeScreen({
   language,
   today,
-  repository,
-  puzzle,
   puzzleSummaries,
   dateCardStates,
   loadState,
@@ -3039,46 +3142,21 @@ function HomeScreen({
   const completedToday = todayPuzzles.filter(
     (p) => dateCardStates[p.puzzleId]?.completedAt,
   ).length;
-  const summary =
-    todayPuzzles.find((p) => !dateCardStates[p.puzzleId]?.completedAt) ??
-    todayPuzzles.at(-1);
-  const [preview, setPreview] = useState<Puzzle | null>(
-    summary?.puzzleId === puzzle.puzzleId ? puzzle : null,
+  const summary = selectPlayablePuzzle(
+    puzzleSummaries,
+    dateCardStates,
+    language,
+    today,
   );
-  const [previewError, setPreviewError] = useState(false);
-  const [retry, setRetry] = useState(0);
-  useEffect(() => {
-    let cancelled = false;
-    setPreviewError(false);
-    setPreview(null);
-    if (!summary) {
-      setPreview(null);
-      return;
-    }
-    void repository
-      .getPuzzleById(summary.puzzleId)
-      .then((next) => {
-        if (!cancelled) {
-          setPreview(next);
-          setPreviewError(next == null);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setPreview(null);
-          setPreviewError(true);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [summary, retry, repository]);
+  const allComplete =
+    puzzleSummaries.length > 0 &&
+    puzzleSummaries
+      .filter((row) => row.date <= today)
+      .every((row) => dateCardStates[row.puzzleId]?.completedAt);
   const saved = summary ? dateCardStates[summary.puzzleId] : undefined;
-  const loadFailed = previewError || (!summary && loadState === "fallback");
-  const finished = completedToday >= 5;
+  const loadFailed = !summary && loadState === "fallback";
   const started = (saved?.attemptsUsed ?? 0) > 0 || saved?.hasProgress;
-  const loading =
-    loadState === "loading" || (!!summary && !preview && !previewError);
+  const loading = loadState === "loading";
   return (
     <section className="tileHome" aria-label={t("홈")}>
       <header className="tileHomeNav">
@@ -3105,43 +3183,46 @@ function HomeScreen({
       <p className="tileLead">{t("단서를 읽고, 글자 타일을 골라보세요.")}</p>
       <article className="tileDailyCard">
         <div className="tileDailyCardHeading">
-          <strong>
-            {finished ? t("오늘도 한 판 완성!") : t("오늘의 퍼즐")}
-          </strong>
-          <span>
-            {preview?.entries.length ?? "…"}
-            {t("단어")}
-          </span>
+          <strong>{t("오늘 진행")}</strong>
+          <span>{completedToday}/5</span>
         </div>
-        <div className="tileHomePreview">
-          {preview ? (
-            <MiniPuzzlePreview puzzle={preview} isLoading={loading} />
-          ) : (
-            <span>
-              {loadFailed
-                ? t("퍼즐을 불러오지 못했어요")
-                : t("오늘의 퍼즐을 준비하고 있어요")}
+        <div
+          className="tileDailyProgress"
+          role="img"
+          aria-label={t("오늘 {0}/5판 완료", completedToday)}
+        >
+          {todayPuzzles.map((row, i) => (
+            <span
+              key={row.puzzleId}
+              className={
+                dateCardStates[row.puzzleId]?.completedAt ? "done" : ""
+              }
+            >
+              {dateCardStates[row.puzzleId]?.completedAt ? "✓" : i + 1}
             </span>
-          )}
+          ))}
         </div>
-        <p>
-          {loadFailed
-            ? t("연결을 확인한 뒤 다시 불러와 주세요.")
-            : preview == null
-              ? t("오늘의 퍼즐을 준비하고 있어요.")
-              : loadState === "fallback"
-                ? t("연결이 어려워 저장된 퍼즐을 보여드려요.")
-                : finished
-                  ? t("완성한 단어를 다시 만나보세요.")
+        <p role="status">
+          {loading
+            ? t("불러오는 중")
+            : loadFailed
+              ? t("오프라인에서 풀 수 있는 판이 없어요.")
+              : !summary
+                ? t(
+                    allComplete
+                      ? "모든 판을 완성했어요"
+                      : "지금 풀 수 있는 판이 없어요.",
+                  )
+                : summary.date < today
+                  ? t("지난 판을 이어서 풀어보세요.")
                   : started
                     ? t("고른 글자는 그대로, 이어서 완성해요.")
-                    : t("서두르지 않아도 괜찮아요. 한 단어씩 채워봐요.")}
+                    : t("한 단어씩, 다음 판을 완성해요.")}
         </p>
         {loadFailed ? (
           <button
             className="tilePrimary"
             onClick={() => {
-              setRetry((value) => value + 1);
               onRetryPack();
             }}
           >
@@ -3153,15 +3234,13 @@ function HomeScreen({
             disabled={loading || !summary}
             onClick={() => summary && startDailyPuzzle(summary.puzzleId)}
           >
-            {!summary
-              ? t("오늘 퍼즐 준비 중")
-              : loading
-                ? t("불러오는 중")
-                : finished
-                  ? t("완성한 판 보기")
-                  : started
-                    ? t("이어서 풀기")
-                    : t("오늘 한 판 시작")}
+            {loading
+              ? t("불러오는 중")
+              : !summary
+                ? t("모두 완료")
+                : started
+                  ? t("이어서 풀기")
+                  : t("다음 판 풀기")}
             <span aria-hidden="true"> ›</span>
           </button>
         )}
@@ -3497,6 +3576,8 @@ function HomeIcon() {
 
 type ResultScreenProps = DateSelectionProps & {
   busy: boolean;
+  adPending: boolean;
+  emptyMessage?: string;
   onHome: () => void;
   onLeave: () => void;
   primaryLabel: string;
@@ -3523,6 +3604,8 @@ type ResultScreenProps = DateSelectionProps & {
 
 function ResultScreen({
   busy,
+  adPending,
+  emptyMessage,
   onLeave,
   onHome,
   primaryLabel,
@@ -3615,9 +3698,16 @@ function ResultScreen({
           {LEADERBOARD_OPEN_FAILURE_MESSAGE}
         </p>
       ) : null}
-      <button disabled={busy} className="tilePrimary" onClick={onLeave}>
-        {primaryLabel}
-      </button>
+      <div className="tileResultFooter">
+        {adPending ? (
+          <p role="status">{t("잠시 광고가 표시될 수 있어요.")}</p>
+        ) : emptyMessage ? (
+          <p>{emptyMessage}</p>
+        ) : null}
+        <button disabled={busy} className="tilePrimary" onClick={onLeave}>
+          {primaryLabel}
+        </button>
+      </div>
       <div className="tileResultLinks">
         <button
           disabled={busy}

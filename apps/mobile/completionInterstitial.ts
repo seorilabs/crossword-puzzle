@@ -1,3 +1,7 @@
+import {
+  AD_HISTORY_KEY,
+  type AdHistory,
+} from '../../packages/crossword-core/src/completionInterstitial';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type {
   InterstitialPort,
@@ -54,7 +58,7 @@ export function createMobileCompletionInterstitial(
           }),
           ad.addAdEventListener(module.AdEventType.OPENED, () => {
             if (disposed || own !== version) return;
-            callback?.('ad_impression');
+            callback?.('ad_shown');
           }),
           ad.addAdEventListener(module.AdEventType.CLOSED, () => {
             if (disposed || own !== version) return;
@@ -125,6 +129,13 @@ export function createMobileCompletionInterstitial(
 }
 export function completionTransitionStore() {
   return {
+    async loadHistory(): Promise<AdHistory | null> {
+      const raw = await AsyncStorage.getItem(AD_HISTORY_KEY);
+      return raw ? JSON.parse(raw) : null;
+    },
+    async saveHistory(history: AdHistory) {
+      await AsyncStorage.setItem(AD_HISTORY_KEY, JSON.stringify(history));
+    },
     async consumed(id: string) {
       return (
         (await AsyncStorage.getItem('crossword-completion-ad:' + id)) === '1'

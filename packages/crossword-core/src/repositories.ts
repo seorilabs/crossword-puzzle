@@ -4,6 +4,8 @@ import type { Puzzle, PuzzleManifestItem, SavedProgress } from "./types";
 export type { SavedProgress } from "./types";
 
 export type PuzzleRepository = {
+  isOffline?(): boolean;
+  cachedPuzzleIds?(): Promise<string[]>;
   listPuzzleSummaries(): Promise<PuzzleManifestItem[]>;
   getPuzzleById(puzzleId: string): Promise<Puzzle | null>;
   getPuzzleForDate(date: string): Promise<Puzzle | null>;
