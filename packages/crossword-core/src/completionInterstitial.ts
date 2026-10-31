@@ -27,6 +27,10 @@ export type AdHistory = {
   utcDay: string;
   dailyImpressions: number;
   lastClosedAt?: number;
+  pendingAd?: boolean;
+  sessionAdReservations?: number;
+  dailyAdReservations?: number;
+  lastRecoveryAt?: number;
 };
 export const AD_HISTORY_KEY = "crossword-completion-ad:history:v1";
 export type TransitionStore = {
@@ -72,15 +76,38 @@ export function normalizeAdHistory(value: unknown, now: number): AdHistory {
       sessionImpressions: 0,
       utcDay: day,
       dailyImpressions: 0,
+      sessionAdReservations: 0,
+      dailyAdReservations: 0,
+      pendingAd: false,
     };
   }
   const freshSession = now - v.lastActivityAt >= 30 * 60000;
   return {
     ...v,
+    sessionAdReservations: Math.max(
+      v.sessionImpressions,
+      Number.isFinite(v.sessionAdReservations) ? v.sessionAdReservations! : 0,
+    ),
+    dailyAdReservations: Math.max(
+      v.dailyImpressions,
+      Number.isFinite(v.dailyAdReservations) ? v.dailyAdReservations! : 0,
+    ),
+    pendingAd: v.pendingAd === true,
     ...(freshSession
-      ? { sessionStartedAt: now, activePlayMs: 0, sessionImpressions: 0 }
+      ? {
+          sessionStartedAt: now,
+          activePlayMs: 0,
+          sessionImpressions: 0,
+          sessionAdReservations: v.pendingAd === true ? 1 : 0,
+        }
       : {}),
-    ...(v.utcDay !== day ? { utcDay: day, dailyImpressions: 0 } : {}),
+    ...(v.utcDay !== day
+      ? {
+          utcDay: day,
+          dailyImpressions: 0,
+          dailyAdReservations: v.pendingAd === true ? 1 : 0,
+        }
+      : {}),
   };
 }
 
@@ -102,6 +129,20 @@ export function createCompletionTransition(
     queue = task.catch(() => {});
     return task;
   };
+  const releaseReservation = () =>
+    serial(async () => {
+      const h = normalizeAdHistory(await store.loadHistory(), now());
+      h.pendingAd = false;
+      h.sessionAdReservations = Math.max(
+        h.sessionImpressions,
+        (h.sessionAdReservations ?? h.sessionImpressions) - 1,
+      );
+      h.dailyAdReservations = Math.max(
+        h.dailyImpressions,
+        (h.dailyAdReservations ?? h.dailyImpressions) - 1,
+      );
+      await store.saveHistory(h);
+    }).catch(() => track("ad_skipped_storage"));
   return {
     // Call at foreground/play/pause transitions as well as the foreground timer.
     activity(playing: boolean, foreground = true) {
@@ -128,35 +169,62 @@ export function createCompletionTransition(
       try {
         await saveCompleted();
         consumed.add(puzzleId);
-        let state: AdHistory;
+        let authorized: boolean;
         try {
-          await queue;
-          if (await store.consumed(puzzleId)) return;
-          await store.consume(puzzleId);
-          state = normalizeAdHistory(await store.loadHistory(), now());
-          await store.saveHistory(state);
+          authorized = await serial(async () => {
+            if (await store.consumed(puzzleId)) return false;
+            await store.consume(puzzleId);
+            const state = normalizeAdHistory(await store.loadHistory(), now());
+            if (state.pendingAd) {
+              state.pendingAd = false;
+              state.lastRecoveryAt = now();
+              await store.saveHistory(state);
+              track("ad_skipped_interval");
+              return false;
+            }
+            await store.saveHistory(state);
+            if (!isCurrent()) return false;
+            track("ad_opportunity");
+            const skip = !policy.enabled
+              ? "ad_skipped_disabled"
+              : state.activePlayMs < policy.initialWaitMs
+                ? "ad_skipped_initial_wait"
+                : now() -
+                      Math.max(
+                        state.lastClosedAt ?? -Infinity,
+                        state.lastRecoveryAt ?? -Infinity,
+                      ) <
+                    policy.intervalMs
+                  ? "ad_skipped_interval"
+                  : (state.dailyAdReservations ?? state.dailyImpressions) >=
+                      policy.dailyCap
+                    ? "ad_skipped_daily_cap"
+                    : (state.sessionAdReservations ??
+                          state.sessionImpressions) >= policy.sessionCap
+                      ? "ad_skipped_session_cap"
+                      : !ad.ready()
+                        ? "ad_skipped_unready"
+                        : undefined;
+            if (skip) {
+              track(skip);
+              return false;
+            }
+            // Reserve quota before the SDK call. A lost callback write must not allow another ad.
+            state.pendingAd = true;
+            state.sessionAdReservations =
+              (state.sessionAdReservations ?? state.sessionImpressions) + 1;
+            state.dailyAdReservations =
+              (state.dailyAdReservations ?? state.dailyImpressions) + 1;
+            await store.saveHistory(state);
+            return true;
+          });
         } catch {
           track("ad_skipped_storage");
           return;
         }
-        if (!isCurrent()) return;
-        track("ad_opportunity");
-        const skip = !policy.enabled
-          ? "ad_skipped_disabled"
-          : state.activePlayMs < policy.initialWaitMs
-            ? "ad_skipped_initial_wait"
-            : state.lastClosedAt != null &&
-                now() - state.lastClosedAt < policy.intervalMs
-              ? "ad_skipped_interval"
-              : state.dailyImpressions >= policy.dailyCap
-                ? "ad_skipped_daily_cap"
-                : state.sessionImpressions >= policy.sessionCap
-                  ? "ad_skipped_session_cap"
-                  : !ad.ready()
-                    ? "ad_skipped_unready"
-                    : undefined;
-        if (skip) {
-          track(skip);
+        if (!authorized) return;
+        if (!isCurrent()) {
+          await releaseReservation();
           return;
         }
         track("ad_requested");
@@ -196,6 +264,7 @@ export function createCompletionTransition(
                 const h = normalizeAdHistory(await store.loadHistory(), now());
                 h.lastClosedAt = now();
                 h.lastActivityAt = now();
+                h.pendingAd = false;
                 await store.saveHistory(h);
               }).catch(() => track("ad_skipped_storage"));
             }
@@ -206,6 +275,9 @@ export function createCompletionTransition(
         } finally {
           settled = true;
           await queue;
+          if (!counted && !closed) {
+            await releaseReservation();
+          }
         }
       } finally {
         busy = false;

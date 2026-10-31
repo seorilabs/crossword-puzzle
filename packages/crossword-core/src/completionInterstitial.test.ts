@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   createCompletionTransition,
+  normalizeAdHistory,
   type AdHistory,
   type InterstitialEvent,
 } from "./completionInterstitial.ts";
@@ -261,4 +262,137 @@ test("native shown-only callbacks count exactly one display without synthesizing
   assert.equal(f.history?.dailyImpressions, 1);
   assert.equal(events.filter((event) => event === "ad_shown").length, 1);
   assert.equal(events.includes("ad_impression"), false);
+});
+
+test("a lost close-history write cannot reopen an ad after restart", async () => {
+  const f = fixture();
+  const persist = f.store.saveHistory;
+  let failOnce = true;
+  f.store.saveHistory = async (h) => {
+    if (h.lastClosedAt != null && failOnce) {
+      failOnce = false;
+      throw Error("transient close write");
+    }
+    await persist(h);
+  };
+  const flow = f.flow();
+  await flow.activity(true);
+  f.time(90000);
+  await flow.activity(false);
+  await flow.complete("first", async () => {});
+  const restarted = f.flow();
+  f.time(1000);
+  await restarted.complete("recover", async () => {});
+  assert.equal(f.shows, 1);
+  f.time(89999);
+  await restarted.complete("early", async () => {});
+  assert.equal(f.shows, 1);
+  f.time(1);
+  await restarted.complete("after-recovery-wait", async () => {});
+  assert.equal(f.shows, 2);
+});
+
+test("a lost impression-history write cannot exceed the session cap", async () => {
+  const f = fixture();
+  const persist = f.store.saveHistory;
+  let failOnce = true;
+  f.store.saveHistory = async (h) => {
+    if (h.sessionImpressions === 1 && h.lastClosedAt == null && failOnce) {
+      failOnce = false;
+      throw Error("transient count write");
+    }
+    await persist(h);
+  };
+  const flow = f.flow();
+  await flow.activity(true);
+  f.time(90000);
+  await flow.activity(false);
+  for (const id of ["first", "second", "third", "capped"]) {
+    await flow.complete(id, async () => {});
+    f.time(90000);
+  }
+  assert.equal(f.shows, 3);
+  assert.equal(f.events.at(-1), "ad_skipped_session_cap");
+});
+
+test("an unresolved ad reserves one slot across a new session and UTC day", () => {
+  const h = normalizeAdHistory(
+    {
+      version: 1,
+      sessionStartedAt: 1,
+      lastActivityAt: 1,
+      activePlayMs: 90000,
+      sessionImpressions: 2,
+      dailyImpressions: 9,
+      utcDay: "1970-01-01",
+      pendingAd: true,
+    },
+    Date.UTC(2026, 10, 1),
+  );
+  assert.equal(h.sessionImpressions, 0);
+  assert.equal(h.dailyImpressions, 0);
+  assert.equal(h.sessionAdReservations, 1);
+  assert.equal(h.dailyAdReservations, 1);
+});
+
+test("activity cannot overwrite a pending reservation while its write is in flight", async () => {
+  const f = fixture();
+  const persist = f.store.saveHistory;
+  let release!: () => void;
+  let entered!: () => void;
+  const blocked = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const writing = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  let writes = 0,
+    concurrent = false;
+  f.store.saveHistory = async (h) => {
+    writes++;
+    concurrent ||= writes > 1;
+    if (h.pendingAd && !h.sessionImpressions) {
+      entered();
+      await blocked;
+    }
+    await persist(h);
+    writes--;
+  };
+  const flow = f.flow();
+  await flow.activity(true);
+  f.time(90000);
+  await flow.activity(false);
+  const completion = flow.complete("during-timer", async () => {});
+  await writing;
+  f.time(1);
+  const activity = flow.activity(false);
+  await Promise.resolve();
+  release();
+  await Promise.all([completion, activity]);
+  assert.equal(concurrent, false);
+  assert.equal(f.history?.sessionAdReservations, 1);
+  assert.equal(f.history?.sessionImpressions, 1);
+});
+
+test("leaving during the reservation write releases quota without showing a late ad", async () => {
+  const f = fixture();
+  const persist = f.store.saveHistory;
+  let current = true;
+  f.store.saveHistory = async (h) => {
+    if (h.pendingAd) current = false;
+    await persist(h);
+  };
+  const flow = f.flow();
+  await flow.activity(true);
+  f.time(90000);
+  await flow.activity(false);
+  await flow.complete(
+    "left",
+    async () => {},
+    () => current,
+  );
+  assert.equal(f.shows, 0);
+  assert.equal(f.history?.pendingAd, false);
+  assert.equal(f.history?.sessionAdReservations, 0);
+  assert.equal(f.history?.dailyAdReservations, 0);
 });
