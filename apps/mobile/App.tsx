@@ -24,6 +24,7 @@ import {
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import {
   allAvailablePuzzlesCompleted,
+  getEmptyPuzzleMessage,
   selectPlayablePuzzle,
 } from '../../packages/crossword-core/src/continuousPlay';
 import { createCompletionTransition } from '../../packages/crossword-core/src/completionInterstitial';
@@ -2610,15 +2611,18 @@ function AppContent() {
         emptyMessage={
           !nextDailyRow
             ? t(
-                allAvailablePuzzlesCompleted(
+                getEmptyPuzzleMessage(
                   puzzlePack.summaries,
                   dateCardStates,
                   language,
                   day,
-                  isCompleted ? puzzle.puzzleId : undefined,
-                )
-                  ? '모든 판을 완성했어요'
-                  : '지금 풀 수 있는 판이 없어요.',
+                  {
+                    offline:
+                      puzzlePack.source === 'bundled' ||
+                      puzzlePack.offline === true,
+                    justCompletedId: isCompleted ? puzzle.puzzleId : undefined,
+                  },
+                ),
               )
             : undefined
         }

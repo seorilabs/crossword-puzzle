@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   allAvailablePuzzlesCompleted,
+  getEmptyPuzzleMessage,
   selectPlayablePuzzle,
 } from "./continuousPlay.ts";
 import type { PuzzleManifestItem } from "./types.ts";
@@ -16,6 +17,49 @@ const row = (
   dailySequence,
   language,
   path: id + ".json",
+});
+test("offline completion of the last cached board never claims all puzzles are complete", () => {
+  const cached = [row("first")];
+  assert.equal(
+    getEmptyPuzzleMessage(cached, {}, "en", "2026-10-31", {
+      offline: true,
+      justCompletedId: "first",
+    }),
+    "오프라인에서 풀 수 있는 판이 없어요.",
+  );
+  assert.equal(
+    getEmptyPuzzleMessage(
+      cached,
+      { first: { completedAt: "x" } },
+      "en",
+      "2026-10-31",
+      { offline: true },
+    ),
+    "오프라인에서 풀 수 있는 판이 없어요.",
+  );
+});
+test("online empty results still distinguish completion, exhaustion and unpublished supply", () => {
+  assert.equal(
+    getEmptyPuzzleMessage([row("last")], {}, "en", "2026-10-31", {
+      offline: false,
+      justCompletedId: "last",
+    }),
+    "모든 판을 완성했어요",
+  );
+  assert.equal(
+    getEmptyPuzzleMessage(
+      [row("exhausted")],
+      { exhausted: { attemptsUsed: 3 } },
+      "en",
+      "2026-10-31",
+      { offline: false },
+    ),
+    "지금 풀 수 있는 판이 없어요.",
+  );
+  assert.equal(
+    getEmptyPuzzleMessage([], {}, "en", "2026-10-31", { offline: false }),
+    "지금 풀 수 있는 판이 없어요.",
+  );
 });
 test("unfinished progress precedes today; date and sequence order are deterministic", () => {
   const rows = [
