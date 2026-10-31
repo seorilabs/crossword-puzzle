@@ -48,6 +48,7 @@ export const showFullScreenAd = Object.assign(
         return;
       }
       onEvent({ type: "show" });
+      onEvent({ type: "impression" });
       if (!state.interstitialOutcome && state.adOutcome === "rewarded")
         onEvent({ type: "userEarnedReward" });
       const close = () => {
