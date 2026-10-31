@@ -2905,8 +2905,10 @@ function App() {
                     language,
                     day,
                     {
-                      offline: loadState === "fallback",
-                      justCompletedId: isCompleted ? puzzle.puzzleId : undefined,
+                      offline: puzzleRepository.isOffline?.() ?? false,
+                      justCompletedId: isCompleted
+                        ? puzzle.puzzleId
+                        : undefined,
                     },
                   ),
                 )
