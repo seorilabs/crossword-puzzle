@@ -1,0 +1,63 @@
+{
+  "checkedAt": "2026-10-31T03:02:07.222682Z",
+  "developerId": "7593567020638200144",
+  "packageName": "com.seorilabs.crosswordpuzzle",
+  "scope": "Existing Play Console declarations read only. No policy answers or target ages changed.",
+  "dataSafety": {
+    "selectedTypes": [
+      {
+        "questionId": "PSL_DATA_TYPES_PERSONAL",
+        "responseId": "PSL_USER_ACCOUNT",
+        "label": "개인 정보/사용자 ID"
+      },
+      {
+        "questionId": "PSL_DATA_TYPES_LOCATION",
+        "responseId": "PSL_APPROX_LOCATION",
+        "label": "위치/대략적인 위치"
+      },
+      {
+        "questionId": "PSL_DATA_TYPES_APP_PERFORMANCE",
+        "responseId": "PSL_CRASH_LOGS",
+        "label": "앱 정보 및 성능/비정상 종료 로그"
+      },
+      {
+        "questionId": "PSL_DATA_TYPES_APP_PERFORMANCE",
+        "responseId": "PSL_PERFORMANCE_DIAGNOSTICS",
+        "label": "앱 정보 및 성능/진단"
+      },
+      {
+        "questionId": "PSL_DATA_TYPES_APP_PERFORMANCE",
+        "responseId": "PSL_OTHER_PERFORMANCE",
+        "label": "앱 정보 및 성능/기타 앱 성능 데이터"
+      },
+      {
+        "questionId": "PSL_DATA_TYPES_APP_ACTIVITY",
+        "responseId": "PSL_USER_INTERACTION",
+        "label": "앱 활동/앱 상호작용"
+      },
+      {
+        "questionId": "PSL_DATA_TYPES_IDENTIFIERS",
+        "responseId": "PSL_DEVICE_ID",
+        "label": "기기 또는 기타 ID/기기 또는 기타 ID"
+      }
+    ],
+    "csvSha256": "509add5e15096b55046cb5290a4f15c9f386c7fdd1c7a54e26de4ce9af4de3e1",
+    "collectsOrSharesData": true,
+    "encryptedInTransit": true,
+    "accountCreation": "none"
+  },
+  "contentRating": {
+    "iarcState": "완료됨",
+    "iarcCertificateId": "f718a5f5-a841-8515-8010-3f4884c08df9",
+    "submittedAt": "2026-06-09",
+    "korea": "GRAC 전체이용가"
+  },
+  "targetAudience": [
+    "13-15",
+    "16-17",
+    "18+"
+  ],
+  "policyStatus": "발견된 문제 없음",
+  "deviceOrSdkRun": "unrun; existing SDK and permissions unchanged",
+  "evidenceDate": "2026-10-31"
+}

@@ -3224,7 +3224,7 @@ function HomeScreen({
                     ? t("고른 글자는 그대로, 이어서 완성해요.")
                     : t("한 단어씩, 다음 판을 완성해요.")}
         </p>
-        {loadFailed ? (
+        {loadFailed || (!summary && !allComplete && !loading) ? (
           <button
             className="tilePrimary"
             onClick={() => {
@@ -3242,7 +3242,7 @@ function HomeScreen({
             {loading
               ? t("불러오는 중")
               : !summary
-                ? t(allComplete ? "모두 완료" : "다음 판 없음")
+                ? t("모두 완료")
                 : started
                   ? t("이어서 풀기")
                   : t("다음 판 풀기")}

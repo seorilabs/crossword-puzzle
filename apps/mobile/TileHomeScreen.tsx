@@ -17,7 +17,7 @@ type Props = {
   week: WeeklyStreakStripDay[];
   offline: boolean;
   loadError?: boolean;
-  onRetry?: () => void;
+  onRetry: () => void;
   onStart: () => void;
   onResume: () => void;
   onHistory: () => void;
@@ -105,17 +105,17 @@ export function TileHomeScreen({
         </Text>
         <Pressable
           accessibilityRole="button"
-          disabled={loading || (!loadError && !summary)}
+          disabled={loading || (!loadError && !summary && allComplete)}
           style={s.primary}
-          onPress={loadError ? onRetry : onStart}
+          onPress={loadError || !summary ? onRetry : onStart}
         >
           <Text style={s.primaryText}>
-            {loadError
-              ? t('다시 불러오기')
-              : loading
-                ? t('불러오는 중')
+            {loading
+              ? t('불러오는 중')
+              : loadError || (!summary && !allComplete)
+                ? t('다시 불러오기')
                 : !summary
-                  ? t(allComplete ? '모두 완료' : '다음 판 없음')
+                  ? t('모두 완료')
                   : started
                     ? t('이어서 풀기')
                     : t('다음 판 풀기')}{' '}

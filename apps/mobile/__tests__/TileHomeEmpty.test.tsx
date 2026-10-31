@@ -22,6 +22,7 @@ test.each(['ko', 'en'] as const)(
       onHistory: jest.fn(),
       onSettings: jest.fn(),
       onLicense: jest.fn(),
+      onRetry: jest.fn(),
     };
     let renderer: ReactTestRenderer.ReactTestRenderer;
     await ReactTestRenderer.act(async () => {
@@ -33,9 +34,16 @@ test.each(['ko', 'en'] as const)(
         ? '지금 풀 수 있는 판이 없어요.'
         : 'No playable puzzles are available right now.',
     );
-    expect(serialized).toContain(
-      language === 'ko' ? '다음 판 없음' : 'No next puzzle',
-    );
+    const retryLabel = language === 'ko' ? '다시 불러오기' : 'Try again';
+    expect(serialized).toContain(retryLabel);
+    const retry = renderer!.root
+      .findAllByProps({ onPress: props.onRetry })
+      .find(button => button.props.accessibilityRole === 'button');
+    expect(retry?.props.disabled).toBe(false);
+    await ReactTestRenderer.act(async () => {
+      retry!.props.onPress();
+    });
+    expect(props.onRetry).toHaveBeenCalledTimes(1);
     expect(serialized).not.toContain(
       language === 'ko'
         ? '모든 판을 완성했어요'

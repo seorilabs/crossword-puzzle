@@ -1,6 +1,5 @@
 import type { ContentLanguage } from "./dailyLanguage.ts";
 export const englishCopy: Record<string, string> = {
-  "다음 판 없음": "No next puzzle",
   "지금 풀 수 있는 판이 없어요.":
     "No playable puzzles are available right now.",
   "퍼즐을 불러오거나 저장하지 못했어요. 다시 눌러주세요.":
